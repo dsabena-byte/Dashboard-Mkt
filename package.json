@@ -1,0 +1,22 @@
+{
+  "name": "dashboard-mkt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Unified campaign monitoring dashboard (digital + offline)",
+  "scripts": {
+    "dev": "pnpm --filter @dashboard/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:types": "supabase gen types typescript --local > packages/db/src/types.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/node": "^20.14.10"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.7.0"
+}
