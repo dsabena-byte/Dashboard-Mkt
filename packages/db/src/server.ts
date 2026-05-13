@@ -27,7 +27,7 @@ export function createServerClient(cookieStore: CookieStore) {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookies) {
+      setAll(cookies: { name: string; value: string; options?: Record<string, unknown> }[]) {
         if (!cookieStore.set) return;
         for (const { name, value, options } of cookies) {
           cookieStore.set(name, value, options);
