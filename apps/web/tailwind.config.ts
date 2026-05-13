@@ -4,7 +4,7 @@ const config: Config = {
   darkMode: ["class"],
   content: [
     "./src/**/*.{ts,tsx}",
-    "../../packages/**/src/**/*.{ts,tsx}",
+    "../../packages/*/src/**/*.{ts,tsx}",
   ],
   theme: {
     container: {
