@@ -10,6 +10,7 @@ import {
   getSocialTotals,
   OWN_BRAND,
 } from "@/lib/social-queries";
+import { getCompetitorWebSnapshot } from "@/lib/competitor-web-queries";
 import { parseDateRange } from "@/lib/dates";
 import { formatNumber, formatPct } from "@/lib/utils";
 
@@ -20,11 +21,12 @@ interface PageProps {
 export default async function CompetitorsPage({ searchParams }: PageProps) {
   const range = parseDateRange(searchParams);
 
-  const [totals, benchmark, pilarBreakdown, trend] = await Promise.all([
+  const [totals, benchmark, pilarBreakdown, trend, webSnapshot] = await Promise.all([
     getSocialTotals(range),
     getBrandBenchmark(range),
     getPilarBreakdown(),
     getEngagementTrend(range),
+    getCompetitorWebSnapshot(),
   ]);
 
   const hasData = benchmark.length > 0;
@@ -169,6 +171,77 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
                       {row.followers > 0 ? formatNumber(row.followers) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border bg-card">
+        <header className="border-b p-6 pb-4">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Tráfico web — Benchmark de dominios
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Estimaciones mensuales de SimilarWeb (vía Apify). Snapshot más reciente por competidor.
+          </p>
+        </header>
+        {webSnapshot.length === 0 ? (
+          <div className="p-12 text-center text-sm text-muted-foreground">
+            Sin datos de tráfico web todavía. Configurá el workflow{" "}
+            <code>competitor-web-sync</code> en N8N para empezar a popular la tabla{" "}
+            <code>competitor_web</code>.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-4 py-2">Competidor</th>
+                  <th className="px-4 py-2">Dominio</th>
+                  <th className="px-4 py-2 text-right">Visitas mensuales</th>
+                  <th className="px-4 py-2 text-right">Visitantes únicos</th>
+                  <th className="px-4 py-2 text-right">Bounce rate</th>
+                  <th className="px-4 py-2 text-right">Pages/visit</th>
+                  <th className="px-4 py-2 text-right">Avg duration</th>
+                  <th className="px-4 py-2 text-right">Última actualización</th>
+                </tr>
+              </thead>
+              <tbody>
+                {webSnapshot.map((row) => (
+                  <tr key={row.competidor} className="border-b last:border-0">
+                    <td className="px-4 py-2 font-medium">{row.competidor}</td>
+                    <td className="px-4 py-2 text-muted-foreground">{row.dominio}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {row.visitas_estimadas !== null
+                        ? formatNumber(row.visitas_estimadas)
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {row.visitantes_unicos !== null
+                        ? formatNumber(row.visitantes_unicos)
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {row.bounce_rate !== null
+                        ? formatPct(row.bounce_rate * 100, 1)
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {row.pages_per_visit !== null
+                        ? row.pages_per_visit.toFixed(2)
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {row.avg_visit_duration !== null
+                        ? `${Math.round(row.avg_visit_duration)}s`
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right text-xs text-muted-foreground">
+                      {row.fecha}
                     </td>
                   </tr>
                 ))}
