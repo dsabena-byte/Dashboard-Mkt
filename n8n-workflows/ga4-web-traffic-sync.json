@@ -17,7 +17,7 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -400,
+        -600,
         0
       ]
     },
@@ -28,7 +28,7 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -400,
+        -600,
         200
       ]
     },
@@ -58,23 +58,21 @@
             { "name": "sessions" },
             { "name": "totalUsers" },
             { "name": "newUsers" },
-            { "name": "conversions" },
             { "name": "bounceRate" },
             { "name": "averageSessionDuration" },
             { "name": "screenPageViews" }
           ]
         },
-        "additionalFields": {
-          "limit": 100000
-        }
+        "returnAll": true,
+        "additionalFields": {}
       },
-      "id": "node-ga4-report",
-      "name": "GA4 — Run Report",
+      "id": "node-ga4-main",
+      "name": "GA4 — Main Report",
       "type": "n8n-nodes-base.googleAnalytics",
       "typeVersion": 2,
       "position": [
-        -160,
-        100
+        -360,
+        0
       ],
       "credentials": {
         "googleAnalyticsOAuth2": {
@@ -85,14 +83,72 @@
     },
     {
       "parameters": {
-        "jsCode": "// Transforma la respuesta del GA4 Data API a filas de web_traffic.\n//\n// Lee de cada item las dimensiones y métricas que GA4 devuelve, normaliza\n// UTMs a lowercase kebab-case, parsea la fecha 'YYYYMMDD' → 'YYYY-MM-DD'\n// y arma el payload que matchea el unique constraint:\n//   (fecha, utm_source, utm_medium, utm_campaign, utm_content, landing_page)\n//\n// landing_page queda NULL — la query del funnel no la necesita.\n\nconst toIsoDate = (raw) => {\n  const s = String(raw ?? '');\n  if (/^\\d{8}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;\n  return null;\n};\n\nconst normalizeUtm = (raw) => {\n  if (raw === null || raw === undefined) return null;\n  const s = String(raw).trim().toLowerCase();\n  if (!s || s === '(not set)' || s === '(none)') return null;\n  return s\n    .normalize('NFD')\n    .replace(/[̀-ͯ]/g, '')\n    .replace(/\\s+/g, '-')\n    .replace(/[^a-z0-9\\-_().]/g, '');\n};\n\nconst toInt = (v) => {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? Math.round(n) : 0;\n};\n\nconst toFloat = (v) => {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n};\n\nconst output = [];\nfor (const item of items) {\n  const r = item.json;\n  const fecha = toIsoDate(r.date);\n  if (!fecha) continue;\n\n  output.push({\n    json: {\n      fecha,\n      utm_source: normalizeUtm(r.sessionSource),\n      utm_medium: normalizeUtm(r.sessionMedium),\n      utm_campaign: normalizeUtm(r.sessionCampaignName),\n      utm_content: null,\n      utm_term: null,\n      landing_page: null,\n      sesiones: toInt(r.sessions),\n      usuarios: toInt(r.totalUsers),\n      usuarios_nuevos: toInt(r.newUsers),\n      conversiones: toInt(r.conversions),\n      eventos_clave: toInt(r.conversions),\n      bounce_rate: toFloat(r.bounceRate),\n      avg_session_duration: toFloat(r.averageSessionDuration),\n      pageviews: toInt(r.screenPageViews),\n    },\n  });\n}\n\nreturn output;\n"
+        "resource": "report",
+        "operation": "get",
+        "propertyId": "REPLACE_WITH_YOUR_GA4_PROPERTY_ID",
+        "dateRanges": {
+          "values": [
+            {
+              "startDate": "30daysAgo",
+              "endDate": "yesterday"
+            }
+          ]
+        },
+        "dimensions": {
+          "values": [
+            { "name": "date" },
+            { "name": "sessionSource" },
+            { "name": "sessionMedium" },
+            { "name": "sessionCampaignName" },
+            { "name": "eventName" }
+          ]
+        },
+        "metrics": {
+          "values": [
+            { "name": "eventCount" }
+          ]
+        },
+        "returnAll": true,
+        "additionalFields": {}
+      },
+      "id": "node-ga4-events",
+      "name": "GA4 — Events by Name",
+      "type": "n8n-nodes-base.googleAnalytics",
+      "typeVersion": 2,
+      "position": [
+        -360,
+        200
+      ],
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Analytics account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "node-merge",
+      "name": "Merge main + events",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -120,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recibe items mezclados (append) de dos branches:\n//   - Main Report: tiene sessions, totalUsers, newUsers, bounceRate, etc. y SIN eventName\n//   - Events by Name: tiene eventCount y eventName, SIN sessions/users/etc.\n//\n// Separa por presencia de `eventName`, agrupa los events filtrando a\n// eventName='purchase' por (date, source, medium, campaign), y enriquece cada\n// fila de Main con el conteo de purchase.\n//\n// Output: una fila por combo de Main, lista para web_traffic.\n\nconst PURCHASE_EVENT = 'purchase';\n\nconst toIsoDate = (raw) => {\n  const s = String(raw ?? '');\n  if (/^\\d{8}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;\n  return null;\n};\n\nconst normalizeUtm = (raw) => {\n  if (raw === null || raw === undefined) return null;\n  const s = String(raw).trim().toLowerCase();\n  if (!s || s === '(not set)' || s === '(none)') return null;\n  return s\n    .normalize('NFD')\n    .replace(/[̀-ͯ]/g, '')\n    .replace(/\\s+/g, '-')\n    .replace(/[^a-z0-9\\-_().]/g, '');\n};\n\nconst toInt = (v) => {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? Math.round(n) : 0;\n};\n\nconst toFloat = (v) => {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n};\n\nconst keyOf = (r) =>\n  `${r.date}|${r.sessionSource ?? ''}|${r.sessionMedium ?? ''}|${r.sessionCampaignName ?? ''}`;\n\nconst mainItems = [];\nconst eventItems = [];\nfor (const item of items) {\n  if (item.json && item.json.eventName !== undefined) {\n    eventItems.push(item.json);\n  } else {\n    mainItems.push(item.json);\n  }\n}\n\nconst purchaseByKey = new Map();\nfor (const ev of eventItems) {\n  if (String(ev.eventName).toLowerCase() !== PURCHASE_EVENT.toLowerCase()) continue;\n  const key = keyOf(ev);\n  purchaseByKey.set(key, (purchaseByKey.get(key) || 0) + toInt(ev.eventCount));\n}\n\nconst output = [];\nfor (const r of mainItems) {\n  const fecha = toIsoDate(r.date);\n  if (!fecha) continue;\n\n  const purchases = purchaseByKey.get(keyOf(r)) || 0;\n\n  output.push({\n    json: {\n      fecha,\n      utm_source: normalizeUtm(r.sessionSource),\n      utm_medium: normalizeUtm(r.sessionMedium),\n      utm_campaign: normalizeUtm(r.sessionCampaignName),\n      utm_content: null,\n      utm_term: null,\n      landing_page: null,\n      sesiones: toInt(r.sessions),\n      usuarios: toInt(r.totalUsers),\n      usuarios_nuevos: toInt(r.newUsers),\n      conversiones: purchases,\n      eventos_clave: purchases,\n      bounce_rate: toFloat(r.bounceRate),\n      avg_session_duration: toFloat(r.averageSessionDuration),\n      pageviews: toInt(r.screenPageViews),\n    },\n  });\n}\n\nreturn output;\n"
       },
       "id": "node-normalize",
-      "name": "Normalize to web_traffic shape",
+      "name": "Normalize + count purchases",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        80,
+        120,
         100
       ]
     },
@@ -106,7 +162,7 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        320,
+        360,
         100
       ]
     },
@@ -140,22 +196,38 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        560,
+        600,
         100
       ]
     }
   ],
   "connections": {
     "Schedule (daily 03:00)": {
-      "main": [[{ "node": "GA4 — Run Report", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          { "node": "GA4 — Main Report", "type": "main", "index": 0 },
+          { "node": "GA4 — Events by Name", "type": "main", "index": 0 }
+        ]
+      ]
     },
     "Manual trigger": {
-      "main": [[{ "node": "GA4 — Run Report", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          { "node": "GA4 — Main Report", "type": "main", "index": 0 },
+          { "node": "GA4 — Events by Name", "type": "main", "index": 0 }
+        ]
+      ]
     },
-    "GA4 — Run Report": {
-      "main": [[{ "node": "Normalize to web_traffic shape", "type": "main", "index": 0 }]]
+    "GA4 — Main Report": {
+      "main": [[{ "node": "Merge main + events", "type": "main", "index": 0 }]]
     },
-    "Normalize to web_traffic shape": {
+    "GA4 — Events by Name": {
+      "main": [[{ "node": "Merge main + events", "type": "main", "index": 1 }]]
+    },
+    "Merge main + events": {
+      "main": [[{ "node": "Normalize + count purchases", "type": "main", "index": 0 }]]
+    },
+    "Normalize + count purchases": {
       "main": [[{ "node": "Aggregate rows", "type": "main", "index": 0 }]]
     },
     "Aggregate rows": {

@@ -7,12 +7,35 @@ desde Google Analytics 4 y lo escribe en la tabla `web_traffic` de Supabase.
 
 ```mermaid
 flowchart LR
-  CRON[Schedule diario 03:00] --> GA4[Google Analytics<br/>Run Report]
-  MANUAL[Manual trigger] --> GA4
-  GA4 --> NORM[Code<br/>Normalize to web_traffic]
+  CRON[Schedule diario 03:00] --> MAIN[GA4 Main Report<br/>sessions, users, bounce]
+  CRON --> EVENTS[GA4 Events by Name<br/>eventCount + eventName]
+  MANUAL[Manual trigger] --> MAIN
+  MANUAL --> EVENTS
+  MAIN --> MERGE[Merge append]
+  EVENTS --> MERGE
+  MERGE --> NORM[Code<br/>Normalize + count purchases]
   NORM --> AGG[Aggregate rows]
   AGG --> SUPA[HTTP Request<br/>Supabase upsert]
 ```
+
+## Por qué dos queries a GA4
+
+GA4 marca como "conversiones" TODOS los eventos que tengas como key event
+en el property — incluyendo `page_view`, `view_item`, etc. Si usás la
+métrica genérica `conversions`, el número se infla artificialmente.
+
+La fix correcta es contar **un evento específico** que represente una
+conversión real (por default: `purchase`). Como GA4 Data API no permite
+filtrar una sola métrica dentro de un report con otras métricas no
+filtradas, hacemos dos calls:
+
+1. **Main Report**: sessions / users / bounceRate / etc. por
+   (fecha, source, medium, campaign).
+2. **Events by Name**: eventCount por (fecha, source, medium, campaign,
+   eventName). El Code node filtra a `eventName='purchase'` y suma por combo.
+
+Para cambiar el evento de conversión (ej: `sign_up`, `contact_form`, etc.),
+edití la constante `PURCHASE_EVENT` al principio del Code node.
 
 ## Lo que importa para el funnel
 
@@ -53,27 +76,48 @@ El funnel del dashboard joinea `ads_performance` con `web_traffic` por
 2. En n8n.cloud: **Workflows → Create Workflow → ⋮ → Import from File**.
 3. Renombralo a **GA4 Web Traffic Sync** y guardalo.
 
-## Paso 3 — Pegar el Property ID
+## Paso 3 — Pegar el Property ID y configurar las dimensions/metrics
 
-1. Doble-click en el nodo **"GA4 — Run Report"**.
-2. En el campo **Property ID** vas a ver el placeholder `REPLACE_WITH_YOUR_GA4_PROPERTY_ID`.
-3. Reemplazá ese texto por tu número de 9 dígitos.
-4. Verificá que el resto esté así:
-   - **Resource**: Report
-   - **Operation**: Get (o "Run Report" según versión del nodo)
-   - **Date Ranges**: `30daysAgo` a `yesterday`
-   - **Dimensions**: `date`, `sessionSource`, `sessionMedium`, `sessionCampaignName`
-   - **Metrics**: `sessions`, `totalUsers`, `newUsers`, `conversions`, `bounceRate`, `averageSessionDuration`, `screenPageViews`
-5. **No cerrés el panel** — vamos a conectar la credencial en el siguiente paso.
+El workflow tiene **dos** nodos GA4 ("Main Report" y "Events by Name") y
+los dos necesitan el mismo Property ID y la misma credencial. La versión
+del nodo GA4 en n8n.cloud puede no aceptar el Property ID via JSON import;
+si después de importar ves placeholders o el dropdown del nodo está
+incompleto, configurá a mano siguiendo esta tabla.
+
+### Nodo "GA4 — Main Report"
+
+- **Property ID**: tu número de 9 dígitos.
+- **Date Range**: Last 30 Days.
+- **Dimensions** (4): `date`, `sessionSource`, `sessionMedium`, `sessionCampaignName`.
+- **Metrics** (6): `sessions`, `totalUsers`, `newUsers`, `bounceRate`,
+  `averageSessionDuration`, `screenPageViews`.
+- **Return All**: ON.
+- **Simplify Output**: ON.
+
+### Nodo "GA4 — Events by Name"
+
+- **Property ID**: el mismo.
+- **Date Range**: Last 30 Days.
+- **Dimensions** (5): `date`, `sessionSource`, `sessionMedium`,
+  `sessionCampaignName`, **`eventName`**.
+- **Metrics** (1): `eventCount`.
+- **Return All**: ON.
+- **Simplify Output**: ON.
+
+> 💡 En n8n.cloud, los valores que no aparecen en el dropdown predefinido se
+> agregan con **Expression mode** (toggle `Fixed | Expression` arriba a la
+> derecha del campo) tipeando el nombre API en camelCase exacto.
 
 ## Paso 4 — Conectar Google Analytics
 
-1. En el mismo panel del nodo GA4, en **Credential to connect with**, click
-   en el dropdown → **+ Create new credential**.
+1. En el panel del nodo "GA4 — Main Report", en **Credential to connect
+   with**, click en el dropdown → **+ Create new credential**.
 2. Tipo: **Google Analytics OAuth2 API**.
 3. Click en **Sign in with Google**.
 4. Elegí la cuenta de Google que **tiene acceso a la propiedad GA4** y dale Permitir.
 5. Guardá la credencial.
+6. **Repetí**: abrí el nodo "GA4 — Events by Name" y seleccioná la misma
+   credencial que acabás de crear (no hay que crear una segunda).
 
 ## Paso 5 — Configurar Supabase
 
