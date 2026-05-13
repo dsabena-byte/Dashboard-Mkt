@@ -1,0 +1,1069 @@
+{
+  "name": "Scrapper-Pro",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrape-pro",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        20832,
+        6752
+      ],
+      "id": "7b8aadc2-9352-445e-96b0-d6e0f73bc4bd",
+      "name": "Webhook Trigger",
+      "webhookId": "scrape-pro-saas"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        20832,
+        6912
+      ],
+      "id": "ad071ab3-7a93-44fe-86bf-43bb0eb263df",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\n\nconst sheetId = body.sheetId;\nif (!sheetId) return [];\n\nconst instagramUrls = (body.instagram || []).filter(Boolean);\nconst facebookUrls = (body.facebook || []).filter(Boolean);\nconst tiktokUrls = (body.tiktok || []).filter(Boolean);\n\nif (instagramUrls.length === 0) throw new Error('Se requiere al menos una URL de Instagram.');\n\n// Extraer handle de una URL para detección de marca\nfunction extractHandle(url) {\n  return (url.replace(/https?:\\/\\/(www\\.)?/, '').split('/').filter(p => p && p !== '@')[1] || '').toLowerCase();\n}\n\n// brands: handles de instagram como referencia para detectar a qué marca pertenece cada post\nconst brands = instagramUrls.map(extractHandle);\n\n// TikTok: extraer @handle de la URL\nconst tiktokProfiles = tiktokUrls.map(url => {\n  const m = url.match(/@([\\w.]+)/);\n  return m ? '@' + m[1] : url;\n});\n\nconst clientEmail = body.clientEmail || '';\nconst myBrand = body.myBrand || brands[0];\nconst followers = body.followers || {};\nconst plan = body.plan || 'pro';\nconst days = body.days || 90;\nconst resultsLimit = body.resultsLimit || 30;\nconst fromDate = body.fromDate || new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];\n\nreturn [{ brands, sheetId, clientEmail, myBrand, followers, plan, fromDate, resultsLimit, instagramUrls, facebookUrls, tiktokProfiles }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20992,
+        6832
+      ],
+      "id": "edd559b9-098d-4a7b-92f6-1f76af8e32f5",
+      "name": "Set Config"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Set Config').first().json.sheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Base",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        21152,
+        6832
+      ],
+      "id": "892d2651-b4f7-410b-9a74-90464915f017",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "q0QymsIPNMn7XUhz",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst existingUrls = items\n  .map(i => (i.json.POSTEO || '').trim())\n  .filter(Boolean)\n  .join(',');\nreturn [{ existingUrls }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        21312,
+        6832
+      ],
+      "id": "65b524e6-9086-418e-a603-7084866a77a5",
+      "name": "Build Dedup List"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/' + $('Set Config').first().json.sheetId + '/values/Base!R1?valueInputOption=RAW' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"values\":[[\"FOLLOWERS\"]]}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        21472,
+        6832
+      ],
+      "id": "0b5fc0c7-8cb5-4388-be7f-70fa0ccb1521",
+      "name": "Ensure FOLLOWERS Header",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "q0QymsIPNMn7XUhz",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorId": {
+          "__rl": true,
+          "value": "shu8hvrXbJbY3Eb9W",
+          "mode": "list",
+          "cachedResultName": "Instagram Scraper (apify/instagram-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/shu8hvrXbJbY3Eb9W/input"
+        },
+        "customBody": "={{ JSON.stringify({ directUrls: $('Set Config').first().json.instagramUrls, resultsLimit: $('Set Config').first().json.resultsLimit, fromDate: $('Set Config').first().json.fromDate, scrapePosts: true, scrapeComments: false, enhanceUserData: true }) }}",
+        "authentication": "apifyOAuth2Api"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        21872,
+        6544
+      ],
+      "id": "9d33f1a3-aee2-47d2-af1d-ae79cd2c554c",
+      "name": "Instagram Actor",
+      "alwaysOutputData": true,
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "eUm5nmUy2Eqh8k51",
+          "name": "Apify account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const url = d.url || (d.shortCode ? 'https://www.instagram.com/p/' + d.shortCode + '/' : '');\n  return {\n    url,\n    caption: d.caption || d.alt || '',\n    hashtags: Array.isArray(d.hashtags) ? d.hashtags : [],\n    timestamp: d.timestamp || d.takenAtTimestamp || '',\n    likesCount: d.likesCount || d.likes || 0,\n    commentsCount: d.commentsCount || d.comments || 0,\n    type: d.type || 'image',\n    ownerUsername: d.ownerUsername || d.username || '',\n    ownerFollowerCount: d.ownerFollowerCount || d.followersCount || 0,\n    videoViewCount: d.videoViewCount || d.videoPlayCount || 0,\n    isSponsored: !!(d.isSponsored || d.isPinned),\n    platform: 'INSTAGRAM'\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        22032,
+        6544
+      ],
+      "id": "5bd42d23-922d-412c-8705-4d8ece3a09da",
+      "name": "Tag Instagram"
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorId": {
+          "__rl": true,
+          "value": "KoJrdxJCTtpon81KY",
+          "mode": "list",
+          "cachedResultName": "Facebook Pages Scraper (apify/facebook-pages-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/KoJrdxJCTtpon81KY/input"
+        },
+        "customBody": "={{ JSON.stringify({ startUrls: $('Set Config').first().json.facebookUrls.map(url => ({ url })), maxPosts: $('Set Config').first().json.resultsLimit }) }}",
+        "authentication": "apifyOAuth2Api"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        21872,
+        6832
+      ],
+      "id": "752a1e44-d8ca-430f-b202-01a129c5fc2c",
+      "name": "Facebook Actor",
+      "alwaysOutputData": true,
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "eUm5nmUy2Eqh8k51",
+          "name": "Apify account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const text = d.text || d.message || d.story || '';\n  const hashtags = (text.match(/#[\\w\\u00C0-\\u024F]+/g) || []).map(h => h.slice(1));\n  return {\n    url: d.url || d.postUrl || d.link || '',\n    caption: text,\n    hashtags,\n    timestamp: d.time || d.createdTime || d.date || '',\n    likesCount: d.likes || d.likesCount || d.reactionsCount || 0,\n    commentsCount: d.comments || d.commentsCount || 0,\n    type: d.type || 'photo',\n    ownerUsername: d.pageName || d.pageAlias || d.username || '',\n    videoViewCount: d.videoViewCount || d.views || 0,\n    ownerFollowerCount: d.pageFans || d.fans || d.followers || d.pageFollowers || 0,\n    isSponsored: !!(d.isSponsored),\n    platform: 'FACEBOOK'\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        22032,
+        6832
+      ],
+      "id": "e398295e-4117-4d8a-9e8e-e5f6052d9724",
+      "name": "Tag Facebook"
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorId": {
+          "__rl": true,
+          "value": "OtzYfK1ndEGdwWFKQ",
+          "mode": "list",
+          "cachedResultName": "TikTok Scraper (clockworks/free-tiktok-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/OtzYfK1ndEGdwWFKQ/input"
+        },
+        "customBody": "={{ JSON.stringify({ profiles: $('Set Config').first().json.tiktokProfiles, resultsPerPage: $('Set Config').first().json.resultsLimit, scrapeType: 'videos' }) }}",
+        "authentication": "apifyOAuth2Api"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        21872,
+        7136
+      ],
+      "id": "b56b9ba0-bc72-483a-baa2-8e3038a64086",
+      "name": "TikTok Actor",
+      "alwaysOutputData": true,
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "eUm5nmUy2Eqh8k51",
+          "name": "Apify account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const text = d.text || d.desc || '';\n  const hashtags = Array.isArray(d.hashtags)\n    ? d.hashtags.map(h => h.name || h.title || h).filter(h => typeof h === 'string')\n    : (text.match(/#[\\w\\u00C0-\\u024F]+/g) || []).map(h => h.slice(1));\n  return {\n    url: d.webVideoUrl || d.videoUrl || d.shareUrl || '',\n    caption: text,\n    hashtags,\n    timestamp: d.createTimeISO || (d.createTime ? new Date(d.createTime * 1000).toISOString() : ''),\n    likesCount: d.diggCount || d.likeCount || 0,\n    commentsCount: d.commentCount || 0,\n    type: 'video',\n    ownerUsername: (d.authorMeta && d.authorMeta.name) || d.authorUniqueId || '',\n    videoViewCount: d.playCount || d.viewCount || 0,\n    isSponsored: false,\n    platform: 'TIKTOK'\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        22032,
+        7136
+      ],
+      "id": "fdad013b-9f4a-4345-af21-fca107605bf1",
+      "name": "Tag TikTok"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        22320,
+        6816
+      ],
+      "id": "19c5fcad-6e96-4f6e-94eb-fd14f3e9763f",
+      "name": "Merge Platforms"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "filter-dedup",
+              "leftValue": "={{ $('Build Dedup List').first().json.existingUrls }}",
+              "rightValue": "={{ $json.url.trim() }}",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        22480,
+        6832
+      ],
+      "id": "a5d1f31a-cf35-43d5-bbb5-c45cf68fdfae",
+      "name": "Filter Dedup"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "posts",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        22624,
+        6832
+      ],
+      "id": "52f1ca49-de44-4eb8-87d8-1a95332415ba",
+      "name": "Aggregate Posts"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'Sos un analista de Social Media experto. Devolvé ÚNICAMENTE JSON válido con una key \"analysis\" que contiene un array de objetos.' }, { role: 'user', content: 'Analizá estos posts de redes sociales. Para cada uno devolvé: pilar (elegí SIEMPRE la categoría más afín entre: Branding, Producto, Promo, Influencer, Educacional — NUNCA uses ninguna otra categoría), sentimiento (positivo+negativo+neutro deben sumar 100), insight (1 oración en español).\\n\\nPOSTS:\\n' + JSON.stringify($json.posts.map(p => ({url: p.url, platform: p.platform, caption: (p.caption||'').substring(0,400), hashtags: (p.hashtags||[]).slice(0,8)}))) + '\\n\\nFormato exacto: {\"analysis\":[{\"url\":\"...\",\"pilar\":\"...\",\"sentimiento\":{\"positivo\":0,\"negativo\":0,\"neutro\":0},\"insight\":\"...\"}]}' }] }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        22768,
+        6832
+      ],
+      "id": "a3d17b07-68de-468d-a29c-0bf863d72faa",
+      "name": "GPT Analysis",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const raw = $input.first().json;\n  const originalPosts = $('Aggregate Posts').first().json.posts || [];\n  const config = $('Set Config').first().json;\n  const marcas = config.brands.map(b => b.toLowerCase());\n  const fromDate = config.fromDate || '2000-01-01';\n  const followersMap = (() => { try { return $('Extract Follower Counts').first().json.followersMap || {}; } catch(e) { return {}; } })();\n\n  let analysisArray;\n  if (raw.choices && raw.choices[0]) {\n    const content = raw.choices[0].message?.content || '';\n    const parsed = JSON.parse(content);\n    analysisArray = parsed.analysis || parsed;\n  } else if (Array.isArray(raw)) {\n    analysisArray = raw;\n  } else {\n    throw new Error('Formato inesperado: ' + JSON.stringify(Object.keys(raw)));\n  }\n\n  if (!Array.isArray(analysisArray)) throw new Error('analysis no es un array');\n\n  const analysisMap = {};\n  for (const a of analysisArray) {\n    if (a.url) analysisMap[a.url] = a;\n  }\n\n  const results = [];\n  for (const post of originalPosts) {\n    try {\n      const url = post.url || '';\n      const analysis = analysisMap[url];\n      if (!analysis) continue;\n\n      const fecha = post.timestamp ? new Date(post.timestamp).toISOString().slice(0, 10) : '2000-01-01';\n      if (fecha < fromDate) continue;\n\n      const owner = (post.ownerUsername || post.username || '').toLowerCase();\n      const marcaFinal = marcas.find(m => owner.includes(m) || m.includes(owner));\n      if (!marcaFinal) continue;\n\n      const likes = post.likesCount || 0;\n      const comments = post.commentsCount || 0;\n      const seguidores = followersMap[marcaFinal] || config.followers?.[marcaFinal] || post.ownerFollowerCount || post.followersCount || 0;\n      const eng = seguidores > 0 ? (((likes + comments) / seguidores) * 100).toFixed(2) + '%' : '0%';\n\n      const t = (post.type || '').toLowerCase();\n      const contentType = post.platform === 'TIKTOK' ? 'VIDEO'\n        : t.includes('video') || t.includes('reel') ? 'VIDEO'\n        : t.includes('sidecar') || t.includes('album') ? 'SIDECAR' : 'IMAGE';\n\n      const isSponsored = !!(post.isSponsored || post.isPinned);\n\n      results.push({\n        marca: marcaFinal,\n        pilar: ['Branding','Producto','Promo','Influencer','Educacional'].includes(analysis.pilar) ? analysis.pilar : 'Branding',\n        fecha,\n        distribucion: isSponsored ? 'PAUTA' : 'ORGÁNICO',\n        positivo: analysis.sentimiento?.positivo || 0,\n        negativo: analysis.sentimiento?.negativo || 0,\n        neutro: analysis.sentimiento?.neutro || 0,\n        likes,\n        comments,\n        engagement: eng,\n        insight: analysis.insight || 'Sin análisis',\n        url,\n        videoViews: post.videoViewCount || post.videoPlayCount || 0,\n        contentType,\n        isSponsored,\n        hashtags: Array.isArray(post.hashtags) ? post.hashtags.join(',') : '',\n        platform: post.platform || 'INSTAGRAM',\n        followers: seguidores\n      });\n    } catch (e) { /* skip */ }\n  }\n\n  return results;\n} catch (e) {\n  return [];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        22928,
+        6832
+      ],
+      "id": "ab3b8f64-0aa6-493a-9b2c-3be8cf9b593a",
+      "name": "Parse Response",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "filter-valid-url",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "filter-not-error",
+              "leftValue": "={{ $json.marca }}",
+              "rightValue": "ERROR",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        23072,
+        6832
+      ],
+      "id": "128b1103-985d-4cf7-b64e-a6b3f7dad96c",
+      "name": "Filter Valid Posts"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Set Config').first().json.sheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Base",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "RED-SOCIAL": "={{ $json.platform }}",
+            "POSTEO": "={{ $json.url }}",
+            "PILAR": "={{ $json.pilar }}",
+            "POSITIVO": "={{ $json.positivo }}",
+            "NEGATIVO": "={{ $json.negativo }}",
+            "NEUTRO": "={{ $json.neutro }}",
+            "INSIGHT": "={{ $json.insight }}",
+            "LIKES": "={{ $json.likes }}",
+            "COMENTARIOS": "={{ $json.comments }}",
+            "ENGAGEMENT": "={{ $json.engagement }}",
+            "DATE": "={{ $json.fecha }}",
+            "TYPE": "={{ $json.distribucion }}",
+            "MARCA": "={{ $json.marca }}",
+            "VIEWS": "={{ $json.videoViews }}",
+            "CONTENT_TYPE": "={{ $json.contentType }}",
+            "SPONSORED": "={{ $json.isSponsored }}",
+            "HASHTAGS": "={{ $json.hashtags }}",
+            "FOLLOWERS": "={{ $json.followers }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "RED-SOCIAL",
+              "displayName": "RED-SOCIAL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "POSTEO",
+              "displayName": "POSTEO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "PILAR",
+              "displayName": "PILAR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "POSITIVO",
+              "displayName": "POSITIVO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "NEGATIVO",
+              "displayName": "NEGATIVO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "NEUTRO",
+              "displayName": "NEUTRO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "INSIGHT",
+              "displayName": "INSIGHT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "LIKES",
+              "displayName": "LIKES",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "COMENTARIOS",
+              "displayName": "COMENTARIOS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ENGAGEMENT",
+              "displayName": "ENGAGEMENT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "DATE",
+              "displayName": "DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TYPE",
+              "displayName": "TYPE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "MARCA",
+              "displayName": "MARCA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "VIEWS",
+              "displayName": "VIEWS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CONTENT_TYPE",
+              "displayName": "CONTENT_TYPE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "SPONSORED",
+              "displayName": "SPONSORED",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "HASHTAGS",
+              "displayName": "HASHTAGS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "FOLLOWERS",
+              "displayName": "FOLLOWERS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        23216,
+        6832
+      ],
+      "id": "180700a9-e0bf-4cc0-bad5-3db20d51c8aa",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "q0QymsIPNMn7XUhz",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        23376,
+        6832
+      ],
+      "id": "d7d84651-cc29-4c5d-a9df-843890a1d140",
+      "name": "Wait for All Posts"
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Set Config').first().json;\nconst clientEmail = config.clientEmail || '';\nif (!clientEmail) return [];\n\nconst plan = config.plan || 'pro';\nconst dashboardUrl = 'https://www.tombaio.com/Instagram_Intelligence%20(24).html?id='\n  + config.sheetId + '&myBrand=' + encodeURIComponent(config.myBrand) + '&plan=' + plan;\nconst allPosts = $input.first().json.data || [];\nconst postCount = allPosts.length;\n\nconst emailBody = '<!DOCTYPE html><html><body style=\"font-family:-apple-system,BlinkMacSystemFont,\\'Segoe UI\\',sans-serif;background:#f7f7f8;margin:0;padding:40px 20px\">'\n  + '<div style=\"max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e0e0e5\">'\n  + '<div style=\"background:#111112;padding:28px 36px\"><div style=\"font-size:1.2rem;font-weight:700;color:#fff\">tomb<span style=\"color:#0057ff\">ai</span>o</div></div>'\n  + '<div style=\"padding:40px 36px\">'\n  + '<h1 style=\"font-size:1.5rem;color:#111112;margin:0 0 16px\">Tu Dashboard Pro está listo 🎯</h1>'\n  + '<p style=\"color:#6b6b75;line-height:1.7;margin:0 0 8px\">Analizamos <strong>' + postCount + ' posts</strong> de Instagram, Facebook y TikTok.</p>'\n  + '<p style=\"color:#6b6b75;line-height:1.7;margin:0 0 24px\">Encontrás todos los insights en tu dashboard:</p>'\n  + '<a href=\"' + dashboardUrl + '\" style=\"display:inline-block;background:#0057ff;color:#fff;text-decoration:none;font-weight:600;padding:14px 32px;border-radius:8px;font-size:1rem\">Ver mi Dashboard →</a>'\n  + '<p style=\"color:#9f9fa8;font-size:.85rem;margin:28px 0 0;line-height:1.6\">¿Dudas? Escribinos a <a href=\"mailto:hola@tombaio.com\" style=\"color:#0057ff\">hola@tombaio.com</a></p>'\n  + '</div>'\n  + '<div style=\"background:#f7f7f8;padding:20px 36px;border-top:1px solid #e0e0e5\"><p style=\"color:#9f9fa8;font-size:.75rem;margin:0\">tombaio · Inteligencia competitiva · <a href=\"https://www.tombaio.com\" style=\"color:#9f9fa8\">tombaio.com</a></p></div>'\n  + '</div></body></html>';\n\nreturn [{ clientEmail, dashboardUrl, postCount, plan, emailBody }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        23520,
+        6832
+      ],
+      "id": "768e84f3-ae58-431f-8666-9166ddef7afa",
+      "name": "Build Email Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_2r2bi4Bx_4WNm7gBKUa6U4KnBwstv7Bf7"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ from: 'tombaio <hola@tombaio.com>', to: [$json.clientEmail], subject: 'Tu Dashboard Pro de tombaio está listo 🎯', html: $json.emailBody }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        23664,
+        6832
+      ],
+      "id": "c474a163-c4c5-4e9f-960a-6700beb7b470",
+      "name": "Send Email (Resend)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "apifyOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { usernames: $('Set Config').first().json.brands } }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        21312,
+        7136
+      ],
+      "id": "7a48d0d2-3e6e-4a70-9900-00f8b3666fc8",
+      "name": "Get Follower Counts",
+      "alwaysOutputData": true,
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "eUm5nmUy2Eqh8k51",
+          "name": "Apify account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const followersMap = {};\nconst config = $('Set Config').first().json;\nconst marcas = config.brands.map(b => b.toLowerCase());\n\nconst deepScan = (obj) => {\n  if (!obj || typeof obj !== 'object') return 0;\n  const known = ['followersCount','follower_count','ownerFollowersCount','ownerFollowerCount','fans','followers'];\n  for (const f of known) { if (obj[f] > 0) return obj[f]; }\n  if (obj.edge_followed_by?.count > 0) return obj.edge_followed_by.count;\n  for (const k of Object.keys(obj)) {\n    const kl = k.toLowerCase();\n    if ((kl.includes('follower') || kl === 'fans') && !kl.includes('following') && typeof obj[k] === 'number' && obj[k] > 0) return obj[k];\n  }\n  return 0;\n};\n\nconst matchMarca = (u) => {\n  const uu = (u || '').toLowerCase();\n  return marcas.find(m => m === uu || (m.length >= 5 && uu.startsWith(m)) || (uu.length >= 5 && m.startsWith(uu)));\n};\n\n// Instagram\ntry {\n  const profiles = [];\n  for (const item of $('Get Follower Counts').all()) {\n    const d = item.json;\n    if (Array.isArray(d)) { profiles.push(...d); }\n    else if (Array.isArray(d.body)) { profiles.push(...d.body); }\n    else { profiles.push(d); }\n  }\n  for (const d of profiles) {\n    const marca = matchMarca(d.username || d.ownerUsername || d.handle || '');\n    if (!marca || followersMap[marca] > 0) continue;\n    const f = deepScan(d) || deepScan(d.owner) || deepScan(d.user) || 0;\n    if (f > 0) followersMap[marca] = f;\n  }\n} catch(e) {}\n\n// TikTok\ntry {\n  for (const item of $('Get TT Followers').all()) {\n    const d = item.json;\n    const marca = matchMarca(d.authorMeta?.name || d.authorUniqueId || '');\n    if (!marca || followersMap[marca] > 0) continue;\n    const f = d.authorMeta?.fans || d.authorStats?.followerCount || deepScan(d.authorMeta) || 0;\n    if (f > 0) followersMap[marca] = f;\n  }\n} catch(e) {}\n\nreturn [{ followersMap }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        21664,
+        7136
+      ],
+      "id": "0b341976-0eeb-4104-9092-4d46509afb29",
+      "name": "Extract Follower Counts",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorId": {
+          "__rl": true,
+          "value": "OtzYfK1ndEGdwWFKQ",
+          "mode": "list",
+          "cachedResultName": "TikTok Scraper (clockworks/free-tiktok-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/OtzYfK1ndEGdwWFKQ/input"
+        },
+        "customBody": "={{ JSON.stringify({ profiles: $('Set Config').first().json.tiktokProfiles, resultsPerPage: 1, scrapeType: 'videos' }) }}",
+        "authentication": "apifyOAuth2Api"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        21488,
+        7136
+      ],
+      "id": "bac4ea52-1904-4e17-85a1-66097c83fd93",
+      "name": "Get TT Followers",
+      "alwaysOutputData": true,
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "eUm5nmUy2Eqh8k51",
+          "name": "Apify account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Config": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Build Dedup List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dedup List": {
+      "main": [
+        [
+          {
+            "node": "Ensure FOLLOWERS Header",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure FOLLOWERS Header": {
+      "main": [
+        [
+          {
+            "node": "Get Follower Counts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Follower Counts": {
+      "main": [
+        [
+          {
+            "node": "Get TT Followers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get TT Followers": {
+      "main": [
+        [
+          {
+            "node": "Extract Follower Counts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Follower Counts": {
+      "main": [
+        [
+          {
+            "node": "Instagram Actor",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Facebook Actor",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "TikTok Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Actor": {
+      "main": [
+        [
+          {
+            "node": "Tag Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Instagram": {
+      "main": [
+        [
+          {
+            "node": "Merge Platforms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook Actor": {
+      "main": [
+        [
+          {
+            "node": "Tag Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Facebook": {
+      "main": [
+        [
+          {
+            "node": "Merge Platforms",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "TikTok Actor": {
+      "main": [
+        [
+          {
+            "node": "Tag TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag TikTok": {
+      "main": [
+        [
+          {
+            "node": "Merge Platforms",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Platforms": {
+      "main": [
+        [
+          {
+            "node": "Filter Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Dedup": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Posts": {
+      "main": [
+        [
+          {
+            "node": "GPT Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT Analysis": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Posts": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Wait for All Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for All Posts": {
+      "main": [
+        [
+          {
+            "node": "Build Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email Data": {
+      "main": [
+        [
+          {
+            "node": "Send Email (Resend)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "53c9b8f8-6bf2-4ab2-9d44-066b5b1e7035",
+  "meta": {
+    "instanceId": "e4235662c3cf5b6f9f47aa91a1ea29c2749c6c8b8d86e6293162c4b41e5b0f97"
+  },
+  "id": "mUQCiyGNwHJq2s0k",
+  "tags": []
+}
