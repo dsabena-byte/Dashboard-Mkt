@@ -64,12 +64,17 @@ flowchart LR
 4. Vas a ver los 6 nodos en el canvas. Algunos van a estar en rojo porque les
    faltan credenciales — eso lo arreglamos abajo.
 
-## Paso 3 — Configurar variables de entorno en N8N
+## Paso 3 — Configurar credenciales de Supabase
 
-El workflow lee las keys de Supabase desde variables de entorno (no hardcodeadas
-en el JSON, para que el archivo en GitHub no tenga secretos).
+El workflow tiene **dos formas** de leer las credenciales de Supabase.
+Elegí la que aplique a tu plan de n8n.cloud.
 
-1. En n8n.cloud, **Settings → Variables** (o **Environment** según el plan).
+### Opción A — Variables de entorno (n8n.cloud Pro / Enterprise / Self-hosted)
+
+Solo está disponible si en **Settings → Variables** aparece la opción (planes
+Pro o superiores en n8n.cloud, o cualquier self-hosted).
+
+1. En n8n.cloud, **Settings → Variables**.
 2. Agregá 2 variables:
 
    | Variable                       | Valor                                                      |
@@ -77,9 +82,26 @@ en el JSON, para que el archivo en GitHub no tenga secretos).
    | `SUPABASE_URL`                 | `https://vtcrhyyirqexczycuwhe.supabase.co`                |
    | `SUPABASE_SERVICE_ROLE_KEY`    | `sb_secret_...` (la secret key que ya generaste)           |
 
-   ⚠️ Si tu plan de n8n.cloud no soporta variables de entorno, hay un plan B:
-   reemplazá las referencias `{{ $env.VARIABLE }}` en el nodo "Supabase — Upsert
-   planning" directamente con los valores. Es menos limpio pero funciona.
+3. El workflow las referencia como `{{ $env.SUPABASE_URL }}` y
+   `{{ $env.SUPABASE_SERVICE_ROLE_KEY }}` — no hay que tocar nada más.
+
+### Opción B — Hardcodear en el nodo (planes Starter / Free)
+
+Si **Variables** no aparece en tu Settings, hardcodeamos los valores
+directamente en el nodo HTTP. Como el workflow vive solo en tu workspace
+y no se exporta nunca, el riesgo es bajo.
+
+1. Doble-click en el nodo **"Supabase — Upsert planning"**.
+2. Cambiar el campo **URL**:
+   - Antes: `{{ $env.SUPABASE_URL }}/rest/v1/planning?on_conflict=fecha,canal,campania,metric_type`
+   - Después: `https://TU-PROJECT.supabase.co/rest/v1/planning?on_conflict=fecha,canal,campania,metric_type`
+3. Cambiar los **Headers**:
+   - `apikey`: pegá tu `sb_secret_...` directamente.
+   - `Authorization`: `Bearer sb_secret_...` (con la palabra `Bearer` y un espacio antes del key).
+   - `Content-Type` y `Prefer`: déjalos como están.
+
+⚠️ Si rotás la secret key en Supabase (Settings → API Keys → ⋮ → Regenerate),
+tenés que volver a este nodo y actualizar los valores.
 
 ## Paso 4 — Conectar Google Sheets
 
