@@ -1,0 +1,214 @@
+{
+  "name": "Sheets Social Sync (Drean)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (every 6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -600,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Drean - Social Scraping"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "RED-SOCIAL",
+          "mode": "list",
+          "cachedResultName": "RED-SOCIAL"
+        },
+        "options": {}
+      },
+      "id": "node-sheets-read",
+      "name": "Google Sheets — Read social",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        -360,
+        100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transforma filas del Sheet de scraping social a payloads para Supabase.\n// Devuelve DOS tipos de items distinguidos por _target:\n//   - 'social_competitor' → 1 fila por post del Sheet\n//   - 'social_metrics'    → 1 fila por (fecha, plataforma, cuenta) agregando posts del día\n//\n// Columnas del Sheet (header de la fila 1):\n//   RED-SOCIAL | POSTEO | PILAR | POSITIVO | NEGATIVO | NEUTRO | INSIGHT |\n//   LIKES | COMENTARIOS | ENGAGEMENT | DATE | TYPE | MARCA | VIEWS |\n//   CONTENT_TYPE | SPONSORED | HASHTAGS | FOLLOWERS\n\nconst PLATAFORMA_MAP = {\n  INSTAGRAM: 'instagram',\n  FACEBOOK: 'facebook',\n  TIKTOK: 'tiktok',\n  YOUTUBE: 'youtube',\n  TWITTER: 'twitter',\n  LINKEDIN: 'linkedin',\n};\n\nconst toIsoDate = (v) => {\n  if (!v) return null;\n  if (v instanceof Date) return v.toISOString().slice(0, 10);\n  const s = String(v).trim();\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;\n  const m = s.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})$/);\n  if (m) {\n    const [, d, mo, y] = m;\n    return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;\n  }\n  const p = new Date(s);\n  return Number.isNaN(p.getTime()) ? null : p.toISOString().slice(0, 10);\n};\n\nconst toIsoTs = (v) => {\n  const d = toIsoDate(v);\n  return d ? `${d}T12:00:00Z` : null;\n};\n\nconst toInt = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/[^0-9.\\-]/g, ''));\n  return Number.isFinite(n) ? Math.round(n) : null;\n};\n\nconst toFloat = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  const s = String(v).replace('%', '').replace(',', '.').trim();\n  const n = Number(s);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst toBool = (v) => {\n  if (typeof v === 'boolean') return v;\n  const s = String(v ?? '').trim().toUpperCase();\n  return s === 'TRUE' || s === 'SI' || s === 'YES' || s === '1';\n};\n\nconst slugifyMarca = (v) => String(v ?? '').trim().toLowerCase().replace(/\\s+/g, '_');\n\nconst hashPostId = (url, fecha, marca) => {\n  // Si no hay URL única, derivamos un id desde (fecha+marca+url) para no romper unique.\n  const base = `${fecha}|${marca}|${url ?? ''}`;\n  let h = 0;\n  for (let i = 0; i < base.length; i++) h = ((h << 5) - h + base.charCodeAt(i)) | 0;\n  return `auto_${Math.abs(h).toString(36)}`;\n};\n\nconst posts = [];\nconst dailyKey = (r) => `${r.fecha_post}|${r.plataforma}|${r.cuenta}`;\nconst dailyMap = new Map();\n\nfor (const item of items) {\n  const row = item.json;\n  const fecha_post = toIsoTs(row.DATE);\n  if (!fecha_post) continue;\n\n  const plataforma = PLATAFORMA_MAP[String(row['RED-SOCIAL'] ?? '').trim().toUpperCase()] ?? 'other';\n  const cuenta = slugifyMarca(row.MARCA);\n  if (!cuenta) continue;\n\n  const sponsored = toBool(row.SPONSORED);\n  const tipo_post = String(row.TYPE ?? '').trim().toUpperCase() || (sponsored ? 'PAUTA' : 'ORGÁNICO');\n\n  const post = {\n    fecha_post,\n    plataforma,\n    cuenta,\n    post_id: hashPostId(row.POSTEO, fecha_post.slice(0, 10), cuenta),\n    post_url: row.POSTEO ? String(row.POSTEO).trim() : null,\n    contenido: row.INSIGHT ? String(row.INSIGHT).trim() : null,\n    likes: toInt(row.LIKES),\n    comentarios: toInt(row.COMENTARIOS),\n    shares: null,\n    vistas: toInt(row.VIEWS),\n    pilar: row.PILAR ? String(row.PILAR).trim() : null,\n    sentiment_positivo: toFloat(row.POSITIVO),\n    sentiment_negativo: toFloat(row.NEGATIVO),\n    sentiment_neutro: toFloat(row.NEUTRO),\n    content_type: row.CONTENT_TYPE ? String(row.CONTENT_TYPE).trim() : null,\n    sponsored,\n    tipo_post,\n    hashtags: row.HASHTAGS ? String(row.HASHTAGS).trim() : null,\n    insight: row.INSIGHT ? String(row.INSIGHT).trim() : null,\n    source: 'google_sheet',\n  };\n  posts.push({ json: { _target: 'social_competitor', ...post } });\n\n  // Agregado diario (1 fila por fecha+plataforma+cuenta)\n  const fechaDia = fecha_post.slice(0, 10);\n  const key = `${fechaDia}|${plataforma}|${cuenta}`;\n  const agg = dailyMap.get(key) ?? {\n    fecha: fechaDia,\n    plataforma,\n    cuenta,\n    es_competidor: cuenta !== 'dreanargentina',\n    seguidores: 0,\n    engagement_rate: null,\n    posts: 0,\n    alcance: null,\n    impresiones: null,\n    interacciones: 0,\n    views: 0,\n    posts_organicos: 0,\n    posts_pauta: 0,\n    sentiment_sum_pos: 0,\n    sentiment_sum_neg: 0,\n    sentiment_sum_neu: 0,\n    sentiment_count: 0,\n    source: 'google_sheet',\n  };\n  agg.posts += 1;\n  if (sponsored) agg.posts_pauta += 1; else agg.posts_organicos += 1;\n  agg.interacciones += (toInt(row.LIKES) ?? 0) + (toInt(row.COMENTARIOS) ?? 0);\n  agg.views += toInt(row.VIEWS) ?? 0;\n  agg.seguidores = Math.max(agg.seguidores, toInt(row.FOLLOWERS) ?? 0);\n  const sp = toFloat(row.POSITIVO);\n  const sn = toFloat(row.NEGATIVO);\n  const su = toFloat(row.NEUTRO);\n  if (sp !== null && sn !== null && su !== null) {\n    agg.sentiment_sum_pos += sp;\n    agg.sentiment_sum_neg += sn;\n    agg.sentiment_sum_neu += su;\n    agg.sentiment_count += 1;\n  }\n  const eng = toFloat(row.ENGAGEMENT);\n  if (eng !== null) {\n    agg.engagement_rate = agg.engagement_rate === null ? eng : (agg.engagement_rate + eng) / 2;\n  }\n  dailyMap.set(key, agg);\n}\n\nconst dailies = [];\nfor (const agg of dailyMap.values()) {\n  const promedio = (sum) => (agg.sentiment_count > 0 ? sum / agg.sentiment_count : null);\n  dailies.push({\n    json: {\n      _target: 'social_metrics',\n      fecha: agg.fecha,\n      plataforma: agg.plataforma,\n      cuenta: agg.cuenta,\n      es_competidor: agg.es_competidor,\n      seguidores: agg.seguidores,\n      engagement_rate: agg.engagement_rate,\n      posts: agg.posts,\n      alcance: agg.alcance,\n      impresiones: agg.impresiones,\n      interacciones: agg.interacciones,\n      views: agg.views,\n      posts_organicos: agg.posts_organicos,\n      posts_pauta: agg.posts_pauta,\n      sentiment_promedio_positivo: promedio(agg.sentiment_sum_pos),\n      sentiment_promedio_negativo: promedio(agg.sentiment_sum_neg),\n      sentiment_promedio_neutro: promedio(agg.sentiment_sum_neu),\n      source: agg.source,\n    },\n  });\n}\n\nreturn [...posts, ...dailies];\n"
+      },
+      "id": "node-normalize",
+      "name": "Normalize + split into 2 targets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json._target }}",
+        "rules": {
+          "rules": [
+            { "value2": "social_competitor", "output": 0 },
+            { "value2": "social_metrics",    "output": 1 }
+          ]
+        }
+      },
+      "id": "node-switch",
+      "name": "Route by target table",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        120,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "node-agg-posts",
+      "name": "Aggregate posts",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "node-agg-daily",
+      "name": "Aggregate daily",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        360,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_competitor?on_conflict=plataforma,cuenta,post_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.data.map(({_target, ...rest}) => rest)) }}",
+        "options": {}
+      },
+      "id": "node-upsert-posts",
+      "name": "Supabase — Upsert social_competitor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_metrics?on_conflict=fecha,plataforma,cuenta",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.data.map(({_target, ...rest}) => rest)) }}",
+        "options": {}
+      },
+      "id": "node-upsert-daily",
+      "name": "Supabase — Upsert social_metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule (every 6h)": {
+      "main": [[{ "node": "Google Sheets — Read social", "type": "main", "index": 0 }]]
+    },
+    "Manual trigger": {
+      "main": [[{ "node": "Google Sheets — Read social", "type": "main", "index": 0 }]]
+    },
+    "Google Sheets — Read social": {
+      "main": [[{ "node": "Normalize + split into 2 targets", "type": "main", "index": 0 }]]
+    },
+    "Normalize + split into 2 targets": {
+      "main": [[{ "node": "Route by target table", "type": "main", "index": 0 }]]
+    },
+    "Route by target table": {
+      "main": [
+        [{ "node": "Aggregate posts", "type": "main", "index": 0 }],
+        [{ "node": "Aggregate daily", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aggregate posts": {
+      "main": [[{ "node": "Supabase — Upsert social_competitor", "type": "main", "index": 0 }]]
+    },
+    "Aggregate daily": {
+      "main": [[{ "node": "Supabase — Upsert social_metrics", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -153,6 +153,12 @@ export interface Database {
           alcance: number | null;
           impresiones: number | null;
           interacciones: number | null;
+          views: number | null;
+          posts_organicos: number;
+          posts_pauta: number;
+          sentiment_promedio_positivo: number | null;
+          sentiment_promedio_negativo: number | null;
+          sentiment_promedio_neutro: number | null;
           source: string;
           raw: Json | null;
           created_at: string;
@@ -180,6 +186,15 @@ export interface Database {
           comentarios_json: Json | null;
           raw: Json | null;
           source: string;
+          pilar: string | null;
+          sentiment_positivo: number | null;
+          sentiment_negativo: number | null;
+          sentiment_neutro: number | null;
+          content_type: string | null;
+          sponsored: boolean | null;
+          hashtags: string | null;
+          tipo_post: string | null;
+          insight: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["social_competitor"]["Row"]> & {
