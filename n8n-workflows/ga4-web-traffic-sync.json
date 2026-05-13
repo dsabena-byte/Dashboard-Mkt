@@ -1,0 +1,171 @@
+{
+  "name": "GA4 Web Traffic Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtHour": 3
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (daily 03:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "report",
+        "operation": "get",
+        "propertyId": "REPLACE_WITH_YOUR_GA4_PROPERTY_ID",
+        "dateRanges": {
+          "values": [
+            {
+              "startDate": "30daysAgo",
+              "endDate": "yesterday"
+            }
+          ]
+        },
+        "dimensions": {
+          "values": [
+            { "name": "date" },
+            { "name": "sessionSource" },
+            { "name": "sessionMedium" },
+            { "name": "sessionCampaignName" }
+          ]
+        },
+        "metrics": {
+          "values": [
+            { "name": "sessions" },
+            { "name": "totalUsers" },
+            { "name": "newUsers" },
+            { "name": "conversions" },
+            { "name": "bounceRate" },
+            { "name": "averageSessionDuration" },
+            { "name": "screenPageViews" }
+          ]
+        },
+        "additionalFields": {
+          "limit": 100000
+        }
+      },
+      "id": "node-ga4-report",
+      "name": "GA4 — Run Report",
+      "type": "n8n-nodes-base.googleAnalytics",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        100
+      ],
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Analytics account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transforma la respuesta del GA4 Data API a filas de web_traffic.\n//\n// Lee de cada item las dimensiones y métricas que GA4 devuelve, normaliza\n// UTMs a lowercase kebab-case, parsea la fecha 'YYYYMMDD' → 'YYYY-MM-DD'\n// y arma el payload que matchea el unique constraint:\n//   (fecha, utm_source, utm_medium, utm_campaign, utm_content, landing_page)\n//\n// landing_page queda NULL — la query del funnel no la necesita.\n\nconst toIsoDate = (raw) => {\n  const s = String(raw ?? '');\n  if (/^\\d{8}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;\n  return null;\n};\n\nconst normalizeUtm = (raw) => {\n  if (raw === null || raw === undefined) return null;\n  const s = String(raw).trim().toLowerCase();\n  if (!s || s === '(not set)' || s === '(none)') return null;\n  return s\n    .normalize('NFD')\n    .replace(/[̀-ͯ]/g, '')\n    .replace(/\\s+/g, '-')\n    .replace(/[^a-z0-9\\-_().]/g, '');\n};\n\nconst toInt = (v) => {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? Math.round(n) : 0;\n};\n\nconst toFloat = (v) => {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? n : 0;\n};\n\nconst output = [];\nfor (const item of items) {\n  const r = item.json;\n  const fecha = toIsoDate(r.date);\n  if (!fecha) continue;\n\n  output.push({\n    json: {\n      fecha,\n      utm_source: normalizeUtm(r.sessionSource),\n      utm_medium: normalizeUtm(r.sessionMedium),\n      utm_campaign: normalizeUtm(r.sessionCampaignName),\n      utm_content: null,\n      utm_term: null,\n      landing_page: null,\n      sesiones: toInt(r.sessions),\n      usuarios: toInt(r.totalUsers),\n      usuarios_nuevos: toInt(r.newUsers),\n      conversiones: toInt(r.conversions),\n      eventos_clave: toInt(r.conversions),\n      bounce_rate: toFloat(r.bounceRate),\n      avg_session_duration: toFloat(r.averageSessionDuration),\n      pageviews: toInt(r.screenPageViews),\n    },\n  });\n}\n\nreturn output;\n"
+      },
+      "id": "node-normalize",
+      "name": "Normalize to web_traffic shape",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "node-aggregate",
+      "name": "Aggregate rows",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        320,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/web_traffic?on_conflict=fecha,utm_source,utm_medium,utm_campaign,utm_content,landing_page",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.data) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "node-supabase-upsert",
+      "name": "Supabase — Upsert web_traffic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule (daily 03:00)": {
+      "main": [[{ "node": "GA4 — Run Report", "type": "main", "index": 0 }]]
+    },
+    "Manual trigger": {
+      "main": [[{ "node": "GA4 — Run Report", "type": "main", "index": 0 }]]
+    },
+    "GA4 — Run Report": {
+      "main": [[{ "node": "Normalize to web_traffic shape", "type": "main", "index": 0 }]]
+    },
+    "Normalize to web_traffic shape": {
+      "main": [[{ "node": "Aggregate rows", "type": "main", "index": 0 }]]
+    },
+    "Aggregate rows": {
+      "main": [[{ "node": "Supabase — Upsert web_traffic", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

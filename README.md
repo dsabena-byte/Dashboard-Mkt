@@ -163,7 +163,8 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 - [`docs/utm-conventions.md`](docs/utm-conventions.md) — convención de UTMs (crítico)
 - [`docs/supabase-setup.md`](docs/supabase-setup.md) — paso a paso para crear y aplicar el schema
 - [`docs/planning-sheet-template.md`](docs/planning-sheet-template.md) — estructura del Sheet de planning
-- [`docs/n8n-planning-setup.md`](docs/n8n-planning-setup.md) — setup del primer workflow N8N
+- [`docs/n8n-planning-setup.md`](docs/n8n-planning-setup.md) — setup del workflow planning N8N
+- [`docs/n8n-ga4-setup.md`](docs/n8n-ga4-setup.md) — setup del workflow GA4 → web_traffic
 - [`docs/next-phases.md`](docs/next-phases.md) — roadmap fases 2/3/4
 
 ---
