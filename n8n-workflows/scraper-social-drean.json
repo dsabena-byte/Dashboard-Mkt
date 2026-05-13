@@ -319,13 +319,17 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
+        "url": "https://api.anthropic.com/v1/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "Bearer REEMPLAZAR_CON_OPENAI_API_KEY"
+              "name": "x-api-key",
+              "value": "REPLACE_WITH_ANTHROPIC_API_KEY"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
             },
             {
               "name": "Content-Type",
@@ -336,7 +340,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'Sos un analista de Social Media experto. Devolvé ÚNICAMENTE JSON válido con una key \"analysis\" que contiene un array de objetos.' }, { role: 'user', content: 'Analizá estos posts de redes sociales. Para cada uno devolvé: pilar (elegí SIEMPRE la categoría más afín entre: Branding, Producto, Promo, Influencer, Educacional — NUNCA uses ninguna otra categoría), sentimiento (positivo+negativo+neutro deben sumar 100), insight (1 oración en español).\\n\\nPOSTS:\\n' + JSON.stringify($json.posts.map(p => ({url: p.url, platform: p.platform, caption: (p.caption||'').substring(0,400), hashtags: (p.hashtags||[]).slice(0,8)}))) + '\\n\\nFormato exacto: {\"analysis\":[{\"url\":\"...\",\"pilar\":\"...\",\"sentimiento\":{\"positivo\":0,\"negativo\":0,\"neutro\":0},\"insight\":\"...\"}]}' }] }) }}",
+        "body": "={{ JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 8192, system: 'Sos un analista de Social Media experto. Devolvés ÚNICAMENTE JSON válido (sin markdown, sin texto fuera del JSON) con una key \"analysis\" que contiene un array de objetos. No agregues comentarios ni explicaciones, solo el JSON.', messages: [{ role: 'user', content: 'Analizá estos posts de redes sociales. Para cada uno devolvé: pilar (elegí SIEMPRE la categoría más afín entre: Branding, Producto, Promo, Influencer, Educacional — NUNCA uses ninguna otra categoría), sentimiento (positivo+negativo+neutro deben sumar 100), insight (1 oración en español).\\n\\nPOSTS:\\n' + JSON.stringify($json.posts.map(p => ({url: p.url, platform: p.platform, caption: (p.caption||'').substring(0,400), hashtags: (p.hashtags||[]).slice(0,8)}))) + '\\n\\nFormato exacto: {\"analysis\":[{\"url\":\"...\",\"pilar\":\"...\",\"sentimiento\":{\"positivo\":0,\"negativo\":0,\"neutro\":0},\"insight\":\"...\"}]}' }] }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -346,14 +350,14 @@
         0
       ],
       "id": "pro-015",
-      "name": "GPT Analysis",
+      "name": "Claude Analysis",
       "alwaysOutputData": true,
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "try {\n  const raw = $input.first().json;\n  const originalPosts = $('Aggregate Posts').first().json.posts || [];\n  const config = $('Set Config').first().json;\n  const marcas = config.brands.map(b => b.toLowerCase());\n  const fromDate = config.fromDate || '2000-01-01';\n  const followersMap = (() => { try { return $('Extract Follower Counts').first().json.followersMap || {}; } catch(e) { return {}; } })();\n\n  let analysisArray;\n  if (raw.choices && raw.choices[0]) {\n    const content = raw.choices[0].message?.content || '';\n    const parsed = JSON.parse(content);\n    analysisArray = parsed.analysis || parsed;\n  } else if (Array.isArray(raw)) {\n    analysisArray = raw;\n  } else {\n    throw new Error('Formato inesperado: ' + JSON.stringify(Object.keys(raw)));\n  }\n\n  if (!Array.isArray(analysisArray)) throw new Error('analysis no es un array');\n\n  const analysisMap = {};\n  for (const a of analysisArray) {\n    if (a.url) analysisMap[a.url] = a;\n  }\n\n  const results = [];\n  for (const post of originalPosts) {\n    try {\n      const url = post.url || '';\n      const analysis = analysisMap[url];\n      if (!analysis) continue;\n\n      const fecha = post.timestamp ? new Date(post.timestamp).toISOString().slice(0, 10) : '2000-01-01';\n      if (fecha < fromDate) continue;\n\n      const normStr = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n      const owner = normStr(post.ownerUsername || post.username || '');\n      const marcaFinal = marcas.find(m => {\n        const mn = normStr(m);\n        return mn && owner && (owner.startsWith(mn) || mn.startsWith(owner) || owner === mn);\n      });\n      if (!marcaFinal) continue;\n\n      const likes = post.likesCount || 0;\n      const comments = post.commentsCount || 0;\n      const seguidores = followersMap[marcaFinal] || config.followers?.[marcaFinal] || post.ownerFollowerCount || post.followersCount || 0;\n      const eng = seguidores > 0 ? (((likes + comments) / seguidores) * 100).toFixed(2) + '%' : '0%';\n\n      const t = (post.type || '').toLowerCase();\n      const contentType = post.platform === 'TIKTOK' ? 'VIDEO'\n        : t.includes('video') || t.includes('reel') ? 'VIDEO'\n        : t.includes('sidecar') || t.includes('album') ? 'SIDECAR' : 'IMAGE';\n\n      const isSponsored = !!(post.isSponsored || post.isPinned);\n\n      results.push({\n        marca: marcaFinal,\n        pilar: ['Branding','Producto','Promo','Influencer','Educacional'].includes(analysis.pilar) ? analysis.pilar : 'Branding',\n        fecha,\n        distribucion: isSponsored ? 'PAUTA' : 'ORGÁNICO',\n        positivo: analysis.sentimiento?.positivo || 0,\n        negativo: analysis.sentimiento?.negativo || 0,\n        neutro: analysis.sentimiento?.neutro || 0,\n        likes,\n        comments,\n        engagement: eng,\n        insight: analysis.insight || 'Sin análisis',\n        url,\n        videoViews: post.videoViewCount || post.videoPlayCount || 0,\n        contentType,\n        isSponsored,\n        hashtags: Array.isArray(post.hashtags) ? post.hashtags.join(',') : '',\n        platform: post.platform || 'INSTAGRAM',\n        followers: seguidores\n      });\n    } catch (e) { /* skip */ }\n  }\n\n  return results;\n} catch (e) {\n  return [];\n}"
+        "jsCode": "try {\n  const raw = $input.first().json;\n  const originalPosts = $('Aggregate Posts').first().json.posts || [];\n  const config = $('Set Config').first().json;\n  const marcas = config.brands.map(b => b.toLowerCase());\n  const fromDate = config.fromDate || '2000-01-01';\n  const followersMap = (() => { try { return $('Extract Follower Counts').first().json.followersMap || {}; } catch(e) { return {}; } })();\n\n  // Extraer el JSON del response — soporta Claude (Anthropic) y OpenAI por compatibilidad\n  const extractText = (r) => {\n    // Anthropic Messages API: { content: [{ type: 'text', text: '...' }] }\n    if (Array.isArray(r?.content)) {\n      const textBlock = r.content.find(b => b?.type === 'text');\n      if (textBlock?.text) return textBlock.text;\n    }\n    // OpenAI chat completions: { choices: [{ message: { content: '...' } }] }\n    if (r?.choices?.[0]?.message?.content) return r.choices[0].message.content;\n    return null;\n  };\n\n  let analysisArray;\n  const textPayload = extractText(raw);\n  if (textPayload) {\n    // Claude a veces envuelve el JSON en markdown ```json ... ```\n    const cleaned = textPayload.trim().replace(/^```(?:json)?/, '').replace(/```$/, '').trim();\n    const parsed = JSON.parse(cleaned);\n    analysisArray = parsed.analysis || parsed;\n  } else if (Array.isArray(raw)) {\n    analysisArray = raw;\n  } else {\n    throw new Error('Formato inesperado: ' + JSON.stringify(Object.keys(raw)));\n  }\n\n  if (!Array.isArray(analysisArray)) throw new Error('analysis no es un array');\n\n  const analysisMap = {};\n  for (const a of analysisArray) {\n    if (a.url) analysisMap[a.url] = a;\n  }\n\n  const results = [];\n  for (const post of originalPosts) {\n    try {\n      const url = post.url || '';\n      const analysis = analysisMap[url];\n      if (!analysis) continue;\n\n      const fecha = post.timestamp ? new Date(post.timestamp).toISOString().slice(0, 10) : '2000-01-01';\n      if (fecha < fromDate) continue;\n\n      const normStr = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n      const owner = normStr(post.ownerUsername || post.username || '');\n      const marcaFinal = marcas.find(m => {\n        const mn = normStr(m);\n        return mn && owner && (owner.startsWith(mn) || mn.startsWith(owner) || owner === mn);\n      });\n      if (!marcaFinal) continue;\n\n      const likes = post.likesCount || 0;\n      const comments = post.commentsCount || 0;\n      const seguidores = followersMap[marcaFinal] || config.followers?.[marcaFinal] || post.ownerFollowerCount || post.followersCount || 0;\n      const eng = seguidores > 0 ? (((likes + comments) / seguidores) * 100).toFixed(2) + '%' : '0%';\n\n      const t = (post.type || '').toLowerCase();\n      const contentType = post.platform === 'TIKTOK' ? 'VIDEO'\n        : t.includes('video') || t.includes('reel') ? 'VIDEO'\n        : t.includes('sidecar') || t.includes('album') ? 'SIDECAR' : 'IMAGE';\n\n      const isSponsored = !!(post.isSponsored || post.isPinned);\n\n      results.push({\n        marca: marcaFinal,\n        pilar: ['Branding','Producto','Promo','Influencer','Educacional'].includes(analysis.pilar) ? analysis.pilar : 'Branding',\n        fecha,\n        distribucion: isSponsored ? 'PAUTA' : 'ORGÁNICO',\n        positivo: analysis.sentimiento?.positivo || 0,\n        negativo: analysis.sentimiento?.negativo || 0,\n        neutro: analysis.sentimiento?.neutro || 0,\n        likes,\n        comments,\n        engagement: eng,\n        insight: analysis.insight || 'Sin análisis',\n        url,\n        videoViews: post.videoViewCount || post.videoPlayCount || 0,\n        contentType,\n        isSponsored,\n        hashtags: Array.isArray(post.hashtags) ? post.hashtags.join(',') : '',\n        platform: post.platform || 'INSTAGRAM',\n        followers: seguidores\n      });\n    } catch (e) { /* skip */ }\n  }\n\n  return results;\n} catch (e) {\n  return [];\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -980,14 +984,14 @@
       "main": [
         [
           {
-            "node": "GPT Analysis",
+            "node": "Claude Analysis",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GPT Analysis": {
+    "Claude Analysis": {
       "main": [
         [
           {

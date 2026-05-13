@@ -2,8 +2,8 @@
 
 Workflow N8N adaptado del **Scrapper-Pro** de Tombaio para el caso de uso de
 Drean. Scrapea Instagram, Facebook y TikTok de Drean + competidores, los
-analiza con GPT-4 (pilar de contenido + sentiment) y escribe el resultado
-en un Google Sheet específico de Drean.
+analiza con **Claude Haiku 4.5** (pilar de contenido + sentiment) y escribe
+el resultado en un Google Sheet específico de Drean.
 
 > **Importante**: este workflow es una **copia adaptada** del Scrapper-Pro
 > de Tombaio (https://github.com/dsabena-byte/Smart-Social-AI). Las
@@ -25,8 +25,8 @@ flowchart LR
   FB --> MERGE
   TT --> MERGE
   MERGE --> FILTER[Filter dedup] --> AGG[Aggregate]
-  AGG --> GPT[GPT-4 analysis<br/>pilar + sentiment]
-  GPT --> PARSE[Parse + enrich] --> VALID[Filter valid]
+  AGG --> CLAUDE[Claude Haiku 4.5 analysis<br/>pilar + sentiment]
+  CLAUDE --> PARSE[Parse + enrich] --> VALID[Filter valid]
   VALID --> SHEET[Append to Sheet] --> WAIT[Wait all]
   WAIT --> EMAIL[Send email opcional]
 ```
@@ -49,7 +49,7 @@ flowchart LR
 - Cuenta en n8n.cloud (la que ya tenés)
 - Credencial **Apify OAuth2** en n8n (la misma de Tombaio sirve si ya la tenés conectada)
 - Credencial **Google Sheets OAuth2** (idem)
-- Credencial / API key de **OpenAI** (la misma de Tombaio)
+- API key de **Anthropic** (https://console.anthropic.com → API Keys). Empieza con `sk-ant-api03-...`.
 - Sheet de Drean creado con la pestaña **`Base`** vacía (los headers se crean al primer run)
 - Migración `0003_extend_social_schema.sql` aplicada en Supabase (ya hecho ✅)
 
@@ -89,8 +89,10 @@ Hay 5 nodos que necesitan credencial:
 - **Ensure FOLLOWERS Header** → misma Google Sheets OAuth2
 - **Instagram Actor** / **Facebook Actor** / **TikTok Actor** → Apify OAuth2
 - **Get Follower Counts** / **Get TT Followers** → Apify OAuth2
-- **GPT Analysis** → HTTP con header Authorization Bearer + tu OpenAI API key.
-  Mirá el nodo "GPT Analysis" → headers → reemplazá el placeholder.
+- **Claude Analysis** → HTTP a la Anthropic Messages API.
+  Doble-click en el nodo → buscá el header `x-api-key` → reemplazá
+  `REPLACE_WITH_ANTHROPIC_API_KEY` por tu key de Anthropic (`sk-ant-api03-...`).
+  El header `anthropic-version: 2023-06-01` ya está hardcodeado y no hay que tocarlo.
 - **Append row in sheet** → Google Sheets OAuth2
 
 Si en Tombaio ya tenés todas estas credenciales, simplemente seleccionalas
@@ -159,9 +161,10 @@ Cuando el sync corra (cada 6h), Supabase se llena y el dashboard
 
 - **Apify**: cada actor consume "compute units". Para 3 marcas × 30 días ×
   30 results/marca = ~270 posts/día. Costo típico: USD 5-15/mes según volumen.
-- **OpenAI (GPT-4)**: cada post se analiza con un prompt. Para 270 posts/día
-  con ~500 tokens entrada + 200 tokens salida = ~190k tokens/día. A
-  precios actuales de GPT-4o-mini, esto cuesta ~USD 5-10/mes.
+- **Claude (Anthropic)**: cada post se analiza con un prompt. Para 270 posts/día
+  con ~500 tokens entrada + 200 tokens salida = ~190k tokens/día. A precios
+  de **Claude Haiku 4.5** ($1 input + $5 output por 1M tokens), esto cuesta
+  ~USD **1-3/mes**.
 - **Resend**: gratis hasta 3000 emails/mes (más que suficiente).
 
 **Total estimado**: USD 10-25/mes para el scraping completo de Drean.
@@ -178,9 +181,15 @@ No reemplazaste `REPLACE_WITH_DREAN_SHEET_ID` en el Set Config. Volvé al Paso 3
 El scraping de Facebook puede fallar para páginas con privacy alta. Es
 normal. Verificá que las URLs sean correctas y que esas páginas sean públicas.
 
-### GPT-4 timeout
-Si el análisis tarda mucho, podés cambiar a `gpt-4o-mini` (más rápido y
-barato) editando el modelo en el nodo "GPT Analysis".
+### Claude timeout o error 401
+- **401 invalid_api_key**: la key de Anthropic está mal o vencida. Verificá
+  en https://console.anthropic.com → API Keys. Si la rotaste, actualizá el
+  header `x-api-key` en el nodo "Claude Analysis".
+- **Timeout**: subí el `max_tokens` a 16000 en el body del nodo, o cambiá el
+  modelo a `claude-sonnet-4-6` (más capaz pero ~3x más caro) si la salida
+  truncada es problema.
+- **Output con markdown**: el Parse Response ya remueve los fences `\`\`\`json`
+  si Claude los devuelve, no hace falta tocar nada.
 
 ### Email no llega
 - Verificá que `RESEND_API_KEY` esté configurada en N8N (Settings → Variables, o hardcode si tu plan no la tiene)
