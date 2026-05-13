@@ -76,9 +76,14 @@ export function aggregateTotals(rows: PlanningMediaRow[]): PlanningTotals {
 
     if (r.tipo === "media") {
       byCat.set(r.campania, (byCat.get(r.campania) ?? 0) + r.inversion);
-      if (r.sistema) bySis.set(r.sistema, (bySis.get(r.sistema) ?? 0) + r.inversion);
-      if (r.rol === "Build") build += r.inversion;
-      if (r.rol === "Consider") consider += r.inversion;
+      // Build/Consider y Mayor plataforma se calculan SOLO sobre Digital
+      // (Build/Consider es una construcción de "Rol of Comms" digital;
+      // TVC/OOH siempre son Build pero no entran en la métrica de mix).
+      if (medio === "Digital") {
+        if (r.sistema) bySis.set(r.sistema, (bySis.get(r.sistema) ?? 0) + r.inversion);
+        if (r.rol === "Build") build += r.inversion;
+        if (r.rol === "Consider") consider += r.inversion;
+      }
     }
   }
 
