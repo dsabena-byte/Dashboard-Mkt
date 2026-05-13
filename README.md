@@ -168,6 +168,7 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 - [`docs/n8n-social-setup.md`](docs/n8n-social-setup.md) — setup del workflow Social Sheet → social_competitor + social_metrics
 - [`docs/n8n-scraper-drean-setup.md`](docs/n8n-scraper-drean-setup.md) — setup del scraper adaptado de Tombaio para RRSS de Drean
 - [`docs/n8n-competitor-web-setup.md`](docs/n8n-competitor-web-setup.md) — setup del scraper de tráfico web de competidores (Apify SimilarWeb)
+- [`docs/n8n-planning-media-setup.md`](docs/n8n-planning-media-setup.md) — setup del workflow Pauta-omd (Sheet wide → planning_media)
 - [`docs/next-phases.md`](docs/next-phases.md) — roadmap fases 2/3/4
 
 ---
