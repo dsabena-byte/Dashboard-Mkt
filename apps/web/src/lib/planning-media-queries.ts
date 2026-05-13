@@ -74,7 +74,11 @@ export function aggregateTotals(rows: PlanningMediaRow[]): PlanningTotals {
     const medio = classifyMedio(r);
     byMedio[medio] += r.inversion;
 
-    if (r.tipo === "media") {
+    // Mayor categoría, Mayor plataforma y Build/Consider se calculan SOLO sobre Digital.
+    // (Build/Consider es una construcción de "Rol of Comms" digital; TVC/OOH siempre son
+    // Build pero no entran en la métrica de mix. Mayor categoría matchea el donut "Por
+    // categoría digital".)
+    if (r.tipo === "media" && medio === "Digital") {
       byCat.set(r.campania, (byCat.get(r.campania) ?? 0) + r.inversion);
       if (r.sistema) bySis.set(r.sistema, (bySis.get(r.sistema) ?? 0) + r.inversion);
       if (r.rol === "Build") build += r.inversion;
