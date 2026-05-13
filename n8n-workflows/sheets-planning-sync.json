@@ -1,0 +1,151 @@
+{
+  "name": "Sheets Planning Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (hourly)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Planning Marketing"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "planning",
+          "mode": "list",
+          "cachedResultName": "planning"
+        },
+        "options": {}
+      },
+      "id": "node-sheets-read",
+      "name": "Google Sheets — Read planning",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        -160,
+        100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza y valida cada fila del Sheet antes de enviarla a Supabase.\n//   - lowercase + trim en canal y metric_type\n//   - fecha a 'YYYY-MM-DD' (acepta Date de Sheets o string)\n//   - inversion_plan y kpi_target a número\n//   - descarta filas con campos obligatorios faltantes o valores inválidos\n\nconst CANALES = new Set([\n  'google_ads', 'meta_ads', 'tiktok_ads', 'linkedin_ads', 'youtube_ads',\n  'programmatic', 'tv', 'radio', 'ooh', 'print', 'influencer', 'email', 'other',\n]);\n\nconst METRICAS = new Set([\n  'impressions', 'clicks', 'sessions', 'conversions', 'leads',\n  'sales', 'revenue', 'cpa', 'cpc', 'ctr', 'roas',\n]);\n\nconst toIsoDate = (value) => {\n  if (!value) return null;\n  if (value instanceof Date) return value.toISOString().slice(0, 10);\n  const str = String(value).trim();\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(str)) return str;\n  const m = str.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})$/);\n  if (m) {\n    const [, d, mo, y] = m;\n    return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;\n  }\n  const parsed = new Date(str);\n  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);\n  return null;\n};\n\nconst toNumber = (value) => {\n  if (value === null || value === undefined || value === '') return null;\n  const n = Number(String(value).replace(/[^0-9.\\-]/g, ''));\n  return Number.isFinite(n) ? n : null;\n};\n\nconst output = [];\nconst errors = [];\n\nfor (const [i, item] of items.entries()) {\n  const row = item.json;\n  const fecha = toIsoDate(row.fecha);\n  const canal = String(row.canal ?? '').trim().toLowerCase();\n  const campania = String(row.campania ?? '').trim();\n  const inversion_plan = toNumber(row.inversion_plan);\n  const kpi_target = toNumber(row.kpi_target);\n  const metric_type = String(row.metric_type ?? '').trim().toLowerCase();\n  const notas = row.notas ? String(row.notas).trim() : null;\n\n  const rowErrors = [];\n  if (!fecha) rowErrors.push('fecha inválida');\n  if (!CANALES.has(canal)) rowErrors.push(`canal inválido: \"${canal}\"`);\n  if (!campania) rowErrors.push('campania vacía');\n  if (inversion_plan === null) rowErrors.push('inversion_plan inválida');\n  if (kpi_target === null) rowErrors.push('kpi_target inválido');\n  if (!METRICAS.has(metric_type)) rowErrors.push(`metric_type inválido: \"${metric_type}\"`);\n\n  if (rowErrors.length > 0) {\n    errors.push({ fila: i + 2, errores: rowErrors, raw: row });\n    continue;\n  }\n\n  output.push({\n    json: { fecha, canal, campania, inversion_plan, kpi_target, metric_type, notas },\n  });\n}\n\nif (errors.length > 0) {\n  console.warn('Filas con errores:', JSON.stringify(errors, null, 2));\n}\n\nreturn output;\n"
+      },
+      "id": "node-normalize",
+      "name": "Normalize & validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "node-aggregate",
+      "name": "Aggregate rows",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        320,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/planning?on_conflict=fecha,canal,campania,metric_type",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.data) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "node-supabase-upsert",
+      "name": "Supabase — Upsert planning",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule (hourly)": {
+      "main": [[{ "node": "Google Sheets — Read planning", "type": "main", "index": 0 }]]
+    },
+    "Manual trigger": {
+      "main": [[{ "node": "Google Sheets — Read planning", "type": "main", "index": 0 }]]
+    },
+    "Google Sheets — Read planning": {
+      "main": [[{ "node": "Normalize & validate", "type": "main", "index": 0 }]]
+    },
+    "Normalize & validate": {
+      "main": [[{ "node": "Aggregate rows", "type": "main", "index": 0 }]]
+    },
+    "Aggregate rows": {
+      "main": [[{ "node": "Supabase — Upsert planning", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
