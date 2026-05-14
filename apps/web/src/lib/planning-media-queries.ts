@@ -133,6 +133,7 @@ export function aggregateBySistemaFormato(rows: PlanningMediaRow[]): SistemaForm
   const map = new Map<string, SistemaFormatoBreakdown>();
   for (const r of rows) {
     if (r.tipo !== "media" || !r.sistema) continue;
+    if (classifyMedio(r) !== "Digital") continue;
     const existing = map.get(r.sistema) ?? {
       sistema: r.sistema,
       byFormato: {},
