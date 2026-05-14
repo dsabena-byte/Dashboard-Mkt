@@ -29,22 +29,28 @@ function pickParam(v: string | string[] | undefined): string | null {
   return Array.isArray(v) ? v[0] ?? null : v;
 }
 
+function pickArray(v: string | string[] | undefined): string[] {
+  if (!v) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
 export default async function PlanningPage({ searchParams }: PageProps) {
   const options = await getPlanningFilterOptions();
   const defaultMonth = await getDefaultMonth();
 
-  const mes = pickParam(searchParams.mes) ?? defaultMonth;
-  const campania = pickParam(searchParams.campania);
-  const rol = pickParam(searchParams.rol);
-  const sistema = pickParam(searchParams.sistema);
+  const mesArr = pickArray(searchParams.mes);
+  const mes = mesArr.length > 0 ? mesArr : [defaultMonth];
+  const campania = pickArray(searchParams.campania);
+  const rol = pickArray(searchParams.rol);
+  const sistema = pickArray(searchParams.sistema);
   const medio = pickParam(searchParams.medio) as
     | "Digital" | "TV Cable" | "OOH" | "Costos" | null;
 
   const rows = await getPlanningMedia({
     fecha: mes,
-    campania: campania ?? undefined,
-    rol: rol ?? undefined,
-    sistema: sistema ?? undefined,
+    campania: campania.length > 0 ? campania : undefined,
+    rol: rol.length > 0 ? rol : undefined,
+    sistema: sistema.length > 0 ? sistema : undefined,
     medio: medio ?? undefined,
   });
 
@@ -130,7 +136,7 @@ export default async function PlanningPage({ searchParams }: PageProps) {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Pauta · Planning</h2>
           <p className="text-sm text-muted-foreground">
-            Drean · ON + OFF + Costos. Default: mes en curso ({formatMonthLabel(mes)}).
+            Drean · ON + OFF + Costos. {mes.length === 1 ? `Mes: ${formatMonthLabel(mes[0]!)}` : `${mes.length} meses seleccionados`}.
           </p>
         </div>
         <div className="text-xs text-muted-foreground">
@@ -153,7 +159,11 @@ export default async function PlanningPage({ searchParams }: PageProps) {
 
       {/* KPIs */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="Inversión total" value={formatCurrency(totals.total)} hint={formatMonthLabel(mes)} />
+        <KpiCard
+          title="Inversión total"
+          value={formatCurrency(totals.total)}
+          hint={mes.length === 1 ? formatMonthLabel(mes[0]!) : `${mes.length} meses`}
+        />
         <KpiCard
           title="Digital (ON)"
           value={formatCurrency(totals.digital)}

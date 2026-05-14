@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 
 const MONTH_NAMES = [
   "Enero", "Febrero", "Marzo", "Abril",
@@ -17,10 +17,10 @@ function formatMonthLabel(fecha: string): string {
 
 interface PlanningFiltersProps {
   current: {
-    mes: string;
-    campania: string | null;
-    rol: string | null;
-    sistema: string | null;
+    mes: string[];
+    campania: string[];
+    rol: string[];
+    sistema: string[];
     medio: string | null;
   };
   options: {
@@ -39,10 +39,7 @@ export function PlanningFilters({ current, options }: PlanningFiltersProps) {
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  const setParam = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) params.set(key, value);
-    else params.delete(key);
+  const pushParams = (params: URLSearchParams) => {
     startTransition(() => {
       const url = `${pathname}?${params.toString()}`;
       (router.replace as unknown as (href: string, opts?: { scroll?: boolean }) => void)(url, {
@@ -51,55 +48,75 @@ export function PlanningFilters({ current, options }: PlanningFiltersProps) {
     });
   };
 
+  const setSingle = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) params.set(key, value);
+    else params.delete(key);
+    pushParams(params);
+  };
+
+  const toggleMulti = (key: string, value: string, current: string[]) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(key);
+    const next = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
+    for (const v of next) params.append(key, v);
+    pushParams(params);
+  };
+
+  const clearMulti = (key: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(key);
+    pushParams(params);
+  };
+
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
-      <FilterSelect
+    <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+      <MultiChips
         label="Mes"
-        value={current.mes}
-        onChange={(v) => setParam("mes", v)}
+        selected={current.mes}
         options={options.meses.map((m) => ({ value: m, label: formatMonthLabel(m) }))}
+        onToggle={(v) => toggleMulti("mes", v, current.mes)}
+        onClear={() => clearMulti("mes")}
       />
-      <FilterSelect
-        label="Medio"
-        value={current.medio ?? ""}
-        onChange={(v) => setParam("medio", v)}
-        options={[{ value: "", label: "Todos" }, ...MEDIOS.map((m) => ({ value: m, label: m }))]}
-      />
-      <FilterSelect
-        label="Categoría"
-        value={current.campania ?? ""}
-        onChange={(v) => setParam("campania", v)}
-        options={[
-          { value: "", label: "Todas" },
-          ...options.campanias.map((c) => ({ value: c, label: c })),
-        ]}
-      />
-      <FilterSelect
-        label="Rol"
-        value={current.rol ?? ""}
-        onChange={(v) => setParam("rol", v)}
-        options={[
-          { value: "", label: "Todos" },
-          ...options.roles.map((r) => ({ value: r, label: r })),
-        ]}
-      />
-      <FilterSelect
-        label="Plataforma"
-        value={current.sistema ?? ""}
-        onChange={(v) => setParam("sistema", v)}
-        options={[
-          { value: "", label: "Todas" },
-          ...options.sistemas.map((s) => ({ value: s, label: s })),
-        ]}
-      />
+      <div className="flex flex-wrap gap-x-6 gap-y-3">
+        <SingleSelect
+          label="Medio"
+          value={current.medio ?? ""}
+          onChange={(v) => setSingle("medio", v)}
+          options={[{ value: "", label: "Todos" }, ...MEDIOS.map((m) => ({ value: m, label: m }))]}
+        />
+        <MultiChips
+          label="Categoría"
+          selected={current.campania}
+          options={options.campanias.map((c) => ({ value: c, label: c }))}
+          onToggle={(v) => toggleMulti("campania", v, current.campania)}
+          onClear={() => clearMulti("campania")}
+        />
+        <MultiChips
+          label="Rol"
+          selected={current.rol}
+          options={options.roles.map((r) => ({ value: r, label: r }))}
+          onToggle={(v) => toggleMulti("rol", v, current.rol)}
+          onClear={() => clearMulti("rol")}
+        />
+        <MultiChips
+          label="Plataforma"
+          selected={current.sistema}
+          options={options.sistemas.map((s) => ({ value: s, label: s }))}
+          onToggle={(v) => toggleMulti("sistema", v, current.sistema)}
+          onClear={() => clearMulti("sistema")}
+        />
+      </div>
       {pending && (
-        <span className="ml-auto text-xs text-muted-foreground">Actualizando…</span>
+        <span className="text-xs text-muted-foreground">Actualizando…</span>
       )}
     </div>
   );
 }
 
-function FilterSelect({
+function SingleSelect({
   label,
   value,
   onChange,
@@ -126,6 +143,78 @@ function FilterSelect({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function MultiChips({
+  label,
+  selected,
+  options,
+  onToggle,
+  onClear,
+}: {
+  label: string;
+  selected: string[];
+  options: { value: string; label: string }[];
+  onToggle: (v: string) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const allActive = selected.length === 0;
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onClear}
+          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+            allActive
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-input bg-background text-muted-foreground hover:bg-secondary"
+          }`}
+        >
+          Todos
+        </button>
+        {(open ? options : options.filter((o) => selected.includes(o.value) || open)).map((o) => {
+          const isSel = selected.includes(o.value);
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onToggle(o.value)}
+              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                isSel
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-background text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+        {!open && options.some((o) => !selected.includes(o.value)) && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="rounded-full border border-dashed border-input bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-secondary"
+          >
+            + más
+          </button>
+        )}
+        {open && (
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-full border border-dashed border-input bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-secondary"
+          >
+            cerrar
+          </button>
+        )}
+      </div>
     </div>
   );
 }
