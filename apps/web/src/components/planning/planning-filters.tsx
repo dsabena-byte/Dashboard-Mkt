@@ -205,7 +205,7 @@ function MultiDropdown({
           </svg>
         </button>
         {open && (
-          <div className="absolute left-0 top-full z-30 mt-1 max-h-72 w-max min-w-full overflow-y-auto rounded-md border border-input bg-popover p-1 shadow-md">
+          <div className="absolute left-0 top-full z-30 mt-1 max-h-72 w-max min-w-full overflow-y-auto rounded-md border border-input bg-card p-1 shadow-lg">
             {selected.length > 0 && (
               <button
                 type="button"
