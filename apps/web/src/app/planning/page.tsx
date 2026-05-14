@@ -214,6 +214,7 @@ export default async function PlanningPage({ searchParams }: PageProps) {
             data={sistemaFormatoData}
             seriesKeys={formatList}
             seriesColors={formatoColors}
+            height={300}
           />
         </ChartCard>
         <ChartCard title="Build vs Consideración por categoría">

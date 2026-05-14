@@ -47,7 +47,7 @@ export function StackedBarChart({
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout={layout} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+      <BarChart data={data} layout={layout} margin={{ top: 8, right: 16, left: 8, bottom: 32 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         {layout === "horizontal" ? (
           <>
@@ -57,6 +57,9 @@ export function StackedBarChart({
               fontSize={11}
               interval={0}
               tick={{ fontSize: 11 }}
+              angle={-25}
+              textAnchor="end"
+              height={50}
             />
             <YAxis
               stroke="hsl(var(--muted-foreground))"
