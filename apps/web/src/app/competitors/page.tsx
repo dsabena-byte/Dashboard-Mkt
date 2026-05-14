@@ -250,11 +250,6 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
           </div>
         )}
       </section>
-
-      <div className="text-xs text-muted-foreground">
-        💡 Para análisis profundo de posts individuales, sentiment por comentario y AI insights,
-        usá <a className="underline" href="https://smart-social-ai.vercel.app" target="_blank" rel="noreferrer">Tombaio (Smart Social AI)</a>.
-      </div>
     </div>
   );
 }
