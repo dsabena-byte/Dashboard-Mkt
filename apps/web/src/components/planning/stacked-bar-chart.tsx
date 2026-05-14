@@ -7,10 +7,36 @@ import {
   Legend,
   ResponsiveContainer,
   Tooltip,
+  type TooltipProps,
   XAxis,
   YAxis,
 } from "recharts";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+
+function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  const nonZero = payload.filter((p) => typeof p.value === "number" && p.value > 0);
+  if (nonZero.length === 0) return null;
+  return (
+    <div
+      style={{
+        backgroundColor: "hsl(var(--card))",
+        border: "1px solid hsl(var(--border))",
+        borderRadius: 6,
+        fontSize: 12,
+        padding: "6px 10px",
+        color: "hsl(var(--foreground))",
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+      {nonZero.map((p) => (
+        <div key={String(p.dataKey)} style={{ color: p.color }}>
+          {p.name}: {formatCurrency(p.value as number)}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface StackedDatum {
   category: string;
@@ -47,7 +73,7 @@ export function StackedBarChart({
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout={layout} margin={{ top: 8, right: 16, left: 8, bottom: 32 }}>
+      <BarChart data={data} layout={layout} margin={{ top: 8, right: 16, left: 8, bottom: 56 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         {layout === "horizontal" ? (
           <>
@@ -59,7 +85,7 @@ export function StackedBarChart({
               tick={{ fontSize: 11 }}
               angle={-25}
               textAnchor="end"
-              height={50}
+              height={60}
             />
             <YAxis
               stroke="hsl(var(--muted-foreground))"
@@ -84,16 +110,13 @@ export function StackedBarChart({
             />
           </>
         )}
-        <Tooltip
-          formatter={(v: number) => formatCurrency(v)}
-          contentStyle={{
-            backgroundColor: "hsl(var(--card))",
-            border: "1px solid hsl(var(--border))",
-            borderRadius: 6,
-            fontSize: 12,
-          }}
-        />
-        {!hideLegend && <Legend wrapperStyle={{ fontSize: 11 }} />}
+        <Tooltip content={<CustomTooltip />} />
+        {!hideLegend && (
+          <Legend
+            wrapperStyle={{ fontSize: 11, paddingTop: 16 }}
+            verticalAlign="bottom"
+          />
+        )}
         {seriesKeys.map((key) => (
           <Bar
             key={key}
