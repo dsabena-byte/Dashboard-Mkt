@@ -13,10 +13,10 @@ export interface PlanningMediaRow {
 }
 
 export interface PlanningFilter {
-  fecha?: string;     // 'YYYY-MM-01' month
-  campania?: string;
-  rol?: string;
-  sistema?: string;
+  fecha?: string | string[];     // 'YYYY-MM-01' month — admite varios
+  campania?: string | string[];
+  rol?: string | string[];
+  sistema?: string | string[];
   medio?: "Digital" | "TV Cable" | "OOH" | "Costos";
 }
 
@@ -39,10 +39,20 @@ export async function getPlanningMedia(filter: PlanningFilter = {}): Promise<Pla
     .from("planning_media")
     .select("fecha, campania, rol, touchpoint, sistema, formato, inversion, tipo");
 
-  if (filter.fecha) query = query.eq("fecha", filter.fecha);
-  if (filter.campania) query = query.eq("campania", filter.campania);
-  if (filter.rol) query = query.eq("rol", filter.rol);
-  if (filter.sistema) query = query.eq("sistema", filter.sistema);
+  const asArr = (v: string | string[] | undefined): string[] | null => {
+    if (!v) return null;
+    const arr = Array.isArray(v) ? v : [v];
+    return arr.length === 0 ? null : arr;
+  };
+  const fechas = asArr(filter.fecha);
+  const campanias = asArr(filter.campania);
+  const roles = asArr(filter.rol);
+  const sistemas = asArr(filter.sistema);
+
+  if (fechas) query = fechas.length === 1 ? query.eq("fecha", fechas[0]!) : query.in("fecha", fechas);
+  if (campanias) query = campanias.length === 1 ? query.eq("campania", campanias[0]!) : query.in("campania", campanias);
+  if (roles) query = roles.length === 1 ? query.eq("rol", roles[0]!) : query.in("rol", roles);
+  if (sistemas) query = sistemas.length === 1 ? query.eq("sistema", sistemas[0]!) : query.in("sistema", sistemas);
 
   const { data, error } = await query.returns<PlanningMediaRow[]>();
   if (error) throw new Error(`planning_media: ${error.message}`);
@@ -198,7 +208,12 @@ export async function getPlanningFilterOptions(): Promise<PlanningFilterOptions>
   if (error) throw new Error(`planning filters: ${error.message}`);
 
   const rows = data ?? [];
-  const meses = [...new Set(rows.map((r) => r.fecha))].sort();
+  // Mostrar solo meses pasados + el mes en curso (no futuros). Fecha es 'YYYY-MM-01'.
+  const now = new Date();
+  const currentMonthStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  const meses = [...new Set(rows.map((r) => r.fecha))]
+    .filter((f) => f <= currentMonthStart)
+    .sort();
   const campanias = [...new Set(rows.map((r) => r.campania))].filter(Boolean).sort();
   const roles = [...new Set(rows.map((r) => r.rol).filter(Boolean) as string[])].sort();
   const sistemas = [...new Set(rows.map((r) => r.sistema).filter(Boolean) as string[])].sort();
@@ -211,15 +226,17 @@ export async function getPlanningFilterOptions(): Promise<PlanningFilterOptions>
  */
 export async function getDefaultMonth(): Promise<string> {
   const supabase = getServerSupabase();
+  const now = new Date();
+  const currentMonthStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
   const { data } = await supabase
     .from("planning_media")
     .select("fecha")
+    .lte("fecha", currentMonthStart)
     .order("fecha", { ascending: false })
     .limit(1)
     .returns<{ fecha: string }[]>();
   if (data && data.length > 0) return data[0]!.fecha;
-  const now = new Date();
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  return currentMonthStart;
 }
 
 export const PALETA_CATEGORIA: Record<string, string> = {

@@ -16,7 +16,7 @@ const NAV = [
   { href: "/overview",    label: "Overview",         icon: LayoutDashboard },
   { href: "/funnel",      label: "Funnel",           icon: GitBranch },
   { href: "/campaigns",   label: "Campañas",         icon: Megaphone },
-  { href: "/planning",    label: "Planning vs Real", icon: Target },
+  { href: "/planning",    label: "Planning Pauta",   icon: Target },
   { href: "/competitors", label: "Competencia",      icon: Eye },
   { href: "/alerts",      label: "Alertas",          icon: Bell },
 ] as const;
