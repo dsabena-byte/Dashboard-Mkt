@@ -2,6 +2,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { DonutChart } from "@/components/planning/donut-chart";
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
+import { CategoryTrendChart } from "@/components/category-trend-chart";
 import { KpiBarPanel } from "@/components/kpi-bar-panel";
 import {
   aggregateByCategory,
@@ -11,6 +12,7 @@ import {
   getWebBySource,
   getWebDailyKpis,
   getWebTopLandingPages,
+  getWebTopProducts,
   PALETA_CANAL,
   PALETA_CATEGORIA,
 } from "@/lib/web-queries";
@@ -64,6 +66,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     bySource,
     byCategory,
     topLandings,
+    topProducts,
     dailyKpisPrev,
     webSnapshotRaw,
     monthlyHistoryRaw,
@@ -77,6 +80,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     getWebBySource(range),
     getWebByCategory(range),
     getWebTopLandingPages(20),
+    getWebTopProducts(20),
     getWebDailyKpis(prev),
     getCompetitorWebSnapshot(),
     getCompetitorMonthlyHistory(),
@@ -162,6 +166,33 @@ export default async function WebPage({ searchParams }: PageProps) {
   const totalsPrev = aggregateDaily(dailyKpisPrev);
   const channels = aggregateBySource(bySource);
   const categories = aggregateByCategory(byCategory);
+
+  // Pivot data para CategoryTrendChart: { fecha, Lavado: X, Cocinas: Y, ... }
+  const categoriasUnicas = [...new Set(byCategory.map((r) => r.categoria))];
+  const categoryTrendByDate = new Map<string, Record<string, number>>();
+  for (const r of byCategory) {
+    const acc = categoryTrendByDate.get(r.fecha) ?? {};
+    acc[r.categoria] = (acc[r.categoria] ?? 0) + r.sesiones;
+    categoryTrendByDate.set(r.fecha, acc);
+  }
+  const categoryTrendData = [...categoryTrendByDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fecha, vals]) => {
+      const row: Record<string, string | number | null> = { fecha };
+      for (const cat of categoriasUnicas) row[cat] = vals[cat] ?? null;
+      return row as { fecha: string } & Record<string, number | null>;
+    });
+
+  // Paleta de categorías web (incluye Lavavajillas y Home/Otros)
+  const PALETA_CAT_WEB: Record<string, string> = {
+    Lavado: "#a78bfa",
+    Refrigeración: "#22c55e",
+    Cocinas: "#f97316",
+    Lavavajillas: "#0ea5e9",
+    Home: "#94a3b8",
+    Otros: "#cbd5e1",
+    ...PALETA_CATEGORIA,
+  };
 
   const deltaSesiones = pctChange(totals.sesiones, totalsPrev.sesiones);
   const deltaConversiones = pctChange(totals.conversiones, totalsPrev.conversiones);
@@ -310,6 +341,84 @@ export default async function WebPage({ searchParams }: PageProps) {
           </table>
         </div>
       </section>
+
+      {/* Tendencia por categoría — sesiones diarias por categoría */}
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Tendencia por categoría
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Sesiones diarias por categoría en el rango seleccionado.
+        </p>
+        <div className="mt-4">
+          <CategoryTrendChart
+            data={categoryTrendData}
+            categorias={categoriasUnicas}
+            colors={PALETA_CAT_WEB}
+          />
+        </div>
+      </section>
+
+      {/* Top productos (PDPs) */}
+      {topProducts.length > 0 && (
+        <section className="rounded-lg border bg-card">
+          <header className="border-b p-6 pb-4">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Top 20 productos (PDPs)
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Páginas de detalle de producto más visitadas (acumulado all-time).
+            </p>
+          </header>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-4 py-2">Producto</th>
+                  <th className="px-4 py-2">SKU</th>
+                  <th className="px-4 py-2">Categoría</th>
+                  <th className="px-4 py-2 text-right">Sesiones</th>
+                  <th className="px-4 py-2 text-right">Conv.</th>
+                  <th className="px-4 py-2 text-right">CR</th>
+                  <th className="px-4 py-2 text-right">Pageviews</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topProducts.map((p) => {
+                  const nombre = p.producto_slug
+                    ? p.producto_slug.replace(/-/g, " ").slice(0, 60)
+                    : "(sin nombre)";
+                  return (
+                    <tr key={p.landing_page} className="border-b last:border-0">
+                      <td className="px-4 py-2 max-w-xs truncate text-xs" title={p.producto_slug ?? p.landing_page}>
+                        {nombre}
+                      </td>
+                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+                        {p.sku ?? "—"}
+                      </td>
+                      <td className="px-4 py-2 text-xs">
+                        <span
+                          className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
+                          style={{ backgroundColor: PALETA_CAT_WEB[p.categoria] ?? "#94a3b8" }}
+                        />
+                        {p.categoria}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">{formatNumber(p.sesiones)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{formatNumber(p.conversiones)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {p.conversion_rate !== null ? `${(p.conversion_rate * 100).toFixed(2)}%` : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                        {formatNumber(p.pageviews)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Source mix + Top landings */}
       <section className="grid gap-4 lg:grid-cols-2">
