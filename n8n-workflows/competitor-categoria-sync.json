@@ -38,11 +38,11 @@
         "operation": "Run actor and get dataset",
         "actorId": {
           "__rl": true,
-          "value": "tri_angle/similar-web-scraper",
+          "value": "radeance/similarweb-scraper",
           "mode": "list",
-          "cachedResultName": "SimilarWeb Scraper (tri_angle/similar-web-scraper)"
+          "cachedResultName": "SimilarWeb Scraper (radeance/similarweb-scraper)"
         },
-        "customBody": "={{ JSON.stringify({ websites: $json.urls.map(u => u.url), maxItems: 50 }) }}",
+        "customBody": "={{ JSON.stringify({ urls: $json.urls.map(u => u.url), include_base_data: true }) }}",
         "authentication": "apifyOAuth2Api"
       },
       "id": "node-apify",
