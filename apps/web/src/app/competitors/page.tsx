@@ -60,6 +60,43 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     trendsByKw.get(t.keyword)!.push({ fecha: t.fecha, interes: t.interes });
   }
 
+  // Estadísticas mensuales por competidor — para la tabla y el cálculo de desvíos MoM
+  const MONTH_LABELS_FULL = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const fmtMonthFull = (fecha: string) => {
+    const [y, m] = fecha.split("-");
+    return `${MONTH_LABELS_FULL[parseInt(m ?? "1", 10) - 1] ?? m} ${y}`;
+  };
+  const fmtMonthShort = (fecha: string) => {
+    const [y, m] = fecha.split("-");
+    const short = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    return `${short[parseInt(m ?? "1", 10) - 1] ?? m} ${y?.slice(2) ?? ""}`;
+  };
+
+  const allMeses = [...new Set(monthlyHistory.flatMap((m) => m.meses.map((x) => x.fecha)))].sort();
+  const latestMonth = allMeses[allMeses.length - 1] ?? null;
+  const previousMonth = allMeses[allMeses.length - 2] ?? null;
+
+  const monthlyStats = new Map<
+    string,
+    { ultima: { fecha: string; visitas: number } | null; anterior: { fecha: string; visitas: number } | null; deltaPct: number | null }
+  >();
+  for (const m of monthlyHistory) {
+    const meses = [...m.meses].sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const ultima = meses[meses.length - 1] ?? null;
+    const anterior = meses[meses.length - 2] ?? null;
+    const deltaPct = ultima && anterior && anterior.visitas > 0
+      ? (ultima.visitas - anterior.visitas) / anterior.visitas
+      : null;
+    monthlyStats.set(m.competidor, { ultima, anterior, deltaPct });
+  }
+
+  // Ranking por % de variación última→penúltima para el gráfico de desvíos
+  const momRanking = [...monthlyStats.entries()]
+    .map(([competidor, s]) => ({ competidor, deltaPct: s.deltaPct, ultima: s.ultima?.visitas ?? null }))
+    .filter((r) => r.deltaPct !== null)
+    .sort((a, b) => (b.deltaPct ?? 0) - (a.deltaPct ?? 0));
+  const maxAbsDelta = Math.max(0.01, ...momRanking.map((r) => Math.abs(r.deltaPct ?? 0)));
+
   // Agrupar tráfico por categoría: filas = categoria, columnas = competidor
   const categorias = [...new Set(porCategoria.map((r) => r.categoria))].sort();
   const competidoresEnCat = [...new Set(porCategoria.map((r) => r.competidor))].sort();
@@ -221,7 +258,13 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
             Tráfico web — Benchmark de dominios
           </h3>
           <p className="text-xs text-muted-foreground">
-            Estimaciones mensuales de SimilarWeb (vía Apify). Δ = variación vs snapshot anterior; picos sostenidos suelen indicar campañas activas.
+            Estimaciones mensuales de SimilarWeb. Período mostrado:{" "}
+            <strong>{latestMonth ? fmtMonthFull(latestMonth) : "—"}</strong>
+            {previousMonth && (
+              <>
+                {" "}· Δ comparado contra <strong>{fmtMonthFull(previousMonth)}</strong>
+              </>
+            )}.
           </p>
         </header>
         {webSnapshot.length === 0 ? (
@@ -237,18 +280,24 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
                 <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-4 py-2">Competidor</th>
                   <th className="px-4 py-2">Dominio</th>
-                  <th className="px-4 py-2 text-right">Visitas</th>
-                  <th className="px-4 py-2 text-right">Δ vs anterior</th>
+                  <th className="px-4 py-2 text-right">
+                    Visitas {latestMonth ? `(${fmtMonthShort(latestMonth)})` : ""}
+                  </th>
+                  <th className="px-4 py-2 text-right">
+                    Δ MoM {previousMonth ? `(vs ${fmtMonthShort(previousMonth)})` : ""}
+                  </th>
                   <th className="px-4 py-2 text-right">Bounce rate</th>
                   <th className="px-4 py-2 text-right">Pages/visit</th>
                   <th className="px-4 py-2 text-right">Avg duration</th>
-                  <th className="px-4 py-2 text-right">Última actualización</th>
                 </tr>
               </thead>
               <tbody>
                 {webSnapshot.map((row) => {
-                  const isSpike = row.deltaVisitasPct !== null && row.deltaVisitasPct > 0.2;
-                  const isDrop = row.deltaVisitasPct !== null && row.deltaVisitasPct < -0.2;
+                  const stats = monthlyStats.get(row.competidor);
+                  const visitasMes = stats?.ultima?.visitas ?? row.visitas_estimadas;
+                  const deltaPct = stats?.deltaPct ?? null;
+                  const isSpike = deltaPct !== null && deltaPct > 0.2;
+                  const isDrop = deltaPct !== null && deltaPct < -0.2;
                   return (
                     <tr key={row.competidor} className="border-b last:border-0">
                       <td className="px-4 py-2 font-medium">
@@ -261,15 +310,15 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
                       </td>
                       <td className="px-4 py-2 text-muted-foreground">{row.dominio}</td>
                       <td className="px-4 py-2 text-right tabular-nums">
-                        {row.visitas_estimadas !== null ? formatNumber(row.visitas_estimadas) : "—"}
+                        {visitasMes !== null ? formatNumber(visitasMes) : "—"}
                       </td>
                       <td
                         className={`px-4 py-2 text-right tabular-nums ${
-                          isSpike ? "text-emerald-600 font-medium" : isDrop ? "text-rose-600" : "text-muted-foreground"
+                          isSpike ? "text-emerald-600 font-medium" : isDrop ? "text-rose-600 font-medium" : "text-muted-foreground"
                         }`}
                       >
-                        {row.deltaVisitasPct !== null
-                          ? `${row.deltaVisitasPct > 0 ? "+" : ""}${(row.deltaVisitasPct * 100).toFixed(1)}%`
+                        {deltaPct !== null
+                          ? `${deltaPct > 0 ? "+" : ""}${(deltaPct * 100).toFixed(1)}%`
                           : "—"}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums">
@@ -281,9 +330,6 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
                       <td className="px-4 py-2 text-right tabular-nums">
                         {row.avg_visit_duration !== null ? `${Math.round(row.avg_visit_duration)}s` : "—"}
                       </td>
-                      <td className="px-4 py-2 text-right text-xs text-muted-foreground">
-                        {row.fecha}
-                      </td>
                     </tr>
                   );
                 })}
@@ -292,6 +338,114 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
           </div>
         )}
       </section>
+
+      {/* Tabla mensual con heatmap */}
+      {allMeses.length > 0 && (
+        <section className="rounded-lg border bg-card">
+          <header className="border-b p-6 pb-4">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Visitas por mes — desvíos
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Visitas mensuales por competidor. Celdas en verde = creció vs mes anterior, rojo = bajó (umbral ±5%).
+            </p>
+          </header>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-4 py-2">Competidor</th>
+                  {allMeses.map((mes) => (
+                    <th key={mes} className="px-4 py-2 text-right">{fmtMonthShort(mes)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...monthlyHistory]
+                  .sort((a, b) => {
+                    const sa = monthlyStats.get(a.competidor)?.ultima?.visitas ?? 0;
+                    const sb = monthlyStats.get(b.competidor)?.ultima?.visitas ?? 0;
+                    return sb - sa;
+                  })
+                  .map((m) => {
+                    const sorted = [...m.meses].sort((a, b) => a.fecha.localeCompare(b.fecha));
+                    return (
+                      <tr key={m.competidor} className="border-b last:border-0">
+                        <td className="px-4 py-2 font-medium">{m.competidor}</td>
+                        {allMeses.map((mes, i) => {
+                          const dato = sorted.find((x) => x.fecha === mes);
+                          const prevMes = allMeses[i - 1];
+                          const prev = prevMes ? sorted.find((x) => x.fecha === prevMes) : null;
+                          const variacion = dato && prev && prev.visitas > 0
+                            ? (dato.visitas - prev.visitas) / prev.visitas
+                            : null;
+                          const bg = variacion === null ? undefined
+                            : variacion > 0.05 ? "rgba(34, 197, 94, 0.15)"
+                            : variacion < -0.05 ? "rgba(244, 63, 94, 0.15)"
+                            : undefined;
+                          return (
+                            <td
+                              key={mes}
+                              className="px-4 py-2 text-right tabular-nums"
+                              style={bg ? { backgroundColor: bg } : undefined}
+                              title={variacion !== null ? `${variacion > 0 ? "+" : ""}${(variacion * 100).toFixed(1)}% vs ${fmtMonthShort(prevMes!)}` : ""}
+                            >
+                              {dato ? formatNumber(dato.visitas) : "—"}
+                              {variacion !== null && Math.abs(variacion) >= 0.05 && (
+                                <div className={`text-[10px] ${variacion > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                                  {variacion > 0 ? "▲" : "▼"} {Math.abs(variacion * 100).toFixed(0)}%
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Gráfico de desvíos MoM */}
+      {momRanking.length > 0 && previousMonth && latestMonth && (
+        <section className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Desvíos MoM — {fmtMonthShort(previousMonth)} → {fmtMonthShort(latestMonth)}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Variación porcentual de visitas vs mes anterior. Ranking de mayor crecimiento a mayor caída.
+          </p>
+          <div className="mt-6 space-y-2">
+            {momRanking.map((r) => {
+              const pct = (r.deltaPct ?? 0) * 100;
+              const widthPct = Math.min(100, (Math.abs(r.deltaPct ?? 0) / maxAbsDelta) * 50);
+              const isPos = pct > 0;
+              return (
+                <div key={r.competidor} className="flex items-center gap-3 text-sm">
+                  <div className="w-32 truncate font-medium">{r.competidor}</div>
+                  <div className="relative h-6 flex-1 rounded bg-muted/40">
+                    <div className="absolute left-1/2 top-0 h-full w-px bg-border" />
+                    <div
+                      className={`absolute top-0 h-full rounded ${isPos ? "bg-emerald-500/70" : "bg-rose-500/70"}`}
+                      style={{
+                        width: `${widthPct}%`,
+                        left: isPos ? "50%" : `${50 - widthPct}%`,
+                      }}
+                    />
+                  </div>
+                  <div
+                    className={`w-20 text-right tabular-nums font-medium ${isPos ? "text-emerald-700" : "text-rose-700"}`}
+                  >
+                    {isPos ? "+" : ""}{pct.toFixed(1)}%
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">
