@@ -229,12 +229,21 @@ export default async function WebPage({ searchParams }: PageProps) {
     });
 
   // Pivot data para CategoryTrendChart: { fecha, Lavado: X, Cocinas: Y, ... }
+  // Tendencia por categoría — agregada por SEMANA (lunes como inicio)
+  const weekStart = (fecha: string): string => {
+    const d = new Date(`${fecha}T00:00:00Z`);
+    const day = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const offset = day === 0 ? -6 : 1 - day;
+    d.setUTCDate(d.getUTCDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
   const categoriasUnicas = [...new Set(byCategory.map((r) => r.categoria))];
   const categoryTrendByDate = new Map<string, Record<string, number>>();
   for (const r of byCategory) {
-    const acc = categoryTrendByDate.get(r.fecha) ?? {};
+    const wk = weekStart(r.fecha);
+    const acc = categoryTrendByDate.get(wk) ?? {};
     acc[r.categoria] = (acc[r.categoria] ?? 0) + r.sesiones;
-    categoryTrendByDate.set(r.fecha, acc);
+    categoryTrendByDate.set(wk, acc);
   }
   const categoryTrendData = [...categoryTrendByDate.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -321,9 +330,9 @@ export default async function WebPage({ searchParams }: PageProps) {
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Usuarios totales"
+          title="Usuarios (suma diaria)"
           value={formatNumber(totals.usuarios)}
-          hint="únicos en el período"
+          hint="⚠ sobre-cuenta usuarios que visitan varios días"
         />
         <KpiCard
           title="Bounce rate"
@@ -410,10 +419,10 @@ export default async function WebPage({ searchParams }: PageProps) {
       {/* Tendencia por categoría — sesiones diarias por categoría */}
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">
-          Tendencia por categoría
+          Tendencia semanal por categoría
         </h3>
         <p className="text-xs text-muted-foreground">
-          Sesiones diarias por categoría en el rango seleccionado.
+          Sesiones agrupadas por semana (lunes = inicio) en el rango seleccionado.
         </p>
         <div className="mt-4">
           <CategoryTrendChart
