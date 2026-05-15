@@ -13,6 +13,7 @@ import {
   getWebByCategory,
   getWebBySource,
   getWebDailyKpis,
+  getMonthlyUsers,
   getWebMonthlyByChannel,
   getWebTopLandingPages,
   getWebTopProducts,
@@ -89,6 +90,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     porCategoria,
     googleTrends,
     dreanGa4,
+    monthlyUsersRow,
   ] = await Promise.all([
     getWebDailyKpis(range),
     getWebDailyKpis(monthlyRange),
@@ -106,6 +108,8 @@ export default async function WebPage({ searchParams }: PageProps) {
     getCompetitorByCategoria(),
     getGoogleTrends(),
     getDreanWebMetrics(),
+    // Si el rango empieza el 1 de algún mes, traer total users únicos de ese mes
+    range.from.endsWith("-01") ? getMonthlyUsers(range.from) : Promise.resolve(null),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -330,9 +334,13 @@ export default async function WebPage({ searchParams }: PageProps) {
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Usuarios (suma diaria)"
-          value={formatNumber(totals.usuarios)}
-          hint="⚠ sobre-cuenta usuarios que visitan varios días"
+          title={monthlyUsersRow ? "Usuarios únicos (mes)" : "Usuarios (suma diaria)"}
+          value={formatNumber(monthlyUsersRow ? monthlyUsersRow.total_users : totals.usuarios)}
+          hint={
+            monthlyUsersRow
+              ? `${formatNumber(monthlyUsersRow.new_users)} nuevos`
+              : "⚠ sobre-cuenta usuarios que visitan varios días"
+          }
         />
         <KpiCard
           title="Bounce rate"
