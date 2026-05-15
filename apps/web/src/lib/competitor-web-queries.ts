@@ -22,6 +22,10 @@ export interface CompetitorWebSnapshotWithDelta extends CompetitorWebRow {
   fechaAnterior: string | null;
 }
 
+// Competidores que no son relevantes para el benchmark (distorsionan visualizaciones).
+// Samsung opera con tráfico global desde shop.samsung.com, ~10M visitas vs ~200k de la pauta argentina.
+const HIDDEN_COMPETITORS = new Set(["Samsung"]);
+
 async function fetchAll(): Promise<CompetitorWebRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
@@ -32,7 +36,7 @@ async function fetchAll(): Promise<CompetitorWebRow[]> {
     .order("fecha", { ascending: false })
     .returns<CompetitorWebRow[]>();
   if (error) throw new Error(`competitor_web: ${error.message}`);
-  return data ?? [];
+  return (data ?? []).filter((r) => !HIDDEN_COMPETITORS.has(r.competidor));
 }
 
 /**
