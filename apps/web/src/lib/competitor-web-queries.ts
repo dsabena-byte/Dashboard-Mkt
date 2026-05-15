@@ -52,62 +52,43 @@ interface DreanGa4Snapshot {
 /**
  * Agrega las filas de web_traffic (GA4) en métricas mensuales y devuelve
  * el snapshot del último mes + serie de los últimos 12 meses.
+ *
+ * Usa la vista vw_drean_web_monthly (migration 0006) para hacer la
+ * agregación en SQL — necesario porque web_traffic tiene miles de filas
+ * por mes (1 por UTM combination) y excede el límite de 1000 de PostgREST.
  */
 export async function getDreanWebMetrics(): Promise<DreanGa4Snapshot | null> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
-    .from("web_traffic")
-    .select("fecha, sesiones, bounce_rate, avg_session_duration, pageviews")
-    .order("fecha", { ascending: false })
-    .returns<Array<{ fecha: string; sesiones: number; bounce_rate: number | null; avg_session_duration: number | null; pageviews: number }>>();
+    .from("vw_drean_web_monthly")
+    .select("mes, sesiones, pageviews, bounce_rate, avg_session_duration")
+    .order("mes", { ascending: true })
+    .returns<Array<{ mes: string; sesiones: number; pageviews: number; bounce_rate: number | null; avg_session_duration: number | null }>>();
   if (error) {
     if (/relation .* does not exist/i.test(error.message)) return null;
-    throw new Error(`web_traffic: ${error.message}`);
+    throw new Error(`vw_drean_web_monthly: ${error.message}`);
   }
   const rows = data ?? [];
   if (rows.length === 0) return null;
 
-  // Agregar por mes (yyyy-mm-01)
-  const byMonth = new Map<string, { sesiones: number; pageviews: number; bounceWeighted: number; durationWeighted: number; sesionesConBounce: number; sesionesConDuration: number }>();
-  for (const r of rows) {
-    const monthKey = r.fecha.slice(0, 7) + "-01";
-    const acc = byMonth.get(monthKey) ?? {
-      sesiones: 0, pageviews: 0, bounceWeighted: 0, durationWeighted: 0,
-      sesionesConBounce: 0, sesionesConDuration: 0,
-    };
-    acc.sesiones += r.sesiones ?? 0;
-    acc.pageviews += r.pageviews ?? 0;
-    if (r.bounce_rate !== null) {
-      acc.bounceWeighted += (r.bounce_rate ?? 0) * (r.sesiones ?? 0);
-      acc.sesionesConBounce += r.sesiones ?? 0;
-    }
-    if (r.avg_session_duration !== null) {
-      acc.durationWeighted += (r.avg_session_duration ?? 0) * (r.sesiones ?? 0);
-      acc.sesionesConDuration += r.sesiones ?? 0;
-    }
-    byMonth.set(monthKey, acc);
-  }
-  const mesesMetrics: DreanGa4Monthly[] = [...byMonth.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([fecha, acc]) => ({
-      fecha,
-      visitas: acc.sesiones,
-      bounce_rate: acc.sesionesConBounce > 0 ? acc.bounceWeighted / acc.sesionesConBounce : null,
-      pages_per_visit: acc.sesiones > 0 ? acc.pageviews / acc.sesiones : null,
-      avg_visit_duration: acc.sesionesConDuration > 0 ? acc.durationWeighted / acc.sesionesConDuration : null,
-    }));
+  const mesesMetrics: DreanGa4Monthly[] = rows.map((r) => ({
+    fecha: r.mes,
+    visitas: Number(r.sesiones),
+    bounce_rate: r.bounce_rate !== null ? Number(r.bounce_rate) : null,
+    pages_per_visit: r.sesiones > 0 ? Number(r.pageviews) / Number(r.sesiones) : null,
+    avg_visit_duration: r.avg_session_duration !== null ? Number(r.avg_session_duration) : null,
+  }));
   const meses = mesesMetrics.map((m) => ({ fecha: m.fecha, visitas: m.visitas }));
 
-  const lastMonth = meses[meses.length - 1];
+  const lastMonth = mesesMetrics[mesesMetrics.length - 1];
   if (!lastMonth) return null;
-  const lastAcc = byMonth.get(lastMonth.fecha)!;
 
   return {
     fecha: lastMonth.fecha,
-    visitas_estimadas: lastAcc.sesiones,
-    bounce_rate: lastAcc.sesionesConBounce > 0 ? lastAcc.bounceWeighted / lastAcc.sesionesConBounce : null,
-    pages_per_visit: lastAcc.sesiones > 0 ? lastAcc.pageviews / lastAcc.sesiones : null,
-    avg_visit_duration: lastAcc.sesionesConDuration > 0 ? lastAcc.durationWeighted / lastAcc.sesionesConDuration : null,
+    visitas_estimadas: lastMonth.visitas,
+    bounce_rate: lastMonth.bounce_rate,
+    pages_per_visit: lastMonth.pages_per_visit,
+    avg_visit_duration: lastMonth.avg_visit_duration,
     meses: meses.slice(-12),
     mesesMetrics: mesesMetrics.slice(-12),
   };
