@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -43,7 +43,6 @@ export function CompetitorMonthlyChart({ data }: CompetitorMonthlyChartProps) {
     return (
       <div className="flex h-64 items-center justify-center text-xs text-muted-foreground">
         El actor de Apify no devolvió historia mensual en este snapshot.
-        Verificá que el actor incluya el campo monthlyVisits en su output.
       </div>
     );
   }
@@ -67,8 +66,8 @@ export function CompetitorMonthlyChart({ data }: CompetitorMonthlyChartProps) {
       : String(v);
 
   return (
-    <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={rows} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+    <ResponsiveContainer width="100%" height={340}>
+      <LineChart data={rows} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="fecha" stroke="hsl(var(--muted-foreground))" fontSize={11} />
         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={tickFmt} />
@@ -83,9 +82,18 @@ export function CompetitorMonthlyChart({ data }: CompetitorMonthlyChartProps) {
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {competidores.map((c, i) => (
-          <Bar key={c.competidor} dataKey={c.competidor} fill={PALETA[i % PALETA.length]} />
+          <Line
+            key={c.competidor}
+            type="monotone"
+            dataKey={c.competidor}
+            stroke={PALETA[i % PALETA.length]}
+            strokeWidth={2.5}
+            dot={{ r: 4 }}
+            activeDot={{ r: 6 }}
+            connectNulls
+          />
         ))}
-      </BarChart>
+      </LineChart>
     </ResponsiveContainer>
   );
 }
