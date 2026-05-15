@@ -57,8 +57,8 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     getDreanWebMetrics(),
   ]);
 
-  // Para Drean usamos GA4 (real) en lugar de la estimación de SimilarWeb.
-  // Reemplazamos su fila en webSnapshot y su entrada en monthlyHistory.
+  // Para Drean: mergeamos GA4 (real, donde lo tengamos) con SimilarWeb (para meses sin GA4).
+  // GA4 tiene prioridad — sobrescribe SimilarWeb cuando hay overlap.
   const webSnapshot = webSnapshotRaw.map((r) => {
     if (r.competidor !== "Drean" || !dreanGa4) return r;
     return {
@@ -72,7 +72,15 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
   });
   const monthlyHistory = monthlyHistoryRaw.map((m) => {
     if (m.competidor !== "Drean" || !dreanGa4) return m;
-    return { ...m, meses: dreanGa4.meses };
+    const merged = new Map<string, number>();
+    // Empezar con SimilarWeb para tener los meses históricos
+    for (const p of m.meses) merged.set(p.fecha, p.visitas);
+    // GA4 pisa donde haya overlap (datos reales > estimación)
+    for (const p of dreanGa4.meses) merged.set(p.fecha, p.visitas);
+    const meses = [...merged.entries()]
+      .map(([fecha, visitas]) => ({ fecha, visitas }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+    return { ...m, meses };
   });
 
   // Agrupar trends por keyword para el gráfico
