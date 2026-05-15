@@ -270,21 +270,26 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Calidad del tráfico — bounce, pages/visit, avg duration */}
-      {webSnapshot.length > 0 && (
+      {/* Calidad del tráfico — bounce, pages/visit, avg duration. Usamos webSnapshotRaw
+          (SimilarWeb para TODOS, incluyendo Drean) porque GA4 y SimilarWeb miden estos
+          KPIs con definiciones distintas (GA4 = engaged sessions, SimilarWeb = single-page
+          bounce) y no son comparables. Mejor apples-to-apples aunque Drean sea estimado. */}
+      {webSnapshotRaw.length > 0 && (
         <section className="rounded-lg border bg-card p-6">
           <h3 className="text-sm font-medium text-muted-foreground">
             Calidad del tráfico — engagement web
           </h3>
           <p className="text-xs text-muted-foreground">
-            Comparativa de comportamiento de usuario por sitio. <strong>Bounce rate</strong> bajo = visitan más de 1 página.
-            <strong> Pages/visit</strong> alto = exploran más. <strong>Avg duration</strong> alto = se quedan más tiempo.
+            <strong>Fuente: SimilarWeb para todas las marcas</strong> (incluido Drean) para que la comparación use la misma metodología.
+            <strong> Bounce rate</strong> bajo = visitan más de 1 página.
+            <strong> Pages/visit</strong> alto = exploran más.
+            <strong> Avg duration</strong> alto = se quedan más tiempo.
           </p>
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             <KpiBarPanel
               title="Bounce rate"
               subtitle="Menor es mejor"
-              data={[...webSnapshot]
+              data={[...webSnapshotRaw]
                 .filter((r) => r.bounce_rate !== null)
                 .map((r) => ({ label: r.competidor, value: (r.bounce_rate ?? 0) * 100, display: `${((r.bounce_rate ?? 0) * 100).toFixed(1)}%` }))
                 .sort((a, b) => a.value - b.value)}
@@ -294,7 +299,7 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
             <KpiBarPanel
               title="Pages / visit"
               subtitle="Mayor es mejor"
-              data={[...webSnapshot]
+              data={[...webSnapshotRaw]
                 .filter((r) => r.pages_per_visit !== null)
                 .map((r) => ({ label: r.competidor, value: r.pages_per_visit ?? 0, display: (r.pages_per_visit ?? 0).toFixed(2) }))
                 .sort((a, b) => b.value - a.value)}
@@ -303,7 +308,7 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
             <KpiBarPanel
               title="Avg duration"
               subtitle="Mayor es mejor"
-              data={[...webSnapshot]
+              data={[...webSnapshotRaw]
                 .filter((r) => r.avg_visit_duration !== null)
                 .map((r) => ({ label: r.competidor, value: r.avg_visit_duration ?? 0, display: `${Math.round(r.avg_visit_duration ?? 0)}s` }))
                 .sort((a, b) => b.value - a.value)}
