@@ -3,6 +3,7 @@ import { DateRangeInfo } from "@/components/date-range-info";
 import { SentimentBar } from "@/components/sentiment-bar";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 import { PilarChart } from "@/components/pilar-chart";
+import { CompetitorTrafficChart } from "@/components/competitor-traffic-chart";
 import {
   getBrandBenchmark,
   getEngagementTrend,
@@ -10,7 +11,12 @@ import {
   getSocialTotals,
   OWN_BRAND,
 } from "@/lib/social-queries";
-import { getCompetitorWebSnapshot } from "@/lib/competitor-web-queries";
+import {
+  getCompetitorKeywords,
+  getCompetitorTrafficSources,
+  getCompetitorWebHistory,
+  getCompetitorWebSnapshot,
+} from "@/lib/competitor-web-queries";
 import { parseDateRange } from "@/lib/dates";
 import { formatNumber, formatPct } from "@/lib/utils";
 
@@ -21,12 +27,24 @@ interface PageProps {
 export default async function CompetitorsPage({ searchParams }: PageProps) {
   const range = parseDateRange(searchParams);
 
-  const [totals, benchmark, pilarBreakdown, trend, webSnapshot] = await Promise.all([
+  const [
+    totals,
+    benchmark,
+    pilarBreakdown,
+    trend,
+    webSnapshot,
+    webHistory,
+    trafficSources,
+    keywords,
+  ] = await Promise.all([
     getSocialTotals(range),
     getBrandBenchmark(range),
     getPilarBreakdown(),
     getEngagementTrend(range),
     getCompetitorWebSnapshot(),
+    getCompetitorWebHistory(12),
+    getCompetitorTrafficSources(),
+    getCompetitorKeywords(10),
   ]);
 
   const hasData = benchmark.length > 0;
@@ -186,7 +204,7 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
             Tráfico web — Benchmark de dominios
           </h3>
           <p className="text-xs text-muted-foreground">
-            Estimaciones mensuales de SimilarWeb (vía Apify). Snapshot más reciente por competidor.
+            Estimaciones mensuales de SimilarWeb (vía Apify). Δ = variación vs snapshot anterior; picos sostenidos suelen indicar campañas activas.
           </p>
         </header>
         {webSnapshot.length === 0 ? (
@@ -202,8 +220,8 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
                 <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-4 py-2">Competidor</th>
                   <th className="px-4 py-2">Dominio</th>
-                  <th className="px-4 py-2 text-right">Visitas mensuales</th>
-                  <th className="px-4 py-2 text-right">Visitantes únicos</th>
+                  <th className="px-4 py-2 text-right">Visitas</th>
+                  <th className="px-4 py-2 text-right">Δ vs anterior</th>
                   <th className="px-4 py-2 text-right">Bounce rate</th>
                   <th className="px-4 py-2 text-right">Pages/visit</th>
                   <th className="px-4 py-2 text-right">Avg duration</th>
@@ -211,44 +229,139 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody>
-                {webSnapshot.map((row) => (
+                {webSnapshot.map((row) => {
+                  const isSpike = row.deltaVisitasPct !== null && row.deltaVisitasPct > 0.2;
+                  const isDrop = row.deltaVisitasPct !== null && row.deltaVisitasPct < -0.2;
+                  return (
+                    <tr key={row.competidor} className="border-b last:border-0">
+                      <td className="px-4 py-2 font-medium">
+                        {row.competidor}
+                        {isSpike && (
+                          <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                            🔥 pico
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">{row.dominio}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {row.visitas_estimadas !== null ? formatNumber(row.visitas_estimadas) : "—"}
+                      </td>
+                      <td
+                        className={`px-4 py-2 text-right tabular-nums ${
+                          isSpike ? "text-emerald-600 font-medium" : isDrop ? "text-rose-600" : "text-muted-foreground"
+                        }`}
+                      >
+                        {row.deltaVisitasPct !== null
+                          ? `${row.deltaVisitasPct > 0 ? "+" : ""}${(row.deltaVisitasPct * 100).toFixed(1)}%`
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {row.bounce_rate !== null ? formatPct(row.bounce_rate * 100, 1) : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {row.pages_per_visit !== null ? row.pages_per_visit.toFixed(2) : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {row.avg_visit_duration !== null ? `${Math.round(row.avg_visit_duration)}s` : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right text-xs text-muted-foreground">
+                        {row.fecha}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Evolución de visitas — últimos snapshots
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Cada punto es una ejecución del workflow. Cuantos más snapshots tengamos, más visible se vuelven los picos de campañas.
+        </p>
+        <div className="mt-4">
+          <CompetitorTrafficChart series={webHistory} />
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Fuentes de tráfico por competidor
+          </h3>
+          <p className="text-xs text-muted-foreground">Mix actual (último snapshot).</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-2">Competidor</th>
+                  <th className="px-3 py-2">Top fuentes (% del tráfico)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trafficSources.map((row) => (
                   <tr key={row.competidor} className="border-b last:border-0">
-                    <td className="px-4 py-2 font-medium">{row.competidor}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{row.dominio}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {row.visitas_estimadas !== null
-                        ? formatNumber(row.visitas_estimadas)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {row.visitantes_unicos !== null
-                        ? formatNumber(row.visitantes_unicos)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {row.bounce_rate !== null
-                        ? formatPct(row.bounce_rate * 100, 1)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {row.pages_per_visit !== null
-                        ? row.pages_per_visit.toFixed(2)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {row.avg_visit_duration !== null
-                        ? `${Math.round(row.avg_visit_duration)}s`
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right text-xs text-muted-foreground">
-                      {row.fecha}
+                    <td className="px-3 py-2 font-medium align-top">{row.competidor}</td>
+                    <td className="px-3 py-2">
+                      {row.fuentes.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">Sin breakdown</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {row.fuentes.map((f) => (
+                            <span
+                              key={f.name}
+                              className="rounded-full bg-muted px-2 py-0.5 text-xs"
+                            >
+                              {f.name}: {(f.value * 100).toFixed(1)}%
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
+        </div>
+
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Top keywords orgánicas — por competidor
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Las 5 palabras clave que más tráfico le traen a cada dominio.
+          </p>
+          <div className="mt-4 space-y-3">
+            {keywords.map((row) => (
+              <div key={row.competidor} className="rounded border border-input p-3">
+                <div className="text-xs font-medium">{row.competidor}</div>
+                {row.keywords.length === 0 ? (
+                  <div className="mt-1 text-xs text-muted-foreground">Sin data de keywords</div>
+                ) : (
+                  <ol className="mt-1 grid gap-0.5 text-xs">
+                    {row.keywords.slice(0, 5).map((k, i) => (
+                      <li key={k.keyword + i} className="flex justify-between gap-2">
+                        <span className="truncate">
+                          {i + 1}. {k.keyword}
+                        </span>
+                        {k.visits !== null && (
+                          <span className="tabular-nums text-muted-foreground">
+                            {formatNumber(k.visits)}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
     </div>
   );
