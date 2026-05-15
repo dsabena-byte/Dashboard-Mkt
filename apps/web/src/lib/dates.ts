@@ -31,8 +31,24 @@ export const SEED_DATE_RANGE: DateRange = {
   to: "2026-05-08",
 };
 
+/**
+ * Último mes cerrado: si hoy es 15-may-2026 → 1-abr-2026 a 30-abr-2026.
+ * Útil como default cuando los datos mensuales necesitan rango completo.
+ */
+export function lastClosedMonthRange(referenceDate?: Date): DateRange {
+  const ref = referenceDate ?? new Date();
+  const year = ref.getUTCFullYear();
+  const month = ref.getUTCMonth(); // 0-indexed; mes en curso
+  // Primer día del mes anterior
+  const fromD = new Date(Date.UTC(year, month - 1, 1));
+  // Último día del mes anterior = day 0 del mes en curso
+  const toD = new Date(Date.UTC(year, month, 0));
+  return { from: toISODate(fromD), to: toISODate(toD) };
+}
+
 export function parseDateRange(
   searchParams: Record<string, string | string[] | undefined>,
+  fallback: DateRange = SEED_DATE_RANGE,
 ): DateRange {
   const fromRaw = searchParams.from;
   const toRaw = searchParams.to;
@@ -43,7 +59,7 @@ export function parseDateRange(
   if (isValid(fromValue) && isValid(toValue)) {
     return { from: fromValue, to: toValue };
   }
-  return SEED_DATE_RANGE;
+  return fallback;
 }
 
 export function formatFechaCorta(iso: string, locale = "es-AR"): string {

@@ -3,6 +3,7 @@ import { DateRangePicker } from "@/components/date-range-picker";
 import { DonutChart } from "@/components/planning/donut-chart";
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
 import { CategoryTrendChart } from "@/components/category-trend-chart";
+import { WebMonthlyChart } from "@/components/web-monthly-chart";
 import { KpiBarPanel } from "@/components/kpi-bar-panel";
 import {
   aggregateByCategory,
@@ -25,7 +26,7 @@ import {
   getDreanWebMetrics,
   getGoogleTrends,
 } from "@/lib/competitor-web-queries";
-import { parseDateRange } from "@/lib/dates";
+import { lastClosedMonthRange, parseDateRange } from "@/lib/dates";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 
@@ -58,11 +59,20 @@ function formatDelta(delta: number | null): string {
 }
 
 export default async function WebPage({ searchParams }: PageProps) {
-  const range = parseDateRange(searchParams);
+  // Default = último mes cerrado (ej: hoy 15-may → Abril 1 a Abril 30).
+  const range = parseDateRange(searchParams, lastClosedMonthRange());
   const prev = previousRange(range.from, range.to);
+
+  // Para el gráfico mensual: traer 12 meses hacia atrás
+  const monthlyRange = (() => {
+    const to = new Date(`${range.to}T00:00:00Z`);
+    const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth() - 11, 1));
+    return { from: from.toISOString().slice(0, 10), to: range.to };
+  })();
 
   const [
     dailyKpis,
+    monthlyDailyKpis,
     bySource,
     byCategory,
     topLandings,
@@ -77,10 +87,11 @@ export default async function WebPage({ searchParams }: PageProps) {
     dreanGa4,
   ] = await Promise.all([
     getWebDailyKpis(range),
+    getWebDailyKpis(monthlyRange),
     getWebBySource(range),
     getWebByCategory(range),
-    getWebTopLandingPages(20),
-    getWebTopProducts(20),
+    getWebTopLandingPages(range, 10),
+    getWebTopProducts(range, 10),
     getWebDailyKpis(prev),
     getCompetitorWebSnapshot(),
     getCompetitorMonthlyHistory(),
@@ -166,6 +177,19 @@ export default async function WebPage({ searchParams }: PageProps) {
   const totalsPrev = aggregateDaily(dailyKpisPrev);
   const channels = aggregateBySource(bySource);
   const categories = aggregateByCategory(byCategory);
+
+  // Agregación mensual para el gráfico de barras (12 meses hacia atrás)
+  const monthlyMap = new Map<string, { sesiones: number; conversiones: number }>();
+  for (const r of monthlyDailyKpis) {
+    const mes = r.fecha.slice(0, 7) + "-01";
+    const acc = monthlyMap.get(mes) ?? { sesiones: 0, conversiones: 0 };
+    acc.sesiones += r.sesiones;
+    acc.conversiones += r.conversiones;
+    monthlyMap.set(mes, acc);
+  }
+  const monthlyData = [...monthlyMap.entries()]
+    .map(([mes, v]) => ({ mes, ...v }))
+    .sort((a, b) => a.mes.localeCompare(b.mes));
 
   // Pivot data para CategoryTrendChart: { fecha, Lavado: X, Cocinas: Y, ... }
   const categoriasUnicas = [...new Set(byCategory.map((r) => r.categoria))];
@@ -281,10 +305,19 @@ export default async function WebPage({ searchParams }: PageProps) {
         />
       </section>
 
+      {/* Tendencia mensual — últimos 12 meses */}
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual de sesiones</h3>
+        <p className="text-xs text-muted-foreground">Últimos 12 meses (no afectado por el filtro — vista global).</p>
+        <div className="mt-4">
+          <WebMonthlyChart data={monthlyData} />
+        </div>
+      </section>
+
       {/* Trend diario */}
       <section className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">Tendencia diaria de sesiones</h3>
-        <p className="text-xs text-muted-foreground">Sesiones por día en el rango.</p>
+        <p className="text-xs text-muted-foreground">Sesiones por día en el rango seleccionado.</p>
         <div className="mt-4">
           <EngagementTrendChart data={trendData} />
         </div>
@@ -359,106 +392,105 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Top productos (PDPs) */}
-      {topProducts.length > 0 && (
-        <section className="rounded-lg border bg-card">
+      {/* Mix de canales (donut) — full width */}
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">Mix de canales</h3>
+        <p className="text-xs text-muted-foreground">Sesiones por fuente de tráfico en el rango.</p>
+        <div className="mt-4">
+          <DonutChart data={channelDonut} />
+        </div>
+      </section>
+
+      {/* Top productos + Top landings — lado a lado */}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border bg-card">
           <header className="border-b p-6 pb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Top 20 productos (PDPs)
-            </h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Top 10 productos (PDPs)</h3>
             <p className="text-xs text-muted-foreground">
-              Páginas de detalle de producto más visitadas (acumulado all-time).
+              Páginas de <strong>detalle de producto</strong> más visitadas en el rango.
             </p>
           </header>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-2">Producto</th>
-                  <th className="px-4 py-2">SKU</th>
-                  <th className="px-4 py-2">Categoría</th>
-                  <th className="px-4 py-2 text-right">Sesiones</th>
-                  <th className="px-4 py-2 text-right">Conv.</th>
-                  <th className="px-4 py-2 text-right">CR</th>
-                  <th className="px-4 py-2 text-right">Pageviews</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topProducts.map((p) => {
-                  const nombre = p.producto_slug
-                    ? p.producto_slug.replace(/-/g, " ").slice(0, 60)
-                    : "(sin nombre)";
-                  return (
-                    <tr key={p.landing_page} className="border-b last:border-0">
-                      <td className="px-4 py-2 max-w-xs truncate text-xs" title={p.producto_slug ?? p.landing_page}>
-                        {nombre}
-                      </td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                        {p.sku ?? "—"}
-                      </td>
-                      <td className="px-4 py-2 text-xs">
-                        <span
-                          className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
-                          style={{ backgroundColor: PALETA_CAT_WEB[p.categoria] ?? "#94a3b8" }}
-                        />
-                        {p.categoria}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums">{formatNumber(p.sesiones)}</td>
-                      <td className="px-4 py-2 text-right tabular-nums">{formatNumber(p.conversiones)}</td>
-                      <td className="px-4 py-2 text-right tabular-nums">
-                        {p.conversion_rate !== null ? `${(p.conversion_rate * 100).toFixed(2)}%` : "—"}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                        {formatNumber(p.pageviews)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* Source mix + Top landings */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Mix de canales</h3>
-          <p className="text-xs text-muted-foreground">Sesiones por fuente de tráfico.</p>
-          <div className="mt-4">
-            <DonutChart data={channelDonut} />
-          </div>
+          {topProducts.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">
+              Sin productos en el rango. Probá un período más amplio.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b bg-muted/40">
+                  <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="px-4 py-2">Producto</th>
+                    <th className="px-4 py-2">Cat.</th>
+                    <th className="px-4 py-2 text-right">Sesiones</th>
+                    <th className="px-4 py-2 text-right">CR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topProducts.map((p) => {
+                    const nombre = p.producto_slug
+                      ? p.producto_slug.replace(/-/g, " ").slice(0, 50)
+                      : (p.sku ?? "(sin nombre)");
+                    return (
+                      <tr key={p.landing_page} className="border-b last:border-0">
+                        <td className="px-3 py-2 max-w-[260px] truncate text-xs" title={p.producto_slug ?? p.landing_page}>
+                          <div>{nombre}</div>
+                          <div className="font-mono text-[10px] text-muted-foreground">{p.sku ?? ""}</div>
+                        </td>
+                        <td className="px-3 py-2 text-xs">
+                          <span
+                            className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
+                            style={{ backgroundColor: PALETA_CAT_WEB[p.categoria] ?? "#94a3b8" }}
+                          />
+                          {p.categoria}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.sesiones)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {p.conversion_rate !== null ? `${(p.conversion_rate * 100).toFixed(2)}%` : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="rounded-lg border bg-card">
           <header className="border-b p-6 pb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Top 20 landing pages</h3>
-            <p className="text-xs text-muted-foreground">Páginas con más sesiones (acumulado all-time).</p>
+            <h3 className="text-sm font-medium text-muted-foreground">Top 10 landing pages</h3>
+            <p className="text-xs text-muted-foreground">
+              <strong>Toda página</strong> de entrada (home, categorías, productos, etc.) — punto de aterrizaje del usuario.
+            </p>
           </header>
-          <div className="max-h-[500px] overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 border-b bg-muted/40">
-                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-2">Landing</th>
-                  <th className="px-4 py-2 text-right">Sesiones</th>
-                  <th className="px-4 py-2 text-right">CR</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topLandings.map((l) => (
-                  <tr key={l.landing_page} className="border-b last:border-0">
-                    <td className="px-4 py-2 max-w-xs truncate text-xs" title={l.landing_page}>
-                      {l.landing_page}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">{formatNumber(l.sesiones)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                      {l.conversion_rate !== null ? `${(l.conversion_rate * 100).toFixed(2)}%` : "—"}
-                    </td>
+          {topLandings.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">Sin landings en el rango.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b bg-muted/40">
+                  <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="px-4 py-2">Landing</th>
+                    <th className="px-4 py-2 text-right">Sesiones</th>
+                    <th className="px-4 py-2 text-right">CR</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {topLandings.map((l) => (
+                    <tr key={l.landing_page} className="border-b last:border-0">
+                      <td className="px-4 py-2 max-w-[280px] truncate text-xs" title={l.landing_page}>
+                        {l.landing_page}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">{formatNumber(l.sesiones)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                        {l.conversion_rate !== null ? `${(l.conversion_rate * 100).toFixed(2)}%` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
 
@@ -626,7 +658,8 @@ export default async function WebPage({ searchParams }: PageProps) {
             Calidad del tráfico — engagement web
           </h3>
           <p className="text-xs text-muted-foreground">
-            <strong>Fuente: SimilarWeb para todas las marcas</strong> (incluido Drean) para que la comparación use la misma metodología.
+            <strong>Fuente: SimilarWeb para todas las marcas</strong> (incluido Drean) para que la comparación use la misma metodología.{" "}
+            <strong>Período</strong>: snapshot más reciente disponible (estas métricas se reportan como punto-en-el-tiempo, no mensualizadas).
             <strong> Bounce rate</strong> bajo = visitan más de 1 página.
             <strong> Pages/visit</strong> alto = exploran más.
             <strong> Avg duration</strong> alto = se quedan más tiempo.
