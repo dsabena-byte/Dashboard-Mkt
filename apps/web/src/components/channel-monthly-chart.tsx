@@ -1,11 +1,10 @@
 "use client";
 
 import {
-  Bar,
   CartesianGrid,
-  ComposedChart,
   Legend,
   Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,38 +12,34 @@ import {
 } from "recharts";
 import { formatNumber } from "@/lib/utils";
 
-interface MonthlyDatum {
-  mes: string;
-  sesiones: number;
-  usuarios: number;
-  conversiones: number;
+interface ChannelMonthlyDatum {
+  mesLabel: string;
+  [canal: string]: string | number | null;
 }
 
-const MONTH_LABELS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-function fmtMonth(fecha: string): string {
-  const [y, m] = fecha.split("-");
-  const idx = parseInt(m ?? "1", 10) - 1;
-  return `${MONTH_LABELS[idx] ?? m} ${y?.slice(2) ?? ""}`;
+interface ChannelMonthlyChartProps {
+  data: ChannelMonthlyDatum[];
+  canales: string[];
+  colors: Record<string, string>;
 }
 
-export function WebMonthlyChart({ data }: { data: MonthlyDatum[] }) {
-  if (data.length === 0) {
+export function ChannelMonthlyChart({ data, canales, colors }: ChannelMonthlyChartProps) {
+  if (data.length === 0 || canales.length === 0) {
     return (
       <div className="flex h-48 items-center justify-center text-xs text-muted-foreground">
-        Sin datos.
+        Sin datos para el rango.
       </div>
     );
   }
 
-  const formatted = data.map((d) => ({ ...d, mesLabel: fmtMonth(d.mes) }));
   const formatTick = (v: number) =>
     v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M`
       : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k`
       : String(v);
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart data={formatted} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+    <ResponsiveContainer width="100%" height={320}>
+      <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="mesLabel" stroke="hsl(var(--muted-foreground))" fontSize={11} />
         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={formatTick} />
@@ -58,17 +53,18 @@ export function WebMonthlyChart({ data }: { data: MonthlyDatum[] }) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="sesiones" fill="#3b82f6" name="Sesiones" />
-        <Line
-          type="monotone"
-          dataKey="usuarios"
-          stroke="#f43f5e"
-          strokeWidth={2.5}
-          dot={{ r: 4 }}
-          activeDot={{ r: 6 }}
-          name="Usuarios"
-        />
-      </ComposedChart>
+        {canales.map((canal) => (
+          <Line
+            key={canal}
+            type="monotone"
+            dataKey={canal}
+            stroke={colors[canal] ?? "#64748b"}
+            strokeWidth={2}
+            dot={{ r: 3 }}
+            connectNulls
+          />
+        ))}
+      </LineChart>
     </ResponsiveContainer>
   );
 }

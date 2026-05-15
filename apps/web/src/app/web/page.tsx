@@ -4,6 +4,7 @@ import { DonutChart } from "@/components/planning/donut-chart";
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
 import { CategoryTrendChart } from "@/components/category-trend-chart";
 import { WebMonthlyChart } from "@/components/web-monthly-chart";
+import { ChannelMonthlyChart } from "@/components/channel-monthly-chart";
 import { KpiBarPanel } from "@/components/kpi-bar-panel";
 import {
   aggregateByCategory,
@@ -74,6 +75,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     dailyKpis,
     monthlyDailyKpis,
     bySource,
+    monthlyBySource,
     byCategory,
     topLandings,
     topProducts,
@@ -89,6 +91,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     getWebDailyKpis(range),
     getWebDailyKpis(monthlyRange),
     getWebBySource(range),
+    getWebBySource(monthlyRange),
     getWebByCategory(range),
     getWebTopLandingPages(range, 10),
     getWebTopProducts(range, 10),
@@ -179,17 +182,50 @@ export default async function WebPage({ searchParams }: PageProps) {
   const categories = aggregateByCategory(byCategory);
 
   // Agregación mensual para el gráfico de barras (12 meses hacia atrás)
-  const monthlyMap = new Map<string, { sesiones: number; conversiones: number }>();
+  const monthlyMap = new Map<string, { sesiones: number; usuarios: number; conversiones: number }>();
   for (const r of monthlyDailyKpis) {
     const mes = r.fecha.slice(0, 7) + "-01";
-    const acc = monthlyMap.get(mes) ?? { sesiones: 0, conversiones: 0 };
+    const acc = monthlyMap.get(mes) ?? { sesiones: 0, usuarios: 0, conversiones: 0 };
     acc.sesiones += r.sesiones;
+    acc.usuarios += r.usuarios;
     acc.conversiones += r.conversiones;
     monthlyMap.set(mes, acc);
   }
   const monthlyData = [...monthlyMap.entries()]
     .map(([mes, v]) => ({ mes, ...v }))
     .sort((a, b) => a.mes.localeCompare(b.mes));
+
+  // Evolución mensual por canal: rows = mes, columnas = canal con sesiones
+  const monthlyChannelMap = new Map<string, Map<string, number>>();
+  for (const r of monthlyBySource) {
+    const mes = r.fecha.slice(0, 7) + "-01";
+    let perCanal = monthlyChannelMap.get(mes);
+    if (!perCanal) { perCanal = new Map(); monthlyChannelMap.set(mes, perCanal); }
+    perCanal.set(r.canal, (perCanal.get(r.canal) ?? 0) + r.sesiones);
+  }
+  // Top N canales sobre el total del rango — los otros van a "Otros"
+  const canalTotals = new Map<string, number>();
+  for (const perCanal of monthlyChannelMap.values()) {
+    for (const [canal, s] of perCanal) {
+      canalTotals.set(canal, (canalTotals.get(canal) ?? 0) + s);
+    }
+  }
+  const topCanales = [...canalTotals.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 7)
+    .map(([c]) => c);
+  const SHORT_MONTH = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const fmtMesLabel = (mes: string) => {
+    const [y, m] = mes.split("-");
+    return `${SHORT_MONTH[parseInt(m ?? "1", 10) - 1] ?? m} ${y?.slice(2) ?? ""}`;
+  };
+  const monthlyChannelData = [...monthlyChannelMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([mes, perCanal]) => {
+      const row: Record<string, string | number | null> = { mesLabel: fmtMesLabel(mes) };
+      for (const c of topCanales) row[c] = perCanal.get(c) ?? null;
+      return row as { mesLabel: string } & Record<string, number | null>;
+    });
 
   // Pivot data para CategoryTrendChart: { fecha, Lavado: X, Cocinas: Y, ... }
   const categoriasUnicas = [...new Set(byCategory.map((r) => r.categoria))];
@@ -307,10 +343,27 @@ export default async function WebPage({ searchParams }: PageProps) {
 
       {/* Tendencia mensual — últimos 12 meses */}
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual de sesiones</h3>
-        <p className="text-xs text-muted-foreground">Últimos 12 meses (no afectado por el filtro — vista global).</p>
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios</h3>
+        <p className="text-xs text-muted-foreground">
+          Últimos 12 meses (no afectado por el filtro). Barras = sesiones, línea = usuarios únicos.
+        </p>
         <div className="mt-4">
           <WebMonthlyChart data={monthlyData} />
+        </div>
+      </section>
+
+      {/* Evolución mensual por canal */}
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual por canal</h3>
+        <p className="text-xs text-muted-foreground">
+          Sesiones por canal a lo largo de los últimos 12 meses. Top 7 canales por volumen.
+        </p>
+        <div className="mt-4">
+          <ChannelMonthlyChart
+            data={monthlyChannelData}
+            canales={topCanales}
+            colors={PALETA_CANAL}
+          />
         </div>
       </section>
 
