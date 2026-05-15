@@ -1,5 +1,5 @@
 import { KpiCard } from "@/components/kpi-card";
-import { DateRangeInfo } from "@/components/date-range-info";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { DonutChart } from "@/components/planning/donut-chart";
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
 import { KpiBarPanel } from "@/components/kpi-bar-panel";
@@ -193,7 +193,7 @@ export default async function WebPage({ searchParams }: PageProps) {
             Tráfico real de Google Analytics 4 (drean.com.ar) — performance, canales, categorías y top landings.
           </p>
         </div>
-        <DateRangeInfo range={range} />
+        <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
 
       {!hasData && (
