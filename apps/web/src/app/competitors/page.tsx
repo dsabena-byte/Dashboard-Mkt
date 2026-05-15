@@ -66,8 +66,9 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
   const lastClosedMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
   const lastClosedMonthStr = `${lastClosedYear}-${String(lastClosedMonthNum).padStart(2, "0")}-01`;
 
-  // Para Drean: mergeamos GA4 (real) con SimilarWeb. GA4 tiene prioridad.
-  // Para las quality KPIs, usamos las del último mes CERRADO de GA4, no el actual.
+  // Para Drean: mergeamos GA4 (real) con SimilarWeb solo para VISITAS (volumen, comparable).
+  // Bounce/pages/duration quedan en SimilarWeb para todos (GA4 mide engagement con
+  // definición distinta — no comparable con SimilarWeb single-page bounce).
   const dreanClosedGa4 = dreanGa4?.mesesMetrics?.find((m) => m.fecha === lastClosedMonthStr);
   const webSnapshot = webSnapshotRaw.map((r) => {
     if (r.competidor !== "Drean" || !dreanGa4) return r;
@@ -75,9 +76,7 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
       ...r,
       fecha: dreanClosedGa4?.fecha ?? dreanGa4.fecha,
       visitas_estimadas: dreanClosedGa4?.visitas ?? dreanGa4.visitas_estimadas,
-      bounce_rate: dreanClosedGa4?.bounce_rate ?? dreanGa4.bounce_rate,
-      pages_per_visit: dreanClosedGa4?.pages_per_visit ?? dreanGa4.pages_per_visit,
-      avg_visit_duration: dreanClosedGa4?.avg_visit_duration ?? dreanGa4.avg_visit_duration,
+      // bounce_rate, pages_per_visit, avg_visit_duration: SE MANTIENEN como SimilarWeb
     };
   });
   const monthlyHistory = monthlyHistoryRaw.map((m) => {
@@ -167,7 +166,7 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
             Tráfico web — Benchmark de dominios
           </h3>
           <p className="text-xs text-muted-foreground">
-            <strong>Drean</strong>: datos reales de Google Analytics (sesiones first-party). <strong>Competidores</strong>: estimación SimilarWeb (panel + modelos, tráfico total — incluye direct/organic/paid/social/referral). Período mostrado:{" "}
+            <strong>Visitas Drean</strong>: Google Analytics (sesiones reales first-party). <strong>Resto de KPIs</strong> (bounce/pages/duration) y <strong>competidores</strong>: SimilarWeb (estimación panel + modelos) para que la comparación use la misma metodología. Período mostrado:{" "}
             <strong>{latestMonth ? fmtMonthFull(latestMonth) : "—"}</strong>
             {previousMonth && (
               <>
