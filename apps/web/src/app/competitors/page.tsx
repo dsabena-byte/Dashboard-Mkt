@@ -57,17 +57,27 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     getDreanWebMetrics(),
   ]);
 
-  // Para Drean: mergeamos GA4 (real, donde lo tengamos) con SimilarWeb (para meses sin GA4).
-  // GA4 tiene prioridad — sobrescribe SimilarWeb cuando hay overlap.
+  // Solo comparamos meses CERRADOS: el último válido es el mes anterior al actual.
+  // No tiene sentido comparar Mayo (15 días) vs Abril (30 días) → MoM engañoso.
+  const today = new Date();
+  const currentYear = today.getUTCFullYear();
+  const currentMonth = today.getUTCMonth() + 1;
+  const lastClosedYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+  const lastClosedMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
+  const lastClosedMonthStr = `${lastClosedYear}-${String(lastClosedMonthNum).padStart(2, "0")}-01`;
+
+  // Para Drean: mergeamos GA4 (real) con SimilarWeb. GA4 tiene prioridad.
+  // Para las quality KPIs, usamos las del último mes CERRADO de GA4, no el actual.
+  const dreanClosedGa4 = dreanGa4?.mesesMetrics?.find((m) => m.fecha === lastClosedMonthStr);
   const webSnapshot = webSnapshotRaw.map((r) => {
     if (r.competidor !== "Drean" || !dreanGa4) return r;
     return {
       ...r,
-      fecha: dreanGa4.fecha,
-      visitas_estimadas: dreanGa4.visitas_estimadas,
-      bounce_rate: dreanGa4.bounce_rate,
-      pages_per_visit: dreanGa4.pages_per_visit,
-      avg_visit_duration: dreanGa4.avg_visit_duration,
+      fecha: dreanClosedGa4?.fecha ?? dreanGa4.fecha,
+      visitas_estimadas: dreanClosedGa4?.visitas ?? dreanGa4.visitas_estimadas,
+      bounce_rate: dreanClosedGa4?.bounce_rate ?? dreanGa4.bounce_rate,
+      pages_per_visit: dreanClosedGa4?.pages_per_visit ?? dreanGa4.pages_per_visit,
+      avg_visit_duration: dreanClosedGa4?.avg_visit_duration ?? dreanGa4.avg_visit_duration,
     };
   });
   const monthlyHistory = monthlyHistoryRaw.map((m) => {
@@ -82,6 +92,11 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
     return { ...m, meses };
   });
+
+  // Filtrar todos los datos mensuales para excluir el mes en curso
+  for (const m of monthlyHistory) {
+    m.meses = m.meses.filter((p) => p.fecha <= lastClosedMonthStr);
+  }
 
   // Agrupar trends por keyword para el gráfico
   const trendsByKw = new Map<string, Array<{ fecha: string; interes: number }>>();
