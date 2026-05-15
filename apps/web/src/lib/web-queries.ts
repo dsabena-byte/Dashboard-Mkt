@@ -281,12 +281,18 @@ export function aggregateByCategory(rows: ByCategoryRow[]): CategoryAggregate[] 
 export const PALETA_CANAL: Record<string, string> = {
   Direct: "#64748b",
   "Organic Search": "#22c55e",
-  "Paid Search": "#3b82f6",
+  "Paid Search": "#f97316",
   "Organic Social": "#a78bfa",
   "Paid Social": "#ec4899",
   Email: "#facc15",
   Referral: "#0ea5e9",
-  Display: "#f97316",
+  Display: "#94a3b8",
+  "Cross-network": "#6366f1",
+  "Paid Video": "#3b82f6",
+  "Organic Video": "#06b6d4",
+  "Paid Other": "#fb923c",
+  Affiliates: "#10b981",
+  Unassigned: "#cbd5e1",
   Otros: "#94a3b8",
 };
 
