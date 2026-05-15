@@ -98,8 +98,12 @@ export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]
 
 export async function getWebTopProducts(range: WebRange, limit = 10): Promise<TopProductRow[]> {
   const supabase = getServerSupabase();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const client = supabase as any;
+  const client = supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  };
   const { data, error } = await client.rpc("top_products_in_range", {
     p_from: range.from,
     p_to: range.to,
@@ -124,8 +128,12 @@ export async function getWebTopProducts(range: WebRange, limit = 10): Promise<To
 
 export async function getWebTopLandingPages(range: WebRange, limit = 10): Promise<TopLandingRow[]> {
   const supabase = getServerSupabase();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const client = supabase as any;
+  const client = supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  };
   const { data, error } = await client.rpc("top_landings_in_range", {
     p_from: range.from,
     p_to: range.to,
