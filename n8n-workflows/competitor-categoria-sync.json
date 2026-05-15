@@ -1,0 +1,124 @@
+{
+  "name": "Competitor Category URL Traffic Sync (Apify SimilarWeb)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "hours", "triggerAtHour": 5 }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (daily 05:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-700, 0]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-700, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// URLs por competidor por categoría. Para sumar/sacar URLs, editá este array.\n//\n// IMPORTANTE: SimilarWeb estima tráfico por URL pero la calidad varía mucho.\n// URLs de muy bajo tráfico (<5k visitas/mes) pueden no devolver data.\n//\n// Categorías canónicas: 'Lavado', 'Refrigeración', 'Cocinas'.\n\nconst URLS = [\n  // Drean (cambiar si las URLs reales son distintas)\n  { competidor: 'Drean',           categoria: 'Lavado',         url: 'https://www.drean.com.ar/lavarropas' },\n  { competidor: 'Drean',           categoria: 'Refrigeración', url: 'https://www.drean.com.ar/heladeras' },\n  { competidor: 'Drean',           categoria: 'Cocinas',        url: 'https://www.drean.com.ar/cocinas' },\n\n  // Electrolux\n  { competidor: 'Electrolux',      categoria: 'Lavado',         url: 'https://www.tienda.electrolux.com.ar/grandes-electrodomesticos/lavarropas' },\n  { competidor: 'Electrolux',      categoria: 'Refrigeración', url: 'https://www.tienda.electrolux.com.ar/grandes-electrodomesticos/heladeras' },\n  { competidor: 'Electrolux',      categoria: 'Cocinas',        url: 'https://www.tienda.electrolux.com.ar/grandes-electrodomesticos/cocinas' },\n\n  // Gafa\n  { competidor: 'Gafa',            categoria: 'Lavado',         url: 'https://www.tienda.gafa.com.ar/grandes-electrodomesticos/lavarropas' },\n  { competidor: 'Gafa',            categoria: 'Refrigeración', url: 'https://www.tienda.gafa.com.ar/grandes-electrodomesticos/heladeras' },\n  { competidor: 'Gafa',            categoria: 'Cocinas',        url: 'https://www.tienda.gafa.com.ar/grandes-electrodomesticos/cocinas' },\n\n  // Whirlpool\n  { competidor: 'Whirlpool',       categoria: 'Lavado',         url: 'https://www.whirlpool.com.ar/electrodomesticos/lavarropas' },\n  { competidor: 'Whirlpool',       categoria: 'Refrigeración', url: 'https://www.whirlpool.com.ar/electrodomesticos/heladeras' },\n  { competidor: 'Whirlpool',       categoria: 'Cocinas',        url: 'https://www.whirlpool.com.ar/electrodomesticos/cocinas' },\n\n  // Philco / Newsan (no tienen categoría 'Cocinas')\n  { competidor: 'Philco (Newsan)', categoria: 'Lavado',         url: 'https://tiendanewsan.com.ar/electrodomesticos/lavado/lavarropas.html' },\n  { competidor: 'Philco (Newsan)', categoria: 'Refrigeración', url: 'https://tiendanewsan.com.ar/electrodomesticos/heladeras-freezers-y-cavas.html' },\n];\n\nreturn [{\n  json: {\n    urls: URLS,\n    fecha: new Date().toISOString().slice(0, 10),\n  },\n}];\n"
+      },
+      "id": "node-set-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-500, 100]
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorId": {
+          "__rl": true,
+          "value": "tri_angle/similar-web-scraper",
+          "mode": "list",
+          "cachedResultName": "SimilarWeb Scraper (tri_angle/similar-web-scraper)"
+        },
+        "customBody": "={{ JSON.stringify({ websites: $json.urls.map(u => u.url), maxItems: 50 }) }}",
+        "authentication": "apifyOAuth2Api"
+      },
+      "id": "node-apify",
+      "name": "Apify — SimilarWeb (URLs)",
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [-260, 100],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Match cada URL scrapeada con su {competidor, categoria} desde Set Config\n// y normaliza a fila para competitor_categoria_web.\n\nconst items = $input.all();\nconst config = $('Set Config').first().json;\nconst fecha = config.fecha;\n\n// Indexar por URL normalizada (sin protocolo, sin trailing slash, lowercase)\nconst normUrl = (u) => String(u || '')\n  .toLowerCase()\n  .replace(/^https?:\\/\\//, '')\n  .replace(/^www\\./, '')\n  .replace(/\\/+$/, '')\n  .trim();\n\nconst byUrl = {};\nfor (const c of config.urls) {\n  byUrl[normUrl(c.url)] = c;\n}\n\nconst pick = (obj, keys) => {\n  for (const k of keys) {\n    if (obj?.[k] !== undefined && obj?.[k] !== null) return obj[k];\n  }\n  return null;\n};\nconst toInt = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/[^0-9.\\-]/g, ''));\n  return Number.isFinite(n) ? Math.round(n) : null;\n};\nconst toFloat = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst output = [];\nfor (const item of items) {\n  const r = item.json;\n  // El actor devuelve la URL en distintos campos según el shape.\n  const rawUrl = String(\n    pick(r, ['name', 'url', 'website', 'siteName', 'domain']) || ''\n  );\n  const key = normUrl(rawUrl);\n  const meta = byUrl[key];\n  if (!meta) continue;\n\n  output.push({\n    json: {\n      fecha,\n      competidor: meta.competidor,\n      categoria: meta.categoria,\n      url: meta.url,\n      visitas_estimadas: toInt(pick(r, ['totalVisits', 'monthlyVisits', 'visits', 'estimatedVisits'])),\n      bounce_rate: toFloat(pick(r, ['bounceRate', 'bounce_rate'])),\n      pages_per_visit: toFloat(pick(r, ['pagesPerVisit', 'pages_per_visit', 'pagesPerView'])),\n      avg_visit_duration: toFloat(pick(r, ['avgVisitDuration', 'avg_visit_duration', 'averageVisitDuration'])),\n      source: 'apify_similarweb',\n      raw: r,\n    },\n  });\n}\n\nreturn output;\n"
+      },
+      "id": "node-normalize",
+      "name": "Normalize to competitor_categoria_web",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, 100]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "node-aggregate",
+      "name": "Aggregate rows",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [240, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/competitor_categoria_web?on_conflict=fecha,competidor,categoria,source",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.data) }}",
+        "options": {}
+      },
+      "id": "node-supabase-upsert",
+      "name": "Supabase — Upsert competitor_categoria_web",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 100]
+    }
+  ],
+  "connections": {
+    "Schedule (daily 05:00)": {
+      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+    },
+    "Manual trigger": {
+      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+    },
+    "Set Config": {
+      "main": [[{ "node": "Apify — SimilarWeb (URLs)", "type": "main", "index": 0 }]]
+    },
+    "Apify — SimilarWeb (URLs)": {
+      "main": [[{ "node": "Normalize to competitor_categoria_web", "type": "main", "index": 0 }]]
+    },
+    "Normalize to competitor_categoria_web": {
+      "main": [[{ "node": "Aggregate rows", "type": "main", "index": 0 }]]
+    },
+    "Aggregate rows": {
+      "main": [[{ "node": "Supabase — Upsert competitor_categoria_web", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": false }
+}
