@@ -27,6 +27,75 @@ export interface CompetitorWebSnapshotWithDelta extends CompetitorWebRow {
 // Samsung opera con tráfico global desde shop.samsung.com, ~10M visitas vs ~200k de la pauta argentina.
 const HIDDEN_COMPETITORS = new Set(["Samsung"]);
 
+// =====================================================================
+// Drean (datos REALES desde GA4 — reemplazan la estimación de SimilarWeb)
+// =====================================================================
+
+interface DreanGa4Snapshot {
+  fecha: string;
+  visitas_estimadas: number;
+  bounce_rate: number | null;
+  pages_per_visit: number | null;
+  avg_visit_duration: number | null;
+  meses: Array<{ fecha: string; visitas: number }>;
+}
+
+/**
+ * Agrega las filas de web_traffic (GA4) en métricas mensuales y devuelve
+ * el snapshot del último mes + serie de los últimos 12 meses.
+ */
+export async function getDreanWebMetrics(): Promise<DreanGa4Snapshot | null> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("web_traffic")
+    .select("fecha, sesiones, bounce_rate, avg_session_duration, pageviews")
+    .order("fecha", { ascending: false })
+    .returns<Array<{ fecha: string; sesiones: number; bounce_rate: number | null; avg_session_duration: number | null; pageviews: number }>>();
+  if (error) {
+    if (/relation .* does not exist/i.test(error.message)) return null;
+    throw new Error(`web_traffic: ${error.message}`);
+  }
+  const rows = data ?? [];
+  if (rows.length === 0) return null;
+
+  // Agregar por mes (yyyy-mm-01)
+  const byMonth = new Map<string, { sesiones: number; pageviews: number; bounceWeighted: number; durationWeighted: number; sesionesConBounce: number; sesionesConDuration: number }>();
+  for (const r of rows) {
+    const monthKey = r.fecha.slice(0, 7) + "-01";
+    const acc = byMonth.get(monthKey) ?? {
+      sesiones: 0, pageviews: 0, bounceWeighted: 0, durationWeighted: 0,
+      sesionesConBounce: 0, sesionesConDuration: 0,
+    };
+    acc.sesiones += r.sesiones ?? 0;
+    acc.pageviews += r.pageviews ?? 0;
+    if (r.bounce_rate !== null) {
+      acc.bounceWeighted += (r.bounce_rate ?? 0) * (r.sesiones ?? 0);
+      acc.sesionesConBounce += r.sesiones ?? 0;
+    }
+    if (r.avg_session_duration !== null) {
+      acc.durationWeighted += (r.avg_session_duration ?? 0) * (r.sesiones ?? 0);
+      acc.sesionesConDuration += r.sesiones ?? 0;
+    }
+    byMonth.set(monthKey, acc);
+  }
+  const meses = [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fecha, acc]) => ({ fecha, visitas: acc.sesiones }));
+
+  const lastMonth = meses[meses.length - 1];
+  if (!lastMonth) return null;
+  const lastAcc = byMonth.get(lastMonth.fecha)!;
+
+  return {
+    fecha: lastMonth.fecha,
+    visitas_estimadas: lastAcc.sesiones,
+    bounce_rate: lastAcc.sesionesConBounce > 0 ? lastAcc.bounceWeighted / lastAcc.sesionesConBounce : null,
+    pages_per_visit: lastAcc.sesiones > 0 ? lastAcc.pageviews / lastAcc.sesiones : null,
+    avg_visit_duration: lastAcc.sesionesConDuration > 0 ? lastAcc.durationWeighted / lastAcc.sesionesConDuration : null,
+    meses: meses.slice(-12),
+  };
+}
+
 async function fetchAll(): Promise<CompetitorWebRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
