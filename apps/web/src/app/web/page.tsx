@@ -69,10 +69,11 @@ export default async function WebPage({ searchParams }: PageProps) {
 
   const hasData = dailyKpis.length > 0;
 
-  // Trend data for the line chart
+  // Trend data shaped for EngagementTrendChart (uses cuenta/engagement keys)
   const trendData = dailyKpis.map((r) => ({
     fecha: r.fecha,
-    drean: r.sesiones,
+    cuenta: "drean.com.ar",
+    engagement: r.sesiones,
   }));
 
   const channelDonut = channels.map((c) => ({
@@ -152,7 +153,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <h3 className="text-sm font-medium text-muted-foreground">Tendencia diaria de sesiones</h3>
         <p className="text-xs text-muted-foreground">Sesiones por día en el rango.</p>
         <div className="mt-4">
-          <EngagementTrendChart data={trendData.map((d) => ({ fecha: d.fecha, brand: d.drean })) as unknown as Parameters<typeof EngagementTrendChart>[0]["data"]} />
+          <EngagementTrendChart data={trendData} />
         </div>
       </section>
 
@@ -161,7 +162,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <header className="border-b p-6 pb-4">
           <h3 className="text-sm font-medium text-muted-foreground">Performance por categoría</h3>
           <p className="text-xs text-muted-foreground">
-            Derivado del path de la landing page. Si una URL no matchea Lavado/Refrigeración/Cocinas, cae en "Otros / Home".
+            Derivado del path de la landing page. Si una URL no matchea Lavado/Refrigeración/Cocinas, cae en &ldquo;Otros / Home&rdquo;.
           </p>
         </header>
         <div className="overflow-x-auto">
