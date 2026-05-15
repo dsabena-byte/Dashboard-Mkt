@@ -42,6 +42,18 @@ export interface TopLandingRow {
   ultima_fecha: string;
 }
 
+export interface TopProductRow {
+  landing_page: string;
+  sku: string | null;
+  producto_slug: string | null;
+  categoria: string;
+  sesiones: number;
+  conversiones: number;
+  pageviews: number;
+  conversion_rate: number | null;
+  ultima_fecha: string;
+}
+
 export interface WebRange {
   from: string;       // YYYY-MM-DD
   to: string;
@@ -81,6 +93,21 @@ export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]
     .lte("fecha", range.to)
     .returns<ByCategoryRow[]>();
   if (error) throw new Error(`vw_drean_web_by_category: ${error.message}`);
+  return data ?? [];
+}
+
+export async function getWebTopProducts(limit = 20): Promise<TopProductRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("vw_drean_web_top_products")
+    .select("*")
+    .order("sesiones", { ascending: false })
+    .limit(limit)
+    .returns<TopProductRow[]>();
+  if (error) {
+    if (/relation .* does not exist/i.test(error.message)) return [];
+    throw new Error(`vw_drean_web_top_products: ${error.message}`);
+  }
   return data ?? [];
 }
 
