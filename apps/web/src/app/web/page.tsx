@@ -364,40 +364,40 @@ export default async function WebPage({ searchParams }: PageProps) {
           </p>
         </header>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead className="border-b bg-muted/40">
-              <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-4 py-2">Categoría</th>
-                <th className="px-4 py-2 text-right">Sesiones</th>
-                <th className="px-4 py-2 text-right">% del total</th>
-                <th className="px-4 py-2 text-right">Conversiones</th>
-                <th className="px-4 py-2 text-right">CR</th>
-                <th className="px-4 py-2 text-right">Bounce rate</th>
-                <th className="px-4 py-2 text-right">Pageviews</th>
+              <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2">Categoría</th>
+                <th className="px-3 py-2 text-right">Sesiones</th>
+                <th className="px-3 py-2 text-right">%</th>
+                <th className="px-3 py-2 text-right">Conv.</th>
+                <th className="px-3 py-2 text-right">CR</th>
+                <th className="px-3 py-2 text-right">Bounce</th>
+                <th className="px-3 py-2 text-right">PV</th>
               </tr>
             </thead>
             <tbody>
               {categories.map((c) => (
                 <tr key={c.categoria} className="border-b last:border-0">
-                  <td className="px-4 py-2 font-medium">
+                  <td className="px-3 py-2 font-medium">
                     <span
-                      className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
+                      className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
                       style={{ backgroundColor: PALETA_CATEGORIA[c.categoria] ?? "#94a3b8" }}
                     />
                     {c.categoria}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                     {totals.sesiones > 0 ? `${((c.sesiones / totals.sesiones) * 100).toFixed(1)}%` : "—"}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.conversiones)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">
+                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.conversiones)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
                     {c.conversion_rate !== null ? `${(c.conversion_rate * 100).toFixed(2)}%` : "—"}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">
+                  <td className="px-3 py-2 text-right tabular-nums">
                     {c.bounce_rate !== null ? formatPct(c.bounce_rate * 100, 1) : "—"}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                     {formatNumber(c.pageviews)}
                   </td>
                 </tr>
