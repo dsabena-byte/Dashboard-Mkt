@@ -96,31 +96,54 @@ export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]
   return data ?? [];
 }
 
-export async function getWebTopProducts(limit = 20): Promise<TopProductRow[]> {
+export async function getWebTopProducts(range: WebRange, limit = 10): Promise<TopProductRow[]> {
   const supabase = getServerSupabase();
-  const { data, error } = await supabase
-    .from("vw_drean_web_top_products")
-    .select("*")
-    .order("sesiones", { ascending: false })
-    .limit(limit)
-    .returns<TopProductRow[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = supabase as any;
+  const { data, error } = await client.rpc("top_products_in_range", {
+    p_from: range.from,
+    p_to: range.to,
+    p_limit: limit,
+  });
   if (error) {
-    if (/relation .* does not exist/i.test(error.message)) return [];
-    throw new Error(`vw_drean_web_top_products: ${error.message}`);
+    if (/does not exist|function .* does not exist/i.test(error.message)) return [];
+    throw new Error(`top_products_in_range: ${error.message}`);
   }
-  return data ?? [];
+  const rows = (data ?? []) as Array<{
+    landing_page: string;
+    sku: string | null;
+    producto_slug: string | null;
+    categoria: string;
+    sesiones: number;
+    conversiones: number;
+    pageviews: number;
+    conversion_rate: number | null;
+  }>;
+  return rows.map((r) => ({ ...r, ultima_fecha: range.to }));
 }
 
-export async function getWebTopLandingPages(limit = 20): Promise<TopLandingRow[]> {
+export async function getWebTopLandingPages(range: WebRange, limit = 10): Promise<TopLandingRow[]> {
   const supabase = getServerSupabase();
-  const { data, error } = await supabase
-    .from("vw_drean_web_top_landing")
-    .select("*")
-    .order("sesiones", { ascending: false })
-    .limit(limit)
-    .returns<TopLandingRow[]>();
-  if (error) throw new Error(`vw_drean_web_top_landing: ${error.message}`);
-  return data ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = supabase as any;
+  const { data, error } = await client.rpc("top_landings_in_range", {
+    p_from: range.from,
+    p_to: range.to,
+    p_limit: limit,
+  });
+  if (error) {
+    if (/does not exist|function .* does not exist/i.test(error.message)) return [];
+    throw new Error(`top_landings_in_range: ${error.message}`);
+  }
+  const rows = (data ?? []) as Array<{
+    landing_page: string;
+    sesiones: number;
+    conversiones: number;
+    pageviews: number;
+    conversion_rate: number | null;
+    bounce_rate: number | null;
+  }>;
+  return rows.map((r) => ({ ...r, ultima_fecha: range.to }));
 }
 
 // ============================================================================
