@@ -13,6 +13,7 @@ import {
   getWebByCategory,
   getWebBySource,
   getWebDailyKpis,
+  getWebMonthlyByChannel,
   getWebTopLandingPages,
   getWebTopProducts,
   PALETA_CANAL,
@@ -75,7 +76,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     dailyKpis,
     monthlyDailyKpis,
     bySource,
-    monthlyBySource,
+    monthlyByChannel,
     byCategory,
     topLandings,
     topProducts,
@@ -91,7 +92,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     getWebDailyKpis(range),
     getWebDailyKpis(monthlyRange),
     getWebBySource(range),
-    getWebBySource(monthlyRange),
+    getWebMonthlyByChannel(12),
     getWebByCategory(range),
     getWebTopLandingPages(range, 10),
     getWebTopProducts(range, 10),
@@ -196,11 +197,11 @@ export default async function WebPage({ searchParams }: PageProps) {
     .sort((a, b) => a.mes.localeCompare(b.mes));
 
   // Evolución mensual por canal: rows = mes, columnas = canal con sesiones
+  // monthlyByChannel viene pre-agregado desde la vista (mes, canal, sesiones).
   const monthlyChannelMap = new Map<string, Map<string, number>>();
-  for (const r of monthlyBySource) {
-    const mes = r.fecha.slice(0, 7) + "-01";
-    let perCanal = monthlyChannelMap.get(mes);
-    if (!perCanal) { perCanal = new Map(); monthlyChannelMap.set(mes, perCanal); }
+  for (const r of monthlyByChannel) {
+    let perCanal = monthlyChannelMap.get(r.mes);
+    if (!perCanal) { perCanal = new Map(); monthlyChannelMap.set(r.mes, perCanal); }
     perCanal.set(r.canal, (perCanal.get(r.canal) ?? 0) + r.sesiones);
   }
   // Top N canales sobre el total del rango — los otros van a "Otros"
@@ -352,18 +353,27 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Evolución mensual por canal */}
-      <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual por canal</h3>
-        <p className="text-xs text-muted-foreground">
-          Sesiones por canal a lo largo de los últimos 12 meses. Top 7 canales por volumen.
-        </p>
-        <div className="mt-4">
-          <ChannelMonthlyChart
-            data={monthlyChannelData}
-            canales={topCanales}
-            colors={PALETA_CANAL}
-          />
+      {/* Mix de canales (rango) + Evolución mensual por canal — side by side */}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Mix de canales (rango)</h3>
+          <p className="text-xs text-muted-foreground">Sesiones por fuente de tráfico en el rango seleccionado.</p>
+          <div className="mt-4">
+            <DonutChart data={channelDonut} />
+          </div>
+        </div>
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual por canal</h3>
+          <p className="text-xs text-muted-foreground">
+            Sesiones por canal — últimos 12 meses. Top 7 canales por volumen.
+          </p>
+          <div className="mt-4">
+            <ChannelMonthlyChart
+              data={monthlyChannelData}
+              canales={topCanales}
+              colors={PALETA_CANAL}
+            />
+          </div>
         </div>
       </section>
 

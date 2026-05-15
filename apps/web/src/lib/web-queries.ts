@@ -23,6 +23,14 @@ export interface BySourceRow {
   pageviews: number;
 }
 
+export interface MonthlyByChannelRow {
+  mes: string;
+  canal: string;
+  sesiones: number;
+  conversiones: number;
+  pageviews: number;
+}
+
 export interface ByCategoryRow {
   fecha: string;
   categoria: string;
@@ -94,6 +102,24 @@ export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]
     .returns<ByCategoryRow[]>();
   if (error) throw new Error(`vw_drean_web_by_category: ${error.message}`);
   return data ?? [];
+}
+
+export async function getWebMonthlyByChannel(monthsBack = 12): Promise<MonthlyByChannelRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("vw_drean_web_monthly_by_channel")
+    .select("mes, canal, sesiones, conversiones, pageviews")
+    .order("mes", { ascending: true })
+    .returns<MonthlyByChannelRow[]>();
+  if (error) {
+    if (/relation .* does not exist/i.test(error.message)) return [];
+    throw new Error(`vw_drean_web_monthly_by_channel: ${error.message}`);
+  }
+  const rows = data ?? [];
+  // Quedarse con los últimos monthsBack meses
+  const meses = [...new Set(rows.map((r) => r.mes))].sort();
+  const keep = new Set(meses.slice(-monthsBack));
+  return rows.filter((r) => keep.has(r.mes));
 }
 
 export async function getWebTopProducts(range: WebRange, limit = 10): Promise<TopProductRow[]> {
