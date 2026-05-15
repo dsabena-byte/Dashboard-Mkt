@@ -14,6 +14,7 @@ export interface CompetitorWebRow {
   paginas_top: unknown;
   paises_top: unknown;
   keywords_top: unknown;
+  raw: unknown;
 }
 
 export interface CompetitorWebSnapshotWithDelta extends CompetitorWebRow {
@@ -31,7 +32,7 @@ async function fetchAll(): Promise<CompetitorWebRow[]> {
   const { data, error } = await supabase
     .from("competitor_web")
     .select(
-      "competidor, dominio, fecha, visitas_estimadas, visitantes_unicos, bounce_rate, pages_per_visit, avg_visit_duration, fuentes_trafico, paginas_top, paises_top, keywords_top",
+      "competidor, dominio, fecha, visitas_estimadas, visitantes_unicos, bounce_rate, pages_per_visit, avg_visit_duration, fuentes_trafico, paginas_top, paises_top, keywords_top, raw",
     )
     .order("fecha", { ascending: false })
     .returns<CompetitorWebRow[]>();
@@ -65,8 +66,7 @@ export async function getCompetitorWebSnapshot(): Promise<CompetitorWebSnapshotW
 }
 
 /**
- * Serie temporal de visitas por competidor.
- * Devuelve los últimos `limit` snapshots ordenados ascendentes por fecha.
+ * Serie de snapshots ejecutados (cada vez que corre el workflow).
  */
 export async function getCompetitorWebHistory(limit = 12): Promise<
   Array<{
@@ -90,6 +90,89 @@ export async function getCompetitorWebHistory(limit = 12): Promise<
       serie: trimmed.map((r) => ({ fecha: r.fecha, visitas: r.visitas_estimadas })),
     };
   });
+}
+
+/**
+ * Historia mensual de visitas — viene del actor SimilarWeb dentro del raw JSON.
+ * Detecta valores con clave en formato YYYY-MM-DD en cualquier nivel del objeto.
+ * El actor radeance/similarweb-scraper devuelve esto como un map plano de fecha→count
+ * (los últimos 3-6 meses), o anidado en `monthlyVisits`/`historicalTraffic`/etc.
+ */
+export async function getCompetitorMonthlyHistory(): Promise<
+  Array<{
+    competidor: string;
+    dominio: string;
+    meses: Array<{ fecha: string; visitas: number }>;
+  }>
+> {
+  const all = await fetchAll();
+  // Quedarse con el snapshot más reciente por competidor (el raw más actualizado)
+  const latestByComp = new Map<string, CompetitorWebRow>();
+  for (const r of all) {
+    if (!latestByComp.has(r.competidor)) latestByComp.set(r.competidor, r);
+  }
+  return [...latestByComp.values()].map((r) => ({
+    competidor: r.competidor,
+    dominio: r.dominio,
+    meses: extractMonthlyFromRaw(r.raw),
+  }));
+}
+
+const MONTH_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_HISTORY_FIELD_HINTS = [
+  "monthlyVisits",
+  "monthlyVisitors",
+  "estimatedMonthlyVisits",
+  "trafficHistory",
+  "historicalTraffic",
+  "historicalData",
+  "history",
+  "visitsByMonth",
+];
+
+function extractMonthlyFromRaw(raw: unknown): Array<{ fecha: string; visitas: number }> {
+  if (!raw || typeof raw !== "object") return [];
+  // Caso 1: raw es directamente un map fecha → número
+  const direct = mapToSerie(raw as Record<string, unknown>);
+  if (direct.length > 0) return direct;
+  // Caso 2: raw tiene un campo conocido con la historia
+  const r = raw as Record<string, unknown>;
+  for (const k of MONTH_HISTORY_FIELD_HINTS) {
+    const v = r[k];
+    if (Array.isArray(v)) {
+      const arr = (v as Array<Record<string, unknown>>).map((p) => ({
+        fecha: String(p.date ?? p.month ?? p.fecha ?? ""),
+        visitas: numOrZero(p.visits ?? p.value ?? p.count ?? p.traffic),
+      })).filter((p) => MONTH_KEY_RE.test(p.fecha) && p.visitas > 0);
+      if (arr.length > 0) return sortByFecha(arr);
+    }
+    if (v && typeof v === "object") {
+      const obj = v as Record<string, unknown>;
+      const serie = mapToSerie(obj);
+      if (serie.length > 0) return serie;
+    }
+  }
+  return [];
+}
+
+function mapToSerie(obj: Record<string, unknown>): Array<{ fecha: string; visitas: number }> {
+  const out: Array<{ fecha: string; visitas: number }> = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (!MONTH_KEY_RE.test(k)) continue;
+    const n = numOrZero(v);
+    if (n > 0) out.push({ fecha: k, visitas: n });
+  }
+  return sortByFecha(out);
+}
+
+function sortByFecha<T extends { fecha: string }>(arr: T[]): T[] {
+  return arr.sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+function numOrZero(v: unknown): number {
+  if (v === null || v === undefined) return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
 export interface SourceBreakdown {
@@ -183,4 +266,66 @@ function numOrNull(v: unknown): number | null {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// ============================================================================
+// Categoría (URL paths) — placeholder hasta tener data
+// ============================================================================
+
+export interface CompetitorCategoryRow {
+  competidor: string;
+  categoria: string;
+  url: string;
+  visitas_estimadas: number | null;
+  fecha: string;
+}
+
+export async function getCompetitorByCategoria(): Promise<CompetitorCategoryRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("competitor_categoria_web")
+    .select("competidor, categoria, url, visitas_estimadas, fecha")
+    .order("fecha", { ascending: false })
+    .returns<CompetitorCategoryRow[]>();
+  if (error) {
+    // Tabla aún no existe — devolver array vacío para no romper la página
+    if (/relation .* does not exist/i.test(error.message)) return [];
+    throw new Error(`competitor_categoria_web: ${error.message}`);
+  }
+  // Quedarse con la última fila por (competidor, categoria)
+  const seen = new Set<string>();
+  const out: CompetitorCategoryRow[] = [];
+  for (const r of data ?? []) {
+    const key = `${r.competidor}|${r.categoria}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
+// ============================================================================
+// Google Trends — placeholder hasta tener data
+// ============================================================================
+
+export interface TrendRow {
+  fecha: string;
+  keyword: string;
+  marca: string | null;
+  categoria: string | null;
+  interes: number;
+}
+
+export async function getGoogleTrends(): Promise<TrendRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("google_trends")
+    .select("fecha, keyword, marca, categoria, interes")
+    .order("fecha", { ascending: true })
+    .returns<TrendRow[]>();
+  if (error) {
+    if (/relation .* does not exist/i.test(error.message)) return [];
+    throw new Error(`google_trends: ${error.message}`);
+  }
+  return data ?? [];
 }
