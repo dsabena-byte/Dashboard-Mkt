@@ -120,6 +120,7 @@ export async function getCompetitorMonthlyHistory(): Promise<
 
 const MONTH_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_HISTORY_FIELD_HINTS = [
+  "monthlyVisitsDateFormat",
   "monthlyVisits",
   "monthlyVisitors",
   "estimatedMonthlyVisits",
