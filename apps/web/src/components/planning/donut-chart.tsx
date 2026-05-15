@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 
 interface DonutDatum {
   name: string;
@@ -12,9 +12,11 @@ interface DonutDatum {
 interface DonutChartProps {
   data: DonutDatum[];
   height?: number;
+  /** "currency" (default) o "number" — controla cómo se muestra el valor en el tooltip. */
+  valueFormat?: "currency" | "number";
 }
 
-export function DonutChart({ data, height = 200 }: DonutChartProps) {
+export function DonutChart({ data, height = 200, valueFormat = "currency" }: DonutChartProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
   if (total === 0) {
     return (
@@ -23,6 +25,9 @@ export function DonutChart({ data, height = 200 }: DonutChartProps) {
       </div>
     );
   }
+
+  const fmtValue = (v: number) =>
+    valueFormat === "currency" ? formatCurrency(v) : formatNumber(v);
 
   return (
     <div className="space-y-3">
@@ -44,7 +49,10 @@ export function DonutChart({ data, height = 200 }: DonutChartProps) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(v: number) => [formatCurrency(v), "Inversión"]}
+            formatter={(v: number, name: string) => {
+              const pct = total > 0 ? ((v / total) * 100).toFixed(1) : "0";
+              return [`${fmtValue(v)} (${pct}%)`, name];
+            }}
             contentStyle={{
               backgroundColor: "hsl(var(--card))",
               border: "1px solid hsl(var(--border))",
