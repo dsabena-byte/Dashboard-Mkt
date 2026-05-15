@@ -353,41 +353,10 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Mix de canales (rango) + Evolución mensual por canal — side by side */}
+      {/* Categoría: tabla + tendencia side-by-side */}
       <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Mix de canales (rango)</h3>
-          <p className="text-xs text-muted-foreground">Sesiones por fuente de tráfico en el rango seleccionado.</p>
-          <div className="mt-4">
-            <DonutChart data={channelDonut} />
-          </div>
-        </div>
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual por canal</h3>
-          <p className="text-xs text-muted-foreground">
-            Sesiones por canal — últimos 12 meses. Top 7 canales por volumen.
-          </p>
-          <div className="mt-4">
-            <ChannelMonthlyChart
-              data={monthlyChannelData}
-              canales={topCanales}
-              colors={PALETA_CANAL}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Trend diario */}
-      <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia diaria de sesiones</h3>
-        <p className="text-xs text-muted-foreground">Sesiones por día en el rango seleccionado.</p>
-        <div className="mt-4">
-          <EngagementTrendChart data={trendData} />
-        </div>
-      </section>
-
       {/* Performance por categoría */}
-      <section className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card">
         <header className="border-b p-6 pb-4">
           <h3 className="text-sm font-medium text-muted-foreground">Performance por categoría</h3>
           <p className="text-xs text-muted-foreground">
@@ -436,10 +405,10 @@ export default async function WebPage({ searchParams }: PageProps) {
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
 
       {/* Tendencia por categoría — sesiones diarias por categoría */}
-      <section className="rounded-lg border bg-card p-6">
+      <div className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">
           Tendencia por categoría
         </h3>
@@ -453,6 +422,7 @@ export default async function WebPage({ searchParams }: PageProps) {
             colors={PALETA_CAT_WEB}
           />
         </div>
+      </div>
       </section>
 
       {/* Top productos + Top landings — lado a lado */}
@@ -548,6 +518,30 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
+      {/* Mix de canales (rango) + Evolución mensual por canal — side by side */}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Mix de canales (rango)</h3>
+          <p className="text-xs text-muted-foreground">Sesiones por fuente de tráfico en el rango seleccionado.</p>
+          <div className="mt-4">
+            <DonutChart data={channelDonut} valueFormat="number" />
+          </div>
+        </div>
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual por canal</h3>
+          <p className="text-xs text-muted-foreground">
+            Sesiones por canal — últimos 12 meses. Top 7 canales por volumen.
+          </p>
+          <div className="mt-4">
+            <ChannelMonthlyChart
+              data={monthlyChannelData}
+              canales={topCanales}
+              colors={PALETA_CANAL}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Detalle de canales */}
       <section className="rounded-lg border bg-card">
         <header className="border-b p-6 pb-4">
@@ -587,6 +581,15 @@ export default async function WebPage({ searchParams }: PageProps) {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Trend diario */}
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia diaria de sesiones</h3>
+        <p className="text-xs text-muted-foreground">Sesiones por día en el rango seleccionado.</p>
+        <div className="mt-4">
+          <EngagementTrendChart data={trendData} />
         </div>
       </section>
 
