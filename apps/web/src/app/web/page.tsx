@@ -78,6 +78,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     bySource,
     monthlyByChannel,
     byCategory,
+    monthlyByCategory,
     topLandings,
     topProducts,
     dailyKpisPrev,
@@ -94,6 +95,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     getWebBySource(range),
     getWebMonthlyByChannel(12),
     getWebByCategory(range),
+    getWebByCategory(monthlyRange),
     getWebTopLandingPages(range, 10),
     getWebTopProducts(range, 10),
     getWebDailyKpis(prev),
@@ -229,26 +231,24 @@ export default async function WebPage({ searchParams }: PageProps) {
     });
 
   // Pivot data para CategoryTrendChart: { fecha, Lavado: X, Cocinas: Y, ... }
-  // Tendencia por categoría — agregada por SEMANA (lunes como inicio)
-  const weekStart = (fecha: string): string => {
-    const d = new Date(`${fecha}T00:00:00Z`);
-    const day = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-    const offset = day === 0 ? -6 : 1 - day;
-    d.setUTCDate(d.getUTCDate() + offset);
-    return d.toISOString().slice(0, 10);
-  };
-  const categoriasUnicas = [...new Set(byCategory.map((r) => r.categoria))];
+  // Tendencia por categoría — agregada POR MES (12 meses hacia atrás, no afectado por filtro)
+  const categoriasUnicas = [...new Set(monthlyByCategory.map((r) => r.categoria))];
   const categoryTrendByDate = new Map<string, Record<string, number>>();
-  for (const r of byCategory) {
-    const wk = weekStart(r.fecha);
-    const acc = categoryTrendByDate.get(wk) ?? {};
+  for (const r of monthlyByCategory) {
+    const mes = r.fecha.slice(0, 7) + "-01";
+    const acc = categoryTrendByDate.get(mes) ?? {};
     acc[r.categoria] = (acc[r.categoria] ?? 0) + r.sesiones;
-    categoryTrendByDate.set(wk, acc);
+    categoryTrendByDate.set(mes, acc);
   }
+  const SHORT_MONTH_CAT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const fmtMesCat = (mes: string) => {
+    const [y, m] = mes.split("-");
+    return `${SHORT_MONTH_CAT[parseInt(m ?? "1", 10) - 1] ?? m} ${y?.slice(2) ?? ""}`;
+  };
   const categoryTrendData = [...categoryTrendByDate.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([fecha, vals]) => {
-      const row: Record<string, string | number | null> = { fecha };
+    .map(([mes, vals]) => {
+      const row: Record<string, string | number | null> = { fecha: fmtMesCat(mes) };
       for (const cat of categoriasUnicas) row[cat] = vals[cat] ?? null;
       return row as { fecha: string } & Record<string, number | null>;
     });
@@ -419,10 +419,10 @@ export default async function WebPage({ searchParams }: PageProps) {
       {/* Tendencia por categoría — sesiones diarias por categoría */}
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">
-          Tendencia semanal por categoría
+          Tendencia mensual por categoría
         </h3>
         <p className="text-xs text-muted-foreground">
-          Sesiones agrupadas por semana (lunes = inicio) en el rango seleccionado.
+          Sesiones por mes (últimos 12 meses, no afectado por el filtro).
         </p>
         <div className="mt-4">
           <CategoryTrendChart
