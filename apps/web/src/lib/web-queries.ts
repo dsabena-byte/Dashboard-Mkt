@@ -104,6 +104,27 @@ export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]
   return data ?? [];
 }
 
+export interface MonthlyUsersRow {
+  mes: string;
+  total_users: number;
+  new_users: number;
+}
+
+export async function getMonthlyUsers(monthStart: string): Promise<MonthlyUsersRow | null> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("ga4_monthly_users")
+    .select("mes, total_users, new_users")
+    .eq("mes", monthStart)
+    .maybeSingle()
+    .returns<MonthlyUsersRow | null>();
+  if (error) {
+    if (/relation .* does not exist/i.test(error.message)) return null;
+    throw new Error(`ga4_monthly_users: ${error.message}`);
+  }
+  return data ?? null;
+}
+
 export async function getWebMonthlyByChannel(monthsBack = 12): Promise<MonthlyByChannelRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
