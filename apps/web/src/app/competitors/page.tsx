@@ -4,6 +4,7 @@ import { SentimentBar } from "@/components/sentiment-bar";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 import { PilarChart } from "@/components/pilar-chart";
 import { CompetitorTrafficChart } from "@/components/competitor-traffic-chart";
+import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
 import {
   getBrandBenchmark,
   getEngagementTrend,
@@ -12,10 +13,13 @@ import {
   OWN_BRAND,
 } from "@/lib/social-queries";
 import {
+  getCompetitorByCategoria,
   getCompetitorKeywords,
+  getCompetitorMonthlyHistory,
   getCompetitorTrafficSources,
   getCompetitorWebHistory,
   getCompetitorWebSnapshot,
+  getGoogleTrends,
 } from "@/lib/competitor-web-queries";
 import { parseDateRange } from "@/lib/dates";
 import { formatNumber, formatPct } from "@/lib/utils";
@@ -34,8 +38,11 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     trend,
     webSnapshot,
     webHistory,
+    monthlyHistory,
     trafficSources,
     keywords,
+    porCategoria,
+    googleTrends,
   ] = await Promise.all([
     getSocialTotals(range),
     getBrandBenchmark(range),
@@ -43,9 +50,23 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     getEngagementTrend(range),
     getCompetitorWebSnapshot(),
     getCompetitorWebHistory(12),
+    getCompetitorMonthlyHistory(),
     getCompetitorTrafficSources(),
     getCompetitorKeywords(10),
+    getCompetitorByCategoria(),
+    getGoogleTrends(),
   ]);
+
+  // Agrupar trends por keyword para el gráfico
+  const trendsByKw = new Map<string, Array<{ fecha: string; interes: number }>>();
+  for (const t of googleTrends) {
+    if (!trendsByKw.has(t.keyword)) trendsByKw.set(t.keyword, []);
+    trendsByKw.get(t.keyword)!.push({ fecha: t.fecha, interes: t.interes });
+  }
+
+  // Agrupar tráfico por categoría: filas = categoria, columnas = competidor
+  const categorias = [...new Set(porCategoria.map((r) => r.categoria))].sort();
+  const competidoresEnCat = [...new Set(porCategoria.map((r) => r.competidor))].sort();
 
   const hasData = benchmark.length > 0;
 
@@ -278,14 +299,110 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
 
       <section className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">
-          Evolución de visitas — últimos snapshots
+          Historia mensual de visitas (SimilarWeb)
         </h3>
         <p className="text-xs text-muted-foreground">
-          Cada punto es una ejecución del workflow. Cuantos más snapshots tengamos, más visible se vuelven los picos de campañas.
+          Últimos meses reportados por SimilarWeb por competidor. Picos sostenidos = campaña activa.
+        </p>
+        <div className="mt-4">
+          <CompetitorMonthlyChart data={monthlyHistory} />
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Evolución por snapshot
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Cada punto = ejecución del workflow. Útil para detectar variaciones intra-mes una vez que tengamos varias semanas acumuladas.
         </p>
         <div className="mt-4">
           <CompetitorTrafficChart series={webHistory} />
         </div>
+      </section>
+
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Tráfico por categoría (URL paths)
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Visitas a las secciones de cada competidor. Requiere configurar las URLs por competidor/categoría en el workflow N8N (ver doc).
+        </p>
+        {porCategoria.length === 0 ? (
+          <div className="mt-4 rounded border border-dashed p-6 text-center text-xs text-muted-foreground">
+            Sin data todavía. Aplicá la migración <code>0005_competitor_depth.sql</code> y configurá el workflow{" "}
+            <code>competitor-categoria-sync</code> con las URLs por competidor por categoría (Lavado / Refrigeración / Cocinas).
+          </div>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-2">Categoría</th>
+                  {competidoresEnCat.map((c) => (
+                    <th key={c} className="px-3 py-2 text-right">{c}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {categorias.map((cat) => (
+                  <tr key={cat} className="border-b last:border-0">
+                    <td className="px-3 py-2 font-medium">{cat}</td>
+                    {competidoresEnCat.map((c) => {
+                      const r = porCategoria.find((x) => x.categoria === cat && x.competidor === c);
+                      return (
+                        <td key={c} className="px-3 py-2 text-right tabular-nums">
+                          {r?.visitas_estimadas ? formatNumber(r.visitas_estimadas) : "—"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Interés de búsqueda — Google Trends (AR)
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Escala 0-100 por keyword. Útil para ver qué marca está pujando en cada categoría.
+        </p>
+        {googleTrends.length === 0 ? (
+          <div className="mt-4 rounded border border-dashed p-6 text-center text-xs text-muted-foreground">
+            Sin data todavía. Aplicá la migración <code>0005_competitor_depth.sql</code> y configurá el workflow{" "}
+            <code>google-trends-sync</code> (necesita SerpApi key, ~USD 50/mes para 5k queries).
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {[...trendsByKw.entries()].slice(0, 6).map(([kw, points]) => {
+              const max = Math.max(...points.map((p) => p.interes), 1);
+              return (
+                <div key={kw} className="rounded border border-input p-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs font-medium">{kw}</span>
+                    <span className="text-xs text-muted-foreground">
+                      máx {max} · últimos {points.length} puntos
+                    </span>
+                  </div>
+                  <div className="mt-2 flex h-12 items-end gap-0.5">
+                    {points.slice(-30).map((p, i) => (
+                      <div
+                        key={p.fecha + i}
+                        title={`${p.fecha}: ${p.interes}`}
+                        className="flex-1 rounded-sm bg-primary/70"
+                        style={{ height: `${(p.interes / max) * 100}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
