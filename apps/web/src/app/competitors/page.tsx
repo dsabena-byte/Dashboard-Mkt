@@ -3,7 +3,6 @@ import { DateRangeInfo } from "@/components/date-range-info";
 import { SentimentBar } from "@/components/sentiment-bar";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 import { PilarChart } from "@/components/pilar-chart";
-import { CompetitorTrafficChart } from "@/components/competitor-traffic-chart";
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
 import {
   getBrandBenchmark,
@@ -17,7 +16,6 @@ import {
   getCompetitorKeywords,
   getCompetitorMonthlyHistory,
   getCompetitorTrafficSources,
-  getCompetitorWebHistory,
   getCompetitorWebSnapshot,
   getGoogleTrends,
 } from "@/lib/competitor-web-queries";
@@ -37,7 +35,6 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     pilarBreakdown,
     trend,
     webSnapshot,
-    webHistory,
     monthlyHistory,
     trafficSources,
     keywords,
@@ -49,7 +46,6 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     getPilarBreakdown(),
     getEngagementTrend(range),
     getCompetitorWebSnapshot(),
-    getCompetitorWebHistory(12),
     getCompetitorMonthlyHistory(),
     getCompetitorTrafficSources(),
     getCompetitorKeywords(10),
@@ -309,31 +305,14 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">
-          Evolución por snapshot
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Cada punto = ejecución del workflow. Útil para detectar variaciones intra-mes una vez que tengamos varias semanas acumuladas.
-        </p>
-        <div className="mt-4">
-          <CompetitorTrafficChart series={webHistory} />
-        </div>
-      </section>
-
-      <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">
-          Tráfico por categoría (URL paths)
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Visitas a las secciones de cada competidor. Requiere configurar las URLs por competidor/categoría en el workflow N8N (ver doc).
-        </p>
-        {porCategoria.length === 0 ? (
-          <div className="mt-4 rounded border border-dashed p-6 text-center text-xs text-muted-foreground">
-            Sin data todavía. Aplicá la migración <code>0005_competitor_depth.sql</code> y configurá el workflow{" "}
-            <code>competitor-categoria-sync</code> con las URLs por competidor por categoría (Lavado / Refrigeración / Cocinas).
-          </div>
-        ) : (
+      {porCategoria.length > 0 && (
+        <section className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Tráfico por categoría
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Tráfico orgánico estimado a las secciones por categoría de cada competidor.
+          </p>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/40">
@@ -361,22 +340,17 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
               </tbody>
             </table>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">
-          Interés de búsqueda — Google Trends (AR)
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Escala 0-100 por keyword. Útil para ver qué marca está pujando en cada categoría.
-        </p>
-        {googleTrends.length === 0 ? (
-          <div className="mt-4 rounded border border-dashed p-6 text-center text-xs text-muted-foreground">
-            Sin data todavía. Aplicá la migración <code>0005_competitor_depth.sql</code> y configurá el workflow{" "}
-            <code>google-trends-sync</code> (necesita SerpApi key, ~USD 50/mes para 5k queries).
-          </div>
-        ) : (
+      {googleTrends.length > 0 && (
+        <section className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Interés de búsqueda — Google Trends (AR)
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Escala 0-100 por keyword. Útil para ver qué marca está pujando en cada categoría.
+          </p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {[...trendsByKw.entries()].slice(0, 6).map(([kw, points]) => {
               const max = Math.max(...points.map((p) => p.interes), 1);
@@ -402,84 +376,84 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            Fuentes de tráfico por competidor
-          </h3>
-          <p className="text-xs text-muted-foreground">Mix actual (último snapshot).</p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2">Competidor</th>
-                  <th className="px-3 py-2">Top fuentes (% del tráfico)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trafficSources.map((row) => (
-                  <tr key={row.competidor} className="border-b last:border-0">
-                    <td className="px-3 py-2 font-medium align-top">{row.competidor}</td>
-                    <td className="px-3 py-2">
-                      {row.fuentes.length === 0 ? (
-                        <span className="text-xs text-muted-foreground">Sin breakdown</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                          {row.fuentes.map((f) => (
-                            <span
-                              key={f.name}
-                              className="rounded-full bg-muted px-2 py-0.5 text-xs"
-                            >
-                              {f.name}: {(f.value * 100).toFixed(1)}%
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            Top keywords orgánicas — por competidor
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Las 5 palabras clave que más tráfico le traen a cada dominio.
-          </p>
-          <div className="mt-4 space-y-3">
-            {keywords.map((row) => (
-              <div key={row.competidor} className="rounded border border-input p-3">
-                <div className="text-xs font-medium">{row.competidor}</div>
-                {row.keywords.length === 0 ? (
-                  <div className="mt-1 text-xs text-muted-foreground">Sin data de keywords</div>
-                ) : (
-                  <ol className="mt-1 grid gap-0.5 text-xs">
-                    {row.keywords.slice(0, 5).map((k, i) => (
-                      <li key={k.keyword + i} className="flex justify-between gap-2">
-                        <span className="truncate">
-                          {i + 1}. {k.keyword}
-                        </span>
-                        {k.visits !== null && (
-                          <span className="tabular-nums text-muted-foreground">
-                            {formatNumber(k.visits)}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
-                )}
+      {(() => {
+        const sourcesConData = trafficSources.filter((r) => r.fuentes.length > 0);
+        const keywordsConData = keywords.filter((r) => r.keywords.length > 0);
+        if (sourcesConData.length === 0 && keywordsConData.length === 0) return null;
+        return (
+          <section className="grid gap-4 lg:grid-cols-2">
+            {sourcesConData.length > 0 && (
+              <div className="rounded-lg border bg-card p-6">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Fuentes de tráfico por competidor
+                </h3>
+                <p className="text-xs text-muted-foreground">Mix actual (último snapshot).</p>
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b bg-muted/40">
+                      <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                        <th className="px-3 py-2">Competidor</th>
+                        <th className="px-3 py-2">Top fuentes (% del tráfico)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sourcesConData.map((row) => (
+                        <tr key={row.competidor} className="border-b last:border-0">
+                          <td className="px-3 py-2 font-medium align-top">{row.competidor}</td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-wrap gap-1.5">
+                              {row.fuentes.map((f) => (
+                                <span key={f.name} className="rounded-full bg-muted px-2 py-0.5 text-xs">
+                                  {f.name}: {(f.value * 100).toFixed(1)}%
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            )}
+
+            {keywordsConData.length > 0 && (
+              <div className="rounded-lg border bg-card p-6">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Top keywords orgánicas — por competidor
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Las 5 palabras clave que más tráfico le traen a cada dominio.
+                </p>
+                <div className="mt-4 space-y-3">
+                  {keywordsConData.map((row) => (
+                    <div key={row.competidor} className="rounded border border-input p-3">
+                      <div className="text-xs font-medium">{row.competidor}</div>
+                      <ol className="mt-1 grid gap-0.5 text-xs">
+                        {row.keywords.slice(0, 5).map((k, i) => (
+                          <li key={k.keyword + i} className="flex justify-between gap-2">
+                            <span className="truncate">
+                              {i + 1}. {k.keyword}
+                            </span>
+                            {k.visits !== null && (
+                              <span className="tabular-nums text-muted-foreground">
+                                {formatNumber(k.visits)}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        );
+      })()}
     </div>
   );
 }
