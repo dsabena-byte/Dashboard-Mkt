@@ -31,6 +31,13 @@ const HIDDEN_COMPETITORS = new Set(["Samsung"]);
 // Drean (datos REALES desde GA4 — reemplazan la estimación de SimilarWeb)
 // =====================================================================
 
+export interface DreanGa4Monthly {
+  fecha: string;
+  visitas: number;
+  bounce_rate: number | null;
+  pages_per_visit: number | null;
+  avg_visit_duration: number | null;
+}
 interface DreanGa4Snapshot {
   fecha: string;
   visitas_estimadas: number;
@@ -38,6 +45,8 @@ interface DreanGa4Snapshot {
   pages_per_visit: number | null;
   avg_visit_duration: number | null;
   meses: Array<{ fecha: string; visitas: number }>;
+  // Métricas de calidad mensuales (para poder elegir el mes cerrado en lugar del en curso)
+  mesesMetrics: DreanGa4Monthly[];
 }
 
 /**
@@ -78,9 +87,16 @@ export async function getDreanWebMetrics(): Promise<DreanGa4Snapshot | null> {
     }
     byMonth.set(monthKey, acc);
   }
-  const meses = [...byMonth.entries()]
+  const mesesMetrics: DreanGa4Monthly[] = [...byMonth.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([fecha, acc]) => ({ fecha, visitas: acc.sesiones }));
+    .map(([fecha, acc]) => ({
+      fecha,
+      visitas: acc.sesiones,
+      bounce_rate: acc.sesionesConBounce > 0 ? acc.bounceWeighted / acc.sesionesConBounce : null,
+      pages_per_visit: acc.sesiones > 0 ? acc.pageviews / acc.sesiones : null,
+      avg_visit_duration: acc.sesionesConDuration > 0 ? acc.durationWeighted / acc.sesionesConDuration : null,
+    }));
+  const meses = mesesMetrics.map((m) => ({ fecha: m.fecha, visitas: m.visitas }));
 
   const lastMonth = meses[meses.length - 1];
   if (!lastMonth) return null;
@@ -93,6 +109,7 @@ export async function getDreanWebMetrics(): Promise<DreanGa4Snapshot | null> {
     pages_per_visit: lastAcc.sesiones > 0 ? lastAcc.pageviews / lastAcc.sesiones : null,
     avg_visit_duration: lastAcc.sesionesConDuration > 0 ? lastAcc.durationWeighted / lastAcc.sesionesConDuration : null,
     meses: meses.slice(-12),
+    mesesMetrics: mesesMetrics.slice(-12),
   };
 }
 
