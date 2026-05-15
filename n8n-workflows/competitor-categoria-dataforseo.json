@@ -1,0 +1,133 @@
+{
+  "name": "Competitor Category Traffic (DataForSEO)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "days", "daysInterval": 7 }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (weekly)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-800, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// URLs por competidor por categoría. Cada una se consulta a DataForSEO Labs\n// (ranked_keywords) para obtener su tráfico orgánico estimado.\n\nconst URLS = [\n  { competidor: 'Drean',           categoria: 'Lavado',         url: 'https://drean.com.ar/es_AR/Lavado/c/15' },\n  { competidor: 'Drean',           categoria: 'Refrigeración', url: 'https://drean.com.ar/es_AR/Heladeras/c/9' },\n  { competidor: 'Drean',           categoria: 'Cocinas',        url: 'https://drean.com.ar/es_AR/Cocci%C3%B3n/c/1' },\n  { competidor: 'Electrolux',      categoria: 'Lavado',         url: 'https://www.tienda.electrolux.com.ar/grandes-electrodomesticos/lavarropas' },\n  { competidor: 'Electrolux',      categoria: 'Refrigeración', url: 'https://www.tienda.electrolux.com.ar/grandes-electrodomesticos/heladeras' },\n  { competidor: 'Electrolux',      categoria: 'Cocinas',        url: 'https://www.tienda.electrolux.com.ar/grandes-electrodomesticos/cocinas' },\n  { competidor: 'Gafa',            categoria: 'Lavado',         url: 'https://www.tienda.gafa.com.ar/grandes-electrodomesticos/lavarropas' },\n  { competidor: 'Gafa',            categoria: 'Refrigeración', url: 'https://www.tienda.gafa.com.ar/grandes-electrodomesticos/heladeras' },\n  { competidor: 'Gafa',            categoria: 'Cocinas',        url: 'https://www.tienda.gafa.com.ar/grandes-electrodomesticos/cocinas' },\n  { competidor: 'Whirlpool',       categoria: 'Lavado',         url: 'https://www.whirlpool.com.ar/electrodomesticos/lavarropas' },\n  { competidor: 'Whirlpool',       categoria: 'Refrigeración', url: 'https://www.whirlpool.com.ar/electrodomesticos/heladeras' },\n  { competidor: 'Whirlpool',       categoria: 'Cocinas',        url: 'https://www.whirlpool.com.ar/electrodomesticos/cocinas' },\n  { competidor: 'Philco (Newsan)', categoria: 'Lavado',         url: 'https://tiendanewsan.com.ar/electrodomesticos/lavado/lavarropas.html' },\n  { competidor: 'Philco (Newsan)', categoria: 'Refrigeración', url: 'https://tiendanewsan.com.ar/electrodomesticos/heladeras-freezers-y-cavas.html' },\n];\n\nconst fecha = new Date().toISOString().slice(0, 10);\nreturn URLS.map((u) => ({ json: { ...u, fecha } }));\n"
+      },
+      "id": "node-config",
+      "name": "Build URL list",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify([{ target: $json.url, location_code: 2032, language_code: 'es', limit: 100, ignore_synonyms: true }]) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "node-dataforseo",
+      "name": "DataForSEO — Ranked Keywords",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-380, 100],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "REPLACE_WITH_BASIC_AUTH_CREDENTIAL_ID",
+          "name": "DataForSEO Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Para cada item (una URL consultada), sumamos los ETV de todos los\n// keywords rankeados → tráfico orgánico estimado mensual hacia esa URL.\n//\n// Estructura de respuesta DataForSEO:\n//   tasks[0].result[0].items[].keyword_data.keyword_info.search_volume\n//   tasks[0].result[0].items[].ranked_serp_element.serp_item.etv\n//   tasks[0].result[0].total_count\n\nconst output = [];\n\nfor (const item of $input.all()) {\n  const meta = item.json;\n  // El response de DataForSEO viene en distintos shapes según versión; tomamos defensivo\n  const resp = item.json.body ?? item.json;\n  const task = (resp.tasks && resp.tasks[0]) || resp;\n  const result = (task.result && task.result[0]) || {};\n  const items = result.items || [];\n  const totalCount = result.total_count || items.length;\n\n  let etvSum = 0;\n  let keywordsCount = 0;\n  for (const it of items) {\n    const etv = it?.ranked_serp_element?.serp_item?.etv ?? it?.serp_item?.etv ?? 0;\n    if (typeof etv === 'number') etvSum += etv;\n    keywordsCount += 1;\n  }\n\n  output.push({\n    json: {\n      fecha: meta.fecha,\n      competidor: meta.competidor,\n      categoria: meta.categoria,\n      url: meta.url,\n      visitas_estimadas: Math.round(etvSum),\n      raw: { total_count: totalCount, keywords_in_sample: keywordsCount, items_sample: items.slice(0, 5) },\n      source: 'dataforseo_labs',\n    },\n  });\n}\n\nreturn output;\n"
+      },
+      "id": "node-normalize",
+      "name": "Normalize to row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-160, 100]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "node-aggregate",
+      "name": "Aggregate rows",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [60, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/competitor_categoria_web?on_conflict=fecha,competidor,categoria,source",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.data) }}",
+        "options": {}
+      },
+      "id": "node-supabase",
+      "name": "Supabase — Upsert competitor_categoria_web",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 100]
+    }
+  ],
+  "connections": {
+    "Schedule (weekly)": {
+      "main": [[{ "node": "Build URL list", "type": "main", "index": 0 }]]
+    },
+    "Manual trigger": {
+      "main": [[{ "node": "Build URL list", "type": "main", "index": 0 }]]
+    },
+    "Build URL list": {
+      "main": [[{ "node": "DataForSEO — Ranked Keywords", "type": "main", "index": 0 }]]
+    },
+    "DataForSEO — Ranked Keywords": {
+      "main": [[{ "node": "Normalize to row", "type": "main", "index": 0 }]]
+    },
+    "Normalize to row": {
+      "main": [[{ "node": "Aggregate rows", "type": "main", "index": 0 }]]
+    },
+    "Aggregate rows": {
+      "main": [[{ "node": "Supabase — Upsert competitor_categoria_web", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": false }
+}
