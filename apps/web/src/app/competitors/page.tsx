@@ -4,6 +4,7 @@ import { SentimentBar } from "@/components/sentiment-bar";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 import { PilarChart } from "@/components/pilar-chart";
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
+import { KpiBarPanel } from "@/components/kpi-bar-panel";
 import {
   getBrandBenchmark,
   getEngagementTrend,
@@ -17,6 +18,7 @@ import {
   getCompetitorMonthlyHistory,
   getCompetitorTrafficSources,
   getCompetitorWebSnapshot,
+  getDreanWebMetrics,
   getGoogleTrends,
 } from "@/lib/competitor-web-queries";
 import { parseDateRange } from "@/lib/dates";
@@ -34,12 +36,13 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     benchmark,
     pilarBreakdown,
     trend,
-    webSnapshot,
-    monthlyHistory,
+    webSnapshotRaw,
+    monthlyHistoryRaw,
     trafficSources,
     keywords,
     porCategoria,
     googleTrends,
+    dreanGa4,
   ] = await Promise.all([
     getSocialTotals(range),
     getBrandBenchmark(range),
@@ -51,7 +54,26 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     getCompetitorKeywords(10),
     getCompetitorByCategoria(),
     getGoogleTrends(),
+    getDreanWebMetrics(),
   ]);
+
+  // Para Drean usamos GA4 (real) en lugar de la estimación de SimilarWeb.
+  // Reemplazamos su fila en webSnapshot y su entrada en monthlyHistory.
+  const webSnapshot = webSnapshotRaw.map((r) => {
+    if (r.competidor !== "Drean" || !dreanGa4) return r;
+    return {
+      ...r,
+      fecha: dreanGa4.fecha,
+      visitas_estimadas: dreanGa4.visitas_estimadas,
+      bounce_rate: dreanGa4.bounce_rate,
+      pages_per_visit: dreanGa4.pages_per_visit,
+      avg_visit_duration: dreanGa4.avg_visit_duration,
+    };
+  });
+  const monthlyHistory = monthlyHistoryRaw.map((m) => {
+    if (m.competidor !== "Drean" || !dreanGa4) return m;
+    return { ...m, meses: dreanGa4.meses };
+  });
 
   // Agrupar trends por keyword para el gráfico
   const trendsByKw = new Map<string, Array<{ fecha: string; interes: number }>>();
@@ -90,13 +112,6 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     monthlyStats.set(m.competidor, { ultima, anterior, deltaPct });
   }
 
-  // Ranking por % de variación última→penúltima para el gráfico de desvíos
-  const momRanking = [...monthlyStats.entries()]
-    .map(([competidor, s]) => ({ competidor, deltaPct: s.deltaPct, ultima: s.ultima?.visitas ?? null }))
-    .filter((r) => r.deltaPct !== null)
-    .sort((a, b) => (b.deltaPct ?? 0) - (a.deltaPct ?? 0));
-  const maxAbsDelta = Math.max(0.01, ...momRanking.map((r) => Math.abs(r.deltaPct ?? 0)));
-
   // Agrupar tráfico por categoría: filas = categoria, columnas = competidor
   const categorias = [...new Set(porCategoria.map((r) => r.categoria))].sort();
   const competidoresEnCat = [...new Set(porCategoria.map((r) => r.competidor))].sort();
@@ -122,135 +137,6 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
           <code>sheets-social-sync.json</code> en N8N y poblá el Sheet con el scraper.
         </div>
       )}
-
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title="Posts (propios)"
-          value={formatNumber(totals.posts)}
-          hint={`@${OWN_BRAND}`}
-        />
-        <KpiCard
-          title="Engagement promedio"
-          value={
-            totals.engagement_promedio !== null
-              ? formatPct(totals.engagement_promedio, 2)
-              : "—"
-          }
-        />
-        <KpiCard
-          title="Sentiment positivo"
-          value={
-            totals.sentiment_positivo_promedio !== null
-              ? `${totals.sentiment_positivo_promedio.toFixed(0)}%`
-              : "—"
-          }
-        />
-        <KpiCard
-          title="Followers"
-          value={totals.followers > 0 ? formatNumber(totals.followers) : "—"}
-        />
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6">
-          <header className="mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Engagement por marca
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Likes + comentarios / posts, por día.
-            </p>
-          </header>
-          <EngagementTrendChart data={trend} />
-        </div>
-        <div className="rounded-lg border bg-card p-6">
-          <header className="mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Posts por pilar
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Distribución de contenido (Producto, Branding, Educacional, Promo).
-            </p>
-          </header>
-          <PilarChart data={pilarBreakdown} />
-        </div>
-      </section>
-
-      <section className="rounded-lg border bg-card">
-        <header className="border-b p-6 pb-4">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            Benchmark — Drean vs Competidores
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Métricas agregadas en el rango seleccionado.
-          </p>
-        </header>
-        {benchmark.length === 0 ? (
-          <div className="p-12 text-center text-sm text-muted-foreground">
-            Sin datos para mostrar.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-2">Marca</th>
-                  <th className="px-4 py-2 text-right">Posts</th>
-                  <th className="px-4 py-2 text-right">Likes</th>
-                  <th className="px-4 py-2 text-right">Comentarios</th>
-                  <th className="px-4 py-2 text-right">Views</th>
-                  <th className="px-4 py-2 text-right">Engagement avg</th>
-                  <th className="px-4 py-2">Sentiment</th>
-                  <th className="px-4 py-2 text-right">Followers</th>
-                </tr>
-              </thead>
-              <tbody>
-                {benchmark.map((row) => (
-                  <tr key={row.cuenta} className="border-b last:border-0">
-                    <td className="px-4 py-2 font-medium">
-                      <span className="flex items-center gap-2">
-                        @{row.cuenta}
-                        {!row.es_competidor && (
-                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
-                            propia
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {formatNumber(row.posts)}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {formatNumber(row.likes)}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {formatNumber(row.comentarios)}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {formatNumber(row.views)}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {row.engagement_promedio !== null
-                        ? row.engagement_promedio.toFixed(1)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2" style={{ minWidth: 140 }}>
-                      <SentimentBar
-                        positivo={row.sentiment_positivo_promedio}
-                        negativo={row.sentiment_negativo_promedio}
-                        neutro={row.sentiment_neutro_promedio}
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                      {row.followers > 0 ? formatNumber(row.followers) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
 
       <section className="rounded-lg border bg-card">
         <header className="border-b p-6 pb-4">
@@ -339,114 +225,6 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
         )}
       </section>
 
-      {/* Tabla mensual con heatmap */}
-      {allMeses.length > 0 && (
-        <section className="rounded-lg border bg-card">
-          <header className="border-b p-6 pb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Visitas por mes — desvíos
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Visitas mensuales por competidor. Celdas en verde = creció vs mes anterior, rojo = bajó (umbral ±5%).
-            </p>
-          </header>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-2">Competidor</th>
-                  {allMeses.map((mes) => (
-                    <th key={mes} className="px-4 py-2 text-right">{fmtMonthShort(mes)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...monthlyHistory]
-                  .sort((a, b) => {
-                    const sa = monthlyStats.get(a.competidor)?.ultima?.visitas ?? 0;
-                    const sb = monthlyStats.get(b.competidor)?.ultima?.visitas ?? 0;
-                    return sb - sa;
-                  })
-                  .map((m) => {
-                    const sorted = [...m.meses].sort((a, b) => a.fecha.localeCompare(b.fecha));
-                    return (
-                      <tr key={m.competidor} className="border-b last:border-0">
-                        <td className="px-4 py-2 font-medium">{m.competidor}</td>
-                        {allMeses.map((mes, i) => {
-                          const dato = sorted.find((x) => x.fecha === mes);
-                          const prevMes = allMeses[i - 1];
-                          const prev = prevMes ? sorted.find((x) => x.fecha === prevMes) : null;
-                          const variacion = dato && prev && prev.visitas > 0
-                            ? (dato.visitas - prev.visitas) / prev.visitas
-                            : null;
-                          const bg = variacion === null ? undefined
-                            : variacion > 0.05 ? "rgba(34, 197, 94, 0.15)"
-                            : variacion < -0.05 ? "rgba(244, 63, 94, 0.15)"
-                            : undefined;
-                          return (
-                            <td
-                              key={mes}
-                              className="px-4 py-2 text-right tabular-nums"
-                              style={bg ? { backgroundColor: bg } : undefined}
-                              title={variacion !== null ? `${variacion > 0 ? "+" : ""}${(variacion * 100).toFixed(1)}% vs ${fmtMonthShort(prevMes!)}` : ""}
-                            >
-                              {dato ? formatNumber(dato.visitas) : "—"}
-                              {variacion !== null && Math.abs(variacion) >= 0.05 && (
-                                <div className={`text-[10px] ${variacion > 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                                  {variacion > 0 ? "▲" : "▼"} {Math.abs(variacion * 100).toFixed(0)}%
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* Gráfico de desvíos MoM */}
-      {momRanking.length > 0 && previousMonth && latestMonth && (
-        <section className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            Desvíos MoM — {fmtMonthShort(previousMonth)} → {fmtMonthShort(latestMonth)}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Variación porcentual de visitas vs mes anterior. Ranking de mayor crecimiento a mayor caída.
-          </p>
-          <div className="mt-6 space-y-2">
-            {momRanking.map((r) => {
-              const pct = (r.deltaPct ?? 0) * 100;
-              const widthPct = Math.min(100, (Math.abs(r.deltaPct ?? 0) / maxAbsDelta) * 50);
-              const isPos = pct > 0;
-              return (
-                <div key={r.competidor} className="flex items-center gap-3 text-sm">
-                  <div className="w-32 truncate font-medium">{r.competidor}</div>
-                  <div className="relative h-6 flex-1 rounded bg-muted/40">
-                    <div className="absolute left-1/2 top-0 h-full w-px bg-border" />
-                    <div
-                      className={`absolute top-0 h-full rounded ${isPos ? "bg-emerald-500/70" : "bg-rose-500/70"}`}
-                      style={{
-                        width: `${widthPct}%`,
-                        left: isPos ? "50%" : `${50 - widthPct}%`,
-                      }}
-                    />
-                  </div>
-                  <div
-                    className={`w-20 text-right tabular-nums font-medium ${isPos ? "text-emerald-700" : "text-rose-700"}`}
-                  >
-                    {isPos ? "+" : ""}{pct.toFixed(1)}%
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       <section className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">
           Historia mensual de visitas (SimilarWeb)
@@ -458,6 +236,49 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
           <CompetitorMonthlyChart data={monthlyHistory} />
         </div>
       </section>
+
+      {/* Calidad del tráfico — bounce, pages/visit, avg duration */}
+      {webSnapshot.length > 0 && (
+        <section className="rounded-lg border bg-card p-6">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Calidad del tráfico — engagement web
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Comparativa de comportamiento de usuario por sitio. <strong>Bounce rate</strong> bajo = visitan más de 1 página.
+            <strong> Pages/visit</strong> alto = exploran más. <strong>Avg duration</strong> alto = se quedan más tiempo.
+          </p>
+          <div className="mt-6 grid gap-6 md:grid-cols-3">
+            <KpiBarPanel
+              title="Bounce rate"
+              subtitle="Menor es mejor"
+              data={[...webSnapshot]
+                .filter((r) => r.bounce_rate !== null)
+                .map((r) => ({ label: r.competidor, value: (r.bounce_rate ?? 0) * 100, display: `${((r.bounce_rate ?? 0) * 100).toFixed(1)}%` }))
+                .sort((a, b) => a.value - b.value)}
+              colorBy="reverse"
+              maxLabel="%"
+            />
+            <KpiBarPanel
+              title="Pages / visit"
+              subtitle="Mayor es mejor"
+              data={[...webSnapshot]
+                .filter((r) => r.pages_per_visit !== null)
+                .map((r) => ({ label: r.competidor, value: r.pages_per_visit ?? 0, display: (r.pages_per_visit ?? 0).toFixed(2) }))
+                .sort((a, b) => b.value - a.value)}
+              colorBy="direct"
+            />
+            <KpiBarPanel
+              title="Avg duration"
+              subtitle="Mayor es mejor"
+              data={[...webSnapshot]
+                .filter((r) => r.avg_visit_duration !== null)
+                .map((r) => ({ label: r.competidor, value: r.avg_visit_duration ?? 0, display: `${Math.round(r.avg_visit_duration ?? 0)}s` }))
+                .sort((a, b) => b.value - a.value)}
+              colorBy="direct"
+            />
+          </div>
+        </section>
+      )}
 
       {porCategoria.length > 0 && (
         <section className="rounded-lg border bg-card p-6">
@@ -608,6 +429,135 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
           </section>
         );
       })()}
+
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          title="Posts (propios)"
+          value={formatNumber(totals.posts)}
+          hint={`@${OWN_BRAND}`}
+        />
+        <KpiCard
+          title="Engagement promedio"
+          value={
+            totals.engagement_promedio !== null
+              ? formatPct(totals.engagement_promedio, 2)
+              : "—"
+          }
+        />
+        <KpiCard
+          title="Sentiment positivo"
+          value={
+            totals.sentiment_positivo_promedio !== null
+              ? `${totals.sentiment_positivo_promedio.toFixed(0)}%`
+              : "—"
+          }
+        />
+        <KpiCard
+          title="Followers"
+          value={totals.followers > 0 ? formatNumber(totals.followers) : "—"}
+        />
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-lg border bg-card p-6">
+          <header className="mb-4">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Engagement por marca
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Likes + comentarios / posts, por día.
+            </p>
+          </header>
+          <EngagementTrendChart data={trend} />
+        </div>
+        <div className="rounded-lg border bg-card p-6">
+          <header className="mb-4">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Posts por pilar
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Distribución de contenido (Producto, Branding, Educacional, Promo).
+            </p>
+          </header>
+          <PilarChart data={pilarBreakdown} />
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-card">
+        <header className="border-b p-6 pb-4">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Benchmark — Drean vs Competidores
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Métricas agregadas en el rango seleccionado.
+          </p>
+        </header>
+        {benchmark.length === 0 ? (
+          <div className="p-12 text-center text-sm text-muted-foreground">
+            Sin datos para mostrar.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-4 py-2">Marca</th>
+                  <th className="px-4 py-2 text-right">Posts</th>
+                  <th className="px-4 py-2 text-right">Likes</th>
+                  <th className="px-4 py-2 text-right">Comentarios</th>
+                  <th className="px-4 py-2 text-right">Views</th>
+                  <th className="px-4 py-2 text-right">Engagement avg</th>
+                  <th className="px-4 py-2">Sentiment</th>
+                  <th className="px-4 py-2 text-right">Followers</th>
+                </tr>
+              </thead>
+              <tbody>
+                {benchmark.map((row) => (
+                  <tr key={row.cuenta} className="border-b last:border-0">
+                    <td className="px-4 py-2 font-medium">
+                      <span className="flex items-center gap-2">
+                        @{row.cuenta}
+                        {!row.es_competidor && (
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                            propia
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {formatNumber(row.posts)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {formatNumber(row.likes)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {formatNumber(row.comentarios)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {formatNumber(row.views)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {row.engagement_promedio !== null
+                        ? row.engagement_promedio.toFixed(1)
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2" style={{ minWidth: 140 }}>
+                      <SentimentBar
+                        positivo={row.sentiment_positivo_promedio}
+                        negativo={row.sentiment_negativo_promedio}
+                        neutro={row.sentiment_neutro_promedio}
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                      {row.followers > 0 ? formatNumber(row.followers) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
