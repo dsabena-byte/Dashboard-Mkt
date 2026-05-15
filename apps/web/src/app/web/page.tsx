@@ -455,15 +455,6 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Mix de canales (donut) — full width */}
-      <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Mix de canales</h3>
-        <p className="text-xs text-muted-foreground">Sesiones por fuente de tráfico en el rango.</p>
-        <div className="mt-4">
-          <DonutChart data={channelDonut} />
-        </div>
-      </section>
-
       {/* Top productos + Top landings — lado a lado */}
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border bg-card">
