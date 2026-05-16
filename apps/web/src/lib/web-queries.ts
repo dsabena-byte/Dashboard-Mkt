@@ -115,6 +115,40 @@ export interface MonthlyUsersRow {
   pageviews?: number;
 }
 
+export interface SmartupMonthlyRow {
+  mes: string;
+  sesiones: number;
+  usuarios: number;
+}
+
+/**
+ * Sesiones/usuarios de campañas Smartup agregados por mes (desde web_traffic).
+ * Se usa para restar de los valores de ga4_monthly_users (cargados sin filtrar
+ * Smartup desde GA4 API). Si web_traffic no tiene datos del mes, devuelve 0 y
+ * la resta es no-op.
+ */
+export async function getSmartupMonthlyAggregates(): Promise<SmartupMonthlyRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("vw_drean_web_smartup_traffic")
+    .select("fecha, sesiones, usuarios")
+    .range(0, 99_999)
+    .returns<Array<{ fecha: string; sesiones: number; usuarios: number }>>();
+  if (error) {
+    if (/relation .* does not exist/i.test(error.message)) return [];
+    throw new Error(`vw_drean_web_smartup_traffic: ${error.message}`);
+  }
+  const map = new Map<string, { sesiones: number; usuarios: number }>();
+  for (const r of data ?? []) {
+    const mes = r.fecha.slice(0, 7) + "-01";
+    const acc = map.get(mes) ?? { sesiones: 0, usuarios: 0 };
+    acc.sesiones += r.sesiones ?? 0;
+    acc.usuarios += r.usuarios ?? 0;
+    map.set(mes, acc);
+  }
+  return [...map.entries()].map(([mes, v]) => ({ mes, ...v }));
+}
+
 export async function getAllMonthlyUsers(): Promise<MonthlyUsersRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
