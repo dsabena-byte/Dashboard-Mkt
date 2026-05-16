@@ -34,7 +34,9 @@
         "metricsUi": {
           "metricValues": [
             { "metricName": "totalUsers" },
-            { "metricName": "newUsers" }
+            { "metricName": "newUsers" },
+            { "metricName": "sessions" },
+            { "metricName": "screenPageViews" }
           ]
         },
         "dimensionsUi": {
@@ -58,7 +60,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Sin dimensión date, GA4 devuelve 1 row con totals del período.\nconst row = $input.first().json;\nconst config = $('Set Config (month)').first().json;\nconst toInt = (v) => {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? Math.round(n) : 0;\n};\nreturn [{\n  json: {\n    mes: config.startDate,\n    total_users: toInt(row.totalUsers),\n    new_users: toInt(row.newUsers),\n  },\n}];\n"
+        "jsCode": "// Sin dimensión date, GA4 devuelve 1 row con totals del período.\nconst row = $input.first().json;\nconst config = $('Set Config (month)').first().json;\nconst toInt = (v) => {\n  const n = Number(v ?? 0);\n  return Number.isFinite(n) ? Math.round(n) : 0;\n};\nreturn [{\n  json: {\n    mes: config.startDate,\n    total_users: toInt(row.totalUsers),\n    new_users: toInt(row.newUsers),\n    sesiones: toInt(row.sessions),\n    pageviews: toInt(row.screenPageViews),\n  },\n}];\n"
       },
       "id": "node-normalize",
       "name": "Normalize row",
