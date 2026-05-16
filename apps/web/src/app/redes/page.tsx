@@ -33,9 +33,9 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <header className="flex items-end justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Competencia · RRSS</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Redes Sociales</h2>
           <p className="text-sm text-muted-foreground">
-            Métricas sociales del scraping de Drean y competidores. La parte web está en <strong>/web</strong>.
+            Métricas sociales de Drean y competidores. La parte web está en <strong>/web</strong>.
           </p>
         </div>
         <DateRangeInfo range={range} />
