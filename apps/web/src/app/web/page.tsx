@@ -73,6 +73,13 @@ export default async function WebPage({ searchParams }: PageProps) {
     return { from: from.toISOString().slice(0, 10), to: range.to };
   })();
 
+  // Para comparativa YoY: traer también los mismos meses del año anterior (24 meses back)
+  const yoyRange = (() => {
+    const to = new Date(`${range.to}T00:00:00Z`);
+    const from = new Date(Date.UTC(to.getUTCFullYear() - 1, to.getUTCMonth() - 11, 1));
+    return { from: from.toISOString().slice(0, 10), to: range.to };
+  })();
+
   const [
     dailyKpis,
     monthlyDailyKpis,
@@ -93,7 +100,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyUsersRow,
   ] = await Promise.all([
     getWebDailyKpis(range),
-    getWebDailyKpis(monthlyRange),
+    getWebDailyKpis(yoyRange),
     getWebBySource(range),
     getWebMonthlyByChannel(12),
     getWebByCategory(range),
@@ -188,19 +195,43 @@ export default async function WebPage({ searchParams }: PageProps) {
   const channels = aggregateBySource(bySource);
   const categories = aggregateByCategory(byCategory);
 
-  // Agregación mensual para el gráfico de barras (12 meses hacia atrás)
-  const monthlyMap = new Map<string, { sesiones: number; usuarios: number; conversiones: number }>();
+  // Agregación mensual con comparativa YoY (mismo mes año anterior)
+  // monthlyDailyKpis ahora trae 24 meses → splitamos por año
+  const monthlyAll = new Map<string, { sesiones: number; usuarios: number; conversiones: number }>();
   for (const r of monthlyDailyKpis) {
     const mes = r.fecha.slice(0, 7) + "-01";
-    const acc = monthlyMap.get(mes) ?? { sesiones: 0, usuarios: 0, conversiones: 0 };
+    const acc = monthlyAll.get(mes) ?? { sesiones: 0, usuarios: 0, conversiones: 0 };
     acc.sesiones += r.sesiones;
     acc.usuarios += r.usuarios;
     acc.conversiones += r.conversiones;
-    monthlyMap.set(mes, acc);
+    monthlyAll.set(mes, acc);
   }
-  const monthlyData = [...monthlyMap.entries()]
-    .map(([mes, v]) => ({ mes, ...v }))
-    .sort((a, b) => a.mes.localeCompare(b.mes));
+  // Construir array con SOLO últimos 12 meses + el dato del mismo mes año anterior
+  const refTo = new Date(`${range.to}T00:00:00Z`);
+  const monthlyData: Array<{
+    mes: string;
+    sesiones: number;
+    usuarios: number;
+    conversiones: number;
+    sesiones_anterior: number;
+    usuarios_anterior: number;
+  }> = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(Date.UTC(refTo.getUTCFullYear(), refTo.getUTCMonth() - i, 1));
+    const mes = d.toISOString().slice(0, 10);
+    const prevYearMes = new Date(Date.UTC(d.getUTCFullYear() - 1, d.getUTCMonth(), 1))
+      .toISOString().slice(0, 10);
+    const curr = monthlyAll.get(mes);
+    const prev = monthlyAll.get(prevYearMes);
+    monthlyData.push({
+      mes,
+      sesiones: curr?.sesiones ?? 0,
+      usuarios: curr?.usuarios ?? 0,
+      conversiones: curr?.conversiones ?? 0,
+      sesiones_anterior: prev?.sesiones ?? 0,
+      usuarios_anterior: prev?.usuarios ?? 0,
+    });
+  }
 
   // Evolución mensual por canal: rows = mes, columnas = canal con sesiones
   // monthlyByChannel viene pre-agregado desde la vista (mes, canal, sesiones).
@@ -478,7 +509,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                     <th className="px-4 py-2">Producto</th>
                     <th className="px-4 py-2">Cat.</th>
                     <th className="px-4 py-2 text-right">Sesiones</th>
-                    <th className="px-4 py-2 text-right">CR</th>
+                    <th className="px-4 py-2 text-right">% total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -501,7 +532,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.sesiones)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                          {p.conversion_rate !== null ? `${(p.conversion_rate * 100).toFixed(2)}%` : "—"}
+                          {totals.sesiones > 0 ? `${((p.sesiones / totals.sesiones) * 100).toFixed(1)}%` : "—"}
                         </td>
                       </tr>
                     );
@@ -528,7 +559,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                   <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="px-4 py-2">Landing</th>
                     <th className="px-4 py-2 text-right">Sesiones</th>
-                    <th className="px-4 py-2 text-right">CR</th>
+                    <th className="px-4 py-2 text-right">% total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -539,7 +570,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums">{formatNumber(l.sesiones)}</td>
                       <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                        {l.conversion_rate !== null ? `${(l.conversion_rate * 100).toFixed(2)}%` : "—"}
+                        {totals.sesiones > 0 ? `${((l.sesiones / totals.sesiones) * 100).toFixed(1)}%` : "—"}
                       </td>
                     </tr>
                   ))}
@@ -589,6 +620,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                 <th className="px-4 py-2 text-right">% total</th>
                 <th className="px-4 py-2 text-right">Conversiones</th>
                 <th className="px-4 py-2 text-right">CR</th>
+                <th className="px-4 py-2 text-right">PV / sesión</th>
               </tr>
             </thead>
             <tbody>
@@ -608,6 +640,9 @@ export default async function WebPage({ searchParams }: PageProps) {
                   <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.conversiones)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     {c.sesiones > 0 ? `${((c.conversiones / c.sesiones) * 100).toFixed(2)}%` : "—"}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                    {c.sesiones > 0 ? (c.pageviews / c.sesiones).toFixed(2) : "—"}
                   </td>
                 </tr>
               ))}
