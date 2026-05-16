@@ -13,6 +13,7 @@ import {
   getWebByCategory,
   getWebBySource,
   getWebDailyKpis,
+  getAllMonthlyUsers,
   getMonthlyUsers,
   getWebMonthlyByChannel,
   getWebTopLandingPages,
@@ -98,6 +99,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     googleTrends,
     dreanGa4,
     monthlyUsersRow,
+    allMonthlyUsers,
   ] = await Promise.all([
     getWebDailyKpis(range),
     getWebDailyKpis(yoyRange),
@@ -117,6 +119,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     getDreanWebMetrics(),
     // Si el rango empieza el 1 de algún mes, traer total users únicos de ese mes
     range.from.endsWith("-01") ? getMonthlyUsers(range.from) : Promise.resolve(null),
+    getAllMonthlyUsers(),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -207,6 +210,12 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyAll.set(mes, acc);
   }
   // Construir array con SOLO últimos 12 meses + el dato del mismo mes año anterior
+  // Para usuarios: usar ga4_monthly_users (valor real único) cuando exista;
+  // sino fallback a la suma diaria (sobre-cuenta).
+  const monthlyUsersMap = new Map<string, number>();
+  for (const u of allMonthlyUsers) {
+    monthlyUsersMap.set(u.mes, u.total_users);
+  }
   const refTo = new Date(`${range.to}T00:00:00Z`);
   const monthlyData: Array<{
     mes: string;
@@ -226,10 +235,11 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyData.push({
       mes,
       sesiones: curr?.sesiones ?? 0,
-      usuarios: curr?.usuarios ?? 0,
+      // usuarios: usar valor real de ga4_monthly_users si existe
+      usuarios: monthlyUsersMap.get(mes) ?? curr?.usuarios ?? 0,
       conversiones: curr?.conversiones ?? 0,
       sesiones_anterior: prev?.sesiones ?? 0,
-      usuarios_anterior: prev?.usuarios ?? 0,
+      usuarios_anterior: monthlyUsersMap.get(prevYearMes) ?? prev?.usuarios ?? 0,
     });
   }
 
