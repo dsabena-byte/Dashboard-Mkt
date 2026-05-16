@@ -1,0 +1,96 @@
+{
+  "name": "GA4 Monthly Users (Clean — excludes Smartup TikTok bots)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-700, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cambiar startDate al primer día del mes a cargar. endDate = último día.\n// Ejemplos:\n//   Enero 2025: '2025-01-01', '2025-01-31'\n//   Febrero 2025: '2025-02-01', '2025-02-28'\n//   ...\nreturn [{ json: { startDate: '2025-01-01', endDate: '2025-01-31' } }];\n"
+      },
+      "id": "node-config",
+      "name": "Set Config (month)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-500, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://analyticsdata.googleapis.com/v1beta/properties/250596979:runReport",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAnalyticsOAuth2",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ dateRanges: [{ startDate: $json.startDate, endDate: $json.endDate }], metrics: [ { name: 'totalUsers' }, { name: 'newUsers' }, { name: 'sessions' }, { name: 'screenPageViews' } ], dimensionFilter: { notExpression: { filter: { fieldName: 'sessionCampaignName', stringFilter: { matchType: 'BEGINS_WITH', value: 'smartup_tiktok_', caseSensitive: false } } } } }) }}",
+        "options": {}
+      },
+      "id": "node-ga4-http",
+      "name": "GA4 Data API — runReport (filtered)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-280, 200],
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "REPLACE_WITH_GA_CREDENTIAL_ID",
+          "name": "Google Analytics account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// La respuesta de runReport viene en $json.rows[0].metricValues\nconst resp = $input.first().json;\nconst config = $('Set Config (month)').first().json;\nconst metricValues = resp?.rows?.[0]?.metricValues ?? [];\nconst toInt = (v) => {\n  const n = Number(v?.value ?? 0);\n  return Number.isFinite(n) ? Math.round(n) : 0;\n};\nreturn [{\n  json: {\n    mes: config.startDate,\n    total_users: toInt(metricValues[0]),\n    new_users: toInt(metricValues[1]),\n    sesiones: toInt(metricValues[2]),\n    pageviews: toInt(metricValues[3]),\n  },\n}];\n"
+      },
+      "id": "node-normalize",
+      "name": "Normalize row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-60, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_monthly_users?on_conflict=mes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify([$json]) }}",
+        "options": {}
+      },
+      "id": "node-supabase",
+      "name": "Supabase — Upsert ga4_monthly_users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [160, 200]
+    }
+  ],
+  "connections": {
+    "Manual trigger": {
+      "main": [[{ "node": "Set Config (month)", "type": "main", "index": 0 }]]
+    },
+    "Set Config (month)": {
+      "main": [[{ "node": "GA4 Data API — runReport (filtered)", "type": "main", "index": 0 }]]
+    },
+    "GA4 Data API — runReport (filtered)": {
+      "main": [[{ "node": "Normalize row", "type": "main", "index": 0 }]]
+    },
+    "Normalize row": {
+      "main": [[{ "node": "Supabase — Upsert ga4_monthly_users", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": false }
+}
