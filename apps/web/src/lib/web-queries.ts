@@ -250,14 +250,16 @@ export interface ChannelAggregate {
   canal: string;
   sesiones: number;
   conversiones: number;
+  pageviews: number;
 }
 
 export function aggregateBySource(rows: BySourceRow[]): ChannelAggregate[] {
-  const byCanal = new Map<string, { sesiones: number; conversiones: number }>();
+  const byCanal = new Map<string, { sesiones: number; conversiones: number; pageviews: number }>();
   for (const r of rows) {
-    const acc = byCanal.get(r.canal) ?? { sesiones: 0, conversiones: 0 };
+    const acc = byCanal.get(r.canal) ?? { sesiones: 0, conversiones: 0, pageviews: 0 };
     acc.sesiones += r.sesiones;
     acc.conversiones += r.conversiones;
+    acc.pageviews += r.pageviews;
     byCanal.set(r.canal, acc);
   }
   return [...byCanal.entries()]
