@@ -234,15 +234,13 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyDataRaw.push({
       mes: MES_SHORT[m - 1]!,
       usuarios_curr: getMonthVal(currYear, m, "users"),
-      usuarios_prev: getMonthVal(prevYear, m, "users"),
+      usuarios_prev: 0,
       sesiones_curr: getMonthVal(currYear, m, "sessions"),
-      sesiones_prev: getMonthVal(prevYear, m, "sessions"),
+      sesiones_prev: 0,
     });
   }
-  // Mostrar meses con al menos un valor en alguno de los dos años
-  const monthlyData = monthlyDataRaw.filter(
-    (r) => r.usuarios_curr > 0 || r.usuarios_prev > 0 || r.sesiones_curr > 0 || r.sesiones_prev > 0,
-  );
+  // Solo mostramos el año actual (2025 quedó afuera por datos sucios de GA4).
+  const monthlyData = monthlyDataRaw.filter((r) => r.usuarios_curr > 0 || r.sesiones_curr > 0);
   const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
   // Estrategia de agregación según el largo del rango:
@@ -421,9 +419,9 @@ export default async function WebPage({ searchParams }: PageProps) {
 
       {/* Tendencia mensual — últimos 12 meses */}
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios — YoY</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios</h3>
         <p className="text-xs text-muted-foreground">
-          Barras = sesiones, línea = usuarios. Comparativa 2026 vs 2025 mes a mes (no afectado por el filtro). Excluye Smartup TikTok (bot traffic).
+          Barras = sesiones, línea = usuarios. Año actual (no afectado por el filtro). Excluye Smartup TikTok.
         </p>
         <div className="mt-4">
           <WebMonthlyChart data={monthlyData} labels={yearLabels} />
