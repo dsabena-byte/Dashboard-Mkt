@@ -15,6 +15,7 @@ import {
   getWebDailyKpis,
   getAllMonthlyUsers,
   getMonthlyUsers,
+  getSmartupMonthlyAggregates,
   getWebTopLandingPages,
   getWebTopProducts,
   PALETA_CANAL,
@@ -90,6 +91,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     dreanGa4,
     monthlyUsersRow,
     allMonthlyUsers,
+    smartupMonthly,
   ] = await Promise.all([
     getWebDailyKpis(range),
     getWebDailyKpis(yoyRange),
@@ -108,6 +110,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     // Si el rango empieza el 1 de algún mes, traer total users únicos de ese mes
     range.from.endsWith("-01") ? getMonthlyUsers(range.from) : Promise.resolve(null),
     getAllMonthlyUsers(),
+    getSmartupMonthlyAggregates(),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -197,19 +200,31 @@ export default async function WebPage({ searchParams }: PageProps) {
     acc.conversiones += r.conversiones;
     monthlyAll.set(mes, acc);
   }
-  // Para el chart YoY usamos SOLO monthlyAll (sum-of-daily desde vw_drean_web_daily_kpis,
-  // que ya está filtrado de Smartup vía migración 0018). Esto garantiza que 2025 y 2026
-  // sean apples-to-apples (mismo source, misma exclusión Smartup).
-  //
-  // Nota: usuarios = sum de daily users, ligeramente sobre-cuenta a usuarios que visitan
-  // varios días, pero es consistente entre ambos años.
-  // allMonthlyUsers (tabla ga4_monthly_users) NO se usa acá porque incluye Smartup para 2025.
-  void allMonthlyUsers;
+  // Para el chart YoY:
+  //   - 2025: ga4_monthly_users (única fuente: web_traffic no tiene 2025).
+  //     Caveat: estos valores fueron cargados desde GA4 API sin filtrar Smartup.
+  //   - 2026: ga4_monthly_users si está cargado (precise unique-per-month),
+  //     fallback a sum-of-daily desde web_traffic filtrado.
+  const monthlyUsersMap = new Map<string, number>();
+  const monthlySessionsMap = new Map<string, number>();
+  for (const u of allMonthlyUsers) {
+    monthlyUsersMap.set(u.mes, u.total_users);
+    if (u.sesiones && u.sesiones > 0) monthlySessionsMap.set(u.mes, u.sesiones);
+  }
+  // Restar Smartup mes a mes (los valores de ga4_monthly_users vienen sin filtrar).
+  // Si web_traffic no tiene Smartup para ese mes, la resta es 0 (no-op).
+  for (const s of smartupMonthly) {
+    if (monthlyUsersMap.has(s.mes)) {
+      monthlyUsersMap.set(s.mes, Math.max(0, (monthlyUsersMap.get(s.mes) ?? 0) - s.usuarios));
+    }
+    if (monthlySessionsMap.has(s.mes)) {
+      monthlySessionsMap.set(s.mes, Math.max(0, (monthlySessionsMap.get(s.mes) ?? 0) - s.sesiones));
+    }
+  }
   const getMonthVal = (year: number, m: number, kind: "users" | "sessions"): number => {
     const key = `${year}-${String(m).padStart(2, "0")}-01`;
-    const agg = monthlyAll.get(key);
-    if (!agg) return 0;
-    return kind === "users" ? agg.usuarios : agg.sesiones;
+    if (kind === "users") return monthlyUsersMap.get(key) ?? monthlyAll.get(key)?.usuarios ?? 0;
+    return monthlySessionsMap.get(key) ?? monthlyAll.get(key)?.sesiones ?? 0;
   };
   const currYear = (new Date(`${range.to}T00:00:00Z`)).getUTCFullYear();
   const prevYear = currYear - 1;
