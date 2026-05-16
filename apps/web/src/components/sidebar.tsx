@@ -7,7 +7,7 @@ import {
   GitBranch,
   Megaphone,
   Target,
-  Eye,
+  Share2,
   Bell,
   Globe,
 } from "lucide-react";
@@ -16,10 +16,10 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/overview",    label: "Overview",         icon: LayoutDashboard },
   { href: "/web",         label: "Web",              icon: Globe },
+  { href: "/competitors", label: "Redes Sociales",   icon: Share2 },
   { href: "/funnel",      label: "Funnel",           icon: GitBranch },
   { href: "/campaigns",   label: "Campañas",         icon: Megaphone },
   { href: "/planning",    label: "Planning Pauta",   icon: Target },
-  { href: "/competitors", label: "Competencia",      icon: Eye },
   { href: "/alerts",      label: "Alertas",          icon: Bell },
 ] as const;
 
