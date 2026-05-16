@@ -197,44 +197,37 @@ export default async function WebPage({ searchParams }: PageProps) {
     acc.conversiones += r.conversiones;
     monthlyAll.set(mes, acc);
   }
-  // Maps: mes → users / sesiones (total_users es lo principal, ya está cargado)
-  const monthlyUsersMap = new Map<string, number>();
-  const monthlySessionsMap = new Map<string, number>();
-  for (const u of allMonthlyUsers) {
-    monthlyUsersMap.set(u.mes, u.total_users);
-    if (u.sesiones && u.sesiones > 0) monthlySessionsMap.set(u.mes, u.sesiones);
-  }
-  // Helper: trae users (o sessions fallback a web_traffic) para un (año, mes)
+  // Para el chart YoY usamos SOLO monthlyAll (sum-of-daily desde vw_drean_web_daily_kpis,
+  // que ya está filtrado de Smartup vía migración 0018). Esto garantiza que 2025 y 2026
+  // sean apples-to-apples (mismo source, misma exclusión Smartup).
+  //
+  // Nota: usuarios = sum de daily users, ligeramente sobre-cuenta a usuarios que visitan
+  // varios días, pero es consistente entre ambos años.
+  // allMonthlyUsers (tabla ga4_monthly_users) NO se usa acá porque incluye Smartup para 2025.
+  void allMonthlyUsers;
   const getMonthVal = (year: number, m: number, kind: "users" | "sessions"): number => {
     const key = `${year}-${String(m).padStart(2, "0")}-01`;
-    if (kind === "users") return monthlyUsersMap.get(key) ?? monthlyAll.get(key)?.usuarios ?? 0;
-    return monthlySessionsMap.get(key) ?? monthlyAll.get(key)?.sesiones ?? 0;
+    const agg = monthlyAll.get(key);
+    if (!agg) return 0;
+    return kind === "users" ? agg.usuarios : agg.sesiones;
   };
   const currYear = (new Date(`${range.to}T00:00:00Z`)).getUTCFullYear();
   const prevYear = currYear - 1;
   const MES_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  // Una fila por mes (Ene-Dic) con barras side-by-side 2025 vs 2026
   const monthlyDataRaw = [];
   for (let m = 1; m <= 12; m++) {
-    const usuarios_curr = getMonthVal(currYear, m, "users");
-    const usuarios_prev = getMonthVal(prevYear, m, "users");
     monthlyDataRaw.push({
       mes: MES_SHORT[m - 1]!,
-      usuarios_curr,
-      usuarios_prev,
+      usuarios_curr: getMonthVal(currYear, m, "users"),
+      usuarios_prev: getMonthVal(prevYear, m, "users"),
       sesiones_curr: getMonthVal(currYear, m, "sessions"),
       sesiones_prev: getMonthVal(prevYear, m, "sessions"),
     });
   }
-  // Mostrar solo meses con al menos un valor
-  // Ocultar datos del año anterior por ahora (GA4 reporta valores no confiables para 2025).
-  const HIDE_PREV_YEAR = true;
-  const monthlyData = monthlyDataRaw
-    .filter((r) => r.usuarios_curr > 0 || (!HIDE_PREV_YEAR && r.usuarios_prev > 0))
-    .map((r) => HIDE_PREV_YEAR
-      ? { ...r, usuarios_prev: 0, sesiones_prev: 0 }
-      : r
-    );
+  // Mostrar meses con al menos un valor en alguno de los dos años
+  const monthlyData = monthlyDataRaw.filter(
+    (r) => r.usuarios_curr > 0 || r.usuarios_prev > 0 || r.sesiones_curr > 0 || r.sesiones_prev > 0,
+  );
   const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
   // Estrategia de agregación según el largo del rango:
@@ -413,9 +406,9 @@ export default async function WebPage({ searchParams }: PageProps) {
 
       {/* Tendencia mensual — últimos 12 meses */}
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios — YoY</h3>
         <p className="text-xs text-muted-foreground">
-          Últimos 12 meses (no afectado por el filtro). Barras = sesiones, línea = usuarios únicos.
+          Barras = sesiones, línea = usuarios. Comparativa 2026 vs 2025 mes a mes (no afectado por el filtro). Excluye campañas Smartup.
         </p>
         <div className="mt-4">
           <WebMonthlyChart data={monthlyData} labels={yearLabels} />
