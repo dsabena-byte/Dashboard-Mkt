@@ -110,6 +110,20 @@ export interface MonthlyUsersRow {
   new_users: number;
 }
 
+export async function getAllMonthlyUsers(): Promise<MonthlyUsersRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("ga4_monthly_users")
+    .select("mes, total_users, new_users")
+    .order("mes", { ascending: true })
+    .returns<MonthlyUsersRow[]>();
+  if (error) {
+    if (/relation .* does not exist/i.test(error.message)) return [];
+    throw new Error(`ga4_monthly_users: ${error.message}`);
+  }
+  return data ?? [];
+}
+
 export async function getMonthlyUsers(monthStart: string): Promise<MonthlyUsersRow | null> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
