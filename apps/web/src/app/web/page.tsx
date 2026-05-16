@@ -210,11 +210,13 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyAll.set(mes, acc);
   }
   // Construir array con SOLO últimos 12 meses + el dato del mismo mes año anterior
-  // Para usuarios: usar ga4_monthly_users (valor real único) cuando exista;
-  // sino fallback a la suma diaria (sobre-cuenta).
+  // Para usuarios y sesiones: usar ga4_monthly_users (valor real) cuando exista;
+  // sino fallback a la suma diaria de web_traffic.
   const monthlyUsersMap = new Map<string, number>();
+  const monthlySessionsMap = new Map<string, number>();
   for (const u of allMonthlyUsers) {
     monthlyUsersMap.set(u.mes, u.total_users);
+    if (u.sesiones && u.sesiones > 0) monthlySessionsMap.set(u.mes, u.sesiones);
   }
   const refTo = new Date(`${range.to}T00:00:00Z`);
   const monthlyData: Array<{
@@ -234,11 +236,12 @@ export default async function WebPage({ searchParams }: PageProps) {
     const prev = monthlyAll.get(prevYearMes);
     monthlyData.push({
       mes,
-      sesiones: curr?.sesiones ?? 0,
-      // usuarios: usar valor real de ga4_monthly_users si existe
+      // Sesiones: priorizar ga4_monthly_users (mensual real), fallback a suma diaria de web_traffic
+      sesiones: monthlySessionsMap.get(mes) ?? curr?.sesiones ?? 0,
+      // Usuarios: usar valor real único de ga4_monthly_users si existe
       usuarios: monthlyUsersMap.get(mes) ?? curr?.usuarios ?? 0,
       conversiones: curr?.conversiones ?? 0,
-      sesiones_anterior: prev?.sesiones ?? 0,
+      sesiones_anterior: monthlySessionsMap.get(prevYearMes) ?? prev?.sesiones ?? 0,
       usuarios_anterior: monthlyUsersMap.get(prevYearMes) ?? prev?.usuarios ?? 0,
     });
   }

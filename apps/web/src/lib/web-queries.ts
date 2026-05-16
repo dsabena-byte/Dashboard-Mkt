@@ -108,13 +108,15 @@ export interface MonthlyUsersRow {
   mes: string;
   total_users: number;
   new_users: number;
+  sesiones?: number;
+  pageviews?: number;
 }
 
 export async function getAllMonthlyUsers(): Promise<MonthlyUsersRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
     .from("ga4_monthly_users")
-    .select("mes, total_users, new_users")
+    .select("mes, total_users, new_users, sesiones, pageviews")
     .order("mes", { ascending: true })
     .returns<MonthlyUsersRow[]>();
   if (error) {
