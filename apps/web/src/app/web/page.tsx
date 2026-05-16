@@ -239,9 +239,14 @@ export default async function WebPage({ searchParams }: PageProps) {
     });
   }
   // Mostrar solo meses con al menos un valor
-  const monthlyData = monthlyDataRaw.filter(
-    (r) => r.usuarios_curr > 0 || r.usuarios_prev > 0
-  );
+  // Ocultar datos del año anterior por ahora (GA4 reporta valores no confiables para 2025).
+  const HIDE_PREV_YEAR = true;
+  const monthlyData = monthlyDataRaw
+    .filter((r) => r.usuarios_curr > 0 || (!HIDE_PREV_YEAR && r.usuarios_prev > 0))
+    .map((r) => HIDE_PREV_YEAR
+      ? { ...r, usuarios_prev: 0, sesiones_prev: 0 }
+      : r
+    );
   const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
   // Evolución mensual por canal: rows = mes, columnas = canal con sesiones
