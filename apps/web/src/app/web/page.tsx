@@ -276,12 +276,27 @@ export default async function WebPage({ searchParams }: PageProps) {
 
   const hasData = dailyKpis.length > 0;
 
-  // Trend data shaped for EngagementTrendChart (uses cuenta/engagement keys)
-  const trendData = dailyKpis.map((r) => ({
-    fecha: r.fecha,
-    cuenta: "drean.com.ar",
-    engagement: r.sesiones,
-  }));
+  // Trend semanal: agregamos sesiones por semana (lunes inicio) desde monthlyDailyKpis
+  // (12 meses hacia atrás). No afectado por el filtro.
+  const weekStartIso = (fecha: string): string => {
+    const d = new Date(`${fecha}T00:00:00Z`);
+    const day = d.getUTCDay();
+    const offset = day === 0 ? -6 : 1 - day;
+    d.setUTCDate(d.getUTCDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+  const weeklyMap = new Map<string, number>();
+  for (const r of monthlyDailyKpis) {
+    const wk = weekStartIso(r.fecha);
+    weeklyMap.set(wk, (weeklyMap.get(wk) ?? 0) + r.sesiones);
+  }
+  const trendData = [...weeklyMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fecha, sesiones]) => ({
+      fecha,
+      cuenta: "drean.com.ar",
+      engagement: sesiones,
+    }));
 
   const channelDonut = channels.map((c) => ({
     name: c.canal,
@@ -601,10 +616,10 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Trend diario */}
+      {/* Trend semanal */}
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia diaria de sesiones</h3>
-        <p className="text-xs text-muted-foreground">Sesiones por día en el rango seleccionado.</p>
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia semanal de sesiones</h3>
+        <p className="text-xs text-muted-foreground">Sesiones por semana — últimos 12 meses (no afectado por el filtro).</p>
         <div className="mt-4">
           <EngagementTrendChart data={trendData} />
         </div>
