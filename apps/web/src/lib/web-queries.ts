@@ -75,6 +75,7 @@ export async function getWebDailyKpis(range: WebRange): Promise<DailyKpiRow[]> {
     .gte("fecha", range.from)
     .lte("fecha", range.to)
     .order("fecha", { ascending: true })
+    .range(0, 99_999)
     .returns<DailyKpiRow[]>();
   if (error) throw new Error(`vw_drean_web_daily_kpis: ${error.message}`);
   return data ?? [];
@@ -87,6 +88,7 @@ export async function getWebBySource(range: WebRange): Promise<BySourceRow[]> {
     .select("*")
     .gte("fecha", range.from)
     .lte("fecha", range.to)
+    .range(0, 99_999)
     .returns<BySourceRow[]>();
   if (error) throw new Error(`vw_drean_web_by_source: ${error.message}`);
   return data ?? [];
@@ -99,6 +101,7 @@ export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]
     .select("*")
     .gte("fecha", range.from)
     .lte("fecha", range.to)
+    .range(0, 99_999)
     .returns<ByCategoryRow[]>();
   if (error) throw new Error(`vw_drean_web_by_category: ${error.message}`);
   return data ?? [];
