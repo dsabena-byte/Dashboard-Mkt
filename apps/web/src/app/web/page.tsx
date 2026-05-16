@@ -15,7 +15,6 @@ import {
   getWebDailyKpis,
   getAllMonthlyUsers,
   getMonthlyUsers,
-  getWebMonthlyByChannel,
   getWebTopLandingPages,
   getWebTopProducts,
   PALETA_CANAL,
@@ -67,13 +66,6 @@ export default async function WebPage({ searchParams }: PageProps) {
   const range = parseDateRange(searchParams, lastClosedMonthRange());
   const prev = previousRange(range.from, range.to);
 
-  // Para el gráfico mensual: traer 12 meses hacia atrás
-  const monthlyRange = (() => {
-    const to = new Date(`${range.to}T00:00:00Z`);
-    const from = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth() - 11, 1));
-    return { from: from.toISOString().slice(0, 10), to: range.to };
-  })();
-
   // Para comparativa YoY: traer también los mismos meses del año anterior (24 meses back)
   const yoyRange = (() => {
     const to = new Date(`${range.to}T00:00:00Z`);
@@ -85,9 +77,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     dailyKpis,
     monthlyDailyKpis,
     bySource,
-    monthlyByChannel,
     byCategory,
-    monthlyByCategory,
     topLandings,
     topProducts,
     dailyKpisPrev,
@@ -104,9 +94,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     getWebDailyKpis(range),
     getWebDailyKpis(yoyRange),
     getWebBySource(range),
-    getWebMonthlyByChannel(12),
     getWebByCategory(range),
-    getWebByCategory(monthlyRange),
     getWebTopLandingPages(range, 10),
     getWebTopProducts(range, 10),
     getWebDailyKpis(prev),
@@ -249,17 +237,38 @@ export default async function WebPage({ searchParams }: PageProps) {
     );
   const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
-  // Evolución mensual por canal: rows = mes, columnas = canal con sesiones
-  // monthlyByChannel viene pre-agregado desde la vista (mes, canal, sesiones).
-  const monthlyChannelMap = new Map<string, Map<string, number>>();
-  for (const r of monthlyByChannel) {
-    let perCanal = monthlyChannelMap.get(r.mes);
-    if (!perCanal) { perCanal = new Map(); monthlyChannelMap.set(r.mes, perCanal); }
+  // Estrategia de agregación según el largo del rango:
+  //   ≤ 60 días → diaria, > 60 días → semanal (lunes inicio).
+  const rangeDays = Math.round(
+    (new Date(`${range.to}T00:00:00Z`).getTime() - new Date(`${range.from}T00:00:00Z`).getTime()) / 86_400_000,
+  ) + 1;
+  const useWeekly = rangeDays > 60;
+
+  const weekStart = (fecha: string): string => {
+    const d = new Date(`${fecha}T00:00:00Z`);
+    const day = d.getUTCDay();
+    const offset = day === 0 ? -6 : 1 - day;
+    d.setUTCDate(d.getUTCDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+  const bucketKey = (fecha: string) => (useWeekly ? weekStart(fecha) : fecha);
+  const fmtBucket = (key: string) => {
+    const [, m, d] = key.split("-");
+    return `${d}/${m}`;
+  };
+  const aggLabel = useWeekly ? "semana" : "día";
+
+  // Evolución por canal — del período seleccionado, agregada por día o semana.
+  const channelBucketMap = new Map<string, Map<string, number>>();
+  for (const r of bySource) {
+    const key = bucketKey(r.fecha);
+    let perCanal = channelBucketMap.get(key);
+    if (!perCanal) { perCanal = new Map(); channelBucketMap.set(key, perCanal); }
     perCanal.set(r.canal, (perCanal.get(r.canal) ?? 0) + r.sesiones);
   }
-  // Top N canales sobre el total del rango — los otros van a "Otros"
+  // Top N canales sobre el total del rango — los otros se omiten.
   const canalTotals = new Map<string, number>();
-  for (const perCanal of monthlyChannelMap.values()) {
+  for (const perCanal of channelBucketMap.values()) {
     for (const [canal, s] of perCanal) {
       canalTotals.set(canal, (canalTotals.get(canal) ?? 0) + s);
     }
@@ -268,38 +277,27 @@ export default async function WebPage({ searchParams }: PageProps) {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 7)
     .map(([c]) => c);
-  const SHORT_MONTH = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  const fmtMesLabel = (mes: string) => {
-    const [y, m] = mes.split("-");
-    return `${SHORT_MONTH[parseInt(m ?? "1", 10) - 1] ?? m} ${y?.slice(2) ?? ""}`;
-  };
-  const monthlyChannelData = [...monthlyChannelMap.entries()]
+  const monthlyChannelData = [...channelBucketMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([mes, perCanal]) => {
-      const row: Record<string, string | number | null> = { mesLabel: fmtMesLabel(mes) };
+    .map(([key, perCanal]) => {
+      const row: Record<string, string | number | null> = { mesLabel: fmtBucket(key) };
       for (const c of topCanales) row[c] = perCanal.get(c) ?? null;
       return row as { mesLabel: string } & Record<string, number | null>;
     });
 
-  // Pivot data para CategoryTrendChart: { fecha, Lavado: X, Cocinas: Y, ... }
-  // Tendencia por categoría — agregada POR MES (12 meses hacia atrás, no afectado por filtro)
-  const categoriasUnicas = [...new Set(monthlyByCategory.map((r) => r.categoria))];
+  // Tendencia por categoría — del período seleccionado.
+  const categoriasUnicas = [...new Set(byCategory.map((r) => r.categoria))];
   const categoryTrendByDate = new Map<string, Record<string, number>>();
-  for (const r of monthlyByCategory) {
-    const mes = r.fecha.slice(0, 7) + "-01";
-    const acc = categoryTrendByDate.get(mes) ?? {};
+  for (const r of byCategory) {
+    const key = bucketKey(r.fecha);
+    const acc = categoryTrendByDate.get(key) ?? {};
     acc[r.categoria] = (acc[r.categoria] ?? 0) + r.sesiones;
-    categoryTrendByDate.set(mes, acc);
+    categoryTrendByDate.set(key, acc);
   }
-  const SHORT_MONTH_CAT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  const fmtMesCat = (mes: string) => {
-    const [y, m] = mes.split("-");
-    return `${SHORT_MONTH_CAT[parseInt(m ?? "1", 10) - 1] ?? m} ${y?.slice(2) ?? ""}`;
-  };
   const categoryTrendData = [...categoryTrendByDate.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([mes, vals]) => {
-      const row: Record<string, string | number | null> = { fecha: fmtMesCat(mes) };
+    .map(([key, vals]) => {
+      const row: Record<string, string | number | null> = { fecha: fmtBucket(key) };
       for (const cat of categoriasUnicas) row[cat] = vals[cat] ?? null;
       return row as { fecha: string } & Record<string, number | null>;
     });
@@ -323,21 +321,13 @@ export default async function WebPage({ searchParams }: PageProps) {
 
   const hasData = dailyKpis.length > 0;
 
-  // Trend semanal: agregamos sesiones por semana (lunes inicio) desde monthlyDailyKpis
-  // (12 meses hacia atrás). No afectado por el filtro.
-  const weekStartIso = (fecha: string): string => {
-    const d = new Date(`${fecha}T00:00:00Z`);
-    const day = d.getUTCDay();
-    const offset = day === 0 ? -6 : 1 - day;
-    d.setUTCDate(d.getUTCDate() + offset);
-    return d.toISOString().slice(0, 10);
-  };
-  const weeklyMap = new Map<string, number>();
-  for (const r of monthlyDailyKpis) {
-    const wk = weekStartIso(r.fecha);
-    weeklyMap.set(wk, (weeklyMap.get(wk) ?? 0) + r.sesiones);
+  // Trend de sesiones del período seleccionado (diario o semanal).
+  const trendMap = new Map<string, number>();
+  for (const r of dailyKpis) {
+    const key = bucketKey(r.fecha);
+    trendMap.set(key, (trendMap.get(key) ?? 0) + r.sesiones);
   }
-  const trendData = [...weeklyMap.entries()]
+  const trendData = [...trendMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([fecha, sesiones]) => ({
       fecha,
@@ -486,13 +476,13 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Tendencia por categoría — sesiones diarias por categoría */}
+      {/* Tendencia por categoría — sesiones por categoría dentro del rango */}
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">
-          Tendencia mensual por categoría
+          Tendencia por categoría
         </h3>
         <p className="text-xs text-muted-foreground">
-          Sesiones por mes (últimos 12 meses, no afectado por el filtro).
+          Sesiones por {aggLabel} en el período seleccionado.
         </p>
         <div className="mt-4">
           <CategoryTrendChart
@@ -607,9 +597,9 @@ export default async function WebPage({ searchParams }: PageProps) {
           </div>
         </div>
         <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual por canal</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">Evolución por canal</h3>
           <p className="text-xs text-muted-foreground">
-            Sesiones por canal — últimos 12 meses. Top 7 canales por volumen.
+            Sesiones por canal por {aggLabel} en el período seleccionado. Top 7 canales por volumen.
           </p>
           <div className="mt-4">
             <ChannelMonthlyChart
@@ -667,10 +657,10 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Trend semanal */}
+      {/* Trend del rango */}
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia semanal de sesiones</h3>
-        <p className="text-xs text-muted-foreground">Sesiones por semana — últimos 12 meses (no afectado por el filtro).</p>
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia de sesiones</h3>
+        <p className="text-xs text-muted-foreground">Sesiones por {aggLabel} en el período seleccionado.</p>
         <div className="mt-4">
           <EngagementTrendChart data={trendData} />
         </div>
