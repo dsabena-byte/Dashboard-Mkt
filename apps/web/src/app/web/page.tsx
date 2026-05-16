@@ -209,42 +209,40 @@ export default async function WebPage({ searchParams }: PageProps) {
     acc.conversiones += r.conversiones;
     monthlyAll.set(mes, acc);
   }
-  // Construir array con SOLO últimos 12 meses + el dato del mismo mes año anterior
-  // Para usuarios y sesiones: usar ga4_monthly_users (valor real) cuando exista;
-  // sino fallback a la suma diaria de web_traffic.
+  // Maps: mes → users / sesiones (total_users es lo principal, ya está cargado)
   const monthlyUsersMap = new Map<string, number>();
   const monthlySessionsMap = new Map<string, number>();
   for (const u of allMonthlyUsers) {
     monthlyUsersMap.set(u.mes, u.total_users);
     if (u.sesiones && u.sesiones > 0) monthlySessionsMap.set(u.mes, u.sesiones);
   }
-  const refTo = new Date(`${range.to}T00:00:00Z`);
-  const monthlyData: Array<{
-    mes: string;
-    sesiones: number;
-    usuarios: number;
-    conversiones: number;
-    sesiones_anterior: number;
-    usuarios_anterior: number;
-  }> = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(Date.UTC(refTo.getUTCFullYear(), refTo.getUTCMonth() - i, 1));
-    const mes = d.toISOString().slice(0, 10);
-    const prevYearMes = new Date(Date.UTC(d.getUTCFullYear() - 1, d.getUTCMonth(), 1))
-      .toISOString().slice(0, 10);
-    const curr = monthlyAll.get(mes);
-    const prev = monthlyAll.get(prevYearMes);
-    monthlyData.push({
-      mes,
-      // Sesiones: priorizar ga4_monthly_users (mensual real), fallback a suma diaria de web_traffic
-      sesiones: monthlySessionsMap.get(mes) ?? curr?.sesiones ?? 0,
-      // Usuarios: usar valor real único de ga4_monthly_users si existe
-      usuarios: monthlyUsersMap.get(mes) ?? curr?.usuarios ?? 0,
-      conversiones: curr?.conversiones ?? 0,
-      sesiones_anterior: monthlySessionsMap.get(prevYearMes) ?? prev?.sesiones ?? 0,
-      usuarios_anterior: monthlyUsersMap.get(prevYearMes) ?? prev?.usuarios ?? 0,
+  // Helper: trae users (o sessions fallback a web_traffic) para un (año, mes)
+  const getMonthVal = (year: number, m: number, kind: "users" | "sessions"): number => {
+    const key = `${year}-${String(m).padStart(2, "0")}-01`;
+    if (kind === "users") return monthlyUsersMap.get(key) ?? monthlyAll.get(key)?.usuarios ?? 0;
+    return monthlySessionsMap.get(key) ?? monthlyAll.get(key)?.sesiones ?? 0;
+  };
+  const currYear = (new Date(`${range.to}T00:00:00Z`)).getUTCFullYear();
+  const prevYear = currYear - 1;
+  const MES_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  // Una fila por mes (Ene-Dic) con barras side-by-side 2025 vs 2026
+  const monthlyDataRaw = [];
+  for (let m = 1; m <= 12; m++) {
+    const usuarios_curr = getMonthVal(currYear, m, "users");
+    const usuarios_prev = getMonthVal(prevYear, m, "users");
+    monthlyDataRaw.push({
+      mes: MES_SHORT[m - 1]!,
+      usuarios_curr,
+      usuarios_prev,
+      sesiones_curr: getMonthVal(currYear, m, "sessions"),
+      sesiones_prev: getMonthVal(prevYear, m, "sessions"),
     });
   }
+  // Mostrar solo meses con al menos un valor
+  const monthlyData = monthlyDataRaw.filter(
+    (r) => r.usuarios_curr > 0 || r.usuarios_prev > 0
+  );
+  const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
   // Evolución mensual por canal: rows = mes, columnas = canal con sesiones
   // monthlyByChannel viene pre-agregado desde la vista (mes, canal, sesiones).
@@ -425,7 +423,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           Últimos 12 meses (no afectado por el filtro). Barras = sesiones, línea = usuarios únicos.
         </p>
         <div className="mt-4">
-          <WebMonthlyChart data={monthlyData} />
+          <WebMonthlyChart data={monthlyData} labels={yearLabels} />
         </div>
       </section>
 
