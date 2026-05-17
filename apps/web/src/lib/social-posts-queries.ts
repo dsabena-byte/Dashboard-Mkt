@@ -1,0 +1,295 @@
+import "server-only";
+import { getServerSupabase } from "./supabase-server";
+
+export interface SocialPost {
+  id: string;
+  red_social: string;          // INSTAGRAM | FACEBOOK | TIKTOK
+  url: string;
+  pilar: string | null;
+  positivo: number | null;
+  negativo: number | null;
+  neutro: number | null;
+  likes: number | null;
+  comentarios: number | null;
+  engagement: number | null;
+  fecha: string | null;
+  tipo: string | null;
+  marca: string;
+  views: number | null;
+  content_type: string | null;
+  sponsored: boolean | null;
+  hashtags: string | null;
+  followers: number | null;
+}
+
+export interface SocialFilters {
+  marca?: string;        // 'all' o el handle de la marca
+  red?: string;          // 'all' o INSTAGRAM/FACEBOOK/TIKTOK
+  periodo?: string;      // 'all' | '3m' | '1m'
+}
+
+export const OWN_BRAND = "dreanargentina";
+
+export const BRAND_LABELS: Record<string, string> = {
+  dreanargentina: "Drean",
+  "philco.arg": "Philco",
+  gafaargentina: "Gafa",
+};
+
+export const BRAND_COLORS: Record<string, string> = {
+  dreanargentina: "#dc2626",      // rojo (color institucional)
+  "philco.arg": "#f97316",        // naranja
+  gafaargentina: "#0ea5e9",       // celeste
+};
+
+export const NET_LABELS: Record<string, string> = {
+  INSTAGRAM: "Instagram",
+  FACEBOOK: "Facebook",
+  TIKTOK: "TikTok",
+};
+
+export const NET_COLORS: Record<string, string> = {
+  INSTAGRAM: "#c084fc",
+  FACEBOOK: "#60a5fa",
+  TIKTOK: "#2dd4bf",
+};
+
+function periodoToFromDate(periodo: string | undefined): string | null {
+  const now = new Date();
+  if (periodo === "1m") {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+  if (periodo === "3m") {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - 3);
+    return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+export async function getSocialPosts(filters: SocialFilters): Promise<SocialPost[]> {
+  const supabase = getServerSupabase();
+  let query = supabase
+    .from("social_posts")
+    .select("*")
+    .order("fecha", { ascending: false })
+    .range(0, 9999);
+
+  if (filters.marca && filters.marca !== "all") {
+    query = query.eq("marca", filters.marca);
+  }
+  if (filters.red && filters.red !== "all") {
+    query = query.eq("red_social", filters.red);
+  }
+  const fromDate = periodoToFromDate(filters.periodo);
+  if (fromDate) query = query.gte("fecha", fromDate);
+
+  const { data, error } = await query.returns<SocialPost[]>();
+  if (error) {
+    if (/relation .* does not exist/i.test(error.message)) return [];
+    throw new Error(`social_posts: ${error.message}`);
+  }
+  return data ?? [];
+}
+
+// =============================================================================
+// Agregaciones derivadas
+// =============================================================================
+
+function avg(arr: number[]): number {
+  if (arr.length === 0) return 0;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+export interface SocialKpis {
+  posts: number;
+  engagement_promedio: number;
+  total_likes: number;
+  total_views: number;
+  sentimiento_positivo: number;
+  sentimiento_negativo: number;
+  max_engagement: number;
+  redes: string[];
+}
+
+export function computeKpis(posts: SocialPost[]): SocialKpis {
+  const engs = posts.map((p) => p.engagement ?? 0);
+  const likes = posts.filter((p) => (p.likes ?? 0) > 0).reduce((a, p) => a + (p.likes ?? 0), 0);
+  const views = posts.reduce((a, p) => a + (p.views ?? 0), 0);
+  const pos = avg(posts.map((p) => p.positivo ?? 0));
+  const neg = avg(posts.map((p) => p.negativo ?? 0));
+  return {
+    posts: posts.length,
+    engagement_promedio: avg(engs),
+    total_likes: likes,
+    total_views: views,
+    sentimiento_positivo: pos,
+    sentimiento_negativo: neg,
+    max_engagement: posts.length > 0 ? Math.max(...engs) : 0,
+    redes: [...new Set(posts.map((p) => p.red_social))],
+  };
+}
+
+export interface BrandStat {
+  marca: string;
+  posts: number;
+  engagement_promedio: number;
+  positivo: number;
+  negativo: number;
+  views_promedio: number;
+}
+
+export function computeBrandStats(posts: SocialPost[]): BrandStat[] {
+  const marcas = [...new Set(posts.map((p) => p.marca))];
+  return marcas
+    .map((m) => {
+      const bp = posts.filter((p) => p.marca === m);
+      const vidPosts = bp.filter((p) => (p.views ?? 0) > 0);
+      return {
+        marca: m,
+        posts: bp.length,
+        engagement_promedio: avg(bp.map((p) => p.engagement ?? 0)),
+        positivo: avg(bp.map((p) => p.positivo ?? 0)),
+        negativo: avg(bp.map((p) => p.negativo ?? 0)),
+        views_promedio: vidPosts.length > 0 ? avg(vidPosts.map((p) => p.views ?? 0)) : 0,
+      };
+    })
+    .sort((a, b) => b.engagement_promedio - a.engagement_promedio);
+}
+
+export interface NetStat {
+  red: string;
+  posts: number;
+  engagement_promedio: number;
+  total_views: number;
+}
+
+export function computeNetStats(posts: SocialPost[]): NetStat[] {
+  const nets = ["INSTAGRAM", "FACEBOOK", "TIKTOK"];
+  return nets.map((n) => {
+    const np = posts.filter((p) => p.red_social === n);
+    return {
+      red: n,
+      posts: np.length,
+      engagement_promedio: avg(np.map((p) => p.engagement ?? 0)),
+      total_views: np.reduce((a, p) => a + (p.views ?? 0), 0),
+    };
+  });
+}
+
+export interface TrendPoint {
+  mes: string;                                  // YYYY-MM
+  values: Record<string, number | null>;        // por marca
+}
+
+export function computeTrend(posts: SocialPost[]): TrendPoint[] {
+  const byMonth = new Map<string, Map<string, number[]>>();
+  for (const p of posts) {
+    if (!p.fecha) continue;
+    const mes = p.fecha.slice(0, 7);
+    if (!byMonth.has(mes)) byMonth.set(mes, new Map());
+    const m = byMonth.get(mes)!;
+    if (!m.has(p.marca)) m.set(p.marca, []);
+    m.get(p.marca)!.push(p.engagement ?? 0);
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([mes, brandMap]) => {
+      const values: Record<string, number | null> = {};
+      for (const [marca, engs] of brandMap) {
+        values[marca] = avg(engs);
+      }
+      return { mes, values };
+    });
+}
+
+export interface PilarStat {
+  pilar: string;
+  engagement_promedio: number;
+  posts: number;
+}
+
+export function computePilarStats(posts: SocialPost[]): PilarStat[] {
+  const pilars = [...new Set(posts.map((p) => p.pilar).filter(Boolean) as string[])];
+  return pilars
+    .map((pi) => {
+      const pp = posts.filter((p) => p.pilar === pi);
+      return {
+        pilar: pi,
+        engagement_promedio: avg(pp.map((p) => p.engagement ?? 0)),
+        posts: pp.length,
+      };
+    })
+    .sort((a, b) => b.engagement_promedio - a.engagement_promedio);
+}
+
+export interface ContentMixCell {
+  red: string;
+  content_type: string;
+  count: number;
+}
+
+export function computeContentMix(posts: SocialPost[]): ContentMixCell[] {
+  const map = new Map<string, number>();
+  for (const p of posts) {
+    if (!p.content_type) continue;
+    const key = `${p.red_social}|${p.content_type}`;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return [...map.entries()].map(([key, count]) => {
+    const [red, content_type] = key.split("|");
+    return { red: red ?? "", content_type: content_type ?? "", count };
+  });
+}
+
+export interface SentimentRow {
+  key: string;                // marca o pilar
+  positivo: number;
+  negativo: number;
+  neutro: number;
+}
+
+export function computeSentimentByBrand(posts: SocialPost[]): SentimentRow[] {
+  const marcas = [...new Set(posts.map((p) => p.marca))];
+  return marcas.map((m) => {
+    const bp = posts.filter((p) => p.marca === m);
+    return {
+      key: m,
+      positivo: avg(bp.map((p) => p.positivo ?? 0)),
+      negativo: avg(bp.map((p) => p.negativo ?? 0)),
+      neutro: avg(bp.map((p) => p.neutro ?? 0)),
+    };
+  });
+}
+
+export interface ContentTypeSlice {
+  content_type: string;
+  count: number;
+}
+
+export function computeContentTypeSlices(posts: SocialPost[]): ContentTypeSlice[] {
+  const map = new Map<string, number>();
+  for (const p of posts) {
+    if (!p.content_type) continue;
+    map.set(p.content_type, (map.get(p.content_type) ?? 0) + 1);
+  }
+  return [...map.entries()]
+    .map(([content_type, count]) => ({ content_type, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export function topSuccessfulPosts(posts: SocialPost[], limit = 15): SocialPost[] {
+  return posts
+    .filter((p) => (p.engagement ?? 0) > 0.3 || (p.positivo ?? 0) > 80)
+    .sort((a, b) => (b.engagement ?? 0) - (a.engagement ?? 0))
+    .slice(0, limit);
+}
+
+export function topCriticalPosts(posts: SocialPost[], limit = 15): SocialPost[] {
+  return posts
+    .filter((p) => (p.negativo ?? 0) > 10)
+    .sort((a, b) => (b.negativo ?? 0) - (a.negativo ?? 0))
+    .slice(0, limit);
+}
