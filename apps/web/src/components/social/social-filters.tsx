@@ -11,20 +11,13 @@ const NETS = [
   { value: "TIKTOK", label: "TikTok", emoji: "🎵" },
 ];
 
-const PERIODS = [
-  { value: "all", label: "Todo el período" },
-  { value: "3m", label: "Últimos 3 meses" },
-  { value: "1m", label: "Último mes" },
-];
-
 interface Props {
   currentBrand: string;
   currentNet: string;
-  currentPeriodo: string;
   brands: Array<{ value: string; label: string }>;
 }
 
-export function SocialFilters({ currentBrand, currentNet, currentPeriodo, brands }: Props) {
+export function SocialFilters({ currentBrand, currentNet, brands }: Props) {
   const BRANDS = [{ value: "all", label: "Todas" }, ...brands];
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -80,21 +73,6 @@ export function SocialFilters({ currentBrand, currentNet, currentPeriodo, brands
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Período</span>
-        <select
-          value={currentPeriodo}
-          onChange={(e) => setParam("periodo", e.target.value)}
-          className="rounded-md border border-input bg-transparent px-2.5 py-1 text-xs"
-        >
-          {PERIODS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
       </div>
     </div>
   );

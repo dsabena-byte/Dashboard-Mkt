@@ -1,4 +1,6 @@
 import { KpiCard } from "@/components/kpi-card";
+import { DateRangePicker } from "@/components/date-range-picker";
+import { parseDateRange, lastClosedMonthRange } from "@/lib/dates";
 import { SocialFilters } from "@/components/social/social-filters";
 import { SocialTrendChart } from "@/components/social/social-trend-chart";
 import { SocialPilarChart } from "@/components/social/social-pilar-chart";
@@ -46,10 +48,10 @@ function fmtK(n: number): string {
 export default async function RedesPage({ searchParams }: PageProps) {
   const marca = getParam(searchParams, "marca", "all");
   const red = getParam(searchParams, "red", "all");
-  const periodo = getParam(searchParams, "periodo", "all");
+  const range = parseDateRange(searchParams, lastClosedMonthRange());
 
   const [rawPosts, allMarcas, followers] = await Promise.all([
-    getSocialPosts({ marca, red, periodo }),
+    getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
   ]);
@@ -90,12 +92,16 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       </header>
 
-      <SocialFilters
-        currentBrand={marca}
-        currentNet={red}
-        currentPeriodo={periodo}
-        brands={brandOptions}
-      />
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <SocialFilters
+            currentBrand={marca}
+            currentNet={red}
+            brands={brandOptions}
+          />
+        </div>
+        <DateRangePicker initialFrom={range.from} initialTo={range.to} />
+      </div>
 
       {!hasData && (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
