@@ -12,9 +12,10 @@ interface Props {
   brands: string[];
   brandLabels: Record<string, string>;
   brandColors: Record<string, string>;
+  valueFormat?: "percent" | "integer";
 }
 
-export function SocialTrendChart({ data, brands, brandLabels, brandColors }: Props) {
+export function SocialTrendChart({ data, brands, brandLabels, brandColors, valueFormat = "percent" }: Props) {
   if (data.length === 0) {
     return <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">Sin datos.</div>;
   }
@@ -24,14 +25,17 @@ export function SocialTrendChart({ data, brands, brandLabels, brandColors }: Pro
     return row;
   });
 
+  const fmt = (v: number) =>
+    valueFormat === "integer" ? Math.round(v).toString() : `${v.toFixed(2)}%`;
+
   return (
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={flat} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickFormatter={(v) => `${v.toFixed(2)}%`} />
+        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickFormatter={fmt} allowDecimals={valueFormat !== "integer"} />
         <Tooltip
-          formatter={(v: number) => `${v.toFixed(2)}%`}
+          formatter={(v: number) => fmt(v)}
           contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 11 }}
         />
         <Legend wrapperStyle={{ fontSize: 10 }} />
