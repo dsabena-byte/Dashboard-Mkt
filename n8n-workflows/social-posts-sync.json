@@ -1,0 +1,113 @@
+{
+  "name": "Social Posts Sync — Sheet → Supabase",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-700, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sheet ID donde el scraper escribe (pestaña 'Base').\nreturn [{ json: {\n  sheetId: '1uIt7zeqdU4QcnQC6Fzw0phPWaO1ppiWY68HVVmpUPDg',\n  sheetName: 'Base'\n}}];\n"
+      },
+      "id": "node-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-500, 0]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.sheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.sheetName }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "node-sheets-get",
+      "name": "Get rows from Base",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-280, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "q0QymsIPNMn7XUhz",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza cada fila del Sheet al schema de social_posts.\n// Salta: INSIGHT, HASHTAGS, SPONSORED (TYPE ya cubre orgánico/pauta).\n// Filtra filas sin URL o sin RED-SOCIAL.\n\nconst rows = $input.all();\n\nconst toInt = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/[, ]/g, ''));\n  return Number.isFinite(n) ? Math.round(n) : null;\n};\n\nconst toNum = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  // Acepta '0.02%', '0.02', '0,02' → 0.02\n  const s = String(v).replace('%', '').replace(',', '.').trim();\n  const n = Number(s);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst toDate = (v) => {\n  if (!v) return null;\n  const s = String(v).trim();\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;\n  // DD/M/YYYY o DD/MM/YYYY\n  const m = s.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})/);\n  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;\n  const d = new Date(s);\n  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);\n};\n\nconst output = [];\nfor (const item of rows) {\n  const r = item.json || {};\n  const url = (r['POSTEO'] || '').toString().trim();\n  const red = (r['RED-SOCIAL'] || '').toString().toUpperCase().trim();\n  if (!url || !red) continue;\n  output.push({\n    red_social:   red,\n    url,\n    pilar:        (r['PILAR'] || '').toString().trim() || null,\n    positivo:     toInt(r['POSITIVO']),\n    negativo:     toInt(r['NEGATIVO']),\n    neutro:       toInt(r['NEUTRO']),\n    likes:        toInt(r['LIKES']),\n    comentarios:  toInt(r['COMENTARIOS']),\n    engagement:   toNum(r['ENGAGEMENT']),\n    fecha:        toDate(r['DATE']),\n    tipo:         (r['TYPE'] || '').toString().trim() || null,\n    marca:        (r['MARCA'] || '').toString().trim(),\n    views:        toInt(r['VIEWS']) || 0,\n    content_type: (r['CONTENT_TYPE'] || '').toString().trim() || null,\n    followers:    toInt(r['FOLLOWERS']),\n  });\n}\nreturn output.map(json => ({ json }));\n"
+      },
+      "id": "node-normalize",
+      "name": "Normalize rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-60, 0]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "node-aggregate",
+      "name": "Batch into one array",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [160, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_posts?on_conflict=url",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.data) }}",
+        "options": {}
+      },
+      "id": "node-supabase",
+      "name": "Supabase — Upsert social_posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [380, 0]
+    }
+  ],
+  "connections": {
+    "Manual trigger": {
+      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+    },
+    "Set Config": {
+      "main": [[{ "node": "Get rows from Base", "type": "main", "index": 0 }]]
+    },
+    "Get rows from Base": {
+      "main": [[{ "node": "Normalize rows", "type": "main", "index": 0 }]]
+    },
+    "Normalize rows": {
+      "main": [[{ "node": "Batch into one array", "type": "main", "index": 0 }]]
+    },
+    "Batch into one array": {
+      "main": [[{ "node": "Supabase — Upsert social_posts", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": false }
+}
