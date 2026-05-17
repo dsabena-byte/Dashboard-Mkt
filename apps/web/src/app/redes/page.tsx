@@ -24,6 +24,8 @@ import {
   topSuccessfulPosts,
 } from "@/lib/social-posts-queries";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   searchParams: Record<string, string | string[] | undefined>;
 }
