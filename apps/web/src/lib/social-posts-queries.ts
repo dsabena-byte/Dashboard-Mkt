@@ -212,9 +212,11 @@ export function computeKpis(posts: SocialPost[]): SocialKpis {
   const engs = posts.map((p) => p.engagement ?? 0);
   const likes = posts.filter((p) => (p.likes ?? 0) > 0).reduce((a, p) => a + (p.likes ?? 0), 0);
   const views = posts.reduce((a, p) => a + (p.views ?? 0), 0);
-  const pos = avg(posts.map((p) => p.positivo ?? 0));
-  const neg = avg(posts.map((p) => p.negativo ?? 0));
-  const neu = avg(posts.map((p) => p.neutro ?? 0));
+  // Sentimiento: solo promediar posts con sentimiento real (excluyendo nulls).
+  const withSent = posts.filter((p) => p.positivo !== null && p.positivo !== undefined);
+  const pos = avg(withSent.map((p) => p.positivo as number));
+  const neg = avg(withSent.map((p) => p.negativo as number));
+  const neu = avg(withSent.map((p) => p.neutro as number));
   return {
     posts: posts.length,
     engagement_promedio: avg(engs),
@@ -386,12 +388,13 @@ export interface SentimentRow {
 export function computeSentimentByBrand(posts: SocialPost[]): SentimentRow[] {
   const marcas = [...new Set(posts.map((p) => p.marca))];
   return marcas.map((m) => {
-    const bp = posts.filter((p) => p.marca === m);
+    // Solo promediar % de posts con sentimiento real (excluyendo nulls)
+    const bp = posts.filter((p) => p.marca === m && p.positivo !== null && p.positivo !== undefined);
     return {
       key: m,
-      positivo: avg(bp.map((p) => p.positivo ?? 0)),
-      negativo: avg(bp.map((p) => p.negativo ?? 0)),
-      neutro: avg(bp.map((p) => p.neutro ?? 0)),
+      positivo: avg(bp.map((p) => p.positivo as number)),
+      negativo: avg(bp.map((p) => p.negativo as number)),
+      neutro: avg(bp.map((p) => p.neutro as number)),
     };
   });
 }
