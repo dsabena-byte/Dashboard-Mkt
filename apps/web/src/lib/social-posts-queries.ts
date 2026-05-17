@@ -148,6 +148,7 @@ export interface SocialKpis {
   total_views: number;
   sentimiento_positivo: number;
   sentimiento_negativo: number;
+  sentimiento_neutro: number;
   max_engagement: number;
   redes: string[];
 }
@@ -158,6 +159,7 @@ export function computeKpis(posts: SocialPost[]): SocialKpis {
   const views = posts.reduce((a, p) => a + (p.views ?? 0), 0);
   const pos = avg(posts.map((p) => p.positivo ?? 0));
   const neg = avg(posts.map((p) => p.negativo ?? 0));
+  const neu = avg(posts.map((p) => p.neutro ?? 0));
   return {
     posts: posts.length,
     engagement_promedio: avg(engs),
@@ -165,6 +167,7 @@ export function computeKpis(posts: SocialPost[]): SocialKpis {
     total_views: views,
     sentimiento_positivo: pos,
     sentimiento_negativo: neg,
+    sentimiento_neutro: neu,
     max_engagement: posts.length > 0 ? Math.max(...engs) : 0,
     redes: [...new Set(posts.map((p) => p.red_social))],
   };

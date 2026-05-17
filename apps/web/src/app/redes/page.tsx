@@ -124,8 +124,29 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <KpiCard title="Engagement prom" value={`${kpis.engagement_promedio.toFixed(2)}%`} hint={`Máx ${kpis.max_engagement.toFixed(2)}%`} />
         <KpiCard title="Total likes" value={fmtK(kpis.total_likes)} hint={`${kpis.posts} posts`} />
         <KpiCard title="Total views" value={fmtK(kpis.total_views)} hint="Videos e IG" />
-        <KpiCard title="Sentimiento +" value={`${Math.round(kpis.sentimiento_positivo)}%`} hint="Promedio" />
-        <KpiCard title="Sentimiento –" value={`${Math.round(kpis.sentimiento_negativo)}%`} hint="Riesgo" />
+        <div className="rounded-lg border bg-card p-4 lg:col-span-2">
+          <div className="text-xs font-medium text-muted-foreground">Sentimiento</div>
+          <div className="mt-2 flex items-baseline gap-4">
+            <div>
+              <span className="text-2xl font-bold tabular-nums text-emerald-600">
+                {Math.round(kpis.sentimiento_positivo)}%
+              </span>
+              <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Positivo</span>
+            </div>
+            <div>
+              <span className="text-2xl font-bold tabular-nums text-rose-600">
+                {Math.round(kpis.sentimiento_negativo)}%
+              </span>
+              <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Negativo</span>
+            </div>
+            <div>
+              <span className="text-2xl font-bold tabular-nums text-slate-500">
+                {Math.round(kpis.sentimiento_neutro)}%
+              </span>
+              <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Neutro</span>
+            </div>
+          </div>
+        </div>
         <KpiCard title="Posts" value={String(kpis.posts)} hint={kpis.redes.join(" · ") || "—"} />
       </section>
 
