@@ -259,8 +259,10 @@ export interface PilarStat {
 const PILAR_PRIORITY = ["Producto", "Branding", "Promo", "Influencer", "Educacional"];
 
 // Renombres a label final (después de aplicar prioridad).
+// Los 5 pilares canónicos: Branding, Producto, Influencer, Promoción, Educativo.
 const PILAR_DISPLAY: Record<string, string> = {
   Promo: "Promoción",
+  Educacional: "Educativo",
 };
 
 function applyDisplayName(pilar: string): string {
