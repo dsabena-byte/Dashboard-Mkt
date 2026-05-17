@@ -258,6 +258,15 @@ export interface PilarStat {
 // según orden de prioridad. No se hace double-counting.
 const PILAR_PRIORITY = ["Producto", "Branding", "Promo", "Influencer", "Educacional"];
 
+// Renombres a label final (después de aplicar prioridad).
+const PILAR_DISPLAY: Record<string, string> = {
+  Promo: "Promoción",
+};
+
+function applyDisplayName(pilar: string): string {
+  return PILAR_DISPLAY[pilar] ?? pilar;
+}
+
 function normalizePilar(pilar: string | null): string | null {
   if (!pilar) return null;
   const parts = pilar
@@ -265,12 +274,12 @@ function normalizePilar(pilar: string | null): string | null {
     .map((p) => p.trim())
     .filter(Boolean);
   if (parts.length === 0) return null;
-  if (parts.length === 1) return parts[0] ?? null;
+  if (parts.length === 1) return parts[0] ? applyDisplayName(parts[0]) : null;
   // Multi-part: el de mayor prioridad gana
   for (const pri of PILAR_PRIORITY) {
-    if (parts.some((p) => p.toLowerCase() === pri.toLowerCase())) return pri;
+    if (parts.some((p) => p.toLowerCase() === pri.toLowerCase())) return applyDisplayName(pri);
   }
-  return parts[0] ?? null;
+  return parts[0] ? applyDisplayName(parts[0]) : null;
 }
 
 export function computePilarStats(posts: SocialPost[]): PilarStat[] {
