@@ -73,11 +73,15 @@ function periodoToFromDate(periodo: string | undefined): string | null {
   return null;
 }
 
+// Cutoff fijo: el dashboard solo muestra posts del 2026 en adelante.
+const SOCIAL_CUTOFF = "2026-01-01";
+
 export async function getSocialPosts(filters: SocialFilters): Promise<SocialPost[]> {
   const supabase = getServerSupabase();
   let query = supabase
     .from("social_posts")
     .select("*")
+    .gte("fecha", SOCIAL_CUTOFF)
     .order("fecha", { ascending: false })
     .range(0, 9999);
 
@@ -88,7 +92,9 @@ export async function getSocialPosts(filters: SocialFilters): Promise<SocialPost
     query = query.eq("red_social", filters.red);
   }
   const fromDate = periodoToFromDate(filters.periodo);
-  if (fromDate) query = query.gte("fecha", fromDate);
+  // Si periodoToFromDate da una fecha más reciente que el cutoff, la aplicamos.
+  // Si daría una fecha anterior, el cutoff manda igual.
+  if (fromDate && fromDate > SOCIAL_CUTOFF) query = query.gte("fecha", fromDate);
 
   const { data, error } = await query.returns<SocialPost[]>();
   if (error) {
@@ -109,6 +115,7 @@ export async function getAllMarcas(): Promise<string[]> {
   const { data, error } = await supabase
     .from("social_posts")
     .select("marca")
+    .gte("fecha", SOCIAL_CUTOFF)
     .order("marca", { ascending: true })
     .range(0, 9999)
     .returns<{ marca: string }[]>();
