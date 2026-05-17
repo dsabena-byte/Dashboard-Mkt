@@ -249,8 +249,15 @@ export interface PilarStat {
   posts: number;
 }
 
-// Normaliza el nombre del pilar para que "Producto/Branding" y "Branding/Producto"
-// se unifiquen — separa por "/", trimea, ordena alfabético y rejoinea.
+// Normaliza el nombre del pilar:
+//   - "Producto" solo  → "Producto"
+//   - "Branding/Producto" o "Producto/Branding" → "Producto" (gana por prioridad)
+//   - "Producto/Promo" → "Producto"
+//   - "Branding/Promo" → "Branding"
+// Si un post tiene pilar combinado, lo asignamos a UN único pilar canónico
+// según orden de prioridad. No se hace double-counting.
+const PILAR_PRIORITY = ["Producto", "Branding", "Promo", "Influencer", "Educacional"];
+
 function normalizePilar(pilar: string | null): string | null {
   if (!pilar) return null;
   const parts = pilar
@@ -258,7 +265,12 @@ function normalizePilar(pilar: string | null): string | null {
     .map((p) => p.trim())
     .filter(Boolean);
   if (parts.length === 0) return null;
-  return parts.sort((a, b) => a.localeCompare(b)).join("/");
+  if (parts.length === 1) return parts[0] ?? null;
+  // Multi-part: el de mayor prioridad gana
+  for (const pri of PILAR_PRIORITY) {
+    if (parts.some((p) => p.toLowerCase() === pri.toLowerCase())) return pri;
+  }
+  return parts[0] ?? null;
 }
 
 export function computePilarStats(posts: SocialPost[]): PilarStat[] {
