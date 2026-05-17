@@ -34,12 +34,16 @@ export const BRAND_LABELS: Record<string, string> = {
   dreanargentina: "Drean",
   "philco.arg": "Philco",
   gafaargentina: "Gafa",
+  whirlpoolarg: "Whirlpool",
+  electroluxar: "Electrolux",
 };
 
 export const BRAND_COLORS: Record<string, string> = {
   dreanargentina: "#dc2626",      // rojo (color institucional)
   "philco.arg": "#f97316",        // naranja
   gafaargentina: "#0ea5e9",       // celeste
+  whirlpoolarg: "#7c3aed",        // violeta
+  electroluxar: "#64748b",        // gris azulado
 };
 
 export const NET_LABELS: Record<string, string> = {
@@ -98,6 +102,27 @@ export async function getSocialPosts(filters: SocialFilters): Promise<SocialPost
     throw new Error(`social_posts: ${error.message}`);
   }
   return data ?? [];
+}
+
+export async function getAllMarcas(): Promise<string[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("social_posts")
+    .select("marca")
+    .order("marca", { ascending: true })
+    .range(0, 9999)
+    .returns<{ marca: string }[]>();
+  if (error) {
+    if (
+      /relation .* does not exist/i.test(error.message) ||
+      /could not find the table/i.test(error.message) ||
+      /schema cache/i.test(error.message)
+    ) {
+      return [];
+    }
+    throw new Error(`social_posts marcas: ${error.message}`);
+  }
+  return [...new Set((data ?? []).map((r) => r.marca).filter(Boolean))];
 }
 
 // =============================================================================
@@ -217,11 +242,24 @@ export interface PilarStat {
   posts: number;
 }
 
+// Normaliza el nombre del pilar para que "Producto/Branding" y "Branding/Producto"
+// se unifiquen — separa por "/", trimea, ordena alfabético y rejoinea.
+function normalizePilar(pilar: string | null): string | null {
+  if (!pilar) return null;
+  const parts = pilar
+    .split("/")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.sort((a, b) => a.localeCompare(b)).join("/");
+}
+
 export function computePilarStats(posts: SocialPost[]): PilarStat[] {
-  const pilars = [...new Set(posts.map((p) => p.pilar).filter(Boolean) as string[])];
+  const normalized = posts.map((p) => ({ ...p, pilar: normalizePilar(p.pilar) }));
+  const pilars = [...new Set(normalized.map((p) => p.pilar).filter(Boolean) as string[])];
   return pilars
     .map((pi) => {
-      const pp = posts.filter((p) => p.pilar === pi);
+      const pp = normalized.filter((p) => p.pilar === pi);
       return {
         pilar: pi,
         engagement_promedio: avg(pp.map((p) => p.engagement ?? 0)),

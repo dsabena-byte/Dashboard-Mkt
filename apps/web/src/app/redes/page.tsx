@@ -18,6 +18,7 @@ import {
   computePilarStats,
   computeSentimentByBrand,
   computeTrend,
+  getAllMarcas,
   getSocialPosts,
   topCriticalPosts,
   topSuccessfulPosts,
@@ -44,7 +45,15 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const red = getParam(searchParams, "red", "all");
   const periodo = getParam(searchParams, "periodo", "all");
 
-  const posts = await getSocialPosts({ marca, red, periodo });
+  const [posts, allMarcas] = await Promise.all([
+    getSocialPosts({ marca, red, periodo }),
+    getAllMarcas(),
+  ]);
+
+  const brandOptions = allMarcas.map((m) => ({
+    value: m,
+    label: BRAND_LABELS[m] ?? m,
+  }));
 
   const kpis = computeKpis(posts);
   const netStats = computeNetStats(posts);
@@ -60,13 +69,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const successful = topSuccessfulPosts(posts);
   const critical = topCriticalPosts(posts);
 
-  // Posición de Drean en la categoría
-  const allBrands = computeBrandStats(posts);
-  const myStats = allBrands.find((b) => b.marca === OWN_BRAND);
-  const allEng = posts.length > 0 ? posts.map((p) => p.engagement ?? 0).reduce((a, b) => a + b, 0) / posts.length : 0;
-  const myPos = myStats ? allBrands.findIndex((b) => b.marca === OWN_BRAND) + 1 : 0;
-  const diff = (myStats?.engagement_promedio ?? 0) - allEng;
-
   const hasData = posts.length > 0;
 
   return (
@@ -80,7 +82,12 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       </header>
 
-      <SocialFilters currentBrand={marca} currentNet={red} currentPeriodo={periodo} />
+      <SocialFilters
+        currentBrand={marca}
+        currentNet={red}
+        currentPeriodo={periodo}
+        brands={brandOptions}
+      />
 
       {!hasData && (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
@@ -109,45 +116,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
           </div>
         ))}
       </section>
-
-      {/* Banner posición Drean */}
-      {myStats && (
-        <section className="rounded-lg border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold">Drean · Posición en la categoría</div>
-              <div className="text-xs text-muted-foreground">
-                Posición #{myPos} de {allBrands.length} marcas · {diff >= 0 ? "+" : ""}
-                {diff.toFixed(2)}% vs promedio
-              </div>
-            </div>
-            <div className="flex gap-5">
-              <div className="text-right">
-                <div className="text-lg font-bold tabular-nums" style={{ color: "#3b82f6" }}>
-                  {myStats.engagement_promedio.toFixed(2)}%
-                </div>
-                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Eng. prom</div>
-              </div>
-              <div className="text-right">
-                <div className="text-lg font-bold tabular-nums text-emerald-600">
-                  {Math.round(myStats.positivo)}%
-                </div>
-                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Positivo</div>
-              </div>
-              <div className="text-right">
-                <div className="text-lg font-bold tabular-nums text-rose-600">
-                  {Math.round(myStats.negativo)}%
-                </div>
-                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Negativo</div>
-              </div>
-              <div className="text-right">
-                <div className="text-lg font-bold tabular-nums">{myStats.posts}</div>
-                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Posts</div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* KPI cards */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">

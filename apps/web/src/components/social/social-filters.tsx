@@ -4,13 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
 
-const BRANDS = [
-  { value: "all", label: "Todas" },
-  { value: "dreanargentina", label: "Drean" },
-  { value: "philco.arg", label: "Philco" },
-  { value: "gafaargentina", label: "Gafa" },
-];
-
 const NETS = [
   { value: "all", label: "Todas", emoji: "🌐" },
   { value: "INSTAGRAM", label: "Instagram", emoji: "📷" },
@@ -28,9 +21,11 @@ interface Props {
   currentBrand: string;
   currentNet: string;
   currentPeriodo: string;
+  brands: Array<{ value: string; label: string }>;
 }
 
-export function SocialFilters({ currentBrand, currentNet, currentPeriodo }: Props) {
+export function SocialFilters({ currentBrand, currentNet, currentPeriodo, brands }: Props) {
+  const BRANDS = [{ value: "all", label: "Todas" }, ...brands];
   const router = useRouter();
   const searchParams = useSearchParams();
 
