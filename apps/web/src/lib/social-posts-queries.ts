@@ -17,8 +17,6 @@ export interface SocialPost {
   marca: string;
   views: number | null;
   content_type: string | null;
-  sponsored: boolean | null;
-  hashtags: string | null;
   followers: number | null;
 }
 
