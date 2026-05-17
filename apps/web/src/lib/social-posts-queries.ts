@@ -108,6 +108,63 @@ export async function getSocialPosts(filters: SocialFilters): Promise<SocialPost
   return data ?? [];
 }
 
+export interface FollowerSnapshot {
+  marca: string;
+  red_social: string;
+  fecha: string;
+  followers: number;
+}
+
+export async function getSocialFollowers(): Promise<FollowerSnapshot[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("social_followers")
+    .select("marca, red_social, fecha, followers")
+    .order("fecha", { ascending: true })
+    .range(0, 9999)
+    .returns<FollowerSnapshot[]>();
+  if (error) {
+    if (
+      /relation .* does not exist/i.test(error.message) ||
+      /could not find the table/i.test(error.message) ||
+      /schema cache/i.test(error.message)
+    ) {
+      return [];
+    }
+    throw new Error(`social_followers: ${error.message}`);
+  }
+  return data ?? [];
+}
+
+// Para un (marca, red, fecha) devuelve el snapshot más reciente con fecha <= la fecha del post.
+function findFollowersAt(
+  snapshots: FollowerSnapshot[],
+  marca: string,
+  red: string,
+  fecha: string | null,
+): number | null {
+  if (!fecha) return null;
+  let best: FollowerSnapshot | null = null;
+  for (const s of snapshots) {
+    if (s.marca !== marca || s.red_social !== red) continue;
+    if (s.fecha > fecha) continue;
+    if (!best || s.fecha > best.fecha) best = s;
+  }
+  return best?.followers ?? null;
+}
+
+// Recalcula engagement de cada post usando social_followers (si hay snapshot disponible).
+// Fallback: engagement original del scrape (que puede ser null si no había followers).
+export function enrichEngagement(posts: SocialPost[], snapshots: FollowerSnapshot[]): SocialPost[] {
+  if (snapshots.length === 0) return posts;
+  return posts.map((p) => {
+    const f = findFollowersAt(snapshots, p.marca, p.red_social, p.fecha);
+    if (!f || f <= 0) return p;
+    const eng = (((p.likes ?? 0) + (p.comentarios ?? 0)) / f) * 100;
+    return { ...p, engagement: Number(eng.toFixed(3)), followers: f };
+  });
+}
+
 export async function getAllMarcas(): Promise<string[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase

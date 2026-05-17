@@ -18,7 +18,9 @@ import {
   computePilarStats,
   computeSentimentByBrand,
   computeTrend,
+  enrichEngagement,
   getAllMarcas,
+  getSocialFollowers,
   getSocialPosts,
   topCriticalPosts,
   topSuccessfulPosts,
@@ -47,10 +49,15 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const red = getParam(searchParams, "red", "all");
   const periodo = getParam(searchParams, "periodo", "all");
 
-  const [posts, allMarcas] = await Promise.all([
+  const [rawPosts, allMarcas, followers] = await Promise.all([
     getSocialPosts({ marca, red, periodo }),
     getAllMarcas(),
+    getSocialFollowers(),
   ]);
+
+  // Recalcula engagement por post usando social_followers (si hay snapshots).
+  // Si no hay, mantiene el engagement del scrape original.
+  const posts = enrichEngagement(rawPosts, followers);
 
   const brandOptions = allMarcas.map((m) => ({
     value: m,
