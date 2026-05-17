@@ -241,6 +241,10 @@ export interface BrandStat {
   engagement_promedio: number;
   positivo: number;
   negativo: number;
+  neutro: number;
+  total_likes: number;
+  total_comentarios: number;
+  total_views: number;
   views_promedio: number;
 }
 
@@ -250,12 +254,22 @@ export function computeBrandStats(posts: SocialPost[]): BrandStat[] {
     .map((m) => {
       const bp = posts.filter((p) => p.marca === m);
       const vidPosts = bp.filter((p) => (p.views ?? 0) > 0);
+      // Sentimiento: solo posts con sentimiento real (excluye nulls y 0/0/0)
+      const withSent = bp.filter((p) => {
+        if (p.positivo === null || p.positivo === undefined) return false;
+        if ((p.positivo || 0) === 0 && (p.negativo || 0) === 0 && (p.neutro || 0) === 0) return false;
+        return true;
+      });
       return {
         marca: m,
         posts: bp.length,
         engagement_promedio: avg(bp.map((p) => p.engagement ?? 0)),
-        positivo: avg(bp.map((p) => p.positivo ?? 0)),
-        negativo: avg(bp.map((p) => p.negativo ?? 0)),
+        positivo: avg(withSent.map((p) => p.positivo as number)),
+        negativo: avg(withSent.map((p) => p.negativo as number)),
+        neutro: avg(withSent.map((p) => p.neutro as number)),
+        total_likes: bp.reduce((a, p) => a + (p.likes ?? 0), 0),
+        total_comentarios: bp.reduce((a, p) => a + (p.comentarios ?? 0), 0),
+        total_views: bp.reduce((a, p) => a + (p.views ?? 0), 0),
         views_promedio: vidPosts.length > 0 ? avg(vidPosts.map((p) => p.views ?? 0)) : 0,
       };
     })
