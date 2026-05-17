@@ -88,7 +88,13 @@ export async function getSocialPosts(filters: SocialFilters): Promise<SocialPost
 
   const { data, error } = await query.returns<SocialPost[]>();
   if (error) {
-    if (/relation .* does not exist/i.test(error.message)) return [];
+    if (
+      /relation .* does not exist/i.test(error.message) ||
+      /could not find the table/i.test(error.message) ||
+      /schema cache/i.test(error.message)
+    ) {
+      return [];
+    }
     throw new Error(`social_posts: ${error.message}`);
   }
   return data ?? [];
