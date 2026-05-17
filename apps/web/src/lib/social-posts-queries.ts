@@ -238,6 +238,7 @@ export function computeKpis(posts: SocialPost[]): SocialKpis {
 export interface BrandStat {
   marca: string;
   posts: number;
+  posts_per_week: number;
   engagement_promedio: number;
   positivo: number;
   negativo: number;
@@ -249,6 +250,14 @@ export interface BrandStat {
 }
 
 export function computeBrandStats(posts: SocialPost[]): BrandStat[] {
+  // Calculamos un span global de semanas para que TODAS las marcas usen el mismo divisor.
+  const allDates = posts.map((p) => p.fecha).filter((d): d is string => !!d).sort();
+  let globalWeeks = 1;
+  if (allDates.length > 0) {
+    const minD = new Date(`${allDates[0]}T00:00:00Z`).getTime();
+    const maxD = new Date(`${allDates[allDates.length - 1]}T00:00:00Z`).getTime();
+    globalWeeks = Math.max(1, (maxD - minD) / (7 * 86_400_000) + 1 / 7);
+  }
   const marcas = [...new Set(posts.map((p) => p.marca))];
   return marcas
     .map((m) => {
@@ -263,6 +272,7 @@ export function computeBrandStats(posts: SocialPost[]): BrandStat[] {
       return {
         marca: m,
         posts: bp.length,
+        posts_per_week: bp.length / globalWeeks,
         engagement_promedio: avg(bp.map((p) => p.engagement ?? 0)),
         positivo: avg(withSent.map((p) => p.positivo as number)),
         negativo: avg(withSent.map((p) => p.negativo as number)),

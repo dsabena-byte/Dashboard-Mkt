@@ -203,6 +203,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
                 <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                   <th className="px-2 py-1.5">Marca</th>
                   <th className="px-2 py-1.5 text-right">Posts</th>
+                  <th className="px-2 py-1.5 text-right">Posts/sem</th>
                   <th className="px-2 py-1.5 text-right">Eng. prom</th>
                   <th className="px-2 py-1.5">Eng. relativo</th>
                   <th className="px-2 py-1.5 text-right">% Pos</th>
@@ -216,7 +217,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
               <tbody>
                 {brandStats.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-2 py-6 text-center text-muted-foreground">
+                    <td colSpan={11} className="px-2 py-6 text-center text-muted-foreground">
                       Sin datos.
                     </td>
                   </tr>
@@ -234,6 +235,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
                             {b.marca === OWN_BRAND && <span className="ml-1 text-rose-500">★</span>}
                           </td>
                           <td className="px-2 py-1.5 text-right tabular-nums">{b.posts}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{b.posts_per_week.toFixed(1)}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums">{b.engagement_promedio.toFixed(2)}%</td>
                           <td className="px-2 py-1.5">
                             <div className="h-1 w-24 rounded-full bg-muted">
