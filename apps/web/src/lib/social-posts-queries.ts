@@ -322,6 +322,37 @@ export function computeTrend(posts: SocialPost[]): TrendPoint[] {
     });
 }
 
+// Volumen semanal de posteos por marca.
+function weekStartIso(fecha: string): string {
+  const d = new Date(`${fecha}T00:00:00Z`);
+  const day = d.getUTCDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+export function computeWeeklyPostCount(posts: SocialPost[]): TrendPoint[] {
+  const marcas = [...new Set(posts.map((p) => p.marca))];
+  const byWeek = new Map<string, Map<string, number>>();
+  for (const p of posts) {
+    if (!p.fecha) continue;
+    const semana = weekStartIso(p.fecha);
+    if (!byWeek.has(semana)) byWeek.set(semana, new Map());
+    const m = byWeek.get(semana)!;
+    m.set(p.marca, (m.get(p.marca) ?? 0) + 1);
+  }
+  return [...byWeek.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([semana, brandMap]) => {
+      const values: Record<string, number | null> = {};
+      // Para "count", semana sin posts de una marca = 0 (no null) para que se vea la línea
+      for (const m of marcas) values[m] = brandMap.get(m) ?? 0;
+      // Formato de label: DD/MM
+      const [, mm, dd] = semana.split("-");
+      return { mes: `${dd}/${mm}`, values };
+    });
+}
+
 export interface PilarStat {
   pilar: string;
   engagement_promedio: number;

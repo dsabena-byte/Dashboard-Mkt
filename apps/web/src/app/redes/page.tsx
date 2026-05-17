@@ -16,6 +16,7 @@ import {
   computePilarStats,
   computeSentimentByBrand,
   computeTrend,
+  computeWeeklyPostCount,
   enrichEngagement,
   getAllMarcas,
   getSocialFollowers,
@@ -66,6 +67,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const netStats = computeNetStats(posts);
   const brandStats = computeBrandStats(posts);
   const trend = computeTrend(posts);
+  const weeklyVolume = computeWeeklyPostCount(posts);
   const pilarStats = computePilarStats(posts);
   const sentByBrand = computeSentimentByBrand(posts).map((s) => ({
     ...s,
@@ -152,6 +154,19 @@ export default async function RedesPage({ searchParams }: PageProps) {
           </div>
         </div>
         <KpiCard title="Posts" value={String(kpis.posts)} hint={kpis.redes.join(" · ") || "—"} />
+      </section>
+
+      {/* Volumen semanal de posteos */}
+      <section className="rounded-lg border bg-card p-4">
+        <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Cantidad de posteos por semana
+        </h3>
+        <SocialTrendChart
+          data={weeklyVolume}
+          brands={[...new Set(posts.map((p) => p.marca))]}
+          brandLabels={BRAND_LABELS}
+          brandColors={BRAND_COLORS}
+        />
       </section>
 
       {/* Trend + Pilar */}
