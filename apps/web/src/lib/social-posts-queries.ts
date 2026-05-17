@@ -23,7 +23,8 @@ export interface SocialPost {
 export interface SocialFilters {
   marca?: string;        // 'all' o el handle de la marca
   red?: string;          // 'all' o INSTAGRAM/FACEBOOK/TIKTOK
-  periodo?: string;      // 'all' | '3m' | '1m'
+  from?: string;         // YYYY-MM-DD (filtro de fecha inicial)
+  to?: string;           // YYYY-MM-DD (filtro de fecha final)
 }
 
 export const OWN_BRAND = "dreanargentina";
@@ -56,21 +57,6 @@ export const NET_COLORS: Record<string, string> = {
   TIKTOK: "#2dd4bf",
 };
 
-function periodoToFromDate(periodo: string | undefined): string | null {
-  const now = new Date();
-  if (periodo === "1m") {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - 1);
-    return d.toISOString().slice(0, 10);
-  }
-  if (periodo === "3m") {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - 3);
-    return d.toISOString().slice(0, 10);
-  }
-  return null;
-}
-
 // Cutoff fijo: el dashboard solo muestra posts del 2026 en adelante.
 const SOCIAL_CUTOFF = "2026-01-01";
 
@@ -89,10 +75,10 @@ export async function getSocialPosts(filters: SocialFilters): Promise<SocialPost
   if (filters.red && filters.red !== "all") {
     query = query.eq("red_social", filters.red);
   }
-  const fromDate = periodoToFromDate(filters.periodo);
-  // Si periodoToFromDate da una fecha más reciente que el cutoff, la aplicamos.
-  // Si daría una fecha anterior, el cutoff manda igual.
-  if (fromDate && fromDate > SOCIAL_CUTOFF) query = query.gte("fecha", fromDate);
+  // Filtros de fecha: respetan el cutoff de 2026-01-01 (no se puede ir antes).
+  const effectiveFrom = filters.from && filters.from > SOCIAL_CUTOFF ? filters.from : null;
+  if (effectiveFrom) query = query.gte("fecha", effectiveFrom);
+  if (filters.to) query = query.lte("fecha", filters.to);
 
   const { data, error } = await query.returns<SocialPost[]>();
   if (error) {
