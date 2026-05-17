@@ -2,7 +2,6 @@ import { KpiCard } from "@/components/kpi-card";
 import { SocialFilters } from "@/components/social/social-filters";
 import { SocialTrendChart } from "@/components/social/social-trend-chart";
 import { SocialPilarChart } from "@/components/social/social-pilar-chart";
-import { SocialContentMixChart } from "@/components/social/social-content-mix-chart";
 import { SocialSentimentChart } from "@/components/social/social-sentiment-chart";
 import { SocialContentTypeChart } from "@/components/social/social-content-type-chart";
 import {
@@ -11,7 +10,6 @@ import {
   NET_LABELS,
   OWN_BRAND,
   computeBrandStats,
-  computeContentMix,
   computeContentTypeSlices,
   computeKpis,
   computeNetStats,
@@ -69,7 +67,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const brandStats = computeBrandStats(posts);
   const trend = computeTrend(posts);
   const pilarStats = computePilarStats(posts);
-  const contentMix = computeContentMix(posts);
   const sentByBrand = computeSentimentByBrand(posts).map((s) => ({
     ...s,
     label: BRAND_LABELS[s.key] ?? s.key,
@@ -178,8 +175,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Benchmark + Content Mix */}
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+      {/* Benchmark table (full width) */}
+      <section>
         <div className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Benchmark de marcas · KPIs comparados
@@ -237,12 +234,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
               </tbody>
             </table>
           </div>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Mix de contenido por red
-          </h3>
-          <SocialContentMixChart data={contentMix} />
         </div>
       </section>
 
