@@ -191,13 +191,16 @@ export default async function RedesPage({ searchParams }: PageProps) {
                   <th className="px-2 py-1.5">Eng. relativo</th>
                   <th className="px-2 py-1.5 text-right">% Pos</th>
                   <th className="px-2 py-1.5 text-right">% Neg</th>
-                  <th className="px-2 py-1.5 text-right">Views prom</th>
+                  <th className="px-2 py-1.5 text-right">% Neu</th>
+                  <th className="px-2 py-1.5 text-right">Likes</th>
+                  <th className="px-2 py-1.5 text-right">Coment.</th>
+                  <th className="px-2 py-1.5 text-right">Views</th>
                 </tr>
               </thead>
               <tbody>
                 {brandStats.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-2 py-6 text-center text-muted-foreground">
+                    <td colSpan={10} className="px-2 py-6 text-center text-muted-foreground">
                       Sin datos.
                     </td>
                   </tr>
@@ -223,8 +226,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
                           </td>
                           <td className="px-2 py-1.5 text-right tabular-nums text-emerald-600">{Math.round(b.positivo)}%</td>
                           <td className="px-2 py-1.5 text-right tabular-nums text-rose-600">{Math.round(b.negativo)}%</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-slate-500">{Math.round(b.neutro)}%</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtK(b.total_likes)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtK(b.total_comentarios)}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums">
-                            {b.views_promedio > 0 ? fmtK(Math.round(b.views_promedio)) : "—"}
+                            {b.total_views > 0 ? fmtK(b.total_views) : "—"}
                           </td>
                         </tr>
                       );
