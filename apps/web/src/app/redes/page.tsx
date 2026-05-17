@@ -166,6 +166,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
           brands={[...new Set(posts.map((p) => p.marca))]}
           brandLabels={BRAND_LABELS}
           brandColors={BRAND_COLORS}
+          valueFormat="integer"
         />
       </section>
 
