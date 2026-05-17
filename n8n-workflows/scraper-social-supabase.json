@@ -1,0 +1,284 @@
+{
+  "name": "Social Scraper — Apify + GPT → Supabase",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-900, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Setup hardcoded. Cambiá las URLs/handles si agregás o sacás marcas.\n// fromDate: arranque del scrape. Posts publicados antes se descartan en Parse.\nconst DEFAULTS = {\n  fromDate: '2026-01-01',\n  resultsLimit: 500,\n  brands: [\n    'dreanargentina',\n    'philco.arg',\n    'gafaargentina',\n    'whirlpoolarg',\n    'electroluxar'\n  ],\n  instagramUrls: [\n    'https://www.instagram.com/dreanargentina/',\n    'https://www.instagram.com/philco.arg/',\n    'https://www.instagram.com/gafaargentina/',\n    'https://www.instagram.com/whirlpoolarg/',\n    'https://www.instagram.com/electroluxar/'\n  ],\n  facebookUrls: [\n    'https://www.facebook.com/dreanargentina',\n    'https://www.facebook.com/PhilcoArgentinaOk',\n    'https://www.facebook.com/gafaargentina',\n    'https://www.facebook.com/Whirlpool.Argentina',\n    'https://www.facebook.com/ElectroluxArgentina'\n  ],\n  tiktokProfiles: [\n    '@drean.argentina',\n    '@philco.argentina',\n    '@gafa.argentina',\n    '@whirlpool.argentina',\n    '@electrolux.arg'\n  ]\n};\nreturn [{ json: DEFAULTS }];"
+      },
+      "id": "node-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-720, 0]
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorId": {
+          "__rl": true,
+          "value": "shu8hvrXbJbY3Eb9W",
+          "mode": "list",
+          "cachedResultName": "Instagram Scraper (apify/instagram-scraper)"
+        },
+        "customBody": "={{ JSON.stringify({ directUrls: $('Set Config').first().json.instagramUrls, resultsLimit: $('Set Config').first().json.resultsLimit, onlyPostsNewerThan: $('Set Config').first().json.fromDate, scrapePosts: true, scrapeComments: false, enhanceUserData: true }) }}",
+        "authentication": "apifyOAuth2Api"
+      },
+      "id": "node-ig-actor",
+      "name": "Instagram Actor",
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [-480, -240],
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "eUm5nmUy2Eqh8k51",
+          "name": "Apify account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const url = d.url || (d.shortCode ? 'https://www.instagram.com/p/' + d.shortCode + '/' : '');\n  return {\n    url,\n    caption: d.caption || d.alt || '',\n    hashtags: Array.isArray(d.hashtags) ? d.hashtags : [],\n    timestamp: d.timestamp || d.takenAtTimestamp || '',\n    likesCount: d.likesCount || d.likes || 0,\n    commentsCount: d.commentsCount || d.comments || 0,\n    type: d.type || 'image',\n    ownerUsername: d.ownerUsername || d.username || '',\n    ownerFollowerCount: d.ownerFollowerCount || d.followersCount || 0,\n    videoViewCount: d.videoViewCount || d.videoPlayCount || 0,\n    isSponsored: !!(d.isSponsored || d.isPinned),\n    platform: 'INSTAGRAM'\n  };\n});"
+      },
+      "id": "node-tag-ig",
+      "name": "Tag Instagram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, -240]
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorId": {
+          "__rl": true,
+          "value": "KoJrdxJCTtpon81KY",
+          "mode": "list",
+          "cachedResultName": "Facebook Pages Scraper (apify/facebook-pages-scraper)"
+        },
+        "customBody": "={{ JSON.stringify({ startUrls: $('Set Config').first().json.facebookUrls.map(url => ({ url })), maxPosts: $('Set Config').first().json.resultsLimit }) }}",
+        "authentication": "apifyOAuth2Api"
+      },
+      "id": "node-fb-actor",
+      "name": "Facebook Actor",
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [-480, 0],
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "eUm5nmUy2Eqh8k51",
+          "name": "Apify account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const text = d.text || d.message || d.story || '';\n  const hashtags = (text.match(/#[\\w\\u00C0-\\u024F]+/g) || []).map(h => h.slice(1));\n  return {\n    url: d.url || d.postUrl || d.link || '',\n    caption: text,\n    hashtags,\n    timestamp: d.time || d.createdTime || d.date || '',\n    likesCount: d.likes || d.likesCount || d.reactionsCount || 0,\n    commentsCount: d.comments || d.commentsCount || 0,\n    type: d.type || 'photo',\n    ownerUsername: d.pageName || d.pageAlias || d.username || '',\n    videoViewCount: d.videoViewCount || d.views || 0,\n    ownerFollowerCount: d.pageFans || d.fans || d.followers || d.pageFollowers || 0,\n    isSponsored: !!(d.isSponsored),\n    platform: 'FACEBOOK'\n  };\n});"
+      },
+      "id": "node-tag-fb",
+      "name": "Tag Facebook",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorId": {
+          "__rl": true,
+          "value": "OtzYfK1ndEGdwWFKQ",
+          "mode": "list",
+          "cachedResultName": "TikTok Scraper (clockworks/free-tiktok-scraper)"
+        },
+        "customBody": "={{ JSON.stringify({ profiles: $('Set Config').first().json.tiktokProfiles, resultsPerPage: $('Set Config').first().json.resultsLimit, scrapeType: 'videos' }) }}",
+        "authentication": "apifyOAuth2Api"
+      },
+      "id": "node-tt-actor",
+      "name": "TikTok Actor",
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [-480, 240],
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "eUm5nmUy2Eqh8k51",
+          "name": "Apify account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const d = item.json;\n  const text = d.text || d.desc || '';\n  const hashtags = Array.isArray(d.hashtags)\n    ? d.hashtags.map(h => h.name || h.title || h).filter(h => typeof h === 'string')\n    : (text.match(/#[\\w\\u00C0-\\u024F]+/g) || []).map(h => h.slice(1));\n  return {\n    url: d.webVideoUrl || d.videoUrl || d.shareUrl || '',\n    caption: text,\n    hashtags,\n    timestamp: d.createTimeISO || (d.createTime ? new Date(d.createTime * 1000).toISOString() : ''),\n    likesCount: d.diggCount || d.likeCount || 0,\n    commentsCount: d.commentCount || 0,\n    type: 'video',\n    ownerUsername: (d.authorMeta && d.authorMeta.name) || d.authorUniqueId || '',\n    ownerFollowerCount: (d.authorMeta && (d.authorMeta.fans || d.authorMeta.followerCount)) || 0,\n    videoViewCount: d.playCount || d.viewCount || 0,\n    isSponsored: false,\n    platform: 'TIKTOK'\n  };\n});"
+      },
+      "id": "node-tag-tt",
+      "name": "Tag TikTok",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 240]
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "node-merge",
+      "name": "Merge Platforms",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [-20, 0]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "posts",
+        "options": {}
+      },
+      "id": "node-agg-posts",
+      "name": "Aggregate Posts",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [180, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'Sos un analista de Social Media. Devolvé ÚNICAMENTE JSON válido con una key \"analysis\" que contiene un array de objetos.' }, { role: 'user', content: 'Analizá estos posts de redes sociales. Para cada uno devolvé: pilar (ELEGÍ EXACTAMENTE UNO entre: \"Branding\", \"Producto\", \"Promo\", \"Influencer\", \"Educacional\". NUNCA combines categorías ni uses \"Producto/Promo\" o similar), sentimiento (positivo+negativo+neutro deben sumar 100), insight (1 oración en español, opcional).\\n\\nPOSTS:\\n' + JSON.stringify(($json.posts || []).map(p => ({url: p.url, platform: p.platform, caption: (p.caption||'').substring(0,400), hashtags: (p.hashtags||[]).slice(0,8)}))) + '\\n\\nFormato exacto: {\"analysis\":[{\"url\":\"...\",\"pilar\":\"...\",\"sentimiento\":{\"positivo\":0,\"negativo\":0,\"neutro\":0},\"insight\":\"...\"}]}' }] }) }}",
+        "options": {}
+      },
+      "id": "node-gpt",
+      "name": "GPT Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [380, 0],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build records for Supabase social_posts. Match marca por ownerUsername.\n// Pilar canónico (5 únicos, sin combinaciones). Engagement se calcula en dashboard.\ntry {\n  const raw = $input.first().json;\n  const originalPosts = $('Aggregate Posts').first().json.posts || [];\n  const config = $('Set Config').first().json;\n  const marcas = config.brands.map(b => b.toLowerCase());\n  const fromDate = config.fromDate || '2026-01-01';\n  const VALID_PILARS = ['Branding','Producto','Promo','Influencer','Educacional'];\n\n  // Extract GPT JSON\n  let analysisArray;\n  if (raw.choices && raw.choices[0]) {\n    const content = raw.choices[0].message?.content || '';\n    const parsed = JSON.parse(content);\n    analysisArray = parsed.analysis || parsed;\n  } else if (Array.isArray(raw)) {\n    analysisArray = raw;\n  } else {\n    throw new Error('GPT response inesperado: ' + JSON.stringify(Object.keys(raw)));\n  }\n  if (!Array.isArray(analysisArray)) throw new Error('analysis no es un array');\n\n  const analysisMap = {};\n  for (const a of analysisArray) { if (a.url) analysisMap[a.url] = a; }\n\n  // Match marca por ownerUsername (normalizado)\n  const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n  const matchMarca = (owner) => {\n    const o = norm(owner);\n    if (!o) return null;\n    return marcas.find(m => {\n      const mn = norm(m);\n      return mn && (o === mn || o.startsWith(mn) || mn.startsWith(o));\n    }) || null;\n  };\n\n  // Pilar guard\n  const pickPilar = (raw) => {\n    if (!raw) return 'Branding';\n    if (VALID_PILARS.includes(raw)) return raw;\n    // Si vino combinado tipo \"Producto/Branding\", agarrá el primero válido\n    const parts = raw.split('/').map(s => s.trim());\n    for (const p of parts) if (VALID_PILARS.includes(p)) return p;\n    return 'Branding';\n  };\n\n  const results = [];\n  for (const post of originalPosts) {\n    try {\n      const url = post.url || '';\n      if (!url) continue;\n      const analysis = analysisMap[url];\n      if (!analysis) continue;\n\n      const fecha = post.timestamp ? new Date(post.timestamp).toISOString().slice(0, 10) : null;\n      if (!fecha || fecha < fromDate) continue;\n\n      const marca = matchMarca(post.ownerUsername || post.username || '');\n      if (!marca) continue;\n\n      const likes = Number(post.likesCount) || 0;\n      const comments = Number(post.commentsCount) || 0;\n      const views = Number(post.videoViewCount) || 0;\n      const followers = Number(post.ownerFollowerCount) || 0;\n\n      const t = (post.type || '').toLowerCase();\n      const contentType = post.platform === 'TIKTOK' ? 'VIDEO'\n        : t.includes('video') || t.includes('reel') ? 'VIDEO'\n        : t.includes('sidecar') || t.includes('album') ? 'SIDECAR' : 'IMAGE';\n\n      const sent = analysis.sentimiento || {};\n      results.push({\n        red_social:   post.platform,\n        url,\n        pilar:        pickPilar(analysis.pilar),\n        positivo:     Number(sent.positivo) || 0,\n        negativo:     Number(sent.negativo) || 0,\n        neutro:       Number(sent.neutro) || 0,\n        likes,\n        comentarios:  comments,\n        engagement:   followers > 0 ? Number((((likes + comments) / followers) * 100).toFixed(3)) : null,\n        fecha,\n        tipo:         post.isSponsored ? 'PAUTA' : 'ORGÁNICO',\n        marca,\n        views,\n        content_type: contentType,\n        followers\n      });\n    } catch (e) { /* skip */ }\n  }\n\n  return results.map(json => ({ json }));\n} catch (e) {\n  return [{ json: { error: e.message } }];\n}"
+      },
+      "id": "node-parse",
+      "name": "Parse + Map to Supabase",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [580, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "filter-valid-url",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-filter-valid",
+      "name": "Filter Valid Posts",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [780, 0]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "node-batch",
+      "name": "Batch into one array",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [980, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_posts?on_conflict=url",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.data) }}",
+        "options": {}
+      },
+      "id": "node-supabase",
+      "name": "Supabase — Upsert social_posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1180, 0]
+    }
+  ],
+  "connections": {
+    "Manual trigger": {
+      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+    },
+    "Set Config": {
+      "main": [[
+        { "node": "Instagram Actor", "type": "main", "index": 0 },
+        { "node": "Facebook Actor", "type": "main", "index": 0 },
+        { "node": "TikTok Actor", "type": "main", "index": 0 }
+      ]]
+    },
+    "Instagram Actor": { "main": [[{ "node": "Tag Instagram", "type": "main", "index": 0 }]] },
+    "Tag Instagram":   { "main": [[{ "node": "Merge Platforms", "type": "main", "index": 0 }]] },
+    "Facebook Actor":  { "main": [[{ "node": "Tag Facebook", "type": "main", "index": 0 }]] },
+    "Tag Facebook":    { "main": [[{ "node": "Merge Platforms", "type": "main", "index": 1 }]] },
+    "TikTok Actor":    { "main": [[{ "node": "Tag TikTok", "type": "main", "index": 0 }]] },
+    "Tag TikTok":      { "main": [[{ "node": "Merge Platforms", "type": "main", "index": 2 }]] },
+    "Merge Platforms": { "main": [[{ "node": "Aggregate Posts", "type": "main", "index": 0 }]] },
+    "Aggregate Posts": { "main": [[{ "node": "GPT Analysis", "type": "main", "index": 0 }]] },
+    "GPT Analysis":    { "main": [[{ "node": "Parse + Map to Supabase", "type": "main", "index": 0 }]] },
+    "Parse + Map to Supabase": { "main": [[{ "node": "Filter Valid Posts", "type": "main", "index": 0 }]] },
+    "Filter Valid Posts": { "main": [[{ "node": "Batch into one array", "type": "main", "index": 0 }]] },
+    "Batch into one array": { "main": [[{ "node": "Supabase — Upsert social_posts", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": { "templateCredsSetupCompleted": false }
+}
