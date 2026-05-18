@@ -5,22 +5,18 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   GitBranch,
-  Megaphone,
   Target,
   Share2,
-  Bell,
   Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/overview",    label: "Overview",         icon: LayoutDashboard },
-  { href: "/web",         label: "Web",              icon: Globe },
-  { href: "/redes",       label: "Redes Sociales",   icon: Share2 },
-  { href: "/funnel",      label: "Funnel",           icon: GitBranch },
-  { href: "/campaigns",   label: "Campañas",         icon: Megaphone },
+  { href: "/funnel",      label: "BGT Mkt",          icon: GitBranch },
   { href: "/planning",    label: "Planning Pauta",   icon: Target },
-  { href: "/alerts",      label: "Alertas",          icon: Bell },
+  { href: "/web",         label: "Análisis Web",     icon: Globe },
+  { href: "/redes",       label: "Análisis Redes",   icon: Share2 },
 ] as const;
 
 export function Sidebar() {

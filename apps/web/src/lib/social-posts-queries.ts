@@ -195,7 +195,8 @@ export interface SocialKpis {
 }
 
 export function computeKpis(posts: SocialPost[]): SocialKpis {
-  const engs = posts.map((p) => p.engagement ?? 0);
+  // Engagement: solo posts con valor real (excluye nulls)
+  const engs = posts.map((p) => p.engagement).filter((e): e is number => e !== null && e !== undefined);
   const likes = posts.filter((p) => (p.likes ?? 0) > 0).reduce((a, p) => a + (p.likes ?? 0), 0);
   const views = posts.reduce((a, p) => a + (p.views ?? 0), 0);
   // Sentimiento: solo promediar posts con sentimiento real
@@ -466,16 +467,26 @@ export function computeContentTypeSlices(posts: SocialPost[]): ContentTypeSlice[
     .sort((a, b) => b.count - a.count);
 }
 
+// Top exitosos: usa engagement (siempre). Sentiment se chequea solo si está disponible (IG).
 export function topSuccessfulPosts(posts: SocialPost[], limit = 15): SocialPost[] {
   return posts
-    .filter((p) => (p.engagement ?? 0) > 0.3 || (p.positivo ?? 0) > 80)
+    .filter((p) => {
+      const eng = p.engagement ?? 0;
+      const pos = p.positivo;
+      // Engagement bueno → siempre pasa
+      if (eng > 0.3) return true;
+      // Sentiment muy positivo (solo si está medido) → también pasa
+      if (pos !== null && pos !== undefined && pos > 80) return true;
+      return false;
+    })
     .sort((a, b) => (b.engagement ?? 0) - (a.engagement ?? 0))
     .slice(0, limit);
 }
 
+// Top críticos: solo aplica cuando hay sentiment medido (IG). FB/TT sin sentiment no entran.
 export function topCriticalPosts(posts: SocialPost[], limit = 15): SocialPost[] {
   return posts
-    .filter((p) => (p.negativo ?? 0) > 10)
+    .filter((p) => p.negativo !== null && p.negativo !== undefined && p.negativo > 10)
     .sort((a, b) => (b.negativo ?? 0) - (a.negativo ?? 0))
     .slice(0, limit);
 }

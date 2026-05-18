@@ -80,6 +80,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const critical = topCriticalPosts(posts);
 
   const hasData = posts.length > 0;
+  // Sentiment solo aplica para Instagram. Si filtran por FB/TT, lo ocultamos.
+  const showSentiment = red === "all" || red === "INSTAGRAM";
 
   return (
     <div className="space-y-4">
@@ -132,33 +134,35 @@ export default async function RedesPage({ searchParams }: PageProps) {
       </section>
 
       {/* KPI cards */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <section className={`grid gap-3 sm:grid-cols-2 ${showSentiment ? "lg:grid-cols-6" : "lg:grid-cols-4"}`}>
         <KpiCard title="Engagement prom" value={`${kpis.engagement_promedio.toFixed(2)}%`} hint={`Máx ${kpis.max_engagement.toFixed(2)}%`} />
         <KpiCard title="Total likes" value={fmtK(kpis.total_likes)} hint={`${kpis.posts} posts`} />
         <KpiCard title="Total views" value={fmtK(kpis.total_views)} hint="Videos e IG" />
-        <div className="rounded-lg border bg-card p-4 lg:col-span-2">
-          <div className="text-xs font-medium text-muted-foreground">Sentimiento</div>
-          <div className="mt-2 flex items-baseline gap-4">
-            <div>
-              <span className="text-2xl font-bold tabular-nums text-emerald-600">
-                {Math.round(kpis.sentimiento_positivo)}%
-              </span>
-              <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Positivo</span>
-            </div>
-            <div>
-              <span className="text-2xl font-bold tabular-nums text-rose-600">
-                {Math.round(kpis.sentimiento_negativo)}%
-              </span>
-              <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Negativo</span>
-            </div>
-            <div>
-              <span className="text-2xl font-bold tabular-nums text-slate-500">
-                {Math.round(kpis.sentimiento_neutro)}%
-              </span>
-              <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Neutro</span>
+        {showSentiment && (
+          <div className="rounded-lg border bg-card p-4 lg:col-span-2">
+            <div className="text-xs font-medium text-muted-foreground">Sentimiento <span className="text-[9px] uppercase tracking-wide text-muted-foreground/70">(solo Instagram)</span></div>
+            <div className="mt-2 flex items-baseline gap-4">
+              <div>
+                <span className="text-2xl font-bold tabular-nums text-emerald-600">
+                  {Math.round(kpis.sentimiento_positivo)}%
+                </span>
+                <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Positivo</span>
+              </div>
+              <div>
+                <span className="text-2xl font-bold tabular-nums text-rose-600">
+                  {Math.round(kpis.sentimiento_negativo)}%
+                </span>
+                <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Negativo</span>
+              </div>
+              <div>
+                <span className="text-2xl font-bold tabular-nums text-slate-500">
+                  {Math.round(kpis.sentimiento_neutro)}%
+                </span>
+                <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Neutro</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         <KpiCard title="Posts" value={String(kpis.posts)} hint={kpis.redes.join(" · ") || "—"} />
       </section>
 
@@ -267,14 +271,16 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Sentiment + Content Type */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Sentimiento por marca
-          </h3>
-          <SocialSentimentChart data={sentByBrand} />
-        </div>
+      {/* Sentiment (solo IG) + Content Type */}
+      <section className={`grid gap-4 ${showSentiment ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}>
+        {showSentiment && (
+          <div className="rounded-lg border bg-card p-4">
+            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Sentimiento por marca <span className="text-muted-foreground/70">(solo Instagram)</span>
+            </h3>
+            <SocialSentimentChart data={sentByBrand} />
+          </div>
+        )}
         <div className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Distribución por tipo de contenido
@@ -283,10 +289,16 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Posts panels */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        <PostsPanel title={`Posts exitosos · Eng > 0.3% o Positivo > 80%`} posts={successful} color="emerald" />
-        <PostsPanel title={`Posts críticos · Negativo > 10%`} posts={critical} color="rose" />
+      {/* Posts panels — críticos solo visible con sentiment (IG) */}
+      <section className={`grid gap-4 ${showSentiment ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}>
+        <PostsPanel
+          title={showSentiment ? "Posts exitosos · Eng > 0.3% o Positivo > 80%" : "Posts exitosos · Eng > 0.3%"}
+          posts={successful}
+          color="emerald"
+        />
+        {showSentiment && (
+          <PostsPanel title="Posts críticos · Negativo > 10% (solo Instagram)" posts={critical} color="rose" />
+        )}
       </section>
     </div>
   );
