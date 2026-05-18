@@ -62,30 +62,7 @@ function formatDelta(delta: number | null): string {
   return `${arrow} ${pct > 0 ? "+" : ""}${pct.toFixed(1)}% vs período anterior`;
 }
 
-export default async function WebPage(props: PageProps) {
-  try {
-    return await renderWebPage(props);
-  } catch (e) {
-    const err = e as Error;
-    return (
-      <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-6">
-        <h2 className="text-lg font-semibold text-red-900">Error cargando dashboard Web</h2>
-        <div className="space-y-2 rounded border border-red-200 bg-white p-3 font-mono text-xs">
-          <div><span className="text-red-600">name:</span> <span className="text-slate-800">{err.name}</span></div>
-          <div><span className="text-red-600">message:</span> <span className="text-slate-800">{err.message}</span></div>
-          {err.stack && (
-            <details open className="mt-2">
-              <summary className="cursor-pointer text-red-600">stack</summary>
-              <pre className="mt-2 whitespace-pre-wrap text-[10px] text-slate-700">{err.stack}</pre>
-            </details>
-          )}
-        </div>
-      </div>
-    );
-  }
-}
-
-async function renderWebPage({ searchParams }: PageProps) {
+export default async function WebPage({ searchParams }: PageProps) {
   // Default = último mes cerrado (ej: hoy 15-may → Abril 1 a Abril 30).
   const range = parseDateRange(searchParams, lastClosedMonthRange());
   const prev = previousRange(range.from, range.to);
