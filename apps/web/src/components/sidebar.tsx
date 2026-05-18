@@ -9,6 +9,8 @@ import {
   Share2,
   Globe,
   Megaphone,
+  LayoutGrid,
+  PieChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,8 @@ const NAV = [
   { href: "/web",         label: "Análisis Web",     icon: Globe },
   { href: "/redes",       label: "Análisis Redes",   icon: Share2 },
   { href: "/influencia",  label: "Mkt de Influencia", icon: Megaphone },
+  { href: "/cuadros-basicos", label: "Cuadros Básicos", icon: LayoutGrid },
+  { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
 ] as const;
 
 export function Sidebar() {
