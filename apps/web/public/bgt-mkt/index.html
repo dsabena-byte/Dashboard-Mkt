@@ -207,7 +207,7 @@ tfoot td.label{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;col
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th>Cuenta</th><th>Concepto</th>
+        <th>N° Cuenta</th><th>Cuenta</th><th>Concepto</th>
         <th class="num" id="thA">Ppto A</th>
         <th class="num" id="thB">Ppto B</th>
         <th class="num">Diferencia</th>
@@ -224,6 +224,18 @@ tfoot td.label{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;col
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
+const CUENTA_NUM = {
+  'PUBLICIDAD.PRODUCCION Y AGENCIAS': '6202010034',
+  'PUBLICIDAD.MATERIALES GRAFICOS':   '6202010036',
+  'PUBLICIDAD TV':                    '6202010069',
+  'PUBLICIDAD PROMOCIONES AL CONSUMIDOR': '6202010071',
+  'PUBLICIDAD EXHIBICIONES':          '6202010072',
+  'INTEGRALES':                       '6202010077',
+  'PUBLICIDAD ESTUDIOS DE MERCADO':   '6202010078',
+  'PUBLICIDAD EVENTOS':               '6202010082',
+  'PUBLICIDAD COMPARTIDA':            '6202010084',
+  'GASTOS VAR- PAUTA DIGITAL':        '6202010033',
+};
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const SERIES_A = '#3b82f6';
@@ -436,13 +448,14 @@ function render(){
     const vB2=Math.round(gs(sumD(rB.filter(r=>r[1]===ct&&r[4]===conc))));
     totA += vA2; totB += vB2;
     const d2=vA2-vB2, p2=vB2!==0?((vA2-vB2)/Math.abs(vB2)*100):0;
-    tbody.innerHTML+=`<tr><td class="cell-muted">${ct}</td><td>${conc}</td><td class="num">${fmt(vA2)}</td><td class="num">${fmt(vB2)}</td><td class="num ${d2>=0?'pos':'neg'}">${fmt(d2)}</td><td class="num ${p2>=0?'pos':'neg'}">${vB2===0?'—':(p2>=0?'+':'')+p2.toFixed(1)+'%'}</td></tr>`;
+    const num = CUENTA_NUM[ct] || '';
+    tbody.innerHTML+=`<tr><td class="cell-muted">${num}</td><td class="cell-muted">${ct}</td><td>${conc}</td><td class="num">${fmt(vA2)}</td><td class="num">${fmt(vB2)}</td><td class="num ${d2>=0?'pos':'neg'}">${fmt(d2)}</td><td class="num ${p2>=0?'pos':'neg'}">${vB2===0?'—':(p2>=0?'+':'')+p2.toFixed(1)+'%'}</td></tr>`;
   });
   const totDiff = totA - totB;
   const totPct = totB!==0 ? ((totA-totB)/Math.abs(totB)*100) : 0;
   document.getElementById('tfoot').innerHTML = keys.length===0 ? '' :
     `<tr>
-      <td class="label" colspan="2">Total</td>
+      <td class="label" colspan="3">Total</td>
       <td class="num">${fmt(totA)}</td>
       <td class="num">${fmt(totB)}</td>
       <td class="num ${totDiff>=0?'pos':'neg'}">${fmt(totDiff)}</td>
