@@ -31,16 +31,16 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r bg-card">
-      <div className="border-b px-6 py-5">
+      <div className="border-b px-4 py-5">
         <Image
           src="/drean-logo.png"
           alt="Drean"
-          width={240}
-          height={64}
+          width={1239}
+          height={387}
           priority
-          className="h-14 w-auto"
+          className="w-full h-auto"
         />
-        <p className="mt-2 text-xs text-muted-foreground">Marketing Management</p>
+        <p className="mt-3 text-xs text-muted-foreground">Marketing Management</p>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV.map((item) => {
