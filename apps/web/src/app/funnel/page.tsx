@@ -4,10 +4,9 @@ export default function BgtMktPage() {
   return (
     <div className="-m-6 h-[calc(100vh-2rem)]">
       <iframe
-        src="https://dashboard-bgt.vercel.app/"
+        src="/bgt-mkt/index.html"
         className="h-full w-full border-0"
         title="BGT Mkt Dashboard"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
       />
     </div>
   );
