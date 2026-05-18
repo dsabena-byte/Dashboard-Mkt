@@ -67,44 +67,76 @@ export interface WebRange {
   to: string;
 }
 
+/**
+ * Divide un rango en chunks mensuales (cal-month boundaries). Útil para evitar
+ * statement_timeout en Supabase cuando la vista agrega por fecha sobre miles
+ * de filas — cada chunk corre en paralelo bajo su propio budget.
+ */
+function splitRangeByMonth(range: WebRange): WebRange[] {
+  const out: WebRange[] = [];
+  const start = new Date(`${range.from}T00:00:00Z`);
+  const end = new Date(`${range.to}T00:00:00Z`);
+  let cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+  while (cur <= end) {
+    const monthEnd = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 0));
+    const from = cur < start ? start : cur;
+    const to = monthEnd > end ? end : monthEnd;
+    out.push({ from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) });
+    cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
+  }
+  return out;
+}
+
 export async function getWebDailyKpis(range: WebRange): Promise<DailyKpiRow[]> {
-  const supabase = getServerSupabase();
-  const { data, error } = await supabase
-    .from("vw_drean_web_daily_kpis")
-    .select("*")
-    .gte("fecha", range.from)
-    .lte("fecha", range.to)
-    .order("fecha", { ascending: true })
-    .range(0, 99_999)
-    .returns<DailyKpiRow[]>();
-  if (error) throw new Error(`vw_drean_web_daily_kpis: ${error.message}`);
-  return data ?? [];
+  const chunks = splitRangeByMonth(range);
+  const results = await Promise.all(chunks.map(async (r) => {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase
+      .from("vw_drean_web_daily_kpis")
+      .select("*")
+      .gte("fecha", r.from)
+      .lte("fecha", r.to)
+      .order("fecha", { ascending: true })
+      .range(0, 99_999)
+      .returns<DailyKpiRow[]>();
+    if (error) throw new Error(`vw_drean_web_daily_kpis: ${error.message}`);
+    return data ?? [];
+  }));
+  return results.flat();
 }
 
 export async function getWebBySource(range: WebRange): Promise<BySourceRow[]> {
-  const supabase = getServerSupabase();
-  const { data, error } = await supabase
-    .from("vw_drean_web_by_source")
-    .select("*")
-    .gte("fecha", range.from)
-    .lte("fecha", range.to)
-    .range(0, 99_999)
-    .returns<BySourceRow[]>();
-  if (error) throw new Error(`vw_drean_web_by_source: ${error.message}`);
-  return data ?? [];
+  const chunks = splitRangeByMonth(range);
+  const results = await Promise.all(chunks.map(async (r) => {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase
+      .from("vw_drean_web_by_source")
+      .select("*")
+      .gte("fecha", r.from)
+      .lte("fecha", r.to)
+      .range(0, 99_999)
+      .returns<BySourceRow[]>();
+    if (error) throw new Error(`vw_drean_web_by_source: ${error.message}`);
+    return data ?? [];
+  }));
+  return results.flat();
 }
 
 export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]> {
-  const supabase = getServerSupabase();
-  const { data, error } = await supabase
-    .from("vw_drean_web_by_category")
-    .select("*")
-    .gte("fecha", range.from)
-    .lte("fecha", range.to)
-    .range(0, 99_999)
-    .returns<ByCategoryRow[]>();
-  if (error) throw new Error(`vw_drean_web_by_category: ${error.message}`);
-  return data ?? [];
+  const chunks = splitRangeByMonth(range);
+  const results = await Promise.all(chunks.map(async (r) => {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase
+      .from("vw_drean_web_by_category")
+      .select("*")
+      .gte("fecha", r.from)
+      .lte("fecha", r.to)
+      .range(0, 99_999)
+      .returns<ByCategoryRow[]>();
+    if (error) throw new Error(`vw_drean_web_by_category: ${error.message}`);
+    return data ?? [];
+  }));
+  return results.flat();
 }
 
 export interface MonthlyUsersRow {
