@@ -21,6 +21,7 @@ import {
   computeWeeklyPostCount,
   enrichEngagement,
   getAllMarcas,
+  getLatestFollowers,
   getSocialFollowers,
   getSocialPosts,
   topCriticalPosts,
@@ -67,7 +68,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
   const kpis = computeKpis(posts);
   const netStats = computeNetStats(posts);
-  const brandStats = computeBrandStats(posts);
+  const brandStats = computeBrandStats(posts, followers, red);
   const trend = computeTrend(posts);
   const weeklyVolume = computeWeeklyPostCount(posts);
   const pilarStats = computePilarStats(posts);
@@ -113,56 +114,73 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* Network Breakdown */}
-      <section className="grid gap-3 sm:grid-cols-3">
-        {netStats.map((n) => (
-          <div key={n.red} className="flex items-center gap-3 rounded-lg border bg-card p-3">
-            <div className="text-2xl">
-              {n.red === "INSTAGRAM" ? "📷" : n.red === "FACEBOOK" ? "👥" : "🎵"}
-            </div>
-            <div className="flex-1">
-              <div className="text-xs font-semibold">{NET_LABELS[n.red] ?? n.red}</div>
-              <div className="text-[10px] text-muted-foreground">
-                {n.posts} posts{n.total_views > 0 ? ` · ${fmtK(n.total_views)} views` : ""}
+      {/* Network Breakdown — el card de Instagram incluye sentiment nested adentro */}
+      <section className="grid gap-3 sm:grid-cols-3 items-start">
+        {netStats.map((n) => {
+          // Total followers de esa red sumando las marcas
+          const netFollowers = [...new Set(posts.map((p) => p.marca))]
+            .reduce((sum, m) => sum + getLatestFollowers(followers, m, n.red), 0);
+          const isIG = n.red === "INSTAGRAM";
+          return (
+            <div key={n.red} className="rounded-lg border bg-card">
+              <div className="flex items-center gap-3 p-3">
+                <div className="text-2xl">
+                  {n.red === "INSTAGRAM" ? "📷" : n.red === "FACEBOOK" ? "👥" : "🎵"}
+                </div>
+                <div className="flex-1">
+                  <div className="text-xs font-semibold">{NET_LABELS[n.red] ?? n.red}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {n.posts} posts{n.total_views > 0 ? ` · ${fmtK(n.total_views)} views` : ""}
+                    {netFollowers > 0 ? ` · ${fmtK(netFollowers)} followers` : ""}
+                  </div>
+                </div>
+                <div className="text-base font-bold tabular-nums" style={{ color: "#dc2626" }}>
+                  {n.engagement_promedio.toFixed(2)}%
+                </div>
               </div>
+              {/* Sentiment nested SOLO en el card de Instagram */}
+              {isIG && showSentiment && (
+                <div className="border-t bg-muted/30 px-3 py-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Sentimiento</div>
+                  <div className="mt-1 flex items-baseline gap-3">
+                    <div>
+                      <span className="text-base font-bold tabular-nums text-emerald-600">
+                        {Math.round(kpis.sentimiento_positivo)}%
+                      </span>
+                      <span className="ml-1 text-[9px] uppercase tracking-wide text-muted-foreground">Pos</span>
+                    </div>
+                    <div>
+                      <span className="text-base font-bold tabular-nums text-rose-600">
+                        {Math.round(kpis.sentimiento_negativo)}%
+                      </span>
+                      <span className="ml-1 text-[9px] uppercase tracking-wide text-muted-foreground">Neg</span>
+                    </div>
+                    <div>
+                      <span className="text-base font-bold tabular-nums text-slate-500">
+                        {Math.round(kpis.sentimiento_neutro)}%
+                      </span>
+                      <span className="ml-1 text-[9px] uppercase tracking-wide text-muted-foreground">Neu</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="text-base font-bold tabular-nums" style={{ color: "#dc2626" }}>
-              {n.engagement_promedio.toFixed(2)}%
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       {/* KPI cards */}
-      <section className={`grid gap-3 sm:grid-cols-2 ${showSentiment ? "lg:grid-cols-6" : "lg:grid-cols-4"}`}>
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard title="Engagement prom" value={`${kpis.engagement_promedio.toFixed(2)}%`} hint={`Máx ${kpis.max_engagement.toFixed(2)}%`} />
         <KpiCard title="Total likes" value={fmtK(kpis.total_likes)} hint={`${kpis.posts} posts`} />
         <KpiCard title="Total views" value={fmtK(kpis.total_views)} hint="Videos e IG" />
-        {showSentiment && (
-          <div className="rounded-lg border bg-card p-4 lg:col-span-2">
-            <div className="text-xs font-medium text-muted-foreground">Sentimiento <span className="text-[9px] uppercase tracking-wide text-muted-foreground/70">(solo Instagram)</span></div>
-            <div className="mt-2 flex items-baseline gap-4">
-              <div>
-                <span className="text-2xl font-bold tabular-nums text-emerald-600">
-                  {Math.round(kpis.sentimiento_positivo)}%
-                </span>
-                <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Positivo</span>
-              </div>
-              <div>
-                <span className="text-2xl font-bold tabular-nums text-rose-600">
-                  {Math.round(kpis.sentimiento_negativo)}%
-                </span>
-                <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Negativo</span>
-              </div>
-              <div>
-                <span className="text-2xl font-bold tabular-nums text-slate-500">
-                  {Math.round(kpis.sentimiento_neutro)}%
-                </span>
-                <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">Neutro</span>
-              </div>
-            </div>
-          </div>
-        )}
+        <KpiCard
+          title="Total followers"
+          value={fmtK(
+            allMarcas.reduce((sum, m) => sum + getLatestFollowers(followers, m, red), 0),
+          )}
+          hint={red === "all" ? "Suma IG + FB + TT" : NET_LABELS[red] ?? red}
+        />
         <KpiCard title="Posts" value={String(kpis.posts)} hint={kpis.redes.join(" · ") || "—"} />
       </section>
 
@@ -212,6 +230,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
               <thead className="border-b">
                 <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                   <th className="px-2 py-1.5">Marca</th>
+                  <th className="px-2 py-1.5 text-right">Followers</th>
                   <th className="px-2 py-1.5 text-right">Posts</th>
                   <th className="px-2 py-1.5 text-right">Posts/sem</th>
                   <th className="px-2 py-1.5 text-right">Eng. prom</th>
@@ -227,7 +246,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
               <tbody>
                 {brandStats.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-2 py-6 text-center text-muted-foreground">
+                    <td colSpan={12} className="px-2 py-6 text-center text-muted-foreground">
                       Sin datos.
                     </td>
                   </tr>
@@ -243,6 +262,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
                             <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: color }} />
                             {BRAND_LABELS[b.marca] ?? b.marca}
                             {b.marca === OWN_BRAND && <span className="ml-1 text-rose-500">★</span>}
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                            {b.followers > 0 ? fmtK(b.followers) : "—"}
                           </td>
                           <td className="px-2 py-1.5 text-right tabular-nums">{b.posts}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{b.posts_per_week.toFixed(1)}</td>
