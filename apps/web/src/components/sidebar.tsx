@@ -35,10 +35,10 @@ export function Sidebar() {
         <Image
           src="/drean-logo.png"
           alt="Drean"
-          width={120}
-          height={32}
+          width={240}
+          height={64}
           priority
-          className="h-8 w-auto"
+          className="h-14 w-auto"
         />
         <p className="mt-2 text-xs text-muted-foreground">Marketing Management</p>
       </div>
