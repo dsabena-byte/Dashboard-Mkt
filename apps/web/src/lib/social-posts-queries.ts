@@ -234,9 +234,30 @@ export interface BrandStat {
   total_comentarios: number;
   total_views: number;
   views_promedio: number;
+  followers: number;
 }
 
-export function computeBrandStats(posts: SocialPost[]): BrandStat[] {
+// Latest follower count para (marca, red). Si red='all', suma de todas las redes.
+export function getLatestFollowers(
+  snapshots: FollowerSnapshot[],
+  marca: string,
+  red: string,
+): number {
+  if (red === "all") {
+    const reds = [...new Set(snapshots.filter((s) => s.marca === marca).map((s) => s.red_social))];
+    return reds.reduce((sum, r) => sum + getLatestFollowers(snapshots, marca, r), 0);
+  }
+  const matches = snapshots.filter((s) => s.marca === marca && s.red_social === red);
+  if (matches.length === 0) return 0;
+  matches.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return matches[0]!.followers;
+}
+
+export function computeBrandStats(
+  posts: SocialPost[],
+  followers: FollowerSnapshot[] = [],
+  redFilter = "all",
+): BrandStat[] {
   // Calculamos un span global de semanas para que TODAS las marcas usen el mismo divisor.
   const allDates = posts.map((p) => p.fecha).filter((d): d is string => !!d).sort();
   let globalWeeks = 1;
@@ -268,6 +289,7 @@ export function computeBrandStats(posts: SocialPost[]): BrandStat[] {
         total_comentarios: bp.reduce((a, p) => a + (p.comentarios ?? 0), 0),
         total_views: bp.reduce((a, p) => a + (p.views ?? 0), 0),
         views_promedio: vidPosts.length > 0 ? avg(vidPosts.map((p) => p.views ?? 0)) : 0,
+        followers: getLatestFollowers(followers, m, redFilter),
       };
     })
     .sort((a, b) => b.engagement_promedio - a.engagement_promedio);
