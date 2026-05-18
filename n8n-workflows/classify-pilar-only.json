@@ -1,0 +1,125 @@
+{
+  "name": "Classify Pilar with GPT (posts without pilar)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-700, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Config: filtros para qué posts clasificar.\n// Por default: FB sin pilar desde 2026-01-01. Ajustá si querés otra red u otro rango.\nreturn [{\n  json: {\n    red_social: 'FACEBOOK',\n    from: '2026-01-01',\n    batchSize: 50\n  }\n}];"
+      },
+      "id": "node-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-500, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_posts?select=url,caption,red_social&pilar=is.null&red_social=eq.{{ $json.red_social }}&fecha=gte.{{ $json.from }}&order=fecha.desc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Prefer",        "value": "count=exact" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-fetch",
+      "name": "Fetch Posts (pilar NULL)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-300, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// La response de PostgREST es un array. Pero el caption del scraper de FB suele estar vacío.\n// Para pilar, NECESITAMOS el caption. Hacemos un fetch alternativo donde caption tampoco es NULL.\nconst items = $input.first().json;\nif (!Array.isArray(items)) throw new Error('Response inesperada: ' + JSON.stringify(Object.keys(items)).slice(0, 200));\n\n// Solo procesar los que tienen caption (sin caption no se puede clasificar)\nconst withCaption = items.filter(p => p.caption && p.caption.trim().length > 5);\n\nconst config = $('Set Config').first().json;\nconst batchSize = config.batchSize || 50;\nconst batches = [];\nfor (let i = 0; i < withCaption.length; i += batchSize) {\n  batches.push(withCaption.slice(i, i + batchSize));\n}\nreturn batches.map(batch => ({ json: { posts: batch } }));\n"
+      },
+      "id": "node-batch",
+      "name": "Split into batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const posts = $json.posts || [];\nconst promptText = \n  'Para cada post devolve SOLO pilar (UNO de Branding/Producto/Promo/Influencer/Educacional segun el caption). NUNCA combines.\\n\\n' +\n  'POSTS: ' + JSON.stringify(posts.map(p => ({ url: p.url, caption: (p.caption || '').slice(0, 200) }))) +\n  '\\n\\nFormato: {\"analysis\":[{\"url\":\"...\",\"pilar\":\"...\"}]}';\nreturn [{\n  json: {\n    bodyObj: {\n      model: 'gpt-4o-mini',\n      temperature: 0,\n      max_tokens: 8000,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: 'Clasificador de pilar. JSON valido.' },\n        { role: 'user', content: promptText }\n      ]\n    },\n    posts: posts\n  }\n}];"
+      },
+      "id": "node-build-body",
+      "name": "Build GPT Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [100, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.bodyObj) }}",
+        "options": {}
+      },
+      "id": "node-gpt",
+      "name": "GPT Classify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [300, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst posts = $('Build GPT Body').first().json.posts || [];\nconst VALID = ['Branding','Producto','Promo','Influencer','Educacional'];\n\nlet analysisArray = [];\ntry {\n  const content = raw?.choices?.[0]?.message?.content || '';\n  const parsed = JSON.parse(content);\n  analysisArray = parsed.analysis || parsed;\n} catch (e) {\n  return [{ json: { error: 'parse failed: ' + e.message } }];\n}\n\nconst pickPilar = (raw) => {\n  if (!raw) return 'Branding';\n  if (VALID.includes(raw)) return raw;\n  const parts = (raw + '').split('/').map(s => s.trim());\n  for (const p of parts) if (VALID.includes(p)) return p;\n  return 'Branding';\n};\n\nconst map = {};\nfor (const a of analysisArray) { if (a.url) map[a.url] = pickPilar(a.pilar); }\n\nreturn posts\n  .filter(p => map[p.url])\n  .map(p => ({ json: { url: p.url, pilar: map[p.url] } }));"
+      },
+      "id": "node-parse",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_posts?url=eq.{{ encodeURIComponent($json.url) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ pilar: $json.pilar }) }}",
+        "options": {}
+      },
+      "id": "node-update",
+      "name": "Supabase UPDATE pilar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 0]
+    }
+  ],
+  "connections": {
+    "Manual trigger": { "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]] },
+    "Set Config": { "main": [[{ "node": "Fetch Posts (pilar NULL)", "type": "main", "index": 0 }]] },
+    "Fetch Posts (pilar NULL)": { "main": [[{ "node": "Split into batches", "type": "main", "index": 0 }]] },
+    "Split into batches": { "main": [[{ "node": "Build GPT Body", "type": "main", "index": 0 }]] },
+    "Build GPT Body": { "main": [[{ "node": "GPT Classify", "type": "main", "index": 0 }]] },
+    "GPT Classify": { "main": [[{ "node": "Parse Response", "type": "main", "index": 0 }]] },
+    "Parse Response": { "main": [[{ "node": "Supabase UPDATE pilar", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": false }
+}
