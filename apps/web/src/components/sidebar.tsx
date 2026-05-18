@@ -38,9 +38,9 @@ export function Sidebar() {
           width={1239}
           height={387}
           priority
-          className="w-full h-auto"
+          className="w-4/5 h-auto"
         />
-        <p className="mt-3 text-xs text-muted-foreground">Marketing Management</p>
+        <p className="mt-3 text-sm text-muted-foreground">Marketing Management</p>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV.map((item) => {
