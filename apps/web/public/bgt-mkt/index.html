@@ -495,7 +495,7 @@ function formatSyncDate(d){
 }
 
 async function loadData(){
-  const url = (window.DATA_JSON_URL || 'data.json') + '?t=' + Date.now();
+  const url = (window.DATA_JSON_URL || 'https://raw.githubusercontent.com/dsabena-byte/Dashboard-BGT/main/data.json') + '?t=' + Date.now();
   const res = await fetch(url, {cache:'no-store'});
   if(!res.ok) throw new Error('No se pudo cargar data.json ('+res.status+')');
   const json = await res.json();
