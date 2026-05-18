@@ -332,84 +332,62 @@ export async function getWebMonthlyByChannel(monthsBack = 12): Promise<MonthlyBy
   return rows.filter((r) => keep.has(r.mes));
 }
 
-function classifyProductCategoria(lp: string): string {
-  if (/\/Lavavajillas(\/|$)/i.test(lp)) return "Lavavajillas";
-  if (/\/Lavado(\/|$)/i.test(lp)) return "Lavado";
-  if (/\/Heladeras(\/|$)/i.test(lp)) return "Refrigeración";
-  if (/\/Cocci/i.test(lp)) return "Cocinas";
-  return "Otros";
-}
-
 export async function getWebTopProducts(range: WebRange, limit = 10): Promise<TopProductRow[]> {
-  const raw = await fetchRawWebTraffic(range);
-  const map = new Map<string, {
-    landing_page: string;
-    sesiones: number; conversiones: number; pageviews: number;
-  }>();
-  for (const r of raw) {
-    const lp = r.landing_page ?? "";
-    if (!/\/p\//.test(lp)) continue;
-    const acc = map.get(lp) ?? { landing_page: lp, sesiones: 0, conversiones: 0, pageviews: 0 };
-    acc.sesiones += r.sesiones ?? 0;
-    acc.conversiones += r.conversiones ?? 0;
-    acc.pageviews += r.pageviews ?? 0;
-    map.set(lp, acc);
+  const supabase = getServerSupabase();
+  const client = supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  };
+  const { data, error } = await client.rpc("top_products_in_range", {
+    p_from: range.from,
+    p_to: range.to,
+    p_limit: limit,
+  });
+  if (error) {
+    if (/does not exist|function .* does not exist/i.test(error.message)) return [];
+    throw new Error(`top_products_in_range: ${error.message}`);
   }
-  return [...map.values()]
-    .sort((a, b) => b.sesiones - a.sesiones)
-    .slice(0, limit)
-    .map((r) => {
-      const skuMatch = r.landing_page.match(/\/p\/([^/?#]+)/);
-      const slugMatch = r.landing_page.match(/\/([^/]+)\/p\//);
-      return {
-        landing_page: r.landing_page,
-        sku: skuMatch?.[1] ?? null,
-        producto_slug: slugMatch?.[1] ?? null,
-        categoria: classifyProductCategoria(r.landing_page),
-        sesiones: r.sesiones,
-        conversiones: r.conversiones,
-        pageviews: r.pageviews,
-        conversion_rate: r.sesiones > 0 ? r.conversiones / r.sesiones : null,
-        ultima_fecha: range.to,
-      };
-    });
+  const rows = (data ?? []) as Array<{
+    landing_page: string;
+    sku: string | null;
+    producto_slug: string | null;
+    categoria: string;
+    sesiones: number;
+    conversiones: number;
+    pageviews: number;
+    conversion_rate: number | null;
+  }>;
+  return rows.map((r) => ({ ...r, ultima_fecha: range.to }));
 }
 
 export async function getWebTopLandingPages(range: WebRange, limit = 10): Promise<TopLandingRow[]> {
-  const raw = await fetchRawWebTraffic(range);
-  const map = new Map<string, {
-    landing_page: string;
-    sesiones: number; conversiones: number; pageviews: number;
-    bounceNum: number; bounceDenom: number;
-  }>();
-  for (const r of raw) {
-    const lp = r.landing_page ?? "";
-    if (!lp) continue;
-    const acc = map.get(lp) ?? {
-      landing_page: lp, sesiones: 0, conversiones: 0, pageviews: 0,
-      bounceNum: 0, bounceDenom: 0,
-    };
-    acc.sesiones += r.sesiones ?? 0;
-    acc.conversiones += r.conversiones ?? 0;
-    acc.pageviews += r.pageviews ?? 0;
-    if (r.bounce_rate !== null && r.sesiones > 0) {
-      acc.bounceNum += r.bounce_rate * r.sesiones;
-      acc.bounceDenom += r.sesiones;
-    }
-    map.set(lp, acc);
+  const supabase = getServerSupabase();
+  const client = supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  };
+  const { data, error } = await client.rpc("top_landings_in_range", {
+    p_from: range.from,
+    p_to: range.to,
+    p_limit: limit,
+  });
+  if (error) {
+    if (/does not exist|function .* does not exist/i.test(error.message)) return [];
+    throw new Error(`top_landings_in_range: ${error.message}`);
   }
-  return [...map.values()]
-    .sort((a, b) => b.sesiones - a.sesiones)
-    .slice(0, limit)
-    .map((r) => ({
-      landing_page: r.landing_page,
-      sesiones: r.sesiones,
-      conversiones: r.conversiones,
-      pageviews: r.pageviews,
-      conversion_rate: r.sesiones > 0 ? r.conversiones / r.sesiones : null,
-      bounce_rate: r.bounceDenom > 0 ? r.bounceNum / r.bounceDenom : null,
-      ultima_fecha: range.to,
-    }));
+  const rows = (data ?? []) as Array<{
+    landing_page: string;
+    sesiones: number;
+    conversiones: number;
+    pageviews: number;
+    conversion_rate: number | null;
+    bounce_rate: number | null;
+  }>;
+  return rows.map((r) => ({ ...r, ultima_fecha: range.to }));
 }
 
 // ============================================================================
