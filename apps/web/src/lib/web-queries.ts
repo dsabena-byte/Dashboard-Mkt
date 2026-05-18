@@ -160,15 +160,24 @@ export interface SmartupMonthlyRow {
  * la resta es no-op.
  */
 export async function getSmartupMonthlyAggregates(): Promise<SmartupMonthlyRow[]> {
+  // Bypassea vw_drean_web_smartup_traffic (que hace ILIKE seq scan y timeout).
+  // Va directo a web_traffic con filtro del lado server por utm_campaign LIKE
+  // y un rango de fechas razonable (24 meses) — el indice de fecha hace que
+  // sea rapido.
   const supabase = getServerSupabase();
+  const today = new Date();
+  const fromDate = new Date(Date.UTC(today.getUTCFullYear() - 2, today.getUTCMonth(), 1));
+  const fromIso = fromDate.toISOString().slice(0, 10);
   const { data, error } = await supabase
-    .from("vw_drean_web_smartup_traffic")
-    .select("fecha, sesiones, usuarios")
+    .from("web_traffic")
+    .select("fecha, sesiones, usuarios, utm_campaign")
+    .gte("fecha", fromIso)
+    .ilike("utm_campaign", "smartup_tiktok_%")
     .range(0, 99_999)
-    .returns<Array<{ fecha: string; sesiones: number; usuarios: number }>>();
+    .returns<Array<{ fecha: string; sesiones: number; usuarios: number; utm_campaign: string | null }>>();
   if (error) {
     if (/relation .* does not exist/i.test(error.message)) return [];
-    throw new Error(`vw_drean_web_smartup_traffic: ${error.message}`);
+    throw new Error(`web_traffic (smartup): ${error.message}`);
   }
   const map = new Map<string, { sesiones: number; usuarios: number }>();
   for (const r of data ?? []) {
