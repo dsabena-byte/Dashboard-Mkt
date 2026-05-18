@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -31,8 +32,15 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-60 flex-col border-r bg-card">
       <div className="border-b px-6 py-5">
-        <h1 className="text-base font-semibold tracking-tight">Dashboard Mkt</h1>
-        <p className="text-xs text-muted-foreground">Monitoreo de campañas</p>
+        <Image
+          src="/drean-logo.png"
+          alt="Drean"
+          width={120}
+          height={32}
+          priority
+          className="h-8 w-auto"
+        />
+        <p className="mt-2 text-xs text-muted-foreground">Marketing Management</p>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV.map((item) => {
