@@ -67,11 +67,13 @@ export default async function WebPage({ searchParams }: PageProps) {
   const range = parseDateRange(searchParams, lastClosedMonthRange());
   const prev = previousRange(range.from, range.to);
 
-  // Para comparativa YoY: traer también los mismos meses del año anterior (24 meses back)
+  // Para comparativa YoY: traer 24 meses hasta HOY (no hasta range.to)
+  // así el mes en curso siempre aparece, aunque el filtro principal apunte a un mes anterior.
   const yoyRange = (() => {
-    const to = new Date(`${range.to}T00:00:00Z`);
-    const from = new Date(Date.UTC(to.getUTCFullYear() - 1, to.getUTCMonth() - 11, 1));
-    return { from: from.toISOString().slice(0, 10), to: range.to };
+    const today = new Date();
+    const todayIso = today.toISOString().slice(0, 10);
+    const from = new Date(Date.UTC(today.getUTCFullYear() - 1, today.getUTCMonth() - 11, 1));
+    return { from: from.toISOString().slice(0, 10), to: todayIso };
   })();
 
   const [
