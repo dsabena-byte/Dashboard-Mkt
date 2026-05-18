@@ -8,6 +8,7 @@ import {
   Target,
   Share2,
   Globe,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ const NAV = [
   { href: "/planning",    label: "Planning Pauta",   icon: Target },
   { href: "/web",         label: "Análisis Web",     icon: Globe },
   { href: "/redes",       label: "Análisis Redes",   icon: Share2 },
+  { href: "/influencia",  label: "Mkt de Influencia", icon: Megaphone },
 ] as const;
 
 export function Sidebar() {
