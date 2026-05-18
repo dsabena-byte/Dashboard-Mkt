@@ -68,75 +68,179 @@ export interface WebRange {
 }
 
 /**
- * Divide un rango en chunks mensuales (cal-month boundaries). Útil para evitar
- * statement_timeout en Supabase cuando la vista agrega por fecha sobre miles
- * de filas — cada chunk corre en paralelo bajo su propio budget.
+ * Clasifica un row de web_traffic en canal "amigable" — replica el CASE WHEN
+ * de vw_drean_web_by_source en JS para evitar regex chain server-side caro.
  */
-function splitRangeByMonth(range: WebRange): WebRange[] {
-  const out: WebRange[] = [];
-  const start = new Date(`${range.from}T00:00:00Z`);
-  const end = new Date(`${range.to}T00:00:00Z`);
-  let cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
-  while (cur <= end) {
-    const monthEnd = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 0));
-    const from = cur < start ? start : cur;
-    const to = monthEnd > end ? end : monthEnd;
-    out.push({ from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) });
-    cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
-  }
-  return out;
+function classifyCanal(src: string, med: string, camp: string): string {
+  const SEARCH_ENGINES = /(google|bing|yahoo|duckduckgo|yandex|baidu|ecosia|ask)/;
+  const SOCIAL = /(facebook|instagram|twitter|x\.com|linkedin|tiktok|pinterest|snapchat|reddit|fb\.com|fb\.me|ig\.com|meta)/;
+  const VIDEO = /(youtube|vimeo|twitch)/;
+  const PAID_MED = /(cpc|ppc|paid|paidsearch|paid_search|sem)/;
+  const PAID_SOCIAL_MED = /(cpc|ppc|paid|cpm|cpv|paid_social|paidsocial|paid.social|social.paid)/;
+  const MAIL = /mail|email|mailchimp|sendgrid|hubspot|klaviyo/;
+
+  if (/cross.?network|crossnetwork|^pmax|performance.?max/.test(camp)) return "Cross-network";
+  if (SEARCH_ENGINES.test(src) && !/shopping/.test(src) && PAID_MED.test(med)) return "Paid Search";
+  if (SEARCH_ENGINES.test(src) && (med === "organic" || med === "")) return "Organic Search";
+  if (SOCIAL.test(src) && PAID_SOCIAL_MED.test(med)) return "Paid Social";
+  if (SOCIAL.test(src)) return "Organic Social";
+  if (med === "email" || MAIL.test(src)) return "Email";
+  if (/^(display|banner|expandable|interstitial|cpm|cpa)$/.test(med)) return "Display";
+  if (VIDEO.test(src) && /(cpv|paid|cpc)/.test(med)) return "Paid Video";
+  if (VIDEO.test(src)) return "Organic Video";
+  if (med === "referral") return "Referral";
+  if (/^(affiliate|affiliates)$/.test(med)) return "Affiliates";
+  if ((src === "" || src === "(direct)") && (med === "" || med === "(none)" || med === "(not set)")) return "Direct";
+  if (/(cpc|ppc|paid|cpm|cpa)/.test(med)) return "Paid Other";
+  if (med === "organic") return "Organic Search";
+  return "Unassigned";
+}
+
+interface RawWebTrafficRow {
+  fecha: string;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  landing_page: string | null;
+  sesiones: number;
+  usuarios: number;
+  usuarios_nuevos: number;
+  conversiones: number;
+  eventos_clave: number;
+  bounce_rate: number | null;
+  avg_session_duration: number | null;
+  pageviews: number;
+}
+
+/**
+ * Trae raw rows de web_traffic filtrando smartup_tiktok. Bypassea la cadena de
+ * views (vw_drean_web_traffic_with_purchases → ...) que hace JOIN caro con
+ * ga4_purchases_daily y revienta con statement_timeout en rangos largos.
+ *
+ * Trade-off: perdemos purchase attribution (usamos conversiones GA4 raw).
+ */
+async function fetchRawWebTraffic(range: WebRange): Promise<RawWebTrafficRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("web_traffic")
+    .select("fecha, utm_source, utm_medium, utm_campaign, landing_page, sesiones, usuarios, usuarios_nuevos, conversiones, eventos_clave, bounce_rate, avg_session_duration, pageviews")
+    .gte("fecha", range.from)
+    .lte("fecha", range.to)
+    .range(0, 199_999)
+    .returns<RawWebTrafficRow[]>();
+  if (error) throw new Error(`web_traffic: ${error.message}`);
+  const rows = data ?? [];
+  // Excluir smartup_tiktok_% (bot traffic con bounce <0.5%)
+  return rows.filter((r) => !((r.utm_campaign ?? "").toLowerCase().startsWith("smartup_tiktok_")));
 }
 
 export async function getWebDailyKpis(range: WebRange): Promise<DailyKpiRow[]> {
-  const chunks = splitRangeByMonth(range);
-  const results = await Promise.all(chunks.map(async (r) => {
-    const supabase = getServerSupabase();
-    const { data, error } = await supabase
-      .from("vw_drean_web_daily_kpis")
-      .select("*")
-      .gte("fecha", r.from)
-      .lte("fecha", r.to)
-      .order("fecha", { ascending: true })
-      .range(0, 99_999)
-      .returns<DailyKpiRow[]>();
-    if (error) throw new Error(`vw_drean_web_daily_kpis: ${error.message}`);
-    return data ?? [];
-  }));
-  return results.flat();
+  const raw = await fetchRawWebTraffic(range);
+  const byFecha = new Map<string, {
+    sesiones: number; usuarios: number; usuarios_nuevos: number;
+    conversiones: number; eventos_clave: number; pageviews: number;
+    bounceNum: number; bounceDenom: number;
+    durNum: number; durDenom: number;
+  }>();
+  for (const r of raw) {
+    const acc = byFecha.get(r.fecha) ?? {
+      sesiones: 0, usuarios: 0, usuarios_nuevos: 0,
+      conversiones: 0, eventos_clave: 0, pageviews: 0,
+      bounceNum: 0, bounceDenom: 0, durNum: 0, durDenom: 0,
+    };
+    acc.sesiones += r.sesiones ?? 0;
+    acc.usuarios += r.usuarios ?? 0;
+    acc.usuarios_nuevos += r.usuarios_nuevos ?? 0;
+    acc.conversiones += r.conversiones ?? 0;
+    acc.eventos_clave += r.eventos_clave ?? 0;
+    acc.pageviews += r.pageviews ?? 0;
+    if (r.bounce_rate !== null && r.sesiones > 0) {
+      acc.bounceNum += r.bounce_rate * r.sesiones;
+      acc.bounceDenom += r.sesiones;
+    }
+    if (r.avg_session_duration !== null && r.sesiones > 0) {
+      acc.durNum += r.avg_session_duration * r.sesiones;
+      acc.durDenom += r.sesiones;
+    }
+    byFecha.set(r.fecha, acc);
+  }
+  return [...byFecha.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fecha, v]) => ({
+      fecha,
+      sesiones: v.sesiones,
+      usuarios: v.usuarios,
+      usuarios_nuevos: v.usuarios_nuevos,
+      conversiones: v.conversiones,
+      eventos_clave: v.eventos_clave,
+      pageviews: v.pageviews,
+      bounce_rate: v.bounceDenom > 0 ? v.bounceNum / v.bounceDenom : null,
+      avg_session_duration: v.durDenom > 0 ? v.durNum / v.durDenom : null,
+    }));
 }
 
 export async function getWebBySource(range: WebRange): Promise<BySourceRow[]> {
-  const chunks = splitRangeByMonth(range);
-  const results = await Promise.all(chunks.map(async (r) => {
-    const supabase = getServerSupabase();
-    const { data, error } = await supabase
-      .from("vw_drean_web_by_source")
-      .select("*")
-      .gte("fecha", r.from)
-      .lte("fecha", r.to)
-      .range(0, 99_999)
-      .returns<BySourceRow[]>();
-    if (error) throw new Error(`vw_drean_web_by_source: ${error.message}`);
-    return data ?? [];
-  }));
-  return results.flat();
+  const raw = await fetchRawWebTraffic(range);
+  const map = new Map<string, BySourceRow>();
+  for (const r of raw) {
+    const srcRaw = r.utm_source ?? "";
+    const medRaw = r.utm_medium ?? "";
+    const source = srcRaw || "(direct)";
+    const medium = medRaw || "(none)";
+    const canal = classifyCanal(srcRaw.toLowerCase(), medRaw.toLowerCase(), (r.utm_campaign ?? "").toLowerCase());
+    const key = `${r.fecha}|${source}|${medium}|${canal}`;
+    const acc = map.get(key) ?? {
+      fecha: r.fecha, source, medium, canal,
+      sesiones: 0, conversiones: 0, pageviews: 0,
+    };
+    acc.sesiones += r.sesiones ?? 0;
+    acc.conversiones += r.conversiones ?? 0;
+    acc.pageviews += r.pageviews ?? 0;
+    map.set(key, acc);
+  }
+  return [...map.values()];
+}
+
+function classifyCategoria(landingPage: string): string {
+  const lp = landingPage.toLowerCase();
+  if (/(lavado|lavarropas|\/c\/15)/.test(lp)) return "Lavado";
+  if (/(heladera|refriger|freezer|\/c\/9)/.test(lp)) return "Refrigeración";
+  if (/(cocci|cocina|\/c\/1$|\/c\/1\/|\/c\/1\?)/.test(lp)) return "Cocinas";
+  return "Otros / Home";
 }
 
 export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]> {
-  const chunks = splitRangeByMonth(range);
-  const results = await Promise.all(chunks.map(async (r) => {
-    const supabase = getServerSupabase();
-    const { data, error } = await supabase
-      .from("vw_drean_web_by_category")
-      .select("*")
-      .gte("fecha", r.from)
-      .lte("fecha", r.to)
-      .range(0, 99_999)
-      .returns<ByCategoryRow[]>();
-    if (error) throw new Error(`vw_drean_web_by_category: ${error.message}`);
-    return data ?? [];
-  }));
-  return results.flat();
+  const raw = await fetchRawWebTraffic(range);
+  const map = new Map<string, {
+    sesiones: number; conversiones: number; pageviews: number;
+    bounceNum: number; bounceDenom: number;
+  }>();
+  for (const r of raw) {
+    const categoria = classifyCategoria(r.landing_page ?? "");
+    const key = `${r.fecha}|${categoria}`;
+    const acc = map.get(key) ?? {
+      sesiones: 0, conversiones: 0, pageviews: 0, bounceNum: 0, bounceDenom: 0,
+    };
+    acc.sesiones += r.sesiones ?? 0;
+    acc.conversiones += r.conversiones ?? 0;
+    acc.pageviews += r.pageviews ?? 0;
+    if (r.bounce_rate !== null && r.sesiones > 0) {
+      acc.bounceNum += r.bounce_rate * r.sesiones;
+      acc.bounceDenom += r.sesiones;
+    }
+    map.set(key, acc);
+  }
+  return [...map.entries()].map(([key, v]) => {
+    const [fecha, categoria] = key.split("|");
+    return {
+      fecha: fecha!,
+      categoria: categoria!,
+      sesiones: v.sesiones,
+      conversiones: v.conversiones,
+      pageviews: v.pageviews,
+      bounce_rate: v.bounceDenom > 0 ? v.bounceNum / v.bounceDenom : null,
+    };
+  });
 }
 
 export interface MonthlyUsersRow {
