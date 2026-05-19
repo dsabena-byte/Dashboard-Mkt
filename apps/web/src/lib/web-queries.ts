@@ -419,3 +419,126 @@ export const PALETA_CATEGORIA: Record<string, string> = {
   Cocinas: "#f97316",
   "Otros / Home": "#94a3b8",
 };
+
+// ============================================================================
+// GA4 demographics (workflow ga4-demographics-sync)
+// ============================================================================
+
+export interface DeviceMixRow {
+  device_category: string;
+  sessions: number;
+  total_users: number;
+}
+
+export interface RegionRow {
+  region: string;
+  sessions: number;
+  total_users: number;
+}
+
+export interface DemographicsSummary {
+  byDevice: DeviceMixRow[];
+  byRegion: RegionRow[];
+}
+
+interface DemoAgeGenderRaw {
+  device_category: string | null;
+  sessions: number | null;
+  total_users: number | null;
+}
+
+interface DemoGeoRaw {
+  region: string | null;
+  sessions: number | null;
+  total_users: number | null;
+}
+
+/**
+ * Devuelve mix de devices y top regiones del rango.
+ *
+ * - Lee `ga4_demo_age_gender` agregando por device_category. age_bracket y
+ *   gender vienen siempre NULL en la propiedad de Drean por thresholding —
+ *   los ignoramos.
+ * - Lee `ga4_demo_geo` agregando por region. country y city no se usan en
+ *   este card (Drean es ~Argentina 99%).
+ */
+export async function getWebDemographicsSummary(
+  range: WebRange,
+  regionLimit = 7,
+): Promise<DemographicsSummary> {
+  const supabase = getServerSupabase();
+
+  const [deviceRes, geoRes] = await Promise.all([
+    supabase
+      .from("ga4_demo_age_gender")
+      .select("device_category, sessions, total_users")
+      .gte("fecha", range.from)
+      .lte("fecha", range.to)
+      .returns<DemoAgeGenderRaw[]>(),
+    supabase
+      .from("ga4_demo_geo")
+      .select("region, sessions, total_users")
+      .gte("fecha", range.from)
+      .lte("fecha", range.to)
+      .returns<DemoGeoRaw[]>(),
+  ]);
+
+  if (deviceRes.error) {
+    // Si la tabla no existe todavia en el ambiente, devolvemos vacio en vez
+    // de tirar — asi /web renderiza igual cuando la migration 0026 no se
+    // aplico aun.
+    if (/does not exist|relation .* does not exist/i.test(deviceRes.error.message)) {
+      return { byDevice: [], byRegion: [] };
+    }
+    throw new Error(`ga4_demo_age_gender: ${deviceRes.error.message}`);
+  }
+  if (geoRes.error) {
+    if (/does not exist|relation .* does not exist/i.test(geoRes.error.message)) {
+      return { byDevice: [], byRegion: [] };
+    }
+    throw new Error(`ga4_demo_geo: ${geoRes.error.message}`);
+  }
+
+  // Agregar device
+  const deviceMap = new Map<string, DeviceMixRow>();
+  for (const r of deviceRes.data ?? []) {
+    const key = r.device_category ?? "unknown";
+    const row = deviceMap.get(key) ?? { device_category: key, sessions: 0, total_users: 0 };
+    row.sessions += Number(r.sessions ?? 0);
+    row.total_users += Number(r.total_users ?? 0);
+    deviceMap.set(key, row);
+  }
+
+  // Agregar regiones (descartando NULL)
+  const regionMap = new Map<string, RegionRow>();
+  for (const r of geoRes.data ?? []) {
+    if (!r.region) continue;
+    const row = regionMap.get(r.region) ?? { region: r.region, sessions: 0, total_users: 0 };
+    row.sessions += Number(r.sessions ?? 0);
+    row.total_users += Number(r.total_users ?? 0);
+    regionMap.set(r.region, row);
+  }
+
+  const byDevice = [...deviceMap.values()].sort((a, b) => b.sessions - a.sessions);
+  const regionsSorted = [...regionMap.values()].sort((a, b) => b.sessions - a.sessions);
+
+  // Top N + agregamos "Otros" con el resto
+  const top = regionsSorted.slice(0, regionLimit);
+  const rest = regionsSorted.slice(regionLimit);
+  if (rest.length > 0) {
+    top.push({
+      region: "Otros",
+      sessions: rest.reduce((s, r) => s + r.sessions, 0),
+      total_users: rest.reduce((s, r) => s + r.total_users, 0),
+    });
+  }
+
+  return { byDevice, byRegion: top };
+}
+
+export const PALETA_DEVICE: Record<string, string> = {
+  mobile: "#22c55e",
+  desktop: "#3b82f6",
+  tablet: "#a78bfa",
+  unknown: "#94a3b8",
+};

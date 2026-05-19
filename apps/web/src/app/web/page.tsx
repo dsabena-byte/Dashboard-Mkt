@@ -16,10 +16,11 @@ import {
   getAllMonthlyUsers,
   getMonthlyUsers,
   getSmartupMonthlyAggregates,
-  getWebTopLandingPages,
+  getWebDemographicsSummary,
   getWebTopProducts,
   PALETA_CANAL,
   PALETA_CATEGORIA,
+  PALETA_DEVICE,
 } from "@/lib/web-queries";
 import {
   getCompetitorByCategoria,
@@ -81,7 +82,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyDailyKpis,
     bySource,
     byCategory,
-    topLandings,
+    demographics,
     topProducts,
     dailyKpisPrev,
     webSnapshotRaw,
@@ -99,7 +100,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     getWebDailyKpis(yoyRange),
     getWebBySource(range),
     getWebByCategory(range),
-    getWebTopLandingPages(range, 10),
+    getWebDemographicsSummary(range, 7),
     getWebTopProducts(range, 10),
     getWebDailyKpis(prev),
     getCompetitorWebSnapshot(),
@@ -559,37 +560,88 @@ export default async function WebPage({ searchParams }: PageProps) {
 
         <div className="rounded-lg border bg-card">
           <header className="border-b p-6 pb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Top 10 landing pages</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Audiencia (GA4)</h3>
             <p className="text-xs text-muted-foreground">
-              <strong>Toda página</strong> de entrada (home, categorías, productos, etc.) — punto de aterrizaje del usuario.
+              Mix de <strong>dispositivos</strong> y top <strong>provincias</strong> de visitantes en el rango.
             </p>
           </header>
-          {topLandings.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">Sin landings en el rango.</div>
+          {demographics.byDevice.length === 0 && demographics.byRegion.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">
+              Sin datos demográficos en el rango. Verificá que el workflow{" "}
+              <code className="rounded bg-secondary px-1 py-0.5">GA4 Demographics Sync</code> esté corriendo.
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/40">
-                  <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="px-4 py-2">Landing</th>
-                    <th className="px-4 py-2 text-right">Sesiones</th>
-                    <th className="px-4 py-2 text-right">% total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topLandings.map((l) => (
-                    <tr key={l.landing_page} className="border-b last:border-0">
-                      <td className="px-4 py-2 max-w-[280px] truncate text-xs" title={l.landing_page}>
-                        {l.landing_page}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums">{formatNumber(l.sesiones)}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                        {totals.sesiones > 0 ? `${((l.sesiones / totals.sesiones) * 100).toFixed(1)}%` : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-5 p-6">
+              {(() => {
+                const devTotal = demographics.byDevice.reduce((s, d) => s + d.sessions, 0);
+                const regTotal = demographics.byRegion.reduce((s, r) => s + r.sessions, 0);
+                const devMax = Math.max(...demographics.byDevice.map((d) => d.sessions), 1);
+                const regMax = Math.max(...demographics.byRegion.map((r) => r.sessions), 1);
+                const deviceLabel = (d: string) =>
+                  ({ mobile: "Mobile", desktop: "Desktop", tablet: "Tablet", unknown: "Otros" })[d] ?? d;
+                return (
+                  <>
+                    <section>
+                      <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Dispositivos
+                      </h4>
+                      <div className="space-y-2">
+                        {demographics.byDevice.map((d) => {
+                          const pct = devTotal > 0 ? (d.sessions / devTotal) * 100 : 0;
+                          return (
+                            <div key={d.device_category} className="text-xs">
+                              <div className="mb-1 flex items-baseline justify-between gap-2">
+                                <span className="font-medium">{deviceLabel(d.device_category)}</span>
+                                <span className="tabular-nums text-muted-foreground">
+                                  {formatNumber(d.sessions)} ({formatPct(pct, 1)})
+                                </span>
+                              </div>
+                              <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: `${(d.sessions / devMax) * 100}%`,
+                                    backgroundColor: PALETA_DEVICE[d.device_category] ?? "#94a3b8",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <section>
+                      <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Top provincias
+                      </h4>
+                      <div className="space-y-2">
+                        {demographics.byRegion.map((r) => {
+                          const pct = regTotal > 0 ? (r.sessions / regTotal) * 100 : 0;
+                          return (
+                            <div key={r.region} className="text-xs">
+                              <div className="mb-1 flex items-baseline justify-between gap-2">
+                                <span className="max-w-[200px] truncate font-medium" title={r.region}>
+                                  {r.region}
+                                </span>
+                                <span className="tabular-nums text-muted-foreground">
+                                  {formatNumber(r.sessions)} ({formatPct(pct, 1)})
+                                </span>
+                              </div>
+                              <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                                <div
+                                  className="h-full rounded-full bg-sky-500"
+                                  style={{ width: `${(r.sessions / regMax) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
