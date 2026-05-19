@@ -1,0 +1,298 @@
+{
+  "name": "GA4 Demographics Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "hours", "triggerAtHour": 4 }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (daily 04:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-800, 200]
+    },
+    {
+      "parameters": {
+        "resource": "report",
+        "operation": "get",
+        "propertyId": "REPLACE_WITH_YOUR_GA4_PROPERTY_ID",
+        "dateRanges": {
+          "values": [
+            { "startDate": "30daysAgo", "endDate": "yesterday" }
+          ]
+        },
+        "dimensions": {
+          "values": [
+            { "name": "date" },
+            { "name": "userAgeBracket" },
+            { "name": "userGender" },
+            { "name": "deviceCategory" }
+          ]
+        },
+        "metrics": {
+          "values": [
+            { "name": "sessions" },
+            { "name": "totalUsers" },
+            { "name": "newUsers" },
+            { "name": "engagedSessions" },
+            { "name": "conversions" }
+          ]
+        },
+        "returnAll": true,
+        "additionalFields": {}
+      },
+      "id": "node-ga4-age-gender",
+      "name": "GA4 — Age × Gender × Device",
+      "type": "n8n-nodes-base.googleAnalytics",
+      "typeVersion": 2,
+      "position": [-540, -100],
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Analytics account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "report",
+        "operation": "get",
+        "propertyId": "REPLACE_WITH_YOUR_GA4_PROPERTY_ID",
+        "dateRanges": {
+          "values": [
+            { "startDate": "30daysAgo", "endDate": "yesterday" }
+          ]
+        },
+        "dimensions": {
+          "values": [
+            { "name": "date" },
+            { "name": "country" },
+            { "name": "region" },
+            { "name": "city" },
+            { "name": "deviceCategory" }
+          ]
+        },
+        "metrics": {
+          "values": [
+            { "name": "sessions" },
+            { "name": "totalUsers" },
+            { "name": "newUsers" },
+            { "name": "engagedSessions" },
+            { "name": "conversions" }
+          ]
+        },
+        "returnAll": true,
+        "additionalFields": {}
+      },
+      "id": "node-ga4-geo",
+      "name": "GA4 — Country × Region × City",
+      "type": "n8n-nodes-base.googleAnalytics",
+      "typeVersion": 2,
+      "position": [-540, 100],
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Analytics account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "report",
+        "operation": "get",
+        "propertyId": "REPLACE_WITH_YOUR_GA4_PROPERTY_ID",
+        "dateRanges": {
+          "values": [
+            { "startDate": "30daysAgo", "endDate": "yesterday" }
+          ]
+        },
+        "dimensions": {
+          "values": [
+            { "name": "date" },
+            { "name": "brandingInterest" }
+          ]
+        },
+        "metrics": {
+          "values": [
+            { "name": "sessions" },
+            { "name": "totalUsers" },
+            { "name": "conversions" }
+          ]
+        },
+        "returnAll": true,
+        "additionalFields": {}
+      },
+      "id": "node-ga4-interest",
+      "name": "GA4 — Interest categories",
+      "type": "n8n-nodes-base.googleAnalytics",
+      "typeVersion": 2,
+      "position": [-540, 300],
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Analytics account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza filas GA4 → schema ga4_demo_age_gender\nconst out = [];\nfor (const item of items) {\n  const r = item.json;\n  const d = r.date || r.Date;\n  if (!d || !/^\\d{8}$/.test(String(d))) continue;\n  const fecha = `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;\n  out.push({\n    json: {\n      fecha,\n      age_bracket: r.userAgeBracket || null,\n      gender: r.userGender || null,\n      device_category: r.deviceCategory || null,\n      sessions: Number(r.sessions || 0),\n      total_users: Number(r.totalUsers || 0),\n      new_users: Number(r.newUsers || 0),\n      engaged_sessions: Number(r.engagedSessions || 0),\n      conversions: Math.round(Number(r.conversions || 0)),\n    },\n  });\n}\nreturn out;"
+      },
+      "id": "code-normalize-age-gender",
+      "name": "Normalize age/gender",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-280, -100]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza filas GA4 → schema ga4_demo_geo\nconst out = [];\nfor (const item of items) {\n  const r = item.json;\n  const d = r.date || r.Date;\n  if (!d || !/^\\d{8}$/.test(String(d))) continue;\n  const fecha = `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;\n  const norm = (v) => (v === undefined || v === null || v === '(not set)' ? null : String(v));\n  out.push({\n    json: {\n      fecha,\n      country: norm(r.country),\n      region: norm(r.region),\n      city: norm(r.city),\n      device_category: norm(r.deviceCategory),\n      sessions: Number(r.sessions || 0),\n      total_users: Number(r.totalUsers || 0),\n      new_users: Number(r.newUsers || 0),\n      engaged_sessions: Number(r.engagedSessions || 0),\n      conversions: Math.round(Number(r.conversions || 0)),\n    },\n  });\n}\nreturn out;"
+      },
+      "id": "code-normalize-geo",
+      "name": "Normalize geo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-280, 100]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza filas GA4 → schema ga4_demo_interest\nconst out = [];\nfor (const item of items) {\n  const r = item.json;\n  const d = r.date || r.Date;\n  if (!d || !/^\\d{8}$/.test(String(d))) continue;\n  const fecha = `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;\n  const interest = r.brandingInterest || r.interestCategory || null;\n  out.push({\n    json: {\n      fecha,\n      interest_category: interest && interest !== '(not set)' ? interest : null,\n      sessions: Number(r.sessions || 0),\n      total_users: Number(r.totalUsers || 0),\n      conversions: Math.round(Number(r.conversions || 0)),\n    },\n  });\n}\nreturn out;"
+      },
+      "id": "code-normalize-interest",
+      "name": "Normalize interest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-280, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_age_gender",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {
+          "batching": { "batch": { "batchSize": 500, "batchInterval": 0 } }
+        }
+      },
+      "id": "supabase-upsert-age-gender",
+      "name": "Supabase — Upsert ga4_demo_age_gender",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-20, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_geo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {
+          "batching": { "batch": { "batchSize": 500, "batchInterval": 0 } }
+        }
+      },
+      "id": "supabase-upsert-geo",
+      "name": "Supabase — Upsert ga4_demo_geo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-20, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_interest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {
+          "batching": { "batch": { "batchSize": 500, "batchInterval": 0 } }
+        }
+      },
+      "id": "supabase-upsert-interest",
+      "name": "Supabase — Upsert ga4_demo_interest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-20, 300]
+    }
+  ],
+  "connections": {
+    "Schedule (daily 04:00)": {
+      "main": [[
+        { "node": "GA4 — Age × Gender × Device", "type": "main", "index": 0 },
+        { "node": "GA4 — Country × Region × City", "type": "main", "index": 0 },
+        { "node": "GA4 — Interest categories", "type": "main", "index": 0 }
+      ]]
+    },
+    "Manual trigger": {
+      "main": [[
+        { "node": "GA4 — Age × Gender × Device", "type": "main", "index": 0 },
+        { "node": "GA4 — Country × Region × City", "type": "main", "index": 0 },
+        { "node": "GA4 — Interest categories", "type": "main", "index": 0 }
+      ]]
+    },
+    "GA4 — Age × Gender × Device": {
+      "main": [[{ "node": "Normalize age/gender", "type": "main", "index": 0 }]]
+    },
+    "GA4 — Country × Region × City": {
+      "main": [[{ "node": "Normalize geo", "type": "main", "index": 0 }]]
+    },
+    "GA4 — Interest categories": {
+      "main": [[{ "node": "Normalize interest", "type": "main", "index": 0 }]]
+    },
+    "Normalize age/gender": {
+      "main": [[{ "node": "Supabase — Upsert ga4_demo_age_gender", "type": "main", "index": 0 }]]
+    },
+    "Normalize geo": {
+      "main": [[{ "node": "Supabase — Upsert ga4_demo_geo", "type": "main", "index": 0 }]]
+    },
+    "Normalize interest": {
+      "main": [[{ "node": "Supabase — Upsert ga4_demo_interest", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

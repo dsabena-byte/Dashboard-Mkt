@@ -128,6 +128,196 @@ export async function getPlanningCompliance(range: DateRange): Promise<Complianc
   return data ?? [];
 }
 
+// ---------------------------------------------------------------------------
+// GA4 demographics
+// ---------------------------------------------------------------------------
+
+export interface AgeGenderRow {
+  age_bracket: string;
+  gender: string;
+  sessions: number;
+  total_users: number;
+}
+
+export interface GeoRow {
+  region: string;
+  city: string | null;
+  sessions: number;
+  total_users: number;
+}
+
+export interface InterestRow {
+  interest_category: string;
+  sessions: number;
+  total_users: number;
+}
+
+export interface DeviceRow {
+  device_category: string;
+  sessions: number;
+  total_users: number;
+}
+
+interface DemoAgeGenderRaw {
+  age_bracket: string | null;
+  gender: string | null;
+  device_category: string | null;
+  sessions: number | null;
+  total_users: number | null;
+}
+
+interface DemoGeoRaw {
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  device_category: string | null;
+  sessions: number | null;
+  total_users: number | null;
+}
+
+interface DemoInterestRaw {
+  interest_category: string | null;
+  sessions: number | null;
+  total_users: number | null;
+}
+
+export interface DemographicsSummary {
+  byAge: AgeGenderRow[];
+  byGender: AgeGenderRow[];
+  byRegion: GeoRow[];
+  byCity: GeoRow[];
+  byDevice: DeviceRow[];
+  byInterest: InterestRow[];
+  totals: { sessions: number; users: number };
+}
+
+export async function getDemographicsSummary(range: DateRange): Promise<DemographicsSummary> {
+  const supabase = getServerSupabase();
+
+  const [ageGenderRes, geoRes, interestRes] = await Promise.all([
+    supabase
+      .from("ga4_demo_age_gender")
+      .select("age_bracket, gender, device_category, sessions, total_users")
+      .gte("fecha", range.from)
+      .lte("fecha", range.to)
+      .returns<DemoAgeGenderRaw[]>(),
+    supabase
+      .from("ga4_demo_geo")
+      .select("country, region, city, device_category, sessions, total_users")
+      .gte("fecha", range.from)
+      .lte("fecha", range.to)
+      .returns<DemoGeoRaw[]>(),
+    supabase
+      .from("ga4_demo_interest")
+      .select("interest_category, sessions, total_users")
+      .gte("fecha", range.from)
+      .lte("fecha", range.to)
+      .returns<DemoInterestRaw[]>(),
+  ]);
+
+  if (ageGenderRes.error) throw new Error(`ga4_demo_age_gender: ${ageGenderRes.error.message}`);
+  if (geoRes.error) throw new Error(`ga4_demo_geo: ${geoRes.error.message}`);
+  if (interestRes.error) throw new Error(`ga4_demo_interest: ${interestRes.error.message}`);
+
+  const ageGender = ageGenderRes.data ?? [];
+  const geo = geoRes.data ?? [];
+  const interest = interestRes.data ?? [];
+
+  // Agrupaciones
+  const byAgeMap = new Map<string, AgeGenderRow>();
+  const byGenderMap = new Map<string, AgeGenderRow>();
+  const byDeviceMap = new Map<string, DeviceRow>();
+
+  for (const r of ageGender) {
+    const sessions = Number(r.sessions ?? 0);
+    const users = Number(r.total_users ?? 0);
+
+    const age = r.age_bracket ?? "unknown";
+    const ageRow = byAgeMap.get(age) ?? { age_bracket: age, gender: "", sessions: 0, total_users: 0 };
+    ageRow.sessions += sessions;
+    ageRow.total_users += users;
+    byAgeMap.set(age, ageRow);
+
+    const gender = r.gender ?? "unknown";
+    const gRow = byGenderMap.get(gender) ?? { age_bracket: "", gender, sessions: 0, total_users: 0 };
+    gRow.sessions += sessions;
+    gRow.total_users += users;
+    byGenderMap.set(gender, gRow);
+
+    const device = r.device_category ?? "unknown";
+    const dRow = byDeviceMap.get(device) ?? { device_category: device, sessions: 0, total_users: 0 };
+    dRow.sessions += sessions;
+    dRow.total_users += users;
+    byDeviceMap.set(device, dRow);
+  }
+
+  const byRegionMap = new Map<string, GeoRow>();
+  const byCityMap = new Map<string, GeoRow>();
+
+  for (const r of geo) {
+    const sessions = Number(r.sessions ?? 0);
+    const users = Number(r.total_users ?? 0);
+    if (r.region) {
+      const rRow = byRegionMap.get(r.region) ?? {
+        region: r.region,
+        city: null,
+        sessions: 0,
+        total_users: 0,
+      };
+      rRow.sessions += sessions;
+      rRow.total_users += users;
+      byRegionMap.set(r.region, rRow);
+    }
+    if (r.city) {
+      const key = `${r.region ?? ""}|${r.city}`;
+      const cRow = byCityMap.get(key) ?? {
+        region: r.region ?? "",
+        city: r.city,
+        sessions: 0,
+        total_users: 0,
+      };
+      cRow.sessions += sessions;
+      cRow.total_users += users;
+      byCityMap.set(key, cRow);
+    }
+  }
+
+  const byInterestMap = new Map<string, InterestRow>();
+  for (const r of interest) {
+    if (!r.interest_category) continue;
+    const row = byInterestMap.get(r.interest_category) ?? {
+      interest_category: r.interest_category,
+      sessions: 0,
+      total_users: 0,
+    };
+    row.sessions += Number(r.sessions ?? 0);
+    row.total_users += Number(r.total_users ?? 0);
+    byInterestMap.set(r.interest_category, row);
+  }
+
+  const sortBySessionsDesc = <T extends { sessions: number }>(rows: T[]) =>
+    rows.sort((a, b) => b.sessions - a.sessions);
+
+  const totals = ageGender.reduce(
+    (acc, r) => {
+      acc.sessions += Number(r.sessions ?? 0);
+      acc.users += Number(r.total_users ?? 0);
+      return acc;
+    },
+    { sessions: 0, users: 0 },
+  );
+
+  return {
+    byAge: sortBySessionsDesc([...byAgeMap.values()]),
+    byGender: sortBySessionsDesc([...byGenderMap.values()]),
+    byRegion: sortBySessionsDesc([...byRegionMap.values()]).slice(0, 10),
+    byCity: sortBySessionsDesc([...byCityMap.values()]).slice(0, 15),
+    byDevice: sortBySessionsDesc([...byDeviceMap.values()]),
+    byInterest: sortBySessionsDesc([...byInterestMap.values()]).slice(0, 10),
+    totals,
+  };
+}
+
 /**
  * Devuelve los KPI totales del rango anterior de la misma longitud, para
  * calcular delta vs período previo.

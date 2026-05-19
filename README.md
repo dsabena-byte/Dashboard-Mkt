@@ -103,6 +103,7 @@ Ver guía paso a paso en [`docs/supabase-setup.md`](docs/supabase-setup.md). Res
 2. Ir a **SQL Editor** y ejecutar en orden:
    - `supabase/migrations/0001_initial_schema.sql`
    - `supabase/migrations/0002_views.sql`
+   - `supabase/migrations/0003_ga4_demographics.sql`
    - `supabase/seed/seed.sql` (opcional, data de prueba)
 3. Copiar URL + anon key desde **Settings → API**.
 
@@ -162,6 +163,7 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 - [`docs/architecture.md`](docs/architecture.md) — detalle técnico de cada capa
 - [`docs/utm-conventions.md`](docs/utm-conventions.md) — convención de UTMs (crítico)
 - [`docs/supabase-setup.md`](docs/supabase-setup.md) — paso a paso para crear y aplicar el schema
+- [`docs/n8n-ga4-demographics-setup.md`](docs/n8n-ga4-demographics-setup.md) — setup del workflow GA4 → tablas demográficas
 - [`docs/next-phases.md`](docs/next-phases.md) — roadmap fases 2/3/4
 
 ---

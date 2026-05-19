@@ -9,6 +9,7 @@ import {
   Target,
   Eye,
   Bell,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ const NAV = [
   { href: "/overview",    label: "Overview",         icon: LayoutDashboard },
   { href: "/funnel",      label: "Funnel",           icon: GitBranch },
   { href: "/campaigns",   label: "Campañas",         icon: Megaphone },
+  { href: "/audiencia",   label: "Audiencia",        icon: Users },
   { href: "/planning",    label: "Planning vs Real", icon: Target },
   { href: "/competitors", label: "Competencia",      icon: Eye },
   { href: "/alerts",      label: "Alertas",          icon: Bell },
