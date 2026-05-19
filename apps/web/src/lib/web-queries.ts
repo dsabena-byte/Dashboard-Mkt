@@ -454,7 +454,11 @@ interface DemoGeoRaw {
 }
 
 /**
- * Devuelve mix de devices y top regiones del rango.
+ * Devuelve mix de devices y top regiones de los **últimos 7 días**.
+ *
+ * El rango es independiente del filtro de fechas del header de /web — el
+ * workflow de demographics solo carga ~7 días móviles y ese es el horizonte
+ * más útil para el card. Se ignora el parámetro `range` del header.
  *
  * - Lee `ga4_demo_age_gender` agregando por device_category. age_bracket y
  *   gender vienen siempre NULL en la propiedad de Drean por thresholding —
@@ -463,23 +467,33 @@ interface DemoGeoRaw {
  *   este card (Drean es ~Argentina 99%).
  */
 export async function getWebDemographicsSummary(
-  range: WebRange,
+  _range: WebRange,
   regionLimit = 7,
-): Promise<DemographicsSummary> {
+): Promise<DemographicsSummary & { rangeLabel: string }> {
   const supabase = getServerSupabase();
+
+  // Últimos 7 días terminando ayer (UTC). Hardcodeado porque el workflow
+  // solo mantiene ~7 días de data demográfica.
+  const today = new Date();
+  const to = new Date(today);
+  to.setUTCDate(to.getUTCDate() - 1);
+  const from = new Date(to);
+  from.setUTCDate(from.getUTCDate() - 6);
+  const toIso = to.toISOString().slice(0, 10);
+  const fromIso = from.toISOString().slice(0, 10);
 
   const [deviceRes, geoRes] = await Promise.all([
     supabase
       .from("ga4_demo_age_gender")
       .select("device_category, sessions, total_users")
-      .gte("fecha", range.from)
-      .lte("fecha", range.to)
+      .gte("fecha", fromIso)
+      .lte("fecha", toIso)
       .returns<DemoAgeGenderRaw[]>(),
     supabase
       .from("ga4_demo_geo")
       .select("region, sessions, total_users")
-      .gte("fecha", range.from)
-      .lte("fecha", range.to)
+      .gte("fecha", fromIso)
+      .lte("fecha", toIso)
       .returns<DemoGeoRaw[]>(),
   ]);
 
@@ -488,13 +502,13 @@ export async function getWebDemographicsSummary(
     // de tirar — asi /web renderiza igual cuando la migration 0026 no se
     // aplico aun.
     if (/does not exist|relation .* does not exist/i.test(deviceRes.error.message)) {
-      return { byDevice: [], byRegion: [] };
+      return { byDevice: [], byRegion: [], rangeLabel: `${fromIso} → ${toIso}` };
     }
     throw new Error(`ga4_demo_age_gender: ${deviceRes.error.message}`);
   }
   if (geoRes.error) {
     if (/does not exist|relation .* does not exist/i.test(geoRes.error.message)) {
-      return { byDevice: [], byRegion: [] };
+      return { byDevice: [], byRegion: [], rangeLabel: `${fromIso} → ${toIso}` };
     }
     throw new Error(`ga4_demo_geo: ${geoRes.error.message}`);
   }
@@ -533,7 +547,7 @@ export async function getWebDemographicsSummary(
     });
   }
 
-  return { byDevice, byRegion: top };
+  return { byDevice, byRegion: top, rangeLabel: `${fromIso} → ${toIso}` };
 }
 
 export const PALETA_DEVICE: Record<string, string> = {

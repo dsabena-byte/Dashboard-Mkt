@@ -562,7 +562,8 @@ export default async function WebPage({ searchParams }: PageProps) {
           <header className="border-b p-6 pb-4">
             <h3 className="text-sm font-medium text-muted-foreground">Audiencia (GA4)</h3>
             <p className="text-xs text-muted-foreground">
-              Mix de <strong>dispositivos</strong> y top <strong>provincias</strong> de visitantes en el rango.
+              Mix de <strong>dispositivos</strong> y top <strong>provincias</strong> — últimos 7 días
+              <span className="ml-1 text-muted-foreground/70">({demographics.rangeLabel})</span>
             </p>
           </header>
           {demographics.byDevice.length === 0 && demographics.byRegion.length === 0 ? (
