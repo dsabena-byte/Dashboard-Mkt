@@ -1,0 +1,325 @@
+{
+  "name": "Meta Organic Sync (FB Page + IG)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "hours", "triggerAtHour": 5 }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (daily 05:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1200, 0]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1200, 200]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Calcula since/until = ultimos 30 dias (UTC).\nconst toDate = new Date();\ntoDate.setUTCDate(toDate.getUTCDate() - 1);\nconst fromDate = new Date(toDate);\nfromDate.setUTCDate(fromDate.getUTCDate() - 29);\nconst toIso = toDate.toISOString().slice(0, 10);\nconst fromIso = fromDate.toISOString().slice(0, 10);\nconst sinceUnix = Math.floor(fromDate.getTime() / 1000);\nconst untilUnix = Math.floor((toDate.getTime() + 86400000) / 1000);\nreturn [{ json: { from: fromIso, to: toIso, since: sinceUnix, until: untilUnix } }];"
+      },
+      "id": "code-dates",
+      "name": "Compute date range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_PAGE_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_impressions,page_impressions_unique,page_engaged_users,page_post_engagements,page_views_total,page_fans,page_consumptions,page_video_views" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-fb-page-insights",
+      "name": "FB Page Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-700, -100]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "reach,impressions,profile_views,website_clicks,email_contacts,phone_call_clicks" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ig-insights",
+      "name": "IG Daily Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-700, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "follower_count" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ig-followers",
+      "name": "IG Follower Count",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-700, 250]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_PAGE_ID/posts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "id,created_time,message,permalink_url,attachments{media_type},insights.metric(post_impressions,post_impressions_unique,post_engaged_users,post_reactions_by_type_total,post_clicks,post_video_views)" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-fb-posts",
+      "name": "FB Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-700, 420]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,insights.metric(impressions,reach,engagement,saved,video_views)" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ig-media",
+      "name": "IG Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-700, 580]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza FB Page insights → meta_page_daily.\n// Input: { data: [{ name, period, values: [{ value, end_time }, ...] }, ...] }\nconst pageId = 'REPLACE_PAGE_ID';\nconst out = new Map();\nconst input = items[0]?.json || {};\nconst metrics = input.data || [];\nfor (const m of metrics) {\n  const name = m.name;\n  for (const v of m.values || []) {\n    const fecha = (v.end_time || '').slice(0, 10);\n    if (!fecha) continue;\n    let row = out.get(fecha);\n    if (!row) {\n      row = {\n        fecha,\n        page_id: pageId,\n        impressions: 0,\n        impressions_unique: 0,\n        engaged_users: 0,\n        post_engagements: 0,\n        page_views: 0,\n        fans_total: null,\n        consumptions: 0,\n        video_views: 0,\n      };\n      out.set(fecha, row);\n    }\n    const val = typeof v.value === 'number' ? v.value : 0;\n    if (name === 'page_impressions') row.impressions = val;\n    else if (name === 'page_impressions_unique') row.impressions_unique = val;\n    else if (name === 'page_engaged_users') row.engaged_users = val;\n    else if (name === 'page_post_engagements') row.post_engagements = val;\n    else if (name === 'page_views_total') row.page_views = val;\n    else if (name === 'page_fans') row.fans_total = val;\n    else if (name === 'page_consumptions') row.consumptions = val;\n    else if (name === 'page_video_views') row.video_views = val;\n  }\n}\nreturn [...out.values()].map(json => ({ json }));"
+      },
+      "id": "code-norm-fb-page",
+      "name": "Normalize FB Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-440, -100]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza IG daily insights → meta_ig_daily.\n// Combina output de \"IG Daily Insights\" y \"IG Follower Count\" (vienen en\n// items separados porque follower_count solo admite metric_type=total_value\n// en API moderna; lo separamos para evitar fallos parciales).\nconst igId = 'REPLACE_IG_USER_ID';\nconst out = new Map();\nconst allItems = items.map(i => i.json);\nfor (const input of allItems) {\n  const metrics = input.data || [];\n  for (const m of metrics) {\n    const name = m.name;\n    for (const v of m.values || []) {\n      const fecha = (v.end_time || '').slice(0, 10);\n      if (!fecha) continue;\n      let row = out.get(fecha);\n      if (!row) {\n        row = {\n          fecha,\n          ig_user_id: igId,\n          reach: 0,\n          impressions: 0,\n          follower_count: null,\n          profile_views: 0,\n          website_clicks: 0,\n          email_contacts: 0,\n          phone_call_clicks: 0,\n        };\n        out.set(fecha, row);\n      }\n      const val = typeof v.value === 'number' ? v.value : 0;\n      if (name === 'reach') row.reach = val;\n      else if (name === 'impressions') row.impressions = val;\n      else if (name === 'follower_count') row.follower_count = val;\n      else if (name === 'profile_views') row.profile_views = val;\n      else if (name === 'website_clicks') row.website_clicks = val;\n      else if (name === 'email_contacts') row.email_contacts = val;\n      else if (name === 'phone_call_clicks') row.phone_call_clicks = val;\n    }\n  }\n}\nreturn [...out.values()].map(json => ({ json }));"
+      },
+      "id": "code-norm-ig",
+      "name": "Normalize IG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-440, 175]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza posts (FB + IG) → meta_posts.\n// Input: dos items (FB y IG), cada uno con { data: [...posts] }.\nconst pageId = 'REPLACE_PAGE_ID';\nconst igId = 'REPLACE_IG_USER_ID';\nconst out = [];\n\nfor (const item of items) {\n  const platform = item.json._platform; // injected by Merge node\n  const posts = item.json.data || [];\n  for (const p of posts) {\n    const insights = (p.insights?.data || []);\n    const m = {};\n    for (const i of insights) {\n      if (Array.isArray(i.values) && i.values.length > 0) {\n        m[i.name] = typeof i.values[0].value === 'object' ? Object.values(i.values[0].value).reduce((a, b) => a + (b || 0), 0) : (i.values[0].value || 0);\n      }\n    }\n    if (platform === 'facebook') {\n      out.push({\n        json: {\n          platform: 'facebook',\n          post_id: p.id,\n          cuenta_id: pageId,\n          fecha_post: p.created_time || new Date().toISOString(),\n          permalink: p.permalink_url || null,\n          message: p.message || null,\n          media_type: p.attachments?.data?.[0]?.media_type || null,\n          thumbnail_url: null,\n          impressions: m.post_impressions || 0,\n          reach: m.post_impressions_unique || 0,\n          engagement: m.post_engaged_users || 0,\n          reactions: m.post_reactions_by_type_total || 0,\n          saved: 0,\n          video_views: m.post_video_views || 0,\n          clicks: m.post_clicks || 0,\n          raw: p,\n        },\n      });\n    } else if (platform === 'instagram') {\n      out.push({\n        json: {\n          platform: 'instagram',\n          post_id: p.id,\n          cuenta_id: igId,\n          fecha_post: p.timestamp || new Date().toISOString(),\n          permalink: p.permalink || null,\n          message: p.caption || null,\n          media_type: p.media_type || null,\n          thumbnail_url: p.thumbnail_url || p.media_url || null,\n          impressions: m.impressions || 0,\n          reach: m.reach || 0,\n          engagement: m.engagement || 0,\n          reactions: 0,\n          saved: m.saved || 0,\n          video_views: m.video_views || 0,\n          clicks: 0,\n          raw: p,\n        },\n      });\n    }\n  }\n}\n\nreturn out;"
+      },
+      "id": "code-norm-posts",
+      "name": "Normalize Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 500]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Marca cada item con _platform para que Normalize Posts sepa qué es.\nconst tagged = items.map(i => ({ json: { ...i.json, _platform: 'facebook' } }));\nreturn tagged;"
+      },
+      "id": "code-tag-fb",
+      "name": "Tag FB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-440, 420]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const tagged = items.map(i => ({ json: { ...i.json, _platform: 'instagram' } }));\nreturn tagged;"
+      },
+      "id": "code-tag-ig",
+      "name": "Tag IG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-440, 580]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_page_daily?on_conflict=fecha,page_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-page-daily",
+      "name": "Supabase — Upsert meta_page_daily",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-200, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_ig_daily?on_conflict=fecha,ig_user_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-ig-daily",
+      "name": "Supabase — Upsert meta_ig_daily",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-200, 175]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_posts?on_conflict=platform,post_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-posts",
+      "name": "Supabase — Upsert meta_posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 500]
+    }
+  ],
+  "connections": {
+    "Schedule (daily 05:00)": {
+      "main": [[{ "node": "Compute date range", "type": "main", "index": 0 }]]
+    },
+    "Manual trigger": {
+      "main": [[{ "node": "Compute date range", "type": "main", "index": 0 }]]
+    },
+    "Compute date range": {
+      "main": [[
+        { "node": "FB Page Insights", "type": "main", "index": 0 },
+        { "node": "IG Daily Insights", "type": "main", "index": 0 },
+        { "node": "IG Follower Count", "type": "main", "index": 0 },
+        { "node": "FB Posts", "type": "main", "index": 0 },
+        { "node": "IG Media", "type": "main", "index": 0 }
+      ]]
+    },
+    "FB Page Insights": {
+      "main": [[{ "node": "Normalize FB Page", "type": "main", "index": 0 }]]
+    },
+    "IG Daily Insights": {
+      "main": [[{ "node": "Normalize IG", "type": "main", "index": 0 }]]
+    },
+    "IG Follower Count": {
+      "main": [[{ "node": "Normalize IG", "type": "main", "index": 0 }]]
+    },
+    "FB Posts": {
+      "main": [[{ "node": "Tag FB", "type": "main", "index": 0 }]]
+    },
+    "IG Media": {
+      "main": [[{ "node": "Tag IG", "type": "main", "index": 0 }]]
+    },
+    "Tag FB": {
+      "main": [[{ "node": "Normalize Posts", "type": "main", "index": 0 }]]
+    },
+    "Tag IG": {
+      "main": [[{ "node": "Normalize Posts", "type": "main", "index": 0 }]]
+    },
+    "Normalize FB Page": {
+      "main": [[{ "node": "Supabase — Upsert meta_page_daily", "type": "main", "index": 0 }]]
+    },
+    "Normalize IG": {
+      "main": [[{ "node": "Supabase — Upsert meta_ig_daily", "type": "main", "index": 0 }]]
+    },
+    "Normalize Posts": {
+      "main": [[{ "node": "Supabase — Upsert meta_posts", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
