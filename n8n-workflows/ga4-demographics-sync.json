@@ -182,7 +182,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_age_gender",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_age_gender?on_conflict=fecha,age_bracket,gender,device_category",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -208,7 +208,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_geo",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_geo?on_conflict=fecha,country,region,city,device_category",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -234,7 +234,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_interest",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/ga4_demo_interest?on_conflict=fecha,interest_category",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
