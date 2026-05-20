@@ -6,6 +6,8 @@ import { SocialTrendChart } from "@/components/social/social-trend-chart";
 import { SocialPilarChart } from "@/components/social/social-pilar-chart";
 import { SocialSentimentChart } from "@/components/social/social-sentiment-chart";
 import { SocialContentTypeChart } from "@/components/social/social-content-type-chart";
+import { IgOrganicSection } from "@/components/social/ig-organic-section";
+import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import {
   BRAND_COLORS,
   BRAND_LABELS,
@@ -51,10 +53,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const red = getParam(searchParams, "red", "all");
   const range = parseDateRange(searchParams, lastClosedMonthRange());
 
-  const [rawPosts, allMarcas, followers] = await Promise.all([
+  const [rawPosts, allMarcas, followers, igOrganic] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
+    getIgOrganicSummary(),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
@@ -94,6 +97,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
           </p>
         </div>
       </header>
+
+      <IgOrganicSection data={igOrganic} />
 
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1 min-w-0">

@@ -166,6 +166,8 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 - [`docs/n8n-planning-setup.md`](docs/n8n-planning-setup.md) — setup del workflow planning N8N
 - [`docs/n8n-ga4-setup.md`](docs/n8n-ga4-setup.md) — setup del workflow GA4 → web_traffic
 - [`docs/n8n-ga4-demographics-setup.md`](docs/n8n-ga4-demographics-setup.md) — setup del workflow GA4 → tablas demográficas (device, geo, interest)
+- [`docs/n8n-meta-organic-setup.md`](docs/n8n-meta-organic-setup.md) — setup del workflow Meta organic (FB Page + IG insights y posts)
+- [`docs/n8n-meta-ig-comprehensive-setup.md`](docs/n8n-meta-ig-comprehensive-setup.md) — setup del workflow Meta IG comprehensive (KPIs full + demografía)
 - [`docs/n8n-social-setup.md`](docs/n8n-social-setup.md) — setup del workflow Social Sheet → social_competitor + social_metrics
 - [`docs/n8n-scraper-drean-setup.md`](docs/n8n-scraper-drean-setup.md) — setup del scraper adaptado de Tombaio para RRSS de Drean
 - [`docs/n8n-competitor-web-setup.md`](docs/n8n-competitor-web-setup.md) — setup del scraper de tráfico web de competidores (Apify SimilarWeb)

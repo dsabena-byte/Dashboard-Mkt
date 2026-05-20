@@ -1,0 +1,370 @@
+{
+  "name": "Meta IG Comprehensive Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "triggerAtHour": 6 }] }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (daily 06:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1400, 0]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1400, 200]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Ventana de 30 días terminando ayer (UTC).\nconst toDate = new Date();\ntoDate.setUTCDate(toDate.getUTCDate() - 1);\nconst fromDate = new Date(toDate);\nfromDate.setUTCDate(fromDate.getUTCDate() - 29);\nconst toIso = toDate.toISOString().slice(0, 10);\nconst fromIso = fromDate.toISOString().slice(0, 10);\nconst sinceUnix = Math.floor(fromDate.getTime() / 1000);\nconst untilUnix = Math.floor((toDate.getTime() + 86400000) / 1000);\nconst snapshot = toIso;\nreturn [{ json: { from: fromIso, to: toIso, since: sinceUnix, until: untilUnix, snapshot } }];"
+      },
+      "id": "code-dates",
+      "name": "Compute date range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1160, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "reach,impressions,profile_views,website_clicks,email_contacts,phone_call_clicks" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ig-daily",
+      "name": "IG Daily — Classic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, -200]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "likes,comments,saves,shares,total_interactions,accounts_engaged" },
+            { "name": "period", "value": "day" },
+            { "name": "metric_type", "value": "total_value" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ig-engagement",
+      "name": "IG Daily — Engagement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "follower_count" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ig-followers",
+      "name": "IG Daily — Followers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, 200]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,insights.metric(impressions,reach,saved,shares,total_interactions,video_views)" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ig-media",
+      "name": "IG Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, 400]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "follower_demographics" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "metric_type", "value": "total_value" },
+            { "name": "breakdown", "value": "age,gender" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-follower-age-gender",
+      "name": "Demo — Followers (age × gender)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, 580]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "follower_demographics" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "metric_type", "value": "total_value" },
+            { "name": "breakdown", "value": "country" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-follower-country",
+      "name": "Demo — Followers (country)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, 720]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "follower_demographics" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "metric_type", "value": "total_value" },
+            { "name": "breakdown", "value": "city" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-follower-city",
+      "name": "Demo — Followers (city)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, 860]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/REPLACE_IG_USER_ID/insights",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "engaged_audience_demographics" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "metric_type", "value": "total_value" },
+            { "name": "breakdown", "value": "age,gender" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-engaged-age-gender",
+      "name": "Demo — Engaged (age × gender)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-880, 1020]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Combina IG Classic + Engagement + Followers en meta_ig_daily rows.\nconst igId = 'REPLACE_IG_USER_ID';\nconst out = new Map();\nfor (const item of items) {\n  const input = item.json || {};\n  for (const m of input.data || []) {\n    const name = m.name;\n    // total_value (engagement/follower_demographics) vs values (classic)\n    if (m.total_value && typeof m.total_value.value === 'number') {\n      // Engagement metrics con metric_type=total_value pero period=day\n      // devuelven una serie en `values`. Si llega total_value sin breakdown,\n      // es un único punto agregado.\n      const fecha = new Date().toISOString().slice(0,10);\n      const row = out.get(fecha) ?? { fecha, ig_user_id: igId };\n      row[name] = Number(m.total_value.value);\n      out.set(fecha, row);\n      continue;\n    }\n    for (const v of m.values || []) {\n      const fecha = (v.end_time || '').slice(0, 10);\n      if (!fecha) continue;\n      const row = out.get(fecha) ?? { fecha, ig_user_id: igId };\n      const val = typeof v.value === 'number' ? v.value : 0;\n      row[name] = val;\n      out.set(fecha, row);\n    }\n  }\n}\n// Mapeo a columnas finales (defaults a 0 / null).\nconst rows = [];\nfor (const row of out.values()) {\n  rows.push({ json: {\n    fecha: row.fecha,\n    ig_user_id: row.ig_user_id,\n    reach: row.reach || 0,\n    impressions: row.impressions || 0,\n    follower_count: row.follower_count ?? null,\n    profile_views: row.profile_views || 0,\n    website_clicks: row.website_clicks || 0,\n    email_contacts: row.email_contacts || 0,\n    phone_call_clicks: row.phone_call_clicks || 0,\n    likes: row.likes || 0,\n    comments: row.comments || 0,\n    saves: row.saves || 0,\n    shares: row.shares || 0,\n    total_interactions: row.total_interactions || 0,\n    accounts_engaged: row.accounts_engaged ?? null,\n  }});\n}\nreturn rows;"
+      },
+      "id": "code-norm-ig-daily",
+      "name": "Normalize IG Daily",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-540, 0]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza IG media (posts).\nconst igId = 'REPLACE_IG_USER_ID';\nconst out = [];\nconst posts = items[0]?.json?.data || [];\nfor (const p of posts) {\n  const insightsArr = p.insights?.data || [];\n  const m = {};\n  for (const i of insightsArr) {\n    if (Array.isArray(i.values) && i.values.length > 0) {\n      const v = i.values[0].value;\n      m[i.name] = typeof v === 'number' ? v : 0;\n    }\n  }\n  out.push({ json: {\n    platform: 'instagram',\n    post_id: p.id,\n    cuenta_id: igId,\n    fecha_post: p.timestamp || new Date().toISOString(),\n    permalink: p.permalink || null,\n    message: p.caption || null,\n    media_type: p.media_type || null,\n    thumbnail_url: p.thumbnail_url || p.media_url || null,\n    impressions: m.impressions || 0,\n    reach: m.reach || 0,\n    engagement: m.total_interactions || 0,\n    reactions: 0,\n    likes: typeof p.like_count === 'number' ? p.like_count : 0,\n    comments: typeof p.comments_count === 'number' ? p.comments_count : 0,\n    shares: m.shares || 0,\n    saved: m.saved || 0,\n    video_views: m.video_views || 0,\n    clicks: 0,\n    raw: p,\n  }});\n}\nreturn out;"
+      },
+      "id": "code-norm-ig-media",
+      "name": "Normalize IG Media",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-540, 400]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza demographics breakdowns (follower / engaged x age_gender, country, city).\n// El nodo recibe MULTIPLES items concatenados; cada item es la response\n// de un breakdown distinto. Se distingue por:\n//   - metric name: follower_demographics o engaged_audience_demographics\n//   - dimension del breakdown (lo inferimos de dimension_keys)\nconst igId = 'REPLACE_IG_USER_ID';\nconst fecha = new Date().toISOString().slice(0, 10);\nconst out = [];\n\nconst TYPE_MAP = {\n  follower_demographics: 'follower',\n  engaged_audience_demographics: 'engaged',\n  reached_audience_demographics: 'reached',\n};\n\nfor (const item of items) {\n  const data = item.json?.data || [];\n  for (const m of data) {\n    const audienceType = TYPE_MAP[m.name];\n    if (!audienceType) continue;\n    const breakdowns = m.total_value?.breakdowns || [];\n    for (const b of breakdowns) {\n      const dims = (b.dimension_keys || []).map(String);\n      const dimension = dims.length === 1 ? dims[0] :\n        (dims.includes('age') && dims.includes('gender')) ? 'age_gender' : dims.join('_');\n      for (const r of (b.results || [])) {\n        const category = (r.dimension_values || []).join(' / ') || '(unknown)';\n        const value = typeof r.value === 'number' ? r.value : 0;\n        out.push({ json: {\n          fecha,\n          ig_user_id: igId,\n          audience_type: audienceType,\n          dimension,\n          category,\n          value,\n        }});\n      }\n    }\n  }\n}\nreturn out;"
+      },
+      "id": "code-norm-demographics",
+      "name": "Normalize Demographics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-540, 780]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_ig_daily?on_conflict=fecha,ig_user_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-ig-daily",
+      "name": "Supabase — Upsert meta_ig_daily",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-280, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_posts?on_conflict=platform,post_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-posts",
+      "name": "Supabase — Upsert meta_posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-280, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_ig_audience_demographics?on_conflict=fecha,ig_user_id,audience_type,dimension,category",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-demographics",
+      "name": "Supabase — Upsert demographics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-280, 780]
+    }
+  ],
+  "connections": {
+    "Schedule (daily 06:00)": {
+      "main": [[{ "node": "Compute date range", "type": "main", "index": 0 }]]
+    },
+    "Manual trigger": {
+      "main": [[{ "node": "Compute date range", "type": "main", "index": 0 }]]
+    },
+    "Compute date range": {
+      "main": [[
+        { "node": "IG Daily — Classic", "type": "main", "index": 0 },
+        { "node": "IG Daily — Engagement", "type": "main", "index": 0 },
+        { "node": "IG Daily — Followers", "type": "main", "index": 0 },
+        { "node": "IG Media", "type": "main", "index": 0 },
+        { "node": "Demo — Followers (age × gender)", "type": "main", "index": 0 },
+        { "node": "Demo — Followers (country)", "type": "main", "index": 0 },
+        { "node": "Demo — Followers (city)", "type": "main", "index": 0 },
+        { "node": "Demo — Engaged (age × gender)", "type": "main", "index": 0 }
+      ]]
+    },
+    "IG Daily — Classic": {
+      "main": [[{ "node": "Normalize IG Daily", "type": "main", "index": 0 }]]
+    },
+    "IG Daily — Engagement": {
+      "main": [[{ "node": "Normalize IG Daily", "type": "main", "index": 0 }]]
+    },
+    "IG Daily — Followers": {
+      "main": [[{ "node": "Normalize IG Daily", "type": "main", "index": 0 }]]
+    },
+    "IG Media": {
+      "main": [[{ "node": "Normalize IG Media", "type": "main", "index": 0 }]]
+    },
+    "Demo — Followers (age × gender)": {
+      "main": [[{ "node": "Normalize Demographics", "type": "main", "index": 0 }]]
+    },
+    "Demo — Followers (country)": {
+      "main": [[{ "node": "Normalize Demographics", "type": "main", "index": 0 }]]
+    },
+    "Demo — Followers (city)": {
+      "main": [[{ "node": "Normalize Demographics", "type": "main", "index": 0 }]]
+    },
+    "Demo — Engaged (age × gender)": {
+      "main": [[{ "node": "Normalize Demographics", "type": "main", "index": 0 }]]
+    },
+    "Normalize IG Daily": {
+      "main": [[{ "node": "Supabase — Upsert meta_ig_daily", "type": "main", "index": 0 }]]
+    },
+    "Normalize IG Media": {
+      "main": [[{ "node": "Supabase — Upsert meta_posts", "type": "main", "index": 0 }]]
+    },
+    "Normalize Demographics": {
+      "main": [[{ "node": "Supabase — Upsert demographics", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
