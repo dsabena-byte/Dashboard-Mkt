@@ -1,0 +1,391 @@
+{
+  "name": "Meta FB Comprehensive Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "triggerAtHour": 7 }] }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule (daily 07:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1600, 0]
+    },
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1600, 200]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Ventana de 30 dias terminando ayer (UTC).\nconst toDate = new Date();\ntoDate.setUTCDate(toDate.getUTCDate() - 1);\nconst fromDate = new Date(toDate);\nfromDate.setUTCDate(fromDate.getUTCDate() - 29);\nconst toIso = toDate.toISOString().slice(0, 10);\nconst fromIso = fromDate.toISOString().slice(0, 10);\nconst sinceUnix = Math.floor(fromDate.getTime() / 1000);\nconst untilUnix = Math.floor((toDate.getTime() + 86400000) / 1000);\nreturn [{ json: { from: fromIso, to: toIso, since: sinceUnix, until: untilUnix } }];"
+      },
+      "id": "code-dates",
+      "name": "Compute date range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1360, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/me/accounts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "id,name,access_token" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-get-page-token",
+      "name": "Get Page Access Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1120, 100]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Extrae el page_access_token de la Page Drean (id 257587170945975).\nconst PAGE_ID = '257587170945975';\nconst pages = items[0]?.json?.data || [];\nconst page = pages.find(p => p.id === PAGE_ID);\nif (!page || !page.access_token) {\n  throw new Error(`Page ${PAGE_ID} no encontrada o sin access_token. Verifica que el system user tenga la Page asignada.`);\n}\n// Preserva el date range del item anterior\nconst dates = $('Compute date range').first().json;\nreturn [{ json: { ...dates, page_id: PAGE_ID, page_access_token: page.access_token } }];"
+      },
+      "id": "code-extract-token",
+      "name": "Extract Page Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-880, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_impressions,page_impressions_unique,page_impressions_organic_v2,page_impressions_organic_unique_v2,page_engaged_users,page_post_engagements,page_views_total,page_consumptions,page_video_views,page_fan_adds_unique,page_fan_removes_unique" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-fb-page-daily",
+      "name": "FB Page — Daily KPIs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-620, -300]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_fans" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-fb-fans-total",
+      "name": "FB Page — Fans Total",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-620, -150]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_actions_post_reactions_like_total,page_actions_post_reactions_love_total,page_actions_post_reactions_wow_total,page_actions_post_reactions_haha_total,page_actions_post_reactions_sorry_total,page_actions_post_reactions_anger_total" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-fb-reactions",
+      "name": "FB Page — Reactions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-620, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/posts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "id,created_time,message,permalink_url,attachments{media_type,media{image{src}}},insights.metric(post_impressions,post_impressions_unique,post_engaged_users,post_reactions_by_type_total,post_clicks,post_video_views)" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" },
+            { "name": "limit", "value": "100" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-fb-posts",
+      "name": "FB Page — Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-620, 170]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_fans_gender_age" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-fans-age-gender",
+      "name": "Demo — Fans (age × gender)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-620, 340]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_fans_country" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-fans-country",
+      "name": "Demo — Fans (country)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-620, 490]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_fans_city" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-fans-city",
+      "name": "Demo — Fans (city)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-620, 640]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_impressions_by_age_gender_unique" },
+            { "name": "period", "value": "day" },
+            { "name": "since", "value": "={{ $json.since }}" },
+            { "name": "until", "value": "={{ $json.until }}" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-reached-age-gender",
+      "name": "Demo — Reached (age × gender)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-620, 800]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Combina los 3 outputs de insights diarios (KPIs + Fans Total + Reactions)\n// en filas para meta_page_daily.\nconst PAGE_ID = '257587170945975';\nconst out = new Map();\n\nfor (const item of items) {\n  const data = item.json?.data || [];\n  for (const m of data) {\n    const name = m.name;\n    for (const v of m.values || []) {\n      const fecha = (v.end_time || '').slice(0, 10);\n      if (!fecha) continue;\n      let row = out.get(fecha);\n      if (!row) {\n        row = {\n          fecha,\n          page_id: PAGE_ID,\n          impressions: 0,\n          impressions_unique: 0,\n          impressions_organic: 0,\n          reach_organic: 0,\n          engaged_users: 0,\n          post_engagements: 0,\n          page_views: 0,\n          fans_total: null,\n          fan_adds: 0,\n          fan_removes: 0,\n          consumptions: 0,\n          video_views: 0,\n          reactions_like: 0,\n          reactions_love: 0,\n          reactions_wow: 0,\n          reactions_haha: 0,\n          reactions_sorry: 0,\n          reactions_anger: 0,\n        };\n        out.set(fecha, row);\n      }\n      const val = typeof v.value === 'number' ? v.value : 0;\n      if (name === 'page_impressions') row.impressions = val;\n      else if (name === 'page_impressions_unique') row.impressions_unique = val;\n      else if (name === 'page_impressions_organic_v2') row.impressions_organic = val;\n      else if (name === 'page_impressions_organic_unique_v2') row.reach_organic = val;\n      else if (name === 'page_engaged_users') row.engaged_users = val;\n      else if (name === 'page_post_engagements') row.post_engagements = val;\n      else if (name === 'page_views_total') row.page_views = val;\n      else if (name === 'page_fans') row.fans_total = val;\n      else if (name === 'page_fan_adds_unique') row.fan_adds = val;\n      else if (name === 'page_fan_removes_unique') row.fan_removes = val;\n      else if (name === 'page_consumptions') row.consumptions = val;\n      else if (name === 'page_video_views') row.video_views = val;\n      else if (name === 'page_actions_post_reactions_like_total') row.reactions_like = val;\n      else if (name === 'page_actions_post_reactions_love_total') row.reactions_love = val;\n      else if (name === 'page_actions_post_reactions_wow_total') row.reactions_wow = val;\n      else if (name === 'page_actions_post_reactions_haha_total') row.reactions_haha = val;\n      else if (name === 'page_actions_post_reactions_sorry_total') row.reactions_sorry = val;\n      else if (name === 'page_actions_post_reactions_anger_total') row.reactions_anger = val;\n    }\n  }\n}\nreturn [...out.values()].map(json => ({ json }));"
+      },
+      "id": "code-norm-page-daily",
+      "name": "Normalize Page Daily",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-340, -150]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza FB posts a meta_posts (platform=facebook).\nconst PAGE_ID = '257587170945975';\nconst out = [];\nconst posts = items[0]?.json?.data || [];\nfor (const p of posts) {\n  const insightsArr = p.insights?.data || [];\n  const m = {};\n  for (const i of insightsArr) {\n    if (Array.isArray(i.values) && i.values.length > 0) {\n      const v = i.values[0].value;\n      if (typeof v === 'number') {\n        m[i.name] = v;\n      } else if (typeof v === 'object' && v !== null) {\n        // post_reactions_by_type_total devuelve un objeto {like: N, love: N, ...}\n        m[i.name] = Object.values(v).reduce((acc, n) => acc + (typeof n === 'number' ? n : 0), 0);\n      }\n    }\n  }\n  const mediaType = p.attachments?.data?.[0]?.media_type || null;\n  const thumbUrl = p.attachments?.data?.[0]?.media?.image?.src || null;\n  out.push({ json: {\n    platform: 'facebook',\n    post_id: p.id,\n    cuenta_id: PAGE_ID,\n    fecha_post: p.created_time || new Date().toISOString(),\n    permalink: p.permalink_url || null,\n    message: p.message || null,\n    media_type: mediaType,\n    thumbnail_url: thumbUrl,\n    impressions: m.post_impressions || 0,\n    reach: m.post_impressions_unique || 0,\n    engagement: m.post_engaged_users || 0,\n    reactions: m.post_reactions_by_type_total || 0,\n    likes: 0,\n    comments: 0,\n    shares: 0,\n    saved: 0,\n    video_views: m.post_video_views || 0,\n    clicks: m.post_clicks || 0,\n    raw: p,\n  }});\n}\nreturn out;"
+      },
+      "id": "code-norm-posts",
+      "name": "Normalize Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-340, 170]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Normaliza demografía de FB en formato long.\n// Recibe MULTIPLES items concatenados (fans age/gender, fans country,\n// fans city, reached age/gender). Distingue por metric name.\nconst PAGE_ID = '257587170945975';\nconst out = [];\n\nconst FAN_METRICS = {\n  page_fans_gender_age: { audience_type: 'fan', dimension: 'age_gender' },\n  page_fans_country: { audience_type: 'fan', dimension: 'country' },\n  page_fans_city: { audience_type: 'fan', dimension: 'city' },\n};\nconst REACHED_METRICS = {\n  page_impressions_by_age_gender_unique: { audience_type: 'reached', dimension: 'age_gender' },\n  page_impressions_by_country_unique: { audience_type: 'reached', dimension: 'country' },\n  page_impressions_by_city_unique: { audience_type: 'reached', dimension: 'city' },\n};\nconst ALL = { ...FAN_METRICS, ...REACHED_METRICS };\n\nconst todayIso = new Date().toISOString().slice(0, 10);\n\nfor (const item of items) {\n  const data = item.json?.data || [];\n  for (const m of data) {\n    const meta = ALL[m.name];\n    if (!meta) continue;\n    // Lifetime metrics (fans_*): value es {key: number}, fecha = hoy (snapshot)\n    // Day metrics (reached): values[] con end_time, value puede ser {key: number}\n    if (meta.audience_type === 'fan') {\n      // page_fans_*: una sola entrada en values con value como dict\n      const v0 = (m.values || [])[0];\n      const fecha = (v0?.end_time || todayIso + 'T00:00:00+0000').slice(0, 10);\n      const dict = v0?.value;\n      if (!dict || typeof dict !== 'object') continue;\n      for (const [k, v] of Object.entries(dict)) {\n        if (typeof v !== 'number') continue;\n        out.push({ json: {\n          fecha,\n          page_id: PAGE_ID,\n          audience_type: meta.audience_type,\n          dimension: meta.dimension,\n          category: String(k),\n          value: v,\n        }});\n      }\n    } else if (meta.audience_type === 'reached') {\n      // page_impressions_by_*_unique: serie diaria, cada value es dict\n      for (const vEntry of (m.values || [])) {\n        const fecha = (vEntry.end_time || '').slice(0, 10);\n        if (!fecha) continue;\n        const dict = vEntry.value;\n        if (!dict || typeof dict !== 'object') continue;\n        for (const [k, v] of Object.entries(dict)) {\n          if (typeof v !== 'number') continue;\n          out.push({ json: {\n            fecha,\n            page_id: PAGE_ID,\n            audience_type: meta.audience_type,\n            dimension: meta.dimension,\n            category: String(k),\n            value: v,\n          }});\n        }\n      }\n    }\n  }\n}\nreturn out;"
+      },
+      "id": "code-norm-demographics",
+      "name": "Normalize Demographics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-340, 570]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_page_daily?on_conflict=fecha,page_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-page-daily",
+      "name": "Supabase — Upsert meta_page_daily",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, -150]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_posts?on_conflict=platform,post_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-posts",
+      "name": "Supabase — Upsert meta_posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 170]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/meta_fb_audience_demographics?on_conflict=fecha,page_id,audience_type,dimension,category",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert-demographics",
+      "name": "Supabase — Upsert demographics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 570]
+    }
+  ],
+  "connections": {
+    "Schedule (daily 07:00)": {
+      "main": [[{ "node": "Compute date range", "type": "main", "index": 0 }]]
+    },
+    "Manual trigger": {
+      "main": [[{ "node": "Compute date range", "type": "main", "index": 0 }]]
+    },
+    "Compute date range": {
+      "main": [[{ "node": "Get Page Access Token", "type": "main", "index": 0 }]]
+    },
+    "Get Page Access Token": {
+      "main": [[{ "node": "Extract Page Token", "type": "main", "index": 0 }]]
+    },
+    "Extract Page Token": {
+      "main": [[
+        { "node": "FB Page — Daily KPIs", "type": "main", "index": 0 },
+        { "node": "FB Page — Fans Total", "type": "main", "index": 0 },
+        { "node": "FB Page — Reactions", "type": "main", "index": 0 },
+        { "node": "FB Page — Posts", "type": "main", "index": 0 },
+        { "node": "Demo — Fans (age × gender)", "type": "main", "index": 0 },
+        { "node": "Demo — Fans (country)", "type": "main", "index": 0 },
+        { "node": "Demo — Fans (city)", "type": "main", "index": 0 },
+        { "node": "Demo — Reached (age × gender)", "type": "main", "index": 0 }
+      ]]
+    },
+    "FB Page — Daily KPIs": {
+      "main": [[{ "node": "Normalize Page Daily", "type": "main", "index": 0 }]]
+    },
+    "FB Page — Fans Total": {
+      "main": [[{ "node": "Normalize Page Daily", "type": "main", "index": 0 }]]
+    },
+    "FB Page — Reactions": {
+      "main": [[{ "node": "Normalize Page Daily", "type": "main", "index": 0 }]]
+    },
+    "FB Page — Posts": {
+      "main": [[{ "node": "Normalize Posts", "type": "main", "index": 0 }]]
+    },
+    "Demo — Fans (age × gender)": {
+      "main": [[{ "node": "Normalize Demographics", "type": "main", "index": 0 }]]
+    },
+    "Demo — Fans (country)": {
+      "main": [[{ "node": "Normalize Demographics", "type": "main", "index": 0 }]]
+    },
+    "Demo — Fans (city)": {
+      "main": [[{ "node": "Normalize Demographics", "type": "main", "index": 0 }]]
+    },
+    "Demo — Reached (age × gender)": {
+      "main": [[{ "node": "Normalize Demographics", "type": "main", "index": 0 }]]
+    },
+    "Normalize Page Daily": {
+      "main": [[{ "node": "Supabase — Upsert meta_page_daily", "type": "main", "index": 0 }]]
+    },
+    "Normalize Posts": {
+      "main": [[{ "node": "Supabase — Upsert meta_posts", "type": "main", "index": 0 }]]
+    },
+    "Normalize Demographics": {
+      "main": [[{ "node": "Supabase — Upsert demographics", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
