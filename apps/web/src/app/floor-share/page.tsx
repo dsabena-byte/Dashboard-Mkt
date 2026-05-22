@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
-const EXTERNAL_URL = "https://cuadros-basicos.vercel.app/";
+const EXTERNAL_URL = "https://cuadros-basicos.vercel.app/?embed=floorshare";
+const FALLBACK_URL = "https://cuadros-basicos.vercel.app/";
 
 export default function FloorSharePage() {
   return (
@@ -10,11 +11,10 @@ export default function FloorSharePage() {
           <h2 className="text-2xl font-semibold tracking-tight">Floor Share</h2>
           <p className="text-sm text-muted-foreground">
             Share de góndola por categoría · Ranking de marcas · Evolución mensual.
-            <span className="ml-2 italic">→ Click en la tab &quot;Floor Share&quot; dentro del dashboard.</span>
           </p>
         </div>
         <a
-          href={EXTERNAL_URL}
+          href={FALLBACK_URL}
           target="_blank"
           rel="noreferrer noopener"
           className="rounded-md border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/60"

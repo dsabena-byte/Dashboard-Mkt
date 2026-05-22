@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
-const EXTERNAL_URL = "https://cuadros-basicos.vercel.app/";
+const EXTERNAL_URL = "https://cuadros-basicos.vercel.app/?embed=cb";
+const FALLBACK_URL = "https://cuadros-basicos.vercel.app/";
 
 export default function CuadrosBasicosPage() {
   return (
@@ -9,11 +10,11 @@ export default function CuadrosBasicosPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Cuadros Básicos</h2>
           <p className="text-sm text-muted-foreground">
-            Cumplimiento CB · Infaltables · Estratégico. Embed del dashboard de Trade Marketing.
+            Cumplimiento CB · Infaltables · Estratégico.
           </p>
         </div>
         <a
-          href={EXTERNAL_URL}
+          href={FALLBACK_URL}
           target="_blank"
           rel="noreferrer noopener"
           className="rounded-md border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/60"
