@@ -1,0 +1,137 @@
+{
+  "name": "Meta FB Simple Test",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/me/accounts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "id,name,access_token" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-get-pages",
+      "name": "1. Get my pages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-560, 0]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Extrae el Page Access Token de la Page Drean\nconst PAGE_ID = '257587170945975';\nconst pages = items[0]?.json?.data || [];\nconst page = pages.find(p => p.id === PAGE_ID);\nif (!page) {\n  throw new Error(`Page ${PAGE_ID} no encontrada. Pages disponibles: ${pages.map(p => `${p.id}=${p.name}`).join(', ')}`);\n}\nif (!page.access_token) {\n  throw new Error(`Page ${page.name} sin access_token. Verificá scopes pages_show_list, pages_read_engagement.`);\n}\nreturn [{ json: { page_id: PAGE_ID, page_name: page.name, page_access_token: page.access_token } }];"
+      },
+      "id": "code-extract-token",
+      "name": "2. Extract Page token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-320, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_impressions,page_impressions_unique,page_engaged_users,page_post_engagements,page_fans" },
+            { "name": "period", "value": "day" },
+            { "name": "date_preset", "value": "last_7d" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-kpis",
+      "name": "3. KPIs orgánicos (últimos 7 días)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, -200]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_fans_gender_age" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-age-gender",
+      "name": "4. Demografía — Edad × Género",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, -50]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_fans_country" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-country",
+      "name": "5. Demografía — Top países",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.page_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "page_fans_city" },
+            { "name": "period", "value": "lifetime" },
+            { "name": "access_token", "value": "={{ $json.page_access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-demo-city",
+      "name": "6. Demografía — Top ciudades",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 250]
+    }
+  ],
+  "connections": {
+    "Manual trigger": {
+      "main": [[{ "node": "1. Get my pages", "type": "main", "index": 0 }]]
+    },
+    "1. Get my pages": {
+      "main": [[{ "node": "2. Extract Page token", "type": "main", "index": 0 }]]
+    },
+    "2. Extract Page token": {
+      "main": [[
+        { "node": "3. KPIs orgánicos (últimos 7 días)", "type": "main", "index": 0 },
+        { "node": "4. Demografía — Edad × Género", "type": "main", "index": 0 },
+        { "node": "5. Demografía — Top países", "type": "main", "index": 0 },
+        { "node": "6. Demografía — Top ciudades", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
