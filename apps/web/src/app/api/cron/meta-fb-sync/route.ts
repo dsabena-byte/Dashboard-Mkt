@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const PAGE_ID = "257587170945975";
-const GRAPH_API = "https://graph.facebook.com/v18.0";
+const GRAPH_API = "https://graph.facebook.com/v21.0";
 
 function env(key: string): string {
   const v = process.env[key];
