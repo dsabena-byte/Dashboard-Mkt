@@ -70,7 +70,7 @@ export async function GET(request: Request) {
   }
 
   const token = env("META_SYSTEM_USER_TOKEN");
-  const results: Record<string, string> = {};
+  const results: Record<string, unknown> = {};
 
   const toDate = new Date();
   toDate.setUTCDate(toDate.getUTCDate() - 1);
