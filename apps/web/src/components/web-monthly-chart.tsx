@@ -66,14 +66,14 @@ export function WebMonthlyChart({
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {/* Barras: sesiones (año anterior en gris, año actual en azul) */}
+        {/* Barras: usuarios (año anterior en gris, año actual en azul) */}
         {hasSessionsPrev && (
-          <Bar dataKey="sesiones_prev" fill="#cbd5e1" name={`Sesiones ${labels.prev}`} />
+          <Bar dataKey="sesiones_prev" fill="#cbd5e1" name={`Usuarios ${labels.prev}`} />
         )}
         {hasSessionsCurr && (
-          <Bar dataKey="sesiones_curr" fill="#3b82f6" name={`Sesiones ${labels.curr}`} />
+          <Bar dataKey="sesiones_curr" fill="#3b82f6" name={`Usuarios ${labels.curr}`} />
         )}
-        {/* Líneas: usuarios únicos (rojo claro año anterior, rojo oscuro año actual) */}
+        {/* Líneas: sesiones (rojo claro año anterior, rojo oscuro año actual) */}
         {hasUsersPrev && (
           <Line
             type="monotone"
@@ -82,7 +82,7 @@ export function WebMonthlyChart({
             strokeWidth={2}
             strokeDasharray="4 2"
             dot={{ r: 3 }}
-            name={`Usuarios ${labels.prev}`}
+            name={`Sesiones ${labels.prev}`}
           />
         )}
         <Line
@@ -92,7 +92,7 @@ export function WebMonthlyChart({
           strokeWidth={2.5}
           dot={{ r: 4 }}
           activeDot={{ r: 6 }}
-          name={`Usuarios ${labels.curr}`}
+          name={`Sesiones ${labels.curr}`}
         />
       </ComposedChart>
     </ResponsiveContainer>

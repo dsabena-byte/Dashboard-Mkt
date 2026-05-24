@@ -236,9 +236,9 @@ export default async function WebPage({ searchParams }: PageProps) {
   for (let m = 1; m <= 12; m++) {
     monthlyDataRaw.push({
       mes: MES_SHORT[m - 1]!,
-      usuarios_curr: getMonthVal(currYear, m, "users"),
+      usuarios_curr: getMonthVal(currYear, m, "sessions"),
       usuarios_prev: 0,
-      sesiones_curr: getMonthVal(currYear, m, "sessions"),
+      sesiones_curr: getMonthVal(currYear, m, "users"),
       sesiones_prev: 0,
     });
   }
@@ -438,7 +438,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       <section className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios</h3>
         <p className="text-xs text-muted-foreground">
-          Barras = sesiones, línea = usuarios. Año actual (no afectado por el filtro). Excluye Smartup TikTok.
+          Barras = usuarios, línea = sesiones. Año actual (no afectado por el filtro). Excluye Smartup TikTok.
         </p>
         <div className="mt-4">
           <WebMonthlyChart data={monthlyData} labels={yearLabels} />
@@ -537,7 +537,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                   <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="px-4 py-2">Producto</th>
                     <th className="px-4 py-2">Cat.</th>
-                    <th className="px-4 py-2 text-right">Usuarios</th>
+                    <th className="px-4 py-2 text-right">Sesiones</th>
                     <th className="px-4 py-2 text-right">% total</th>
                   </tr>
                 </thead>
@@ -559,9 +559,9 @@ export default async function WebPage({ searchParams }: PageProps) {
                           />
                           {p.categoria}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.usuarios ?? p.sesiones)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.sesiones)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                          {totals.usuarios > 0 ? `${(((p.usuarios ?? p.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
+                          {totals.sesiones > 0 ? `${((p.sesiones / totals.sesiones) * 100).toFixed(1)}%` : "—"}
                         </td>
                       </tr>
                     );
@@ -690,7 +690,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       <section className="rounded-lg border bg-card">
         <header className="border-b p-6 pb-4">
           <h3 className="text-sm font-medium text-muted-foreground">Detalle por canal</h3>
-          <p className="text-xs text-muted-foreground">Sesiones y conversiones acumuladas por canal en el rango.</p>
+          <p className="text-xs text-muted-foreground">Usuarios y conversiones acumuladas por canal en el rango.</p>
         </header>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -734,8 +734,8 @@ export default async function WebPage({ searchParams }: PageProps) {
 
       {/* Trend del rango */}
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia de sesiones</h3>
-        <p className="text-xs text-muted-foreground">Sesiones por {aggLabel} en el período seleccionado.</p>
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia de usuarios</h3>
+        <p className="text-xs text-muted-foreground">Usuarios por {aggLabel} en el período seleccionado.</p>
         <div className="mt-4">
           <EngagementTrendChart data={trendData} />
         </div>
