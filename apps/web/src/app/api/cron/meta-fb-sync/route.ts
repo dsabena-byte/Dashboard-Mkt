@@ -98,11 +98,10 @@ export async function GET(request: Request) {
 
     // 2. Page daily insights — cada grupo por separado para tolerancia a fallos
     const METRIC_GROUPS: Array<{ metrics: string; map: Record<string, string> }> = [
-      { metrics: "page_impressions,page_impressions_unique", map: { page_impressions: "impressions", page_impressions_unique: "impressions_unique" } },
-      { metrics: "page_engaged_users,page_post_engagements", map: { page_engaged_users: "engaged_users", page_post_engagements: "post_engagements" } },
-      { metrics: "page_fans", map: { page_fans: "fans_total" } },
-      { metrics: "page_fan_adds,page_fan_removes", map: { page_fan_adds: "fan_adds", page_fan_removes: "fan_removes" } },
+      { metrics: "page_post_engagements", map: { page_post_engagements: "post_engagements" } },
+      { metrics: "page_follows", map: { page_follows: "fan_adds" } },
       { metrics: "page_views_total", map: { page_views_total: "page_views" } },
+      { metrics: "page_engaged_users", map: { page_engaged_users: "engaged_users" } },
     ];
 
     const dailyMap = new Map<string, Record<string, unknown>>();
@@ -183,7 +182,7 @@ export async function GET(request: Request) {
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
 
-    // 4. Demographics — fans (lifetime)
+    // 4. Demographics — fans (lifetime, pueden estar deprecadas)
     const demoConfigs = [
       { metric: "page_fans_gender_age", dimension: "age_gender" },
       { metric: "page_fans_country", dimension: "country" },
