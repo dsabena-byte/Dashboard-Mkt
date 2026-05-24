@@ -106,12 +106,17 @@ export async function GET(request: Request) {
 
     const dailyMap = new Map<string, Record<string, unknown>>();
     const failedMetrics: string[] = [];
+    const metricDiag: Record<string, unknown> = {};
 
     for (const group of METRIC_GROUPS) {
       try {
         const gRes = await graphGet<{ data: InsightMetric[] }>(
           `${GRAPH_API}/${PAGE_ID}/insights?metric=${group.metrics}&period=day&since=${sinceUnix}&until=${untilUnix}&access_token=${pt}`,
         );
+        const dataLen = gRes.data?.length ?? 0;
+        const valuesLen = gRes.data?.[0]?.values?.length ?? 0;
+        const sampleValue = gRes.data?.[0]?.values?.[0]?.value ?? null;
+        metricDiag[group.metrics] = { dataLen, valuesLen, sampleValue };
         for (const m of gRes.data ?? []) {
           const col = group.map[m.name];
           if (!col) continue;
@@ -123,14 +128,16 @@ export async function GET(request: Request) {
             dailyMap.set(fecha, row);
           }
         }
-      } catch {
+      } catch (e) {
         failedMetrics.push(group.metrics);
+        metricDiag[group.metrics] = { error: e instanceof Error ? e.message : String(e) };
       }
     }
 
     if (failedMetrics.length > 0) {
       results.metrics_failed = failedMetrics.join(" | ");
     }
+    results.metric_diagnostics = metricDiag;
 
     results.daily = await supabaseUpsert(
       "meta_page_daily",
