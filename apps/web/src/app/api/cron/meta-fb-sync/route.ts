@@ -191,11 +191,18 @@ export async function GET(request: Request) {
     ];
 
     const demoRows: Array<Record<string, unknown>> = [];
+    const demoFailed: string[] = [];
 
     for (const dm of demoConfigs) {
-      const dRes = await graphGet<{ data: InsightMetric[] }>(
-        `${GRAPH_API}/${PAGE_ID}/insights?metric=${dm.metric}&period=lifetime&access_token=${pt}`,
-      );
+      let dRes: { data: InsightMetric[] };
+      try {
+        dRes = await graphGet<{ data: InsightMetric[] }>(
+          `${GRAPH_API}/${PAGE_ID}/insights?metric=${dm.metric}&period=lifetime&access_token=${pt}`,
+        );
+      } catch {
+        demoFailed.push(dm.metric);
+        continue;
+      }
       const v0 = dRes.data?.[0]?.values?.[0];
       const fecha = ((v0?.end_time as string) ?? todayIso + "T00:00:00+0000").slice(0, 10);
       const dict = v0?.value;
@@ -241,6 +248,10 @@ export async function GET(request: Request) {
       }
     } catch {
       results.reached_demo = "no disponible";
+    }
+
+    if (demoFailed.length > 0) {
+      results.demo_failed = demoFailed.join(", ");
     }
 
     results.demographics = await supabaseUpsert(
