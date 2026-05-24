@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/meta-fb-sync",
+      "schedule": "0 10 * * *"
+    }
+  ]
+}
