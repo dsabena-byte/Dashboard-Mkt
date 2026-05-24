@@ -100,16 +100,12 @@ export async function GET(request: Request) {
     const DAILY_METRICS = [
       "page_impressions",
       "page_impressions_unique",
-      "page_impressions_organic_v2",
-      "page_impressions_organic_unique_v2",
       "page_engaged_users",
       "page_post_engagements",
       "page_views_total",
-      "page_consumptions",
-      "page_video_views",
+      "page_fans",
       "page_fan_adds_unique",
       "page_fan_removes_unique",
-      "page_fans",
     ].join(",");
 
     const dailyRes = await graphGet<{ data: InsightMetric[] }>(
@@ -119,16 +115,12 @@ export async function GET(request: Request) {
     const METRIC_MAP: Record<string, string> = {
       page_impressions: "impressions",
       page_impressions_unique: "impressions_unique",
-      page_impressions_organic_v2: "impressions_organic",
-      page_impressions_organic_unique_v2: "reach_organic",
       page_engaged_users: "engaged_users",
       page_post_engagements: "post_engagements",
       page_views_total: "page_views",
-      page_consumptions: "consumptions",
-      page_video_views: "video_views",
+      page_fans: "fans_total",
       page_fan_adds_unique: "fan_adds",
       page_fan_removes_unique: "fan_removes",
-      page_fans: "fans_total",
     };
 
     const dailyMap = new Map<string, Record<string, unknown>>();
