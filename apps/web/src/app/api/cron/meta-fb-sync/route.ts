@@ -96,44 +96,41 @@ export async function GET(request: Request) {
     const pt = page.access_token;
     results.page = `${page.name} (${page.id})`;
 
-    // 2. Page daily insights
-    const DAILY_METRICS = [
-      "page_impressions",
-      "page_impressions_unique",
-      "page_engaged_users",
-      "page_post_engagements",
-      "page_views_total",
-      "page_fans",
-      "page_fan_adds_unique",
-      "page_fan_removes_unique",
-    ].join(",");
-
-    const dailyRes = await graphGet<{ data: InsightMetric[] }>(
-      `${GRAPH_API}/${PAGE_ID}/insights?metric=${DAILY_METRICS}&period=day&since=${sinceUnix}&until=${untilUnix}&access_token=${pt}`,
-    );
-
-    const METRIC_MAP: Record<string, string> = {
-      page_impressions: "impressions",
-      page_impressions_unique: "impressions_unique",
-      page_engaged_users: "engaged_users",
-      page_post_engagements: "post_engagements",
-      page_views_total: "page_views",
-      page_fans: "fans_total",
-      page_fan_adds_unique: "fan_adds",
-      page_fan_removes_unique: "fan_removes",
-    };
+    // 2. Page daily insights — cada grupo por separado para tolerancia a fallos
+    const METRIC_GROUPS: Array<{ metrics: string; map: Record<string, string> }> = [
+      { metrics: "page_impressions,page_impressions_unique", map: { page_impressions: "impressions", page_impressions_unique: "impressions_unique" } },
+      { metrics: "page_engaged_users,page_post_engagements", map: { page_engaged_users: "engaged_users", page_post_engagements: "post_engagements" } },
+      { metrics: "page_fans", map: { page_fans: "fans_total" } },
+      { metrics: "page_fan_adds,page_fan_removes", map: { page_fan_adds: "fan_adds", page_fan_removes: "fan_removes" } },
+      { metrics: "page_views_total", map: { page_views_total: "page_views" } },
+    ];
 
     const dailyMap = new Map<string, Record<string, unknown>>();
-    for (const m of dailyRes.data ?? []) {
-      const col = METRIC_MAP[m.name];
-      if (!col) continue;
-      for (const v of m.values ?? []) {
-        const fecha = (v.end_time ?? "").slice(0, 10);
-        if (!fecha) continue;
-        const row = dailyMap.get(fecha) ?? { fecha, page_id: PAGE_ID };
-        row[col] = typeof v.value === "number" ? v.value : 0;
-        dailyMap.set(fecha, row);
+    const failedMetrics: string[] = [];
+
+    for (const group of METRIC_GROUPS) {
+      try {
+        const gRes = await graphGet<{ data: InsightMetric[] }>(
+          `${GRAPH_API}/${PAGE_ID}/insights?metric=${group.metrics}&period=day&since=${sinceUnix}&until=${untilUnix}&access_token=${pt}`,
+        );
+        for (const m of gRes.data ?? []) {
+          const col = group.map[m.name];
+          if (!col) continue;
+          for (const v of m.values ?? []) {
+            const fecha = (v.end_time ?? "").slice(0, 10);
+            if (!fecha) continue;
+            const row = dailyMap.get(fecha) ?? { fecha, page_id: PAGE_ID };
+            row[col] = typeof v.value === "number" ? v.value : 0;
+            dailyMap.set(fecha, row);
+          }
+        }
+      } catch {
+        failedMetrics.push(group.metrics);
       }
+    }
+
+    if (failedMetrics.length > 0) {
+      results.metrics_failed = failedMetrics.join(" | ");
     }
 
     results.daily = await supabaseUpsert(
@@ -143,9 +140,14 @@ export async function GET(request: Request) {
     );
 
     // 3. Posts
-    const postsRes = await graphGet<{ data: FbPost[] }>(
-      `${GRAPH_API}/${PAGE_ID}/posts?fields=id,created_time,message,permalink_url,attachments{media_type,media{image{src}}},insights.metric(post_impressions,post_impressions_unique,post_engaged_users,post_reactions_by_type_total,post_clicks,post_video_views)&since=${sinceUnix}&until=${untilUnix}&limit=100&access_token=${pt}`,
-    );
+    let postsRes: { data: FbPost[] } = { data: [] };
+    try {
+      postsRes = await graphGet<{ data: FbPost[] }>(
+        `${GRAPH_API}/${PAGE_ID}/posts?fields=id,created_time,message,permalink_url,attachments{media_type,media{image{src}}},insights.metric(post_impressions,post_impressions_unique,post_engaged_users,post_reactions_by_type_total)&since=${sinceUnix}&until=${untilUnix}&limit=100&access_token=${pt}`,
+      );
+    } catch (e) {
+      results.posts = `error: ${e instanceof Error ? e.message : String(e)}`;
+    }
 
     const postRows = (postsRes.data ?? []).map((p) => {
       const im: Record<string, number> = {};
