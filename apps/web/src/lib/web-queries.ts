@@ -19,6 +19,7 @@ export interface BySourceRow {
   medium: string;
   canal: string;
   sesiones: number;
+  usuarios: number;
   conversiones: number;
   pageviews: number;
 }
@@ -35,6 +36,7 @@ export interface ByCategoryRow {
   fecha: string;
   categoria: string;
   sesiones: number;
+  usuarios: number;
   conversiones: number;
   pageviews: number;
   bounce_rate: number | null;
@@ -56,6 +58,7 @@ export interface TopProductRow {
   producto_slug: string | null;
   categoria: string;
   sesiones: number;
+  usuarios: number;
   conversiones: number;
   pageviews: number;
   conversion_rate: number | null;
@@ -260,11 +263,12 @@ export async function getWebTopProducts(range: WebRange, limit = 10): Promise<To
     producto_slug: string | null;
     categoria: string;
     sesiones: number;
+    usuarios: number;
     conversiones: number;
     pageviews: number;
     conversion_rate: number | null;
   }>;
-  return rows.map((r) => ({ ...r, ultima_fecha: range.to }));
+  return rows.map((r) => ({ ...r, usuarios: r.usuarios ?? 0, ultima_fecha: range.to }));
 }
 
 export async function getWebTopLandingPages(range: WebRange, limit = 10): Promise<TopLandingRow[]> {
@@ -343,27 +347,30 @@ export function aggregateDaily(rows: DailyKpiRow[]): WebTotals {
 export interface ChannelAggregate {
   canal: string;
   sesiones: number;
+  usuarios: number;
   conversiones: number;
   pageviews: number;
 }
 
 export function aggregateBySource(rows: BySourceRow[]): ChannelAggregate[] {
-  const byCanal = new Map<string, { sesiones: number; conversiones: number; pageviews: number }>();
+  const byCanal = new Map<string, { sesiones: number; usuarios: number; conversiones: number; pageviews: number }>();
   for (const r of rows) {
-    const acc = byCanal.get(r.canal) ?? { sesiones: 0, conversiones: 0, pageviews: 0 };
+    const acc = byCanal.get(r.canal) ?? { sesiones: 0, usuarios: 0, conversiones: 0, pageviews: 0 };
     acc.sesiones += r.sesiones;
+    acc.usuarios += r.usuarios ?? 0;
     acc.conversiones += r.conversiones;
     acc.pageviews += r.pageviews;
     byCanal.set(r.canal, acc);
   }
   return [...byCanal.entries()]
     .map(([canal, v]) => ({ canal, ...v }))
-    .sort((a, b) => b.sesiones - a.sesiones);
+    .sort((a, b) => b.usuarios - a.usuarios);
 }
 
 export interface CategoryAggregate {
   categoria: string;
   sesiones: number;
+  usuarios: number;
   conversiones: number;
   pageviews: number;
   conversion_rate: number | null;
@@ -371,10 +378,11 @@ export interface CategoryAggregate {
 }
 
 export function aggregateByCategory(rows: ByCategoryRow[]): CategoryAggregate[] {
-  const map = new Map<string, { sesiones: number; conversiones: number; pageviews: number; bounceNum: number; bounceDenom: number }>();
+  const map = new Map<string, { sesiones: number; usuarios: number; conversiones: number; pageviews: number; bounceNum: number; bounceDenom: number }>();
   for (const r of rows) {
-    const acc = map.get(r.categoria) ?? { sesiones: 0, conversiones: 0, pageviews: 0, bounceNum: 0, bounceDenom: 0 };
+    const acc = map.get(r.categoria) ?? { sesiones: 0, usuarios: 0, conversiones: 0, pageviews: 0, bounceNum: 0, bounceDenom: 0 };
     acc.sesiones += r.sesiones;
+    acc.usuarios += r.usuarios ?? 0;
     acc.conversiones += r.conversiones;
     acc.pageviews += r.pageviews;
     if (r.bounce_rate !== null) {
@@ -387,12 +395,13 @@ export function aggregateByCategory(rows: ByCategoryRow[]): CategoryAggregate[] 
     .map(([categoria, v]) => ({
       categoria,
       sesiones: v.sesiones,
+      usuarios: v.usuarios,
       conversiones: v.conversiones,
       pageviews: v.pageviews,
       conversion_rate: v.sesiones > 0 ? v.conversiones / v.sesiones : null,
       bounce_rate: v.bounceDenom > 0 ? v.bounceNum / v.bounceDenom : null,
     }))
-    .sort((a, b) => b.sesiones - a.sesiones);
+    .sort((a, b) => b.usuarios - a.usuarios);
 }
 
 export const PALETA_CANAL: Record<string, string> = {
