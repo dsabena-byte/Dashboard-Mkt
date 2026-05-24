@@ -273,7 +273,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     const key = bucketKey(r.fecha);
     let perCanal = channelBucketMap.get(key);
     if (!perCanal) { perCanal = new Map(); channelBucketMap.set(key, perCanal); }
-    perCanal.set(r.canal, (perCanal.get(r.canal) ?? 0) + r.sesiones);
+    perCanal.set(r.canal, (perCanal.get(r.canal) ?? 0) + (r.usuarios ?? r.sesiones));
   }
   // Top N canales sobre el total del rango — los otros se omiten.
   const canalTotals = new Map<string, number>();
@@ -300,7 +300,7 @@ export default async function WebPage({ searchParams }: PageProps) {
   for (const r of byCategory) {
     const key = bucketKey(r.fecha);
     const acc = categoryTrendByDate.get(key) ?? {};
-    acc[r.categoria] = (acc[r.categoria] ?? 0) + r.sesiones;
+    acc[r.categoria] = (acc[r.categoria] ?? 0) + (r.usuarios ?? r.sesiones);
     categoryTrendByDate.set(key, acc);
   }
   const categoryTrendData = [...categoryTrendByDate.entries()]
@@ -322,6 +322,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     ...PALETA_CATEGORIA,
   };
 
+  const deltaUsuarios = pctChange(totals.usuarios, totalsPrev.usuarios);
   const deltaSesiones = pctChange(totals.sesiones, totalsPrev.sesiones);
   const deltaConversiones = pctChange(totals.conversiones, totalsPrev.conversiones);
   const deltaCR = (totals.conversion_rate !== null && totalsPrev.conversion_rate !== null && totalsPrev.conversion_rate > 0)
@@ -330,23 +331,31 @@ export default async function WebPage({ searchParams }: PageProps) {
 
   const hasData = dailyKpis.length > 0;
 
-  // Trend de sesiones del período seleccionado (diario o semanal).
-  const trendMap = new Map<string, number>();
+  // Trend de usuarios y sesiones del período seleccionado (diario o semanal).
+  const trendMap = new Map<string, { usuarios: number; sesiones: number }>();
   for (const r of dailyKpis) {
     const key = bucketKey(r.fecha);
-    trendMap.set(key, (trendMap.get(key) ?? 0) + r.sesiones);
+    const acc = trendMap.get(key) ?? { usuarios: 0, sesiones: 0 };
+    acc.usuarios += r.usuarios;
+    acc.sesiones += r.sesiones;
+    trendMap.set(key, acc);
   }
   const trendData = [...trendMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([fecha, sesiones]) => ({
+    .map(([fecha, v]) => ({
       fecha,
       cuenta: "drean.com.ar",
-      engagement: sesiones,
+      engagement: v.usuarios,
     }));
+
+  // Última fecha con datos
+  const ultimaFecha = dailyKpis.length > 0
+    ? dailyKpis.reduce((max, r) => r.fecha > max ? r.fecha : max, dailyKpis[0]!.fecha)
+    : null;
 
   const channelDonut = channels.map((c) => ({
     name: c.canal,
-    value: c.sesiones,
+    value: c.usuarios || c.sesiones,
     color: PALETA_CANAL[c.canal] ?? "#94a3b8",
   })).filter((c) => c.value > 0);
 
@@ -358,6 +367,11 @@ export default async function WebPage({ searchParams }: PageProps) {
           <p className="text-sm text-muted-foreground">
             Tráfico real de Google Analytics 4 (drean.com.ar) — performance, canales, categorías y top landings.
           </p>
+          {ultimaFecha && (
+            <p className="mt-1 text-xs text-muted-foreground/70">
+              Última actualización: {ultimaFecha}
+            </p>
+          )}
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
@@ -369,8 +383,17 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* KPIs principales */}
+      {/* KPIs principales — Usuarios únicos como KPI principal */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          title={monthlyUsersRow ? "Usuarios únicos (mes)" : "Usuarios únicos"}
+          value={formatNumber(monthlyUsersRow ? monthlyUsersRow.total_users : totals.usuarios)}
+          hint={
+            monthlyUsersRow
+              ? `${formatNumber(monthlyUsersRow.new_users)} nuevos · ${formatDelta(deltaUsuarios)}`
+              : formatDelta(deltaUsuarios)
+          }
+        />
         <KpiCard
           title="Sesiones"
           value={formatNumber(totals.sesiones)}
@@ -386,22 +409,13 @@ export default async function WebPage({ searchParams }: PageProps) {
           value={totals.conversion_rate !== null ? `${(totals.conversion_rate * 100).toFixed(2)}%` : "—"}
           hint={formatDelta(deltaCR)}
         />
-        <KpiCard
-          title="Pageviews"
-          value={formatNumber(totals.pageviews)}
-          hint={`${totals.pages_per_session?.toFixed(2) ?? "—"} pages/session`}
-        />
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title={monthlyUsersRow ? "Usuarios únicos (mes)" : "Usuarios (suma diaria)"}
-          value={formatNumber(monthlyUsersRow ? monthlyUsersRow.total_users : totals.usuarios)}
-          hint={
-            monthlyUsersRow
-              ? `${formatNumber(monthlyUsersRow.new_users)} nuevos`
-              : "⚠ sobre-cuenta usuarios que visitan varios días"
-          }
+          title="Pageviews"
+          value={formatNumber(totals.pageviews)}
+          hint={`${totals.pages_per_session?.toFixed(2) ?? "—"} pages/session`}
         />
         <KpiCard
           title="Bounce rate"
@@ -446,7 +460,7 @@ export default async function WebPage({ searchParams }: PageProps) {
             <thead className="border-b bg-muted/40">
               <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th className="px-3 py-2">Categoría</th>
-                <th className="px-3 py-2 text-right">Sesiones</th>
+                <th className="px-3 py-2 text-right">Usuarios</th>
                 <th className="px-3 py-2 text-right">%</th>
                 <th className="px-3 py-2 text-right">Conv.</th>
                 <th className="px-3 py-2 text-right">CR</th>
@@ -464,9 +478,9 @@ export default async function WebPage({ searchParams }: PageProps) {
                     />
                     {c.categoria}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.usuarios || c.sesiones)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                    {totals.sesiones > 0 ? `${((c.sesiones / totals.sesiones) * 100).toFixed(1)}%` : "—"}
+                    {totals.usuarios > 0 ? `${(((c.usuarios || c.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.conversiones)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
@@ -485,13 +499,13 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Tendencia por categoría — sesiones por categoría dentro del rango */}
+      {/* Tendencia por categoría — usuarios por categoría dentro del rango */}
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">
           Tendencia por categoría
         </h3>
         <p className="text-xs text-muted-foreground">
-          Sesiones por {aggLabel} en el período seleccionado.
+          Usuarios por {aggLabel} en el período seleccionado.
         </p>
         <div className="mt-4">
           <CategoryTrendChart
@@ -523,7 +537,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                   <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="px-4 py-2">Producto</th>
                     <th className="px-4 py-2">Cat.</th>
-                    <th className="px-4 py-2 text-right">Sesiones</th>
+                    <th className="px-4 py-2 text-right">Usuarios</th>
                     <th className="px-4 py-2 text-right">% total</th>
                   </tr>
                 </thead>
@@ -545,9 +559,9 @@ export default async function WebPage({ searchParams }: PageProps) {
                           />
                           {p.categoria}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.sesiones)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.usuarios ?? p.sesiones)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                          {totals.sesiones > 0 ? `${((p.sesiones / totals.sesiones) * 100).toFixed(1)}%` : "—"}
+                          {totals.usuarios > 0 ? `${(((p.usuarios ?? p.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                         </td>
                       </tr>
                     );
@@ -652,7 +666,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border bg-card p-6">
           <h3 className="text-sm font-medium text-muted-foreground">Mix de canales (rango)</h3>
-          <p className="text-xs text-muted-foreground">Sesiones por fuente de tráfico en el rango seleccionado.</p>
+          <p className="text-xs text-muted-foreground">Usuarios por fuente de tráfico en el rango seleccionado.</p>
           <div className="mt-4">
             <DonutChart data={channelDonut} valueFormat="number" />
           </div>
@@ -660,7 +674,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <div className="rounded-lg border bg-card p-6">
           <h3 className="text-sm font-medium text-muted-foreground">Evolución por canal</h3>
           <p className="text-xs text-muted-foreground">
-            Sesiones por canal por {aggLabel} en el período seleccionado. Top 7 canales por volumen.
+            Usuarios por canal por {aggLabel} en el período seleccionado. Top 7 canales por volumen.
           </p>
           <div className="mt-4">
             <ChannelMonthlyChart
@@ -700,9 +714,9 @@ export default async function WebPage({ searchParams }: PageProps) {
                     />
                     {c.canal}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.usuarios || c.sesiones)}</td>
                   <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                    {totals.sesiones > 0 ? `${((c.sesiones / totals.sesiones) * 100).toFixed(1)}%` : "—"}
+                    {totals.usuarios > 0 ? `${(((c.usuarios || c.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.conversiones)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">
