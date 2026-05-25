@@ -482,11 +482,6 @@ export default async function WebPage({ searchParams }: PageProps) {
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.pageviews)}</td>
-                    {c.bounce_rate !== null ? formatPct(c.bounce_rate * 100, 1) : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                    {formatNumber(c.pageviews)}
-                  </td>
                 </tr>
               ))}
             </tbody>
