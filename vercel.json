@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/meta-fb-sync",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/ga4-web-traffic",
+      "schedule": "0 7 * * *"
     }
   ]
 }
