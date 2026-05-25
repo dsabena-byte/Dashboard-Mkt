@@ -95,10 +95,15 @@ export async function GET(request: Request) {
     const accessToken = await getAccessToken();
     results.auth = "OK";
 
+    // Soporte para backfill: ?days=180 para traer más historial
+    const url = new URL(request.url);
+    const daysParam = Number(url.searchParams.get("days") ?? 30);
+    const days = Math.min(Math.max(daysParam, 1), 365);
+
     const toDate = new Date();
     toDate.setUTCDate(toDate.getUTCDate() - 1);
     const fromDate = new Date(toDate);
-    fromDate.setUTCDate(fromDate.getUTCDate() - 29);
+    fromDate.setUTCDate(fromDate.getUTCDate() - (days - 1));
     const startDate = fromDate.toISOString().slice(0, 10);
     const endDate = toDate.toISOString().slice(0, 10);
     results.range = `${startDate} → ${endDate}`;
