@@ -214,16 +214,6 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyUsersMap.set(u.mes, u.total_users);
     if (u.sesiones && u.sesiones > 0) monthlySessionsMap.set(u.mes, u.sesiones);
   }
-  // Restar Smartup mes a mes (los valores de ga4_monthly_users vienen sin filtrar).
-  // Si web_traffic no tiene Smartup para ese mes, la resta es 0 (no-op).
-  for (const s of smartupMonthly) {
-    if (monthlyUsersMap.has(s.mes)) {
-      monthlyUsersMap.set(s.mes, Math.max(0, (monthlyUsersMap.get(s.mes) ?? 0) - s.usuarios));
-    }
-    if (monthlySessionsMap.has(s.mes)) {
-      monthlySessionsMap.set(s.mes, Math.max(0, (monthlySessionsMap.get(s.mes) ?? 0) - s.sesiones));
-    }
-  }
   const getMonthVal = (year: number, m: number, kind: "users" | "sessions"): number => {
     const key = `${year}-${String(m).padStart(2, "0")}-01`;
     if (kind === "users") return monthlyUsersMap.get(key) ?? monthlyAll.get(key)?.usuarios ?? 0;
