@@ -149,7 +149,7 @@ export async function GET(request: Request) {
         sesiones: Number(r.metricValues[0]?.value ?? 0),
         usuarios: Number(r.metricValues[1]?.value ?? 0),
         usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
-        bounce_rate: Number(r.metricValues[3]?.value ?? 0) / 100,
+        bounce_rate: Number(r.metricValues[3]?.value ?? 0),
         avg_session_duration: Number(r.metricValues[4]?.value ?? 0),
         pageviews: Number(r.metricValues[5]?.value ?? 0),
         conversiones: 0,
@@ -204,7 +204,7 @@ export async function GET(request: Request) {
         sesiones: Number(r.metricValues[0]?.value ?? 0),
         usuarios: Number(r.metricValues[1]?.value ?? 0),
         usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
-        bounce_rate: Number(r.metricValues[3]?.value ?? 0) / 100,
+        bounce_rate: Number(r.metricValues[3]?.value ?? 0),
         avg_session_duration: Number(r.metricValues[4]?.value ?? 0),
         pageviews: Number(r.metricValues[5]?.value ?? 0),
       });
