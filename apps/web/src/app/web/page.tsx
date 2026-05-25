@@ -531,14 +531,13 @@ export default async function WebPage({ searchParams }: PageProps) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead className="border-b bg-muted/40">
-                  <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="px-4 py-2">Producto</th>
-                    <th className="px-4 py-2">Cat.</th>
-                    <th className="px-4 py-2 text-right">Usuarios</th>
-                    <th className="px-4 py-2 text-right">Sesiones</th>
-                    <th className="px-4 py-2 text-right">% total</th>
+                  <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <th className="px-3 py-2">Producto</th>
+                    <th className="px-3 py-2">Cat.</th>
+                    <th className="px-3 py-2 text-right">Usuarios</th>
+                    <th className="px-3 py-2 text-right">% total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -560,7 +559,6 @@ export default async function WebPage({ searchParams }: PageProps) {
                           {p.categoria}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.usuarios || p.sesiones)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.sesiones)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                           {totals.usuarios > 0 ? `${(((p.usuarios || p.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                         </td>
@@ -694,14 +692,14 @@ export default async function WebPage({ searchParams }: PageProps) {
           <p className="text-xs text-muted-foreground">Usuarios y sesiones acumuladas por canal en el rango.</p>
         </header>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead className="border-b bg-muted/40">
-              <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-4 py-2">Canal</th>
-                <th className="px-4 py-2 text-right">Usuarios</th>
-                <th className="px-4 py-2 text-right">% total</th>
-                <th className="px-4 py-2 text-right">Sesiones</th>
-                <th className="px-4 py-2 text-right">PV / sesión</th>
+              <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2">Canal</th>
+                <th className="px-3 py-2 text-right">Usuarios</th>
+                <th className="px-3 py-2 text-right">%</th>
+                <th className="px-3 py-2 text-right">Sesiones</th>
+                <th className="px-3 py-2 text-right">PV/ses</th>
               </tr>
             </thead>
             <tbody>
