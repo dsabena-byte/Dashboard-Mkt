@@ -291,7 +291,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // Merge purchase counts
+    // Purchases → upsert a ga4_purchases_daily (tabla separada)
+    const purchaseMap = new Map<string, Record<string, unknown>>();
     for (const r of purchaseRows) {
       const fecha = formatDate(r.dimensionValues[0]?.value ?? "");
       const source = normUtm(r.dimensionValues[1]?.value);
@@ -300,13 +301,30 @@ export async function GET(request: Request) {
       const key = `${fecha}|${source}|${medium}|${campaign}`;
       const count = Number(r.metricValues[0]?.value ?? 0);
 
-      const existing = rowMap.get(key);
+      const existing = purchaseMap.get(key);
       if (existing) {
-        (existing.conversiones as number) += count;
+        (existing.purchases as number) += count;
+      } else {
+        purchaseMap.set(key, {
+          fecha,
+          utm_source: source,
+          utm_medium: medium,
+          utm_campaign: campaign,
+          purchases: count,
+        });
       }
     }
 
-    // 5. Upsert to Supabase (solo filas con landing_page para evitar doble conteo)
+    const purchaseUpsertRows = [...purchaseMap.values()].filter(
+      (r) => r.fecha && String(r.fecha).length === 10,
+    );
+    results.purchaseUpsert = await supabaseUpsert(
+      "ga4_purchases_daily",
+      purchaseUpsertRows,
+      "fecha,utm_source,utm_medium,utm_campaign",
+    );
+
+    // 5. Upsert traffic to web_traffic (solo filas con landing_page)
     const rows = [...rowMap.values()].filter(
       (r) => r.fecha && String(r.fecha).length === 10 && r.landing_page != null,
     );
