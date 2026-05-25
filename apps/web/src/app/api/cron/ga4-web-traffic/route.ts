@@ -220,6 +220,36 @@ export async function GET(request: Request) {
           utm_source: source,
           utm_medium: medium,
           utm_campaign: campaign,
+          landing_page: null,
+          sesiones: Number(r.metricValues[0]?.value ?? 0),
+          usuarios: Number(r.metricValues[1]?.value ?? 0),
+          usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
+          bounce_rate: Number(r.metricValues[3]?.value ?? 0) / 100,
+          avg_session_duration: Number(r.metricValues[4]?.value ?? 0),
+          pageviews: Number(r.metricValues[5]?.value ?? 0),
+          conversiones: 0,
+          eventos_clave: 0,
+        });
+      }
+    }
+
+    // Add landing page rows (separate key includes landing_page)
+    for (const r of landingRows) {
+      const fecha = formatDate(r.dimensionValues[0]?.value ?? "");
+      const landingRaw = r.dimensionValues[1]?.value ?? "";
+      const landing = landingRaw === "(not set)" ? null : landingRaw;
+      const source = normUtm(r.dimensionValues[2]?.value);
+      const medium = normUtm(r.dimensionValues[3]?.value);
+      const campaign = normUtm(r.dimensionValues[4]?.value);
+      const key = `${fecha}|${source}|${medium}|${campaign}|${landing}`;
+
+      if (!rowMap.has(key) && landing) {
+        rowMap.set(key, {
+          fecha,
+          utm_source: source,
+          utm_medium: medium,
+          utm_campaign: campaign,
+          landing_page: landing,
           sesiones: Number(r.metricValues[0]?.value ?? 0),
           usuarios: Number(r.metricValues[1]?.value ?? 0),
           usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
