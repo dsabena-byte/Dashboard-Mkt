@@ -265,6 +265,42 @@ export async function GET(request: Request) {
       "fecha,utm_source,utm_medium,utm_campaign",
     );
 
+    // =====================================================
+    // REPORT 4: Usuarios únicos por mes (→ ga4_monthly_users)
+    // =====================================================
+    try {
+      const monthlyRows = await runReport(accessToken, {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "yearMonth" }],
+        metrics: [
+          { name: "totalUsers" },
+          { name: "newUsers" },
+          { name: "sessions" },
+          { name: "screenPageViews" },
+        ],
+      });
+
+      const monthlyUpsertRows = monthlyRows.map((r) => {
+        const ym = r.dimensionValues[0]?.value ?? "";
+        const mes = `${ym.slice(0, 4)}-${ym.slice(4, 6)}-01`;
+        return {
+          mes,
+          total_users: Number(r.metricValues[0]?.value ?? 0),
+          new_users: Number(r.metricValues[1]?.value ?? 0),
+          sesiones: Number(r.metricValues[2]?.value ?? 0),
+          pageviews: Number(r.metricValues[3]?.value ?? 0),
+        };
+      });
+
+      results.monthlyUpsert = await supabaseUpsert(
+        "ga4_monthly_users",
+        monthlyUpsertRows,
+        "mes",
+      );
+    } catch {
+      results.monthly_error = "no disponible";
+    }
+
     return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), results });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
