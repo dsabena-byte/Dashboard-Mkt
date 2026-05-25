@@ -438,7 +438,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       <section className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios</h3>
         <p className="text-xs text-muted-foreground">
-          Barras = usuarios, línea = sesiones. Año actual (no afectado por el filtro). Excluye Smartup TikTok.
+          Barras = usuarios, línea = sesiones. Año actual (no afectado por el filtro).
         </p>
         <div className="mt-4">
           <WebMonthlyChart data={monthlyData} labels={yearLabels} />
