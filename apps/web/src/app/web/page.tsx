@@ -389,8 +389,8 @@ export default async function WebPage({ searchParams }: PageProps) {
           }
         />
         <KpiCard
-          title="Sesiones"
-          value={formatNumber(totals.sesiones)}
+          title={monthlyUsersRow ? "Sesiones (mes)" : "Sesiones"}
+          value={formatNumber(monthlyUsersRow?.sesiones ?? totals.sesiones)}
           hint={formatDelta(deltaSesiones)}
         />
         <KpiCard
