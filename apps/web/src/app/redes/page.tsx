@@ -6,6 +6,7 @@ import { SocialTrendChart } from "@/components/social/social-trend-chart";
 import { SocialPilarChart } from "@/components/social/social-pilar-chart";
 import { SocialSentimentChart } from "@/components/social/social-sentiment-chart";
 import { SocialContentTypeChart } from "@/components/social/social-content-type-chart";
+import { PaginatedPostsPanel } from "@/components/social/paginated-posts-panel";
 import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import {
@@ -26,8 +27,8 @@ import {
   getLatestFollowers,
   getSocialFollowers,
   getSocialPosts,
-  topCriticalPosts,
-  topSuccessfulPosts,
+  topByBrandPerformance,
+  bottomByBrandPerformance,
 } from "@/lib/social-posts-queries";
 
 export const dynamic = "force-dynamic";
@@ -80,8 +81,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
     label: BRAND_LABELS[s.key] ?? s.key,
   }));
   const contentSlices = computeContentTypeSlices(posts);
-  const successful = topSuccessfulPosts(posts);
-  const critical = topCriticalPosts(posts);
+  const brandAvgEng = posts.length > 0
+    ? posts.reduce((s, p) => s + (p.engagement ?? 0), 0) / posts.length
+    : 0;
+  const topBrand = topByBrandPerformance(posts);
+  const bottomBrand = bottomByBrandPerformance(posts);
 
   const hasData = posts.length > 0;
   // Sentiment solo aplica para Instagram. Si filtran por FB/TT, lo ocultamos.
@@ -138,6 +142,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
                     {n.posts} posts{n.total_views > 0 ? ` · ${fmtK(n.total_views)} views` : ""}
                     {netFollowers > 0 ? ` · ${fmtK(netFollowers)} followers` : ""}
                   </div>
+                  {n.ultima_fecha && (
+                    <div className="text-[9px] text-muted-foreground/60">
+                      Últ. dato: {n.ultima_fecha}
+                    </div>
+                  )}
                 </div>
                 <div className="text-base font-bold tabular-nums" style={{ color: "#dc2626" }}>
                   {n.engagement_promedio.toFixed(2)}%
@@ -316,77 +325,22 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Posts panels — críticos solo visible con sentiment (IG) */}
-      <section className={`grid gap-4 ${showSentiment ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}>
-        <PostsPanel
-          title={showSentiment ? "Posts exitosos · Eng > 0.3% o Positivo > 80%" : "Posts exitosos · Eng > 0.3%"}
-          posts={successful}
+      {/* Posts por performance de marca — mejores y peores vs promedio de la marca */}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <PaginatedPostsPanel
+          title="Mejores posts (arriba del promedio)"
+          posts={topBrand}
           color="emerald"
+          avgEngagement={brandAvgEng}
         />
-        {showSentiment && (
-          <PostsPanel title="Posts críticos · Negativo > 10% (solo Instagram)" posts={critical} color="rose" />
-        )}
+        <PaginatedPostsPanel
+          title="Peores posts (abajo del promedio)"
+          posts={bottomBrand}
+          color="rose"
+          avgEngagement={brandAvgEng}
+        />
       </section>
     </div>
   );
 }
 
-function PostsPanel({
-  title,
-  posts,
-  color,
-}: {
-  title: string;
-  posts: Array<{
-    id: string;
-    url: string;
-    marca: string;
-    red_social: string;
-    fecha: string | null;
-    engagement: number | null;
-    positivo: number | null;
-    negativo: number | null;
-    pilar: string | null;
-  }>;
-  color: "emerald" | "rose";
-}) {
-  const accent = color === "emerald" ? "text-emerald-600" : "text-rose-600";
-  const bg = color === "emerald" ? "bg-emerald-50" : "bg-rose-50";
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className={`mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide ${accent}`}>
-        <span>● {title}</span>
-        <span className={`rounded px-1.5 py-0.5 ${bg}`}>{posts.length} posts</span>
-      </div>
-      {posts.length === 0 ? (
-        <div className="py-8 text-center text-xs text-muted-foreground">Sin posts en el período.</div>
-      ) : (
-        <div className="space-y-2">
-          {posts.map((p) => (
-            <div key={p.id} className={`rounded-md border-l-2 ${color === "emerald" ? "border-emerald-500" : "border-rose-500"} ${bg} p-2`}>
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-bold">{(p.engagement ?? 0).toFixed(2)}%</span>
-                <span className="rounded px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: `${BRAND_COLORS[p.marca] ?? "#94a3b8"}22`, color: BRAND_COLORS[p.marca] ?? "#64748b" }}>
-                  {BRAND_LABELS[p.marca] ?? p.marca}
-                </span>
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{p.red_social}</span>
-                {p.pilar && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{p.pilar}</span>}
-                <span className="ml-auto text-[10px] text-muted-foreground">
-                  {p.fecha ?? "—"}
-                </span>
-                <a
-                  href={p.url}
-                  target="_blank"
-                  rel="noopener"
-                  className={`rounded px-2 py-0.5 text-[10px] font-semibold ${accent}`}
-                >
-                  Ver →
-                </a>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}

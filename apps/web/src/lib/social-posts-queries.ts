@@ -300,17 +300,20 @@ export interface NetStat {
   posts: number;
   engagement_promedio: number;
   total_views: number;
+  ultima_fecha: string | null;
 }
 
 export function computeNetStats(posts: SocialPost[]): NetStat[] {
   const nets = ["INSTAGRAM", "FACEBOOK", "TIKTOK"];
   return nets.map((n) => {
     const np = posts.filter((p) => p.red_social === n);
+    const fechas = np.map((p) => p.fecha).filter(Boolean) as string[];
     return {
       red: n,
       posts: np.length,
       engagement_promedio: avg(np.map((p) => p.engagement ?? 0)),
       total_views: np.reduce((a, p) => a + (p.views ?? 0), 0),
+      ultima_fecha: fechas.length > 0 ? fechas.sort().reverse()[0] ?? null : null,
     };
   });
 }
@@ -495,9 +498,7 @@ export function topSuccessfulPosts(posts: SocialPost[], limit = 15): SocialPost[
     .filter((p) => {
       const eng = p.engagement ?? 0;
       const pos = p.positivo;
-      // Engagement bueno → siempre pasa
       if (eng > 0.3) return true;
-      // Sentiment muy positivo (solo si está medido) → también pasa
       if (pos !== null && pos !== undefined && pos > 80) return true;
       return false;
     })
@@ -505,10 +506,33 @@ export function topSuccessfulPosts(posts: SocialPost[], limit = 15): SocialPost[
     .slice(0, limit);
 }
 
-// Top críticos: solo aplica cuando hay sentiment medido (IG). FB/TT sin sentiment no entran.
 export function topCriticalPosts(posts: SocialPost[], limit = 15): SocialPost[] {
   return posts
     .filter((p) => p.negativo !== null && p.negativo !== undefined && p.negativo > 10)
     .sort((a, b) => (b.negativo ?? 0) - (a.negativo ?? 0))
+    .slice(0, limit);
+}
+
+/**
+ * Top posts POR ENCIMA del promedio de engagement de la marca.
+ * Siempre devuelve posts "buenos" relativos a esa marca.
+ */
+export function topByBrandPerformance(posts: SocialPost[], limit = 50): SocialPost[] {
+  const brandAvg = avg(posts.map((p) => p.engagement ?? 0));
+  return posts
+    .filter((p) => (p.engagement ?? 0) > brandAvg)
+    .sort((a, b) => (b.engagement ?? 0) - (a.engagement ?? 0))
+    .slice(0, limit);
+}
+
+/**
+ * Posts POR DEBAJO del promedio de engagement de la marca.
+ * Siempre devuelve posts "malos" relativos a esa marca.
+ */
+export function bottomByBrandPerformance(posts: SocialPost[], limit = 50): SocialPost[] {
+  const brandAvg = avg(posts.map((p) => p.engagement ?? 0));
+  return posts
+    .filter((p) => (p.engagement ?? 0) <= brandAvg)
+    .sort((a, b) => (a.engagement ?? 0) - (b.engagement ?? 0))
     .slice(0, limit);
 }
