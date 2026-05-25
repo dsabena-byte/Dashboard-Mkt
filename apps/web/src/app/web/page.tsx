@@ -462,9 +462,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                 <th className="px-3 py-2">Categoría</th>
                 <th className="px-3 py-2 text-right">Usuarios</th>
                 <th className="px-3 py-2 text-right">%</th>
-                <th className="px-3 py-2 text-right">Conv.</th>
-                <th className="px-3 py-2 text-right">CR</th>
-                <th className="px-3 py-2 text-right">Bounce</th>
+                <th className="px-3 py-2 text-right">Sesiones</th>
                 <th className="px-3 py-2 text-right">PV</th>
               </tr>
             </thead>
@@ -482,11 +480,8 @@ export default async function WebPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                     {totals.usuarios > 0 ? `${(((c.usuarios || c.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.conversiones)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {c.conversion_rate !== null ? `${(c.conversion_rate * 100).toFixed(2)}%` : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.pageviews)}</td>
                     {c.bounce_rate !== null ? formatPct(c.bounce_rate * 100, 1) : "—"}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
@@ -517,7 +512,16 @@ export default async function WebPage({ searchParams }: PageProps) {
       </div>
       </section>
 
-      {/* Top productos + Top landings — lado a lado */}
+      {/* Trend del rango */}
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia de usuarios</h3>
+        <p className="text-xs text-muted-foreground">Usuarios por {aggLabel} en el período seleccionado.</p>
+        <div className="mt-4">
+          <EngagementTrendChart data={trendData} />
+        </div>
+      </section>
+
+      {/* Top productos + Audiencia — lado a lado */}
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border bg-card">
           <header className="border-b p-6 pb-4">
@@ -538,6 +542,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                     <th className="px-4 py-2">Producto</th>
                     <th className="px-4 py-2">Cat.</th>
                     <th className="px-4 py-2 text-right">Usuarios</th>
+                    <th className="px-4 py-2 text-right">Sesiones</th>
                     <th className="px-4 py-2 text-right">% total</th>
                   </tr>
                 </thead>
@@ -560,6 +565,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                           {p.categoria}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.usuarios || p.sesiones)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.sesiones)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                           {totals.usuarios > 0 ? `${(((p.usuarios || p.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                         </td>
@@ -690,7 +696,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       <section className="rounded-lg border bg-card">
         <header className="border-b p-6 pb-4">
           <h3 className="text-sm font-medium text-muted-foreground">Detalle por canal</h3>
-          <p className="text-xs text-muted-foreground">Usuarios y conversiones acumuladas por canal en el rango.</p>
+          <p className="text-xs text-muted-foreground">Usuarios y sesiones acumuladas por canal en el rango.</p>
         </header>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -699,8 +705,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                 <th className="px-4 py-2">Canal</th>
                 <th className="px-4 py-2 text-right">Usuarios</th>
                 <th className="px-4 py-2 text-right">% total</th>
-                <th className="px-4 py-2 text-right">Conversiones</th>
-                <th className="px-4 py-2 text-right">CR</th>
+                <th className="px-4 py-2 text-right">Sesiones</th>
                 <th className="px-4 py-2 text-right">PV / sesión</th>
               </tr>
             </thead>
@@ -718,10 +723,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                   <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
                     {totals.usuarios > 0 ? `${(((c.usuarios || c.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.conversiones)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {c.sesiones > 0 ? `${((c.conversiones / c.sesiones) * 100).toFixed(2)}%` : "—"}
-                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
                   <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
                     {c.sesiones > 0 ? (c.pageviews / c.sesiones).toFixed(2) : "—"}
                   </td>
@@ -732,14 +734,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Trend del rango */}
-      <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia de usuarios</h3>
-        <p className="text-xs text-muted-foreground">Usuarios por {aggLabel} en el período seleccionado.</p>
-        <div className="mt-4">
-          <EngagementTrendChart data={trendData} />
-        </div>
-      </section>
+      {/* Trend del rango — movido arriba */}
 
       {/* ============================================================
           COMPETENCIA WEB — Drean vs competidores
