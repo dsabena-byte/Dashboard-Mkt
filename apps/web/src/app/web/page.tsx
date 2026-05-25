@@ -211,6 +211,10 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyUsersMap.set(u.mes, u.total_users);
     if (u.sesiones && u.sesiones > 0) monthlySessionsMap.set(u.mes, u.sesiones);
   }
+  // Sesiones del mes seleccionado desde la misma fuente que el gráfico
+  const selectedMonthKey = range.from.endsWith("-01") ? range.from : null;
+  const chartSesiones = selectedMonthKey ? monthlySessionsMap.get(selectedMonthKey) : undefined;
+
   const getMonthVal = (year: number, m: number, kind: "users" | "sessions"): number => {
     const key = `${year}-${String(m).padStart(2, "0")}-01`;
     if (kind === "users") return monthlyUsersMap.get(key) ?? monthlyAll.get(key)?.usuarios ?? 0;
@@ -376,8 +380,8 @@ export default async function WebPage({ searchParams }: PageProps) {
           }
         />
         <KpiCard
-          title={monthlyUsersRow ? "Sesiones (mes)" : "Sesiones"}
-          value={formatNumber(monthlyUsersRow?.sesiones ?? totals.sesiones)}
+          title={chartSesiones ? "Sesiones (mes)" : "Sesiones"}
+          value={formatNumber(chartSesiones ?? totals.sesiones)}
           hint={formatDelta(deltaSesiones)}
         />
         <KpiCard
