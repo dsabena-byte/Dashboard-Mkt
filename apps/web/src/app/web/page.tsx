@@ -1,6 +1,6 @@
 import { KpiCard } from "@/components/kpi-card";
 import { DateRangePicker } from "@/components/date-range-picker";
-import { DonutChart } from "@/components/planning/donut-chart";
+
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
 import { CategoryTrendChart } from "@/components/category-trend-chart";
 import { WebMonthlyChart } from "@/components/web-monthly-chart";
@@ -352,12 +352,6 @@ export default async function WebPage({ searchParams }: PageProps) {
   const ultimaFecha = dailyKpis.length > 0
     ? dailyKpis.reduce((max, r) => r.fecha > max ? r.fecha : max, dailyKpis[0]!.fecha)
     : null;
-
-  const channelDonut = channels.map((c) => ({
-    name: c.canal,
-    value: c.usuarios || c.sesiones,
-    color: PALETA_CANAL[c.canal] ?? "#94a3b8",
-  })).filter((c) => c.value > 0);
 
   return (
     <div className="space-y-6">
