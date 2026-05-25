@@ -45,6 +45,7 @@ export function CategoryTrendChart({ data, categorias, colors }: CategoryTrendCh
         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={formatTick} />
         <Tooltip
           formatter={(v: number) => formatNumber(v)}
+          itemSorter={(item) => -(Number(item.value) || 0)}
           contentStyle={{
             backgroundColor: "hsl(var(--card))",
             border: "1px solid hsl(var(--border))",

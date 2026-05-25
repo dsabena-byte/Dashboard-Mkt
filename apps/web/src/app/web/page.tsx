@@ -554,7 +554,10 @@ export default async function WebPage({ searchParams }: PageProps) {
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.usuarios || p.sesiones)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                          {totals.usuarios > 0 ? `${(((p.usuarios || p.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
+                          {(() => {
+                            const base = monthlyUsersRow?.total_users ?? totals.usuarios;
+                            return base > 0 ? `${(((p.usuarios || p.sesiones) / base) * 100).toFixed(1)}%` : "—";
+                          })()}
                         </td>
                       </tr>
                     );
