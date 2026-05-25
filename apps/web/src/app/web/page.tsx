@@ -661,13 +661,46 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Mix de canales (rango) + Evolución mensual por canal — side by side */}
+      {/* Detalle por canal + Evolución por canal — side by side */}
       <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Mix de canales (rango)</h3>
-          <p className="text-xs text-muted-foreground">Usuarios por fuente de tráfico en el rango seleccionado.</p>
-          <div className="mt-4">
-            <DonutChart data={channelDonut} valueFormat="number" />
+        <div className="rounded-lg border bg-card">
+          <header className="border-b p-4 pb-3">
+            <h3 className="text-sm font-medium text-muted-foreground">Detalle por canal</h3>
+            <p className="text-xs text-muted-foreground">Usuarios y sesiones por canal en el rango.</p>
+          </header>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="border-b bg-muted/40">
+                <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-1.5">Canal</th>
+                  <th className="px-3 py-1.5 text-right">Usuarios</th>
+                  <th className="px-3 py-1.5 text-right">%</th>
+                  <th className="px-3 py-1.5 text-right">Sesiones</th>
+                  <th className="px-3 py-1.5 text-right">PV/ses</th>
+                </tr>
+              </thead>
+              <tbody>
+                {channels.map((c) => (
+                  <tr key={c.canal} className="border-b last:border-0">
+                    <td className="px-3 py-1.5 font-medium">
+                      <span
+                        className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+                        style={{ backgroundColor: PALETA_CANAL[c.canal] ?? "#94a3b8" }}
+                      />
+                      {c.canal}
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">{formatNumber(c.usuarios || c.sesiones)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                      {totals.usuarios > 0 ? `${(((c.usuarios || c.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                      {c.sesiones > 0 ? (c.pageviews / c.sesiones).toFixed(2) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
         <div className="rounded-lg border bg-card p-6">
@@ -682,48 +715,6 @@ export default async function WebPage({ searchParams }: PageProps) {
               colors={PALETA_CANAL}
             />
           </div>
-        </div>
-      </section>
-
-      {/* Detalle de canales */}
-      <section className="rounded-lg border bg-card">
-        <header className="border-b p-6 pb-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Detalle por canal</h3>
-          <p className="text-xs text-muted-foreground">Usuarios y sesiones acumuladas por canal en el rango.</p>
-        </header>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="border-b bg-muted/40">
-              <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2">Canal</th>
-                <th className="px-3 py-2 text-right">Usuarios</th>
-                <th className="px-3 py-2 text-right">%</th>
-                <th className="px-3 py-2 text-right">Sesiones</th>
-                <th className="px-3 py-2 text-right">PV/ses</th>
-              </tr>
-            </thead>
-            <tbody>
-              {channels.map((c) => (
-                <tr key={c.canal} className="border-b last:border-0">
-                  <td className="px-4 py-2 font-medium">
-                    <span
-                      className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
-                      style={{ backgroundColor: PALETA_CANAL[c.canal] ?? "#94a3b8" }}
-                    />
-                    {c.canal}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.usuarios || c.sesiones)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                    {totals.usuarios > 0 ? `${(((c.usuarios || c.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                    {c.sesiones > 0 ? (c.pageviews / c.sesiones).toFixed(2) : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </section>
 
