@@ -22,7 +22,7 @@ async function getAccessToken(): Promise<string> {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Google OAuth token refresh failed ${res.status}: ${body}`);
+    throw new Error(`Google OAuth refresh failed ${res.status}: ${body}`);
   }
   const data = (await res.json()) as { access_token: string };
   return data.access_token;
@@ -33,21 +33,12 @@ interface GA4Row {
   metricValues: Array<{ value: string }>;
 }
 
-async function runReport(
-  accessToken: string,
-  body: Record<string, unknown>,
-): Promise<GA4Row[]> {
-  const res = await fetch(
-    `${GA4_API}/properties/${GA4_PROPERTY_ID}:runReport`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    },
-  );
+async function runReport(accessToken: string, body: Record<string, unknown>): Promise<GA4Row[]> {
+  const res = await fetch(`${GA4_API}/properties/${GA4_PROPERTY_ID}:runReport`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`GA4 runReport ${res.status}: ${text}`);
@@ -56,28 +47,18 @@ async function runReport(
   return data.rows ?? [];
 }
 
-async function supabaseUpsert(
-  table: string,
-  rows: unknown[],
-  onConflict: string,
-): Promise<string> {
+async function supabaseUpsert(table: string, rows: unknown[], onConflict: string): Promise<string> {
   if (rows.length === 0) return "sin data";
   const url = env("NEXT_PUBLIC_SUPABASE_URL");
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
-
-  // Batch in chunks of 500 to avoid payload limits
   const chunks: unknown[][] = [];
-  for (let i = 0; i < rows.length; i += 500) {
-    chunks.push(rows.slice(i, i + 500));
-  }
-
+  for (let i = 0; i < rows.length; i += 500) chunks.push(rows.slice(i, i + 500));
   let total = 0;
   for (const chunk of chunks) {
     const res = await fetch(`${url}/rest/v1/${table}?on_conflict=${onConflict}`, {
       method: "POST",
       headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
+        apikey: key, Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
@@ -97,8 +78,8 @@ function normUtm(v: string | undefined | null): string | null {
   return v.toLowerCase().replace(/\s+/g, "-");
 }
 
-function formatDate(yyyymmdd: string): string {
-  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
+function fmtDate(d: string): string {
+  return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
 }
 
 export async function GET(request: Request) {
@@ -111,11 +92,9 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
 
   try {
-    // 1. Get access token
     const accessToken = await getAccessToken();
     results.auth = "OK";
 
-    // Date range: last 30 days
     const toDate = new Date();
     toDate.setUTCDate(toDate.getUTCDate() - 1);
     const fromDate = new Date(toDate);
@@ -124,7 +103,9 @@ export async function GET(request: Request) {
     const endDate = toDate.toISOString().slice(0, 10);
     results.range = `${startDate} → ${endDate}`;
 
-    // 2. Main report: sessions, users, bounce, pageviews by date/source/medium/campaign
+    // =====================================================
+    // REPORT 1: Tráfico por canal (→ web_traffic, ~15k filas)
+    // =====================================================
     const mainRows = await runReport(accessToken, {
       dateRanges: [{ startDate, endDate }],
       dimensions: [
@@ -145,7 +126,94 @@ export async function GET(request: Request) {
     });
     results.mainRows = mainRows.length;
 
-    // 3. Events report: purchases by date/source/medium/campaign
+    const trafficRows: Array<Record<string, unknown>> = [];
+    const seen = new Set<string>();
+    for (const r of mainRows) {
+      const fecha = fmtDate(r.dimensionValues[0]?.value ?? "");
+      const source = normUtm(r.dimensionValues[1]?.value);
+      const medium = normUtm(r.dimensionValues[2]?.value);
+      const campaign = normUtm(r.dimensionValues[3]?.value);
+      const key = `${fecha}|${source}|${medium}|${campaign}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      trafficRows.push({
+        fecha,
+        utm_source: source,
+        utm_medium: medium,
+        utm_campaign: campaign,
+        sesiones: Number(r.metricValues[0]?.value ?? 0),
+        usuarios: Number(r.metricValues[1]?.value ?? 0),
+        usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
+        bounce_rate: Number(r.metricValues[3]?.value ?? 0) / 100,
+        avg_session_duration: Number(r.metricValues[4]?.value ?? 0),
+        pageviews: Number(r.metricValues[5]?.value ?? 0),
+        conversiones: 0,
+        eventos_clave: 0,
+      });
+    }
+
+    results.trafficUpsert = await supabaseUpsert(
+      "web_traffic",
+      trafficRows,
+      "fecha,utm_source,utm_medium,utm_campaign,utm_content,landing_page",
+    );
+
+    // =====================================================
+    // REPORT 2: Landing pages (→ web_landing_daily, ~10k filas)
+    // =====================================================
+    let landingRows: GA4Row[] = [];
+    try {
+      landingRows = await runReport(accessToken, {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [
+          { name: "date" },
+          { name: "landingPagePlusQueryString" },
+        ],
+        metrics: [
+          { name: "sessions" },
+          { name: "totalUsers" },
+          { name: "newUsers" },
+          { name: "bounceRate" },
+          { name: "averageSessionDuration" },
+          { name: "screenPageViews" },
+        ],
+        limit: 50000,
+      });
+    } catch {
+      results.landing_error = "no disponible";
+    }
+    results.landingApiRows = landingRows.length;
+
+    const landingUpsertRows: Array<Record<string, unknown>> = [];
+    const seenLanding = new Set<string>();
+    for (const r of landingRows) {
+      const fecha = fmtDate(r.dimensionValues[0]?.value ?? "");
+      const lp = r.dimensionValues[1]?.value ?? "";
+      if (!lp || lp === "(not set)") continue;
+      const key = `${fecha}|${lp}`;
+      if (seenLanding.has(key)) continue;
+      seenLanding.add(key);
+      landingUpsertRows.push({
+        fecha,
+        landing_page: lp,
+        sesiones: Number(r.metricValues[0]?.value ?? 0),
+        usuarios: Number(r.metricValues[1]?.value ?? 0),
+        usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
+        bounce_rate: Number(r.metricValues[3]?.value ?? 0) / 100,
+        avg_session_duration: Number(r.metricValues[4]?.value ?? 0),
+        pageviews: Number(r.metricValues[5]?.value ?? 0),
+      });
+    }
+
+    results.landingUpsert = await supabaseUpsert(
+      "web_landing_daily",
+      landingUpsertRows,
+      "fecha,landing_page",
+    );
+
+    // =====================================================
+    // REPORT 3: Purchases (→ ga4_purchases_daily)
+    // =====================================================
     let purchaseRows: GA4Row[] = [];
     try {
       purchaseRows = await runReport(accessToken, {
@@ -169,171 +237,27 @@ export async function GET(request: Request) {
     } catch {
       results.purchases_error = "no disponible";
     }
-    results.purchaseRows = purchaseRows.length;
 
-    // 3b. Landing page report: sessions/users by date/landing for categories and products
-    let landingRows: GA4Row[] = [];
-    try {
-      landingRows = await runReport(accessToken, {
-        dateRanges: [{ startDate, endDate }],
-        dimensions: [
-          { name: "date" },
-          { name: "landingPagePlusQueryString" },
-          { name: "sessionSource" },
-          { name: "sessionMedium" },
-          { name: "sessionCampaignName" },
-        ],
-        metrics: [
-          { name: "sessions" },
-          { name: "totalUsers" },
-          { name: "newUsers" },
-          { name: "bounceRate" },
-          { name: "averageSessionDuration" },
-          { name: "screenPageViews" },
-        ],
-        limit: 100000,
-      });
-    } catch {
-      results.landing_error = "no disponible";
-    }
-    results.landingRows = landingRows.length;
-
-    // 4. Normalize and merge
-    const rowMap = new Map<string, Record<string, unknown>>();
-
-    for (const r of mainRows) {
-      const fecha = formatDate(r.dimensionValues[0]?.value ?? "");
-      const source = normUtm(r.dimensionValues[1]?.value);
-      const medium = normUtm(r.dimensionValues[2]?.value);
-      const campaign = normUtm(r.dimensionValues[3]?.value);
-      const key = `${fecha}|${source}|${medium}|${campaign}`;
-
-      const existing = rowMap.get(key);
-      if (existing) {
-        (existing.sesiones as number) += Number(r.metricValues[0]?.value ?? 0);
-        (existing.usuarios as number) += Number(r.metricValues[1]?.value ?? 0);
-        (existing.usuarios_nuevos as number) += Number(r.metricValues[2]?.value ?? 0);
-        (existing.pageviews as number) += Number(r.metricValues[5]?.value ?? 0);
-      } else {
-        rowMap.set(key, {
-          fecha,
-          utm_source: source,
-          utm_medium: medium,
-          utm_campaign: campaign,
-          landing_page: null,
-          sesiones: Number(r.metricValues[0]?.value ?? 0),
-          usuarios: Number(r.metricValues[1]?.value ?? 0),
-          usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
-          bounce_rate: Number(r.metricValues[3]?.value ?? 0) / 100,
-          avg_session_duration: Number(r.metricValues[4]?.value ?? 0),
-          pageviews: Number(r.metricValues[5]?.value ?? 0),
-          conversiones: 0,
-          eventos_clave: 0,
-        });
-      }
-    }
-
-    // Add landing page rows (separate key includes landing_page)
-    for (const r of landingRows) {
-      const fecha = formatDate(r.dimensionValues[0]?.value ?? "");
-      const landingRaw = r.dimensionValues[1]?.value ?? "";
-      const landing = landingRaw === "(not set)" ? null : landingRaw;
-      const source = normUtm(r.dimensionValues[2]?.value);
-      const medium = normUtm(r.dimensionValues[3]?.value);
-      const campaign = normUtm(r.dimensionValues[4]?.value);
-      const key = `${fecha}|${source}|${medium}|${campaign}|${landing}`;
-
-      if (!rowMap.has(key) && landing) {
-        rowMap.set(key, {
-          fecha,
-          utm_source: source,
-          utm_medium: medium,
-          utm_campaign: campaign,
-          landing_page: landing,
-          sesiones: Number(r.metricValues[0]?.value ?? 0),
-          usuarios: Number(r.metricValues[1]?.value ?? 0),
-          usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
-          bounce_rate: Number(r.metricValues[3]?.value ?? 0) / 100,
-          avg_session_duration: Number(r.metricValues[4]?.value ?? 0),
-          pageviews: Number(r.metricValues[5]?.value ?? 0),
-          conversiones: 0,
-          eventos_clave: 0,
-        });
-      }
-    }
-
-    // Add landing page rows (separate key includes landing_page)
-    for (const r of landingRows) {
-      const fecha = formatDate(r.dimensionValues[0]?.value ?? "");
-      const landingRaw = r.dimensionValues[1]?.value ?? "";
-      const landing = landingRaw === "(not set)" ? null : landingRaw;
-      const source = normUtm(r.dimensionValues[2]?.value);
-      const medium = normUtm(r.dimensionValues[3]?.value);
-      const campaign = normUtm(r.dimensionValues[4]?.value);
-      const key = `${fecha}|${source}|${medium}|${campaign}|${landing}`;
-
-      if (!rowMap.has(key) && landing) {
-        rowMap.set(key, {
-          fecha,
-          utm_source: source,
-          utm_medium: medium,
-          utm_campaign: campaign,
-          landing_page: landing,
-          sesiones: Number(r.metricValues[0]?.value ?? 0),
-          usuarios: Number(r.metricValues[1]?.value ?? 0),
-          usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
-          bounce_rate: Number(r.metricValues[3]?.value ?? 0) / 100,
-          avg_session_duration: Number(r.metricValues[4]?.value ?? 0),
-          pageviews: Number(r.metricValues[5]?.value ?? 0),
-          conversiones: 0,
-          eventos_clave: 0,
-        });
-      }
-    }
-
-    // Purchases → upsert a ga4_purchases_daily (tabla separada)
     const purchaseMap = new Map<string, Record<string, unknown>>();
     for (const r of purchaseRows) {
-      const fecha = formatDate(r.dimensionValues[0]?.value ?? "");
+      const fecha = fmtDate(r.dimensionValues[0]?.value ?? "");
       const source = normUtm(r.dimensionValues[1]?.value);
       const medium = normUtm(r.dimensionValues[2]?.value);
       const campaign = normUtm(r.dimensionValues[3]?.value);
       const key = `${fecha}|${source}|${medium}|${campaign}`;
       const count = Number(r.metricValues[0]?.value ?? 0);
-
       const existing = purchaseMap.get(key);
       if (existing) {
         (existing.purchases as number) += count;
       } else {
-        purchaseMap.set(key, {
-          fecha,
-          utm_source: source,
-          utm_medium: medium,
-          utm_campaign: campaign,
-          purchases: count,
-        });
+        purchaseMap.set(key, { fecha, utm_source: source, utm_medium: medium, utm_campaign: campaign, purchases: count });
       }
     }
 
-    const purchaseUpsertRows = [...purchaseMap.values()].filter(
-      (r) => r.fecha && String(r.fecha).length === 10,
-    );
     results.purchaseUpsert = await supabaseUpsert(
       "ga4_purchases_daily",
-      purchaseUpsertRows,
+      [...purchaseMap.values()].filter((r) => r.fecha && String(r.fecha).length === 10),
       "fecha,utm_source,utm_medium,utm_campaign",
-    );
-
-    // 5. Upsert traffic to web_traffic (solo filas con landing_page)
-    const rows = [...rowMap.values()].filter(
-      (r) => r.fecha && String(r.fecha).length === 10 && r.landing_page != null,
-    );
-    results.totalRows = rows.length;
-
-    results.upsert = await supabaseUpsert(
-      "web_traffic",
-      rows,
-      "fecha,utm_source,utm_medium,utm_campaign,utm_content,landing_page",
     );
 
     return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), results });
