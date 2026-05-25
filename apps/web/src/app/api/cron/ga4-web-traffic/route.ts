@@ -306,9 +306,9 @@ export async function GET(request: Request) {
       }
     }
 
-    // 5. Upsert to Supabase
+    // 5. Upsert to Supabase (solo filas con landing_page para evitar doble conteo)
     const rows = [...rowMap.values()].filter(
-      (r) => r.fecha && String(r.fecha).length === 10,
+      (r) => r.fecha && String(r.fecha).length === 10 && r.landing_page != null,
     );
     results.totalRows = rows.length;
 
