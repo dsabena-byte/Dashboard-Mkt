@@ -697,7 +697,7 @@ export default async function WebPage({ searchParams }: PageProps) {
             <thead className="border-b bg-muted/40">
               <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="px-4 py-2">Canal</th>
-                <th className="px-4 py-2 text-right">Sesiones</th>
+                <th className="px-4 py-2 text-right">Usuarios</th>
                 <th className="px-4 py-2 text-right">% total</th>
                 <th className="px-4 py-2 text-right">Conversiones</th>
                 <th className="px-4 py-2 text-right">CR</th>
