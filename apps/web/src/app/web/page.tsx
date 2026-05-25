@@ -15,7 +15,6 @@ import {
   getWebDailyKpis,
   getAllMonthlyUsers,
   getMonthlyUsers,
-  getSmartupMonthlyAggregates,
   getWebDemographicsSummary,
   getWebTopProducts,
   PALETA_CANAL,
@@ -94,7 +93,6 @@ export default async function WebPage({ searchParams }: PageProps) {
     dreanGa4,
     monthlyUsersRow,
     allMonthlyUsers,
-    smartupMonthly,
   ] = await Promise.all([
     getWebDailyKpis(range),
     getWebDailyKpis(yoyRange),
@@ -113,7 +111,6 @@ export default async function WebPage({ searchParams }: PageProps) {
     // Si el rango empieza el 1 de algún mes, traer total users únicos de ese mes
     range.from.endsWith("-01") ? getMonthlyUsers(range.from) : Promise.resolve(null),
     getAllMonthlyUsers(),
-    getSmartupMonthlyAggregates(),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
