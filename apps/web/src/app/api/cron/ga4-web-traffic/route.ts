@@ -220,6 +220,7 @@ export async function GET(request: Request) {
           utm_source: source,
           utm_medium: medium,
           utm_campaign: campaign,
+          landing_page: null,
           sesiones: Number(r.metricValues[0]?.value ?? 0),
           usuarios: Number(r.metricValues[1]?.value ?? 0),
           usuarios_nuevos: Number(r.metricValues[2]?.value ?? 0),
