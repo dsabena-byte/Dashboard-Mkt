@@ -7,6 +7,7 @@ import { SocialPilarChart } from "@/components/social/social-pilar-chart";
 import { SocialSentimentChart } from "@/components/social/social-sentiment-chart";
 import { SocialContentTypeChart } from "@/components/social/social-content-type-chart";
 import { PaginatedPostsPanel } from "@/components/social/paginated-posts-panel";
+import { BrandSentimentSummary } from "@/components/social/brand-sentiment-summary";
 import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import {
@@ -326,46 +327,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
             </div>
             <SocialSentimentChart data={sentByBrand} />
           </div>
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Análisis cualitativo del sentimiento
-            </h3>
-            {(() => {
-              const postsWithResumen = posts.filter((p) => p.red_social === "INSTAGRAM" && p.resumen_sentimiento);
-              if (postsWithResumen.length === 0) {
-                return (
-                  <div className="py-4 text-center text-xs text-muted-foreground">
-                    Sin análisis cualitativo todavía. Ejecutá{" "}
-                    <code className="rounded bg-secondary px-1 py-0.5 text-[10px]">/api/cron/ig-sentiment-analysis</code> para generarlo.
-                  </div>
-                );
-              }
-              const byMarca = new Map<string, string[]>();
-              for (const p of postsWithResumen) {
-                const r = p.resumen_sentimiento as string;
-                const arr = byMarca.get(p.marca) ?? [];
-                arr.push(r);
-                byMarca.set(p.marca, arr);
-              }
-              return (
-                <div className="space-y-2 text-xs">
-                  {[...byMarca.entries()].map(([m, resumenes]) => {
-                    const lastResumen = resumenes[0] ?? "";
-                    const truncated = lastResumen.length > 150 ? lastResumen.slice(0, 150) + "…" : lastResumen;
-                    return (
-                      <div key={m} className="rounded bg-muted/40 px-2 py-1.5">
-                        <span className="font-semibold" style={{ color: BRAND_COLORS[m] ?? "#64748b" }}>
-                          {BRAND_LABELS[m] ?? m}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground"> ({resumenes.length})</span>
-                        <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{truncated}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
+          <BrandSentimentSummary
+            marcas={[...new Set(posts.filter((p) => p.red_social === "INSTAGRAM").map((p) => p.marca))]}
+            from={range.from}
+            to={range.to}
+          />
         </section>
       )}
 
