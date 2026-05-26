@@ -451,16 +451,16 @@ export function computeContentMix(posts: SocialPost[]): ContentMixCell[] {
 }
 
 export interface SentimentRow {
-  key: string;                // marca o pilar
+  key: string;
   positivo: number;
   negativo: number;
   neutro: number;
+  comentarios_analizados: number;
 }
 
 export function computeSentimentByBrand(posts: SocialPost[]): SentimentRow[] {
   const marcas = [...new Set(posts.map((p) => p.marca))];
   return marcas.map((m) => {
-    // Solo promediar % de posts con sentimiento real (excluye nulls y data sucia 0/0/0)
     const bp = posts.filter((p) => {
       if (p.marca !== m) return false;
       if (p.positivo === null || p.positivo === undefined) return false;
@@ -472,6 +472,7 @@ export function computeSentimentByBrand(posts: SocialPost[]): SentimentRow[] {
       positivo: avg(bp.map((p) => p.positivo as number)),
       negativo: avg(bp.map((p) => p.negativo as number)),
       neutro: avg(bp.map((p) => p.neutro as number)),
+      comentarios_analizados: bp.length,
     };
   });
 }

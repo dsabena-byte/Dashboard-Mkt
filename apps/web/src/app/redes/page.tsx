@@ -316,9 +316,16 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <section className={`grid gap-4 ${showSentiment ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}>
         {showSentiment && (
           <div className="rounded-lg border bg-card p-4">
-            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Sentimiento por marca <span className="text-muted-foreground/70">(solo Instagram)</span>
             </h3>
+            <div className="mb-3 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+              {sentByBrand.map((s) => (
+                <span key={s.key} className="rounded bg-muted px-1.5 py-0.5">
+                  {s.label}: <strong>{s.comentarios_analizados}</strong> posts analizados
+                </span>
+              ))}
+            </div>
             <SocialSentimentChart data={sentByBrand} />
           </div>
         )}
