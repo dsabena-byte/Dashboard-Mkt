@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/ga4-web-traffic",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/ig-sentiment-analysis?batch=5",
+      "schedule": "0 8 * * *"
     }
   ]
 }
