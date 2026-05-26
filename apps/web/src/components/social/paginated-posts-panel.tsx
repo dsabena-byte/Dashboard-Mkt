@@ -107,8 +107,8 @@ export function PaginatedPostsPanel({
                   {p.views != null && p.views > 0 && <span>👁 {fmtK(p.views)}</span>}
                 </div>
                 {p.resumen_sentimiento && (
-                  <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/80 italic">
-                    {p.resumen_sentimiento}
+                  <p className="mt-1 text-[10px] leading-snug text-muted-foreground/80 italic">
+                    {p.resumen_sentimiento.length > 120 ? p.resumen_sentimiento.slice(0, 120) + "…" : p.resumen_sentimiento}
                   </p>
                 )}
               </a>
