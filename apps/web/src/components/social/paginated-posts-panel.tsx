@@ -15,6 +15,7 @@ interface PaginatedPost {
   likes: number | null;
   comentarios: number | null;
   views: number | null;
+  resumen_sentimiento?: string | null;
 }
 
 const BRAND_COLORS: Record<string, string> = {
@@ -105,6 +106,11 @@ export function PaginatedPostsPanel({
                   {p.comentarios != null && <span>💬 {fmtK(p.comentarios)}</span>}
                   {p.views != null && p.views > 0 && <span>👁 {fmtK(p.views)}</span>}
                 </div>
+                {p.resumen_sentimiento && (
+                  <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/80 italic">
+                    {p.resumen_sentimiento}
+                  </p>
+                )}
               </a>
             ))}
           </div>

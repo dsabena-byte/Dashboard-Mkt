@@ -238,8 +238,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Benchmark table (full width) */}
-      <section>
+      {/* Benchmark + Distribución por contenido */}
+      <section className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Benchmark de marcas · KPIs comparados
@@ -253,7 +253,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
                   <th className="px-2 py-1.5 text-right">Posts</th>
                   <th className="px-2 py-1.5 text-right">Posts/sem</th>
                   <th className="px-2 py-1.5 text-right">Eng. prom</th>
-                  <th className="px-2 py-1.5">Eng. relativo</th>
                   <th className="px-2 py-1.5 text-right">% Pos</th>
                   <th className="px-2 py-1.5 text-right">% Neg</th>
                   <th className="px-2 py-1.5 text-right">% Neu</th>
@@ -265,15 +264,13 @@ export default async function RedesPage({ searchParams }: PageProps) {
               <tbody>
                 {brandStats.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="px-2 py-6 text-center text-muted-foreground">
+                    <td colSpan={11} className="px-2 py-6 text-center text-muted-foreground">
                       Sin datos.
                     </td>
                   </tr>
                 ) : (
                   (() => {
-                    const maxEng = Math.max(...brandStats.map((b) => b.engagement_promedio), 0.0001);
                     return brandStats.map((b) => {
-                      const rel = (b.engagement_promedio / maxEng) * 100;
                       const color = BRAND_COLORS[b.marca] ?? "#94a3b8";
                       return (
                         <tr key={b.marca} className="border-b last:border-0">
@@ -288,11 +285,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
                           <td className="px-2 py-1.5 text-right tabular-nums">{b.posts}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{b.posts_per_week.toFixed(1)}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums">{b.engagement_promedio.toFixed(2)}%</td>
-                          <td className="px-2 py-1.5">
-                            <div className="h-1 w-24 rounded-full bg-muted">
-                              <div className="h-1 rounded-full" style={{ width: `${rel}%`, backgroundColor: color }} />
-                            </div>
-                          </td>
                           <td className="px-2 py-1.5 text-right tabular-nums text-emerald-600">{Math.round(b.positivo)}%</td>
                           <td className="px-2 py-1.5 text-right tabular-nums text-rose-600">{Math.round(b.negativo)}%</td>
                           <td className="px-2 py-1.5 text-right tabular-nums text-slate-500">{Math.round(b.neutro)}%</td>
@@ -310,11 +302,17 @@ export default async function RedesPage({ searchParams }: PageProps) {
             </table>
           </div>
         </div>
+        <div className="rounded-lg border bg-card p-4">
+          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Distribución por tipo de contenido
+          </h3>
+          <SocialContentTypeChart data={contentSlices} />
+        </div>
       </section>
 
-      {/* Sentiment (solo IG) + Content Type */}
-      <section className={`grid gap-4 ${showSentiment ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}>
-        {showSentiment && (
+      {/* Sentiment + Resumen cualitativo */}
+      {showSentiment && (
+        <section className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border bg-card p-4">
             <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Sentimiento por marca <span className="text-muted-foreground/70">(solo Instagram)</span>
@@ -328,14 +326,54 @@ export default async function RedesPage({ searchParams }: PageProps) {
             </div>
             <SocialSentimentChart data={sentByBrand} />
           </div>
-        )}
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Distribución por tipo de contenido
-          </h3>
-          <SocialContentTypeChart data={contentSlices} />
-        </div>
-      </section>
+          <div className="rounded-lg border bg-card p-4">
+            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Análisis cualitativo del sentimiento
+            </h3>
+            {(() => {
+              const postsWithResumen = posts.filter((p) => p.red_social === "INSTAGRAM" && p.resumen_sentimiento);
+              if (postsWithResumen.length === 0) {
+                return (
+                  <div className="py-4 text-center text-xs text-muted-foreground">
+                    Sin análisis cualitativo todavía. Ejecutá{" "}
+                    <code className="rounded bg-secondary px-1 py-0.5 text-[10px]">/api/cron/ig-sentiment-analysis</code> para generarlo.
+                  </div>
+                );
+              }
+              const byMarca = new Map<string, string[]>();
+              for (const p of postsWithResumen) {
+                const r = p.resumen_sentimiento as string;
+                const arr = byMarca.get(p.marca) ?? [];
+                arr.push(r);
+                byMarca.set(p.marca, arr);
+              }
+              return (
+                <div className="space-y-3 text-xs">
+                  {[...byMarca.entries()].map(([m, resumenes]) => (
+                    <div key={m}>
+                      <div className="mb-1 font-semibold" style={{ color: BRAND_COLORS[m] ?? "#64748b" }}>
+                        {BRAND_LABELS[m] ?? m} ({resumenes.length} posts analizados)
+                      </div>
+                      <div className="space-y-1 text-muted-foreground">
+                        {resumenes.slice(0, 3).map((r, i) => (
+                          <p key={i} className="rounded bg-muted/50 px-2 py-1 text-[11px] leading-relaxed">
+                            {r}
+                          </p>
+                        ))}
+                        {resumenes.length > 3 && (
+                          <p className="text-[10px] text-muted-foreground/60">
+                            +{resumenes.length - 3} análisis más
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </section>
+      )}
 
       {/* Posts por performance de marca — mejores y peores vs promedio de la marca */}
       <section className="grid gap-4 lg:grid-cols-2">
