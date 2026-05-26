@@ -74,6 +74,8 @@ export function BrandSentimentSummary({
     return () => { cancelled = true; };
   }, [marcas, from, to]);
 
+  const [expandedMarca, setExpandedMarca] = useState<string | null>(null);
+
   return (
     <div className="rounded-lg border bg-card p-4">
       <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -90,7 +92,12 @@ export function BrandSentimentSummary({
       ) : (
         <div className="space-y-2">
           {summaries.map((s) => (
-            <div key={s.marca} className="rounded bg-muted/40 px-3 py-2">
+            <div
+              key={s.marca}
+              className="rounded bg-muted/40 px-3 py-2 cursor-pointer"
+              onClick={() => setExpandedMarca(expandedMarca === s.marca ? null : s.marca)}
+              title="Click para expandir/colapsar"
+            >
               <div className="flex items-baseline gap-2">
                 <span
                   className="text-xs font-semibold"
@@ -102,7 +109,7 @@ export function BrandSentimentSummary({
                   ({s.posts} posts)
                 </span>
               </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">
+              <p className={`mt-1 text-[11px] leading-snug text-foreground/80 ${expandedMarca === s.marca ? "" : "line-clamp-2"}`}>
                 {s.resumen}
               </p>
             </div>
