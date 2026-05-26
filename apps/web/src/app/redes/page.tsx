@@ -239,8 +239,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
       </section>
 
       {/* Benchmark + Distribución por contenido */}
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-lg border bg-card p-4">
+      <section className="grid gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-3 rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Benchmark de marcas · KPIs comparados
           </h3>
@@ -302,7 +302,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
             </table>
           </div>
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="lg:col-span-2 rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Distribución por tipo de contenido
           </h3>
@@ -348,26 +348,20 @@ export default async function RedesPage({ searchParams }: PageProps) {
                 byMarca.set(p.marca, arr);
               }
               return (
-                <div className="space-y-3 text-xs">
-                  {[...byMarca.entries()].map(([m, resumenes]) => (
-                    <div key={m}>
-                      <div className="mb-1 font-semibold" style={{ color: BRAND_COLORS[m] ?? "#64748b" }}>
-                        {BRAND_LABELS[m] ?? m} ({resumenes.length} posts analizados)
+                <div className="space-y-2 text-xs">
+                  {[...byMarca.entries()].map(([m, resumenes]) => {
+                    const lastResumen = resumenes[0] ?? "";
+                    const truncated = lastResumen.length > 150 ? lastResumen.slice(0, 150) + "…" : lastResumen;
+                    return (
+                      <div key={m} className="rounded bg-muted/40 px-2 py-1.5">
+                        <span className="font-semibold" style={{ color: BRAND_COLORS[m] ?? "#64748b" }}>
+                          {BRAND_LABELS[m] ?? m}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground"> ({resumenes.length})</span>
+                        <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{truncated}</p>
                       </div>
-                      <div className="space-y-1 text-muted-foreground">
-                        {resumenes.slice(0, 3).map((r, i) => (
-                          <p key={i} className="rounded bg-muted/50 px-2 py-1 text-[11px] leading-relaxed">
-                            {r}
-                          </p>
-                        ))}
-                        {resumenes.length > 3 && (
-                          <p className="text-[10px] text-muted-foreground/60">
-                            +{resumenes.length - 3} análisis más
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()}

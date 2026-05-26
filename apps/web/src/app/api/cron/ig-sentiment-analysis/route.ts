@@ -93,19 +93,11 @@ async function analyzeWithGPT(
 ): Promise<string> {
   const apiKey = env("OPENAI_API_KEY");
 
-  const prompt = `Analizá los siguientes comentarios de un post de Instagram de una marca de electrodomésticos (Drean, Philco, Gafa, Electrolux o Whirlpool).
+  const prompt = `Comentarios de Instagram (electrodomésticos). Sentimiento: ${positivo}% pos, ${negativo}% neg, ${neutro}% neu.
 
-Sentimiento calculado del post: ${positivo}% positivo, ${negativo}% negativo, ${neutro}% neutro.
+${comments.slice(0, 30).map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
-Comentarios:
-${comments.map((c, i) => `${i + 1}. ${c}`).join("\n")}
-
-Devolvé un resumen en español de máximo 2-3 oraciones explicando:
-- Los temas principales de los comentarios positivos (si los hay)
-- Los temas principales de los comentarios negativos (si los hay)
-- El tono general
-
-Formato: texto plano, sin bullets, sin markdown. Directo y conciso.`;
+Respuesta: UNA sola oración de máximo 120 caracteres. Formato: "Pos: [tema]. Neg: [tema]." Si no hay negativos, solo "Pos: [tema]." Si no hay positivos, solo "Neg: [tema]." Sin explicaciones extra.`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -116,7 +108,7 @@ Formato: texto plano, sin bullets, sin markdown. Directo y conciso.`;
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 200,
+      max_tokens: 80,
       temperature: 0.3,
     }),
   });
