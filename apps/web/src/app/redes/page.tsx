@@ -191,9 +191,14 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <KpiCard
           title="Total followers"
           value={fmtK(
-            allMarcas.reduce((sum, m) => sum + getLatestFollowers(followers, m, red), 0),
+            (marca !== "all" ? [marca] : allMarcas).reduce((sum, m) => {
+              if (red !== "all") return sum + getLatestFollowers(followers, m, red);
+              return sum + getLatestFollowers(followers, m, "INSTAGRAM")
+                + getLatestFollowers(followers, m, "FACEBOOK")
+                + getLatestFollowers(followers, m, "TIKTOK");
+            }, 0),
           )}
-          hint={red === "all" ? "Suma IG + FB + TT" : NET_LABELS[red] ?? red}
+          hint={marca !== "all" ? (BRAND_LABELS[marca] ?? marca) : red === "all" ? "Suma IG + FB + TT" : NET_LABELS[red] ?? red}
         />
         <KpiCard title="Posts" value={String(kpis.posts)} hint={kpis.redes.join(" · ") || "—"} />
       </section>
