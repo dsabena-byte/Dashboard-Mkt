@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
     );
     const cached = (await cacheRes.json()) as Array<{ resumen: string; posts_analizados: number }>;
-    if (cached.length > 0) {
+    if (cached.length > 0 && cached[0]) {
       return NextResponse.json({ ok: true, source: "cache", marca, resumen: cached[0].resumen, posts: cached[0].posts_analizados });
     }
 
