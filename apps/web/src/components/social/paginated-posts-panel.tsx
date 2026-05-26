@@ -54,6 +54,7 @@ export function PaginatedPostsPanel({
   pageSize?: number;
 }) {
   const [page, setPage] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const totalPages = Math.ceil(posts.length / pageSize);
   const visible = posts.slice(page * pageSize, (page + 1) * pageSize);
 
@@ -77,12 +78,9 @@ export function PaginatedPostsPanel({
         <>
           <div className="space-y-2">
             {visible.map((p) => (
-              <a
+              <div
                 key={p.id}
-                href={p.url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className={`block rounded-md border-l-2 ${border} ${bg} p-2 transition-colors hover:opacity-80`}
+                className={`rounded-md border-l-2 ${border} ${bg} p-2`}
               >
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="font-bold">{(p.engagement ?? 0).toFixed(2)}%</span>
@@ -97,8 +95,17 @@ export function PaginatedPostsPanel({
                   </span>
                   <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{p.red_social}</span>
                   {p.pilar && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{p.pilar}</span>}
-                  <span className="ml-auto text-[10px] text-muted-foreground">
+                  <span className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
                     {p.fecha ?? "—"}
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className={`rounded px-1.5 py-0.5 font-semibold ${accent} hover:underline`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Ver →
+                    </a>
                   </span>
                 </div>
                 <div className="mt-1 flex gap-3 text-[10px] text-muted-foreground">
@@ -107,13 +114,17 @@ export function PaginatedPostsPanel({
                   {p.views != null && p.views > 0 && <span>👁 {fmtK(p.views)}</span>}
                 </div>
                 {p.resumen_sentimiento ? (
-                  <p className="mt-1 text-[10px] leading-snug text-muted-foreground/80 italic line-clamp-2">
+                  <p
+                    className={`mt-1 text-[10px] leading-snug text-muted-foreground/80 italic cursor-pointer ${expandedId === p.id ? "" : "line-clamp-2"}`}
+                    onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                    title="Click para expandir/colapsar"
+                  >
                     {p.resumen_sentimiento}
                   </p>
                 ) : p.red_social !== "INSTAGRAM" ? (
                   <p className="mt-1 text-[10px] text-muted-foreground/50 italic">Sin comentarios</p>
                 ) : null}
-              </a>
+              </div>
             ))}
           </div>
 
