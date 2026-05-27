@@ -102,12 +102,13 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
               <div className="text-xs font-medium text-blue-600">Engagement total</div>
               <div className="mt-1 text-2xl font-bold text-blue-700">
-                {fmtK(data.topPosts.reduce((s, p) => s + p.reactions + p.engagement + p.clicks + p.video_views, 0))}
+                {fmtK(data.totals.reactions_total + data.totals.clicks + data.totals.video_views + data.topPosts.reduce((s, p) => s + p.engagement, 0))}
               </div>
             </div>
             <KpiCard
               title="Reacciones"
-              value={fmtK(data.topPosts.reduce((s, p) => s + p.reactions, 0))}
+              value={fmtK(data.totals.reactions_total)}
+              hint={`\u{1F44D} ${fmtK(data.totals.reactions_like)} · \u{2764}\u{FE0F} ${fmtK(data.totals.reactions_love)} · \u{1F602} ${fmtK(data.totals.reactions_haha)}`}
             />
             <KpiCard
               title="Comments + Shares"
@@ -200,11 +201,11 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                       {p.message || <span className="italic text-muted-foreground">Sin texto</span>}
                     </p>
                     <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] tabular-nums text-muted-foreground">
-                      {p.reach > 0 && <span>👁 {fmtK(p.reach)}</span>}
-                      <span>👍 {fmtK(p.reactions)}</span>
-                      <span>💬 {fmtK(p.engagement)}</span>
-                      {p.clicks > 0 && <span>🔗 {fmtK(p.clicks)}</span>}
-                      {p.video_views > 0 && <span>▶ {fmtK(p.video_views)}</span>}
+                      {p.reach > 0 && <span>\u{1F441} {fmtK(p.reach)}</span>}
+                      <span>\u{1F44D} {fmtK(p.reactions)}</span>
+                      <span>\u{1F4AC} {fmtK(p.engagement)}</span>
+                      {p.clicks > 0 && <span>\u{1F517} {fmtK(p.clicks)}</span>}
+                      {p.video_views > 0 && <span>\u{25B6} {fmtK(p.video_views)}</span>}
                     </div>
                   </a>
                 ))}
