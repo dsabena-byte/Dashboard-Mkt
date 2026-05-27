@@ -113,7 +113,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <KpiCard
               title="Alcance (personas únicas)"
               value={fmtK(data.totals.impressions_unique)}
-              hint={`${data.totals.diasConData} días con data`}
+              hint={`${data.topPosts.length} posts analizados`}
             />
             <KpiCard
               title="Fans (followers)"
