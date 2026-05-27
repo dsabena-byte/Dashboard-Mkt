@@ -101,14 +101,9 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               value={fmtK(data.totals.reactions_total)}
               hint={`👍 ${fmtK(data.totals.reactions_like)} · ❤️ ${fmtK(data.totals.reactions_love)} · 😂 ${fmtK(data.totals.reactions_haha)}`}
             />
-            <KpiCard
-              title="Page views"
-              value={fmtK(data.totals.page_views)}
-              hint="visitas al perfil"
-            />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             <KpiCard
               title="Clicks en posts"
               value={fmtK(data.totals.clicks)}
@@ -118,12 +113,8 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               value={fmtK(data.totals.video_views)}
             />
             <KpiCard
-              title="Fans ganados"
-              value={`+${fmtK(data.totals.fan_adds)}`}
-            />
-            <KpiCard
-              title="Fans perdidos"
-              value={fmtK(data.totals.fan_removes)}
+              title="Visitas al perfil"
+              value={fmtK(data.totals.page_views)}
             />
           </div>
 
