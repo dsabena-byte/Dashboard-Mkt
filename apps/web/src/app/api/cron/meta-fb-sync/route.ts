@@ -61,6 +61,17 @@ interface FbPost {
   comments?: { summary?: { total_count?: number } };
 }
 
+function sumObjectValues(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (v && typeof v === "object") {
+    return Object.values(v as Record<string, number>).reduce(
+      (a, b) => a + (typeof b === "number" ? b : 0),
+      0,
+    );
+  }
+  return 0;
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -77,7 +88,6 @@ export async function GET(request: Request) {
   fromDate.setUTCDate(fromDate.getUTCDate() - 29);
   const sinceUnix = Math.floor(fromDate.getTime() / 1000);
   const untilUnix = Math.floor((toDate.getTime() + 86400000) / 1000);
-  const todayIso = new Date().toISOString().slice(0, 10);
 
   try {
     // 0. Check token permissions
@@ -106,25 +116,23 @@ export async function GET(request: Request) {
     const pt = page.access_token;
     results.page = `${page.name} (${page.id})`;
 
-    // 2. Page daily insights
-    const METRIC_TESTS = [
-      "page_post_engagements",
-      "page_follows",
-      "page_views_total",
-      "page_fan_adds",
-      "page_daily_follows",
-      "page_daily_follows_unique",
-      "page_actions_post_reactions_total",
+    // 2. Page daily insights — metric name to DB column mapping
+    const METRICS: Array<{ metric: string; col: string }> = [
+      { metric: "page_post_engagements", col: "post_engagements" },
+      { metric: "page_follows", col: "fan_adds" },
+      { metric: "page_views_total", col: "page_views" },
+      { metric: "page_daily_follows", col: "daily_follows" },
+      { metric: "page_daily_follows_unique", col: "daily_follows_unique" },
     ];
 
     const metricDiag: Record<string, unknown> = {};
     const dailyMap = new Map<string, Record<string, unknown>>();
     const workingMetrics: string[] = [];
 
-    for (const metric of METRIC_TESTS) {
+    for (const { metric, col } of METRICS) {
       for (const dateParam of [
-        `date_preset=last_7d`,
         `since=${sinceUnix}&until=${untilUnix}`,
+        `date_preset=last_7d`,
       ]) {
         const raw = await graphGetRaw(
           `${GRAPH_API}/${PAGE_ID}/insights?metric=${metric}&period=day&${dateParam}&access_token=${pt}`,
@@ -137,7 +145,6 @@ export async function GET(request: Request) {
           metricDiag[metric] = {
             status: "OK",
             valuesCount: firstMetric.values?.length ?? 0,
-            sample: firstMetric.values?.[0] ?? null,
             dateParam,
           };
           for (const m of body.data ?? []) {
@@ -145,7 +152,7 @@ export async function GET(request: Request) {
               const fecha = (v.end_time ?? "").slice(0, 10);
               if (!fecha) continue;
               const row = dailyMap.get(fecha) ?? { fecha, page_id: PAGE_ID };
-              row[m.name] = typeof v.value === "number" ? v.value : 0;
+              row[col] = sumObjectValues(v.value);
               dailyMap.set(fecha, row);
             }
           }
@@ -154,14 +161,14 @@ export async function GET(request: Request) {
         if (raw.status !== 200) {
           metricDiag[metric] = { status: raw.status, error: body.error, dateParam };
         } else {
-          metricDiag[metric] = { status: 200, dataLen: body.data?.length ?? 0, valuesLen: firstMetric?.values?.length ?? 0, dateParam };
+          metricDiag[metric] = { status: 200, dataLen: body.data?.length ?? 0, dateParam };
         }
       }
     }
 
     results.working_metrics = workingMetrics;
     results.metric_diagnostics = metricDiag;
-    results.date_range = { from: new Date(sinceUnix * 1000).toISOString().slice(0, 10), to: new Date(untilUnix * 1000).toISOString().slice(0, 10) };
+    results.daily_rows = dailyMap.size;
 
     results.daily = await supabaseUpsert(
       "meta_page_daily",
@@ -182,16 +189,6 @@ export async function GET(request: Request) {
         postsData = parsed.data ?? [];
         results.posts_edge = edge;
         results.posts_count = postsData.length;
-        if (postsData.length > 0) {
-          const first = postsData[0];
-          results.posts_sample = {
-            id: first?.id,
-            date: first?.created_time,
-            hasLikes: !!(first?.likes?.summary),
-            hasComments: !!(first?.comments?.summary),
-            hasShares: !!(first?.shares),
-          };
-        }
         break;
       }
       results[`posts_${edge}_error`] = { status: raw.status, body: raw.body };
@@ -215,54 +212,6 @@ export async function GET(request: Request) {
     }));
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
-
-    // 4. Demographics
-    const demoTests = [
-      { metric: "page_fans_gender_age", dimension: "age_gender" },
-      { metric: "page_fans_country", dimension: "country" },
-      { metric: "page_fans_city", dimension: "city" },
-      { metric: "page_follows_by_age_gender_unique", dimension: "age_gender" },
-    ];
-
-    const demoRows: Array<Record<string, unknown>> = [];
-    const demoDiag: Record<string, unknown> = {};
-
-    for (const dm of demoTests) {
-      const raw = await graphGetRaw(
-        `${GRAPH_API}/${PAGE_ID}/insights?metric=${dm.metric}&period=lifetime&access_token=${pt}`,
-      );
-      const body = raw.body as { data?: InsightMetric[]; error?: unknown };
-      const firstData = body.data?.[0];
-      if (raw.status === 200 && firstData) {
-        const v0 = firstData.values?.[0];
-        const fecha = ((v0?.end_time as string | undefined) ?? todayIso + "T00:00:00+0000").slice(0, 10);
-        const dict = v0?.value;
-        demoDiag[dm.metric] = { status: "OK", keys: dict ? Object.keys(dict as object).length : 0 };
-        if (dict && typeof dict === "object") {
-          for (const [k, v] of Object.entries(dict as Record<string, number>)) {
-            if (typeof v === "number") {
-              demoRows.push({
-                fecha,
-                page_id: PAGE_ID,
-                audience_type: "fan",
-                dimension: dm.dimension,
-                category: k,
-                value: v,
-              });
-            }
-          }
-        }
-      } else {
-        demoDiag[dm.metric] = { status: raw.status, error: body.error ?? "no data" };
-      }
-    }
-
-    results.demo_diagnostics = demoDiag;
-    results.demographics = await supabaseUpsert(
-      "meta_fb_audience_demographics",
-      demoRows,
-      "fecha,page_id,audience_type,dimension,category",
-    );
 
     return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), results });
   } catch (err) {
