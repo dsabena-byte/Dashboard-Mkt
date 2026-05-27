@@ -290,21 +290,12 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     totals.clicks += p.clicks ?? 0;
   }
 
-  // Reacciones de página por mes (disponibles últimos ~90 días)
-  for (const r of daily) {
-    const monthKey = r.fecha.slice(0, 7);
-    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, reactionsFromDaily: 0 };
-    m.reactionsFromDaily += (r.reactions_like ?? 0) + (r.reactions_love ?? 0) + (r.reactions_haha ?? 0) + (r.reactions_wow ?? 0) + (r.reactions_sorry ?? 0) + (r.reactions_anger ?? 0);
-    monthlyMap.set(monthKey, m);
-  }
-
-  // Alcance y engagement base por mes desde posts
+  // Todo desde posts para consistencia desde enero
   for (const p of posts) {
     const monthKey = p.fecha_post.slice(0, 7);
-    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, reactionsFromDaily: 0 };
+    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0 };
     m.alcance += p.reach ?? 0;
-    // engagement base = comments + shares + clicks + video_views (sin reacciones, se suman aparte)
-    m.engagement += (p.engagement ?? 0) + (p.clicks ?? 0) + (p.video_views ?? 0);
+    m.engagement += (p.reactions ?? 0) + (p.engagement ?? 0) + (p.clicks ?? 0) + (p.video_views ?? 0);
     monthlyMap.set(monthKey, m);
   }
 
@@ -315,7 +306,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
       return {
         mes: `${MES_SHORT[monthIdx]} ${key.slice(2, 4)}`,
         alcance: v.alcance,
-        engagement: v.engagement + v.reactionsFromDaily,
+        engagement: v.engagement,
       };
     });
 

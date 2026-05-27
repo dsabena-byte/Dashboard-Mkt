@@ -50,10 +50,17 @@ function HorizontalBars({
 }
 
 export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
-  const hasAnyData = data.totals.diasConData > 0 || data.fansByAgeGender.length > 0;
+  const hasAnyData = data.totals.diasConData > 0 || data.topPosts.length > 0;
   const [showAllPosts, setShowAllPosts] = useState(false);
 
-  const sortedPosts = [...data.topPosts].sort(
+  const posts = data.topPosts;
+  const totalReactions = posts.reduce((s, p) => s + (p.reactions ?? 0), 0);
+  const totalCommentsShares = posts.reduce((s, p) => s + (p.engagement ?? 0), 0);
+  const totalClicks = posts.reduce((s, p) => s + (p.clicks ?? 0), 0);
+  const totalVideoViews = posts.reduce((s, p) => s + (p.video_views ?? 0), 0);
+  const engagementTotal = totalReactions + totalCommentsShares + totalClicks + totalVideoViews;
+
+  const sortedPosts = [...posts].sort(
     (a, b) => (b.reach + b.engagement + b.reactions + b.video_views + b.clicks) - (a.reach + a.engagement + a.reactions + a.video_views + a.clicks),
   );
   const visiblePosts = showAllPosts ? sortedPosts : sortedPosts.slice(0, 12);
@@ -63,10 +70,10 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
       <header className="flex items-end justify-between gap-4">
         <div>
           <h3 className="text-base font-semibold tracking-tight">
-            Facebook orgánico — Page Drean
+            Facebook org&aacute;nico &mdash; Page Drean
           </h3>
           <p className="text-xs text-muted-foreground">
-            KPIs del período{" "}
+            KPIs del per&iacute;odo{" "}
             <span className="text-muted-foreground/70">({data.rangeLabel})</span>
           </p>
         </div>
@@ -74,7 +81,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
 
       {!hasAnyData ? (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
-          <strong>Sin datos de Facebook orgánico.</strong> Ejecutá el cron
+          <strong>Sin datos de Facebook org&aacute;nico.</strong> Ejecut&aacute; el cron
           <code> /api/cron/meta-fb-sync</code> para cargar datos.
         </div>
       ) : (
@@ -84,7 +91,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <KpiCard
               title="Alcance (personas únicas)"
               value={fmtK(data.totals.impressions_unique)}
-              hint={`${data.topPosts.length} posts analizados`}
+              hint={`${posts.length} posts analizados`}
             />
             <KpiCard
               title="Fans (followers)"
@@ -102,25 +109,25 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
               <div className="text-xs font-medium text-blue-600">Engagement total</div>
               <div className="mt-1 text-2xl font-bold text-blue-700">
-                {fmtK(data.totals.reactions_total + data.totals.clicks + data.totals.video_views + data.topPosts.reduce((s, p) => s + p.engagement, 0))}
+                {fmtK(engagementTotal)}
               </div>
+              <div className="mt-1 text-[10px] text-blue-500">{posts.length} posts</div>
             </div>
             <KpiCard
-              title="Reacciones"
-              value={fmtK(data.totals.reactions_total)}
-              hint={`\u{1F44D} ${fmtK(data.totals.reactions_like)} · \u{2764}\u{FE0F} ${fmtK(data.totals.reactions_love)} · \u{1F602} ${fmtK(data.totals.reactions_haha)}`}
+              title="Reacciones (likes)"
+              value={fmtK(totalReactions)}
             />
             <KpiCard
               title="Comments + Shares"
-              value={fmtK(data.topPosts.reduce((s, p) => s + p.engagement, 0))}
+              value={fmtK(totalCommentsShares)}
             />
             <KpiCard
               title="Clicks en posts"
-              value={fmtK(data.totals.clicks)}
+              value={fmtK(totalClicks)}
             />
             <KpiCard
               title="Video views"
-              value={fmtK(data.totals.video_views)}
+              value={fmtK(totalVideoViews)}
             />
           </div>
 
@@ -128,7 +135,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
           {data.monthlyData.length > 0 && (
             <div className="rounded-lg border bg-background p-4">
               <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Evolución mensual — Alcance vs Engagement
+                Evolución mensual &mdash; Alcance vs Engagement
               </h4>
               <FbMonthlyChart data={data.monthlyData} />
             </div>
@@ -139,7 +146,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="rounded-lg border bg-background p-4">
                 <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Fans — Edad × Género
+                  Fans &mdash; Edad &times; Género
                 </h4>
                 <HorizontalBars
                   rows={data.fansByAgeGender}
@@ -149,7 +156,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               </div>
               <div className="rounded-lg border bg-background p-4">
                 <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Fans — Top países
+                  Fans &mdash; Top países
                 </h4>
                 <HorizontalBars
                   rows={data.fansByCountry}
@@ -159,7 +166,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               </div>
               <div className="rounded-lg border bg-background p-4">
                 <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Fans — Top ciudades
+                  Fans &mdash; Top ciudades
                 </h4>
                 <HorizontalBars
                   rows={data.fansByCity}
@@ -201,11 +208,11 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                       {p.message || <span className="italic text-muted-foreground">Sin texto</span>}
                     </p>
                     <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] tabular-nums text-muted-foreground">
-                      {p.reach > 0 && <span>\u{1F441} {fmtK(p.reach)}</span>}
-                      <span>\u{1F44D} {fmtK(p.reactions)}</span>
-                      <span>\u{1F4AC} {fmtK(p.engagement)}</span>
-                      {p.clicks > 0 && <span>\u{1F517} {fmtK(p.clicks)}</span>}
-                      {p.video_views > 0 && <span>\u{25B6} {fmtK(p.video_views)}</span>}
+                      {p.reach > 0 && <span>{"👁"} {fmtK(p.reach)}</span>}
+                      <span>{"👍"} {fmtK(p.reactions)}</span>
+                      <span>{"💬"} {fmtK(p.engagement)}</span>
+                      {p.clicks > 0 && <span>{"🔗"} {fmtK(p.clicks)}</span>}
+                      {p.video_views > 0 && <span>{"▶"} {fmtK(p.video_views)}</span>}
                     </div>
                   </a>
                 ))}
