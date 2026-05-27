@@ -116,7 +116,7 @@ export async function GET(request: Request) {
     // 3b. Get IG profile views (last 30 days)
     let profileViews = 0;
     const pvRaw = await graphGetRaw(
-      `${GRAPH_API}/${igId}/insights?metric=profile_views&period=day&since=${Math.floor(Date.now()/1000) - 86400*28}&until=${Math.floor(Date.now()/1000)}&access_token=${pt}`,
+      `${GRAPH_API}/${igId}/insights?metric=profile_views&period=day&metric_type=total_value&since=${Math.floor(Date.now()/1000) - 86400*28}&until=${Math.floor(Date.now()/1000)}&access_token=${pt}`,
     );
     if (pvRaw.status === 200) {
       const pvData = pvRaw.body as { data?: Array<{ values?: Array<{ value: number }> }> };
@@ -227,8 +227,8 @@ export async function GET(request: Request) {
 
     // 6. IG account insights (followers demographics with breakdown) → store in Supabase
     const demoBreakdowns: Array<{ breakdown: string; dimension: string }> = [
-      { breakdown: "age", dimension: "age" },
-      { breakdown: "gender", dimension: "gender" },
+      { breakdown: "age", dimension: "age_gender" },
+      { breakdown: "gender", dimension: "age_gender" },
       { breakdown: "country", dimension: "country" },
       { breakdown: "city", dimension: "city" },
     ];
