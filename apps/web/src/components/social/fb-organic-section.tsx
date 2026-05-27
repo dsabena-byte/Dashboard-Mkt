@@ -74,9 +74,14 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
           {/* KPIs principales */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <KpiCard
-              title="Alcance (personas únicas)"
+              title="Alcance (impressions únicas)"
               value={fmtK(data.totals.impressions_unique)}
-              hint={`Suma de alcance por post · ${data.totals.diasConData} días`}
+              hint={`${data.totals.diasConData} días con data`}
+            />
+            <KpiCard
+              title="Impresiones"
+              value={fmtK(data.totals.impressions)}
+              hint={data.totals.impressions_organic > 0 ? `${fmtK(data.totals.impressions_organic)} orgánicas` : undefined}
             />
             <KpiCard
               title="Fans (followers)"
@@ -189,9 +194,11 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                     <p className="line-clamp-2 text-[10px] text-foreground" title={p.message ?? ""}>
                       {p.message || <span className="italic text-muted-foreground">Sin texto</span>}
                     </p>
-                    <div className="mt-1 flex gap-2 text-[9px] tabular-nums text-muted-foreground">
+                    <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] tabular-nums text-muted-foreground">
+                      {p.reach > 0 && <span>👁 {fmtK(p.reach)}</span>}
                       <span>👍 {fmtK(p.reactions)}</span>
                       <span>💬 {fmtK(p.engagement)}</span>
+                      {p.video_views > 0 && <span>▶ {fmtK(p.video_views)}</span>}
                     </div>
                   </a>
                 ))}
