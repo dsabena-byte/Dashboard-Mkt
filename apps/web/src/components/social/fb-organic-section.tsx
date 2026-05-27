@@ -67,13 +67,14 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
 
   return (
     <section className="space-y-4 rounded-lg border bg-card p-6">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ backgroundColor: "#1877F2" }}>FB</div>
         <div>
           <h3 className="text-base font-semibold tracking-tight">
-            Facebook org&aacute;nico &mdash; Page Drean
+            Facebook organico &mdash; Page Drean
           </h3>
           <p className="text-xs text-muted-foreground">
-            KPIs del per&iacute;odo{" "}
+            KPIs del periodo{" "}
             <span className="text-muted-foreground/70">({data.rangeLabel})</span>
           </p>
         </div>
@@ -116,7 +117,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <KpiCard
               title="Reacciones"
               value={fmtK(totalReactions)}
-              hint="likes + love + haha + wow"
+              hint={`${"👍"} likes + ${"❤️"} love + ${"😂"} haha + ${"😮"} wow`}
             />
             <KpiCard
               title="Comments + Shares"

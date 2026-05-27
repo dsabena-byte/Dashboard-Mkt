@@ -70,13 +70,16 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
 
   return (
     <section className="space-y-4 rounded-lg border bg-card p-6">
-      <header>
+      <header className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>IG</div>
+        <div>
         <h3 className="text-base font-semibold tracking-tight">
-          Instagram org&aacute;nico &mdash; @dreanargentina
+          Instagram organico &mdash; @dreanargentina
         </h3>
         <p className="text-xs text-muted-foreground">
-          KPIs del per&iacute;odo <span className="text-muted-foreground/70">({data.rangeLabel})</span>
+          KPIs del periodo <span className="text-muted-foreground/70">({data.rangeLabel})</span>
         </p>
+        </div>
       </header>
 
       {/* KPIs principales */}
@@ -98,16 +101,17 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
 
       {/* Engagement resaltado + sub-cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-lg border-2 border-pink-200 bg-pink-50/50 p-4">
-          <div className="text-xs font-medium text-pink-600">Engagement total</div>
-          <div className="mt-1 text-2xl font-bold text-pink-700">
+        <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
+          <div className="text-xs font-medium text-blue-600">Engagement total</div>
+          <div className="mt-1 text-2xl font-bold text-blue-700">
             {fmtK(data.totalEngagement)}
           </div>
-          <div className="mt-1 text-[10px] text-pink-500">{data.postCount} posts</div>
+          <div className="mt-1 text-[10px] text-blue-500">{data.postCount} posts</div>
         </div>
         <KpiCard
           title="Likes"
           value={fmtK(data.totalReactions)}
+          hint={`${"❤️"} ${fmtK(data.totalReactions)}`}
         />
         <KpiCard
           title="Comentarios"
