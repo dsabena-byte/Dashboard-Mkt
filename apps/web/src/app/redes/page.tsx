@@ -101,7 +101,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Redes Sociales</h2>
           <p className="text-sm text-muted-foreground">
-            Posts de Drean vs Philco vs Gafa (IG, FB, TT). Sentiment, engagement, contenido.
+            Analítica de Drean y competitiva en Redes Sociales.
           </p>
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
