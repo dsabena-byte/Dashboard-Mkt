@@ -145,10 +145,10 @@ export async function GET(request: Request) {
 
     results.media_count = mediaData.length;
 
-    // 5. Fetch insights per media
-    const MEDIA_INSIGHT_METRICS_IMAGE = "reach,impressions,saved,shares";
-    const MEDIA_INSIGHT_METRICS_VIDEO = "reach,impressions,saved,shares,plays";
-    const MEDIA_INSIGHT_METRICS_REEL = "reach,impressions,saved,shares,plays";
+    // 5. Fetch insights per media (v22.0 supported metrics)
+    const MEDIA_INSIGHT_METRICS_IMAGE = "reach,saved,shares,total_interactions";
+    const MEDIA_INSIGHT_METRICS_VIDEO = "reach,saved,shares,total_interactions";
+    const MEDIA_INSIGHT_METRICS_REEL = "reach,saved,shares,total_interactions,ig_reels_video_view_total_time";
 
     const postRows: Array<Record<string, unknown>> = [];
     let insightsOk = 0;
@@ -161,10 +161,10 @@ export async function GET(request: Request) {
       if (mediaType === "REEL" || mediaType === "REELS") metricsStr = MEDIA_INSIGHT_METRICS_REEL;
 
       let reach = 0;
-      let impressions = 0;
       let saved = 0;
       let shares = 0;
-      let plays = 0;
+      let totalInteractions = 0;
+      let reelViewTime = 0;
 
       const insRaw = await graphGetRaw(
         `${GRAPH_API}/${m.id}/insights?metric=${metricsStr}&access_token=${pt}`,
@@ -174,10 +174,10 @@ export async function GET(request: Request) {
         for (const metric of insData.data ?? []) {
           const val = metric.values?.[0]?.value ?? 0;
           if (metric.name === "reach") reach = val;
-          if (metric.name === "impressions") impressions = val;
           if (metric.name === "saved") saved = val;
           if (metric.name === "shares") shares = val;
-          if (metric.name === "plays") plays = val;
+          if (metric.name === "total_interactions") totalInteractions = val;
+          if (metric.name === "ig_reels_video_view_total_time") reelViewTime = val;
         }
         insightsOk++;
       } else {
@@ -196,11 +196,11 @@ export async function GET(request: Request) {
         message: m.caption ?? null,
         media_type: mediaType,
         thumbnail_url: m.thumbnail_url ?? m.media_url ?? null,
-        impressions,
+        impressions: 0,
         reach,
-        engagement: (m.like_count ?? 0) + (m.comments_count ?? 0) + shares + saved,
+        engagement: totalInteractions > 0 ? totalInteractions : (m.like_count ?? 0) + (m.comments_count ?? 0) + shares + saved,
         reactions: m.like_count ?? 0,
-        video_views: plays,
+        video_views: Math.round(reelViewTime / 1000),
         clicks: saved,
       });
     }
@@ -210,20 +210,18 @@ export async function GET(request: Request) {
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
 
-    // 6. Try IG account insights (followers demographics)
-    const igDemoMetrics = [
-      "follower_demographics",
-    ];
+    // 6. IG account insights (followers demographics with breakdown)
+    const demoBreakdowns = ["age", "gender", "country", "city"];
     const demoDiag: Record<string, unknown> = {};
 
-    for (const metric of igDemoMetrics) {
+    for (const bd of demoBreakdowns) {
       const raw = await graphGetRaw(
-        `${GRAPH_API}/${igId}/insights?metric=${metric}&period=lifetime&metric_type=total_value&access_token=${pt}`,
+        `${GRAPH_API}/${igId}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=${bd}&access_token=${pt}`,
       );
       if (raw.status === 200) {
-        demoDiag[metric] = { status: "OK", data: raw.body };
+        demoDiag[`follower_demographics_${bd}`] = { status: "OK", data: raw.body };
       } else {
-        demoDiag[metric] = { status: raw.status, error: raw.body };
+        demoDiag[`follower_demographics_${bd}`] = { status: raw.status, error: raw.body };
       }
     }
     results.demographics = demoDiag;
