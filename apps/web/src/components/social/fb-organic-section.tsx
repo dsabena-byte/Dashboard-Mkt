@@ -80,11 +80,11 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
       ) : (
         <>
           {/* KPIs principales */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <KpiCard
               title="Alcance (personas únicas)"
               value={fmtK(data.totals.impressions_unique)}
-              hint={`Suma de alcance por post · ${data.totals.diasConData} días`}
+              hint={`${data.totals.diasConData} días con data`}
             />
             <KpiCard
               title="Fans (followers)"
@@ -92,30 +92,38 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               hint={`${data.totals.fan_delta >= 0 ? "+" : ""}${fmtK(data.totals.fan_delta)} en el período`}
             />
             <KpiCard
-              title="Engagement total"
-              value={fmtK(data.totals.reactions_total + data.totals.clicks + data.totals.video_views + (data.topPosts.reduce((s, p) => s + p.engagement, 0)))}
-              hint={`Reacciones ${fmtK(data.totals.reactions_total)} · Clicks ${fmtK(data.totals.clicks)} · Comments+Shares ${fmtK(data.topPosts.reduce((s, p) => s + p.engagement, 0))} · Views ${fmtK(data.totals.video_views)}`}
-            />
-            <KpiCard
-              title="Reacciones"
-              value={fmtK(data.totals.reactions_total)}
-              hint={`👍 ${fmtK(data.totals.reactions_like)} · ❤️ ${fmtK(data.totals.reactions_love)} · 😂 ${fmtK(data.totals.reactions_haha)}`}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <KpiCard
-              title="Clicks en posts"
-              value={fmtK(data.totals.clicks)}
-            />
-            <KpiCard
-              title="Video views"
-              value={fmtK(data.totals.video_views)}
-            />
-            <KpiCard
               title="Visitas al perfil"
               value={fmtK(data.totals.page_views)}
             />
+          </div>
+
+          {/* Engagement total + desglose visual */}
+          <div className="rounded-lg border-2 border-blue-200 bg-blue-50/30 p-3 space-y-3">
+            <div className="flex items-baseline gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">Engagement total</span>
+              <span className="text-2xl font-bold text-blue-700">
+                {fmtK(data.totals.reactions_total + data.totals.clicks + data.totals.video_views + (data.topPosts.reduce((s, p) => s + p.engagement, 0)))}
+              </span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiCard
+                title="Reacciones"
+                value={fmtK(data.totals.reactions_total)}
+                hint={`👍 ${fmtK(data.totals.reactions_like)} · ❤️ ${fmtK(data.totals.reactions_love)} · 😂 ${fmtK(data.totals.reactions_haha)}`}
+              />
+              <KpiCard
+                title="Comments + Shares"
+                value={fmtK(data.topPosts.reduce((s, p) => s + p.engagement, 0))}
+              />
+              <KpiCard
+                title="Clicks en posts"
+                value={fmtK(data.totals.clicks)}
+              />
+              <KpiCard
+                title="Video views"
+                value={fmtK(data.totals.video_views)}
+              />
+            </div>
           </div>
 
           {/* Gráfico mensual */}
