@@ -71,6 +71,7 @@ export interface FbKpiTotals {
   reactions_haha: number;
   reactions_sorry: number;
   reactions_anger: number;
+  clicks: number;
   diasConData: number;
 }
 
@@ -112,6 +113,7 @@ const EMPTY_TOTALS: FbKpiTotals = {
   reactions_haha: 0,
   reactions_sorry: 0,
   reactions_anger: 0,
+  clicks: 0,
   diasConData: 0,
 };
 
@@ -282,10 +284,11 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const monthlyMap = new Map<string, { alcance: number; engagement: number; page_views: number }>();
 
-  // Sumar alcance y video views desde posts
+  // Sumar alcance, video views y clicks desde posts
   for (const p of posts) {
     totals.impressions_unique += p.reach ?? 0;
     totals.video_views += p.video_views ?? 0;
+    totals.clicks += p.clicks ?? 0;
   }
 
   // Usar daily data para page_views por mes

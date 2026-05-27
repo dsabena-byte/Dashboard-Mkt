@@ -54,7 +54,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
   const [showAllPosts, setShowAllPosts] = useState(false);
 
   const sortedPosts = [...data.topPosts].sort(
-    (a, b) => (b.reach + b.engagement + b.reactions + b.video_views) - (a.reach + a.engagement + a.reactions + a.video_views),
+    (a, b) => (b.reach + b.engagement + b.reactions + b.video_views + b.clicks) - (a.reach + a.engagement + a.reactions + a.video_views + a.clicks),
   );
   const visiblePosts = showAllPosts ? sortedPosts : sortedPosts.slice(0, 12);
 
@@ -107,7 +107,11 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard
+              title="Clicks en posts"
+              value={fmtK(data.totals.clicks)}
+            />
             <KpiCard
               title="Video views"
               value={fmtK(data.totals.video_views)}
@@ -202,6 +206,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                       {p.reach > 0 && <span>👁 {fmtK(p.reach)}</span>}
                       <span>👍 {fmtK(p.reactions)}</span>
                       <span>💬 {fmtK(p.engagement)}</span>
+                      {p.clicks > 0 && <span>🔗 {fmtK(p.clicks)}</span>}
                       {p.video_views > 0 && <span>▶ {fmtK(p.video_views)}</span>}
                     </div>
                   </a>
