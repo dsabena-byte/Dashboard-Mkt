@@ -116,7 +116,7 @@ export async function GET(request: Request) {
     const pt = page.access_token;
     results.page = `${page.name} (${page.id})`;
 
-    // 2. Page daily insights — metric name to DB column mapping
+    // 2. Page daily insights - metric name to DB column mapping
     const METRICS: Array<{ metric: string; col: string }> = [
       { metric: "page_post_engagements", col: "post_engagements" },
       { metric: "page_follows", col: "fan_adds" },
