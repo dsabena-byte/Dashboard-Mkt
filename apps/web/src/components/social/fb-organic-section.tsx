@@ -114,8 +114,9 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               <div className="mt-1 text-[10px] text-blue-500">{posts.length} posts</div>
             </div>
             <KpiCard
-              title="Reacciones (likes)"
+              title="Reacciones"
               value={fmtK(totalReactions)}
+              hint={`${"👍"} ${fmtK(data.totals.reactions_like)} · ${"❤️"} ${fmtK(data.totals.reactions_love)} · ${"😂"} ${fmtK(data.totals.reactions_haha)}`}
             />
             <KpiCard
               title="Comments + Shares"

@@ -110,9 +110,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
 
-      <FbOrganicSection data={fbOrganic} />
-
       <IgOrganicSection data={igOrganic} />
+
+      <FbOrganicSection data={fbOrganic} />
 
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1 min-w-0">
