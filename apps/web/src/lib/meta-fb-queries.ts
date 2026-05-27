@@ -288,20 +288,20 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     totals.video_views += p.video_views ?? 0;
   }
 
-  // Usar daily data para engagement y page_views por mes
+  // Usar daily data para page_views por mes
   for (const r of daily) {
     const monthKey = r.fecha.slice(0, 7);
     const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, page_views: 0 };
-    m.engagement += r.post_engagements ?? 0;
     m.page_views += r.page_views ?? 0;
     monthlyMap.set(monthKey, m);
   }
 
-  // Alcance por mes desde posts
+  // Alcance y engagement por mes desde posts (consistente para todos los meses)
   for (const p of posts) {
     const monthKey = p.fecha_post.slice(0, 7);
     const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, page_views: 0 };
     m.alcance += p.reach ?? 0;
+    m.engagement += p.engagement ?? 0;
     monthlyMap.set(monthKey, m);
   }
 
