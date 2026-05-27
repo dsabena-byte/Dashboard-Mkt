@@ -79,36 +79,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
         </div>
       ) : (
         <>
-          {/* Engagement total + desglose visual — PRIMERO */}
-          <div className="rounded-lg border-2 border-blue-200 bg-blue-50/30 p-3 space-y-3">
-            <div className="flex items-baseline gap-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">Engagement total</span>
-              <span className="text-2xl font-bold text-blue-700">
-                {fmtK(data.totals.reactions_total + data.totals.clicks + data.totals.video_views + (data.topPosts.reduce((s, p) => s + p.engagement, 0)))}
-              </span>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard
-                title="Reacciones"
-                value={fmtK(data.totals.reactions_total)}
-                hint={`👍 ${fmtK(data.totals.reactions_like)} · ❤️ ${fmtK(data.totals.reactions_love)} · 😂 ${fmtK(data.totals.reactions_haha)}`}
-              />
-              <KpiCard
-                title="Comments + Shares"
-                value={fmtK(data.topPosts.reduce((s, p) => s + p.engagement, 0))}
-              />
-              <KpiCard
-                title="Clicks en posts"
-                value={fmtK(data.totals.clicks)}
-              />
-              <KpiCard
-                title="Video views"
-                value={fmtK(data.totals.video_views)}
-              />
-            </div>
-          </div>
-
-          {/* KPIs secundarios */}
+          {/* KPIs principales */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <KpiCard
               title="Alcance (personas únicas)"
@@ -123,6 +94,32 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <KpiCard
               title="Visitas al perfil"
               value={fmtK(data.totals.page_views)}
+            />
+          </div>
+
+          {/* Engagement total como card resaltado + sub-cards */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
+              <div className="text-xs font-medium text-blue-600">Engagement total</div>
+              <div className="mt-1 text-2xl font-bold text-blue-700">
+                {fmtK(data.topPosts.reduce((s, p) => s + p.reactions + p.engagement + p.clicks + p.video_views, 0))}
+              </div>
+            </div>
+            <KpiCard
+              title="Reacciones"
+              value={fmtK(data.topPosts.reduce((s, p) => s + p.reactions, 0))}
+            />
+            <KpiCard
+              title="Comments + Shares"
+              value={fmtK(data.topPosts.reduce((s, p) => s + p.engagement, 0))}
+            />
+            <KpiCard
+              title="Clicks en posts"
+              value={fmtK(data.totals.clicks)}
+            />
+            <KpiCard
+              title="Video views"
+              value={fmtK(data.totals.video_views)}
             />
           </div>
 
