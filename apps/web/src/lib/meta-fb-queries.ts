@@ -160,7 +160,7 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
       .gte("fecha_post", `${fromIso}T00:00:00Z`)
       .lte("fecha_post", `${toIso}T23:59:59Z`)
       .order("engagement", { ascending: false })
-      .limit(6)
+      .limit(12)
       .returns<FbPostRow[]>(),
     supabase
       .from("meta_fb_audience_demographics")

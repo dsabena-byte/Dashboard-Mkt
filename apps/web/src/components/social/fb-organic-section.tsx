@@ -170,32 +170,31 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Top posts del período (por engagement)
               </h4>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {data.topPosts.map((p) => (
                   <a
                     key={p.post_id}
                     href={p.permalink ?? "#"}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="group block rounded-md border bg-card p-3 transition-colors hover:bg-muted/50"
+                    className="group block rounded-md border bg-card p-2 transition-colors hover:bg-muted/50"
                   >
                     {p.thumbnail_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={p.thumbnail_url}
                         alt=""
-                        className="mb-2 aspect-square w-full rounded object-cover"
+                        className="mb-1.5 aspect-square w-full rounded object-cover"
                       />
                     ) : (
-                      <div className="mb-2 flex aspect-square w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                        Sin thumbnail
+                      <div className="mb-1.5 flex aspect-square w-full items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
+                        Sin img
                       </div>
                     )}
-                    <p className="line-clamp-2 text-xs text-foreground" title={p.message ?? ""}>
+                    <p className="line-clamp-2 text-[10px] text-foreground" title={p.message ?? ""}>
                       {p.message || <span className="italic text-muted-foreground">Sin texto</span>}
                     </p>
-                    <div className="mt-2 grid grid-cols-3 gap-1 text-[10px] tabular-nums text-muted-foreground">
-                      <span>👁 {fmtK(p.reach)}</span>
+                    <div className="mt-1 flex gap-2 text-[9px] tabular-nums text-muted-foreground">
                       <span>👍 {fmtK(p.reactions)}</span>
                       <span>💬 {fmtK(p.engagement)}</span>
                     </div>
