@@ -234,7 +234,6 @@ export async function GET(request: Request) {
     }
 
     // 4. Fetch post-level insights (impressions, reach, video_views) per post
-    const POST_INSIGHT_METRICS = "post_impressions,post_impressions_unique,post_clicks,post_video_views";
     const postInsightsMap = new Map<string, Record<string, number>>();
     const postMetricTests = [
       "post_impressions",
