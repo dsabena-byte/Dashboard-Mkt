@@ -60,7 +60,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
-    getFbOrganicSummary(),
+    getFbOrganicSummary({ from: range.from, to: range.to }),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).

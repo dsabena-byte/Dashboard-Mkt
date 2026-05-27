@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
+import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import type { FbOrganicSummary, FbDemoBreakdown } from "@/lib/meta-fb-queries";
 
 function fmtK(n: number | null | undefined): string {
@@ -47,6 +51,12 @@ function HorizontalBars({
 
 export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
   const hasAnyData = data.totals.diasConData > 0 || data.fansByAgeGender.length > 0;
+  const [showAllPosts, setShowAllPosts] = useState(false);
+
+  const sortedPosts = [...data.topPosts].sort(
+    (a, b) => (b.reach + b.engagement + b.reactions + b.video_views) - (a.reach + a.engagement + a.reactions + a.video_views),
+  );
+  const visiblePosts = showAllPosts ? sortedPosts : sortedPosts.slice(0, 12);
 
   return (
     <section className="space-y-4 rounded-lg border bg-card p-6">
@@ -56,7 +66,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             Facebook orgánico — Page Drean
           </h3>
           <p className="text-xs text-muted-foreground">
-            KPIs y demografía del público — últimos 30 días{" "}
+            KPIs del período{" "}
             <span className="text-muted-foreground/70">({data.rangeLabel})</span>
           </p>
         </div>
@@ -64,24 +74,17 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
 
       {!hasAnyData ? (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
-          <strong>Sin datos de Facebook orgánico.</strong> Verificá que el
-          workflow <code>Meta FB Comprehensive Sync</code> esté corriendo y que
-          las tablas <code>meta_page_daily</code>, <code>meta_posts</code> y{" "}
-          <code>meta_fb_audience_demographics</code> tengan filas.
+          <strong>Sin datos de Facebook orgánico.</strong> Ejecutá el cron
+          <code> /api/cron/meta-fb-sync</code> para cargar datos.
         </div>
       ) : (
         <>
           {/* KPIs principales */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <KpiCard
-              title="Alcance (impressions únicas)"
+              title="Alcance (personas únicas)"
               value={fmtK(data.totals.impressions_unique)}
-              hint={`${data.totals.diasConData} días con data`}
-            />
-            <KpiCard
-              title="Impresiones"
-              value={fmtK(data.totals.impressions)}
-              hint={data.totals.impressions_organic > 0 ? `${fmtK(data.totals.impressions_organic)} orgánicas` : undefined}
+              hint={`Suma de alcance por post · ${data.totals.diasConData} días`}
             />
             <KpiCard
               title="Fans (followers)"
@@ -89,89 +92,90 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               hint={`${data.totals.fan_delta >= 0 ? "+" : ""}${fmtK(data.totals.fan_delta)} en el período`}
             />
             <KpiCard
-              title="Engagement (post)"
+              title="Engagement"
               value={fmtK(data.totals.post_engagements)}
-              hint={`${fmtK(data.totals.engaged_users)} usuarios únicos`}
             />
-          </div>
-
-          {/* Reactions y video */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <KpiCard
-              title="Reacciones totales"
+              title="Reacciones"
               value={fmtK(data.totals.reactions_total)}
               hint={`👍 ${fmtK(data.totals.reactions_like)} · ❤️ ${fmtK(data.totals.reactions_love)} · 😂 ${fmtK(data.totals.reactions_haha)}`}
-            />
-            <KpiCard
-              title="Video views"
-              value={fmtK(data.totals.video_views)}
             />
             <KpiCard
               title="Page views"
               value={fmtK(data.totals.page_views)}
               hint="visitas al perfil"
             />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
             <KpiCard
-              title="Fans ganados / perdidos"
-              value={`+${fmtK(data.totals.fan_adds)} / -${fmtK(data.totals.fan_removes)}`}
+              title="Video views"
+              value={fmtK(data.totals.video_views)}
+            />
+            <KpiCard
+              title="Fans ganados"
+              value={`+${fmtK(data.totals.fan_adds)}`}
+            />
+            <KpiCard
+              title="Fans perdidos"
+              value={fmtK(data.totals.fan_removes)}
             />
           </div>
 
+          {/* Gráfico mensual */}
+          {data.monthlyData.length > 0 && (
+            <div className="rounded-lg border bg-background p-4">
+              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Evolución mensual — Alcance vs Engagement
+              </h4>
+              <FbMonthlyChart data={data.monthlyData} />
+            </div>
+          )}
+
           {/* Demografía */}
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-lg border bg-background p-4">
-              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Fans — Edad × Género
-              </h4>
-              <HorizontalBars
-                rows={data.fansByAgeGender}
-                emptyText="Sin breakdown demográfico disponible."
-                accent="bg-emerald-500"
-              />
+          {(data.fansByAgeGender.length > 0 || data.fansByCountry.length > 0 || data.fansByCity.length > 0) && (
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="rounded-lg border bg-background p-4">
+                <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Fans — Edad × Género
+                </h4>
+                <HorizontalBars
+                  rows={data.fansByAgeGender}
+                  emptyText="Sin breakdown demográfico disponible."
+                  accent="bg-emerald-500"
+                />
+              </div>
+              <div className="rounded-lg border bg-background p-4">
+                <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Fans — Top países
+                </h4>
+                <HorizontalBars
+                  rows={data.fansByCountry}
+                  emptyText="Sin breakdown de país."
+                  accent="bg-blue-500"
+                />
+              </div>
+              <div className="rounded-lg border bg-background p-4">
+                <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Fans — Top ciudades
+                </h4>
+                <HorizontalBars
+                  rows={data.fansByCity}
+                  emptyText="Sin breakdown de ciudad."
+                  accent="bg-violet-500"
+                />
+              </div>
             </div>
-
-            <div className="rounded-lg border bg-background p-4">
-              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Fans — Top países
-              </h4>
-              <HorizontalBars
-                rows={data.fansByCountry}
-                emptyText="Sin breakdown de país."
-                accent="bg-blue-500"
-              />
-            </div>
-
-            <div className="rounded-lg border bg-background p-4">
-              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Fans — Top ciudades
-              </h4>
-              <HorizontalBars
-                rows={data.fansByCity}
-                emptyText="Sin breakdown de ciudad."
-                accent="bg-violet-500"
-              />
-            </div>
-
-            <div className="rounded-lg border bg-background p-4 lg:col-span-3">
-              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Público alcanzado en el período — Edad × Género
-              </h4>
-              <HorizontalBars
-                rows={data.reachedByAgeGender}
-                emptyText="Sin breakdown del público alcanzado en este período."
-                accent="bg-rose-500"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Top posts */}
-          {data.topPosts.length > 0 && (
+          {sortedPosts.length > 0 && (
             <div className="rounded-lg border bg-background p-4">
               <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Top posts del período (por engagement)
+                Top posts del período (por interacciones totales)
               </h4>
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                {data.topPosts.map((p) => (
+                {visiblePosts.map((p) => (
                   <a
                     key={p.post_id}
                     href={p.permalink ?? "#"}
@@ -203,6 +207,16 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                   </a>
                 ))}
               </div>
+              {sortedPosts.length > 12 && (
+                <div className="mt-3 text-center">
+                  <button
+                    onClick={() => setShowAllPosts(!showAllPosts)}
+                    className="rounded border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
+                  >
+                    {showAllPosts ? "Mostrar menos" : `Ver todos (${sortedPosts.length} posts)`}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </>

@@ -74,6 +74,13 @@ export interface FbKpiTotals {
   diasConData: number;
 }
 
+export interface FbMonthlyDatum {
+  mes: string;
+  alcance: number;
+  engagement: number;
+  page_views: number;
+}
+
 export interface FbOrganicSummary {
   totals: FbKpiTotals;
   topPosts: FbPostRow[];
@@ -81,6 +88,7 @@ export interface FbOrganicSummary {
   fansByCountry: FbDemoBreakdown[];
   fansByCity: FbDemoBreakdown[];
   reachedByAgeGender: FbDemoBreakdown[];
+  monthlyData: FbMonthlyDatum[];
   rangeLabel: string;
 }
 
@@ -125,19 +133,26 @@ function toBreakdown(rows: FbDemographicRow[]): FbDemoBreakdown[] {
 /**
  * Devuelve el resumen organico de la Page de Facebook (Drean) para los ultimos 30 dias.
  */
-export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
+export async function getFbOrganicSummary(range?: { from: string; to: string }): Promise<FbOrganicSummary> {
   const supabase = getServerSupabase();
 
-  const today = new Date();
-  const to = new Date(today);
-  to.setUTCDate(to.getUTCDate() - 1);
-  const from = new Date(to);
-  from.setUTCDate(from.getUTCDate() - 29);
-  const toIso = to.toISOString().slice(0, 10);
-  const fromIso = from.toISOString().slice(0, 10);
+  let fromIso: string;
+  let toIso: string;
+  if (range) {
+    fromIso = range.from;
+    toIso = range.to;
+  } else {
+    const today = new Date();
+    const to = new Date(today);
+    to.setUTCDate(to.getUTCDate() - 1);
+    const from = new Date(to);
+    from.setUTCDate(from.getUTCDate() - 29);
+    toIso = to.toISOString().slice(0, 10);
+    fromIso = from.toISOString().slice(0, 10);
+  }
   const rangeLabel = `${fromIso} → ${toIso}`;
 
-  const [dailyRes, postsRes, postsTotalsRes, demoRes] = await Promise.all([
+  const [dailyRes, postsRes, demoRes] = await Promise.all([
     supabase
       .from("meta_page_daily")
       .select(
@@ -155,15 +170,8 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
       .gte("fecha_post", `${fromIso}T00:00:00Z`)
       .lte("fecha_post", `${toIso}T23:59:59Z`)
       .order("engagement", { ascending: false })
-      .limit(12)
+      .limit(200)
       .returns<FbPostRow[]>(),
-    supabase
-      .from("meta_posts")
-      .select("reach, video_views, clicks, impressions")
-      .eq("platform", "facebook")
-      .gte("fecha_post", `${fromIso}T00:00:00Z`)
-      .lte("fecha_post", `${toIso}T23:59:59Z`)
-      .returns<{ reach: number; video_views: number; clicks: number; impressions: number }[]>(),
     supabase
       .from("meta_fb_audience_demographics")
       .select("fecha, audience_type, dimension, category, value")
@@ -171,7 +179,7 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
       .returns<FbDemographicRow[]>(),
   ]);
 
-  if (isMissingTable(dailyRes.error) || isMissingTable(postsRes.error) || isMissingTable(postsTotalsRes.error) || isMissingTable(demoRes.error)) {
+  if (isMissingTable(dailyRes.error) || isMissingTable(postsRes.error) || isMissingTable(demoRes.error)) {
     return {
       totals: EMPTY_TOTALS,
       topPosts: [],
@@ -179,6 +187,7 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
       fansByCountry: [],
       fansByCity: [],
       reachedByAgeGender: [],
+      monthlyData: [],
       rangeLabel,
     };
   }
@@ -189,17 +198,9 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
 
   const daily = dailyRes.data ?? [];
   const posts = postsRes.data ?? [];
-  const postsTotals = postsTotalsRes.data ?? [];
   const demo = demoRes.data ?? [];
 
   const totals: FbKpiTotals = { ...EMPTY_TOTALS, diasConData: daily.length };
-
-  // Sumar alcance, video views y clicks desde posts individuales
-  for (const p of postsTotals) {
-    totals.impressions_unique += p.reach ?? 0;
-    totals.impressions += p.impressions ?? 0;
-    totals.video_views += p.video_views ?? 0;
-  }
   let lastFans: number | null = null;
   let lastFansDate = "";
   for (const r of daily) {
@@ -277,6 +278,43 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
   const fansByCity = toBreakdown(fanLatestByDim.get("city") ?? []).slice(0, 10);
   const reachedByAgeGender = toBreakdown(reachedToRows(reachedSumByDim.get("age_gender")));
 
+  // Agregación mensual: alcance y engagement por mes desde posts
+  const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const monthlyMap = new Map<string, { alcance: number; engagement: number; page_views: number }>();
+
+  for (const p of postsTotals) {
+    // No tenemos fecha exacta en postsTotals, usar daily data para page_views
+  }
+
+  // Usar daily data para engagement y page_views por mes
+  for (const r of daily) {
+    const monthKey = r.fecha.slice(0, 7);
+    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, page_views: 0 };
+    m.engagement += r.post_engagements ?? 0;
+    m.page_views += r.page_views ?? 0;
+    monthlyMap.set(monthKey, m);
+  }
+
+  // Alcance por mes desde posts
+  for (const p of posts) {
+    const monthKey = p.fecha_post.slice(0, 7);
+    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, page_views: 0 };
+    m.alcance += p.reach ?? 0;
+    monthlyMap.set(monthKey, m);
+  }
+
+  const monthlyData: FbMonthlyDatum[] = [...monthlyMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, v]) => {
+      const monthIdx = parseInt(key.slice(5, 7), 10) - 1;
+      return {
+        mes: `${MES_SHORT[monthIdx]} ${key.slice(2, 4)}`,
+        alcance: v.alcance,
+        engagement: v.engagement,
+        page_views: v.page_views,
+      };
+    });
+
   return {
     totals,
     topPosts: posts,
@@ -284,6 +322,7 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
     fansByCountry,
     fansByCity,
     reachedByAgeGender,
+    monthlyData,
     rangeLabel,
   };
 }
