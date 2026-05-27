@@ -44,12 +44,26 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 48, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={formatTick} />
+        <YAxis
+          yAxisId="left"
+          stroke="#dc2626"
+          fontSize={11}
+          tickFormatter={formatTick}
+          label={{ value: "Engagement", angle: -90, position: "insideLeft", fontSize: 10, fill: "#dc2626" }}
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          stroke="#3b82f6"
+          fontSize={11}
+          tickFormatter={formatTick}
+          label={{ value: "Alcance", angle: 90, position: "insideRight", fontSize: 10, fill: "#3b82f6" }}
+        />
         <Tooltip
-          formatter={(v: number) => formatTooltip(v)}
+          formatter={(v: number, name: string) => [formatTooltip(v), name]}
           contentStyle={{
             backgroundColor: "hsl(var(--card))",
             border: "1px solid hsl(var(--border))",
@@ -58,8 +72,9 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="alcance" fill="#3b82f6" name="Alcance (personas)" />
+        <Bar yAxisId="right" dataKey="alcance" fill="#3b82f6" name="Alcance (personas)" />
         <Line
+          yAxisId="left"
           type="monotone"
           dataKey="engagement"
           stroke="#dc2626"
