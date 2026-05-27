@@ -54,7 +54,9 @@ function fmtK(n: number): string {
 export default async function RedesPage({ searchParams }: PageProps) {
   const marca = getParam(searchParams, "marca", "all");
   const red = getParam(searchParams, "red", "all");
-  const range = parseDateRange(searchParams, lastClosedMonthRange());
+  const currentYear = new Date().getFullYear();
+  const ytdRange = { from: `${currentYear}-01-01`, to: new Date().toISOString().slice(0, 10) };
+  const range = parseDateRange(searchParams, ytdRange);
 
   const [rawPosts, allMarcas, followers, fbOrganic] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
@@ -102,6 +104,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
             Posts de Drean vs Philco vs Gafa (IG, FB, TT). Sentiment, engagement, contenido.
           </p>
         </div>
+        <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
 
       <FbOrganicSection data={fbOrganic} />
@@ -114,7 +117,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
             brands={brandOptions}
           />
         </div>
-        <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </div>
 
       {!hasData && (
