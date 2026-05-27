@@ -116,11 +116,13 @@ export async function GET(request: Request) {
     // 3b. Get IG profile views (last 30 days)
     let profileViews = 0;
     const pvRaw = await graphGetRaw(
-      `${GRAPH_API}/${igId}/insights?metric=profile_views&period=day&metric_type=total_value&access_token=${pt}`,
+      `${GRAPH_API}/${igId}/insights?metric=profile_views&period=day&since=${Math.floor(Date.now()/1000) - 86400*28}&until=${Math.floor(Date.now()/1000)}&access_token=${pt}`,
     );
     if (pvRaw.status === 200) {
-      const pvData = pvRaw.body as { data?: Array<{ total_value?: { value?: number } }> };
-      profileViews = pvData.data?.[0]?.total_value?.value ?? 0;
+      const pvData = pvRaw.body as { data?: Array<{ values?: Array<{ value: number }> }> };
+      for (const v of pvData.data?.[0]?.values ?? []) {
+        profileViews += v.value ?? 0;
+      }
       results.profile_views = profileViews;
     } else {
       results.profile_views_error = pvRaw.body;
@@ -254,7 +256,7 @@ export async function GET(request: Request) {
           demoRows.push({
             fecha: todayIso,
             page_id: igId,
-            audience_type: "follower",
+            audience_type: "fan",
             dimension,
             category: r.dimension_values[0] ?? "unknown",
             value: r.value,

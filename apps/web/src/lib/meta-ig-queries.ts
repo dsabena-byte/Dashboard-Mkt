@@ -79,7 +79,7 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
       .from("meta_fb_audience_demographics")
       .select("dimension, category, value")
       .eq("page_id", IG_ACCOUNT_ID)
-      .eq("audience_type", "follower")
+      .eq("audience_type", "fan")
       .returns<Array<{ dimension: string; category: string; value: number }>>(),
   ]);
 
