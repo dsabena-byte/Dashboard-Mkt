@@ -94,8 +94,8 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
           value="145.7K"
         />
         <KpiCard
-          title="Posts"
-          value={String(data.postCount)}
+          title="Visitas al perfil"
+          value={fmtK(data.profileViews)}
         />
       </div>
 

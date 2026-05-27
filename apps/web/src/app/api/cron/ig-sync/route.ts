@@ -113,6 +113,19 @@ export async function GET(request: Request) {
       results.ig_info_error = igInfoRaw.body;
     }
 
+    // 3b. Get IG profile views (last 30 days)
+    let profileViews = 0;
+    const pvRaw = await graphGetRaw(
+      `${GRAPH_API}/${igId}/insights?metric=profile_views&period=day&metric_type=total_value&access_token=${pt}`,
+    );
+    if (pvRaw.status === 200) {
+      const pvData = pvRaw.body as { data?: Array<{ total_value?: { value?: number } }> };
+      profileViews = pvData.data?.[0]?.total_value?.value ?? 0;
+      results.profile_views = profileViews;
+    } else {
+      results.profile_views_error = pvRaw.body;
+    }
+
     // 4. Fetch IG media (posts) with pagination
     const sinceDate = new Date();
     sinceDate.setUTCDate(sinceDate.getUTCDate() - daysParam);

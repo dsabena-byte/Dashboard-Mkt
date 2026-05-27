@@ -36,6 +36,7 @@ export interface IgOrganicSummary {
   totalComments: number;
   totalSaves: number;
   totalVideoViews: number;
+  profileViews: number;
   postCount: number;
   topPosts: IgPostRow[];
   monthlyData: IgMonthlyDatum[];
@@ -85,7 +86,7 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
   const empty: IgOrganicSummary = {
     totalReach: 0, totalEngagement: 0, totalReactions: 0,
     totalComments: 0, totalSaves: 0, totalVideoViews: 0,
-    postCount: 0, topPosts: [], monthlyData: [],
+    profileViews: 0, postCount: 0, topPosts: [], monthlyData: [],
     demoAge: [], demoGender: [], demoCountry: [], demoCity: [],
     rangeLabel,
   };
@@ -144,6 +145,7 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
     totalComments: Math.max(0, totalComments),
     totalSaves,
     totalVideoViews,
+    profileViews: 0,
     postCount: posts.length,
     topPosts: posts,
     monthlyData,
