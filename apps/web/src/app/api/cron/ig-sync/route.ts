@@ -210,21 +210,55 @@ export async function GET(request: Request) {
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
 
-    // 6. IG account insights (followers demographics with breakdown)
-    const demoBreakdowns = ["age", "gender", "country", "city"];
+    // 6. IG account insights (followers demographics with breakdown) → store in Supabase
+    const demoBreakdowns: Array<{ breakdown: string; dimension: string }> = [
+      { breakdown: "age", dimension: "age" },
+      { breakdown: "gender", dimension: "gender" },
+      { breakdown: "country", dimension: "country" },
+      { breakdown: "city", dimension: "city" },
+    ];
     const demoDiag: Record<string, unknown> = {};
+    const demoRows: Array<Record<string, unknown>> = [];
+    const todayIso = new Date().toISOString().slice(0, 10);
 
-    for (const bd of demoBreakdowns) {
+    for (const { breakdown, dimension } of demoBreakdowns) {
       const raw = await graphGetRaw(
-        `${GRAPH_API}/${igId}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=${bd}&access_token=${pt}`,
+        `${GRAPH_API}/${igId}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=${breakdown}&access_token=${pt}`,
       );
       if (raw.status === 200) {
-        demoDiag[`follower_demographics_${bd}`] = { status: "OK", data: raw.body };
+        const body = raw.body as {
+          data?: Array<{
+            total_value?: {
+              breakdowns?: Array<{
+                results?: Array<{ dimension_values: string[]; value: number }>;
+              }>;
+            };
+          }>;
+        };
+        const breakdownResults = body.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
+        demoDiag[`follower_demographics_${breakdown}`] = { status: "OK", count: breakdownResults.length };
+        for (const r of breakdownResults) {
+          demoRows.push({
+            fecha: todayIso,
+            page_id: igId,
+            audience_type: "follower",
+            dimension,
+            category: r.dimension_values[0] ?? "unknown",
+            value: r.value,
+          });
+        }
       } else {
-        demoDiag[`follower_demographics_${bd}`] = { status: raw.status, error: raw.body };
+        demoDiag[`follower_demographics_${breakdown}`] = { status: raw.status, error: raw.body };
       }
     }
+
     results.demographics = demoDiag;
+    results.demo_rows = demoRows.length;
+    results.demo_upsert = await supabaseUpsert(
+      "meta_fb_audience_demographics",
+      demoRows,
+      "fecha,page_id,audience_type,dimension,category",
+    );
 
     return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), results });
   } catch (err) {

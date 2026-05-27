@@ -9,7 +9,9 @@ import { SocialContentTypeChart } from "@/components/social/social-content-type-
 import { PaginatedPostsPanel } from "@/components/social/paginated-posts-panel";
 import { BrandSentimentSummary } from "@/components/social/brand-sentiment-summary";
 import { FbOrganicSection } from "@/components/social/fb-organic-section";
+import { IgOrganicSection } from "@/components/social/ig-organic-section";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
+import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import {
   BRAND_COLORS,
   BRAND_LABELS,
@@ -58,11 +60,12 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const ytdRange = { from: `${currentYear}-01-01`, to: new Date().toISOString().slice(0, 10) };
   const range = parseDateRange(searchParams, ytdRange);
 
-  const [rawPosts, allMarcas, followers, fbOrganic] = await Promise.all([
+  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
     getFbOrganicSummary({ from: range.from, to: range.to }),
+    getIgOrganicSummary({ from: range.from, to: range.to }),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
@@ -108,6 +111,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
       </header>
 
       <FbOrganicSection data={fbOrganic} />
+
+      <IgOrganicSection data={igOrganic} />
 
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1 min-w-0">
