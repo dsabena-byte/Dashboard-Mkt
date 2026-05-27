@@ -114,14 +114,17 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
       <FbOrganicSection data={fbOrganic} />
 
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <SocialFilters
-            currentBrand={marca}
-            currentNet={red}
-            brands={brandOptions}
-          />
+      {/* Separador visual */}
+      <div className="border-t-2 border-muted pt-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold tracking-tight">Análisis Competitivo</h2>
+          <p className="text-sm text-muted-foreground">Drean vs Philco vs Gafa vs Electrolux vs Whirlpool en IG, FB y TT.</p>
         </div>
+        <SocialFilters
+          currentBrand={marca}
+          currentNet={red}
+          brands={brandOptions}
+        />
       </div>
 
       {!hasData && (
@@ -142,8 +145,10 @@ export default async function RedesPage({ searchParams }: PageProps) {
           return (
             <div key={n.red} className="rounded-lg border bg-card">
               <div className="flex items-center gap-3 p-3">
-                <div className="text-2xl">
-                  {n.red === "INSTAGRAM" ? "📷" : n.red === "FACEBOOK" ? "👥" : "🎵"}
+                <div className="flex h-9 w-9 items-center justify-center rounded-full text-white text-sm font-bold" style={{
+                  background: n.red === "INSTAGRAM" ? "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" : n.red === "FACEBOOK" ? "#1877F2" : "#000000",
+                }}>
+                  {n.red === "INSTAGRAM" ? "IG" : n.red === "FACEBOOK" ? "FB" : "TT"}
                 </div>
                 <div className="flex-1">
                   <div className="text-xs font-semibold">{NET_LABELS[n.red] ?? n.red}</div>
