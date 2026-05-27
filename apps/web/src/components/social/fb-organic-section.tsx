@@ -92,9 +92,9 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               hint={`${data.totals.fan_delta >= 0 ? "+" : ""}${fmtK(data.totals.fan_delta)} en el período`}
             />
             <KpiCard
-              title="Engagement"
-              value={fmtK(data.totals.post_engagements)}
-              hint="Clicks + Reacciones + Comentarios + Shares + Clicks en fotos/videos"
+              title="Engagement total"
+              value={fmtK(data.totals.reactions_total + data.totals.clicks + data.totals.video_views + (data.topPosts.reduce((s, p) => s + p.engagement, 0)))}
+              hint={`Reacciones ${fmtK(data.totals.reactions_total)} · Clicks ${fmtK(data.totals.clicks)} · Comments+Shares ${fmtK(data.topPosts.reduce((s, p) => s + p.engagement, 0))} · Views ${fmtK(data.totals.video_views)}`}
             />
             <KpiCard
               title="Reacciones"
