@@ -9,15 +9,6 @@ function env(key: string): string {
   return v;
 }
 
-async function graphGet<T = unknown>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Graph API ${res.status}: ${body}`);
-  }
-  return res.json() as Promise<T>;
-}
-
 async function graphGetRaw(url: string): Promise<{ status: number; body: unknown }> {
   const res = await fetch(url);
   const body = await res.json();
@@ -59,13 +50,15 @@ interface FbPost {
   created_time?: string;
   message?: string;
   permalink_url?: string;
+  shares?: { count?: number };
   attachments?: {
     data?: Array<{
       media_type?: string;
       media?: { image?: { src?: string } };
     }>;
   };
-  insights?: { data?: InsightMetric[] };
+  likes?: { summary?: { total_count?: number } };
+  comments?: { summary?: { total_count?: number } };
 }
 
 export async function GET(request: Request) {
@@ -96,66 +89,76 @@ export async function GET(request: Request) {
     results.permissions = grantedPerms;
 
     // 1. Get Page Access Token
-    const pagesRes = await graphGet<{
-      data: Array<{ id: string; name: string; access_token: string }>;
-    }>(`${GRAPH_API}/me/accounts?fields=id,name,access_token&access_token=${token}`);
-
+    const pagesRaw = await graphGetRaw(
+      `${GRAPH_API}/me/accounts?fields=id,name,access_token&access_token=${token}`,
+    );
+    if (pagesRaw.status !== 200) {
+      return NextResponse.json({ error: "No se pudo obtener páginas", detail: pagesRaw.body }, { status: 500 });
+    }
+    const pagesRes = pagesRaw.body as { data: Array<{ id: string; name: string; access_token: string }> };
     const page = pagesRes.data?.find((p) => p.id === PAGE_ID);
     if (!page?.access_token) {
       return NextResponse.json(
-        { error: `Page ${PAGE_ID} no encontrada o sin access_token`, pages: pagesRes.data?.map((p) => ({ id: p.id, name: p.name })) },
+        { error: `Page ${PAGE_ID} no encontrada`, pages: pagesRes.data?.map((p) => ({ id: p.id, name: p.name })) },
         { status: 500 },
       );
     }
     const pt = page.access_token;
     results.page = `${page.name} (${page.id})`;
 
-    // 2. Page daily insights
-    const METRIC_GROUPS: Array<{ metrics: string; map: Record<string, string> }> = [
-      { metrics: "page_post_engagements", map: { page_post_engagements: "post_engagements" } },
-      { metrics: "page_follows", map: { page_follows: "fan_adds" } },
-      { metrics: "page_views_total", map: { page_views_total: "page_views" } },
+    // 2. Page daily insights — probar múltiples métricas individualmente
+    const METRIC_TESTS = [
+      "page_post_engagements",
+      "page_follows",
+      "page_views_total",
+      "page_fan_adds",
+      "page_daily_follows",
+      "page_daily_follows_unique",
+      "page_actions_post_reactions_total",
     ];
 
-    const dailyMap = new Map<string, Record<string, unknown>>();
-    const failedMetrics: string[] = [];
     const metricDiag: Record<string, unknown> = {};
+    const dailyMap = new Map<string, Record<string, unknown>>();
+    const workingMetrics: string[] = [];
 
-    for (const group of METRIC_GROUPS) {
-      try {
+    for (const metric of METRIC_TESTS) {
+      // Try with date_preset first, then since/until
+      for (const dateParam of [
+        `date_preset=last_7d`,
+        `since=${sinceUnix}&until=${untilUnix}`,
+      ]) {
         const raw = await graphGetRaw(
-          `${GRAPH_API}/${PAGE_ID}/insights?metric=${group.metrics}&period=day&since=${sinceUnix}&until=${untilUnix}&access_token=${pt}`,
+          `${GRAPH_API}/${PAGE_ID}/insights?metric=${metric}&period=day&${dateParam}&access_token=${pt}`,
         );
-        if (raw.status !== 200) {
-          failedMetrics.push(group.metrics);
-          metricDiag[group.metrics] = { status: raw.status, error: raw.body };
-          continue;
-        }
-        const gRes = raw.body as { data: InsightMetric[] };
-        const dataLen = gRes.data?.length ?? 0;
-        const valuesLen = gRes.data?.[0]?.values?.length ?? 0;
-        const sampleValue = gRes.data?.[0]?.values?.[0]?.value ?? null;
-        metricDiag[group.metrics] = { dataLen, valuesLen, sampleValue };
-        for (const m of gRes.data ?? []) {
-          const col = group.map[m.name];
-          if (!col) continue;
-          for (const v of m.values ?? []) {
-            const fecha = (v.end_time ?? "").slice(0, 10);
-            if (!fecha) continue;
-            const row = dailyMap.get(fecha) ?? { fecha, page_id: PAGE_ID };
-            row[col] = typeof v.value === "number" ? v.value : 0;
-            dailyMap.set(fecha, row);
+        const body = raw.body as { data?: InsightMetric[]; error?: unknown };
+        if (raw.status === 200 && body.data && body.data.length > 0 && body.data[0]?.values?.length > 0) {
+          workingMetrics.push(metric);
+          metricDiag[metric] = {
+            status: "OK",
+            valuesCount: body.data[0].values.length,
+            sample: body.data[0].values[0],
+            dateParam,
+          };
+          for (const m of body.data) {
+            for (const v of m.values ?? []) {
+              const fecha = (v.end_time ?? "").slice(0, 10);
+              if (!fecha) continue;
+              const row = dailyMap.get(fecha) ?? { fecha, page_id: PAGE_ID };
+              row[m.name] = typeof v.value === "number" ? v.value : 0;
+              dailyMap.set(fecha, row);
+            }
           }
+          break;
         }
-      } catch (e) {
-        failedMetrics.push(group.metrics);
-        metricDiag[group.metrics] = { error: e instanceof Error ? e.message : String(e) };
+        if (raw.status !== 200) {
+          metricDiag[metric] = { status: raw.status, error: body.error, dateParam };
+        } else {
+          metricDiag[metric] = { status: 200, dataLen: body.data?.length ?? 0, valuesLen: body.data?.[0]?.values?.length ?? 0, dateParam };
+        }
       }
     }
 
-    if (failedMetrics.length > 0) {
-      results.metrics_failed = failedMetrics.join(" | ");
-    }
+    results.working_metrics = workingMetrics;
     results.metric_diagnostics = metricDiag;
     results.date_range = { from: new Date(sinceUnix * 1000).toISOString().slice(0, 10), to: new Date(untilUnix * 1000).toISOString().slice(0, 10) };
 
@@ -165,86 +168,73 @@ export async function GET(request: Request) {
       "fecha,page_id",
     );
 
-    // 3. Posts — try published_posts first, fallback to posts
+    // 3. Posts — fetch WITHOUT insights subquery (basic data + engagement from fields)
     let postsData: FbPost[] = [];
-    const postFields = "id,created_time,message,permalink_url,attachments{media_type,media{image{src}}}";
-    const postInsightFields = "post_impressions,post_impressions_unique,post_engaged_users,post_reactions_by_type_total";
+    const postFields = "id,created_time,message,permalink_url,shares,attachments{media_type,media{image{src}}},likes.summary(true),comments.summary(true)";
 
-    for (const edge of ["published_posts", "posts"]) {
-      try {
-        const raw = await graphGetRaw(
-          `${GRAPH_API}/${PAGE_ID}/${edge}?fields=${postFields},insights.metric(${postInsightFields})&since=${sinceUnix}&until=${untilUnix}&limit=100&access_token=${pt}`,
-        );
-        if (raw.status === 200) {
-          const parsed = raw.body as { data: FbPost[] };
-          postsData = parsed.data ?? [];
-          results.posts_edge = edge;
-          results.posts_count = postsData.length;
-          break;
+    for (const edge of ["published_posts", "posts", "feed"]) {
+      const raw = await graphGetRaw(
+        `${GRAPH_API}/${PAGE_ID}/${edge}?fields=${postFields}&since=${sinceUnix}&until=${untilUnix}&limit=100&access_token=${pt}`,
+      );
+      if (raw.status === 200) {
+        const parsed = raw.body as { data: FbPost[] };
+        postsData = parsed.data ?? [];
+        results.posts_edge = edge;
+        results.posts_count = postsData.length;
+        if (postsData.length > 0) {
+          results.posts_sample = {
+            id: postsData[0].id,
+            date: postsData[0].created_time,
+            hasLikes: !!postsData[0].likes?.summary,
+            hasComments: !!postsData[0].comments?.summary,
+            hasShares: !!postsData[0].shares,
+          };
         }
-        results[`posts_${edge}_error`] = { status: raw.status, body: raw.body };
-      } catch (e) {
-        results[`posts_${edge}_error`] = e instanceof Error ? e.message : String(e);
+        break;
       }
+      results[`posts_${edge}_error`] = { status: raw.status, body: raw.body };
     }
 
-    const postRows = postsData.map((p) => {
-      const im: Record<string, number> = {};
-      for (const i of p.insights?.data ?? []) {
-        if (Array.isArray(i.values) && i.values.length > 0) {
-          const v = i.values[0]?.value;
-          if (typeof v === "number") im[i.name] = v;
-          else if (typeof v === "object" && v !== null) {
-            im[i.name] = Object.values(v as Record<string, number>).reduce(
-              (a, b) => a + (typeof b === "number" ? b : 0),
-              0,
-            );
-          }
-        }
-      }
-      return {
-        platform: "facebook",
-        post_id: p.id,
-        cuenta_id: PAGE_ID,
-        fecha_post: p.created_time ?? new Date().toISOString(),
-        permalink: p.permalink_url ?? null,
-        message: p.message ?? null,
-        media_type: p.attachments?.data?.[0]?.media_type ?? null,
-        thumbnail_url: p.attachments?.data?.[0]?.media?.image?.src ?? null,
-        impressions: im.post_impressions ?? 0,
-        reach: im.post_impressions_unique ?? 0,
-        engagement: im.post_engaged_users ?? 0,
-        reactions: im.post_reactions_by_type_total ?? 0,
-        video_views: im.post_video_views ?? 0,
-        clicks: im.post_clicks ?? 0,
-      };
-    });
+    const postRows = postsData.map((p) => ({
+      platform: "facebook",
+      post_id: p.id,
+      cuenta_id: PAGE_ID,
+      fecha_post: p.created_time ?? new Date().toISOString(),
+      permalink: p.permalink_url ?? null,
+      message: p.message ?? null,
+      media_type: p.attachments?.data?.[0]?.media_type ?? null,
+      thumbnail_url: p.attachments?.data?.[0]?.media?.image?.src ?? null,
+      impressions: 0,
+      reach: 0,
+      engagement: (p.likes?.summary?.total_count ?? 0) + (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
+      reactions: p.likes?.summary?.total_count ?? 0,
+      video_views: 0,
+      clicks: 0,
+    }));
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
 
-    // 4. Demographics — fans (lifetime)
-    const demoConfigs = [
+    // 4. Demographics — try multiple metric names
+    const demoTests = [
       { metric: "page_fans_gender_age", dimension: "age_gender" },
       { metric: "page_fans_country", dimension: "country" },
       { metric: "page_fans_city", dimension: "city" },
+      { metric: "page_follows_by_age_gender_unique", dimension: "age_gender" },
     ];
 
     const demoRows: Array<Record<string, unknown>> = [];
-    const demoFailed: string[] = [];
+    const demoDiag: Record<string, unknown> = {};
 
-    for (const dm of demoConfigs) {
-      try {
-        const raw = await graphGetRaw(
-          `${GRAPH_API}/${PAGE_ID}/insights?metric=${dm.metric}&period=lifetime&access_token=${pt}`,
-        );
-        if (raw.status !== 200) {
-          demoFailed.push(dm.metric);
-          continue;
-        }
-        const dRes = raw.body as { data: InsightMetric[] };
-        const v0 = dRes.data?.[0]?.values?.[0];
+    for (const dm of demoTests) {
+      const raw = await graphGetRaw(
+        `${GRAPH_API}/${PAGE_ID}/insights?metric=${dm.metric}&period=lifetime&access_token=${pt}`,
+      );
+      const body = raw.body as { data?: InsightMetric[]; error?: unknown };
+      if (raw.status === 200 && body.data && body.data.length > 0) {
+        const v0 = body.data[0]?.values?.[0];
         const fecha = ((v0?.end_time as string) ?? todayIso + "T00:00:00+0000").slice(0, 10);
         const dict = v0?.value;
+        demoDiag[dm.metric] = { status: "OK", keys: dict ? Object.keys(dict as object).length : 0 };
         if (dict && typeof dict === "object") {
           for (const [k, v] of Object.entries(dict as Record<string, number>)) {
             if (typeof v === "number") {
@@ -259,48 +249,12 @@ export async function GET(request: Request) {
             }
           }
         }
-      } catch {
-        demoFailed.push(dm.metric);
-      }
-    }
-
-    // 5. Demographics — reached (daily age × gender)
-    try {
-      const raw = await graphGetRaw(
-        `${GRAPH_API}/${PAGE_ID}/insights?metric=page_impressions_by_age_gender_unique&period=day&since=${sinceUnix}&until=${untilUnix}&access_token=${pt}`,
-      );
-      if (raw.status === 200) {
-        const reachedRes = raw.body as { data: InsightMetric[] };
-        for (const vEntry of reachedRes.data?.[0]?.values ?? []) {
-          const fecha = ((vEntry.end_time as string) ?? "").slice(0, 10);
-          if (!fecha) continue;
-          const dict = vEntry.value;
-          if (dict && typeof dict === "object") {
-            for (const [k, v] of Object.entries(dict as Record<string, number>)) {
-              if (typeof v === "number") {
-                demoRows.push({
-                  fecha,
-                  page_id: PAGE_ID,
-                  audience_type: "reached",
-                  dimension: "age_gender",
-                  category: k,
-                  value: v,
-                });
-              }
-            }
-          }
-        }
       } else {
-        results.reached_demo = "no disponible";
+        demoDiag[dm.metric] = { status: raw.status, error: body.error ?? "no data" };
       }
-    } catch {
-      results.reached_demo = "no disponible";
     }
 
-    if (demoFailed.length > 0) {
-      results.demo_failed = demoFailed.join(", ");
-    }
-
+    results.demo_diagnostics = demoDiag;
     results.demographics = await supabaseUpsert(
       "meta_fb_audience_demographics",
       demoRows,
