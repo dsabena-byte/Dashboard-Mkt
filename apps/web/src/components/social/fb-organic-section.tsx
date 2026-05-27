@@ -79,25 +79,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
         </div>
       ) : (
         <>
-          {/* KPIs principales */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <KpiCard
-              title="Alcance (personas únicas)"
-              value={fmtK(data.totals.impressions_unique)}
-              hint={`${data.totals.diasConData} días con data`}
-            />
-            <KpiCard
-              title="Fans (followers)"
-              value={fmtK(data.totals.fans_total)}
-              hint={`${data.totals.fan_delta >= 0 ? "+" : ""}${fmtK(data.totals.fan_delta)} en el período`}
-            />
-            <KpiCard
-              title="Visitas al perfil"
-              value={fmtK(data.totals.page_views)}
-            />
-          </div>
-
-          {/* Engagement total + desglose visual */}
+          {/* Engagement total + desglose visual — PRIMERO */}
           <div className="rounded-lg border-2 border-blue-200 bg-blue-50/30 p-3 space-y-3">
             <div className="flex items-baseline gap-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">Engagement total</span>
@@ -124,6 +106,24 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                 value={fmtK(data.totals.video_views)}
               />
             </div>
+          </div>
+
+          {/* KPIs secundarios */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <KpiCard
+              title="Alcance (personas únicas)"
+              value={fmtK(data.totals.impressions_unique)}
+              hint={`${data.totals.diasConData} días con data`}
+            />
+            <KpiCard
+              title="Fans (followers)"
+              value={fmtK(data.totals.fans_total)}
+              hint={`${data.totals.fan_delta >= 0 ? "+" : ""}${fmtK(data.totals.fan_delta)} en el período`}
+            />
+            <KpiCard
+              title="Visitas al perfil"
+              value={fmtK(data.totals.page_views)}
+            />
           </div>
 
           {/* Gráfico mensual */}

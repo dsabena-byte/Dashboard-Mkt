@@ -79,7 +79,6 @@ export interface FbMonthlyDatum {
   mes: string;
   alcance: number;
   engagement: number;
-  page_views: number;
 }
 
 export interface FbOrganicSummary {
@@ -280,9 +279,9 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   const fansByCity = toBreakdown(fanLatestByDim.get("city") ?? []).slice(0, 10);
   const reachedByAgeGender = toBreakdown(reachedToRows(reachedSumByDim.get("age_gender")));
 
-  // Agregación mensual: alcance y engagement por mes desde posts
+  // Agregación mensual
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-  const monthlyMap = new Map<string, { alcance: number; engagement: number; page_views: number }>();
+  const monthlyMap = new Map<string, { alcance: number; engagement: number; reactionsFromDaily: number }>();
 
   // Sumar alcance, video views y clicks desde posts
   for (const p of posts) {
@@ -291,19 +290,20 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     totals.clicks += p.clicks ?? 0;
   }
 
-  // Usar daily data para page_views por mes
+  // Reacciones de página por mes (disponibles últimos ~90 días)
   for (const r of daily) {
     const monthKey = r.fecha.slice(0, 7);
-    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, page_views: 0 };
-    m.page_views += r.page_views ?? 0;
+    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, reactionsFromDaily: 0 };
+    m.reactionsFromDaily += (r.reactions_like ?? 0) + (r.reactions_love ?? 0) + (r.reactions_haha ?? 0) + (r.reactions_wow ?? 0) + (r.reactions_sorry ?? 0) + (r.reactions_anger ?? 0);
     monthlyMap.set(monthKey, m);
   }
 
-  // Alcance y engagement por mes desde posts (consistente para todos los meses)
+  // Alcance y engagement base por mes desde posts
   for (const p of posts) {
     const monthKey = p.fecha_post.slice(0, 7);
-    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, page_views: 0 };
+    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, reactionsFromDaily: 0 };
     m.alcance += p.reach ?? 0;
+    // engagement base = comments + shares + clicks + video_views (sin reacciones, se suman aparte)
     m.engagement += (p.engagement ?? 0) + (p.clicks ?? 0) + (p.video_views ?? 0);
     monthlyMap.set(monthKey, m);
   }
@@ -315,8 +315,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
       return {
         mes: `${MES_SHORT[monthIdx]} ${key.slice(2, 4)}`,
         alcance: v.alcance,
-        engagement: v.engagement,
-        page_views: v.page_views,
+        engagement: v.engagement + v.reactionsFromDaily,
       };
     });
 
