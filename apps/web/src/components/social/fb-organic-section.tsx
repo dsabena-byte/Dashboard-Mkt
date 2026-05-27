@@ -94,6 +94,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <KpiCard
               title="Engagement"
               value={fmtK(data.totals.post_engagements)}
+              hint="Clicks + Reacciones + Comentarios + Shares + Clicks en fotos/videos"
             />
             <KpiCard
               title="Reacciones"
