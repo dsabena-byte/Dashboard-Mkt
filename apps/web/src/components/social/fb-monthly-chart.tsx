@@ -83,6 +83,16 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
           activeDot={{ r: 6 }}
           name="Engagement"
         />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="page_views"
+          stroke="#22c55e"
+          strokeWidth={2}
+          dot={{ r: 3 }}
+          strokeDasharray="4 2"
+          name="Page views"
+        />
       </ComposedChart>
     </ResponsiveContainer>
   );
