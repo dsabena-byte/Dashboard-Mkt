@@ -123,12 +123,7 @@ function toBreakdown(rows: FbDemographicRow[]): FbDemoBreakdown[] {
 }
 
 /**
- * Devuelve el resumen orgánico de la Page de Facebook (Drean) para los últimos 30 días.
- *
- * - Lee meta_page_daily (KPIs diarios, sumados al total del período)
- * - Lee meta_posts filtrado por platform='facebook'
- * - Lee meta_fb_audience_demographics; toma el snapshot más reciente para
- *   fans (que es lifetime) y agrega por categoría para reached (que es diario)
+ * Devuelve el resumen organico de la Page de Facebook (Drean) para los ultimos 30 dias.
  */
 export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
   const supabase = getServerSupabase();
@@ -189,7 +184,6 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
   const posts = postsRes.data ?? [];
   const demo = demoRes.data ?? [];
 
-  // KPIs: sumamos día a día. fans_total tomamos el último valor disponible.
   const totals: FbKpiTotals = { ...EMPTY_TOTALS, diasConData: daily.length };
   let lastFans: number | null = null;
   let lastFansDate = "";
@@ -225,9 +219,6 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
     totals.reactions_sorry +
     totals.reactions_anger;
 
-  // Demografía:
-  // - fan_*: lifetime snapshot — tomamos la fecha más reciente
-  // - reached_*: serie diaria — sumamos los valores del período por categoría
   const fanLatestByDim = new Map<string, FbDemographicRow[]>();
   const fanLatestDateByDim = new Map<string, string>();
   const reachedSumByDim = new Map<string, Map<string, number>>();
