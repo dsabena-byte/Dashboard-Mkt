@@ -137,7 +137,7 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
   const fromIso = from.toISOString().slice(0, 10);
   const rangeLabel = `${fromIso} → ${toIso}`;
 
-  const [dailyRes, postsRes, demoRes] = await Promise.all([
+  const [dailyRes, postsRes, postsTotalsRes, demoRes] = await Promise.all([
     supabase
       .from("meta_page_daily")
       .select(
@@ -158,13 +158,20 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
       .limit(12)
       .returns<FbPostRow[]>(),
     supabase
+      .from("meta_posts")
+      .select("reach, video_views, clicks, impressions")
+      .eq("platform", "facebook")
+      .gte("fecha_post", `${fromIso}T00:00:00Z`)
+      .lte("fecha_post", `${toIso}T23:59:59Z`)
+      .returns<{ reach: number; video_views: number; clicks: number; impressions: number }[]>(),
+    supabase
       .from("meta_fb_audience_demographics")
       .select("fecha, audience_type, dimension, category, value")
       .order("fecha", { ascending: false })
       .returns<FbDemographicRow[]>(),
   ]);
 
-  if (isMissingTable(dailyRes.error) || isMissingTable(postsRes.error) || isMissingTable(demoRes.error)) {
+  if (isMissingTable(dailyRes.error) || isMissingTable(postsRes.error) || isMissingTable(postsTotalsRes.error) || isMissingTable(demoRes.error)) {
     return {
       totals: EMPTY_TOTALS,
       topPosts: [],
@@ -182,9 +189,17 @@ export async function getFbOrganicSummary(): Promise<FbOrganicSummary> {
 
   const daily = dailyRes.data ?? [];
   const posts = postsRes.data ?? [];
+  const postsTotals = postsTotalsRes.data ?? [];
   const demo = demoRes.data ?? [];
 
   const totals: FbKpiTotals = { ...EMPTY_TOTALS, diasConData: daily.length };
+
+  // Sumar alcance, video views y clicks desde posts individuales
+  for (const p of postsTotals) {
+    totals.impressions_unique += p.reach ?? 0;
+    totals.impressions += p.impressions ?? 0;
+    totals.video_views += p.video_views ?? 0;
+  }
   let lastFans: number | null = null;
   let lastFansDate = "";
   for (const r of daily) {

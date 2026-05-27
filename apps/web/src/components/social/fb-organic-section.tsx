@@ -74,14 +74,9 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
           {/* KPIs principales */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <KpiCard
-              title="Alcance (impressions únicas)"
+              title="Alcance (personas únicas)"
               value={fmtK(data.totals.impressions_unique)}
-              hint={`${data.totals.diasConData} días con data`}
-            />
-            <KpiCard
-              title="Impresiones"
-              value={fmtK(data.totals.impressions)}
-              hint={data.totals.impressions_organic > 0 ? `${fmtK(data.totals.impressions_organic)} orgánicas` : undefined}
+              hint={`Suma de alcance por post · ${data.totals.diasConData} días`}
             />
             <KpiCard
               title="Fans (followers)"
