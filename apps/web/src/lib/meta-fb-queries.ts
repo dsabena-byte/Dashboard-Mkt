@@ -282,8 +282,10 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const monthlyMap = new Map<string, { alcance: number; engagement: number; page_views: number }>();
 
-  for (const p of postsTotals) {
-    // No tenemos fecha exacta en postsTotals, usar daily data para page_views
+  // Sumar alcance y video views desde posts
+  for (const p of posts) {
+    totals.impressions_unique += p.reach ?? 0;
+    totals.video_views += p.video_views ?? 0;
   }
 
   // Usar daily data para engagement y page_views por mes
