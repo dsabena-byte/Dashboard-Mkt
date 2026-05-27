@@ -304,7 +304,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     const monthKey = p.fecha_post.slice(0, 7);
     const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, page_views: 0 };
     m.alcance += p.reach ?? 0;
-    m.engagement += p.engagement ?? 0;
+    m.engagement += (p.engagement ?? 0) + (p.clicks ?? 0) + (p.video_views ?? 0);
     monthlyMap.set(monthKey, m);
   }
 
