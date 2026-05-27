@@ -1,6 +1,6 @@
 import { KpiCard } from "@/components/kpi-card";
 import { DateRangePicker } from "@/components/date-range-picker";
-import { parseDateRange, lastClosedMonthRange } from "@/lib/dates";
+import { parseDateRange } from "@/lib/dates";
 import { SocialFilters } from "@/components/social/social-filters";
 import { SocialTrendChart } from "@/components/social/social-trend-chart";
 import { SocialPilarChart } from "@/components/social/social-pilar-chart";
