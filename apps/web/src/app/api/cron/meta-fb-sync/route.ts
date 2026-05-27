@@ -57,7 +57,7 @@ interface FbPost {
       media?: { image?: { src?: string } };
     }>;
   };
-  likes?: { summary?: { total_count?: number } };
+  reactions?: { summary?: { total_count?: number } };
   comments?: { summary?: { total_count?: number } };
 }
 
@@ -205,7 +205,7 @@ export async function GET(request: Request) {
 
     // 3. Posts - fetch WITHOUT insights subquery, paginate for large ranges
     let postsData: FbPost[] = [];
-    const postFields = "id,created_time,message,permalink_url,shares,attachments{media_type,media{image{src}}},likes.summary(true),comments.summary(true)";
+    const postFields = "id,created_time,message,permalink_url,shares,attachments{media_type,media{image{src}}},reactions.summary(true),comments.summary(true)";
 
     for (const edge of ["published_posts", "posts", "feed"]) {
       let nextUrl: string | null =
@@ -290,8 +290,8 @@ export async function GET(request: Request) {
         thumbnail_url: p.attachments?.data?.[0]?.media?.image?.src ?? null,
         impressions: ins.post_impressions ?? 0,
         reach: ins.post_impressions_unique ?? 0,
-        engagement: (p.likes?.summary?.total_count ?? 0) + (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
-        reactions: p.likes?.summary?.total_count ?? 0,
+        engagement: (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
+        reactions: p.reactions?.summary?.total_count ?? 0,
         video_views: ins.post_video_views ?? 0,
         clicks: ins.post_clicks ?? 0,
       };
