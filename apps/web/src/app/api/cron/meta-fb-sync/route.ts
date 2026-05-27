@@ -233,22 +233,70 @@ export async function GET(request: Request) {
       }
     }
 
-    const postRows = postsData.map((p) => ({
-      platform: "facebook",
-      post_id: p.id,
-      cuenta_id: PAGE_ID,
-      fecha_post: p.created_time ?? new Date().toISOString(),
-      permalink: p.permalink_url ?? null,
-      message: p.message ?? null,
-      media_type: p.attachments?.data?.[0]?.media_type ?? null,
-      thumbnail_url: p.attachments?.data?.[0]?.media?.image?.src ?? null,
-      impressions: 0,
-      reach: 0,
-      engagement: (p.likes?.summary?.total_count ?? 0) + (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
-      reactions: p.likes?.summary?.total_count ?? 0,
-      video_views: 0,
-      clicks: 0,
-    }));
+    // 4. Fetch post-level insights (impressions, reach, video_views) per post
+    const POST_INSIGHT_METRICS = "post_impressions,post_impressions_unique,post_clicks,post_video_views";
+    const postInsightsMap = new Map<string, Record<string, number>>();
+    const postMetricTests = [
+      "post_impressions",
+      "post_impressions_unique",
+      "post_clicks",
+      "post_video_views",
+      "post_engaged_users",
+    ];
+
+    if (postsData.length > 0) {
+      // Test which post metrics work on the first post
+      const testPostId = postsData[0]!.id;
+      const workingPostMetrics: string[] = [];
+      for (const m of postMetricTests) {
+        const raw = await graphGetRaw(
+          `${GRAPH_API}/${testPostId}/insights?metric=${m}&access_token=${pt}`,
+        );
+        if (raw.status === 200) {
+          workingPostMetrics.push(m);
+        }
+      }
+      results.working_post_metrics = workingPostMetrics;
+
+      if (workingPostMetrics.length > 0) {
+        const metricsStr = workingPostMetrics.join(",");
+        for (const p of postsData) {
+          const raw = await graphGetRaw(
+            `${GRAPH_API}/${p.id}/insights?metric=${metricsStr}&access_token=${pt}`,
+          );
+          if (raw.status === 200) {
+            const body = raw.body as { data?: InsightMetric[] };
+            const vals: Record<string, number> = {};
+            for (const d of body.data ?? []) {
+              const v = d.values?.[0]?.value;
+              if (typeof v === "number") vals[d.name] = v;
+            }
+            postInsightsMap.set(p.id, vals);
+          }
+        }
+        results.posts_with_insights = postInsightsMap.size;
+      }
+    }
+
+    const postRows = postsData.map((p) => {
+      const ins = postInsightsMap.get(p.id) ?? {};
+      return {
+        platform: "facebook",
+        post_id: p.id,
+        cuenta_id: PAGE_ID,
+        fecha_post: p.created_time ?? new Date().toISOString(),
+        permalink: p.permalink_url ?? null,
+        message: p.message ?? null,
+        media_type: p.attachments?.data?.[0]?.media_type ?? null,
+        thumbnail_url: p.attachments?.data?.[0]?.media?.image?.src ?? null,
+        impressions: ins.post_impressions ?? 0,
+        reach: ins.post_impressions_unique ?? 0,
+        engagement: (p.likes?.summary?.total_count ?? 0) + (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
+        reactions: p.likes?.summary?.total_count ?? 0,
+        video_views: ins.post_video_views ?? 0,
+        clicks: ins.post_clicks ?? 0,
+      };
+    });
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
 
