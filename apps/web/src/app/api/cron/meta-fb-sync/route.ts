@@ -93,7 +93,7 @@ export async function GET(request: Request) {
       `${GRAPH_API}/me/accounts?fields=id,name,access_token&access_token=${token}`,
     );
     if (pagesRaw.status !== 200) {
-      return NextResponse.json({ error: "No se pudo obtener páginas", detail: pagesRaw.body }, { status: 500 });
+      return NextResponse.json({ error: "No se pudo obtener paginas", detail: pagesRaw.body }, { status: 500 });
     }
     const pagesRes = pagesRaw.body as { data: Array<{ id: string; name: string; access_token: string }> };
     const page = pagesRes.data?.find((p) => p.id === PAGE_ID);
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
     const pt = page.access_token;
     results.page = `${page.name} (${page.id})`;
 
-    // 2. Page daily insights — probar múltiples métricas individualmente
+    // 2. Page daily insights
     const METRIC_TESTS = [
       "page_post_engagements",
       "page_follows",
@@ -122,7 +122,6 @@ export async function GET(request: Request) {
     const workingMetrics: string[] = [];
 
     for (const metric of METRIC_TESTS) {
-      // Try with date_preset first, then since/until
       for (const dateParam of [
         `date_preset=last_7d`,
         `since=${sinceUnix}&until=${untilUnix}`,
@@ -131,15 +130,17 @@ export async function GET(request: Request) {
           `${GRAPH_API}/${PAGE_ID}/insights?metric=${metric}&period=day&${dateParam}&access_token=${pt}`,
         );
         const body = raw.body as { data?: InsightMetric[]; error?: unknown };
-        if (raw.status === 200 && body.data && body.data.length > 0 && body.data[0]?.values?.length > 0) {
+        const firstMetric = body.data?.[0];
+        const hasValues = raw.status === 200 && firstMetric && (firstMetric.values?.length ?? 0) > 0;
+        if (hasValues) {
           workingMetrics.push(metric);
           metricDiag[metric] = {
             status: "OK",
-            valuesCount: body.data[0].values.length,
-            sample: body.data[0].values[0],
+            valuesCount: firstMetric.values?.length ?? 0,
+            sample: firstMetric.values?.[0] ?? null,
             dateParam,
           };
-          for (const m of body.data) {
+          for (const m of body.data ?? []) {
             for (const v of m.values ?? []) {
               const fecha = (v.end_time ?? "").slice(0, 10);
               if (!fecha) continue;
@@ -153,7 +154,7 @@ export async function GET(request: Request) {
         if (raw.status !== 200) {
           metricDiag[metric] = { status: raw.status, error: body.error, dateParam };
         } else {
-          metricDiag[metric] = { status: 200, dataLen: body.data?.length ?? 0, valuesLen: body.data?.[0]?.values?.length ?? 0, dateParam };
+          metricDiag[metric] = { status: 200, dataLen: body.data?.length ?? 0, valuesLen: firstMetric?.values?.length ?? 0, dateParam };
         }
       }
     }
@@ -168,7 +169,7 @@ export async function GET(request: Request) {
       "fecha,page_id",
     );
 
-    // 3. Posts — fetch WITHOUT insights subquery (basic data + engagement from fields)
+    // 3. Posts - fetch WITHOUT insights subquery
     let postsData: FbPost[] = [];
     const postFields = "id,created_time,message,permalink_url,shares,attachments{media_type,media{image{src}}},likes.summary(true),comments.summary(true)";
 
@@ -182,12 +183,13 @@ export async function GET(request: Request) {
         results.posts_edge = edge;
         results.posts_count = postsData.length;
         if (postsData.length > 0) {
+          const first = postsData[0];
           results.posts_sample = {
-            id: postsData[0].id,
-            date: postsData[0].created_time,
-            hasLikes: !!postsData[0].likes?.summary,
-            hasComments: !!postsData[0].comments?.summary,
-            hasShares: !!postsData[0].shares,
+            id: first?.id,
+            date: first?.created_time,
+            hasLikes: !!(first?.likes?.summary),
+            hasComments: !!(first?.comments?.summary),
+            hasShares: !!(first?.shares),
           };
         }
         break;
@@ -214,7 +216,7 @@ export async function GET(request: Request) {
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
 
-    // 4. Demographics — try multiple metric names
+    // 4. Demographics
     const demoTests = [
       { metric: "page_fans_gender_age", dimension: "age_gender" },
       { metric: "page_fans_country", dimension: "country" },
@@ -230,9 +232,10 @@ export async function GET(request: Request) {
         `${GRAPH_API}/${PAGE_ID}/insights?metric=${dm.metric}&period=lifetime&access_token=${pt}`,
       );
       const body = raw.body as { data?: InsightMetric[]; error?: unknown };
-      if (raw.status === 200 && body.data && body.data.length > 0) {
-        const v0 = body.data[0]?.values?.[0];
-        const fecha = ((v0?.end_time as string) ?? todayIso + "T00:00:00+0000").slice(0, 10);
+      const firstData = body.data?.[0];
+      if (raw.status === 200 && firstData) {
+        const v0 = firstData.values?.[0];
+        const fecha = ((v0?.end_time as string | undefined) ?? todayIso + "T00:00:00+0000").slice(0, 10);
         const dict = v0?.value;
         demoDiag[dm.metric] = { status: "OK", keys: dict ? Object.keys(dict as object).length : 0 };
         if (dict && typeof dict === "object") {
