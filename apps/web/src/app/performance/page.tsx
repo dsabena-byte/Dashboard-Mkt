@@ -4,8 +4,7 @@ import { useState, useMemo } from "react";
 import {
   PAUTA_DATA,
   PAUTA_CATEGORIAS,
-  PAUTA_MESES,
-  PAUTA_MES_DEFAULT,
+  PAUTA_MES,
   PAUTA_INSIGHTS,
   MEDIO_COLORS,
   computeFunnel,
@@ -70,13 +69,11 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
 
 export default function PerformancePautaPage() {
   const [cat, setCat] = useState("Todas");
-  const [mes, setMes] = useState(PAUTA_MES_DEFAULT);
   const [tab, setTab] = useState<Tab>("Overview");
 
   const rows = useMemo(
-    () =>
-      PAUTA_DATA.filter((r) => r.mes === mes && (cat === "Todas" || r.categoria === cat)),
-    [cat, mes],
+    () => (cat === "Todas" ? PAUTA_DATA : PAUTA_DATA.filter((r) => r.categoria === cat)),
+    [cat],
   );
   const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
   const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
@@ -108,26 +105,12 @@ export default function PerformancePautaPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Performance Pauta</h2>
           <p className="text-sm text-muted-foreground">
-            Resultados ejecutados (Digital ON + TV + OOH) · Fuente: OMD
+            Resultados ejecutados (Digital ON + TV + OOH) · {PAUTA_MES} · Fuente: OMD
           </p>
         </div>
-        <div className="flex items-end gap-4">
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Mes</label>
-            <select
-              value={mes}
-              onChange={(e) => setMes(e.target.value)}
-              className="mt-1 rounded-md border bg-card px-3 py-1.5 text-sm font-medium"
-            >
-              {PAUTA_MESES.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div className="text-right text-xs text-muted-foreground">
-            Inversión ejecutada
-            <div className="text-xl font-bold text-foreground">{fmtARS(totalInv)}</div>
-          </div>
+        <div className="text-right text-xs text-muted-foreground">
+          Inversión ejecutada
+          <div className="text-xl font-bold text-foreground">{fmtARS(totalInv)}</div>
         </div>
       </header>
 

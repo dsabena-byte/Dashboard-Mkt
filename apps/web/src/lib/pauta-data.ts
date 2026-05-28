@@ -3,7 +3,6 @@
 // Objetivo: Build = Upper Funnel (Awareness), Consider = Mid Funnel (Consideración)
 
 export interface PautaRow {
-  mes: string;
   categoria: string;
   medio: string;
   objetivo: string; // "Build" | "Consider" | "Build & Consider"
@@ -26,10 +25,10 @@ export interface PautaRow {
   ctr: number | null;
 }
 
-type RawRow = Omit<PautaRow, "mes">;
+// mes actual disponible
+export const PAUTA_MES = "Abril 2026";
 
-// ===== ABRIL 2026 — Fuente: Control Digital_Abril.xlsx (OMD) =====
-const ABRIL_2026: RawRow[] = [
+export const PAUTA_DATA: PautaRow[] = [
   // ===== BRAND =====
   // TV Cable (medio offline, período 13-30/4). Impactos=impresiones, alcance=impactos/frecuencia.
   { categoria: "Brand", medio: "TV Cable", objetivo: "Build", tipo_compra: "TRP", alcance_plan: null, alcance: 2817518, frecuencia_plan: null, frecuencia: 6.85, impresiones_plan: null, impresiones: 19300000, clics_plan: null, clics: null, views_plan: null, views: null, inversion_plan: 65253780, inversion: 65253780, costo_plan: null, costo: null, ctr_plan: null, ctr: null },
@@ -88,22 +87,6 @@ const ABRIL_2026: RawRow[] = [
   { categoria: "Promoción", medio: "Google Demand Gen", objetivo: "Consider", tipo_compra: "CPC", alcance_plan: null, alcance: 41265, frecuencia_plan: null, frecuencia: 9.49, impresiones_plan: 2708720, impresiones: 391630, clics_plan: 29692, clics: 41189, views_plan: null, views: null, inversion_plan: 1625232, inversion: 2886337, costo_plan: 60, costo: 70.08, ctr_plan: 1.10, ctr: 10.52 },
   { categoria: "Promoción", medio: "Google Search", objetivo: "Consider", tipo_compra: "CPC", alcance_plan: null, alcance: null, frecuencia_plan: null, frecuencia: null, impresiones_plan: 82920, impresiones: 2587, clics_plan: 829, clics: 144, views_plan: null, views: null, inversion_plan: 464352, inversion: 8010, costo_plan: 560, costo: 55.63, ctr_plan: 1.00, ctr: 5.57 },
 ];
-
-// ===== Registro de meses disponibles =====
-// Para agregar un mes nuevo: definir su array (ej. MAYO_2026) y sumarlo acá.
-const MESES_RAW: Record<string, RawRow[]> = {
-  "Abril 2026": ABRIL_2026,
-  // "Mayo 2026": MAYO_2026,
-};
-
-// Lista de meses para el selector (más reciente primero)
-export const PAUTA_MESES = Object.keys(MESES_RAW);
-export const PAUTA_MES_DEFAULT = PAUTA_MESES[PAUTA_MESES.length - 1]!;
-
-// Data completa con mes incorporado
-export const PAUTA_DATA: PautaRow[] = Object.entries(MESES_RAW).flatMap(([mes, rows]) =>
-  rows.map((r) => ({ ...r, mes })),
-);
 
 export const PAUTA_CATEGORIAS = ["Todas", "Brand", "Lavado", "Refrigeración", "Cocción", "Promoción"];
 
