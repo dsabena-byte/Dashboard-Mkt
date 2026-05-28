@@ -14,40 +14,27 @@ import {
   reachByMedio,
 } from "@/lib/pauta-data";
 import { InvestmentDonut, HBarChart, FulfillmentBars } from "@/components/pauta/pauta-charts";
+import { KpiCard } from "@/components/kpi-card";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 
 function fmtNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(Math.round(n));
+  return formatNumber(Math.round(n));
 }
 function fmtARS(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${Math.round(n)}`;
+  return formatCurrency(n);
 }
-function fmtMoney(n: number): string {
-  return `$${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-}
+const fmtMoney = fmtARS;
 
 const TABS = ["Overview", "Funnel", "Por Medio"] as const;
 type Tab = (typeof TABS)[number];
 
-function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
-  return (
-    <div className="rounded-xl border bg-card p-4" style={accent ? { borderTopWidth: 3, borderTopColor: accent } : undefined}>
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-bold tracking-tight">{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
-    </div>
-  );
+function Kpi({ label, value, sub }: { label: string; value: string; sub?: string; accent?: string }) {
+  return <KpiCard title={label} value={value} hint={sub} />;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-3 mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground/70">
-      <span className="h-4 w-1 rounded bg-amber-500" />
-      {children}
-    </div>
+    <div className="mb-3 mt-6 text-sm font-medium text-muted-foreground">{children}</div>
   );
 }
 
@@ -85,6 +72,7 @@ export default function PerformancePautaPage() {
 
   // Inversión total: cada línea UNA vez (no upper+mid, porque Build&Consider está en ambas)
   const totalInv = useMemo(() => rows.reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
+  const totalInvPlan = useMemo(() => rows.reduce((s, r) => s + (r.inversion_plan ?? 0), 0), [rows]);
   // Alcance máximo de una sola plataforma (proxy honesto; sumar duplica personas)
   const maxReach = useMemo(() => Math.max(0, ...rows.map((r) => r.alcance ?? 0)), [rows]);
   const sumReach = upper.alcance;
@@ -125,8 +113,10 @@ export default function PerformancePautaPage() {
             </select>
           </div>
           <div className="text-right text-xs text-muted-foreground">
-            Inversión ejecutada
-            <div className="text-xl font-bold text-foreground">{fmtARS(totalInv)}</div>
+            Ejecutado / Planificado
+            <div className="text-lg font-semibold text-foreground">
+              {fmtARS(totalInv)} <span className="text-muted-foreground">/ {fmtARS(totalInvPlan)}</span>
+            </div>
           </div>
         </div>
       </header>
@@ -166,8 +156,8 @@ export default function PerformancePautaPage() {
         <div>
           <SectionTitle>KPIs globales de campaña</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Kpi label="Inversión" value={fmtARS(totalInv)} sub="ARS ejecutado" accent="#e63946" />
-            <Kpi label="Alcance (suma medios)" value={fmtNum(sumReach)} sub={`Máx 1 plataforma: ${fmtNum(maxReach)} · incluye solapamiento`} accent="#e63946" />
+            <Kpi label="Inversión ejecutada" value={fmtARS(totalInv)} sub={`Plan: ${fmtARS(totalInvPlan)}`} accent="#e63946" />
+            <Kpi label="Alcance (suma medios)" value={fmtNum(sumReach)} sub={`Máx 1 plataforma: ${fmtNum(maxReach)}`} accent="#e63946" />
             <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} sub="Total período" accent="#e63946" />
             <Kpi label="Clicks" value={fmtNum(mid.clics)} sub="Mid funnel" accent="#e63946" />
             <Kpi label="Video Views" value={fmtNum(totalViews)} sub="CPV" accent="#e63946" />

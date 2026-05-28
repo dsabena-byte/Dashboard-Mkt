@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   Cell,
+  LabelList,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -25,17 +26,39 @@ const tooltipStyle = {
 };
 
 export function InvestmentDonut({ data }: { data: Array<{ name: string; value: number; color: string }> }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const sorted = [...data].sort((a, b) => b.value - a.value);
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={110} paddingAngle={2}>
-          {data.map((d, i) => (
-            <Cell key={i} fill={d.color} />
-          ))}
-        </Pie>
-        <Tooltip formatter={(v: number) => fmtARS(v)} contentStyle={tooltipStyle} />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="flex flex-col items-center gap-4 sm:flex-row">
+      <div className="h-[240px] w-full sm:w-[55%]">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={sorted} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={100} paddingAngle={2}>
+              {sorted.map((d, i) => (
+                <Cell key={i} fill={d.color} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(v: number) => [`${fmtARS(v)} · ${total ? ((v / total) * 100).toFixed(1) : 0}%`, ""]}
+              contentStyle={tooltipStyle}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="w-full space-y-1.5 sm:w-[45%]">
+        {sorted.map((d) => (
+          <div key={d.name} className="flex items-center justify-between gap-2 text-xs">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: d.color }} />
+              <span className="truncate">{d.name}</span>
+            </span>
+            <span className="shrink-0 tabular-nums text-muted-foreground">
+              {fmtARS(d.value)} · <span className="font-semibold text-foreground">{total ? ((d.value / total) * 100).toFixed(1) : 0}%</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -54,7 +77,9 @@ export function HBarChart({
         <XAxis type="number" tickFormatter={(v) => (money ? fmtARS(v) : fmtNum(v))} fontSize={11} stroke="hsl(var(--muted-foreground))" />
         <YAxis type="category" dataKey="name" width={110} fontSize={11} stroke="hsl(var(--muted-foreground))" />
         <Tooltip formatter={(v: number) => (money ? fmtARS(v) : fmtNum(v))} contentStyle={tooltipStyle} />
-        <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]} />
+        <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]}>
+          <LabelList dataKey="value" position="right" fontSize={10} formatter={(v: number) => (money ? fmtARS(v) : fmtNum(v))} />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
@@ -72,6 +97,7 @@ export function FulfillmentBars({ data }: { data: Array<{ name: string; value: n
           {data.map((d, i) => (
             <Cell key={i} fill={colorFor(d.value)} />
           ))}
+          <LabelList dataKey="value" position="top" fontSize={10} formatter={(v: number) => `${v.toFixed(0)}%`} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
@@ -89,6 +115,7 @@ export function EfficiencyBars({ data }: { data: Array<{ name: string; value: nu
           {data.map((d, i) => (
             <Cell key={i} fill={d.color} />
           ))}
+          <LabelList dataKey="value" position="right" fontSize={10} formatter={(v: number) => `${v.toFixed(0)}%`} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
