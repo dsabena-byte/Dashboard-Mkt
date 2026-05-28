@@ -233,7 +233,8 @@ export default function PerformancePautaPage() {
           <SectionTitle>Aporte de cada medio al funnel</SectionTitle>
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-bold">Upper Funnel — Alcance por plataforma</h3>
+              <h3 className="text-sm font-bold">Upper Funnel — Alcance por plataforma</h3>
+              <p className="mb-2 text-[10px] text-muted-foreground">Alcance sumado por plataforma — incluye solapamiento entre medios (la misma persona puede estar en varios).</p>
               <HBarChart data={reachData} color="#2b4dff" />
             </div>
             <div className="rounded-xl border bg-card p-4">
