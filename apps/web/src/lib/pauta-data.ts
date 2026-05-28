@@ -261,3 +261,78 @@ export function computeByMedio(rows: PautaRow[]): MedioAggregate[] {
   }
   return arr.sort((a, b) => b.inversion - a.inversion);
 }
+
+// ===== Ranking de eficiencia (costo real vs plan) =====
+export interface EfficiencyRow {
+  medio: string;
+  objetivo: string;
+  etapa: string;
+  tipo_compra: string;
+  costo_plan: number;
+  costo: number;
+  varPct: number;
+}
+
+export function computeEfficiency(rows: PautaRow[]): EfficiencyRow[] {
+  return rows
+    .filter((r) => r.costo != null && r.costo_plan != null && r.costo_plan > 0)
+    .map((r) => ({
+      medio: r.medio,
+      objetivo: r.objetivo,
+      etapa: r.objetivo === "Build" ? "Upper" : r.objetivo === "Consider" ? "Mid" : "Upper+Mid",
+      tipo_compra: r.tipo_compra,
+      costo_plan: r.costo_plan!,
+      costo: r.costo!,
+      varPct: ((r.costo! - r.costo_plan!) / r.costo_plan!) * 100,
+    }))
+    .sort((a, b) => a.varPct - b.varPct);
+}
+
+// ===== Cumplimiento de volumen (KPI principal real vs plan) =====
+export interface FulfillmentRow {
+  medio: string;
+  etapa: string;
+  kpi: string;
+  plan: number;
+  real: number;
+  pct: number;
+}
+
+export function computeFulfillment(rows: PautaRow[]): FulfillmentRow[] {
+  const out: FulfillmentRow[] = [];
+  for (const r of rows) {
+    // KPI principal: CPM/TRP/OOH → impresiones; CPC → clics; CPV → views
+    let kpi = "Impresiones";
+    let plan = r.impresiones_plan;
+    let real = r.impresiones;
+    if (r.tipo_compra === "CPC") {
+      kpi = "Clics";
+      plan = r.clics_plan;
+      real = r.clics;
+    } else if (r.tipo_compra === "CPV") {
+      kpi = "Views";
+      plan = r.views_plan;
+      real = r.views;
+    }
+    if (plan == null || real == null || plan === 0) continue;
+    out.push({
+      medio: r.medio,
+      etapa: r.objetivo === "Build" ? "Upper" : r.objetivo === "Consider" ? "Mid" : "Upper+Mid",
+      kpi,
+      plan,
+      real,
+      pct: (real / plan) * 100,
+    });
+  }
+  return out.sort((a, b) => b.pct - a.pct);
+}
+
+// ===== Alcance por medio (upper) y acciones por medio (mid) =====
+export function reachByMedio(rows: PautaRow[]): Array<{ medio: string; alcance: number }> {
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    if (r.objetivo === "Consider") continue;
+    map.set(r.medio, (map.get(r.medio) ?? 0) + (r.alcance ?? 0));
+  }
+  return [...map.entries()].map(([medio, alcance]) => ({ medio, alcance })).filter((x) => x.alcance > 0).sort((a, b) => b.alcance - a.alcance);
+}
