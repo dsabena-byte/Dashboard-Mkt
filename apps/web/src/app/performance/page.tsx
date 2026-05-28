@@ -1,54 +1,112 @@
-import { KpiCard } from "@/components/kpi-card";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useState, useMemo } from "react";
+import { KpiCard } from "@/components/kpi-card";
+import {
+  PAUTA_DATA,
+  PAUTA_CATEGORIAS,
+  PAUTA_MES,
+  MEDIO_COLORS,
+  computeFunnel,
+  computeByMedio,
+} from "@/lib/pauta-data";
+
+function fmtNum(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(Math.round(n));
+}
+
+function fmtARS(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${Math.round(n)}`;
+}
+
+function fmtMoney(n: number): string {
+  return `$${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+}
+
+function variance(real: number, plan: number): number {
+  if (!plan) return 0;
+  return ((real - plan) / plan) * 100;
+}
+
+function VarBadge({ v }: { v: number }) {
+  const color = v >= 0 ? "text-emerald-600" : "text-rose-600";
+  const sign = v >= 0 ? "+" : "";
+  return <span className={`tabular-nums ${color}`}>{sign}{v.toFixed(0)}%</span>;
+}
 
 export default function PerformancePautaPage() {
+  const [cat, setCat] = useState("Todas");
+
+  const rows = useMemo(
+    () => (cat === "Todas" ? PAUTA_DATA : PAUTA_DATA.filter((r) => r.categoria === cat)),
+    [cat],
+  );
+
+  const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
+  const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
+  const byMedio = useMemo(() => computeByMedio(rows), [rows]);
+
+  const totalInv = upper.inversion + mid.inversion;
+
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Performance Pauta</h2>
-        <p className="text-sm text-muted-foreground">
-          Resultados reales de campañas digitales por categoría. Funnel: Awareness → Consideración → Conversión.
-        </p>
+      <header className="flex items-end justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Performance Pauta</h2>
+          <p className="text-sm text-muted-foreground">
+            Resultados reales de campañas digitales por categoría · {PAUTA_MES} · Fuente: OMD. Funnel: Awareness → Consideración.
+          </p>
+        </div>
+        <div className="text-right text-xs text-muted-foreground">
+          Inversión total<br />
+          <span className="text-lg font-bold text-foreground">{fmtARS(totalInv)}</span>
+        </div>
       </header>
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-2">
-        {["Todas", "Lavado", "Refrigeración", "Cocción", "Brand", "Promoción"].map((cat) => (
-          <span
-            key={cat}
-            className="cursor-pointer rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary"
+        {PAUTA_CATEGORIAS.map((c) => (
+          <button
+            key={c}
+            onClick={() => setCat(c)}
+            className={`cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              cat === c ? "bg-foreground text-background" : "text-muted-foreground hover:bg-secondary"
+            }`}
           >
-            {cat}
-          </span>
+            {c}
+          </button>
         ))}
       </div>
 
-      {/* UPPER FUNNEL — Awareness */}
+      {/* UPPER FUNNEL */}
       <section>
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Upper Funnel · Awareness
         </h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <KpiCard title="Alcance total" value="—" hint="Usuarios únicos alcanzados" />
-          <KpiCard title="Impresiones" value="—" hint="Total del período" />
-          <KpiCard title="Frecuencia" value="—" hint="Promedio ponderado" />
-          <KpiCard title="CPM promedio" value="—" hint="Costo por mil impresiones" />
-          <KpiCard title="Inversión total" value="—" hint="ARS ejecutado" />
+          <KpiCard title="Alcance total" value={fmtNum(upper.alcance)} hint="Usuarios únicos alcanzados" />
+          <KpiCard title="Impresiones" value={fmtNum(upper.impresiones)} hint="Total del período" />
+          <KpiCard title="Frecuencia" value={upper.frecuenciaPond.toFixed(2)} hint="Promedio ponderado" />
+          <KpiCard title="CPM promedio" value={fmtMoney(upper.cpm)} hint="Costo por mil impresiones" />
+          <KpiCard title="Inversión" value={fmtARS(upper.inversion)} hint="ARS ejecutado" />
         </div>
       </section>
 
-      {/* MID FUNNEL — Consideración */}
+      {/* MID FUNNEL */}
       <section>
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Mid Funnel · Consideración
         </h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <KpiCard title="Clicks totales" value="—" hint="Total del período" />
-          <KpiCard title="Video Views" value="—" hint="Total del período" />
-          <KpiCard title="CTR promedio" value="—" hint="Click-through rate" />
-          <KpiCard title="CPC" value="—" hint="Costo por click" />
-          <KpiCard title="Inversión total" value="—" hint="ARS ejecutado" />
+          <KpiCard title="Clicks totales" value={fmtNum(mid.clics)} hint="Total del período" />
+          <KpiCard title="Video Views" value={fmtNum(upper.views + mid.views)} hint="Total del período (CPV)" />
+          <KpiCard title="CTR promedio" value={`${mid.ctr.toFixed(2)}%`} hint="Click-through rate" />
+          <KpiCard title="CPC" value={fmtMoney(mid.cpc)} hint="Costo por click" />
+          <KpiCard title="Inversión" value={fmtARS(mid.inversion)} hint="ARS ejecutado" />
         </div>
       </section>
 
@@ -57,36 +115,29 @@ export default function PerformancePautaPage() {
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Desglose por plataforma
         </h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { name: "Meta (IG + FB)", color: "#E1306C" },
-            { name: "TikTok", color: "#000000" },
-            { name: "YouTube", color: "#FF0000" },
-            { name: "Programmatic (DV360)", color: "#4285F4" },
-            { name: "Google Search", color: "#34A853" },
-            { name: "Google Demand Gen", color: "#FBBC05" },
-          ].map((p) => (
-            <div key={p.name} className="rounded-lg border bg-card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
-                <span className="text-xs font-semibold">{p.name}</span>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {byMedio.map((p) => (
+            <div key={p.medio} className="rounded-lg border bg-card p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
+                <span className="text-xs font-semibold">{p.medio}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <div className="text-muted-foreground">Inversión</div>
-                  <div className="font-semibold">—</div>
+                  <div className="font-semibold">{fmtARS(p.inversion)}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">CPM / CPC</div>
-                  <div className="font-semibold">—</div>
+                  <div className="text-muted-foreground">CPM</div>
+                  <div className="font-semibold">{fmtMoney(p.cpm)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Impresiones</div>
-                  <div className="font-semibold">—</div>
+                  <div className="font-semibold">{fmtNum(p.impresiones)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Alcance</div>
-                  <div className="font-semibold">—</div>
+                  <div className="font-semibold">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</div>
                 </div>
               </div>
             </div>
@@ -106,33 +157,39 @@ export default function PerformancePautaPage() {
                 <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                   <th className="px-3 py-2">Plataforma</th>
                   <th className="px-3 py-2">Etapa</th>
-                  <th className="px-3 py-2 text-right">Inversión Plan</th>
-                  <th className="px-3 py-2 text-right">Inversión Real</th>
+                  {cat === "Todas" && <th className="px-3 py-2">Categoría</th>}
+                  <th className="px-3 py-2 text-right">Inv. Plan</th>
+                  <th className="px-3 py-2 text-right">Inv. Real</th>
                   <th className="px-3 py-2 text-right">Impresiones</th>
                   <th className="px-3 py-2 text-right">Alcance</th>
-                  <th className="px-3 py-2 text-right">CPM Real</th>
-                  <th className="px-3 py-2 text-right">CPC Real</th>
+                  <th className="px-3 py-2 text-right">Costo Real</th>
                   <th className="px-3 py-2 text-right">CTR</th>
-                  <th className="px-3 py-2 text-right">Var %</th>
+                  <th className="px-3 py-2 text-right">Var Inv%</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">
-                    Sin datos. Conectá la fuente de datos (Google Sheet o PDF parser) para cargar métricas.
-                  </td>
-                </tr>
+                {rows.map((r, i) => (
+                  <tr key={`${r.categoria}-${r.medio}-${r.objetivo}-${i}`} className="border-b last:border-0">
+                    <td className="px-3 py-2 font-medium">
+                      <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[r.medio] ?? "#94a3b8" }} />
+                      {r.medio}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">{r.objetivo === "Build" ? "Upper" : r.objetivo === "Consider" ? "Mid" : "Upper+Mid"}</td>
+                    {cat === "Todas" && <td className="px-3 py-2 text-muted-foreground">{r.categoria}</td>}
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.inversion_plan ? fmtARS(r.inversion_plan) : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.inversion ? fmtARS(r.inversion) : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.impresiones ? fmtNum(r.impresiones) : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.alcance ? fmtNum(r.alcance) : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.costo != null ? `${fmtMoney(r.costo)} ${r.tipo_compra}` : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.ctr != null ? `${r.ctr.toFixed(2)}%` : "—"}</td>
+                    <td className="px-3 py-2 text-right">{r.inversion && r.inversion_plan ? <VarBadge v={variance(r.inversion, r.inversion_plan)} /> : "—"}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       </section>
-
-      {/* Info */}
-      <div className="rounded-lg border bg-amber-50 p-4 text-xs text-amber-900">
-        <strong>Fuente de datos pendiente.</strong> Esta página necesita los reportes de performance de OMD.
-        Opciones: (1) Google Sheet donde OMD cargue los datos, (2) Upload de PDFs procesados por IA.
-      </div>
     </div>
   );
 }
