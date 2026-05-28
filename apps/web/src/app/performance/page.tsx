@@ -202,21 +202,6 @@ export default function PerformancePautaPage() {
             </div>
           </div>
 
-          {insight && (
-            <>
-              <SectionTitle>Highlights de ejecución · {cat}</SectionTitle>
-              <p className="mb-3 text-sm leading-relaxed text-foreground/90">{insight.conclusion}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {insight.positivos.map((p, i) => (
-                  <Insight key={`p${i}`} type="good" title="✓ Positivo" text={p} />
-                ))}
-                {insight.alertas.map((a, i) => (
-                  <Insight key={`a${i}`} type="warn" title="⚠ Alerta" text={a} />
-                ))}
-              </div>
-            </>
-          )}
-
           <SectionTitle>Embudo de conversión del período</SectionTitle>
           <div className="rounded-xl border bg-card p-6">
             <div className="flex flex-col items-center gap-1.5">
@@ -248,6 +233,21 @@ export default function PerformancePautaPage() {
               />
             </div>
           </div>
+
+          {insight && (
+            <>
+              <SectionTitle>Highlights de ejecución · {cat}</SectionTitle>
+              <p className="mb-3 text-sm leading-relaxed text-foreground/90">{insight.conclusion}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {insight.positivos.map((p, i) => (
+                  <Insight key={`p${i}`} type="good" title="✓ Positivo" text={p} />
+                ))}
+                {insight.alertas.map((a, i) => (
+                  <Insight key={`a${i}`} type="warn" title="⚠ Alerta" text={a} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
