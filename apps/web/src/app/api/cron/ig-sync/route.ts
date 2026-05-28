@@ -46,6 +46,7 @@ interface IgMedia {
   caption?: string;
   permalink?: string;
   media_type?: string;
+  media_product_type?: string;
   media_url?: string;
   thumbnail_url?: string;
   like_count?: number;
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
 
     let mediaData: IgMedia[] = [];
     let nextUrl: string | null =
-      `${GRAPH_API}/${igId}/media?fields=id,timestamp,caption,permalink,media_type,media_url,thumbnail_url,like_count,comments_count&limit=50&access_token=${pt}`;
+      `${GRAPH_API}/${igId}/media?fields=id,timestamp,caption,permalink,media_type,media_product_type,media_url,thumbnail_url,like_count,comments_count&limit=50&access_token=${pt}`;
 
     while (nextUrl && mediaData.length < 500) {
       const raw = await graphGetRaw(nextUrl);
@@ -161,25 +162,24 @@ export async function GET(request: Request) {
     results.media_count = mediaData.length;
 
     // 5. Fetch insights per media (v22.0 supported metrics)
-    const MEDIA_INSIGHT_METRICS_IMAGE = "reach,saved,shares,total_interactions";
-    const MEDIA_INSIGHT_METRICS_VIDEO = "reach,saved,shares,total_interactions";
-    const MEDIA_INSIGHT_METRICS_REEL = "reach,saved,shares,total_interactions,ig_reels_video_view_total_time";
+    const MEDIA_INSIGHT_METRICS_DEFAULT = "reach,saved,shares,total_interactions";
+    const MEDIA_INSIGHT_METRICS_REEL = "reach,saved,shares,total_interactions,views";
 
     const postRows: Array<Record<string, unknown>> = [];
     let insightsOk = 0;
     let insightsFailed = 0;
+    let reelCount = 0;
 
     for (const m of mediaData) {
-      const mediaType = m.media_type ?? "IMAGE";
-      let metricsStr = MEDIA_INSIGHT_METRICS_IMAGE;
-      if (mediaType === "VIDEO") metricsStr = MEDIA_INSIGHT_METRICS_VIDEO;
-      if (mediaType === "REEL" || mediaType === "REELS") metricsStr = MEDIA_INSIGHT_METRICS_REEL;
+      const isReel = m.media_product_type === "REELS" || m.media_type === "REEL" || m.media_type === "REELS";
+      if (isReel) reelCount++;
+      const metricsStr = isReel ? MEDIA_INSIGHT_METRICS_REEL : MEDIA_INSIGHT_METRICS_DEFAULT;
 
       let reach = 0;
       let saved = 0;
       let shares = 0;
       let totalInteractions = 0;
-      let reelViewTime = 0;
+      let views = 0;
 
       const insRaw = await graphGetRaw(
         `${GRAPH_API}/${m.id}/insights?metric=${metricsStr}&access_token=${pt}`,
@@ -189,10 +189,10 @@ export async function GET(request: Request) {
         for (const metric of insData.data ?? []) {
           const val = metric.values?.[0]?.value ?? 0;
           if (metric.name === "reach") reach = val;
+          if (metric.name === "views") views = val;
           if (metric.name === "saved") saved = val;
           if (metric.name === "shares") shares = val;
           if (metric.name === "total_interactions") totalInteractions = val;
-          if (metric.name === "ig_reels_video_view_total_time") reelViewTime = val;
         }
         insightsOk++;
       } else {
@@ -209,19 +209,20 @@ export async function GET(request: Request) {
         fecha_post: m.timestamp ?? new Date().toISOString(),
         permalink: m.permalink ?? null,
         message: m.caption ?? null,
-        media_type: mediaType,
+        media_type: m.media_product_type ?? m.media_type ?? "IMAGE",
         thumbnail_url: m.thumbnail_url ?? m.media_url ?? null,
         impressions: 0,
         reach,
         engagement: totalInteractions > 0 ? totalInteractions : (m.like_count ?? 0) + (m.comments_count ?? 0) + shares + saved,
         reactions: m.like_count ?? 0,
-        video_views: Math.round(reelViewTime / 1000),
+        video_views: views,
         clicks: saved,
       });
     }
 
     results.insights_ok = insightsOk;
     results.insights_failed = insightsFailed;
+    results.reel_count = reelCount;
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
 

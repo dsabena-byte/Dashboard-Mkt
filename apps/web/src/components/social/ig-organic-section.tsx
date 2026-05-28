@@ -154,9 +154,9 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
           </div>
           <div className="rounded-lg border bg-background p-4">
             <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Top Pa&iacute;ses
+              Top Provincias
             </h4>
-            <HorizontalBars rows={data.demoCountry} emptyText="Sin datos." accent="bg-blue-500" />
+            <HorizontalBars rows={data.demoProvince} emptyText="Sin datos." accent="bg-blue-500" />
           </div>
           <div className="rounded-lg border bg-background p-4">
             <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">

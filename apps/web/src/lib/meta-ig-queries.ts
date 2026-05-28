@@ -42,7 +42,7 @@ export interface IgOrganicSummary {
   monthlyData: IgMonthlyDatum[];
   demoAge: IgDemoBreakdown[];
   demoGender: IgDemoBreakdown[];
-  demoCountry: IgDemoBreakdown[];
+  demoProvince: IgDemoBreakdown[];
   demoCity: IgDemoBreakdown[];
   rangeLabel: string;
 }
@@ -56,6 +56,19 @@ function toBreakdown(rows: Array<{ category: string; value: number }>): IgDemoBr
       pct: total > 0 ? (r.value / total) * 100 : 0,
     }))
     .sort((a, b) => b.value - a.value);
+}
+
+// Extrae la provincia del string de ciudad de Meta.
+// Ej: "Rosario, Santa Fe" → "Santa Fe", "Córdoba, Córdoba" → "Córdoba",
+// "San Nicolás de los Arroyos, Buenos Aires, Buenos Aires" → "Buenos Aires"
+function aggregateProvinces(cityRows: Array<{ category: string; value: number }>): Array<{ category: string; value: number }> {
+  const map = new Map<string, number>();
+  for (const r of cityRows) {
+    const parts = r.category.split(",").map((s) => s.trim());
+    const province = parts.length > 1 ? parts[1]! : parts[0]!;
+    map.set(province, (map.get(province) ?? 0) + r.value);
+  }
+  return [...map.entries()].map(([category, value]) => ({ category, value }));
 }
 
 export async function getIgOrganicSummary(range: { from: string; to: string }): Promise<IgOrganicSummary> {
@@ -87,7 +100,7 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
     totalReach: 0, totalEngagement: 0, totalReactions: 0,
     totalComments: 0, totalSaves: 0, totalVideoViews: 0,
     profileViews: 0, postCount: 0, topPosts: [], monthlyData: [],
-    demoAge: [], demoGender: [], demoCountry: [], demoCity: [],
+    demoAge: [], demoGender: [], demoProvince: [], demoCity: [],
     rangeLabel,
   };
 
@@ -151,7 +164,7 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
     monthlyData,
     demoAge: toBreakdown((demoByDim.get("age_gender") ?? []).filter((r) => /^\d/.test(r.category))),
     demoGender: toBreakdown((demoByDim.get("age_gender") ?? []).filter((r) => /^[A-Z]/.test(r.category))),
-    demoCountry: toBreakdown(demoByDim.get("country") ?? []).slice(0, 10),
+    demoProvince: toBreakdown(aggregateProvinces(demoByDim.get("city") ?? [])).slice(0, 12),
     demoCity: toBreakdown(demoByDim.get("city") ?? []).slice(0, 15),
     rangeLabel,
   };
