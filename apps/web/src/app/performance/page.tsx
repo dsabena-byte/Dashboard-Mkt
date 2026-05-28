@@ -72,6 +72,9 @@ export default function PerformancePautaPage() {
   // Inversión total: cada línea UNA vez (no upper+mid, porque Build&Consider está en ambas)
   const totalInv = useMemo(() => rows.reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
   const totalInvPlan = useMemo(() => rows.reduce((s, r) => s + (r.inversion_plan ?? 0), 0), [rows]);
+  // Inversión por etapa SIN doble conteo: video (Build & Consider) se asigna a Upper.
+  const upperInv = useMemo(() => rows.filter((r) => r.objetivo !== "Consider").reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
+  const midInv = totalInv - upperInv;
   // Alcance máximo de una sola plataforma (proxy honesto; sumar duplica personas)
   const maxReach = useMemo(() => Math.max(0, ...rows.map((r) => r.alcance ?? 0)), [rows]);
   const sumReach = upper.alcance;
@@ -173,7 +176,7 @@ export default function PerformancePautaPage() {
                 <Kpi label="Frecuencia" value={upper.frecuenciaPond.toFixed(2)} accent="#2b4dff" />
                 <Kpi label="CPM prom." value={fmtMoney(upper.cpm)} accent="#2b4dff" />
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">Inversión Upper: <strong className="text-foreground">{fmtARS(upper.inversion)}</strong></p>
+              <p className="mt-3 text-xs text-muted-foreground">Inversión Upper: <strong className="text-foreground">{fmtARS(upperInv)}</strong> <span className="text-muted-foreground/70">(incluye video)</span></p>
             </div>
             <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#c9a227" }}>
               <h3 className="mb-3 text-sm font-bold">🔥 Mid Funnel — Consideración</h3>
@@ -183,7 +186,7 @@ export default function PerformancePautaPage() {
                 <Kpi label="CTR" value={`${mid.ctr.toFixed(2)}%`} accent="#c9a227" />
                 <Kpi label="CPC" value={fmtMoney(mid.cpc)} accent="#c9a227" />
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">Inversión Mid: <strong className="text-foreground">{fmtARS(mid.inversion)}</strong></p>
+              <p className="mt-3 text-xs text-muted-foreground">Inversión Mid: <strong className="text-foreground">{fmtARS(midInv)}</strong> <span className="text-muted-foreground/70">(solo CPC)</span></p>
             </div>
           </div>
 
