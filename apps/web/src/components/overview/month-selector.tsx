@@ -10,7 +10,8 @@ export function MonthSelector({ months, current }: { months: string[]; current: 
   const onChange = (mes: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("mes", mes);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    const url = `${pathname}?${params.toString()}`;
+    (router.replace as unknown as (href: string, opts?: { scroll?: boolean }) => void)(url, { scroll: false });
   };
 
   return (
