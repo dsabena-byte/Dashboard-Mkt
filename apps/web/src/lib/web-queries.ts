@@ -481,15 +481,37 @@ export async function getWebDemographicsSummary(
 ): Promise<DemographicsSummary & { rangeLabel: string }> {
   const supabase = getServerSupabase();
 
-  // Últimos 7 días terminando ayer (UTC). Hardcodeado porque el workflow
-  // solo mantiene ~7 días de data demográfica.
-  const today = new Date();
-  const to = new Date(today);
-  to.setUTCDate(to.getUTCDate() - 1);
-  const from = new Date(to);
-  from.setUTCDate(from.getUTCDate() - 6);
-  const toIso = to.toISOString().slice(0, 10);
-  const fromIso = from.toISOString().slice(0, 10);
+  // Ventana de 7 días terminando en la fecha MÁS RECIENTE disponible en la tabla
+  // (no en "ayer"), para mostrar data aunque el sync esté atrasado.
+  const latestRes = await supabase
+    .from("ga4_demo_age_gender")
+    .select("fecha")
+    .order("fecha", { ascending: false })
+    .limit(1)
+    .returns<{ fecha: string }[]>();
+
+  if (latestRes.error && /does not exist|relation .* does not exist/i.test(latestRes.error.message)) {
+    return { byDevice: [], byRegion: [], rangeLabel: "sin datos" };
+  }
+
+  const latestFecha = latestRes.data?.[0]?.fecha;
+  let toIso: string;
+  let fromIso: string;
+  if (latestFecha) {
+    const to = new Date(`${latestFecha}T00:00:00Z`);
+    const from = new Date(to);
+    from.setUTCDate(from.getUTCDate() - 6);
+    toIso = latestFecha;
+    fromIso = from.toISOString().slice(0, 10);
+  } else {
+    const today = new Date();
+    const to = new Date(today);
+    to.setUTCDate(to.getUTCDate() - 1);
+    const from = new Date(to);
+    from.setUTCDate(from.getUTCDate() - 6);
+    toIso = to.toISOString().slice(0, 10);
+    fromIso = from.toISOString().slice(0, 10);
+  }
 
   const [deviceRes, geoRes] = await Promise.all([
     supabase
