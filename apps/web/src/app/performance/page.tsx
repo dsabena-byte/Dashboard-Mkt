@@ -10,11 +10,10 @@ import {
   MEDIO_COLORS,
   computeFunnel,
   computeByMedio,
-  computeEfficiency,
   computeFulfillment,
   reachByMedio,
 } from "@/lib/pauta-data";
-import { InvestmentDonut, HBarChart, FulfillmentBars, EfficiencyBars } from "@/components/pauta/pauta-charts";
+import { InvestmentDonut, HBarChart, FulfillmentBars } from "@/components/pauta/pauta-charts";
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -30,7 +29,7 @@ function fmtMoney(n: number): string {
   return `$${n.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
-const TABS = ["Overview", "Funnel", "Por Medio", "Eficiencia"] as const;
+const TABS = ["Overview", "Funnel", "Por Medio"] as const;
 type Tab = (typeof TABS)[number];
 
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
@@ -81,23 +80,24 @@ export default function PerformancePautaPage() {
   const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
   const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
-  const efficiency = useMemo(() => computeEfficiency(rows), [rows]);
   const fulfillment = useMemo(() => computeFulfillment(rows), [rows]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
-  const totalInv = upper.inversion + mid.inversion;
-  const totalViews = upper.views + mid.views;
+  // Inversión total: cada línea UNA vez (no upper+mid, porque Build&Consider está en ambas)
+  const totalInv = useMemo(() => rows.reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
+  // Alcance máximo de una sola plataforma (proxy honesto; sumar duplica personas)
+  const maxReach = useMemo(() => Math.max(0, ...rows.map((r) => r.alcance ?? 0)), [rows]);
+  const sumReach = upper.alcance;
+  const totalViews = useMemo(() => rows.reduce((s, r) => s + (r.views ?? 0), 0), [rows]);
   const insight = cat !== "Todas" ? PAUTA_INSIGHTS[cat] : null;
 
   const donutData = byMedio.map((m) => ({ name: m.medio, value: m.inversion, color: MEDIO_COLORS[m.medio] ?? "#94a3b8" }));
   const reachData = reach.map((r) => ({ name: r.medio, value: r.alcance }));
   const fulfillData = fulfillment.slice(0, 10).map((f) => ({ name: `${f.medio} ${f.kpi}`, value: f.pct }));
-  const effData = efficiency.map((e) => ({ name: `${e.medio} ${e.tipo_compra}`, value: e.varPct, color: MEDIO_COLORS[e.medio] ?? "#94a3b8" }));
-
   // Funnel stages (proporcionales para el ancho visual)
   const funnelStages = [
     { label: "Impresiones", value: upper.impresiones, w: 100, bg: "#0a1849" },
-    { label: "Alcance único", value: upper.alcance, w: 82, bg: "#142b6f" },
+    { label: "Alcance (suma medios)", value: sumReach, w: 82, bg: "#142b6f" },
     { label: "Video Views", value: totalViews, w: 64, bg: "#1e3a8a" },
     { label: "Clicks", value: mid.clics, w: 46, bg: "#2b4dff" },
   ];
@@ -167,7 +167,7 @@ export default function PerformancePautaPage() {
           <SectionTitle>KPIs globales de campaña</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Kpi label="Inversión" value={fmtARS(totalInv)} sub="ARS ejecutado" accent="#e63946" />
-            <Kpi label="Alcance" value={fmtNum(upper.alcance)} sub="Personas únicas (Upper)" accent="#e63946" />
+            <Kpi label="Alcance (suma medios)" value={fmtNum(sumReach)} sub={`Máx 1 plataforma: ${fmtNum(maxReach)} · incluye solapamiento`} accent="#e63946" />
             <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} sub="Total período" accent="#e63946" />
             <Kpi label="Clicks" value={fmtNum(mid.clics)} sub="Mid funnel" accent="#e63946" />
             <Kpi label="Video Views" value={fmtNum(totalViews)} sub="CPV" accent="#e63946" />
@@ -179,7 +179,7 @@ export default function PerformancePautaPage() {
             <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#2b4dff" }}>
               <h3 className="mb-3 text-sm font-bold">🎯 Upper Funnel — Awareness</h3>
               <div className="grid grid-cols-2 gap-2">
-                <Kpi label="Alcance" value={fmtNum(upper.alcance)} accent="#2b4dff" />
+                <Kpi label="Alcance (suma)" value={fmtNum(sumReach)} accent="#2b4dff" />
                 <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} accent="#2b4dff" />
                 <Kpi label="Frecuencia" value={upper.frecuenciaPond.toFixed(2)} accent="#2b4dff" />
                 <Kpi label="CPM prom." value={fmtMoney(upper.cpm)} accent="#2b4dff" />
@@ -328,90 +328,6 @@ export default function PerformancePautaPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* ===== EFICIENCIA ===== */}
-      {tab === "Eficiencia" && (
-        <div>
-          <SectionTitle>Eficiencia por medio — Variación de costo vs plan</SectionTitle>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="mb-3 text-xs text-muted-foreground">Valores negativos = mayor eficiencia (costo más bajo que el planificado).</p>
-            <EfficiencyBars data={effData} />
-          </div>
-
-          <SectionTitle>Ranking de eficiencia</SectionTitle>
-          <div className="rounded-xl border bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="border-b bg-muted/40">
-                  <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                    <th className="px-3 py-2">#</th>
-                    <th className="px-3 py-2">Medio</th>
-                    <th className="px-3 py-2">Etapa</th>
-                    <th className="px-3 py-2">KPI</th>
-                    <th className="px-3 py-2 text-right">Plan</th>
-                    <th className="px-3 py-2 text-right">Real</th>
-                    <th className="px-3 py-2 text-right">Eficiencia</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {efficiency.map((e, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      <td className="px-3 py-2 font-bold">{i + 1}</td>
-                      <td className="px-3 py-2 font-medium">
-                        <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[e.medio] ?? "#94a3b8" }} />
-                        {e.medio}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">{e.etapa}</td>
-                      <td className="px-3 py-2">{e.tipo_compra}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtMoney(e.costo_plan)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(e.costo)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <span className={`tabular-nums font-semibold ${e.varPct <= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                          {e.varPct > 0 ? "+" : ""}{e.varPct.toFixed(0)}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <SectionTitle>Cumplimiento de volumen (KPI principal)</SectionTitle>
-          <div className="rounded-xl border bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="border-b bg-muted/40">
-                  <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                    <th className="px-3 py-2">Medio</th>
-                    <th className="px-3 py-2">Etapa</th>
-                    <th className="px-3 py-2">KPI</th>
-                    <th className="px-3 py-2 text-right">Plan</th>
-                    <th className="px-3 py-2 text-right">Real</th>
-                    <th className="px-3 py-2 text-right">Var %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fulfillment.map((f, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      <td className="px-3 py-2 font-medium">{f.medio}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{f.etapa}</td>
-                      <td className="px-3 py-2">{f.kpi}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(f.plan)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(f.real)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <span className={`tabular-nums font-semibold ${f.pct >= 100 ? "text-emerald-600" : "text-amber-600"}`}>
-                          {f.pct.toFixed(0)}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       )}
