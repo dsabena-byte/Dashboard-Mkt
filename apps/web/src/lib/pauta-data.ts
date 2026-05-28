@@ -201,6 +201,22 @@ export const MEDIO_COLORS: Record<string, string> = {
   "Google Search": "#FBBC05",
 };
 
+export const CATEGORIA_COLORS: Record<string, string> = {
+  Brand: "#0a1849",
+  Lavado: "#2b4dff",
+  Refrigeración: "#06b6d4",
+  Cocción: "#f59e0b",
+  Promoción: "#e63946",
+};
+
+export function investmentByCategoria(rows: PautaRow[]): Array<{ name: string; value: number; color: string }> {
+  const map = new Map<string, number>();
+  for (const r of rows) map.set(r.categoria, (map.get(r.categoria) ?? 0) + (r.inversion ?? 0));
+  return [...map.entries()]
+    .map(([name, value]) => ({ name, value, color: CATEGORIA_COLORS[name] ?? "#94a3b8" }))
+    .sort((a, b) => b.value - a.value);
+}
+
 export interface FunnelTotals {
   alcance: number;
   impresiones: number;

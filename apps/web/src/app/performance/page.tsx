@@ -12,6 +12,7 @@ import {
   computeByMedio,
   computeFulfillment,
   reachByMedio,
+  investmentByCategoria,
 } from "@/lib/pauta-data";
 import { InvestmentDonut, HBarChart, FulfillmentBars } from "@/components/pauta/pauta-charts";
 import { KpiCard } from "@/components/kpi-card";
@@ -80,6 +81,7 @@ export default function PerformancePautaPage() {
   const insight = cat !== "Todas" ? PAUTA_INSIGHTS[cat] : null;
 
   const donutData = byMedio.map((m) => ({ name: m.medio, value: m.inversion, color: MEDIO_COLORS[m.medio] ?? "#94a3b8" }));
+  const catDonutData = useMemo(() => investmentByCategoria(rows), [rows]);
   const reachData = reach.map((r) => ({ name: r.medio, value: r.alcance }));
   const fulfillData = fulfillment.slice(0, 10).map((f) => ({ name: `${f.medio} ${f.kpi}`, value: f.pct }));
   // Funnel stages (proporcionales para el ancho visual)
@@ -195,8 +197,8 @@ export default function PerformancePautaPage() {
               <InvestmentDonut data={donutData} />
             </div>
             <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-bold">Inversión por medio (ranking)</h3>
-              <HBarChart data={donutData.map((d) => ({ name: d.name, value: d.value }))} money color="#142b6f" />
+              <h3 className="mb-2 text-sm font-bold">Inversión por categoría</h3>
+              <InvestmentDonut data={catDonutData} />
             </div>
           </div>
 
