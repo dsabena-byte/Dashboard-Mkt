@@ -6,6 +6,7 @@ import {
   PAUTA_DATA,
   PAUTA_CATEGORIAS,
   PAUTA_MES,
+  PAUTA_INSIGHTS,
   MEDIO_COLORS,
   computeFunnel,
   computeByMedio,
@@ -51,6 +52,7 @@ export default function PerformancePautaPage() {
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
 
   const totalInv = upper.inversion + mid.inversion;
+  const insight = cat !== "Todas" ? PAUTA_INSIGHTS[cat] : null;
 
   return (
     <div className="space-y-6">
@@ -81,6 +83,34 @@ export default function PerformancePautaPage() {
           </button>
         ))}
       </div>
+
+      {/* Aprendizajes OMD */}
+      {insight && (
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Aprendizajes OMD · {cat}
+          </h3>
+          <p className="text-sm leading-relaxed text-foreground/90">{insight.conclusion}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600">✓ Aspectos positivos</div>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                {insight.positivos.map((p, i) => (
+                  <li key={i} className="flex gap-1.5"><span className="text-emerald-500">·</span>{p}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">⚠ Alertas a monitorear</div>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                {insight.alertas.map((a, i) => (
+                  <li key={i} className="flex gap-1.5"><span className="text-amber-500">·</span>{a}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* UPPER FUNNEL */}
       <section>

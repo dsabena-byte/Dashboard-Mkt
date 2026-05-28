@@ -86,6 +86,86 @@ export const PAUTA_DATA: PautaRow[] = [
 
 export const PAUTA_CATEGORIAS = ["Todas", "Brand", "Lavado", "Refrigeración", "Cocción", "Promoción"];
 
+// Aprendizajes cualitativos por categoría (Fuente: reportes OMD Abril 2026)
+export interface PautaInsight {
+  conclusion: string;
+  positivos: string[];
+  alertas: string[];
+}
+
+export const PAUTA_INSIGHTS: Record<string, PautaInsight> = {
+  Lavado: {
+    conclusion:
+      "La eficiencia del CPM ($242 vs $290 plan, -16,5%) y del CPC ($16,67 vs $90 plan, -81,5%) fue el driver central: entregó 120% de las impresiones planificadas y 4,5x el volumen de clics gastando el presupuesto exacto. El modelo CPM (awareness) + CPC (tráfico) funcionó como funnel real complementario.",
+    positivos: [
+      "CTR de Meta Mid 4,46% vs 0,80% plan (+458%) — creatividad altamente persuasiva.",
+      "Mercado Ads: CPM -67% ($1.964 vs $6.000), CTR 1,29% y 19.892 clics (+2.552%).",
+      "Google Demand Gen: CPC -80% ($12 vs $60), 195K clics (+397%), CTR 5,08%.",
+    ],
+    alertas: [
+      "CPM de Meta con tendencia alcista: +52% entre el 6/4 ($189) y 30/4 ($287).",
+      "TikTok frecuencia 6,44 vs 4,0 plan (+61%) y retención baja: 93,9% abandona antes del 25% del video. Mejorar hook inicial.",
+      "74% de los clics de Meta Mid vino de usuarios 45+. Segmento 25-44 subrepresentado.",
+    ],
+  },
+  Brand: {
+    conclusion:
+      "La campaña Brand de Meta superó el plan en métricas clave sin exceder presupuesto. El CPM -14,4% ($248 vs $290) se tradujo en +720K impresiones adicionales y un alcance 679% superior al plan (2,58M vs 331K planificadas) — Meta optimizó hacia alcance masivo.",
+    positivos: [
+      "Alcance 679% sobre el plan con frecuencia controlada (2,20x).",
+      "Segmento 25-34 es el core: 43,3% de impresiones y 44,3% del alcance.",
+      "TV Cable aportó 19,3M de impactos con frecuencia 6,85 (TRP's 195).",
+    ],
+    alertas: [
+      "CPM con tendencia alcista: +26,5% durante el flight ($223 → $282).",
+      "Subentrega en público femenino: solo 34,2% de impresiones (frec 1,92x).",
+      "El planning de frecuencia 15x no aplica al inventario argentino: Meta entrega ~2,2x naturalmente.",
+    ],
+  },
+  Cocción: {
+    conclusion:
+      "Ejecución muy eficiente: CPM -18% ($237 vs $290) entregó +22% de impresiones y +11% de alcance sobre lo proyectado. El CPC de Meta Mid -82% ($16 vs $90) generó 54.652 clics (+560%) con CTR 5,37%.",
+    positivos: [
+      "Google Demand Gen: CPC -87% ($8 vs $60), 127.809 clics (+748%), CTR 6,51%.",
+      "Segmento 25-34 concentra el mayor alcance (988K).",
+      "Mercado Ads CTR 1,55% con CPM -60%.",
+    ],
+    alertas: [
+      "CPM de Meta con tendencia ascendente en la segunda quincena ($191 → $278).",
+      "Google Search consumió solo 25% del presupuesto (baja de búsquedas de categoría).",
+      "YouTube Build & Consider subejecutado (53% del presupuesto).",
+    ],
+  },
+  Refrigeración: {
+    conclusion:
+      "Ejecución altamente eficiente: presupuesto al 100%, impresiones +19,5% sobre el plan y alcance prácticamente en objetivo (+0,6%). CPM -16,3% ($242 vs $290) fue el factor clave. CPC de Meta Mid -60% ($36 vs $90).",
+    positivos: [
+      "Google Demand Gen: CPC -84% ($9,72), 160.901 clics (+528%), CTR 6,21%.",
+      "Segmento 25-34 dominante: 1,51M usuarios únicos (39,6% del alcance).",
+      "Mercado Ads: 17.679 clics (+3.118%) con CPM -63%.",
+    ],
+    alertas: [
+      "Pico de CPM el 25/4 ($327, +35% sobre promedio) por mayor competencia.",
+      "Tendencia alcista del CPM hacia fin de mes ($196 → $287, +46%).",
+      "YouTube Build & Consider subejecutado (53% del presupuesto).",
+    ],
+  },
+  Promoción: {
+    conclusion:
+      "Campaña Dream Week (6-12 abril). Meta CPM -21,3% ($228 vs $290) generó +27% de impresiones y +16,7% de alcance. CTR de Meta Mid 3,81% vs 0,80% plan (+376%). Inversión ejecutada al 70% del plan (flight más corto).",
+    positivos: [
+      "Alcance de Meta Build 4,36M con CPM eficiente ($228).",
+      "TikTok alcanzó 3,1M de personas con CPM -35%.",
+      "YouTube CPV -43,6% ($1,41 vs $2,50) con VTR 94,99%.",
+    ],
+    alertas: [
+      "Google Demand Gen sobreejecutado (178%) con CPC +17% ($70 vs $60) — único medio por encima del costo plan.",
+      "Google Search consumió solo 2% del presupuesto (144 clics).",
+      "Frecuencias bajas (1,3-1,8x) por flight corto de 1 semana.",
+    ],
+  },
+};
+
 // Colores por plataforma
 export const MEDIO_COLORS: Record<string, string> = {
   Meta: "#0866FF",
