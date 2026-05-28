@@ -10,11 +10,10 @@ import {
   MEDIO_COLORS,
   computeFunnel,
   computeByMedio,
-  computeFulfillment,
   reachByMedio,
   investmentByCategoria,
 } from "@/lib/pauta-data";
-import { InvestmentDonut, HBarChart, FulfillmentBars } from "@/components/pauta/pauta-charts";
+import { InvestmentDonut, HBarChart } from "@/components/pauta/pauta-charts";
 import { KpiCard } from "@/components/kpi-card";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -26,7 +25,7 @@ function fmtARS(n: number): string {
 }
 const fmtMoney = fmtARS;
 
-const TABS = ["Overview", "Funnel", "Por Medio"] as const;
+const TABS = ["Overview", "Por Medio"] as const;
 type Tab = (typeof TABS)[number];
 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string; accent?: string }) {
@@ -68,7 +67,6 @@ export default function PerformancePautaPage() {
   const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
   const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
-  const fulfillment = useMemo(() => computeFulfillment(rows), [rows]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión total: cada línea UNA vez (no upper+mid, porque Build&Consider está en ambas)
@@ -83,7 +81,6 @@ export default function PerformancePautaPage() {
   const donutData = byMedio.map((m) => ({ name: m.medio, value: m.inversion, color: MEDIO_COLORS[m.medio] ?? "#94a3b8" }));
   const catDonutData = useMemo(() => investmentByCategoria(rows), [rows]);
   const reachData = reach.map((r) => ({ name: r.medio, value: r.alcance }));
-  const fulfillData = fulfillment.slice(0, 10).map((f) => ({ name: `${f.medio} ${f.kpi}`, value: f.pct }));
   // Funnel stages (proporcionales para el ancho visual)
   const funnelStages = [
     { label: "Impresiones", value: upper.impresiones, w: 100, bg: "#0a1849" },
@@ -159,7 +156,7 @@ export default function PerformancePautaPage() {
           <SectionTitle>KPIs globales de campaña</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Kpi label="Inversión ejecutada" value={fmtARS(totalInv)} sub={`Plan: ${fmtARS(totalInvPlan)}`} accent="#e63946" />
-            <Kpi label="Alcance (suma medios)" value={fmtNum(sumReach)} sub={`Máx 1 plataforma: ${fmtNum(maxReach)}`} accent="#e63946" />
+            <Kpi label="Alcance" value={fmtNum(sumReach)} sub={`Suma medios · máx 1: ${fmtNum(maxReach)}`} accent="#e63946" />
             <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} sub="Total período" accent="#e63946" />
             <Kpi label="Clicks" value={fmtNum(mid.clics)} sub="Mid funnel" accent="#e63946" />
             <Kpi label="Video Views" value={fmtNum(totalViews)} sub="CPV" accent="#e63946" />
@@ -216,12 +213,7 @@ export default function PerformancePautaPage() {
               </div>
             </>
           )}
-        </div>
-      )}
 
-      {/* ===== FUNNEL ===== */}
-      {tab === "Funnel" && (
-        <div>
           <SectionTitle>Embudo de conversión del período</SectionTitle>
           <div className="rounded-xl border bg-card p-6">
             <div className="flex flex-col items-center gap-1.5">
@@ -236,13 +228,6 @@ export default function PerformancePautaPage() {
                 </div>
               ))}
             </div>
-          </div>
-
-          <SectionTitle>Cumplimiento de objetivos por medio</SectionTitle>
-          <div className="rounded-xl border bg-card p-4">
-            <h3 className="mb-1 text-sm font-bold">Real vs Planificado — % de cumplimiento del KPI principal</h3>
-            <p className="mb-3 text-xs text-muted-foreground">100% = cumplimiento exacto. Barras &gt;100% indican sobredesempeño manteniendo el budget.</p>
-            <FulfillmentBars data={fulfillData} />
           </div>
 
           <SectionTitle>Aporte de cada medio al funnel</SectionTitle>
