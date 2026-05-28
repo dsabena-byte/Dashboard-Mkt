@@ -30,6 +30,8 @@ export const PAUTA_MES = "Abril 2026";
 
 export const PAUTA_DATA: PautaRow[] = [
   // ===== BRAND =====
+  // TV Cable (medio offline, período 13-30/4). Impactos=impresiones, alcance=impactos/frecuencia.
+  { categoria: "Brand", medio: "TV Cable", objetivo: "Build", tipo_compra: "TRP", alcance_plan: null, alcance: 2817518, frecuencia_plan: null, frecuencia: 6.85, impresiones_plan: null, impresiones: 19300000, clics_plan: null, clics: null, views_plan: null, views: null, inversion_plan: 65253780, inversion: 65253780, costo_plan: null, costo: null, ctr_plan: null, ctr: null },
   { categoria: "Brand", medio: "Meta", objetivo: "Build", tipo_compra: "CPM", alcance_plan: 331617, alcance: 2584074, frecuencia_plan: 15, frecuencia: 2.20, impresiones_plan: 4974262, impresiones: 5695747, clics_plan: 7461, clics: 2243, views_plan: null, views: null, inversion_plan: 1442536, inversion: 1414405.57, costo_plan: 290, costo: 248.33, ctr_plan: 0.15, ctr: 0.04 },
   { categoria: "Brand", medio: "TikTok", objetivo: "Build", tipo_compra: "CPM", alcance_plan: 133333, alcance: 662680, frecuencia_plan: 15, frecuencia: 4.91, impresiones_plan: 2000000, impresiones: 3252934, clics_plan: 3000, clics: 3484, views_plan: null, views: null, inversion_plan: 1000000, inversion: 999826.71, costo_plan: 500, costo: 307.36, ctr_plan: 0.15, ctr: 0.11 },
   { categoria: "Brand", medio: "YouTube", objetivo: "Build", tipo_compra: "CPM", alcance_plan: 740741, alcance: 1278104, frecuencia_plan: 1.5, frecuencia: 0.98, impresiones_plan: 1111111, impresiones: 1248123, clics_plan: 3000, clics: 1245, views_plan: null, views: null, inversion_plan: 1000000, inversion: 987154, costo_plan: 900, costo: 790.91, ctr_plan: 0.15, ctr: 0.10 },
@@ -49,6 +51,8 @@ export const PAUTA_DATA: PautaRow[] = [
   { categoria: "Cocción", medio: "Google Search", objetivo: "Consider", tipo_compra: "CPC", alcance_plan: null, alcance: null, frecuencia_plan: null, frecuencia: null, impresiones_plan: 52319, impresiones: 56285, clics_plan: 523, clics: 1318, views_plan: null, views: null, inversion_plan: 292984, inversion: 72814, costo_plan: 560, costo: 55.25, ctr_plan: 1.00, ctr: 2.34 },
 
   // ===== LAVADO =====
+  // DOOH (vía pública digital, medio offline). Impactos=impresiones, alcance 1.94M, frecuencia 8.8.
+  { categoria: "Lavado", medio: "DOOH", objetivo: "Build", tipo_compra: "OOH", alcance_plan: null, alcance: 1940000, frecuencia_plan: null, frecuencia: 8.8, impresiones_plan: null, impresiones: 17000000, clics_plan: null, clics: null, views_plan: null, views: null, inversion_plan: 22500000, inversion: 22500000, costo_plan: null, costo: null, ctr_plan: null, ctr: null },
   { categoria: "Lavado", medio: "Meta", objetivo: "Build", tipo_compra: "CPM", alcance_plan: 5789172, alcance: 5299938, frecuencia_plan: 2, frecuencia: 2.62, impresiones_plan: 11578345, impresiones: 13869699, clics_plan: 17368, clics: 658, views_plan: null, views: null, inversion_plan: 3357720, inversion: 3357435, costo_plan: 290, costo: 242.07, ctr_plan: 0.15, ctr: 0.00 },
   { categoria: "Lavado", medio: "Meta", objetivo: "Consider", tipo_compra: "CPC", alcance_plan: 120429, alcance: 638592, frecuencia_plan: 18, frecuencia: 2.73, impresiones_plan: 2167722, impresiones: 1740214, clics_plan: 17342, clics: 77654, views_plan: null, views: null, inversion_plan: 1560760, inversion: 1560476, costo_plan: 90, costo: 20.10, ctr_plan: 0.80, ctr: 4.46 },
   { categoria: "Lavado", medio: "TikTok", objetivo: "Build", tipo_compra: "CPM", alcance_plan: 1218192, alcance: 1160405, frecuencia_plan: 4, frecuencia: 6.44, impresiones_plan: 4872768, impresiones: 7471551, clics_plan: 7309, clics: 6754, views_plan: null, views: null, inversion_plan: 2436384.05, inversion: 2435959, costo_plan: 500, costo: 326.03, ctr_plan: 0.15, ctr: 0.09 },
@@ -168,6 +172,8 @@ export const PAUTA_INSIGHTS: Record<string, PautaInsight> = {
 
 // Colores por plataforma
 export const MEDIO_COLORS: Record<string, string> = {
+  "TV Cable": "#7C3AED",
+  DOOH: "#EC4899",
   Meta: "#0866FF",
   TikTok: "#000000",
   YouTube: "#FF0000",

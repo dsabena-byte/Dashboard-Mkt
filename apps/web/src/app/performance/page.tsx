@@ -60,11 +60,11 @@ export default function PerformancePautaPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Performance Pauta</h2>
           <p className="text-sm text-muted-foreground">
-            Resultados reales de campañas digitales por categoría · {PAUTA_MES} · Fuente: OMD. Funnel: Awareness → Consideración.
+            Resultados reales ejecutados (Digital ON + TV + OOH) por categoría · {PAUTA_MES} · Fuente: OMD. Funnel: Awareness → Consideración.
           </p>
         </div>
         <div className="text-right text-xs text-muted-foreground">
-          Inversión total<br />
+          Inversión ejecutada<br />
           <span className="text-lg font-bold text-foreground">{fmtARS(totalInv)}</span>
         </div>
       </header>
