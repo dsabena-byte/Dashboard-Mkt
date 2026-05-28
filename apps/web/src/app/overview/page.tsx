@@ -124,9 +124,9 @@ export default async function OverviewPage({ searchParams }: PageProps) {
     { name: "OOH / DOOH", value: invOoh, color: "#f59e0b" },
   ].filter((d) => d.value > 0);
 
-  // Monthly users chart (últimos 12 meses)
+  // Monthly users chart (desde enero 2026 a la fecha)
   const monthlyData = monthlyUsers
-    .slice(-12)
+    .filter((m) => m.mes >= "2026-01-01")
     .map((m) => {
       const d = new Date(`${m.mes}T00:00:00Z`);
       return {
