@@ -43,7 +43,6 @@ export interface IgOrganicSummary {
   demoAge: IgDemoBreakdown[];
   demoGender: IgDemoBreakdown[];
   demoProvince: IgDemoBreakdown[];
-  demoCity: IgDemoBreakdown[];
   rangeLabel: string;
 }
 
@@ -90,24 +89,28 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
       .returns<IgPostRow[]>(),
     supabase
       .from("meta_fb_audience_demographics")
-      .select("dimension, category, value")
+      .select("fecha, dimension, category, value")
       .eq("page_id", IG_ACCOUNT_ID)
       .eq("audience_type", "fan")
-      .returns<Array<{ dimension: string; category: string; value: number }>>(),
+      .order("fecha", { ascending: false })
+      .returns<Array<{ fecha: string; dimension: string; category: string; value: number }>>(),
   ]);
 
   const empty: IgOrganicSummary = {
     totalReach: 0, totalEngagement: 0, totalReactions: 0,
     totalComments: 0, totalSaves: 0, totalVideoViews: 0,
     profileViews: 0, postCount: 0, topPosts: [], monthlyData: [],
-    demoAge: [], demoGender: [], demoProvince: [], demoCity: [],
+    demoAge: [], demoGender: [], demoProvince: [],
     rangeLabel,
   };
 
   if (postsRes.error || demoRes.error) return empty;
 
   const posts = postsRes.data ?? [];
-  const demo = demoRes.data ?? [];
+  const allDemo = demoRes.data ?? [];
+  // Solo la fecha más reciente (evita duplicados de múltiples runs)
+  const latestDemoDate = allDemo[0]?.fecha;
+  const demo = latestDemoDate ? allDemo.filter((r) => r.fecha === latestDemoDate) : [];
 
   let totalReach = 0;
   let totalEngagement = 0;
@@ -165,7 +168,6 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
     demoAge: toBreakdown((demoByDim.get("age_gender") ?? []).filter((r) => /^\d/.test(r.category))),
     demoGender: toBreakdown((demoByDim.get("age_gender") ?? []).filter((r) => /^[A-Z]/.test(r.category))),
     demoProvince: toBreakdown(aggregateProvinces(demoByDim.get("city") ?? [])).slice(0, 12),
-    demoCity: toBreakdown(demoByDim.get("city") ?? []).slice(0, 15),
     rangeLabel,
   };
 }

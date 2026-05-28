@@ -137,9 +137,9 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
         </div>
       )}
 
-      {/* Demograf&iacute;a */}
+      {/* Demografia */}
       {(data.demoAge.length > 0 || data.demoGender.length > 0) && (
-        <div className="grid gap-4 lg:grid-cols-4">
+        <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-lg border bg-background p-4">
             <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Edad
@@ -148,7 +148,7 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
           </div>
           <div className="rounded-lg border bg-background p-4">
             <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              G&eacute;nero
+              Genero
             </h4>
             <HorizontalBars rows={data.demoGender} emptyText="Sin datos." accent="bg-purple-500" />
           </div>
@@ -157,12 +157,6 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
               Top Provincias
             </h4>
             <HorizontalBars rows={data.demoProvince} emptyText="Sin datos." accent="bg-blue-500" />
-          </div>
-          <div className="rounded-lg border bg-background p-4">
-            <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Top Ciudades
-            </h4>
-            <HorizontalBars rows={data.demoCity} emptyText="Sin datos." accent="bg-violet-500" />
           </div>
         </div>
       )}

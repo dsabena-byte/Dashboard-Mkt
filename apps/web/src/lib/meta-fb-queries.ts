@@ -176,6 +176,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     supabase
       .from("meta_fb_audience_demographics")
       .select("fecha, audience_type, dimension, category, value")
+      .eq("page_id", "257587170945975")
       .order("fecha", { ascending: false })
       .returns<FbDemographicRow[]>(),
   ]);
