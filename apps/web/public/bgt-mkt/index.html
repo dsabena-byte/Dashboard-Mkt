@@ -80,18 +80,18 @@ select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,
 .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
 .table-card .chart-title{padding:18px 20px 0}
 .table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{background:#f9fafb;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding:10px 16px;text-align:left;white-space:nowrap;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-tbody td{padding:11px 16px;border-top:1px solid var(--border);white-space:nowrap;color:var(--text)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:#f9fafb;color:var(--muted);font-weight:600;font-size:10px;letter-spacing:0.03em;text-transform:uppercase;padding:8px 8px;text-align:left;white-space:nowrap;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+tbody td{padding:7px 8px;border-top:1px solid var(--border);white-space:nowrap;color:var(--text)}
 tbody tr:hover td{background:#fafbfc}
-tfoot td{padding:12px 16px;border-top:2px solid var(--border-strong);background:#f9fafb;color:var(--text);font-weight:600;white-space:nowrap}
-tfoot td.label{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)}
+tfoot td{padding:9px 8px;border-top:2px solid var(--border-strong);background:#f9fafb;color:var(--text);font-weight:600;white-space:nowrap}
+tfoot td.label{font-size:10px;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted)}
 /* Total destacado */
-tfoot tr.total-row td{background:#0f172a;color:#fff;font-size:15px;font-weight:700;border-top:3px solid #0f172a;padding:14px 16px}
-tfoot tr.total-row td.label{color:#cbd5e1;font-size:12px}
+tfoot tr.total-row td{background:#0f172a;color:#fff;font-size:13px;font-weight:700;border-top:3px solid #0f172a;padding:11px 8px}
+tfoot tr.total-row td.label{color:#cbd5e1;font-size:11px}
 tfoot tr.total-row td.pos{color:#34d399 !important}
 tfoot tr.total-row td.neg{color:#f87171 !important}
-tfoot tr.fact-row td{background:#f1f5f9;color:var(--muted);font-weight:500;font-size:12px;border-top:1px solid var(--border);text-align:right}
+tfoot tr.fact-row td{background:#f1f5f9;color:var(--muted);font-weight:500;font-size:11px;border-top:1px solid var(--border);text-align:right}
 .cell-muted{color:var(--muted)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 /* Árbol colapsable: clasificación → cuenta → concepto */
@@ -101,8 +101,8 @@ tr.grp:hover td{background:#1e293b}
 tr.acc{cursor:pointer;background:#f8fafc}
 tr.acc td{font-weight:600;color:var(--text)}
 tr.acc:hover td{background:#eef2f7}
-tr.acc td.lvl1{padding-left:24px}
-tr.det td.lvl2{padding-left:48px}
+tr.acc td.lvl1{padding-left:16px}
+tr.det td.lvl2{padding-left:30px}
 .caret{display:inline-block;width:14px;transition:transform .15s;color:#94a3b8}
 .caret-sp{display:inline-block;width:14px}
 tr.grp.open .caret,tr.acc.open .caret{transform:rotate(90deg)}
@@ -241,6 +241,7 @@ tr.det.hidden,tr.acc.hidden{display:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
+if (window.ChartDataLabels) Chart.register(ChartDataLabels);
 const CUENTA_NUM = {
   'PUBLICIDAD.PRODUCCION Y AGENCIAS': '6202010034',
   'PUBLICIDAD.MATERIALES GRAFICOS':   '6202010036',
@@ -477,9 +478,39 @@ function render(){
           formatter:(v)=>{
             if(donTotal<=0) return '';
             const p = v/donTotal*100;
-            return p >= 4 ? p.toFixed(0)+'%' : '';
+            return p >= 1 ? p.toFixed(0)+'%' : '';
           },
-          textShadowColor:'rgba(0,0,0,0.35)', textShadowBlur:3
+          textShadowColor:'rgba(0,0,0,0.45)', textShadowBlur:3
+        }
+      }}});
+
+  // Donut por clasificación (Equity, Visibility, etc.)
+  const clasifData = CLASIF_ORDER
+    .map(cl=>({cl, v:Math.abs(Math.round(gs(sumD(rA.filter(r=>clasifDe(r[1])===cl)))))}))
+    .filter(d=>d.v>0);
+  const clasifTotal = clasifData.reduce((a,b)=>a+b.v,0);
+  if(cDonutClasif) cDonutClasif.destroy();
+  cDonutClasif=new Chart(document.getElementById('cDonutClasif'),{type:'doughnut',
+    data:{labels:clasifData.map(d=>d.cl),datasets:[{data:clasifData.map(d=>d.v),backgroundColor:PIE_COLORS.slice(0,clasifData.length),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{
+        legend:{display:true,position:'bottom',labels:{color:'#0f172a',font:{size:11},boxWidth:10,padding:8,usePointStyle:true}},
+        tooltip:{
+          backgroundColor:'#0f172a',titleColor:'#fff',bodyColor:'#fff',
+          borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10,cornerRadius:6,
+          callbacks:{label:c=>{
+            const pct = clasifTotal>0 ? (c.raw/clasifTotal*100).toFixed(1) : '0';
+            return ' '+c.label+': '+fmt(c.raw)+'  ('+pct+'%)';
+          }}
+        },
+        datalabels:{
+          color:'#fff', font:{size:11, weight:'700'},
+          formatter:(v)=>{
+            if(clasifTotal<=0) return '';
+            const p = v/clasifTotal*100;
+            return p >= 1 ? p.toFixed(0)+'%' : '';
+          },
+          textShadowColor:'rgba(0,0,0,0.45)', textShadowBlur:3
         }
       }}});
 
