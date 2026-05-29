@@ -172,28 +172,6 @@ tr.det.hidden,tr.acc.hidden{display:none}
 
 <div class="kpi-grid" id="kpis"></div>
 
-<div class="table-card">
-  <div class="chart-title">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-    Detalle por concepto
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>N° Cuenta</th><th>Clasificación / Concepto</th>
-        <th class="num" id="thA">Ppto A</th>
-        <th class="num" id="thB">Ppto B</th>
-        <th class="num">Diferencia</th>
-        <th class="num">% Var</th>
-        <th class="num usd-col" style="display:none">% Inv</th>
-        <th class="num usd-col" style="display:none">Inv / Fact</th>
-      </tr></thead>
-      <tbody id="tbody"></tbody>
-      <tfoot id="tfoot"></tfoot>
-    </table>
-  </div>
-</div>
-
 <div class="chart-row">
   <div class="chart-box">
     <div class="chart-title">
@@ -233,6 +211,28 @@ tr.det.hidden,tr.acc.hidden{display:none}
       Distribución por cuenta — <span id="lDon">A</span>
     </div>
     <div class="canvas-h tall"><canvas id="cDonut" role="img" aria-label="Distribución por cuenta"></canvas></div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="chart-title">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+    Detalle por concepto
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>N° Cuenta</th><th>Clasificación / Concepto</th>
+        <th class="num" id="thA">Ppto A</th>
+        <th class="num" id="thB">Ppto B</th>
+        <th class="num">Diferencia</th>
+        <th class="num">% Var</th>
+        <th class="num usd-col" style="display:none">% Inv</th>
+        <th class="num usd-col" style="display:none">Inv / Fact</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
   </div>
 </div>
 
