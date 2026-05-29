@@ -184,8 +184,6 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
   </div>
 </div>
 
-<div id="eventsWrap"></div>
-
 <div class="table-card">
   <div class="chart-title">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
@@ -258,28 +256,16 @@ const DATA = [
   {cliente:'Oncity', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'Meta',    impresiones:9390,  clics:110,  inversion:null, ev:EV.mabe},
   {cliente:'Oncity', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'Google',  impresiones:22674, clics:770,  conversiones:5.05, ingresos:4283084, inversion:null, ev:EV.mabe},
   {cliente:'Oncity', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'Email',   impresiones:0,     clics:4576, entregados:291338, aperturas:34487, inversion:null, ev:EV.mabe},
-  // Naldo · Mensual (solo evidencias, sin métricas en texto)
-  {cliente:'Naldo', accion:'Mensual', mes:'2026-01', periodo:'Enero 2026',   plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo01},
-  {cliente:'Naldo', accion:'Mensual', mes:'2026-02', periodo:'Febrero 2026', plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo02},
-  {cliente:'Naldo', accion:'Mensual', mes:'2026-03', periodo:'Marzo 2026',   plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo03},
-  {cliente:'Naldo', accion:'Mensual', mes:'2026-04', periodo:'Abril 2026',   plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo04},
+  // Naldo · Cobranding mensual DREAN (Meta paid + Newsletter). Marzo pendiente de OCR.
+  {cliente:'Naldo', accion:'Cobranding mensual', mes:'2026-01', periodo:'Enero 2026',   plataforma:'Meta',  impresiones:44586, clics:542,  inversion:99621, ev:EV.naldo01},
+  {cliente:'Naldo', accion:'Cobranding mensual', mes:'2026-01', periodo:'Enero 2026',   plataforma:'Email', impresiones:0, clics:1080, entregados:62620, aperturas:25061, inversion:null, ev:EV.naldo01},
+  {cliente:'Naldo', accion:'Cobranding mensual', mes:'2026-02', periodo:'Febrero 2026', plataforma:'Meta',  impresiones:44087, clics:1003, inversion:99414, ev:EV.naldo02},
+  {cliente:'Naldo', accion:'Cobranding mensual', mes:'2026-02', periodo:'Febrero 2026', plataforma:'Email', impresiones:0, clics:875,  entregados:65341, aperturas:22168, inversion:null, ev:EV.naldo02},
+  {cliente:'Naldo', accion:'Cobranding mensual', mes:'2026-03', periodo:'Marzo 2026',   plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo03},
+  {cliente:'Naldo', accion:'Cobranding mensual', mes:'2026-04', periodo:'Abril 2026',   plataforma:'Meta',  impresiones:38607, clics:1017, inversion:99206, ev:EV.naldo04},
+  {cliente:'Naldo', accion:'Cobranding mensual', mes:'2026-04', periodo:'Abril 2026',   plataforma:'Email', impresiones:0, clics:1155, entregados:63819, aperturas:29472, inversion:null, ev:EV.naldo04},
   // Megatone · Hot Sale (solo evidencia PPT)
   {cliente:'Megatone', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.mega},
-];
-
-// ====== EVENTOS · resultados comerciales (sell-out) ======
-// Variaciones en % vs el período de referencia (ej. HS 2025).
-// "categorias": var de Drean ($$/unidades) y de la categoría total del retailer.
-const EVENTS = [
-  {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', ref:'vs HS 2025', ev:EV.jumboHS,
-   total:{vtaVar:-3, uniVar:-7},
-   categorias:[
-     {cat:'Cocción',   dreanVta:100, dreanUni:100, catVta:163, catUni:195},
-     {cat:'Heladeras', dreanVta:-50, dreanUni:-49, catVta:39,  catUni:19},
-     {cat:'Lavado',    dreanVta:-2,  dreanUni:-17, catVta:11,  catUni:15},
-   ]},
-  {cliente:'La Anónima', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', ref:'Resultados del evento', ev:EV.laAnonRM,
-   unidades:672, ingresos:482330000},
 ];
 
 const PIE_COLORS = ['#0f172a','#2563eb','#06b6d4','#ef4444','#f59e0b','#a855f7','#10b981','#ec4899','#f97316','#84cc16'];
@@ -440,37 +426,7 @@ function render(){
     <td class="num">${ctr.toFixed(2)}%</td><td class="num">${conv?conv.toFixed(0):'—'}</td>
     <td class="num">${inv>0?'$'+nf(inv):'—'}</td><td></td></tr>`;
 
-  renderEvents();
-
-  document.getElementById('note').textContent='Notas: la inversión se carga desde la planilla. Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics. Naldo y Megatone están como evidencia (sin métricas en texto).';
-}
-
-function sgn(v){ return (v>=0?'+':'')+v+'%'; }
-function pctCell(v){ return `<td class="${v>=0?'pos':'neg'}">${sgn(v)}</td>`; }
-
-function renderEvents(){
-  const c=getF('fCli'), a=getF('fAcc');
-  const evs=EVENTS.filter(e=>(!c||e.cliente===c)&&(!a||e.accion===a)&&(selMes.size===0||selMes.has(e.mes)));
-  const wrap=document.getElementById('eventsWrap');
-  if(evs.length===0){ wrap.innerHTML=''; return; }
-  const cards=evs.map(e=>{
-    let body='';
-    const minis=[];
-    if(e.total){
-      minis.push(`<div class="mini"><div class="l">Venta $$ Drean</div><div class="v ${e.total.vtaVar>=0?'pos':'neg'}">${sgn(e.total.vtaVar)}</div></div>`);
-      minis.push(`<div class="mini"><div class="l">Unidades Drean</div><div class="v ${e.total.uniVar>=0?'pos':'neg'}">${sgn(e.total.uniVar)}</div></div>`);
-    }
-    if(e.unidades!=null) minis.push(`<div class="mini"><div class="l">Unidades vendidas</div><div class="v">${nf(e.unidades)}</div></div>`);
-    if(e.ingresos!=null) minis.push(`<div class="mini"><div class="l">Ingresos</div><div class="v">$${fmtShort(e.ingresos)}</div></div>`);
-    if(minis.length) body+=`<div class="mini-kpis">${minis.join('')}</div>`;
-    if(e.categorias){
-      body+=`<table class="cat-table"><thead><tr><th>Categoría</th><th>$$ Drean</th><th>Uni Drean</th><th>$$ Cat.</th><th>Uni Cat.</th></tr></thead><tbody>`
-      + e.categorias.map(ct=>`<tr><td>${ct.cat}</td>${pctCell(ct.dreanVta)}${pctCell(ct.dreanUni)}${pctCell(ct.catVta)}${pctCell(ct.catUni)}</tr>`).join('')
-      + `</tbody></table>`;
-    }
-    return `<div class="event-card"><div class="event-head"><div><div class="t">${e.cliente} · ${e.accion}</div><div class="r">${e.periodo} · ${e.ref}</div></div>${e.ev?`<a class="ev-link" href="${e.ev}" target="_blank" rel="noopener">Ver ↗</a>`:''}</div>${body}</div>`;
-  }).join('');
-  wrap.innerHTML=`<div class="section-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Resultados comerciales · Eventos</div><div class="events-grid">${cards}</div>`;
+  document.getElementById('note').textContent='Notas: la inversión se carga desde la planilla / reportes. Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics. Naldo: Meta (paid cobranding) + Email (newsletter) por mes; Marzo pendiente de OCR. Megatone está como evidencia (PPT).';
 }
 
 function init(){
