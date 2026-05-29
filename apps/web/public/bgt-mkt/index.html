@@ -247,7 +247,7 @@ tr.det.hidden,tr.acc.hidden{display:none}
         <th class="num" id="thB">Ppto B</th>
         <th class="num">Diferencia</th>
         <th class="num">% Var</th>
-        <th class="num usd-col" style="display:none">% Inv</th>
+        <th class="num">% Inv</th>
         <th class="num usd-col" style="display:none">Inv / Fact</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
@@ -573,16 +573,16 @@ function render(){
   // Helpers de celda
   const pctInv = (v) => totA > 0 ? (v / totA * 100) : 0;
   const invFact = (v) => fact ? (v / fact * 100) : null;
-  const usdCells = (v) => isUSD
-    ? `<td class="num cell-muted">${pctInv(v).toFixed(1)}%</td><td class="num cell-muted">${fact ? invFact(v).toFixed(2)+'%' : '—'}</td>`
-    : '';
+  const extraCells = (v) =>
+    `<td class="num cell-muted">${pctInv(v).toFixed(1)}%</td>`
+    + (isUSD ? `<td class="num cell-muted">${fact ? invFact(v).toFixed(2)+'%' : '—'}</td>` : '');
 
   const cellsRow = (vA, vB) => {
     const d = vA - vB, p = vB !== 0 ? ((vA - vB) / Math.abs(vB) * 100) : 0;
     return `<td class="num">${fmt(vA)}</td><td class="num">${fmt(vB)}</td>`
       + `<td class="num ${d>=0?'pos':'neg'}">${fmt(d)}</td>`
       + `<td class="num ${p>=0?'pos':'neg'}">${vB===0?'—':(p>=0?'+':'')+p.toFixed(1)+'%'}</td>`
-      + usdCells(vA);
+      + extraCells(vA);
   };
 
   const tbody=document.getElementById('tbody');
@@ -591,7 +591,7 @@ function render(){
     const items = grupos[clasif] || [];
     if (items.length === 0) {
       // Clasificación sin datos: solo el título
-      tbody.innerHTML += `<tr class="grp"><td></td><td><span class="caret">▸</span> ${clasif}</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td>${isUSD?'<td class="num cell-muted">—</td><td class="num cell-muted">—</td>':''}</tr>`;
+      tbody.innerHTML += `<tr class="grp"><td></td><td><span class="caret">▸</span> ${clasif}</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td>${isUSD?'<td class="num cell-muted">—</td>':''}</tr>`;
       return;
     }
     // Nivel 2: agrupar por cuenta (num + nombre)
@@ -660,7 +660,7 @@ function render(){
 
   const totDiff = totA - totB;
   const totPct = totB!==0 ? ((totA-totB)/Math.abs(totB)*100) : 0;
-  const ncols = isUSD ? 8 : 6;
+  const ncols = isUSD ? 8 : 7;
   const factLine = (isUSD && fact)
     ? `<tr class="fact-row"><td colspan="${ncols}">Facturación ${factYear} utilizada para Inv/Fact: <b>USD ${Intl.NumberFormat('es-AR').format(fact)}</b></td></tr>`
     : '';
@@ -671,7 +671,7 @@ function render(){
       <td class="num">${fmt(totB)}</td>
       <td class="num ${totDiff>=0?'pos':'neg'}">${fmt(totDiff)}</td>
       <td class="num ${totPct>=0?'pos':'neg'}">${totB===0?'—':(totPct>=0?'+':'')+totPct.toFixed(1)+'%'}</td>
-      ${isUSD?`<td class="num">100%</td><td class="num">${fact?(totA/fact*100).toFixed(2)+'%':'—'}</td>`:''}
+      <td class="num">100%</td>${isUSD?`<td class="num">${fact?(totA/fact*100).toFixed(2)+'%':'—'}</td>`:''}
     </tr>${factLine}`;
 }
 
