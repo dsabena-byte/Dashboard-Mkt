@@ -25,7 +25,7 @@ const NAV = [
   { href: "/web",         label: "Análisis Web",     icon: Globe },
   { href: "/redes",       label: "Análisis Redes",   icon: Share2 },
   { href: "/influencia",  label: "Mkt de Influencia", icon: Megaphone },
-  { href: "/mkt-canal",   label: "Mkt Canal",        icon: Store },
+  { href: "/mkt-canal",   label: "Mkt de Canal",     icon: Store },
   { href: "/cuadros-basicos", label: "Cuadros Básicos", icon: LayoutGrid },
   { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
 ] as const;

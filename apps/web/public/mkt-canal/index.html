@@ -28,13 +28,18 @@ select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,
 .btn-clear{padding:8px 16px;border:none;border-radius:var(--radius-sm);background:var(--red);color:#fff;font-weight:500;font-size:13px;cursor:pointer;font-family:inherit;height:36px}
 .btn-clear:hover{background:#dc2626}
 
-/* Filtro de meses (multi-selección) */
-.month-bar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
-.month-bar .lbl{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.06em;text-transform:uppercase}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{padding:6px 14px;border:1px solid var(--border-strong);border-radius:999px;background:var(--card);color:var(--muted);cursor:pointer;font-size:12px;font-weight:500;font-family:inherit}
-.chip:hover{border-color:var(--blue)}
-.chip.active{background:var(--text);color:#fff;border-color:var(--text)}
+/* Filtro de meses (dropdown multi-selección) */
+.ms{position:relative}
+.ms-trigger{width:100%;padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ms-trigger:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,0.12)}
+.ms-trigger svg{flex-shrink:0;transition:transform .15s}
+.ms.open .ms-trigger svg{transform:rotate(180deg)}
+.ms-panel{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--card);border:1px solid var(--border-strong);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(15,23,42,0.12);padding:6px;z-index:30;min-width:170px}
+.ms-clear{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;padding:4px 6px 8px;margin-bottom:4px;font-family:inherit}
+.ms-clear:hover{color:var(--blue)}
+.ms-opt{display:flex;align-items:center;gap:8px;padding:6px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap}
+.ms-opt:hover{background:#f1f5f9}
+.ms-opt input{cursor:pointer;width:15px;height:15px;accent-color:var(--blue)}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
 .kpi{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);overflow:hidden}
@@ -123,12 +128,18 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
   <div class="fg"><label>Cliente / Canal</label><select id="fCli"><option value="">Todos</option></select></div>
   <div class="fg"><label>Acción / Campaña</label><select id="fAcc"><option value="">Todas</option></select></div>
   <div class="fg"><label>Plataforma</label><select id="fPlat"><option value="">Todas</option></select></div>
+  <div class="fg ms" id="mesFilter">
+    <label>Mes</label>
+    <button type="button" class="ms-trigger" id="mesTrigger" aria-haspopup="true" aria-expanded="false">
+      <span id="mesSummary">Todos</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="ms-panel" id="mesPanel" hidden>
+      <button type="button" class="ms-clear" id="mesClear">Limpiar selección</button>
+      <div id="fMes"></div>
+    </div>
+  </div>
   <button class="btn-clear" id="btnClear" type="button">Limpiar</button>
-</div>
-
-<div class="month-bar">
-  <span class="lbl">Mes</span>
-  <div class="chips" id="fMes"></div>
 </div>
 
 <div class="kpi-grid" id="kpis"></div>
@@ -468,23 +479,46 @@ function init(){
   fillSelect('fPlat', uniq('plataforma'));
   const meses=[...new Set(DATA.map(r=>r.mes))].sort();
   const elM=document.getElementById('fMes');
+  const summary=document.getElementById('mesSummary');
+  const mesFilter=document.getElementById('mesFilter');
+  const trigger=document.getElementById('mesTrigger');
+  function updateSummary(){
+    if(selMes.size===0) summary.textContent='Todos';
+    else if(selMes.size===1) summary.textContent=mesLabel([...selMes][0]);
+    else summary.textContent=selMes.size+' meses';
+  }
   meses.forEach(m=>{
-    const b=document.createElement('button');
-    b.type='button'; b.className='chip'; b.textContent=mesLabel(m); b.dataset.mes=m;
-    b.addEventListener('click',()=>{
-      if(selMes.has(m)) selMes.delete(m); else selMes.add(m);
-      b.classList.toggle('active', selMes.has(m));
-      render();
+    const lab=document.createElement('label');
+    lab.className='ms-opt';
+    const cb=document.createElement('input');
+    cb.type='checkbox'; cb.value=m;
+    cb.addEventListener('change',()=>{
+      if(cb.checked) selMes.add(m); else selMes.delete(m);
+      updateSummary(); render();
     });
-    elM.appendChild(b);
+    lab.appendChild(cb);
+    lab.appendChild(document.createTextNode(mesLabel(m)));
+    elM.appendChild(lab);
   });
+  function openPanel(o){
+    document.getElementById('mesPanel').hidden=!o;
+    mesFilter.classList.toggle('open',o);
+    trigger.setAttribute('aria-expanded',o?'true':'false');
+  }
+  trigger.addEventListener('click',e=>{ e.stopPropagation(); openPanel(document.getElementById('mesPanel').hidden); });
+  document.addEventListener('click',e=>{ if(!mesFilter.contains(e.target)) openPanel(false); });
+  function clearMes(){
+    selMes.clear();
+    elM.querySelectorAll('input').forEach(c=>c.checked=false);
+    updateSummary();
+  }
+  document.getElementById('mesClear').addEventListener('click',()=>{ clearMes(); render(); });
   document.getElementById('nAcc').textContent=new Set(DATA.map(r=>r.cliente+'|'+r.accion)).size;
   document.getElementById('nCli').textContent=uniq('cliente').length;
   ['fCli','fAcc','fPlat'].forEach(id=>document.getElementById(id).addEventListener('change',render));
   document.getElementById('btnClear').addEventListener('click',()=>{
     ['fCli','fAcc','fPlat'].forEach(id=>document.getElementById(id).value='');
-    selMes.clear();
-    elM.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    clearMes();
     render();
   });
   render();
