@@ -28,6 +28,14 @@ select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,
 .btn-clear{padding:8px 16px;border:none;border-radius:var(--radius-sm);background:var(--red);color:#fff;font-weight:500;font-size:13px;cursor:pointer;font-family:inherit;height:36px}
 .btn-clear:hover{background:#dc2626}
 
+/* Filtro de meses (multi-selección) */
+.month-bar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.month-bar .lbl{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.06em;text-transform:uppercase}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:6px 14px;border:1px solid var(--border-strong);border-radius:999px;background:var(--card);color:var(--muted);cursor:pointer;font-size:12px;font-weight:500;font-family:inherit}
+.chip:hover{border-color:var(--blue)}
+.chip.active{background:var(--text);color:#fff;border-color:var(--text)}
+
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
 .kpi{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);overflow:hidden}
 .kpi-icon{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;background:#f1f5f9;color:var(--muted);display:inline-flex;align-items:center;justify-content:center}
@@ -115,8 +123,12 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
   <div class="fg"><label>Cliente / Canal</label><select id="fCli"><option value="">Todos</option></select></div>
   <div class="fg"><label>Acción / Campaña</label><select id="fAcc"><option value="">Todas</option></select></div>
   <div class="fg"><label>Plataforma</label><select id="fPlat"><option value="">Todas</option></select></div>
-  <div class="fg"><label>Mes</label><select id="fMes"><option value="">Todos</option></select></div>
   <button class="btn-clear" id="btnClear" type="button">Limpiar</button>
+</div>
+
+<div class="month-bar">
+  <span class="lbl">Mes</span>
+  <div class="chips" id="fMes"></div>
 </div>
 
 <div class="kpi-grid" id="kpis"></div>
@@ -278,12 +290,13 @@ function fillSelect(id, vals){
 }
 function uniq(k){ return [...new Set(DATA.map(r=>r[k]))]; }
 
-const MES_NOM=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MES_NOM=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 function mesLabel(m){ const [y,mm]=m.split('-'); return MES_NOM[parseInt(mm,10)-1]+' '+y; }
+const selMes = new Set(); // meses seleccionados; vacío = todos
 function getF(id){ return document.getElementById(id).value; }
 function filtered(){
-  const c=getF('fCli'), a=getF('fAcc'), p=getF('fPlat'), m=getF('fMes');
-  return DATA.filter(r=>(!c||r.cliente===c)&&(!a||r.accion===a)&&(!p||r.plataforma===p)&&(!m||r.mes===m));
+  const c=getF('fCli'), a=getF('fAcc'), p=getF('fPlat');
+  return DATA.filter(r=>(!c||r.cliente===c)&&(!a||r.accion===a)&&(!p||r.plataforma===p)&&(selMes.size===0||selMes.has(r.mes)));
 }
 
 const ICONS={
@@ -425,8 +438,8 @@ function sgn(v){ return (v>=0?'+':'')+v+'%'; }
 function pctCell(v){ return `<td class="${v>=0?'pos':'neg'}">${sgn(v)}</td>`; }
 
 function renderEvents(){
-  const c=getF('fCli'), a=getF('fAcc'), m=getF('fMes');
-  const evs=EVENTS.filter(e=>(!c||e.cliente===c)&&(!a||e.accion===a)&&(!m||e.mes===m));
+  const c=getF('fCli'), a=getF('fAcc');
+  const evs=EVENTS.filter(e=>(!c||e.cliente===c)&&(!a||e.accion===a)&&(selMes.size===0||selMes.has(e.mes)));
   const wrap=document.getElementById('eventsWrap');
   if(evs.length===0){ wrap.innerHTML=''; return; }
   const cards=evs.map(e=>{
@@ -455,12 +468,23 @@ function init(){
   fillSelect('fPlat', uniq('plataforma'));
   const meses=[...new Set(DATA.map(r=>r.mes))].sort();
   const elM=document.getElementById('fMes');
-  meses.forEach(m=>elM.add(new Option(mesLabel(m), m)));
+  meses.forEach(m=>{
+    const b=document.createElement('button');
+    b.type='button'; b.className='chip'; b.textContent=mesLabel(m); b.dataset.mes=m;
+    b.addEventListener('click',()=>{
+      if(selMes.has(m)) selMes.delete(m); else selMes.add(m);
+      b.classList.toggle('active', selMes.has(m));
+      render();
+    });
+    elM.appendChild(b);
+  });
   document.getElementById('nAcc').textContent=new Set(DATA.map(r=>r.cliente+'|'+r.accion)).size;
   document.getElementById('nCli').textContent=uniq('cliente').length;
-  ['fCli','fAcc','fPlat','fMes'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+  ['fCli','fAcc','fPlat'].forEach(id=>document.getElementById(id).addEventListener('change',render));
   document.getElementById('btnClear').addEventListener('click',()=>{
-    ['fCli','fAcc','fPlat','fMes'].forEach(id=>document.getElementById(id).value='');
+    ['fCli','fAcc','fPlat'].forEach(id=>document.getElementById(id).value='');
+    selMes.clear();
+    elM.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
     render();
   });
   render();
