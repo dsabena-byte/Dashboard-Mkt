@@ -15,6 +15,7 @@ import {
 } from "@/lib/pauta-data";
 import { InvestmentDonut, HBarChart } from "@/components/pauta/pauta-charts";
 import { KpiCard } from "@/components/kpi-card";
+import { MultiDropdown } from "@/components/multi-dropdown";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 function fmtNum(n: number): string {
@@ -71,9 +72,6 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
     [data, cat, activeMeses],
   );
 
-  function toggleMes(m: string) {
-    setSelMeses((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]));
-  }
   const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
   const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
@@ -113,34 +111,28 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
         </div>
       </header>
 
-      {/* Filtros: meses (multi) + categoría */}
-      <div className="flex flex-wrap items-center gap-2">
-        {meses.map((m) => {
-          const on = selMeses.includes(m);
-          return (
+      {/* Filtros: mes (dropdown multi) + categoría (pills) */}
+      <div className="flex flex-wrap items-end gap-3">
+        <MultiDropdown
+          label="Mes"
+          placeholder="Todos los meses"
+          selected={selMeses}
+          options={meses.map((m) => ({ value: m, label: m }))}
+          onChange={setSelMeses}
+        />
+        <div className="flex flex-wrap gap-2 self-center pt-3">
+          {PAUTA_CATEGORIAS.map((c) => (
             <button
-              key={m}
-              onClick={() => toggleMes(m)}
+              key={c}
+              onClick={() => setCat(c)}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                on ? "bg-foreground text-background" : "text-muted-foreground hover:bg-secondary"
+                cat === c ? "bg-foreground text-background" : "text-muted-foreground hover:bg-secondary"
               }`}
             >
-              {m}
+              {c}
             </button>
-          );
-        })}
-        <span className="mx-1 h-4 w-px bg-border" aria-hidden />
-        {PAUTA_CATEGORIAS.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCat(c)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              cat === c ? "bg-foreground text-background" : "text-muted-foreground hover:bg-secondary"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Tabs */}
