@@ -72,10 +72,12 @@ values
   ('Naldo', 'Cobranding mensual', '2026-01', 'Enero 2026', 'Email', 0, 1080, null, null, 62620, 25061, null, 'https://drive.google.com/file/d/1qDIKKjP4-qn4XKYVleYi1m2uShIRC6xh/view'),
   ('Naldo', 'Cobranding mensual', '2026-02', 'Febrero 2026', 'Meta', 44087, 1003, null, null, null, null, 99414, 'https://drive.google.com/file/d/1ebj_krobplMXZklDcfKZkF1jJ67IBcgd/view'),
   ('Naldo', 'Cobranding mensual', '2026-02', 'Febrero 2026', 'Email', 0, 875, null, null, 65341, 22168, null, 'https://drive.google.com/file/d/1ebj_krobplMXZklDcfKZkF1jJ67IBcgd/view'),
-  ('Naldo', 'Cobranding mensual', '2026-03', 'Marzo 2026', 'Evidencia', 0, 0, null, null, null, null, null, 'https://drive.google.com/file/d/1cYII5u_0kVImWXAvS9k_f2ljoXqu1Yg8/view'),
+  ('Naldo', 'Cobranding mensual', '2026-03', 'Marzo 2026', 'Meta', 41622, 905, null, null, null, null, 99344, 'https://drive.google.com/file/d/1cYII5u_0kVImWXAvS9k_f2ljoXqu1Yg8/view'),
+  ('Naldo', 'Cobranding mensual', '2026-03', 'Marzo 2026', 'Email', 0, 1072, null, null, 63674, 20649, null, 'https://drive.google.com/file/d/1cYII5u_0kVImWXAvS9k_f2ljoXqu1Yg8/view'),
   ('Naldo', 'Cobranding mensual', '2026-04', 'Abril 2026', 'Meta', 38607, 1017, null, null, null, null, 99206, 'https://drive.google.com/file/d/1LRdAV9N-X1A8KgflRvxKB1EXkLy6zyGO/view'),
   ('Naldo', 'Cobranding mensual', '2026-04', 'Abril 2026', 'Email', 0, 1155, null, null, 63819, 29472, null, 'https://drive.google.com/file/d/1LRdAV9N-X1A8KgflRvxKB1EXkLy6zyGO/view'),
-  ('Megatone', 'Hot Sale', '2026-05', 'Mayo 2026', 'Evidencia', 0, 0, null, null, null, null, null, 'https://drive.google.com/file/d/1pkqUH0OGgTzv9KcOPYLZvl7N65ptqCal/view')
+  ('Megatone', 'Hot Sale', '2026-05', 'Mayo 2026', 'On-site', 229162, 2180, null, null, null, null, null, 'https://drive.google.com/file/d/1pkqUH0OGgTzv9KcOPYLZvl7N65ptqCal/view'),
+  ('Megatone', 'Hot Sale', '2026-05', 'Mayo 2026', 'Email', 0, 1948, null, null, 217611, 51008, null, 'https://drive.google.com/file/d/1pkqUH0OGgTzv9KcOPYLZvl7N65ptqCal/view')
 on conflict (cliente, accion, mes, plataforma) do update set
   periodo       = excluded.periodo,
   impresiones   = excluded.impresiones,
