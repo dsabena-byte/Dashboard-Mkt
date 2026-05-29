@@ -3,14 +3,14 @@ import { MonthSelector } from "@/components/overview/month-selector";
 import { InvestmentDonut } from "@/components/pauta/pauta-charts";
 import { WebMonthlyChart } from "@/components/web-monthly-chart";
 import {
-  PAUTA_DATA,
-  PAUTA_MESES,
-  PAUTA_MES_DEFAULT,
   MEDIO_COLORS,
   computeFunnel,
   computeByMedio,
   investmentByCategoria,
+  extractMeses,
+  defaultMes,
 } from "@/lib/pauta-data";
+import { getPautaPerformance } from "@/lib/pauta-queries";
 import {
   getWebDailyKpis,
   aggregateDaily,
@@ -39,6 +39,7 @@ interface PageProps {
 // Mapeo mes de pauta → rango de fechas + mes de planning (YYYY-MM-01)
 const MONTH_MAP: Record<string, { from: string; to: string; planning: string }> = {
   "Abril 2026": { from: "2026-04-01", to: "2026-04-30", planning: "2026-04-01" },
+  "Mayo 2026": { from: "2026-05-01", to: "2026-05-31", planning: "2026-05-01" },
 };
 
 function fmtNum(n: number): string {
@@ -67,13 +68,16 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 export default async function OverviewPage({ searchParams }: PageProps) {
+  // ===== PAUTA (Supabase, server-side) =====
+  const allPauta = await safe(getPautaPerformance(), [] as Awaited<ReturnType<typeof getPautaPerformance>>);
+  const pautaMeses = extractMeses(allPauta);
+  const fallbackMes = defaultMes(pautaMeses) || "Abril 2026";
   const mesParam = Array.isArray(searchParams.mes) ? searchParams.mes[0] : searchParams.mes;
-  const mes = mesParam && MONTH_MAP[mesParam] ? mesParam : PAUTA_MES_DEFAULT;
-  const mr = MONTH_MAP[mes] ?? MONTH_MAP[PAUTA_MES_DEFAULT]!;
+  const mes = mesParam && MONTH_MAP[mesParam] ? mesParam : fallbackMes;
+  const mr = MONTH_MAP[mes] ?? MONTH_MAP[fallbackMes] ?? { from: "2026-04-01", to: "2026-04-30", planning: "2026-04-01" };
   const range = { from: mr.from, to: mr.to };
 
-  // ===== PAUTA (estático, server-side) =====
-  const pautaRows = PAUTA_DATA.filter((r) => r.mes === mes);
+  const pautaRows = allPauta.filter((r) => r.mes === mes);
   const upper = computeFunnel(pautaRows, "upper");
   const mid = computeFunnel(pautaRows, "mid");
   const totalInv = pautaRows.reduce((s, r) => s + (r.inversion ?? 0), 0);
@@ -158,7 +162,7 @@ export default async function OverviewPage({ searchParams }: PageProps) {
             Estado de situación de la estrategia de marketing Drean · {mes}
           </p>
         </div>
-        <MonthSelector months={PAUTA_MESES} current={mes} />
+        <MonthSelector months={pautaMeses} current={mes} />
       </header>
 
       {/* ===== 1. HERO KPIs ===== */}
