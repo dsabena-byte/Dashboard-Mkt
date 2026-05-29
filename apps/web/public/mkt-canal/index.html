@@ -28,7 +28,7 @@ select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,
 .btn-clear{padding:8px 16px;border:none;border-radius:var(--radius-sm);background:var(--red);color:#fff;font-weight:500;font-size:13px;cursor:pointer;font-family:inherit;height:36px}
 .btn-clear:hover{background:#dc2626}
 
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
 .kpi{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);overflow:hidden}
 .kpi-icon{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;background:#f1f5f9;color:var(--muted);display:inline-flex;align-items:center;justify-content:center}
 .kpi-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;padding-right:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -115,6 +115,7 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
   <div class="fg"><label>Cliente / Canal</label><select id="fCli"><option value="">Todos</option></select></div>
   <div class="fg"><label>Acción / Campaña</label><select id="fAcc"><option value="">Todas</option></select></div>
   <div class="fg"><label>Plataforma</label><select id="fPlat"><option value="">Todas</option></select></div>
+  <div class="fg"><label>Mes</label><select id="fMes"><option value="">Todos</option></select></div>
   <button class="btn-clear" id="btnClear" type="button">Limpiar</button>
 </div>
 
@@ -172,7 +173,7 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
       <thead><tr>
         <th>Cliente</th><th>Acción</th><th>Período</th><th>Plataforma</th>
         <th class="num">Impresiones</th><th class="num">Clics</th><th class="num">CTR</th>
-        <th class="num">Conv.</th><th>Evidencia</th>
+        <th class="num">Conv.</th><th class="num">Inversión</th><th>Evidencia</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
       <tfoot id="tfoot"></tfoot>
@@ -196,53 +197,62 @@ const EV = {
   ao:'https://drive.google.com/file/d/1whjnPfDmVhHdHYh7l_tTJSddZ_puFHZq/view',
   cetro:'https://drive.google.com/file/d/1928N680A3kTaNvAvqcCqAYz92fw1263n/view',
   efans:'https://drive.google.com/file/d/1dPgYPthRJtwbn65HM56Moe9O_SFSLI5G/view',
-  hsCetro:'https://drive.google.com/file/d/1wlV8cjxgpFrM7zNm2XJEyDkrlxdh2YFf/view',
+  jumboHS:'https://drive.google.com/file/d/1wlV8cjxgpFrM7zNm2XJEyDkrlxdh2YFf/view',
+  jumboRM:'https://drive.google.com/file/d/1oG3dUGiAZecrMjv3xgc5gOVxkS2H92Oq/view',
   dweek:'https://drive.google.com/file/d/1IlHVQHtHZUyUY34fCcHlqLqITyM9N1jR/view',
-  mabe:'https://drive.google.com/file/d/1--Z80NpViCl1NkOCFzGbp3hxCMBvYypx/view',
-  mega:'https://drive.google.com/file/d/1oG3dUGiAZecrMjv3xgc5gOVxkS2H92Oq/view'
+  mabe:'https://drive.google.com/file/d/1eZJ2XAe_fv2OzFESSn8CLyuIVAYHO9N1/view',
+  mega:'https://drive.google.com/file/d/1pkqUH0OGgTzv9KcOPYLZvl7N65ptqCal/view',
+  naldo01:'https://drive.google.com/file/d/1qDIKKjP4-qn4XKYVleYi1m2uShIRC6xh/view',
+  naldo02:'https://drive.google.com/file/d/1ebj_krobplMXZklDcfKZkF1jJ67IBcgd/view',
+  naldo03:'https://drive.google.com/file/d/1cYII5u_0kVImWXAvS9k_f2ljoXqu1Yg8/view',
+  naldo04:'https://drive.google.com/file/d/1LRdAV9N-X1A8KgflRvxKB1EXkLy6zyGO/view'
 };
+// inversion: null = pendiente de cargar (desde la planilla / SharePoint).
 const DATA = [
-  // Cetrogar · AO Verano
-  {cliente:'Cetrogar', accion:'AO Verano', periodo:'Verano 2026', plataforma:'Meta',    impresiones:1799224, clics:31183, ev:EV.ao},
-  {cliente:'Cetrogar', accion:'AO Verano', periodo:'Verano 2026', plataforma:'Google',  impresiones:277564,  clics:13830, ev:EV.ao},
-  {cliente:'Cetrogar', accion:'AO Verano', periodo:'Verano 2026', plataforma:'YouTube', impresiones:374025,  clics:1529,  ev:EV.ao},
-  // Cetrogar · CetroSale
-  {cliente:'Cetrogar', accion:'CetroSale', periodo:'2026',        plataforma:'Meta',    impresiones:1799220, clics:32695, ev:EV.cetro},
-  {cliente:'Cetrogar', accion:'CetroSale', periodo:'2026',        plataforma:'Google',  impresiones:277572,  clics:12398, ev:EV.cetro},
-  {cliente:'Cetrogar', accion:'CetroSale', periodo:'2026',        plataforma:'YouTube', impresiones:374025,  clics:1550,  ev:EV.cetro},
-  // Cetrogar · Electrofans
-  {cliente:'Cetrogar', accion:'Electrofans', periodo:'2026',      plataforma:'Meta',    impresiones:2541859, clics:44226, ev:EV.efans},
-  {cliente:'Cetrogar', accion:'Electrofans', periodo:'2026',      plataforma:'Google',  impresiones:342500,  clics:18431, ev:EV.efans},
-  {cliente:'Cetrogar', accion:'Electrofans', periodo:'2026',      plataforma:'YouTube', impresiones:374025,  clics:1476,  ev:EV.efans},
-  // Cetrogar · Hot Sale (banners on-site)
-  {cliente:'Cetrogar', accion:'Hot Sale', periodo:'Mayo 2026',    plataforma:'On-site', impresiones:33235,   clics:303,   ev:EV.hsCetro},
-  // Drean Week (Abril)
-  {cliente:'Drean Week', accion:'Drean Week', periodo:'Abril 2026', plataforma:'Meta',    impresiones:4978,   clics:113,  ev:EV.dweek},
-  {cliente:'Drean Week', accion:'Drean Week', periodo:'Abril 2026', plataforma:'Google',  impresiones:29579,  clics:957,  conversiones:5.99, ingresos:3645469, ev:EV.dweek},
-  {cliente:'Drean Week', accion:'Drean Week', periodo:'Abril 2026', plataforma:'Email',   impresiones:0,      clics:3920, entregados:580850, aperturas:59467, ev:EV.dweek},
-  {cliente:'Drean Week', accion:'Drean Week', periodo:'Abril 2026', plataforma:'On-site', impresiones:236921, clics:230,  ev:EV.dweek},
-  // Mabe · Electrofans (Marzo)
-  {cliente:'Mabe', accion:'Electrofans', periodo:'Marzo 2026', plataforma:'Meta',    impresiones:9390,  clics:110,  ev:EV.mabe},
-  {cliente:'Mabe', accion:'Electrofans', periodo:'Marzo 2026', plataforma:'Google',  impresiones:22674, clics:770,  conversiones:5.05, ingresos:4283084, ev:EV.mabe},
-  {cliente:'Mabe', accion:'Electrofans', periodo:'Marzo 2026', plataforma:'Email',   impresiones:0,     clics:4576, entregados:291338, aperturas:34487, ev:EV.mabe},
-  // Megatone · Hot Sale (retail media) — atribución tentativa, confirmar
-  {cliente:'Megatone', accion:'Hot Sale', periodo:'Mayo 2026', plataforma:'On-site', impresiones:4184345, clics:122421, ev:EV.mega},
-  {cliente:'Megatone', accion:'Hot Sale', periodo:'Mayo 2026', plataforma:'Email',   impresiones:0,       clics:1688,   entregados:425110, aperturas:55157, ev:EV.mega},
+  // Cetrogar · AO Verano (mes estimado, confirmar)
+  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Verano 2026', plataforma:'Meta',    impresiones:1799224, clics:31183, inversion:null, ev:EV.ao},
+  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Verano 2026', plataforma:'Google',  impresiones:277564,  clics:13830, inversion:null, ev:EV.ao},
+  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Verano 2026', plataforma:'YouTube', impresiones:374025,  clics:1529,  inversion:null, ev:EV.ao},
+  // Cetrogar · CetroSale (mes estimado, confirmar)
+  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'2026', plataforma:'Meta',    impresiones:1799220, clics:32695, inversion:null, ev:EV.cetro},
+  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'2026', plataforma:'Google',  impresiones:277572,  clics:12398, inversion:null, ev:EV.cetro},
+  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'2026', plataforma:'YouTube', impresiones:374025,  clics:1550,  inversion:null, ev:EV.cetro},
+  // Cetrogar · Electrofans (mes estimado, confirmar)
+  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'Meta',    impresiones:2541859, clics:44226, inversion:null, ev:EV.efans},
+  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'Google',  impresiones:342500,  clics:18431, inversion:null, ev:EV.efans},
+  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'YouTube', impresiones:374025,  clics:1476,  inversion:null, ev:EV.efans},
+  // Jumbo · Hot Sale (retail media RM)
+  {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'On-site', impresiones:4184345, clics:122421, inversion:null, ev:EV.jumboRM},
+  {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'Email',   impresiones:0,       clics:1688,   entregados:425110, aperturas:55157, inversion:null, ev:EV.jumboRM},
+  // Oncity · Drean Week (Abril)
+  {cliente:'Oncity', accion:'Drean Week', mes:'2026-04', periodo:'Abril 2026', plataforma:'Meta',    impresiones:4978,   clics:113,  inversion:null, ev:EV.dweek},
+  {cliente:'Oncity', accion:'Drean Week', mes:'2026-04', periodo:'Abril 2026', plataforma:'Google',  impresiones:29579,  clics:957,  conversiones:5.99, ingresos:3645469, inversion:null, ev:EV.dweek},
+  {cliente:'Oncity', accion:'Drean Week', mes:'2026-04', periodo:'Abril 2026', plataforma:'Email',   impresiones:0,      clics:3920, entregados:580850, aperturas:59467, inversion:null, ev:EV.dweek},
+  {cliente:'Oncity', accion:'Drean Week', mes:'2026-04', periodo:'Abril 2026', plataforma:'On-site', impresiones:236921, clics:230,  inversion:null, ev:EV.dweek},
+  // Oncity · Electrofans (Marzo)
+  {cliente:'Oncity', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'Meta',    impresiones:9390,  clics:110,  inversion:null, ev:EV.mabe},
+  {cliente:'Oncity', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'Google',  impresiones:22674, clics:770,  conversiones:5.05, ingresos:4283084, inversion:null, ev:EV.mabe},
+  {cliente:'Oncity', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'Email',   impresiones:0,     clics:4576, entregados:291338, aperturas:34487, inversion:null, ev:EV.mabe},
+  // Naldo · Mensual (solo evidencias, sin métricas en texto)
+  {cliente:'Naldo', accion:'Mensual', mes:'2026-01', periodo:'Enero 2026',   plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo01},
+  {cliente:'Naldo', accion:'Mensual', mes:'2026-02', periodo:'Febrero 2026', plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo02},
+  {cliente:'Naldo', accion:'Mensual', mes:'2026-03', periodo:'Marzo 2026',   plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo03},
+  {cliente:'Naldo', accion:'Mensual', mes:'2026-04', periodo:'Abril 2026',   plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.naldo04},
+  // Megatone · Hot Sale (solo evidencia PPT)
+  {cliente:'Megatone', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'Evidencia', impresiones:0, clics:0, inversion:null, ev:EV.mega},
 ];
 
 // ====== EVENTOS · resultados comerciales (sell-out) ======
 // Variaciones en % vs el período de referencia (ej. HS 2025).
 // "categorias": var de Drean ($$/unidades) y de la categoría total del retailer.
 const EVENTS = [
-  {cliente:'Cetrogar', accion:'Hot Sale', periodo:'Mayo 2026', ref:'vs HS 2025', ev:EV.hsCetro,
-   total:{vtaVar:-3, uniVar:-7},
+  {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', ref:'vs HS 2025', ev:EV.jumboHS,
+   total:{vtaVar:-3, uniVar:-7}, unidades:672, ingresos:482330000,
    categorias:[
      {cat:'Cocción',   dreanVta:100, dreanUni:100, catVta:163, catUni:195},
      {cat:'Heladeras', dreanVta:-50, dreanUni:-49, catVta:39,  catUni:19},
      {cat:'Lavado',    dreanVta:-2,  dreanUni:-17, catVta:11,  catUni:15},
    ]},
-  {cliente:'Megatone', accion:'Hot Sale', periodo:'Mayo 2026', ref:'Resultados del evento', ev:EV.mega,
-   unidades:672, ingresos:482330000},
 ];
 
 const PIE_COLORS = ['#0f172a','#2563eb','#06b6d4','#ef4444','#f59e0b','#a855f7','#10b981','#ec4899','#f97316','#84cc16'];
@@ -264,11 +274,12 @@ function fillSelect(id, vals){
 }
 function uniq(k){ return [...new Set(DATA.map(r=>r[k]))]; }
 
+const MES_NOM=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function mesLabel(m){ const [y,mm]=m.split('-'); return MES_NOM[parseInt(mm,10)-1]+' '+y; }
+function getF(id){ return document.getElementById(id).value; }
 function filtered(){
-  const c=document.getElementById('fCli').value;
-  const a=document.getElementById('fAcc').value;
-  const p=document.getElementById('fPlat').value;
-  return DATA.filter(r=>(!c||r.cliente===c)&&(!a||r.accion===a)&&(!p||r.plataforma===p));
+  const c=getF('fCli'), a=getF('fAcc'), p=getF('fPlat'), m=getF('fMes');
+  return DATA.filter(r=>(!c||r.cliente===c)&&(!a||r.accion===a)&&(!p||r.plataforma===p)&&(!m||r.mes===m));
 }
 
 const ICONS={
@@ -276,6 +287,7 @@ const ICONS={
   click:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6m-6 0h6m-3 3l9 9-3 1-2-4-3 2z"/></svg>',
   pct:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg>',
   cart:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.5 13h11l2-8H6"/></svg>',
+  money:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
 };
 
 function renderDonutLegend(elId, items, total){
@@ -300,6 +312,8 @@ function render(){
   const imp=sum(rows,'impresiones'), clk=sum(rows,'clics'), conv=sum(rows,'conversiones');
   const ctr=imp>0?(clk/imp*100):0;
   const entreg=sum(rows,'entregados'), aper=sum(rows,'aperturas');
+  const inv=sum(rows,'inversion');
+  const cpc=inv>0&&clk>0?inv/clk:null, cpm=inv>0&&imp>0?inv/imp*1000:null;
 
   // KPIs
   document.getElementById('kpis').innerHTML=`
@@ -314,7 +328,13 @@ function render(){
       <div class="kpi-sub">Clics / Impresiones</div></div>
     <div class="kpi"><div class="kpi-icon">${ICONS.cart}</div>
       <div class="kpi-label">Conversiones</div><div class="kpi-val">${conv?conv.toFixed(0):'—'}</div>
-      <div class="kpi-sub">${entreg?nf(entreg)+' emails · '+(entreg>0?(aper/entreg*100).toFixed(1):'0')+'% apertura':'Reportadas en Google'}</div></div>`;
+      <div class="kpi-sub">${entreg?nf(entreg)+' emails · '+(entreg>0?(aper/entreg*100).toFixed(1):'0')+'% apertura':'Reportadas en Google'}</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.money}</div>
+      <div class="kpi-label">Inversión</div><div class="kpi-val">${inv>0?'$'+fmtShort(inv):'—'}</div>
+      <div class="kpi-sub">${inv>0?'Pauta del período':'Cargar en planilla'}</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.pct}</div>
+      <div class="kpi-label">CPC · CPM</div><div class="kpi-val">${cpc!==null?'$'+nf(cpc):'—'}</div>
+      <div class="kpi-sub">${cpm!==null?'CPM $'+nf(cpm):'Costo por clic / mil impr.'}</div></div>`;
 
   // Embudo: Impresiones -> Clics -> Conversiones (escala visual relativa a impresiones)
   const steps=[{n:'Impresiones',v:imp},{n:'Clics',v:clk}];
@@ -354,8 +374,8 @@ function render(){
     options:donutOpts()});
   renderDonutLegend('legCli',cliData,cliTotal);
 
-  // Barras clics + impresiones por cliente
-  const barClis=clis.filter(c=>rows.some(r=>r.cliente===c));
+  // Barras clics + impresiones por cliente (solo con impresiones)
+  const barClis=clis.filter(c=>sum(rows.filter(r=>r.cliente===c),'impresiones')>0);
   if(cCli)cCli.destroy();
   cCli=new Chart(document.getElementById('cCli'),{type:'bar',
     data:{labels:barClis,datasets:[
@@ -382,42 +402,43 @@ function render(){
       <td class="num">${nf(r.clics)}</td>
       <td class="num">${ctrR}</td>
       <td class="num">${r.conversiones?r.conversiones.toFixed(0):'—'}</td>
+      <td class="num">${r.inversion?'$'+nf(r.inversion):'—'}</td>
       <td>${r.ev?`<a class="ev-link" href="${r.ev}" target="_blank" rel="noopener">Ver ↗</a>`:''}</td>
     </tr>`;
   });
   document.getElementById('tfoot').innerHTML=`<tr>
     <td class="label" colspan="4">Total</td>
     <td class="num">${nf(imp)}</td><td class="num">${nf(clk)}</td>
-    <td class="num">${ctr.toFixed(2)}%</td><td class="num">${conv?conv.toFixed(0):'—'}</td><td></td></tr>`;
+    <td class="num">${ctr.toFixed(2)}%</td><td class="num">${conv?conv.toFixed(0):'—'}</td>
+    <td class="num">${inv>0?'$'+nf(inv):'—'}</td><td></td></tr>`;
 
   renderEvents();
 
-  document.getElementById('note').textContent='Nota: la atribución del reporte de Hot Sale a Megatone es tentativa (confirmar). Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics.';
+  document.getElementById('note').textContent='Notas: meses de Cetrogar (AO Verano/CetroSale/Electrofans) estimados — confirmar. La inversión se carga desde la planilla. Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics. Naldo y Megatone están como evidencia (sin métricas en texto).';
 }
 
 function sgn(v){ return (v>=0?'+':'')+v+'%'; }
 function pctCell(v){ return `<td class="${v>=0?'pos':'neg'}">${sgn(v)}</td>`; }
 
 function renderEvents(){
-  const c=document.getElementById('fCli').value, a=document.getElementById('fAcc').value;
-  const evs=EVENTS.filter(e=>(!c||e.cliente===c)&&(!a||e.accion===a));
+  const c=getF('fCli'), a=getF('fAcc'), m=getF('fMes');
+  const evs=EVENTS.filter(e=>(!c||e.cliente===c)&&(!a||e.accion===a)&&(!m||e.mes===m));
   const wrap=document.getElementById('eventsWrap');
   if(evs.length===0){ wrap.innerHTML=''; return; }
   const cards=evs.map(e=>{
-    let body;
+    let body='';
+    const minis=[];
+    if(e.total){
+      minis.push(`<div class="mini"><div class="l">Venta $$ Drean</div><div class="v ${e.total.vtaVar>=0?'pos':'neg'}">${sgn(e.total.vtaVar)}</div></div>`);
+      minis.push(`<div class="mini"><div class="l">Unidades Drean</div><div class="v ${e.total.uniVar>=0?'pos':'neg'}">${sgn(e.total.uniVar)}</div></div>`);
+    }
+    if(e.unidades!=null) minis.push(`<div class="mini"><div class="l">Unidades vendidas</div><div class="v">${nf(e.unidades)}</div></div>`);
+    if(e.ingresos!=null) minis.push(`<div class="mini"><div class="l">Ingresos</div><div class="v">$${fmtShort(e.ingresos)}</div></div>`);
+    if(minis.length) body+=`<div class="mini-kpis">${minis.join('')}</div>`;
     if(e.categorias){
-      body=`<div class="mini-kpis">
-        <div class="mini"><div class="l">Venta $$ Drean</div><div class="v ${e.total.vtaVar>=0?'pos':'neg'}">${sgn(e.total.vtaVar)}</div></div>
-        <div class="mini"><div class="l">Unidades Drean</div><div class="v ${e.total.uniVar>=0?'pos':'neg'}">${sgn(e.total.uniVar)}</div></div>
-      </div>
-      <table class="cat-table"><thead><tr><th>Categoría</th><th>$$ Drean</th><th>Uni Drean</th><th>$$ Cat.</th><th>Uni Cat.</th></tr></thead><tbody>`
+      body+=`<table class="cat-table"><thead><tr><th>Categoría</th><th>$$ Drean</th><th>Uni Drean</th><th>$$ Cat.</th><th>Uni Cat.</th></tr></thead><tbody>`
       + e.categorias.map(ct=>`<tr><td>${ct.cat}</td>${pctCell(ct.dreanVta)}${pctCell(ct.dreanUni)}${pctCell(ct.catVta)}${pctCell(ct.catUni)}</tr>`).join('')
       + `</tbody></table>`;
-    } else {
-      body=`<div class="mini-kpis">
-        <div class="mini"><div class="l">Unidades vendidas</div><div class="v">${nf(e.unidades)}</div></div>
-        <div class="mini"><div class="l">Ingresos</div><div class="v">$${fmtShort(e.ingresos)}</div></div>
-      </div>`;
     }
     return `<div class="event-card"><div class="event-head"><div><div class="t">${e.cliente} · ${e.accion}</div><div class="r">${e.periodo} · ${e.ref}</div></div>${e.ev?`<a class="ev-link" href="${e.ev}" target="_blank" rel="noopener">Ver ↗</a>`:''}</div>${body}</div>`;
   }).join('');
@@ -428,11 +449,14 @@ function init(){
   fillSelect('fCli', uniq('cliente'));
   fillSelect('fAcc', uniq('accion'));
   fillSelect('fPlat', uniq('plataforma'));
+  const meses=[...new Set(DATA.map(r=>r.mes))].sort();
+  const elM=document.getElementById('fMes');
+  meses.forEach(m=>elM.add(new Option(mesLabel(m), m)));
   document.getElementById('nAcc').textContent=new Set(DATA.map(r=>r.cliente+'|'+r.accion)).size;
   document.getElementById('nCli').textContent=uniq('cliente').length;
-  ['fCli','fAcc','fPlat'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+  ['fCli','fAcc','fPlat','fMes'].forEach(id=>document.getElementById(id).addEventListener('change',render));
   document.getElementById('btnClear').addEventListener('click',()=>{
-    ['fCli','fAcc','fPlat'].forEach(id=>document.getElementById(id).value='');
+    ['fCli','fAcc','fPlat','fMes'].forEach(id=>document.getElementById(id).value='');
     render();
   });
   render();
