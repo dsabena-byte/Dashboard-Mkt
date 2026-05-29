@@ -25,10 +25,11 @@ const fmtARS = formatCurrency;
 const TABS = ["Overview", "Por Medio"] as const;
 type Tab = (typeof TABS)[number];
 
-type TipoMedio = "Digital" | "TV Cable" | "OOH";
+type TipoMedio = "Digital" | "TV Cable" | "DOOH" | "OOH";
 function tipoMedio(m: string): TipoMedio {
   if (m === "TV Cable") return "TV Cable";
-  if (m === "DOOH") return "OOH";
+  if (m === "DOOH") return "DOOH";
+  if (m === "OOH") return "OOH";
   return "Digital";
 }
 
@@ -68,7 +69,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
   const [selPlats, setSelPlats] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>("Overview");
 
-  const opMedios: TipoMedio[] = ["Digital", "TV Cable", "OOH"];
+  const opMedios: TipoMedio[] = ["Digital", "TV Cable", "DOOH", "OOH"];
   const opCats = useMemo(() => [...new Set(data.map((r) => r.categoria))].sort(), [data]);
   const opRoles = ["Build", "Consider", "Build & Consider"];
   const opPlats = useMemo(() => [...new Set(data.map((r) => r.medio))].sort(), [data]);
@@ -93,16 +94,17 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
   const totalInv = useMemo(() => rows.reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
-  const { invDigital, invTv, invOoh } = useMemo(() => {
-    let d = 0, t = 0, o = 0;
+  const { invDigital, invTv, invDooh, invOoh } = useMemo(() => {
+    let d = 0, t = 0, dh = 0, o = 0;
     for (const r of rows) {
       const v = r.inversion ?? 0;
       const k = tipoMedio(r.medio);
       if (k === "TV Cable") t += v;
+      else if (k === "DOOH") dh += v;
       else if (k === "OOH") o += v;
       else d += v;
     }
-    return { invDigital: d, invTv: t, invOoh: o };
+    return { invDigital: d, invTv: t, invDooh: dh, invOoh: o };
   }, [rows]);
   const totalInvPlan = useMemo(() => rows.reduce((s, r) => s + (r.inversion_plan ?? 0), 0), [rows]);
 
@@ -119,6 +121,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
   const mixData = [
     { name: "Digital", value: invDigital, color: "#2b4dff" },
     { name: "TV Cable", value: invTv, color: "#e63946" },
+    { name: "DOOH", value: invDooh, color: "#ec4899" },
     { name: "OOH", value: invOoh, color: "#f59e0b" },
   ].filter((d) => d.value > 0);
   const reachData = reach.map((r) => ({ name: r.medio, value: r.alcance }));
@@ -207,8 +210,8 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
       {/* ===== OVERVIEW ===== */}
       {tab === "Overview" && (
         <div>
-          {/* Inversión: total + desglose ON/OFF */}
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Inversión: total + desglose ON / OFF */}
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <KpiCard title="Inversión total" value={fmtARS(totalInv)} hint={totalHint} />
             <KpiCard
               title="Digital (ON)"
@@ -221,21 +224,24 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
               hint={totalInv > 0 ? `${((invTv / totalInv) * 100).toFixed(1)}% del total` : ""}
             />
             <KpiCard
+              title="DOOH"
+              value={fmtARS(invDooh)}
+              hint={totalInv > 0 ? `${((invDooh / totalInv) * 100).toFixed(1)}% del total` : ""}
+            />
+            <KpiCard
               title="OOH"
               value={fmtARS(invOoh)}
               hint={totalInv > 0 ? `${((invOoh / totalInv) * 100).toFixed(1)}% del total` : ""}
             />
           </section>
 
-          {/* Mix ON / OFF */}
-          <SectionTitle>Mix ON / OFF — inversión ejecutada</SectionTitle>
-          <div className="rounded-xl border bg-card p-4">
-            <InvestmentDonut data={mixData} />
-          </div>
-
-          {/* Distribución por plataforma y categoría */}
-          <SectionTitle>Distribución de inversión por plataforma</SectionTitle>
-          <div className="grid gap-4 lg:grid-cols-2">
+          {/* Distribución de inversión: Mix ON/OFF + por medio + por categoría */}
+          <SectionTitle>Distribución de inversión</SectionTitle>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-2 text-sm font-bold">Mix ON / OFF</h3>
+              <InvestmentDonut data={mixData} />
+            </div>
             <div className="rounded-xl border bg-card p-4">
               <h3 className="mb-2 text-sm font-bold">Inversión ejecutada por medio</h3>
               <InvestmentDonut data={donutData} />
