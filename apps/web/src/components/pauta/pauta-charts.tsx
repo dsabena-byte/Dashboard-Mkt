@@ -30,10 +30,10 @@ export function InvestmentDonut({ data }: { data: Array<{ name: string; value: n
   const sorted = [...data].sort((a, b) => b.value - a.value);
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="h-[240px] w-full sm:w-[55%]">
+      <div className="h-[220px] w-full sm:w-[50%]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={sorted} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={100} paddingAngle={2}>
+            <Pie data={sorted} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="55%" outerRadius="95%" paddingAngle={2}>
               {sorted.map((d, i) => (
                 <Cell key={i} fill={d.color} />
               ))}
@@ -45,7 +45,7 @@ export function InvestmentDonut({ data }: { data: Array<{ name: string; value: n
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="w-full space-y-1.5 sm:w-[45%]">
+      <div className="w-full space-y-1.5 sm:w-[50%]">
         {sorted.map((d) => (
           <div key={d.name} className="flex items-center justify-between gap-2 text-xs">
             <span className="flex min-w-0 items-center gap-1.5">

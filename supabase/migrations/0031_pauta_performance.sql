@@ -143,7 +143,10 @@ values
   ('Mayo 2026', 'Refrigeración', 'Geo Mobile', 'Consider', 'CPC', null, null, null, null, 666172, 2073885, 6662, 8097, null, null, 2331600.86, 2825853, 350, 349, 1, 0.39),
   ('Mayo 2026', 'Refrigeración', 'Google Search', 'Consider', 'CPC', null, null, null, null, 169894, 40015, 1699, 1551, null, null, 951673.82, 80497, 560, 51.9, 1, 3.88),
   ('Mayo 2026', 'UGC', 'Meta', 'Build', 'CPM', 8345791, 2584743, 2, 1.73, 16691583, 4462995, 25037, 85, null, 3536379, 4840559, 1046580.02, 290, 234.5, 0.15, 0),
-  ('Mayo 2026', 'UGC', 'TikTok', 'Build', 'CPM', 1642235, 747939, 4, 2.72, 6568938, 2034281, 9853, 2155, null, 2014675, 3284469, 715550.3, 500, 351.75, 0.15, 0.11)
+  ('Mayo 2026', 'UGC', 'TikTok', 'Build', 'CPM', 1642235, 747939, 4, 2.72, 6568938, 2034281, 9853, 2155, null, 2014675, 3284469, 715550.3, 500, 351.75, 0.15, 0.11),
+  -- OOH (vía pública estática) Brand: $10M/mes desde Abril. Alcance pendiente.
+  ('Abril 2026', 'Brand', 'OOH', 'Build', 'OOH', null, null, null, null, null, null, null, null, null, null, 10000000, 10000000, null, null, null, null),
+  ('Mayo 2026',  'Brand', 'OOH', 'Build', 'OOH', null, null, null, null, null, null, null, null, null, null, 10000000, 10000000, null, null, null, null)
 on conflict (mes, categoria, medio, objetivo, tipo_compra) do update set
   alcance_plan     = excluded.alcance_plan,
   alcance          = excluded.alcance,
