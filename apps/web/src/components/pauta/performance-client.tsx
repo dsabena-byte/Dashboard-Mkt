@@ -57,14 +57,23 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
 export function PerformanceClient({ data }: { data: PautaRow[] }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [cat, setCat] = useState("Todas");
-  const [mes, setMes] = useState(defaultMes(meses));
+  const [selMeses, setSelMeses] = useState<string[]>(() => {
+    const d = defaultMes(meses);
+    return d ? [d] : [];
+  });
   const [tab, setTab] = useState<Tab>("Overview");
 
+  // Empty selection = mostrar todos los meses (evita estado sin data).
+  const activeMeses = selMeses.length > 0 ? selMeses : meses;
   const rows = useMemo(
     () =>
-      data.filter((r) => r.mes === mes && (cat === "Todas" || r.categoria === cat)),
-    [data, cat, mes],
+      data.filter((r) => activeMeses.includes(r.mes) && (cat === "Todas" || r.categoria === cat)),
+    [data, cat, activeMeses],
   );
+
+  function toggleMes(m: string) {
+    setSelMeses((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]));
+  }
   const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
   const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
@@ -102,30 +111,25 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
             Resultados ejecutados (Digital ON + TV + OOH) · Fuente: OMD
           </p>
         </div>
-        <div className="flex items-end gap-4">
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Mes</label>
-            <select
-              value={mes}
-              onChange={(e) => setMes(e.target.value)}
-              className="mt-1 rounded-md border bg-card px-3 py-1.5 text-sm font-medium"
-            >
-              {meses.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div className="text-right text-xs text-muted-foreground">
-            Ejecutado / Planificado
-            <div className="text-lg font-semibold text-foreground">
-              {fmtARS(totalInv)} <span className="text-muted-foreground">/ {fmtARS(totalInvPlan)}</span>
-            </div>
-          </div>
-        </div>
       </header>
 
-      {/* Filtro categoría */}
-      <div className="flex flex-wrap gap-2">
+      {/* Filtros: meses (multi) + categoría */}
+      <div className="flex flex-wrap items-center gap-2">
+        {meses.map((m) => {
+          const on = selMeses.includes(m);
+          return (
+            <button
+              key={m}
+              onClick={() => toggleMes(m)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                on ? "bg-foreground text-background" : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              {m}
+            </button>
+          );
+        })}
+        <span className="mx-1 h-4 w-px bg-border" aria-hidden />
         {PAUTA_CATEGORIAS.map((c) => (
           <button
             key={c}
