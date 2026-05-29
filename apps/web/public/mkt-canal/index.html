@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mkt Canal · Drean</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--card:#ffffff;--border:#e5e7eb;--border-strong:#d1d5db;
+  --text:#0f172a;--muted:#64748b;--muted-2:#94a3b8;
+  --blue:#2563eb;--cyan:#06b6d4;--red:#ef4444;--amber:#f59e0b;--green:#10b981;
+  --radius:12px;--radius-sm:8px;--shadow:0 1px 2px rgba(15,23,42,0.04),0 1px 3px rgba(15,23,42,0.06);
+}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.45}
+body{padding:24px;min-height:100vh}
+.wrap{max-width:1400px;margin:0 auto}
+.page-head{margin-bottom:20px}
+.page-head h1{font-size:24px;font-weight:600;letter-spacing:-0.01em}
+.page-head .sub{margin-top:4px;font-size:13px;color:var(--muted)}
+.page-head .sub b{color:var(--text);font-weight:500}
+
+.filters-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:18px;box-shadow:var(--shadow);display:flex;gap:14px;align-items:end;flex-wrap:wrap}
+.fg{display:flex;flex-direction:column;gap:6px;min-width:160px;flex:1 1 160px}
+.fg label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.06em;text-transform:uppercase}
+select{width:100%;padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,0.12)}
+.btn-clear{padding:8px 16px;border:none;border-radius:var(--radius-sm);background:var(--red);color:#fff;font-weight:500;font-size:13px;cursor:pointer;font-family:inherit;height:36px}
+.btn-clear:hover{background:#dc2626}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);overflow:hidden}
+.kpi-icon{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:8px;background:#f1f5f9;color:var(--muted);display:inline-flex;align-items:center;justify-content:center}
+.kpi-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;padding-right:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-val{font-size:24px;font-weight:600;letter-spacing:-0.02em;line-height:1.1;word-break:break-word}
+.kpi-val .unit{font-size:13px;font-weight:500;color:var(--muted);margin-left:6px}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:6px}
+
+.chart-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-bottom:16px}
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
+.chart-title{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.chart-title svg{color:var(--muted)}
+
+/* Embudo */
+.funnel{display:flex;flex-direction:column;gap:10px}
+.funnel-step{}
+.funnel-step .lab{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.funnel-step .lab .name{color:var(--text);font-weight:600}
+.funnel-step .lab .val{color:var(--muted)}
+.funnel-bar{height:30px;border-radius:6px;background:linear-gradient(90deg,var(--blue),#3b82f6);display:flex;align-items:center;padding:0 10px;color:#fff;font-size:12px;font-weight:700;min-width:42px;transition:width .4s}
+.funnel-step:nth-child(2) .funnel-bar{background:linear-gradient(90deg,#0ea5e9,var(--cyan))}
+.funnel-step:nth-child(3) .funnel-bar{background:linear-gradient(90deg,#059669,var(--green))}
+.funnel-drop{font-size:11px;color:var(--muted-2);margin-top:3px}
+
+/* Donut + leyenda lateral */
+.donut-wrap{display:flex;align-items:center;gap:18px}
+.donut-canvas{position:relative;width:46%;min-width:160px;height:230px;flex-shrink:0}
+.donut-legend{flex:1;display:flex;flex-direction:column;gap:9px;min-width:0}
+.leg-item{display:flex;align-items:center;font-size:12px;line-height:1.2}
+.leg-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:9px}
+.leg-item .name{flex:1 1 auto;min-width:0;color:#0f172a;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.leg-item .vals{flex-shrink:0;margin-left:auto;padding-left:10px;color:#94a3b8;white-space:nowrap;font-weight:500}
+.leg-item .vals .sep{color:#cbd5e1;margin:0 3px}
+.leg-item .vals .pct{color:#0f172a;font-weight:700}
+
+/* Tabla */
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+.table-card .chart-title{padding:18px 20px 0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:#f9fafb;color:var(--muted);font-weight:600;font-size:10px;letter-spacing:0.03em;text-transform:uppercase;padding:9px 12px;text-align:left;white-space:nowrap;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+tbody td{padding:9px 12px;border-top:1px solid var(--border);color:var(--text)}
+tbody tr:hover td{background:#fafbfc}
+tfoot td{padding:11px 12px;border-top:2px solid var(--border-strong);background:#0f172a;color:#fff;font-weight:700;font-size:13px;white-space:nowrap}
+tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;color:#cbd5e1}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cell-muted{color:var(--muted)}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#eef2ff;color:#3730a3}
+.ev-link{color:var(--blue);text-decoration:none;font-weight:600;font-size:11px}
+.ev-link:hover{text-decoration:underline}
+
+.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:var(--radius);padding:16px}
+.note{font-size:11px;color:var(--muted-2);margin-top:10px}
+@media(max-width:900px){.chart-row{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.donut-wrap{flex-direction:column}.donut-canvas{width:100%}.kpi-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page-head">
+  <h1>Mkt Canal · Acciones digitales en retailers</h1>
+  <div class="sub">Performance de medios de Drean en los canales · <b id="nAcc">—</b> acciones · <b id="nCli">—</b> clientes</div>
+</header>
+
+<div class="filters-card">
+  <div class="fg"><label>Cliente / Canal</label><select id="fCli"><option value="">Todos</option></select></div>
+  <div class="fg"><label>Acción / Campaña</label><select id="fAcc"><option value="">Todas</option></select></div>
+  <div class="fg"><label>Plataforma</label><select id="fPlat"><option value="">Todas</option></select></div>
+  <button class="btn-clear" id="btnClear" type="button">Limpiar</button>
+</div>
+
+<div class="kpi-grid" id="kpis"></div>
+
+<div class="chart-row">
+  <div class="chart-box">
+    <div class="chart-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg>
+      Embudo de medios
+    </div>
+    <div class="funnel" id="funnel"></div>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>
+      Impresiones por plataforma
+    </div>
+    <div class="donut-wrap">
+      <div class="donut-canvas"><canvas id="cPlat"></canvas></div>
+      <div class="donut-legend" id="legPlat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="chart-row">
+  <div class="chart-box">
+    <div class="chart-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
+      Clics e impresiones por cliente
+    </div>
+    <div style="position:relative;height:250px"><canvas id="cCli"></canvas></div>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>
+      Impresiones por cliente
+    </div>
+    <div class="donut-wrap">
+      <div class="donut-canvas"><canvas id="cCliDon"></canvas></div>
+      <div class="donut-legend" id="legCli"></div>
+    </div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="chart-title">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+    Detalle de acciones
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Cliente</th><th>Acción</th><th>Período</th><th>Plataforma</th>
+        <th class="num">Impresiones</th><th class="num">Clics</th><th class="num">CTR</th>
+        <th class="num">Conv.</th><th>Evidencia</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
+</div>
+<div class="note" id="note"></div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script>
+if (window.ChartDataLabels) Chart.register(ChartDataLabels);
+
+// ====== DATA (precarga manual desde los reportes del Drive) ======
+// Una fila por: cliente · acción · período · plataforma.
+// metricas: impresiones, clics, conversiones, ingresos, entregados, aperturas.
+// "ev" = link a la evidencia/reporte en Drive (uno por acción).
+const EV = {
+  ao:'https://drive.google.com/file/d/1whjnPfDmVhHdHYh7l_tTJSddZ_puFHZq/view',
+  cetro:'https://drive.google.com/file/d/1928N680A3kTaNvAvqcCqAYz92fw1263n/view',
+  efans:'https://drive.google.com/file/d/1dPgYPthRJtwbn65HM56Moe9O_SFSLI5G/view',
+  hsCetro:'https://drive.google.com/file/d/1wlV8cjxgpFrM7zNm2XJEyDkrlxdh2YFf/view',
+  dweek:'https://drive.google.com/file/d/1IlHVQHtHZUyUY34fCcHlqLqITyM9N1jR/view',
+  mabe:'https://drive.google.com/file/d/1--Z80NpViCl1NkOCFzGbp3hxCMBvYypx/view',
+  mega:'https://drive.google.com/file/d/1oG3dUGiAZecrMjv3xgc5gOVxkS2H92Oq/view'
+};
+const DATA = [
+  // Cetrogar · AO Verano
+  {cliente:'Cetrogar', accion:'AO Verano', periodo:'Verano 2026', plataforma:'Meta',    impresiones:1799224, clics:31183, ev:EV.ao},
+  {cliente:'Cetrogar', accion:'AO Verano', periodo:'Verano 2026', plataforma:'Google',  impresiones:277564,  clics:13830, ev:EV.ao},
+  {cliente:'Cetrogar', accion:'AO Verano', periodo:'Verano 2026', plataforma:'YouTube', impresiones:374025,  clics:1529,  ev:EV.ao},
+  // Cetrogar · CetroSale
+  {cliente:'Cetrogar', accion:'CetroSale', periodo:'2026',        plataforma:'Meta',    impresiones:1799220, clics:32695, ev:EV.cetro},
+  {cliente:'Cetrogar', accion:'CetroSale', periodo:'2026',        plataforma:'Google',  impresiones:277572,  clics:12398, ev:EV.cetro},
+  {cliente:'Cetrogar', accion:'CetroSale', periodo:'2026',        plataforma:'YouTube', impresiones:374025,  clics:1550,  ev:EV.cetro},
+  // Cetrogar · Electrofans
+  {cliente:'Cetrogar', accion:'Electrofans', periodo:'2026',      plataforma:'Meta',    impresiones:2541859, clics:44226, ev:EV.efans},
+  {cliente:'Cetrogar', accion:'Electrofans', periodo:'2026',      plataforma:'Google',  impresiones:342500,  clics:18431, ev:EV.efans},
+  {cliente:'Cetrogar', accion:'Electrofans', periodo:'2026',      plataforma:'YouTube', impresiones:374025,  clics:1476,  ev:EV.efans},
+  // Cetrogar · Hot Sale (banners on-site)
+  {cliente:'Cetrogar', accion:'Hot Sale', periodo:'Mayo 2026',    plataforma:'On-site', impresiones:33235,   clics:303,   ev:EV.hsCetro},
+  // Drean Week (Abril)
+  {cliente:'Drean Week', accion:'Drean Week', periodo:'Abril 2026', plataforma:'Meta',    impresiones:4978,   clics:113,  ev:EV.dweek},
+  {cliente:'Drean Week', accion:'Drean Week', periodo:'Abril 2026', plataforma:'Google',  impresiones:29579,  clics:957,  conversiones:5.99, ingresos:3645469, ev:EV.dweek},
+  {cliente:'Drean Week', accion:'Drean Week', periodo:'Abril 2026', plataforma:'Email',   impresiones:0,      clics:3920, entregados:580850, aperturas:59467, ev:EV.dweek},
+  {cliente:'Drean Week', accion:'Drean Week', periodo:'Abril 2026', plataforma:'On-site', impresiones:236921, clics:230,  ev:EV.dweek},
+  // Mabe · Electrofans (Marzo)
+  {cliente:'Mabe', accion:'Electrofans', periodo:'Marzo 2026', plataforma:'Meta',    impresiones:9390,  clics:110,  ev:EV.mabe},
+  {cliente:'Mabe', accion:'Electrofans', periodo:'Marzo 2026', plataforma:'Google',  impresiones:22674, clics:770,  conversiones:5.05, ingresos:4283084, ev:EV.mabe},
+  {cliente:'Mabe', accion:'Electrofans', periodo:'Marzo 2026', plataforma:'Email',   impresiones:0,     clics:4576, entregados:291338, aperturas:34487, ev:EV.mabe},
+  // Megatone · Hot Sale (retail media) — atribución tentativa, confirmar
+  {cliente:'Megatone', accion:'Hot Sale', periodo:'Mayo 2026', plataforma:'On-site', impresiones:4184345, clics:122421, ev:EV.mega},
+  {cliente:'Megatone', accion:'Hot Sale', periodo:'Mayo 2026', plataforma:'Email',   impresiones:0,       clics:1688,   entregados:425110, aperturas:55157, ev:EV.mega},
+];
+
+const PIE_COLORS = ['#0f172a','#2563eb','#06b6d4','#ef4444','#f59e0b','#a855f7','#10b981','#ec4899','#f97316','#84cc16'];
+let cPlat, cCli, cCliDon;
+
+function nf(v){ return Intl.NumberFormat('es-AR').format(Math.round(v)); }
+function fmtShort(v){
+  const a=Math.abs(v), s=v<0?'-':'';
+  if(a>=1e9) return s+(a/1e9).toFixed(1)+'B';
+  if(a>=1e6) return s+(a/1e6).toFixed(1)+'M';
+  if(a>=1e3) return s+(a/1e3).toFixed(1)+'k';
+  return s+a;
+}
+function sum(rows, k){ return rows.reduce((s,r)=>s+(r[k]||0),0); }
+
+function fillSelect(id, vals){
+  const el=document.getElementById(id);
+  vals.forEach(v=>el.add(new Option(v,v)));
+}
+function uniq(k){ return [...new Set(DATA.map(r=>r[k]))]; }
+
+function filtered(){
+  const c=document.getElementById('fCli').value;
+  const a=document.getElementById('fAcc').value;
+  const p=document.getElementById('fPlat').value;
+  return DATA.filter(r=>(!c||r.cliente===c)&&(!a||r.accion===a)&&(!p||r.plataforma===p));
+}
+
+const ICONS={
+  eye:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>',
+  click:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6m-6 0h6m-3 3l9 9-3 1-2-4-3 2z"/></svg>',
+  pct:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg>',
+  cart:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.5 13h11l2-8H6"/></svg>',
+};
+
+function renderDonutLegend(elId, items, total){
+  const el=document.getElementById(elId); if(!el)return;
+  el.innerHTML=items.map((it,i)=>{
+    const p=total>0?(it.v/total*100):0;
+    return `<div class="leg-item"><span class="dot" style="background:${PIE_COLORS[i%PIE_COLORS.length]}"></span>`
+      +`<span class="name">${it.label}</span>`
+      +`<span class="vals">${fmtShort(it.v)} <span class="sep">·</span> <span class="pct">${p.toFixed(1)}%</span></span></div>`;
+  }).join('');
+}
+
+function donutOpts(){
+  return {responsive:true,maintainAspectRatio:false,cutout:'62%',
+    plugins:{legend:{display:false},datalabels:{display:false},
+      tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:6,
+        callbacks:{label:c=>' '+c.label+': '+nf(c.raw)}}}};
+}
+
+function render(){
+  const rows=filtered();
+  const imp=sum(rows,'impresiones'), clk=sum(rows,'clics'), conv=sum(rows,'conversiones');
+  const ctr=imp>0?(clk/imp*100):0;
+  const entreg=sum(rows,'entregados'), aper=sum(rows,'aperturas');
+
+  // KPIs
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-icon">${ICONS.eye}</div>
+      <div class="kpi-label">Impresiones</div><div class="kpi-val">${nf(imp)}</div>
+      <div class="kpi-sub">Alcance de medios</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.click}</div>
+      <div class="kpi-label">Clics</div><div class="kpi-val">${nf(clk)}</div>
+      <div class="kpi-sub">Interés generado</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.pct}</div>
+      <div class="kpi-label">CTR</div><div class="kpi-val">${ctr.toFixed(2)}<span class="unit">%</span></div>
+      <div class="kpi-sub">Clics / Impresiones</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.cart}</div>
+      <div class="kpi-label">Conversiones</div><div class="kpi-val">${conv?conv.toFixed(0):'—'}</div>
+      <div class="kpi-sub">${entreg?nf(entreg)+' emails · '+(entreg>0?(aper/entreg*100).toFixed(1):'0')+'% apertura':'Reportadas en Google'}</div></div>`;
+
+  // Embudo: Impresiones -> Clics -> Conversiones (escala visual relativa a impresiones)
+  const steps=[{n:'Impresiones',v:imp},{n:'Clics',v:clk}];
+  if(conv>0) steps.push({n:'Conversiones',v:conv});
+  const maxV=imp||1;
+  document.getElementById('funnel').innerHTML=steps.map((s,i)=>{
+    const w=Math.max(s.v/maxV*100, s.v>0?4:0);
+    const drop=i>0 && steps[i-1].v>0 ? (s.v/steps[i-1].v*100) : null;
+    return `<div class="funnel-step">
+      <div class="lab"><span class="name">${s.n}</span><span class="val">${nf(s.v)}</span></div>
+      <div class="funnel-bar" style="width:${w}%">${fmtShort(s.v)}</div>
+      ${drop!==null?`<div class="funnel-drop">→ ${drop.toFixed(2)}% del paso anterior</div>`:''}
+    </div>`;
+  }).join('');
+
+  // Donut por plataforma (impresiones; Email usa clics porque no tiene impresiones)
+  const plats=uniq('plataforma');
+  const platData=plats.map(p=>{
+    const pr=rows.filter(r=>r.plataforma===p);
+    const v=p==='Email'?sum(pr,'clics'):sum(pr,'impresiones');
+    return {label:p, v};
+  }).filter(d=>d.v>0).sort((a,b)=>b.v-a.v);
+  const platTotal=platData.reduce((a,b)=>a+b.v,0);
+  if(cPlat)cPlat.destroy();
+  cPlat=new Chart(document.getElementById('cPlat'),{type:'doughnut',
+    data:{labels:platData.map(d=>d.label),datasets:[{data:platData.map(d=>d.v),backgroundColor:PIE_COLORS,borderWidth:2,borderColor:'#fff'}]},
+    options:donutOpts()});
+  renderDonutLegend('legPlat',platData,platTotal);
+
+  // Donut por cliente (impresiones)
+  const clis=uniq('cliente');
+  const cliData=clis.map(c=>({label:c, v:sum(rows.filter(r=>r.cliente===c),'impresiones')})).filter(d=>d.v>0).sort((a,b)=>b.v-a.v);
+  const cliTotal=cliData.reduce((a,b)=>a+b.v,0);
+  if(cCliDon)cCliDon.destroy();
+  cCliDon=new Chart(document.getElementById('cCliDon'),{type:'doughnut',
+    data:{labels:cliData.map(d=>d.label),datasets:[{data:cliData.map(d=>d.v),backgroundColor:PIE_COLORS,borderWidth:2,borderColor:'#fff'}]},
+    options:donutOpts()});
+  renderDonutLegend('legCli',cliData,cliTotal);
+
+  // Barras clics + impresiones por cliente
+  const barClis=clis.filter(c=>rows.some(r=>r.cliente===c));
+  if(cCli)cCli.destroy();
+  cCli=new Chart(document.getElementById('cCli'),{type:'bar',
+    data:{labels:barClis,datasets:[
+      {label:'Impresiones',data:barClis.map(c=>sum(rows.filter(r=>r.cliente===c),'impresiones')),backgroundColor:'#2563eb',borderRadius:3,yAxisID:'y'},
+      {label:'Clics',data:barClis.map(c=>sum(rows.filter(r=>r.cliente===c),'clics')),backgroundColor:'#06b6d4',borderRadius:3,yAxisID:'y1'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true,font:{size:11}}},datalabels:{display:false},
+        tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:6,callbacks:{label:c=>' '+c.dataset.label+': '+nf(c.raw)}}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:11}},grid:{display:false}},
+        y:{position:'left',ticks:{color:'#64748b',callback:v=>fmtShort(v),font:{size:10}},grid:{color:'rgba(15,23,42,0.06)'},title:{display:true,text:'Impresiones',color:'#94a3b8',font:{size:10}}},
+        y1:{position:'right',ticks:{color:'#64748b',callback:v=>fmtShort(v),font:{size:10}},grid:{display:false},title:{display:true,text:'Clics',color:'#94a3b8',font:{size:10}}}
+      }}});
+
+  // Tabla detalle
+  const tb=document.getElementById('tbody'); tb.innerHTML='';
+  rows.forEach(r=>{
+    const ctrR=r.impresiones>0?(r.clics/r.impresiones*100).toFixed(2)+'%':'—';
+    tb.innerHTML+=`<tr>
+      <td>${r.cliente}</td><td>${r.accion}</td><td class="cell-muted">${r.periodo}</td>
+      <td><span class="pill">${r.plataforma}</span></td>
+      <td class="num">${r.impresiones?nf(r.impresiones):'—'}</td>
+      <td class="num">${nf(r.clics)}</td>
+      <td class="num">${ctrR}</td>
+      <td class="num">${r.conversiones?r.conversiones.toFixed(0):'—'}</td>
+      <td>${r.ev?`<a class="ev-link" href="${r.ev}" target="_blank" rel="noopener">Ver ↗</a>`:''}</td>
+    </tr>`;
+  });
+  document.getElementById('tfoot').innerHTML=`<tr>
+    <td class="label" colspan="4">Total</td>
+    <td class="num">${nf(imp)}</td><td class="num">${nf(clk)}</td>
+    <td class="num">${ctr.toFixed(2)}%</td><td class="num">${conv?conv.toFixed(0):'—'}</td><td></td></tr>`;
+
+  document.getElementById('note').textContent='Nota: la atribución del reporte de Hot Sale a Megatone es tentativa (confirmar). Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics.';
+}
+
+function init(){
+  fillSelect('fCli', uniq('cliente'));
+  fillSelect('fAcc', uniq('accion'));
+  fillSelect('fPlat', uniq('plataforma'));
+  document.getElementById('nAcc').textContent=new Set(DATA.map(r=>r.cliente+'|'+r.accion)).size;
+  document.getElementById('nCli').textContent=uniq('cliente').length;
+  ['fCli','fAcc','fPlat'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+  document.getElementById('btnClear').addEventListener('click',()=>{
+    ['fCli','fAcc','fPlat'].forEach(id=>document.getElementById(id).value='');
+    render();
+  });
+  render();
+}
+init();
+</script>
+</body>
+</html>
