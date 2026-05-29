@@ -198,7 +198,7 @@ const EV = {
   cetro:'https://drive.google.com/file/d/1928N680A3kTaNvAvqcCqAYz92fw1263n/view',
   efans:'https://drive.google.com/file/d/1dPgYPthRJtwbn65HM56Moe9O_SFSLI5G/view',
   jumboHS:'https://drive.google.com/file/d/1wlV8cjxgpFrM7zNm2XJEyDkrlxdh2YFf/view',
-  jumboRM:'https://drive.google.com/file/d/1oG3dUGiAZecrMjv3xgc5gOVxkS2H92Oq/view',
+  laAnonRM:'https://drive.google.com/file/d/1oG3dUGiAZecrMjv3xgc5gOVxkS2H92Oq/view',
   dweek:'https://drive.google.com/file/d/1IlHVQHtHZUyUY34fCcHlqLqITyM9N1jR/view',
   mabe:'https://drive.google.com/file/d/1eZJ2XAe_fv2OzFESSn8CLyuIVAYHO9N1/view',
   mega:'https://drive.google.com/file/d/1pkqUH0OGgTzv9KcOPYLZvl7N65ptqCal/view',
@@ -221,9 +221,11 @@ const DATA = [
   {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'Meta',    impresiones:2541859, clics:44226, inversion:null, ev:EV.efans},
   {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'Google',  impresiones:342500,  clics:18431, inversion:null, ev:EV.efans},
   {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'YouTube', impresiones:374025,  clics:1476,  inversion:null, ev:EV.efans},
-  // Jumbo · Hot Sale (retail media RM)
-  {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'On-site', impresiones:4184345, clics:122421, inversion:null, ev:EV.jumboRM},
-  {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'Email',   impresiones:0,       clics:1688,   entregados:425110, aperturas:55157, inversion:null, ev:EV.jumboRM},
+  // Jumbo · Hot Sale (banners on-site)
+  {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'On-site', impresiones:33235, clics:303, inversion:null, ev:EV.jumboHS},
+  // La Anónima · Hot Sale (retail media RM)
+  {cliente:'La Anónima', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'On-site', impresiones:4184345, clics:122421, inversion:null, ev:EV.laAnonRM},
+  {cliente:'La Anónima', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'Email',   impresiones:0,       clics:1688,   entregados:425110, aperturas:55157, inversion:null, ev:EV.laAnonRM},
   // Oncity · Drean Week (Abril)
   {cliente:'Oncity', accion:'Drean Week', mes:'2026-04', periodo:'Abril 2026', plataforma:'Meta',    impresiones:4978,   clics:113,  inversion:null, ev:EV.dweek},
   {cliente:'Oncity', accion:'Drean Week', mes:'2026-04', periodo:'Abril 2026', plataforma:'Google',  impresiones:29579,  clics:957,  conversiones:5.99, ingresos:3645469, inversion:null, ev:EV.dweek},
@@ -247,12 +249,14 @@ const DATA = [
 // "categorias": var de Drean ($$/unidades) y de la categoría total del retailer.
 const EVENTS = [
   {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', ref:'vs HS 2025', ev:EV.jumboHS,
-   total:{vtaVar:-3, uniVar:-7}, unidades:672, ingresos:482330000,
+   total:{vtaVar:-3, uniVar:-7},
    categorias:[
      {cat:'Cocción',   dreanVta:100, dreanUni:100, catVta:163, catUni:195},
      {cat:'Heladeras', dreanVta:-50, dreanUni:-49, catVta:39,  catUni:19},
      {cat:'Lavado',    dreanVta:-2,  dreanUni:-17, catVta:11,  catUni:15},
    ]},
+  {cliente:'La Anónima', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', ref:'Resultados del evento', ev:EV.laAnonRM,
+   unidades:672, ingresos:482330000},
 ];
 
 const PIE_COLORS = ['#0f172a','#2563eb','#06b6d4','#ef4444','#f59e0b','#a855f7','#10b981','#ec4899','#f97316','#84cc16'];
