@@ -76,6 +76,18 @@ select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,
 .canvas-h{position:relative;width:100%;height:240px}
 .canvas-h.tall{height:260px}
 
+/* Donut con leyenda lateral (estilo referencia) */
+.donut-wrap{display:flex;align-items:center;gap:24px}
+.donut-canvas{position:relative;width:50%;min-width:190px;height:230px;flex-shrink:0}
+.donut-legend{flex:1;display:flex;flex-direction:column;gap:11px;min-width:0}
+.leg-item{display:flex;align-items:center;font-size:13px;line-height:1.2}
+.leg-item .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-right:10px}
+.leg-item .name{color:#0f172a;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.leg-item .vals{margin-left:auto;padding-left:12px;color:#94a3b8;white-space:nowrap;font-weight:500}
+.leg-item .vals .sep{color:#cbd5e1;margin:0 3px}
+.leg-item .vals .pct{color:#0f172a;font-weight:700}
+@media(max-width:560px){.donut-wrap{flex-direction:column}.donut-canvas{width:100%}}
+
 /* Table */
 .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
 .table-card .chart-title{padding:18px 20px 0}
@@ -189,7 +201,10 @@ tr.det.hidden,tr.acc.hidden{display:none}
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>
       Distribución por clasificación — <span id="lDonC">A</span>
     </div>
-    <div class="canvas-h"><canvas id="cDonutClasif" role="img" aria-label="Distribución por clasificación"></canvas></div>
+    <div class="donut-wrap">
+      <div class="donut-canvas"><canvas id="cDonutClasif" role="img" aria-label="Distribución por clasificación"></canvas></div>
+      <div class="donut-legend" id="legDonClasif"></div>
+    </div>
   </div>
 </div>
 
@@ -210,7 +225,10 @@ tr.det.hidden,tr.acc.hidden{display:none}
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>
       Distribución por cuenta — <span id="lDon">A</span>
     </div>
-    <div class="canvas-h tall"><canvas id="cDonut" role="img" aria-label="Distribución por cuenta"></canvas></div>
+    <div class="donut-wrap">
+      <div class="donut-canvas"><canvas id="cDonut" role="img" aria-label="Distribución por cuenta"></canvas></div>
+      <div class="donut-legend" id="legDon"></div>
+    </div>
   </div>
 </div>
 
@@ -279,7 +297,7 @@ function yearOf(ppto){
 const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const SERIES_A = '#3b82f6';
 const SERIES_B = '#ec4899';
-const PIE_COLORS = ['#3b82f6','#ec4899','#a855f7','#10b981','#f59e0b','#06b6d4','#f97316','#84cc16','#8b5cf6','#ef4444'];
+const PIE_COLORS = ['#0f172a','#2563eb','#06b6d4','#ef4444','#f59e0b','#a855f7','#10b981','#ec4899','#f97316','#84cc16'];
 const GRID_C = 'rgba(15,23,42,0.06)';
 const TICK_C = '#64748b';
 
@@ -318,6 +336,22 @@ function fmtShort(v){
   if(a>=1e6) return sign+(a/1e6).toFixed(1)+'M';
   if(a>=1e3) return sign+(a/1e3).toFixed(0)+'k';
   return sign+a.toFixed(0);
+}
+
+function fmtMon(v){ return (cur==='ARS'?'$ ':'USD ') + fmtShort(v); }
+
+function renderDonutLegend(elId, items, total){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  el.innerHTML = items.map((it,i)=>{
+    const p = total>0 ? (it.v/total*100) : 0;
+    const color = PIE_COLORS[i % PIE_COLORS.length];
+    return `<div class="leg-item">`
+      + `<span class="dot" style="background:${color}"></span>`
+      + `<span class="name">${it.label}</span>`
+      + `<span class="vals">${fmtMon(it.v)} <span class="sep">·</span> <span class="pct">${p.toFixed(1)}%</span></span>`
+      + `</div>`;
+  }).join('');
 }
 
 function getMths(period, desde, hasta){
@@ -464,7 +498,8 @@ function render(){
     data:{labels:cats,datasets:[{data:dDon,backgroundColor:PIE_COLORS.slice(0,cats.length),borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{
-        legend:{display:true,position:'bottom',labels:{color:'#0f172a',font:{size:11},boxWidth:10,padding:8,usePointStyle:true}},
+        legend:{display:false},
+        datalabels:{display:false},
         tooltip:{
           backgroundColor:'#0f172a',titleColor:'#fff',bodyColor:'#fff',
           borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10,cornerRadius:6,
@@ -472,17 +507,9 @@ function render(){
             const pct = donTotal>0 ? (c.raw/donTotal*100).toFixed(1) : '0';
             return ' '+c.label+': '+fmt(c.raw)+'  ('+pct+'%)';
           }}
-        },
-        datalabels:{
-          color:'#fff', font:{size:11, weight:'700'},
-          formatter:(v)=>{
-            if(donTotal<=0) return '';
-            const p = v/donTotal*100;
-            return p >= 1 ? p.toFixed(0)+'%' : '';
-          },
-          textShadowColor:'rgba(0,0,0,0.45)', textShadowBlur:3
         }
       }}});
+  renderDonutLegend('legDon', cats.map((c,i)=>({label:c, v:dDon[i]})), donTotal);
 
   // Donut por clasificación (Equity, Visibility, etc.)
   const clasifData = CLASIF_ORDER
@@ -494,7 +521,8 @@ function render(){
     data:{labels:clasifData.map(d=>d.cl),datasets:[{data:clasifData.map(d=>d.v),backgroundColor:PIE_COLORS.slice(0,clasifData.length),borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{
-        legend:{display:true,position:'bottom',labels:{color:'#0f172a',font:{size:11},boxWidth:10,padding:8,usePointStyle:true}},
+        legend:{display:false},
+        datalabels:{display:false},
         tooltip:{
           backgroundColor:'#0f172a',titleColor:'#fff',bodyColor:'#fff',
           borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10,cornerRadius:6,
@@ -502,17 +530,9 @@ function render(){
             const pct = clasifTotal>0 ? (c.raw/clasifTotal*100).toFixed(1) : '0';
             return ' '+c.label+': '+fmt(c.raw)+'  ('+pct+'%)';
           }}
-        },
-        datalabels:{
-          color:'#fff', font:{size:11, weight:'700'},
-          formatter:(v)=>{
-            if(clasifTotal<=0) return '';
-            const p = v/clasifTotal*100;
-            return p >= 1 ? p.toFixed(0)+'%' : '';
-          },
-          textShadowColor:'rgba(0,0,0,0.45)', textShadowBlur:3
         }
       }}});
+  renderDonutLegend('legDonClasif', clasifData.map(d=>({label:d.cl, v:d.v})), clasifTotal);
 
   let cA2=0,cB2=0;
   const cumA=dA.map(v=>{cA2+=v;return cA2;}), cumB=dB.map(v=>{cB2+=v;return cB2;});
