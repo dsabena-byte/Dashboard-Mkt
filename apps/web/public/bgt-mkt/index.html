@@ -209,14 +209,14 @@ tr.det.hidden,tr.acc.hidden{display:none}
   <div class="chart-box">
     <div class="chart-title">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>
-      Distribución por cuenta — <span id="lDon">A</span>
+      Distribución por clasificación — <span id="lDonC">A</span>
     </div>
-    <div class="canvas-h"><canvas id="cDonut" role="img" aria-label="Distribución por cuenta"></canvas></div>
+    <div class="canvas-h"><canvas id="cDonutClasif" role="img" aria-label="Distribución por clasificación"></canvas></div>
   </div>
 </div>
 
 <div class="chart-row">
-  <div class="chart-box" style="grid-column:1/-1">
+  <div class="chart-box">
     <div class="chart-title">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Acumulado del período
@@ -226,6 +226,13 @@ tr.det.hidden,tr.acc.hidden{display:none}
       <span><span class="leg-dot" style="background:#ec4899"></span><span id="lB2">B</span></span>
     </div>
     <div class="canvas-h tall"><canvas id="cLine" role="img" aria-label="Acumulado del período"></canvas></div>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>
+      Distribución por cuenta — <span id="lDon">A</span>
+    </div>
+    <div class="canvas-h tall"><canvas id="cDonut" role="img" aria-label="Distribución por cuenta"></canvas></div>
   </div>
 </div>
 
@@ -275,7 +282,7 @@ const PIE_COLORS = ['#3b82f6','#ec4899','#a855f7','#10b981','#f59e0b','#06b6d4',
 const GRID_C = 'rgba(15,23,42,0.06)';
 const TICK_C = '#64748b';
 
-let cur = 'ARS', cBar, cDonut, cLine;
+let cur = 'ARS', cBar, cDonut, cDonutClasif, cLine;
 let DATA = [];
 const COLLAPSED = new Set(); // clasificaciones colapsadas (por defecto todas abiertas)
 const ACC_OPEN = new Set();  // cuentas expandidas (por defecto todas consolidadas/cerradas)
@@ -356,6 +363,7 @@ function render(){
   ['lA','lA2'].forEach(id=>document.getElementById(id).textContent=pA);
   ['lB','lB2'].forEach(id=>document.getElementById(id).textContent=pB);
   document.getElementById('lDon').textContent = pA;
+  document.getElementById('lDonC').textContent = pA;
   document.getElementById('thA').textContent=pA;
   document.getElementById('thB').textContent=pB;
 
