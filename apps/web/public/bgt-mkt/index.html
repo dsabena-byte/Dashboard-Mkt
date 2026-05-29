@@ -88,15 +88,19 @@ tfoot td{padding:12px 16px;border-top:2px solid var(--border-strong);background:
 tfoot td.label{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)}
 .cell-muted{color:var(--muted)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
-/* Grupos colapsables */
+/* Árbol colapsable: clasificación → cuenta → concepto */
 tr.grp{cursor:pointer;background:#0f172a}
 tr.grp td{color:#fff;font-weight:600;border-top:1px solid var(--border)}
 tr.grp:hover td{background:#1e293b}
-tr.grp .caret{display:inline-block;width:14px;transition:transform .15s;color:#94a3b8}
-tr.grp.open .caret{transform:rotate(90deg)}
-tr.det{background:#fff}
-tr.det td:first-child{padding-left:32px}
-tr.det.hidden{display:none}
+tr.acc{cursor:pointer;background:#f8fafc}
+tr.acc td{font-weight:600;color:var(--text)}
+tr.acc:hover td{background:#eef2f7}
+tr.acc td.lvl1{padding-left:24px}
+tr.det td.lvl2{padding-left:48px}
+.caret{display:inline-block;width:14px;transition:transform .15s;color:#94a3b8}
+.caret-sp{display:inline-block;width:14px}
+tr.grp.open .caret,tr.acc.open .caret{transform:rotate(90deg)}
+tr.det.hidden,tr.acc.hidden{display:none}
 
 /* Error state */
 .err{grid-column:1/-1;background:#fef2f2;border-color:#fecaca;color:#991b1b}
@@ -268,6 +272,26 @@ const TICK_C = '#64748b';
 let cur = 'ARS', cBar, cDonut, cLine;
 let DATA = [];
 const COLLAPSED = new Set(); // clasificaciones colapsadas (por defecto todas abiertas)
+const ACC_OPEN = new Set();  // cuentas expandidas (por defecto todas consolidadas/cerradas)
+
+// Aplica visibilidad y carets del árbol clasificación → cuenta → concepto
+function applyTreeVisibility(){
+  const tb = document.getElementById('tbody');
+  tb.querySelectorAll('tr.grp[data-lvl="clasif"]').forEach(r=>{
+    const clasif = CLASIF_ORDER[parseInt(r.dataset.clasif,10)];
+    r.classList.toggle('open', !COLLAPSED.has(clasif));
+  });
+  tb.querySelectorAll('tr.acc[data-lvl="acc"]').forEach(r=>{
+    const clasif = CLASIF_ORDER[parseInt(r.dataset.clasif,10)];
+    r.classList.toggle('hidden', COLLAPSED.has(clasif));
+    r.classList.toggle('open', ACC_OPEN.has(r.dataset.acc));
+  });
+  tb.querySelectorAll('tr.det[data-lvl="det"]').forEach(r=>{
+    const clasif = CLASIF_ORDER[parseInt(r.dataset.clasif,10)];
+    const hidden = COLLAPSED.has(clasif) || !ACC_OPEN.has(r.dataset.acc);
+    r.classList.toggle('hidden', hidden);
+  });
+}
 
 function fmt(v){
   const s = Intl.NumberFormat('es-AR').format(Math.abs(Math.round(v)));
@@ -486,6 +510,14 @@ function render(){
     ? `<td class="num cell-muted">${pctInv(v).toFixed(1)}%</td><td class="num cell-muted">${fact ? invFact(v).toFixed(2)+'%' : '—'}</td>`
     : '';
 
+  const cellsRow = (vA, vB) => {
+    const d = vA - vB, p = vB !== 0 ? ((vA - vB) / Math.abs(vB) * 100) : 0;
+    return `<td class="num">${fmt(vA)}</td><td class="num">${fmt(vB)}</td>`
+      + `<td class="num ${d>=0?'pos':'neg'}">${fmt(d)}</td>`
+      + `<td class="num ${p>=0?'pos':'neg'}">${vB===0?'—':(p>=0?'+':'')+p.toFixed(1)+'%'}</td>`
+      + usdCells(vA);
+  };
+
   const tbody=document.getElementById('tbody');
   tbody.innerHTML='';
   CLASIF_ORDER.forEach((clasif, gi) => {
@@ -495,41 +527,67 @@ function render(){
       tbody.innerHTML += `<tr class="grp"><td></td><td><span class="caret">▸</span> ${clasif}</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td>${isUSD?'<td class="num cell-muted">—</td><td class="num cell-muted">—</td>':''}</tr>`;
       return;
     }
+    // Nivel 2: agrupar por cuenta (num + nombre)
+    const accMap = {};
+    items.forEach(it => {
+      const key = (it.num || it.ct);
+      (accMap[key] = accMap[key] || { num: it.num, ct: it.ct, conceptos: [], vA: 0, vB: 0 });
+      accMap[key].conceptos.push(it);
+      accMap[key].vA += it.vA; accMap[key].vB += it.vB;
+    });
+    const cuentas = Object.values(accMap).sort((a,b)=>b.vA-a.vA);
+
     const gA = items.reduce((s,it)=>s+it.vA,0);
     const gB = items.reduce((s,it)=>s+it.vB,0);
-    const gd = gA-gB, gp = gB!==0?((gA-gB)/Math.abs(gB)*100):0;
-    const open = !COLLAPSED.has(clasif);
-    tbody.innerHTML += `<tr class="grp ${open?'open':''}" data-grp="${gi}">
+    const clasifOpen = !COLLAPSED.has(clasif);
+
+    // Nivel 0: clasificación
+    tbody.innerHTML += `<tr class="grp ${clasifOpen?'open':''}" data-lvl="clasif" data-clasif="${gi}">
       <td></td>
-      <td><span class="caret">▸</span> ${clasif} <span style="opacity:.6;font-weight:400">(${items.length})</span></td>
-      <td class="num">${fmt(gA)}</td>
-      <td class="num">${fmt(gB)}</td>
-      <td class="num ${gd>=0?'pos':'neg'}">${fmt(gd)}</td>
-      <td class="num ${gp>=0?'pos':'neg'}">${gB===0?'—':(gp>=0?'+':'')+gp.toFixed(1)+'%'}</td>
-      ${usdCells(gA)}
+      <td><span class="caret">▸</span> ${clasif} <span style="opacity:.6;font-weight:400">(${cuentas.length})</span></td>
+      ${cellsRow(gA, gB)}
     </tr>`;
-    items.sort((a,b)=>b.vA-a.vA).forEach(it=>{
-      const d2=it.vA-it.vB, p2=it.vB!==0?((it.vA-it.vB)/Math.abs(it.vB)*100):0;
-      tbody.innerHTML += `<tr class="det ${open?'':'hidden'}" data-grp="${gi}">
-        <td class="cell-muted">${it.num}</td>
-        <td><span class="cell-muted">${it.ct}</span> · ${it.conc}</td>
-        <td class="num">${fmt(it.vA)}</td>
-        <td class="num">${fmt(it.vB)}</td>
-        <td class="num ${d2>=0?'pos':'neg'}">${fmt(d2)}</td>
-        <td class="num ${p2>=0?'pos':'neg'}">${it.vB===0?'—':(p2>=0?'+':'')+p2.toFixed(1)+'%'}</td>
-        ${usdCells(it.vA)}
+
+    cuentas.forEach(acc => {
+      const accKey = clasif + '||' + (acc.num || acc.ct);
+      const accOpen = ACC_OPEN.has(accKey);
+      const single = acc.conceptos.length <= 1;
+      // Nivel 1: cuenta consolidada (clickable salvo que tenga 1 solo concepto)
+      tbody.innerHTML += `<tr class="acc ${accOpen?'open':''} ${clasifOpen?'':'hidden'}" data-lvl="acc" data-clasif="${gi}" data-acc="${accKey}">
+        <td class="cell-muted lvl1">${acc.num || ''}</td>
+        <td class="lvl1">${single ? '<span class="caret-sp"></span>' : '<span class="caret">▸</span>'} ${acc.ct}${single ? ' <span class="cell-muted">· '+acc.conceptos[0].conc+'</span>' : ''}</td>
+        ${cellsRow(acc.vA, acc.vB)}
       </tr>`;
+      if (!single) {
+        acc.conceptos.sort((a,b)=>b.vA-a.vA).forEach(it=>{
+          const show = clasifOpen && accOpen;
+          tbody.innerHTML += `<tr class="det ${show?'':'hidden'}" data-lvl="det" data-clasif="${gi}" data-acc="${accKey}">
+            <td></td>
+            <td class="lvl2 cell-muted">${it.conc}</td>
+            ${cellsRow(it.vA, it.vB)}
+          </tr>`;
+        });
+      }
     });
   });
 
-  // Toggle colapso
-  tbody.querySelectorAll('tr.grp').forEach(row=>{
+  applyTreeVisibility();
+
+  // Toggle clasificación (nivel 0)
+  tbody.querySelectorAll('tr.grp[data-lvl="clasif"]').forEach(row=>{
     row.addEventListener('click', ()=>{
-      const gi = row.getAttribute('data-grp');
-      const clasif = CLASIF_ORDER[parseInt(gi,10)];
+      const clasif = CLASIF_ORDER[parseInt(row.dataset.clasif,10)];
       if (COLLAPSED.has(clasif)) COLLAPSED.delete(clasif); else COLLAPSED.add(clasif);
-      row.classList.toggle('open');
-      tbody.querySelectorAll(`tr.det[data-grp="${gi}"]`).forEach(d=>d.classList.toggle('hidden'));
+      applyTreeVisibility();
+    });
+  });
+  // Toggle cuenta (nivel 1)
+  tbody.querySelectorAll('tr.acc[data-lvl="acc"]').forEach(row=>{
+    row.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const accKey = row.dataset.acc;
+      if (ACC_OPEN.has(accKey)) ACC_OPEN.delete(accKey); else ACC_OPEN.add(accKey);
+      applyTreeVisibility();
     });
   });
 
