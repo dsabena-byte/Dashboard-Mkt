@@ -3,8 +3,12 @@
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
+  ComposedChart,
   LabelList,
+  Legend,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -59,6 +63,41 @@ export function InvestmentDonut({ data }: { data: Array<{ name: string; value: n
         ))}
       </div>
     </div>
+  );
+}
+
+export function ReachImpressionsChart({
+  data,
+}: {
+  data: Array<{ mes: string; alcance: number; impresiones: number }>;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <ComposedChart data={data} margin={{ top: 12, right: 24, left: 8, bottom: 4 }}>
+        <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="mes" fontSize={11} stroke="hsl(var(--muted-foreground))" />
+        <YAxis
+          yAxisId="left"
+          orientation="left"
+          tickFormatter={fmtNum}
+          fontSize={11}
+          stroke="#2b4dff"
+          label={{ value: "Alcance", angle: -90, position: "insideLeft", offset: 8, fontSize: 11, fill: "#2b4dff" }}
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          tickFormatter={fmtNum}
+          fontSize={11}
+          stroke="#e63946"
+          label={{ value: "Impresiones", angle: 90, position: "insideRight", offset: 8, fontSize: 11, fill: "#e63946" }}
+        />
+        <Tooltip formatter={(v: number) => fmtNum(v)} contentStyle={tooltipStyle} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Bar yAxisId="left" dataKey="alcance" name="Alcance" fill="#2b4dff" radius={[4, 4, 0, 0]} />
+        <Line yAxisId="right" type="monotone" dataKey="impresiones" name="Impresiones" stroke="#e63946" strokeWidth={2} dot={{ r: 4 }} />
+      </ComposedChart>
+    </ResponsiveContainer>
   );
 }
 

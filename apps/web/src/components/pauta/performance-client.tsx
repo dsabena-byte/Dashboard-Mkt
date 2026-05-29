@@ -12,7 +12,7 @@ import {
   extractMeses,
   defaultMes,
 } from "@/lib/pauta-data";
-import { InvestmentDonut, HBarChart } from "@/components/pauta/pauta-charts";
+import { InvestmentDonut, HBarChart, ReachImpressionsChart } from "@/components/pauta/pauta-charts";
 import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -112,6 +112,23 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
   const sumReach = upper.alcance;
   const maxReach = useMemo(() => Math.max(0, ...rows.map((r) => r.alcance ?? 0)), [rows]);
   const totalViews = useMemo(() => rows.reduce((s, r) => s + (r.views ?? 0), 0), [rows]);
+
+  // Volumetría mensual (Ene-May 2026): NO se filtra, siempre muestra el histórico.
+  // Alcance e impresiones se suman sobre filas Build (upper funnel), igual que la KPI.
+  const HISTORICO_MESES_FIJOS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo"] as const;
+  const volumetriaMensual = useMemo(
+    () =>
+      HISTORICO_MESES_FIJOS.map((short) => {
+        const mes = `${short} 2026`;
+        const monthRows = data.filter((r) => r.mes === mes && r.objetivo === "Build");
+        return {
+          mes: short,
+          alcance: monthRows.reduce((s, r) => s + (r.alcance ?? 0), 0),
+          impresiones: monthRows.reduce((s, r) => s + (r.impresiones ?? 0), 0),
+        };
+      }),
+    [data],
+  );
 
   // Insights: solo si hay una sola categoría seleccionada
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
@@ -260,6 +277,14 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
             <Kpi label="Clicks" value={fmtNum(mid.clics)} sub="Mid funnel" />
             <Kpi label="Video Views" value={fmtNum(totalViews)} sub="CPV" />
             <Kpi label="CTR" value={`${mid.ctr.toFixed(2)}%`} sub="Mid funnel" />
+          </div>
+
+          <SectionTitle>Evolución mensual · Alcance vs Impresiones</SectionTitle>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="mb-2 text-[10px] text-muted-foreground">
+              Histórico Ene–May 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.
+            </p>
+            <ReachImpressionsChart data={volumetriaMensual} />
           </div>
 
           <SectionTitle>Desempeño por etapa del funnel</SectionTitle>
