@@ -6,7 +6,7 @@ export interface PautaRow {
   mes: string;
   categoria: string;
   medio: string;
-  objetivo: string; // "Build" | "Consider" | "Build & Consider"
+  objetivo: string; // "Build" | "Consider"
   tipo_compra: string; // "CPM" | "CPC" | "CPV"
   alcance_plan: number | null;
   alcance: number | null;
@@ -98,7 +98,7 @@ export const PAUTA_INSIGHTS: Record<string, PautaInsight> = {
     alertas: [
       "CPM de Meta con tendencia ascendente en la segunda quincena ($191 → $278).",
       "Google Search consumió solo 25% del presupuesto (baja de búsquedas de categoría).",
-      "YouTube Build & Consider subejecutado (53% del presupuesto).",
+      "YouTube CPV subejecutado (53% del presupuesto).",
     ],
   },
   Refrigeración: {
@@ -112,7 +112,7 @@ export const PAUTA_INSIGHTS: Record<string, PautaInsight> = {
     alertas: [
       "Pico de CPM el 25/4 ($327, +35% sobre promedio) por mayor competencia.",
       "Tendencia alcista del CPM hacia fin de mes ($196 → $287, +46%).",
-      "YouTube Build & Consider subejecutado (53% del presupuesto).",
+      "YouTube CPV subejecutado (53% del presupuesto).",
     ],
   },
   Promoción: {
@@ -178,12 +178,12 @@ function emptyTotals(): FunnelTotals {
   return { alcance: 0, impresiones: 0, clics: 0, views: 0, inversion: 0, inversion_plan: 0, frecuenciaPond: 0, cpm: 0, cpc: 0, ctr: 0 };
 }
 
-// Build = upper funnel; Consider = mid funnel; "Build & Consider" aporta a ambos
+// Build = upper funnel; Consider = mid funnel.
 function isUpper(objetivo: string): boolean {
-  return objetivo === "Build" || objetivo === "Build & Consider";
+  return objetivo === "Build";
 }
 function isMid(objetivo: string): boolean {
-  return objetivo === "Consider" || objetivo === "Build & Consider";
+  return objetivo === "Consider";
 }
 
 export function computeFunnel(rows: PautaRow[], stage: "upper" | "mid"): FunnelTotals {
@@ -256,7 +256,7 @@ export function computeEfficiency(rows: PautaRow[]): EfficiencyRow[] {
     .map((r) => ({
       medio: r.medio,
       objetivo: r.objetivo,
-      etapa: r.objetivo === "Build" ? "Upper" : r.objetivo === "Consider" ? "Mid" : "Upper+Mid",
+      etapa: r.objetivo === "Build" ? "Upper" : "Mid",
       tipo_compra: r.tipo_compra,
       costo_plan: r.costo_plan!,
       costo: r.costo!,
@@ -294,7 +294,7 @@ export function computeFulfillment(rows: PautaRow[]): FulfillmentRow[] {
     if (plan == null || real == null || plan === 0) continue;
     out.push({
       medio: r.medio,
-      etapa: r.objetivo === "Build" ? "Upper" : r.objetivo === "Consider" ? "Mid" : "Upper+Mid",
+      etapa: r.objetivo === "Build" ? "Upper" : "Mid",
       kpi,
       plan,
       real,

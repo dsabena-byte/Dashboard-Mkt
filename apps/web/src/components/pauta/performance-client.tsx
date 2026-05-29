@@ -71,7 +71,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
 
   const opMedios: TipoMedio[] = ["Digital", "TV Cable", "DOOH", "OOH"];
   const opCats = useMemo(() => [...new Set(data.map((r) => r.categoria))].sort(), [data]);
-  const opRoles = ["Build", "Consider", "Build & Consider"];
+  const opRoles = ["Build", "Consider"];
   const opPlats = useMemo(() => [...new Set(data.map((r) => r.medio))].sort(), [data]);
 
   const rows = useMemo(
@@ -366,7 +366,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
                         <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[r.medio] ?? "#94a3b8" }} />
                         {r.medio}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">{r.objetivo === "Build" ? "Upper" : r.objetivo === "Consider" ? "Mid" : "Upper+Mid"}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{r.objetivo === "Build" ? "Upper" : "Mid"}</td>
                       {selCats.length !== 1 && <td className="px-3 py-2 text-muted-foreground">{r.categoria}</td>}
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.inversion_plan ? fmtARS(r.inversion_plan) : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.inversion ? fmtARS(r.inversion) : "—"}</td>
