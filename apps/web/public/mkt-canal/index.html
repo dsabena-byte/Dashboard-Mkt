@@ -79,6 +79,24 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
 .ev-link{color:var(--blue);text-decoration:none;font-weight:600;font-size:11px}
 .ev-link:hover{text-decoration:underline}
 
+/* Resultados comerciales · eventos */
+.section-title{font-size:15px;font-weight:600;margin:8px 0 12px;display:flex;align-items:center;gap:8px}
+.section-title svg{color:var(--muted)}
+.events-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:16px}
+.event-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+.event-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.event-head .t{font-weight:600}
+.event-head .r{font-size:11px;color:var(--muted);margin-top:2px}
+.mini-kpis{display:flex;gap:10px;margin-bottom:12px}
+.mini{flex:1;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.mini .l{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+.mini .v{font-size:20px;font-weight:700;margin-top:3px}
+.cat-table{width:100%;border-collapse:collapse;font-size:12px}
+.cat-table th{font-size:10px;text-transform:uppercase;color:var(--muted);text-align:right;padding:5px 6px;font-weight:600}
+.cat-table th:first-child{text-align:left}
+.cat-table td{padding:6px;border-top:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums}
+.cat-table td:first-child{text-align:left;font-weight:600}
+.pos{color:var(--green)} .neg{color:var(--red)}
 .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:var(--radius);padding:16px}
 .note{font-size:11px;color:var(--muted-2);margin-top:10px}
 @media(max-width:900px){.chart-row{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
@@ -141,6 +159,8 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
     </div>
   </div>
 </div>
+
+<div id="eventsWrap"></div>
 
 <div class="table-card">
   <div class="chart-title">
@@ -208,6 +228,21 @@ const DATA = [
   // Megatone · Hot Sale (retail media) — atribución tentativa, confirmar
   {cliente:'Megatone', accion:'Hot Sale', periodo:'Mayo 2026', plataforma:'On-site', impresiones:4184345, clics:122421, ev:EV.mega},
   {cliente:'Megatone', accion:'Hot Sale', periodo:'Mayo 2026', plataforma:'Email',   impresiones:0,       clics:1688,   entregados:425110, aperturas:55157, ev:EV.mega},
+];
+
+// ====== EVENTOS · resultados comerciales (sell-out) ======
+// Variaciones en % vs el período de referencia (ej. HS 2025).
+// "categorias": var de Drean ($$/unidades) y de la categoría total del retailer.
+const EVENTS = [
+  {cliente:'Cetrogar', accion:'Hot Sale', periodo:'Mayo 2026', ref:'vs HS 2025', ev:EV.hsCetro,
+   total:{vtaVar:-3, uniVar:-7},
+   categorias:[
+     {cat:'Cocción',   dreanVta:100, dreanUni:100, catVta:163, catUni:195},
+     {cat:'Heladeras', dreanVta:-50, dreanUni:-49, catVta:39,  catUni:19},
+     {cat:'Lavado',    dreanVta:-2,  dreanUni:-17, catVta:11,  catUni:15},
+   ]},
+  {cliente:'Megatone', accion:'Hot Sale', periodo:'Mayo 2026', ref:'Resultados del evento', ev:EV.mega,
+   unidades:672, ingresos:482330000},
 ];
 
 const PIE_COLORS = ['#0f172a','#2563eb','#06b6d4','#ef4444','#f59e0b','#a855f7','#10b981','#ec4899','#f97316','#84cc16'];
@@ -355,7 +390,38 @@ function render(){
     <td class="num">${nf(imp)}</td><td class="num">${nf(clk)}</td>
     <td class="num">${ctr.toFixed(2)}%</td><td class="num">${conv?conv.toFixed(0):'—'}</td><td></td></tr>`;
 
+  renderEvents();
+
   document.getElementById('note').textContent='Nota: la atribución del reporte de Hot Sale a Megatone es tentativa (confirmar). Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics.';
+}
+
+function sgn(v){ return (v>=0?'+':'')+v+'%'; }
+function pctCell(v){ return `<td class="${v>=0?'pos':'neg'}">${sgn(v)}</td>`; }
+
+function renderEvents(){
+  const c=document.getElementById('fCli').value, a=document.getElementById('fAcc').value;
+  const evs=EVENTS.filter(e=>(!c||e.cliente===c)&&(!a||e.accion===a));
+  const wrap=document.getElementById('eventsWrap');
+  if(evs.length===0){ wrap.innerHTML=''; return; }
+  const cards=evs.map(e=>{
+    let body;
+    if(e.categorias){
+      body=`<div class="mini-kpis">
+        <div class="mini"><div class="l">Venta $$ Drean</div><div class="v ${e.total.vtaVar>=0?'pos':'neg'}">${sgn(e.total.vtaVar)}</div></div>
+        <div class="mini"><div class="l">Unidades Drean</div><div class="v ${e.total.uniVar>=0?'pos':'neg'}">${sgn(e.total.uniVar)}</div></div>
+      </div>
+      <table class="cat-table"><thead><tr><th>Categoría</th><th>$$ Drean</th><th>Uni Drean</th><th>$$ Cat.</th><th>Uni Cat.</th></tr></thead><tbody>`
+      + e.categorias.map(ct=>`<tr><td>${ct.cat}</td>${pctCell(ct.dreanVta)}${pctCell(ct.dreanUni)}${pctCell(ct.catVta)}${pctCell(ct.catUni)}</tr>`).join('')
+      + `</tbody></table>`;
+    } else {
+      body=`<div class="mini-kpis">
+        <div class="mini"><div class="l">Unidades vendidas</div><div class="v">${nf(e.unidades)}</div></div>
+        <div class="mini"><div class="l">Ingresos</div><div class="v">$${fmtShort(e.ingresos)}</div></div>
+      </div>`;
+    }
+    return `<div class="event-card"><div class="event-head"><div><div class="t">${e.cliente} · ${e.accion}</div><div class="r">${e.periodo} · ${e.ref}</div></div>${e.ev?`<a class="ev-link" href="${e.ev}" target="_blank" rel="noopener">Ver ↗</a>`:''}</div>${body}</div>`;
+  }).join('');
+  wrap.innerHTML=`<div class="section-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Resultados comerciales · Eventos</div><div class="events-grid">${cards}</div>`;
 }
 
 function init(){
