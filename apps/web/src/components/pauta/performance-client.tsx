@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   type PautaRow,
-  PAUTA_CATEGORIAS,
   PAUTA_INSIGHTS,
   MEDIO_COLORS,
   computeFunnel,
@@ -21,22 +20,24 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 function fmtNum(n: number): string {
   return formatNumber(Math.round(n));
 }
-function fmtARS(n: number): string {
-  return formatCurrency(n);
-}
-const fmtMoney = fmtARS;
+const fmtARS = formatCurrency;
 
 const TABS = ["Overview", "Por Medio"] as const;
 type Tab = (typeof TABS)[number];
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string; accent?: string }) {
+type TipoMedio = "Digital" | "TV Cable" | "OOH";
+function tipoMedio(m: string): TipoMedio {
+  if (m === "TV Cable") return "TV Cable";
+  if (m === "DOOH") return "OOH";
+  return "Digital";
+}
+
+function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return <KpiCard title={label} value={value} hint={sub} />;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-3 mt-6 text-sm font-medium text-muted-foreground">{children}</div>
-  );
+  return <div className="mb-3 mt-6 text-sm font-medium text-muted-foreground">{children}</div>;
 }
 
 const INSIGHT_STYLES: Record<string, string> = {
@@ -57,19 +58,32 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
 
 export function PerformanceClient({ data }: { data: PautaRow[] }) {
   const meses = useMemo(() => extractMeses(data), [data]);
-  const [cat, setCat] = useState("Todas");
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
     return d ? [d] : [];
   });
+  const [selMedios, setSelMedios] = useState<string[]>([]);
+  const [selCats, setSelCats] = useState<string[]>([]);
+  const [selRoles, setSelRoles] = useState<string[]>([]);
+  const [selPlats, setSelPlats] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>("Overview");
 
-  // Empty selection = mostrar todos los meses (evita estado sin data).
-  const activeMeses = selMeses.length > 0 ? selMeses : meses;
+  const opMedios: TipoMedio[] = ["Digital", "TV Cable", "OOH"];
+  const opCats = useMemo(() => [...new Set(data.map((r) => r.categoria))].sort(), [data]);
+  const opRoles = ["Build", "Consider", "Build & Consider"];
+  const opPlats = useMemo(() => [...new Set(data.map((r) => r.medio))].sort(), [data]);
+
   const rows = useMemo(
     () =>
-      data.filter((r) => activeMeses.includes(r.mes) && (cat === "Todas" || r.categoria === cat)),
-    [data, cat, activeMeses],
+      data.filter(
+        (r) =>
+          (selMeses.length === 0 || selMeses.includes(r.mes)) &&
+          (selMedios.length === 0 || selMedios.includes(tipoMedio(r.medio))) &&
+          (selCats.length === 0 || selCats.includes(r.categoria)) &&
+          (selRoles.length === 0 || selRoles.includes(r.objetivo)) &&
+          (selPlats.length === 0 || selPlats.includes(r.medio)),
+      ),
+    [data, selMeses, selMedios, selCats, selRoles, selPlats],
   );
 
   const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
@@ -77,28 +91,51 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
-  // Inversión total: cada línea UNA vez (no upper+mid, porque Build&Consider está en ambas)
+  // Inversión: total y desglose por tipo de medio (sin doble conteo)
   const totalInv = useMemo(() => rows.reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
+  const { invDigital, invTv, invOoh } = useMemo(() => {
+    let d = 0, t = 0, o = 0;
+    for (const r of rows) {
+      const v = r.inversion ?? 0;
+      const k = tipoMedio(r.medio);
+      if (k === "TV Cable") t += v;
+      else if (k === "OOH") o += v;
+      else d += v;
+    }
+    return { invDigital: d, invTv: t, invOoh: o };
+  }, [rows]);
   const totalInvPlan = useMemo(() => rows.reduce((s, r) => s + (r.inversion_plan ?? 0), 0), [rows]);
-  // Inversión por etapa SIN doble conteo: video (Build & Consider) se asigna a Upper.
-  const upperInv = useMemo(() => rows.filter((r) => r.objetivo !== "Consider").reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
-  const midInv = totalInv - upperInv;
-  // Alcance máximo de una sola plataforma (proxy honesto; sumar duplica personas)
-  const maxReach = useMemo(() => Math.max(0, ...rows.map((r) => r.alcance ?? 0)), [rows]);
+
+  // Volumetría
   const sumReach = upper.alcance;
+  const maxReach = useMemo(() => Math.max(0, ...rows.map((r) => r.alcance ?? 0)), [rows]);
   const totalViews = useMemo(() => rows.reduce((s, r) => s + (r.views ?? 0), 0), [rows]);
-  const insight = cat !== "Todas" ? PAUTA_INSIGHTS[cat] : null;
+
+  // Insights: solo si hay una sola categoría seleccionada
+  const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
 
   const donutData = byMedio.map((m) => ({ name: m.medio, value: m.inversion, color: MEDIO_COLORS[m.medio] ?? "#94a3b8" }));
   const catDonutData = useMemo(() => investmentByCategoria(rows), [rows]);
+  const mixData = [
+    { name: "Digital", value: invDigital, color: "#2b4dff" },
+    { name: "TV Cable", value: invTv, color: "#e63946" },
+    { name: "OOH", value: invOoh, color: "#f59e0b" },
+  ].filter((d) => d.value > 0);
   const reachData = reach.map((r) => ({ name: r.medio, value: r.alcance }));
-  // Funnel stages (proporcionales para el ancho visual)
+
   const funnelStages = [
     { label: "Impresiones", value: upper.impresiones, w: 100, bg: "#0a1849" },
     { label: "Alcance (suma medios)", value: sumReach, w: 82, bg: "#142b6f" },
     { label: "Video Views", value: totalViews, w: 64, bg: "#1e3a8a" },
     { label: "Clicks", value: mid.clics, w: 46, bg: "#2b4dff" },
   ];
+
+  const totalHint =
+    selMeses.length === 0
+      ? "Todos los meses"
+      : selMeses.length === 1
+        ? selMeses[0]!
+        : `${selMeses.length} meses`;
 
   return (
     <div className="space-y-4">
@@ -111,27 +148,44 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
         </div>
       </header>
 
-      {/* Filtros: mes (dropdown multi) + categoría (pills) */}
-      <div className="flex flex-wrap items-end gap-3">
-        <MultiDropdown
-          label="Mes"
-          placeholder="Todos los meses"
-          selected={selMeses}
-          options={meses.map((m) => ({ value: m, label: m }))}
-          onChange={setSelMeses}
-        />
-        <div className="flex flex-wrap gap-2 self-center pt-3">
-          {PAUTA_CATEGORIAS.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCat(c)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                cat === c ? "bg-foreground text-background" : "text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
+      {/* ===== Filtros ===== */}
+      <div className="rounded-xl border bg-card p-3">
+        <div className="flex flex-wrap gap-3">
+          <MultiDropdown
+            label="Mes"
+            placeholder="Todos"
+            selected={selMeses}
+            options={meses.map((m) => ({ value: m, label: m }))}
+            onChange={setSelMeses}
+          />
+          <MultiDropdown
+            label="Medio"
+            placeholder="Todos"
+            selected={selMedios}
+            options={opMedios.map((m) => ({ value: m, label: m }))}
+            onChange={setSelMedios}
+          />
+          <MultiDropdown
+            label="Categoría"
+            placeholder="Todas"
+            selected={selCats}
+            options={opCats.map((c) => ({ value: c, label: c }))}
+            onChange={setSelCats}
+          />
+          <MultiDropdown
+            label="Rol"
+            placeholder="Todos"
+            selected={selRoles}
+            options={opRoles.map((r) => ({ value: r, label: r }))}
+            onChange={setSelRoles}
+          />
+          <MultiDropdown
+            label="Plataforma"
+            placeholder="Todas"
+            selected={selPlats}
+            options={opPlats.map((p) => ({ value: p, label: p }))}
+            onChange={setSelPlats}
+          />
         </div>
       </div>
 
@@ -153,40 +207,33 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
       {/* ===== OVERVIEW ===== */}
       {tab === "Overview" && (
         <div>
-          <SectionTitle>KPIs globales de campaña</SectionTitle>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Kpi label="Inversión ejecutada" value={fmtARS(totalInv)} sub={`Plan: ${fmtARS(totalInvPlan)}`} accent="#e63946" />
-            <Kpi label="Alcance" value={fmtNum(sumReach)} sub={`Suma medios · máx 1: ${fmtNum(maxReach)}`} accent="#e63946" />
-            <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} sub="Total período" accent="#e63946" />
-            <Kpi label="Clicks" value={fmtNum(mid.clics)} sub="Mid funnel" accent="#e63946" />
-            <Kpi label="Video Views" value={fmtNum(totalViews)} sub="CPV" accent="#e63946" />
-            <Kpi label="CTR" value={`${mid.ctr.toFixed(2)}%`} sub="Mid funnel" accent="#e63946" />
+          {/* Inversión: total + desglose ON/OFF */}
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard title="Inversión total" value={fmtARS(totalInv)} hint={totalHint} />
+            <KpiCard
+              title="Digital (ON)"
+              value={fmtARS(invDigital)}
+              hint={totalInv > 0 ? `${((invDigital / totalInv) * 100).toFixed(1)}% del total` : ""}
+            />
+            <KpiCard
+              title="TV Cable"
+              value={fmtARS(invTv)}
+              hint={totalInv > 0 ? `${((invTv / totalInv) * 100).toFixed(1)}% del total` : ""}
+            />
+            <KpiCard
+              title="OOH"
+              value={fmtARS(invOoh)}
+              hint={totalInv > 0 ? `${((invOoh / totalInv) * 100).toFixed(1)}% del total` : ""}
+            />
+          </section>
+
+          {/* Mix ON / OFF */}
+          <SectionTitle>Mix ON / OFF — inversión ejecutada</SectionTitle>
+          <div className="rounded-xl border bg-card p-4">
+            <InvestmentDonut data={mixData} />
           </div>
 
-          <SectionTitle>Desempeño por etapa del funnel</SectionTitle>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#2b4dff" }}>
-              <h3 className="mb-3 text-sm font-bold">🎯 Upper Funnel — Awareness</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <Kpi label="Alcance (suma)" value={fmtNum(sumReach)} accent="#2b4dff" />
-                <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} accent="#2b4dff" />
-                <Kpi label="Frecuencia" value={upper.frecuenciaPond.toFixed(2)} accent="#2b4dff" />
-                <Kpi label="CPM prom." value={fmtMoney(upper.cpm)} accent="#2b4dff" />
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">Inversión Upper: <strong className="text-foreground">{fmtARS(upperInv)}</strong> <span className="text-muted-foreground/70">(incluye video)</span></p>
-            </div>
-            <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#c9a227" }}>
-              <h3 className="mb-3 text-sm font-bold">🔥 Mid Funnel — Consideración</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <Kpi label="Clicks" value={fmtNum(mid.clics)} accent="#c9a227" />
-                <Kpi label="Video Views" value={fmtNum(totalViews)} accent="#c9a227" />
-                <Kpi label="CTR" value={`${mid.ctr.toFixed(2)}%`} accent="#c9a227" />
-                <Kpi label="CPC" value={fmtMoney(mid.cpc)} accent="#c9a227" />
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">Inversión Mid: <strong className="text-foreground">{fmtARS(midInv)}</strong> <span className="text-muted-foreground/70">(solo CPC)</span></p>
-            </div>
-          </div>
-
+          {/* Distribución por plataforma y categoría */}
           <SectionTitle>Distribución de inversión por plataforma</SectionTitle>
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-4">
@@ -196,6 +243,42 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
             <div className="rounded-xl border bg-card p-4">
               <h3 className="mb-2 text-sm font-bold">Inversión por categoría</h3>
               <InvestmentDonut data={catDonutData} />
+            </div>
+          </div>
+
+          {/* Volumetría (sin inversión, ya está arriba) */}
+          <SectionTitle>Volumetría de campaña</SectionTitle>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <Kpi label="Alcance" value={fmtNum(sumReach)} sub={`Suma medios · máx 1: ${fmtNum(maxReach)}`} />
+            <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} sub="Total período" />
+            <Kpi label="Clicks" value={fmtNum(mid.clics)} sub="Mid funnel" />
+            <Kpi label="Video Views" value={fmtNum(totalViews)} sub="CPV" />
+            <Kpi label="CTR" value={`${mid.ctr.toFixed(2)}%`} sub="Mid funnel" />
+          </div>
+
+          <SectionTitle>Desempeño por etapa del funnel</SectionTitle>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#2b4dff" }}>
+              <h3 className="mb-3 text-sm font-bold">🎯 Upper Funnel — Awareness</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <Kpi label="Alcance (suma)" value={fmtNum(sumReach)} />
+                <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} />
+                <Kpi label="Frecuencia" value={upper.frecuenciaPond.toFixed(2)} />
+                <Kpi label="CPM prom." value={fmtARS(upper.cpm)} />
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Plan: <strong className="text-foreground">{fmtARS(totalInvPlan)}</strong>{" "}
+                <span className="text-muted-foreground/70">(total filtrado)</span>
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#c9a227" }}>
+              <h3 className="mb-3 text-sm font-bold">🔥 Mid Funnel — Consideración</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <Kpi label="Clicks" value={fmtNum(mid.clics)} />
+                <Kpi label="Video Views" value={fmtNum(totalViews)} />
+                <Kpi label="CTR" value={`${mid.ctr.toFixed(2)}%`} />
+                <Kpi label="CPC" value={fmtARS(mid.cpc)} />
+              </div>
             </div>
           </div>
 
@@ -219,7 +302,9 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-4">
               <h3 className="text-sm font-bold">Upper Funnel — Alcance por plataforma</h3>
-              <p className="mb-2 text-[10px] text-muted-foreground">Alcance sumado por plataforma — incluye solapamiento entre medios (la misma persona puede estar en varios).</p>
+              <p className="mb-2 text-[10px] text-muted-foreground">
+                Alcance sumado por plataforma — incluye solapamiento entre medios (la misma persona puede estar en varios).
+              </p>
               <HBarChart data={reachData} color="#2b4dff" />
             </div>
             <div className="rounded-xl border bg-card p-4">
@@ -233,7 +318,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
 
           {insight && (
             <>
-              <SectionTitle>Highlights de ejecución · {cat}</SectionTitle>
+              <SectionTitle>Highlights de ejecución · {selCats[0]}</SectionTitle>
               <p className="mb-3 text-sm leading-relaxed text-foreground/90">{insight.conclusion}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {insight.positivos.map((p, i) => (
@@ -259,7 +344,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
                   <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                     <th className="px-3 py-2">Plataforma</th>
                     <th className="px-3 py-2">Etapa</th>
-                    {cat === "Todas" && <th className="px-3 py-2">Categoría</th>}
+                    {selCats.length !== 1 && <th className="px-3 py-2">Categoría</th>}
                     <th className="px-3 py-2 text-right">Inv. Plan</th>
                     <th className="px-3 py-2 text-right">Inv. Real</th>
                     <th className="px-3 py-2 text-right">Impresiones</th>
@@ -276,12 +361,12 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
                         {r.medio}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">{r.objetivo === "Build" ? "Upper" : r.objetivo === "Consider" ? "Mid" : "Upper+Mid"}</td>
-                      {cat === "Todas" && <td className="px-3 py-2 text-muted-foreground">{r.categoria}</td>}
+                      {selCats.length !== 1 && <td className="px-3 py-2 text-muted-foreground">{r.categoria}</td>}
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.inversion_plan ? fmtARS(r.inversion_plan) : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.inversion ? fmtARS(r.inversion) : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.impresiones ? fmtNum(r.impresiones) : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.alcance ? fmtNum(r.alcance) : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.costo != null ? `${fmtMoney(r.costo)} ${r.tipo_compra}` : r.tipo_compra}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{r.costo != null ? `${fmtARS(r.costo)} ${r.tipo_compra}` : r.tipo_compra}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.ctr != null ? `${r.ctr.toFixed(2)}%` : "—"}</td>
                     </tr>
                   ))}
@@ -300,7 +385,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><div className="text-muted-foreground">Inversión</div><div className="font-semibold">{fmtARS(p.inversion)}</div></div>
-                  <div><div className="text-muted-foreground">CPM</div><div className="font-semibold">{fmtMoney(p.cpm)}</div></div>
+                  <div><div className="text-muted-foreground">CPM</div><div className="font-semibold">{fmtARS(p.cpm)}</div></div>
                   <div><div className="text-muted-foreground">Impresiones</div><div className="font-semibold">{fmtNum(p.impresiones)}</div></div>
                   <div><div className="text-muted-foreground">Alcance</div><div className="font-semibold">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</div></div>
                 </div>
