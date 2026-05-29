@@ -88,6 +88,15 @@ tfoot td{padding:12px 16px;border-top:2px solid var(--border-strong);background:
 tfoot td.label{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)}
 .cell-muted{color:var(--muted)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+/* Grupos colapsables */
+tr.grp{cursor:pointer;background:#0f172a}
+tr.grp td{color:#fff;font-weight:600;border-top:1px solid var(--border)}
+tr.grp:hover td{background:#1e293b}
+tr.grp .caret{display:inline-block;width:14px;transition:transform .15s;color:#94a3b8}
+tr.grp.open .caret{transform:rotate(90deg)}
+tr.det{background:#fff}
+tr.det td:first-child{padding-left:32px}
+tr.det.hidden{display:none}
 
 /* Error state */
 .err{grid-column:1/-1;background:#fef2f2;border-color:#fecaca;color:#991b1b}
@@ -196,11 +205,13 @@ tfoot td.label{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;col
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th>N° Cuenta</th><th>Cuenta</th><th>Concepto</th>
+        <th>N° Cuenta</th><th>Clasificación / Concepto</th>
         <th class="num" id="thA">Ppto A</th>
         <th class="num" id="thB">Ppto B</th>
         <th class="num">Diferencia</th>
         <th class="num">% Var</th>
+        <th class="num usd-col" style="display:none">% Inv</th>
+        <th class="num usd-col" style="display:none">Inv / Fact</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
       <tfoot id="tfoot"></tfoot>
@@ -226,6 +237,27 @@ const CUENTA_NUM = {
   'GASTOS VAR- PAUTA DIGITAL':        '6202010033',
 };
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+
+// Facturación anual (USD) para columna Inv/Fact
+const FACTURACION = { 2023: 293307000, 2024: 275677000, 2025: 264334000, 2026: 245242208 };
+
+// Clasificación de cuentas → grupos. Orden de visualización.
+const CLASIF_ORDER = ['EQUITY','VISIBILITY','INTEGRALES','DESARROLLO DE PDV','TRADE MARKETING','OTROS'];
+const CUENTA_CLASIF = {
+  '6202010034':'EQUITY','6202010069':'EQUITY','6202010078':'EQUITY',
+  '6202010036':'VISIBILITY','6202010072':'VISIBILITY',
+  '6202010077':'INTEGRALES',
+  '6202010082':'TRADE MARKETING','6202010071':'TRADE MARKETING',
+};
+function clasifDe(cuentaNombre){
+  const num = CUENTA_NUM[cuentaNombre] || '';
+  return CUENTA_CLASIF[num] || 'OTROS';
+}
+function yearOf(ppto){
+  const m = String(ppto).match(/20\d{2}/);
+  return m ? parseInt(m[0],10) : null;
+}
+
 const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const SERIES_A = '#3b82f6';
 const SERIES_B = '#ec4899';
@@ -235,6 +267,7 @@ const TICK_C = '#64748b';
 
 let cur = 'ARS', cBar, cDonut, cLine;
 let DATA = [];
+const COLLAPSED = new Set(); // clasificaciones colapsadas (por defecto todas abiertas)
 
 function fmt(v){
   const s = Intl.NumberFormat('es-AR').format(Math.abs(Math.round(v)));
@@ -427,28 +460,89 @@ function render(){
         y:{ticks:{color:TICK_C,callback:v=>fmtShort(v),font:{size:11}},grid:{color:GRID_C,drawBorder:false},border:{display:false}}
       }}});
 
+  // Mostrar/ocultar columnas USD (% Inv, Inv/Fact)
+  const isUSD = cur === 'USD';
+  document.querySelectorAll('.usd-col').forEach(el => el.style.display = isUSD ? '' : 'none');
+  const factYear = yearOf(pA);
+  const fact = factYear ? FACTURACION[factYear] : null;
+
+  // Agrupar conceptos por clasificación
   const keys=[...new Set([...rA.map(r=>r[1]+'||'+r[4]),...rB.map(r=>r[1]+'||'+r[4])])].sort();
-  const tbody=document.getElementById('tbody');
-  tbody.innerHTML='';
+  const grupos = {}; // clasif -> [{num, ct, conc, vA, vB}]
   let totA=0, totB=0;
   keys.forEach(k=>{
     const [ct,conc]=k.split('||');
     const vA2=Math.round(gs(sumD(rA.filter(r=>r[1]===ct&&r[4]===conc))));
     const vB2=Math.round(gs(sumD(rB.filter(r=>r[1]===ct&&r[4]===conc))));
     totA += vA2; totB += vB2;
-    const d2=vA2-vB2, p2=vB2!==0?((vA2-vB2)/Math.abs(vB2)*100):0;
-    const num = CUENTA_NUM[ct] || '';
-    tbody.innerHTML+=`<tr><td class="cell-muted">${num}</td><td class="cell-muted">${ct}</td><td>${conc}</td><td class="num">${fmt(vA2)}</td><td class="num">${fmt(vB2)}</td><td class="num ${d2>=0?'pos':'neg'}">${fmt(d2)}</td><td class="num ${p2>=0?'pos':'neg'}">${vB2===0?'—':(p2>=0?'+':'')+p2.toFixed(1)+'%'}</td></tr>`;
+    const clasif = clasifDe(ct);
+    (grupos[clasif] = grupos[clasif] || []).push({ num: CUENTA_NUM[ct] || '', ct, conc, vA: vA2, vB: vB2 });
   });
+
+  // Helpers de celda
+  const pctInv = (v) => totA > 0 ? (v / totA * 100) : 0;
+  const invFact = (v) => fact ? (v / fact * 100) : null;
+  const usdCells = (v) => isUSD
+    ? `<td class="num cell-muted">${pctInv(v).toFixed(1)}%</td><td class="num cell-muted">${fact ? invFact(v).toFixed(2)+'%' : '—'}</td>`
+    : '';
+
+  const tbody=document.getElementById('tbody');
+  tbody.innerHTML='';
+  CLASIF_ORDER.forEach((clasif, gi) => {
+    const items = grupos[clasif] || [];
+    if (items.length === 0) {
+      // Clasificación sin datos: solo el título
+      tbody.innerHTML += `<tr class="grp"><td></td><td><span class="caret">▸</span> ${clasif}</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td><td class="num cell-muted">—</td>${isUSD?'<td class="num cell-muted">—</td><td class="num cell-muted">—</td>':''}</tr>`;
+      return;
+    }
+    const gA = items.reduce((s,it)=>s+it.vA,0);
+    const gB = items.reduce((s,it)=>s+it.vB,0);
+    const gd = gA-gB, gp = gB!==0?((gA-gB)/Math.abs(gB)*100):0;
+    const open = !COLLAPSED.has(clasif);
+    tbody.innerHTML += `<tr class="grp ${open?'open':''}" data-grp="${gi}">
+      <td></td>
+      <td><span class="caret">▸</span> ${clasif} <span style="opacity:.6;font-weight:400">(${items.length})</span></td>
+      <td class="num">${fmt(gA)}</td>
+      <td class="num">${fmt(gB)}</td>
+      <td class="num ${gd>=0?'pos':'neg'}">${fmt(gd)}</td>
+      <td class="num ${gp>=0?'pos':'neg'}">${gB===0?'—':(gp>=0?'+':'')+gp.toFixed(1)+'%'}</td>
+      ${usdCells(gA)}
+    </tr>`;
+    items.sort((a,b)=>b.vA-a.vA).forEach(it=>{
+      const d2=it.vA-it.vB, p2=it.vB!==0?((it.vA-it.vB)/Math.abs(it.vB)*100):0;
+      tbody.innerHTML += `<tr class="det ${open?'':'hidden'}" data-grp="${gi}">
+        <td class="cell-muted">${it.num}</td>
+        <td><span class="cell-muted">${it.ct}</span> · ${it.conc}</td>
+        <td class="num">${fmt(it.vA)}</td>
+        <td class="num">${fmt(it.vB)}</td>
+        <td class="num ${d2>=0?'pos':'neg'}">${fmt(d2)}</td>
+        <td class="num ${p2>=0?'pos':'neg'}">${it.vB===0?'—':(p2>=0?'+':'')+p2.toFixed(1)+'%'}</td>
+        ${usdCells(it.vA)}
+      </tr>`;
+    });
+  });
+
+  // Toggle colapso
+  tbody.querySelectorAll('tr.grp').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const gi = row.getAttribute('data-grp');
+      const clasif = CLASIF_ORDER[parseInt(gi,10)];
+      if (COLLAPSED.has(clasif)) COLLAPSED.delete(clasif); else COLLAPSED.add(clasif);
+      row.classList.toggle('open');
+      tbody.querySelectorAll(`tr.det[data-grp="${gi}"]`).forEach(d=>d.classList.toggle('hidden'));
+    });
+  });
+
   const totDiff = totA - totB;
   const totPct = totB!==0 ? ((totA-totB)/Math.abs(totB)*100) : 0;
   document.getElementById('tfoot').innerHTML = keys.length===0 ? '' :
     `<tr>
-      <td class="label" colspan="3">Total</td>
+      <td class="label" colspan="2">Total</td>
       <td class="num">${fmt(totA)}</td>
       <td class="num">${fmt(totB)}</td>
       <td class="num ${totDiff>=0?'pos':'neg'}">${fmt(totDiff)}</td>
       <td class="num ${totPct>=0?'pos':'neg'}">${totB===0?'—':(totPct>=0?'+':'')+totPct.toFixed(1)+'%'}</td>
+      ${isUSD?`<td class="num">100%</td><td class="num">${fact?(totA/fact*100).toFixed(2)+'%':'—'}</td>`:''}
     </tr>`;
 }
 
