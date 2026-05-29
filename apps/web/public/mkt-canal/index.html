@@ -209,18 +209,18 @@ const EV = {
 };
 // inversion: null = pendiente de cargar (desde la planilla / SharePoint).
 const DATA = [
-  // Cetrogar · AO Verano (mes estimado, confirmar)
-  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Verano 2026', plataforma:'Meta',    impresiones:1799224, clics:31183, inversion:null, ev:EV.ao},
-  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Verano 2026', plataforma:'Google',  impresiones:277564,  clics:13830, inversion:null, ev:EV.ao},
-  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Verano 2026', plataforma:'YouTube', impresiones:374025,  clics:1529,  inversion:null, ev:EV.ao},
-  // Cetrogar · CetroSale (mes estimado, confirmar)
-  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'2026', plataforma:'Meta',    impresiones:1799220, clics:32695, inversion:null, ev:EV.cetro},
-  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'2026', plataforma:'Google',  impresiones:277572,  clics:12398, inversion:null, ev:EV.cetro},
-  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'2026', plataforma:'YouTube', impresiones:374025,  clics:1550,  inversion:null, ev:EV.cetro},
-  // Cetrogar · Electrofans (mes estimado, confirmar)
-  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'Meta',    impresiones:2541859, clics:44226, inversion:null, ev:EV.efans},
-  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'Google',  impresiones:342500,  clics:18431, inversion:null, ev:EV.efans},
-  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'2026', plataforma:'YouTube', impresiones:374025,  clics:1476,  inversion:null, ev:EV.efans},
+  // Cetrogar · AO Verano (Enero)
+  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Enero 2026', plataforma:'Meta',    impresiones:1799224, clics:31183, inversion:null, ev:EV.ao},
+  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Enero 2026', plataforma:'Google',  impresiones:277564,  clics:13830, inversion:null, ev:EV.ao},
+  {cliente:'Cetrogar', accion:'AO Verano', mes:'2026-01', periodo:'Enero 2026', plataforma:'YouTube', impresiones:374025,  clics:1529,  inversion:null, ev:EV.ao},
+  // Cetrogar · CetroSale (Febrero)
+  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'Febrero 2026', plataforma:'Meta',    impresiones:1799220, clics:32695, inversion:null, ev:EV.cetro},
+  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'Febrero 2026', plataforma:'Google',  impresiones:277572,  clics:12398, inversion:null, ev:EV.cetro},
+  {cliente:'Cetrogar', accion:'CetroSale', mes:'2026-02', periodo:'Febrero 2026', plataforma:'YouTube', impresiones:374025,  clics:1550,  inversion:null, ev:EV.cetro},
+  // Cetrogar · Electrofans (Marzo)
+  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'Meta',    impresiones:2541859, clics:44226, inversion:null, ev:EV.efans},
+  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'Google',  impresiones:342500,  clics:18431, inversion:null, ev:EV.efans},
+  {cliente:'Cetrogar', accion:'Electrofans', mes:'2026-03', periodo:'Marzo 2026', plataforma:'YouTube', impresiones:374025,  clics:1476,  inversion:null, ev:EV.efans},
   // Jumbo · Hot Sale (banners on-site)
   {cliente:'Jumbo', accion:'Hot Sale', mes:'2026-05', periodo:'Mayo 2026', plataforma:'On-site', impresiones:33235, clics:303, inversion:null, ev:EV.jumboHS},
   // La Anónima · Hot Sale (retail media RM)
@@ -418,7 +418,7 @@ function render(){
 
   renderEvents();
 
-  document.getElementById('note').textContent='Notas: meses de Cetrogar (AO Verano/CetroSale/Electrofans) estimados — confirmar. La inversión se carga desde la planilla. Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics. Naldo y Megatone están como evidencia (sin métricas en texto).';
+  document.getElementById('note').textContent='Notas: la inversión se carga desde la planilla. Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics. Naldo y Megatone están como evidencia (sin métricas en texto).';
 }
 
 function sgn(v){ return (v>=0?'+':'')+v+'%'; }
