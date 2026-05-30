@@ -223,18 +223,19 @@ export default async function WebPage({ searchParams }: PageProps) {
   const currYear = (new Date(`${range.to}T00:00:00Z`)).getUTCFullYear();
   const prevYear = currYear - 1;
   const MES_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  const monthlyDataRaw = [];
+  // 12 meses fijos; meses sin data van como null para que recharts no dibuje barras/líneas en 0.
+  const monthlyData: Array<{ mes: string; usuarios_curr: number | null; usuarios_prev: number; sesiones_curr: number | null; sesiones_prev: number }> = [];
   for (let m = 1; m <= 12; m++) {
-    monthlyDataRaw.push({
+    const u = getMonthVal(currYear, m, "sessions");
+    const s = getMonthVal(currYear, m, "users");
+    monthlyData.push({
       mes: MES_SHORT[m - 1]!,
-      usuarios_curr: getMonthVal(currYear, m, "sessions"),
+      usuarios_curr: u > 0 ? u : null,
       usuarios_prev: 0,
-      sesiones_curr: getMonthVal(currYear, m, "users"),
+      sesiones_curr: s > 0 ? s : null,
       sesiones_prev: 0,
     });
   }
-  // Solo mostramos el año actual (2025 quedó afuera por datos sucios de GA4).
-  const monthlyData = monthlyDataRaw.filter((r) => r.usuarios_curr > 0 || r.sesiones_curr > 0);
   const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
   // Estrategia de agregación según el largo del rango:

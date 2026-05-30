@@ -15,10 +15,10 @@ import { formatNumber } from "@/lib/utils";
 
 interface MonthlyDatum {
   mes: string;
-  usuarios_curr: number;
-  usuarios_prev: number;
-  sesiones_curr?: number;
-  sesiones_prev?: number;
+  usuarios_curr: number | null;
+  usuarios_prev: number | null;
+  sesiones_curr?: number | null;
+  sesiones_prev?: number | null;
 }
 
 interface WebMonthlyChartProps {

@@ -80,7 +80,15 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const kpis = computeKpis(posts);
   const netStats = computeNetStats(posts);
   const brandStats = computeBrandStats(posts, followers, red);
-  const trend = computeTrend(posts);
+  // Tendencia mensual: padea a 12 meses del año actual para mostrar el año completo.
+  // Los meses sin posts quedan con `values: {}` => recharts no dibuja punto (gap en la línea).
+  const trendRaw = computeTrend(posts);
+  const trendYear = trendRaw.length > 0 ? Number(trendRaw[trendRaw.length - 1]!.mes.slice(0, 4)) : new Date().getFullYear();
+  const trendMap = new Map(trendRaw.map((t) => [t.mes, t]));
+  const trend = Array.from({ length: 12 }, (_, i) => {
+    const key = `${trendYear}-${String(i + 1).padStart(2, "0")}`;
+    return trendMap.get(key) ?? { mes: key, values: {} };
+  });
   const weeklyVolume = computeWeeklyPostCount(posts);
   const pilarStats = computePilarStats(posts);
   const sentByBrand = computeSentimentByBrand(posts).map((s) => ({
