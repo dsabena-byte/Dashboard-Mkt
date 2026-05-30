@@ -56,15 +56,31 @@ function mapRow(r: DbPautaRow): PautaRow {
   };
 }
 
+const SELECT_COLUMNS =
+  "mes, categoria, medio, objetivo, tipo_compra, alcance_plan, alcance, frecuencia_plan, frecuencia, impresiones_plan, impresiones, clics_plan, clics, views_plan, views, inversion_plan, inversion, costo_plan, costo, ctr_plan, ctr";
+
+// Performance Pauta tradicional: excluye UGC, que vive en /influencia.
 export async function getPautaPerformance(): Promise<PautaRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
     .from("pauta_performance")
-    .select(
-      "mes, categoria, medio, objetivo, tipo_compra, alcance_plan, alcance, frecuencia_plan, frecuencia, impresiones_plan, impresiones, clics_plan, clics, views_plan, views, inversion_plan, inversion, costo_plan, costo, ctr_plan, ctr",
-    )
+    .select(SELECT_COLUMNS)
+    .neq("categoria", "UGC")
     .order("id", { ascending: true })
     .returns<DbPautaRow[]>();
   if (error) throw new Error(`pauta_performance: ${error.message}`);
+  return (data ?? []).map(mapRow);
+}
+
+// Influencer Marketing / UGC: solo categoría = UGC.
+export async function getInfluenciaPerformance(): Promise<PautaRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("pauta_performance")
+    .select(SELECT_COLUMNS)
+    .eq("categoria", "UGC")
+    .order("id", { ascending: true })
+    .returns<DbPautaRow[]>();
+  if (error) throw new Error(`pauta_performance UGC: ${error.message}`);
   return (data ?? []).map(mapRow);
 }
