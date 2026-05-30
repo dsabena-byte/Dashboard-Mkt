@@ -113,13 +113,21 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
   const maxReach = useMemo(() => Math.max(0, ...rows.map((r) => r.alcance ?? 0)), [rows]);
   const totalViews = useMemo(() => rows.reduce((s, r) => s + (r.views ?? 0), 0), [rows]);
 
-  // Volumetría mensual (Ene-May 2026): NO se filtra, siempre muestra el histórico.
+  // Volumetría mensual (año completo 2026): NO se filtra, siempre muestra el histórico.
   // Alcance e impresiones se suman sobre filas Build (upper funnel), igual que la KPI.
-  const HISTORICO_MESES_FIJOS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo"] as const;
+  // Meses sin data quedan en 0 hasta que se carguen.
+  const HISTORICO_MESES_FIJOS: Array<{ full: string; short: string }> = [
+    { full: "Enero", short: "Ene" }, { full: "Febrero", short: "Feb" },
+    { full: "Marzo", short: "Mar" }, { full: "Abril", short: "Abr" },
+    { full: "Mayo", short: "May" }, { full: "Junio", short: "Jun" },
+    { full: "Julio", short: "Jul" }, { full: "Agosto", short: "Ago" },
+    { full: "Septiembre", short: "Sep" }, { full: "Octubre", short: "Oct" },
+    { full: "Noviembre", short: "Nov" }, { full: "Diciembre", short: "Dic" },
+  ];
   const volumetriaMensual = useMemo(
     () =>
-      HISTORICO_MESES_FIJOS.map((short) => {
-        const mes = `${short} 2026`;
+      HISTORICO_MESES_FIJOS.map(({ full, short }) => {
+        const mes = `${full} 2026`;
         const monthRows = data.filter((r) => r.mes === mes && r.objetivo === "Build");
         return {
           mes: short,
@@ -282,7 +290,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
           <SectionTitle>Evolución mensual · Alcance vs Impresiones</SectionTitle>
           <div className="rounded-xl border bg-card p-4">
             <p className="mb-2 text-[10px] text-muted-foreground">
-              Histórico Ene–May 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.
+              Año completo 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.
             </p>
             <ReachImpressionsChart data={volumetriaMensual} />
           </div>
