@@ -41,7 +41,7 @@ export function WebMonthlyChart({
   // Solo mostrar barras del año anterior si hay sesiones cargadas
   const hasSessionsPrev = data.some((d) => (d.sesiones_prev ?? 0) > 0);
   const hasSessionsCurr = data.some((d) => (d.sesiones_curr ?? 0) > 0);
-  const hasUsersPrev = data.some((d) => d.usuarios_prev > 0);
+  const hasUsersPrev = data.some((d) => (d.usuarios_prev ?? 0) > 0);
 
   const formatTick = (v: number) =>
     v >= 1_000_000
