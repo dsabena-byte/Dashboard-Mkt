@@ -124,33 +124,42 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
     { full: "Septiembre", short: "Sep" }, { full: "Octubre", short: "Oct" },
     { full: "Noviembre", short: "Nov" }, { full: "Diciembre", short: "Dic" },
   ];
+  // Último mes (1..12) con data: para distinguir "fue cero" (mes pasado sin
+  // ejecución) de "todavía no se ejecutó" (mes futuro). Pasados muestran 0,
+  // futuros muestran null (gap en línea / sin barra).
+  const lastMonthWithData = useMemo(() => {
+    let last = 0;
+    for (const r of data) {
+      const idx = HISTORICO_MESES_FIJOS.findIndex(({ full }) => `${full} 2026` === r.mes);
+      if (idx >= 0 && idx + 1 > last) last = idx + 1;
+    }
+    return last;
+  }, [data]);
+
   const volumetriaMensual = useMemo(
     () =>
-      HISTORICO_MESES_FIJOS.map(({ full, short }) => {
+      HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
         const mes = `${full} 2026`;
         const monthRows = data.filter((r) => r.mes === mes && r.objetivo === "Build");
-        // Sin data en el mes -> null: Recharts corta la línea y no dibuja barras vacías.
-        if (monthRows.length === 0) return { mes: short, alcance: null, impresiones: null };
+        const future = i + 1 > lastMonthWithData;
         return {
           mes: short,
-          alcance: monthRows.reduce((s, r) => s + (r.alcance ?? 0), 0),
-          impresiones: monthRows.reduce((s, r) => s + (r.impresiones ?? 0), 0),
+          alcance: future ? null : monthRows.reduce((s, r) => s + (r.alcance ?? 0), 0),
+          impresiones: future ? null : monthRows.reduce((s, r) => s + (r.impresiones ?? 0), 0),
         };
       }),
-    [data],
+    [data, lastMonthWithData],
   );
 
   // Inversión mensual ON/OFF (año completo, sin filtros).
   const inversionMensual = useMemo(
     () =>
-      HISTORICO_MESES_FIJOS.map(({ full, short }) => {
+      HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
         const mes = `${full} 2026`;
-        const monthRows = data.filter((r) => r.mes === mes);
-        if (monthRows.length === 0) {
-          return { mes: short, digital: null, tvCable: null, dooh: null, ooh: null };
-        }
+        const future = i + 1 > lastMonthWithData;
+        if (future) return { mes: short, digital: null, tvCable: null, dooh: null, ooh: null };
         const row = { mes: short, digital: 0, tvCable: 0, dooh: 0, ooh: 0 };
-        for (const r of monthRows) {
+        for (const r of data.filter((x) => x.mes === mes)) {
           const v = r.inversion ?? 0;
           const k = tipoMedio(r.medio);
           if (k === "TV Cable") row.tvCable += v;
@@ -160,7 +169,7 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
         }
         return row;
       }),
-    [data],
+    [data, lastMonthWithData],
   );
 
   // Insights: solo si hay una sola categoría seleccionada

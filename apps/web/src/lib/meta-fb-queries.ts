@@ -77,8 +77,8 @@ export interface FbKpiTotals {
 
 export interface FbMonthlyDatum {
   mes: string;
-  alcance: number;
-  engagement: number;
+  alcance: number | null;
+  engagement: number | null;
 }
 
 export interface FbOrganicSummary {
@@ -300,16 +300,19 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     monthlyMap.set(monthKey, m);
   }
 
-  const monthlyData: FbMonthlyDatum[] = [...monthlyMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, v]) => {
-      const monthIdx = parseInt(key.slice(5, 7), 10) - 1;
-      return {
-        mes: `${MES_SHORT[monthIdx]} ${key.slice(2, 4)}`,
-        alcance: v.alcance,
-        engagement: v.engagement,
-      };
-    });
+  // Padea a 12 meses del año con data más reciente (meses sin posts -> null
+  // para que recharts no dibuje barras/líneas en cero).
+  const years = [...monthlyMap.keys()].map((k) => k.slice(0, 4));
+  const targetYear = years.length > 0 ? years.sort()[years.length - 1]! : String(new Date().getFullYear());
+  const monthlyData: FbMonthlyDatum[] = Array.from({ length: 12 }, (_, i) => {
+    const key = `${targetYear}-${String(i + 1).padStart(2, "0")}`;
+    const v = monthlyMap.get(key);
+    return {
+      mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
+      alcance: v ? v.alcance : null,
+      engagement: v ? v.engagement : null,
+    };
+  });
 
   return {
     totals,

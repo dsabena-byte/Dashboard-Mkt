@@ -25,8 +25,8 @@ export interface IgDemoBreakdown {
 
 export interface IgMonthlyDatum {
   mes: string;
-  alcance: number;
-  engagement: number;
+  alcance: number | null;
+  engagement: number | null;
 }
 
 export interface IgOrganicSummary {
@@ -136,16 +136,18 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
 
   const totalComments = totalEngagement - totalReactions - totalSaves;
 
-  const monthlyData: IgMonthlyDatum[] = [...monthlyMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, v]) => {
-      const monthIdx = parseInt(key.slice(5, 7), 10) - 1;
-      return {
-        mes: `${MES_SHORT[monthIdx]} ${key.slice(2, 4)}`,
-        alcance: v.alcance,
-        engagement: v.engagement,
-      };
-    });
+  // Padea a 12 meses del año con data más reciente (meses sin posts -> null).
+  const years = [...monthlyMap.keys()].map((k) => k.slice(0, 4));
+  const targetYear = years.length > 0 ? years.sort()[years.length - 1]! : String(new Date().getFullYear());
+  const monthlyData: IgMonthlyDatum[] = Array.from({ length: 12 }, (_, i) => {
+    const key = `${targetYear}-${String(i + 1).padStart(2, "0")}`;
+    const v = monthlyMap.get(key);
+    return {
+      mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
+      alcance: v ? v.alcance : null,
+      engagement: v ? v.engagement : null,
+    };
+  });
 
   const demoByDim = new Map<string, Array<{ category: string; value: number }>>();
   for (const r of demo) {

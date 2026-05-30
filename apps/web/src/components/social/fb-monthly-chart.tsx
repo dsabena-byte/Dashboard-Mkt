@@ -14,8 +14,8 @@ import {
 
 interface FbMonthlyDatum {
   mes: string;
-  alcance: number;
-  engagement: number;
+  alcance: number | null;
+  engagement: number | null;
 }
 
 const formatTick = (v: number) =>
