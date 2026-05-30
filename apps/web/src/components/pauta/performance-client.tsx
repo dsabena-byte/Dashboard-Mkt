@@ -12,7 +12,7 @@ import {
   extractMeses,
   defaultMes,
 } from "@/lib/pauta-data";
-import { InvestmentDonut, HBarChart, ReachImpressionsChart } from "@/components/pauta/pauta-charts";
+import { InvestmentDonut, HBarChart, ReachImpressionsChart, MonthlyInvestmentChart } from "@/components/pauta/pauta-charts";
 import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -129,11 +129,36 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
       HISTORICO_MESES_FIJOS.map(({ full, short }) => {
         const mes = `${full} 2026`;
         const monthRows = data.filter((r) => r.mes === mes && r.objetivo === "Build");
+        // Sin data en el mes -> null: Recharts corta la línea y no dibuja barras vacías.
+        if (monthRows.length === 0) return { mes: short, alcance: null, impresiones: null };
         return {
           mes: short,
           alcance: monthRows.reduce((s, r) => s + (r.alcance ?? 0), 0),
           impresiones: monthRows.reduce((s, r) => s + (r.impresiones ?? 0), 0),
         };
+      }),
+    [data],
+  );
+
+  // Inversión mensual ON/OFF (año completo, sin filtros).
+  const inversionMensual = useMemo(
+    () =>
+      HISTORICO_MESES_FIJOS.map(({ full, short }) => {
+        const mes = `${full} 2026`;
+        const monthRows = data.filter((r) => r.mes === mes);
+        if (monthRows.length === 0) {
+          return { mes: short, digital: null, tvCable: null, dooh: null, ooh: null };
+        }
+        const row = { mes: short, digital: 0, tvCable: 0, dooh: 0, ooh: 0 };
+        for (const r of monthRows) {
+          const v = r.inversion ?? 0;
+          const k = tipoMedio(r.medio);
+          if (k === "TV Cable") row.tvCable += v;
+          else if (k === "DOOH") row.dooh += v;
+          else if (k === "OOH") row.ooh += v;
+          else row.digital += v;
+        }
+        return row;
       }),
     [data],
   );
@@ -293,6 +318,14 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
               Año completo 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.
             </p>
             <ReachImpressionsChart data={volumetriaMensual} />
+          </div>
+
+          <SectionTitle>Evolución mensual · Inversión ON / OFF</SectionTitle>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="mb-2 text-[10px] text-muted-foreground">
+              Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
+            </p>
+            <MonthlyInvestmentChart data={inversionMensual} />
           </div>
 
           <SectionTitle>Desempeño por etapa del funnel</SectionTitle>

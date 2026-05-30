@@ -66,10 +66,35 @@ export function InvestmentDonut({ data }: { data: Array<{ name: string; value: n
   );
 }
 
+export function MonthlyInvestmentChart({
+  data,
+}: {
+  data: Array<{ mes: string; digital: number | null; tvCable: number | null; dooh: number | null; ooh: number | null }>;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={data} margin={{ top: 12, right: 16, left: 8, bottom: 4 }}>
+        <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="mes" fontSize={11} stroke="hsl(var(--muted-foreground))" />
+        <YAxis tickFormatter={fmtARS} fontSize={11} stroke="hsl(var(--muted-foreground))" />
+        <Tooltip
+          formatter={(v: number, n: string) => [fmtARS(v), n]}
+          contentStyle={tooltipStyle}
+        />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Bar dataKey="digital"  stackId="inv" name="Digital"  fill="#2b4dff" />
+        <Bar dataKey="tvCable"  stackId="inv" name="TV Cable" fill="#e63946" />
+        <Bar dataKey="dooh"     stackId="inv" name="DOOH"     fill="#ec4899" />
+        <Bar dataKey="ooh"      stackId="inv" name="OOH"      fill="#f59e0b" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function ReachImpressionsChart({
   data,
 }: {
-  data: Array<{ mes: string; alcance: number; impresiones: number }>;
+  data: Array<{ mes: string; alcance: number | null; impresiones: number | null }>;
 }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
