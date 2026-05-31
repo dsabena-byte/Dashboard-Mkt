@@ -180,6 +180,8 @@ export async function GET(request: Request) {
       let shares = 0;
       let totalInteractions = 0;
       let views = 0;
+      let reachFollowers: number | null = null;
+      let reachNonFollowers: number | null = null;
 
       const insRaw = await graphGetRaw(
         `${GRAPH_API}/${m.id}/insights?metric=${metricsStr}&access_token=${pt}`,
@@ -202,6 +204,28 @@ export async function GET(request: Request) {
         }
       }
 
+      // Segunda llamada: reach con breakdown=follow_type (FOLLOWER / NON_FOLLOWER).
+      const breakRaw = await graphGetRaw(
+        `${GRAPH_API}/${m.id}/insights?metric=reach&breakdown=follow_type&metric_type=total_value&access_token=${pt}`,
+      );
+      if (breakRaw.status === 200) {
+        const breakBody = breakRaw.body as {
+          data?: Array<{
+            total_value?: {
+              breakdowns?: Array<{ results?: Array<{ dimension_values?: string[]; value?: number }> }>;
+            };
+          }>;
+        };
+        const results2 = breakBody.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
+        reachFollowers = 0;
+        reachNonFollowers = 0;
+        for (const r of results2) {
+          const isFollower = r.dimension_values?.[0] === "FOLLOWER";
+          if (isFollower) reachFollowers = r.value ?? 0;
+          else reachNonFollowers = r.value ?? 0;
+        }
+      }
+
       postRows.push({
         platform: "instagram",
         post_id: m.id,
@@ -213,6 +237,8 @@ export async function GET(request: Request) {
         thumbnail_url: m.thumbnail_url ?? m.media_url ?? null,
         impressions: 0,
         reach,
+        reach_followers: reachFollowers,
+        reach_non_followers: reachNonFollowers,
         engagement: totalInteractions > 0 ? totalInteractions : (m.like_count ?? 0) + (m.comments_count ?? 0) + shares + saved,
         reactions: m.like_count ?? 0,
         video_views: views,

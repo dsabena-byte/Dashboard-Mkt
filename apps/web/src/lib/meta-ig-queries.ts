@@ -2,48 +2,6 @@ import "server-only";
 import { getServerSupabase } from "./supabase-server";
 
 const IG_ACCOUNT_ID = "17841404990509161";
-const META_GRAPH = "https://graph.facebook.com/v22.0";
-
-// Llama a la Graph API para traer el alcance del IG segmentado por tipo de
-// seguidor en el rango dado. Devuelve {followers, nonFollowers}.
-// En cualquier error devuelve 0/0 (la página sigue funcionando con el resto).
-async function fetchIgReachByFollowType(range: { from: string; to: string }): Promise<{ followers: number; nonFollowers: number }> {
-  const token = process.env.META_SYSTEM_USER_TOKEN;
-  if (!token) return { followers: 0, nonFollowers: 0 };
-  try {
-    // 1. Page Access Token (requerido para llamar /insights del IG conectado).
-    const pagesRes = await fetch(`${META_GRAPH}/me/accounts?fields=id,access_token&access_token=${encodeURIComponent(token)}`);
-    const pages: { data?: Array<{ id: string; access_token?: string }> } = await pagesRes.json();
-    const pat = pages.data?.[0]?.access_token;
-    if (!pat) return { followers: 0, nonFollowers: 0 };
-
-    // 2. Reach con breakdown por follow_type para el rango.
-    const since = Math.floor(new Date(`${range.from}T00:00:00Z`).getTime() / 1000);
-    const until = Math.floor(new Date(`${range.to}T23:59:59Z`).getTime() / 1000);
-    const insRes = await fetch(
-      `${META_GRAPH}/${IG_ACCOUNT_ID}/insights?metric=reach&period=day&metric_type=total_value&breakdown=follow_type&since=${since}&until=${until}&access_token=${encodeURIComponent(pat)}`,
-    );
-    const ins: {
-      data?: Array<{
-        total_value?: {
-          breakdowns?: Array<{
-            results?: Array<{ dimension_values?: string[]; value?: number }>;
-          }>;
-        };
-      }>;
-    } = await insRes.json();
-    const results = ins.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
-    let followers = 0, nonFollowers = 0;
-    for (const r of results) {
-      const isFollower = r.dimension_values?.[0] === "FOLLOWER";
-      if (isFollower) followers = r.value ?? 0;
-      else nonFollowers = r.value ?? 0;
-    }
-    return { followers, nonFollowers };
-  } catch {
-    return { followers: 0, nonFollowers: 0 };
-  }
-}
 
 export interface IgPostRow {
   post_id: string;
@@ -120,13 +78,10 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
 
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-  // Reach por tipo de seguidor (paralelo con el resto, así no penaliza el page load).
-  const reachPromise = fetchIgReachByFollowType(range);
-
   const [postsRes, demoRes] = await Promise.all([
     supabase
       .from("meta_posts")
-      .select("post_id, fecha_post, permalink, message, media_type, thumbnail_url, reach, engagement, reactions, video_views, clicks")
+      .select("post_id, fecha_post, permalink, message, media_type, thumbnail_url, reach, reach_followers, reach_non_followers, engagement, reactions, video_views, clicks")
       .eq("platform", "instagram")
       .gte("fecha_post", `${fromIso}T00:00:00Z`)
       .lte("fecha_post", `${toIso}T23:59:59Z`)
@@ -181,7 +136,8 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
   }
 
   const totalComments = totalEngagement - totalReactions - totalSaves;
-  const reachByType = await reachPromise;
+  const reachFollowers = posts.reduce((s, p: any) => s + (p.reach_followers ?? 0), 0);
+  const reachNonFollowers = posts.reduce((s, p: any) => s + (p.reach_non_followers ?? 0), 0);
 
   // Padea a 12 meses del año con data más reciente (meses sin posts -> null).
   const years = [...monthlyMap.keys()].map((k) => k.slice(0, 4));
@@ -210,8 +166,8 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
     totalComments: Math.max(0, totalComments),
     totalSaves,
     totalVideoViews,
-    reachFollowers: reachByType.followers,
-    reachNonFollowers: reachByType.nonFollowers,
+    reachFollowers,
+    reachNonFollowers,
     postCount: posts.length,
     topPosts: posts,
     monthlyData,
