@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/ig-sync",
-      "schedule": "15 */8 * * *"
+      "schedule": "15 8 * * *"
     }
   ]
 }
