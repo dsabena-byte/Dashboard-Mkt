@@ -311,6 +311,14 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
             </div>
           </div>
 
+          <SectionTitle>Evolución mensual · Inversión ON / OFF</SectionTitle>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="mb-2 text-[10px] text-muted-foreground">
+              Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
+            </p>
+            <MonthlyInvestmentChart data={inversionMensual} />
+          </div>
+
           {/* Volumetría (sin inversión, ya está arriba) */}
           <SectionTitle>Volumetría de campaña</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -327,14 +335,6 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
               Año completo 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.
             </p>
             <ReachImpressionsChart data={volumetriaMensual} />
-          </div>
-
-          <SectionTitle>Evolución mensual · Inversión ON / OFF</SectionTitle>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="mb-2 text-[10px] text-muted-foreground">
-              Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
-            </p>
-            <MonthlyInvestmentChart data={inversionMensual} />
           </div>
 
           <SectionTitle>Desempeño por etapa del funnel</SectionTitle>
