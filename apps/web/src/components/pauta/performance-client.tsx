@@ -432,6 +432,17 @@ export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; m
             selRoles={selRoles}
           />
 
+          <SectionTitle>Piezas pautadas · YouTube</SectionTitle>
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            TrueView (CPV), Bumper (CPM) y Demand Gen (CPC). El export de Looker no trae inversión por anuncio.
+          </p>
+          <MetaPaidGrid
+            data={metaPaid.filter((r) => r.plataforma === "youtube")}
+            selMeses={selMeses}
+            selCats={selCats}
+            selRoles={selRoles}
+          />
+
           {insight && (
             <>
               <SectionTitle>Highlights de ejecución · {selCats[0]}</SectionTitle>
