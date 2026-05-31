@@ -399,6 +399,44 @@ export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; m
             </div>
           </div>
 
+          {insight && (
+            <>
+              <SectionTitle>Highlights de ejecución · {selCats[0]}</SectionTitle>
+              <p className="mb-3 text-sm leading-relaxed text-foreground/90">{insight.conclusion}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {insight.positivos.map((p, i) => (
+                  <Insight key={`p${i}`} type="good" title="✓ Positivo" text={p} />
+                ))}
+                {insight.alertas.map((a, i) => (
+                  <Insight key={`a${i}`} type="warn" title="⚠ Alerta" text={a} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ===== POR MEDIO ===== */}
+      {tab === "Por Medio" && (
+        <div>
+          <SectionTitle>Desglose por plataforma</SectionTitle>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {byMedio.map((p) => (
+              <div key={p.medio} className="rounded-lg border bg-card p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
+                  <span className="text-xs font-semibold">{p.medio}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><div className="text-muted-foreground">Inversión</div><div className="font-semibold">{fmtARS(p.inversion)}</div></div>
+                  <div><div className="text-muted-foreground">CPM</div><div className="font-semibold">{fmtARS(p.cpm)}</div></div>
+                  <div><div className="text-muted-foreground">Impresiones</div><div className="font-semibold">{fmtNum(p.impresiones)}</div></div>
+                  <div><div className="text-muted-foreground">Alcance</div><div className="font-semibold">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</div></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
             Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Build/Consider).
@@ -442,83 +480,6 @@ export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; m
             selCats={selCats}
             selRoles={selRoles}
           />
-
-          {insight && (
-            <>
-              <SectionTitle>Highlights de ejecución · {selCats[0]}</SectionTitle>
-              <p className="mb-3 text-sm leading-relaxed text-foreground/90">{insight.conclusion}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {insight.positivos.map((p, i) => (
-                  <Insight key={`p${i}`} type="good" title="✓ Positivo" text={p} />
-                ))}
-                {insight.alertas.map((a, i) => (
-                  <Insight key={`a${i}`} type="warn" title="⚠ Alerta" text={a} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ===== POR MEDIO ===== */}
-      {tab === "Por Medio" && (
-        <div>
-          <SectionTitle>Detalle Real vs Planificado por línea</SectionTitle>
-          <div className="rounded-xl border bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="border-b bg-muted/40">
-                  <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                    <th className="px-3 py-2">Plataforma</th>
-                    <th className="px-3 py-2">Etapa</th>
-                    {selCats.length !== 1 && <th className="px-3 py-2">Categoría</th>}
-                    <th className="px-3 py-2 text-right">Inv. Plan</th>
-                    <th className="px-3 py-2 text-right">Inv. Real</th>
-                    <th className="px-3 py-2 text-right">Impresiones</th>
-                    <th className="px-3 py-2 text-right">Alcance</th>
-                    <th className="px-3 py-2 text-right">Costo</th>
-                    <th className="px-3 py-2 text-right">CTR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      <td className="px-3 py-2 font-medium">
-                        <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[r.medio] ?? "#94a3b8" }} />
-                        {r.medio}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">{r.objetivo === "Build" ? "Upper" : "Mid"}</td>
-                      {selCats.length !== 1 && <td className="px-3 py-2 text-muted-foreground">{r.categoria}</td>}
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.inversion_plan ? fmtARS(r.inversion_plan) : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.inversion ? fmtARS(r.inversion) : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.impresiones ? fmtNum(r.impresiones) : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.alcance ? fmtNum(r.alcance) : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.costo != null ? `${fmtARS(r.costo)} ${r.tipo_compra}` : r.tipo_compra}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.ctr != null ? `${r.ctr.toFixed(2)}%` : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <SectionTitle>Desglose por plataforma</SectionTitle>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {byMedio.map((p) => (
-              <div key={p.medio} className="rounded-lg border bg-card p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
-                  <span className="text-xs font-semibold">{p.medio}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><div className="text-muted-foreground">Inversión</div><div className="font-semibold">{fmtARS(p.inversion)}</div></div>
-                  <div><div className="text-muted-foreground">CPM</div><div className="font-semibold">{fmtARS(p.cpm)}</div></div>
-                  <div><div className="text-muted-foreground">Impresiones</div><div className="font-semibold">{fmtNum(p.impresiones)}</div></div>
-                  <div><div className="text-muted-foreground">Alcance</div><div className="font-semibold">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</div></div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>
