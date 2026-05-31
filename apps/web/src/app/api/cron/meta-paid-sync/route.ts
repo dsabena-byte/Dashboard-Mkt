@@ -145,42 +145,49 @@ export async function GET(req: Request) {
   const mesParam = url.searchParams.get("mes") ?? `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
   const actOverride = url.searchParams.get("act_id");
 
-  const token = env("META_SYSTEM_USER_TOKEN");
-  const { since, until, mesLabel } = mesRange(mesParam);
-
-  let act_id = actOverride;
+  // Estado para incluir en respuestas de error.
+  let act_id: string | null = actOverride;
   let act_name = actOverride ?? "(override)";
-  if (!act_id) {
-    const found = await discoverActId(token);
-    act_id = found.act_id;
-    act_name = found.name;
-  }
+  let phase = "init";
 
-  const fields = [
-    "id",
-    "name",
-    "campaign_id",
-    "adset_id",
-    "campaign{name,objective}",
-    "adset{name}",
-    "creative{thumbnail_url,image_url,body,object_story_spec{link_data{picture,message,link},video_data{image_url,message}}}",
-    `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,date_start,date_stop}`,
-  ].join(",");
+  try {
+    const token = env("META_SYSTEM_USER_TOKEN");
+    const { since, until, mesLabel } = mesRange(mesParam);
 
-  let nextUrl: string | undefined =
-    `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
+    if (!act_id) {
+      phase = "discover_act";
+      const found = await discoverActId(token);
+      act_id = found.act_id;
+      act_name = found.name;
+    }
 
-  const allAds: MetaAd[] = [];
-  let pages = 0;
-  while (nextUrl && pages < 20) {
-    const page: AdsResp = await graphGet<AdsResp>(nextUrl);
-    allAds.push(...(page.data ?? []));
-    nextUrl = page.paging?.next;
-    pages++;
-  }
+    const fields = [
+      "id",
+      "name",
+      "campaign_id",
+      "adset_id",
+      "campaign{name,objective}",
+      "adset{name}",
+      "creative{thumbnail_url,image_url,body,object_story_spec{link_data{picture,message,link},video_data{image_url,message}}}",
+      `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,date_start,date_stop}`,
+    ].join(",");
 
-  const rows = allAds
-    .map((ad) => {
+    phase = "fetch_ads";
+    let nextUrl: string | undefined =
+      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
+
+    const allAds: MetaAd[] = [];
+    let pages = 0;
+    while (nextUrl && pages < 20) {
+      const page: AdsResp = await graphGet<AdsResp>(nextUrl);
+      allAds.push(...(page.data ?? []));
+      nextUrl = page.paging?.next;
+      pages++;
+    }
+
+    phase = "upsert";
+    const rows = allAds
+      .map((ad) => {
       const ins = ad.insights?.data?.[0];
       if (!ins) return null; // sin impresiones en el período -> se ignora
       const img = pickImage(ad.creative);
@@ -215,17 +222,24 @@ export async function GET(req: Request) {
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
-  const upsertResult = await supabaseUpsert(rows);
+    const upsertResult = await supabaseUpsert(rows);
 
-  return NextResponse.json({
-    ok: true,
-    act_id,
-    act_name,
-    mes: mesLabel,
-    rango: { since, until },
-    pages_fetched: pages,
-    ads_total: allAds.length,
-    ads_con_insights: rows.length,
-    upsert: upsertResult,
-  });
+    return NextResponse.json({
+      ok: true,
+      act_id,
+      act_name,
+      mes: mesLabel,
+      rango: { since, until },
+      pages_fetched: pages,
+      ads_total: allAds.length,
+      ads_con_insights: rows.length,
+      upsert: upsertResult,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json(
+      { ok: false, phase, act_id, act_name, mes_param: mesParam, error: msg },
+      { status: 500 },
+    );
+  }
 }
