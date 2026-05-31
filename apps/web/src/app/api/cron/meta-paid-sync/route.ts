@@ -166,7 +166,7 @@ export async function GET(req: Request) {
   const allAds: MetaAd[] = [];
   let pages = 0;
   while (nextUrl && pages < 20) {
-    const page = await graphGet<AdsResp>(nextUrl);
+    const page: AdsResp = await graphGet<AdsResp>(nextUrl);
     allAds.push(...(page.data ?? []));
     nextUrl = page.paging?.next;
     pages++;
