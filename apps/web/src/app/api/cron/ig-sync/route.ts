@@ -169,8 +169,6 @@ export async function GET(request: Request) {
     let insightsOk = 0;
     let insightsFailed = 0;
     let reelCount = 0;
-    let breakOk = 0;
-    let breakFailed = 0;
 
     for (const m of mediaData) {
       const isReel = m.media_product_type === "REELS" || m.media_type === "REEL" || m.media_type === "REELS";
@@ -206,33 +204,9 @@ export async function GET(request: Request) {
         }
       }
 
-      // Segunda llamada: reach con breakdown=follow_type (FOLLOWER / NON_FOLLOWER).
-      const breakRaw = await graphGetRaw(
-        `${GRAPH_API}/${m.id}/insights?metric=reach&breakdown=follow_type&metric_type=total_value&access_token=${pt}`,
-      );
-      if (breakRaw.status === 200) {
-        const breakBody = breakRaw.body as {
-          data?: Array<{
-            total_value?: {
-              breakdowns?: Array<{ results?: Array<{ dimension_values?: string[]; value?: number }> }>;
-            };
-          }>;
-        };
-        const results2 = breakBody.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
-        reachFollowers = 0;
-        reachNonFollowers = 0;
-        for (const r of results2) {
-          const isFollower = r.dimension_values?.[0] === "FOLLOWER";
-          if (isFollower) reachFollowers = r.value ?? 0;
-          else reachNonFollowers = r.value ?? 0;
-        }
-        breakOk++;
-      } else {
-        breakFailed++;
-        if (breakFailed <= 3) {
-          results[`break_error_sample_${m.id}`] = { status: breakRaw.status, body: breakRaw.body };
-        }
-      }
+      // Nota: el breakdown=follow_type NO está soportado a nivel media en v22
+      // (error #100 "Incompatible breakdowns"). Lo dejamos null y resolvemos
+      // el split FOLLOWER/NON_FOLLOWER a nivel account en la query de /redes.
 
       postRows.push({
         platform: "instagram",
@@ -257,8 +231,6 @@ export async function GET(request: Request) {
     results.insights_ok = insightsOk;
     results.insights_failed = insightsFailed;
     results.reel_count = reelCount;
-    results.break_ok = breakOk;
-    results.break_failed = breakFailed;
 
     // 5b. Stories — caducan en 24h. Necesita schedule frecuente para captarlas
     // antes que expiren. Insights con métricas propias de Stories.
