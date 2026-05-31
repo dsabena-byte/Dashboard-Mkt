@@ -127,6 +127,18 @@ export function MetaPaidGrid({
                   <span className="text-right font-semibold tabular-nums">{fmtARS(c.spend)}</span>
                   <span className="text-muted-foreground">👁 Impr.</span>
                   <span className="text-right tabular-nums">{fmtNum(c.impresiones)}</span>
+                  {c.alcance > 0 && (
+                    <>
+                      <span className="text-muted-foreground">👥 Alc.</span>
+                      <span className="text-right tabular-nums">{fmtNum(c.alcance)}</span>
+                    </>
+                  )}
+                  {c.frecuencia != null && c.frecuencia > 0 && (
+                    <>
+                      <span className="text-muted-foreground">🔁 Frec.</span>
+                      <span className="text-right tabular-nums">{c.frecuencia.toFixed(2)}</span>
+                    </>
+                  )}
                   <span className="text-muted-foreground">🖱 Clicks</span>
                   <span className="text-right tabular-nums">{fmtNum(c.clicks)}</span>
                   <span className="text-muted-foreground">CTR</span>
@@ -135,8 +147,8 @@ export function MetaPaidGrid({
                   <span className="text-right tabular-nums">{c.cpm != null ? fmtARS(c.cpm) : "—"}</span>
                   {hasVideo && (
                     <>
-                      <span className="text-muted-foreground">▶ Views</span>
-                      <span className="text-right tabular-nums">{fmtNum(c.views_total ?? 0)}</span>
+                      <span className="text-muted-foreground">▶ Views compl.</span>
+                      <span className="text-right tabular-nums">{fmtNum(c.views_completed ?? c.views_total ?? 0)}</span>
                       <span className="text-muted-foreground">VTR</span>
                       <span className="text-right tabular-nums">{c.vtr != null ? `${c.vtr.toFixed(2)}%` : "—"}</span>
                     </>

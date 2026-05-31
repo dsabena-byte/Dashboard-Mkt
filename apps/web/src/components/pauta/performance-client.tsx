@@ -421,6 +421,17 @@ export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; m
             selRoles={selRoles}
           />
 
+          <SectionTitle>Piezas pautadas · Programmatic</SectionTitle>
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            Display + video CTV. Trae alcance y frecuencia. Ordenadas por inversión del mes.
+          </p>
+          <MetaPaidGrid
+            data={metaPaid.filter((r) => r.plataforma === "programmatic")}
+            selMeses={selMeses}
+            selCats={selCats}
+            selRoles={selRoles}
+          />
+
           {insight && (
             <>
               <SectionTitle>Highlights de ejecución · {selCats[0]}</SectionTitle>
