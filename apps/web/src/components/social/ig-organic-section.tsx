@@ -95,45 +95,6 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
         />
       </div>
 
-      {/* Alcance único de cuenta — métrica account-level del último mes, distinta
-          a la suma por post de arriba. Incluye reels en Explore, profile visits,
-          hashtags, etc. Por eso el número es muy distinto. */}
-      {(data.reachFollowers > 0 || data.reachNonFollowers > 0) && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4">
-          <div className="mb-2 flex items-baseline justify-between gap-2">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">
-                Alcance único de cuenta · últimos 30 días
-              </div>
-              <div className="text-[10px] text-amber-700/80">
-                Incluye posts + reels + stories + Explore + profile visits. Métrica
-                IG account-level — distinta a &quot;Alcance (personas)&quot; de arriba.
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-amber-900">{fmtK(data.reachFollowers + data.reachNonFollowers)}</div>
-              <div className="text-[10px] text-amber-700/80">personas únicas</div>
-            </div>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div className="rounded-md bg-white/60 p-3">
-              <div className="text-[10px] font-medium text-muted-foreground">Seguidores alcanzados</div>
-              <div className="mt-0.5 text-xl font-bold text-foreground">{fmtK(data.reachFollowers)}</div>
-              <div className="text-[10px] text-muted-foreground">
-                {data.reachFollowers + data.reachNonFollowers > 0 ? `${((data.reachFollowers / (data.reachFollowers + data.reachNonFollowers)) * 100).toFixed(0)}% del alcance` : "—"}
-              </div>
-            </div>
-            <div className="rounded-md bg-white/60 p-3">
-              <div className="text-[10px] font-medium text-muted-foreground">No seguidores alcanzados</div>
-              <div className="mt-0.5 text-xl font-bold text-foreground">{fmtK(data.reachNonFollowers)}</div>
-              <div className="text-[10px] text-muted-foreground">
-                {data.reachFollowers + data.reachNonFollowers > 0 ? `${((data.reachNonFollowers / (data.reachFollowers + data.reachNonFollowers)) * 100).toFixed(0)}% del alcance · prospección` : "—"}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Engagement resaltado + sub-cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">

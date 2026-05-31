@@ -131,8 +131,10 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
 
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-  // Reach por follow_type — paralelo con el resto.
-  const reachPromise = fetchIgReachByFollowType(range);
+  // Reach por follow_type desactivado: el API account-level con metric_type=total_value
+  // devuelve sumas con overlap (no únicos), y per-media no soporta el breakdown.
+  // Lo dejamos comentado hasta encontrar una métrica confiable (accounts_reached?).
+  // const reachPromise = fetchIgReachByFollowType(range);
 
   const [postsRes, demoRes] = await Promise.all([
     supabase
@@ -192,7 +194,6 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
   }
 
   const totalComments = totalEngagement - totalReactions - totalSaves;
-  const reachByType = await reachPromise;
 
   // Padea a 12 meses del año con data más reciente (meses sin posts -> null).
   const years = [...monthlyMap.keys()].map((k) => k.slice(0, 4));
@@ -221,8 +222,8 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
     totalComments: Math.max(0, totalComments),
     totalSaves,
     totalVideoViews,
-    reachFollowers: reachByType.followers,
-    reachNonFollowers: reachByType.nonFollowers,
+    reachFollowers: 0,
+    reachNonFollowers: 0,
     postCount: posts.length,
     topPosts: posts,
     monthlyData,
