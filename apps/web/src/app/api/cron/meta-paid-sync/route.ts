@@ -133,6 +133,13 @@ async function supabaseUpsert(rows: unknown[]): Promise<string> {
 }
 
 export async function GET(req: Request) {
+  // Gate: Vercel Cron envía Authorization: Bearer CRON_SECRET.
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const url = new URL(req.url);
   const today = new Date();
   const mesParam = url.searchParams.get("mes") ?? `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
