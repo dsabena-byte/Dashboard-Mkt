@@ -8,6 +8,9 @@ export interface MetaPaidCreativeRow {
   adset_name: string | null;
   ad_name: string | null;
   objective: string | null;
+  categoria: string | null;
+  tipo_compra: string | null;
+  source: string;
   thumbnail_url: string | null;
   image_url: string | null;
   body: string | null;
@@ -20,6 +23,9 @@ export interface MetaPaidCreativeRow {
   ctr: number | null;
   cpm: number | null;
   cpc: number | null;
+  views_total: number | null;
+  views_completed: number | null;
+  vtr: number | null;
 }
 
 interface DbRow {
@@ -29,6 +35,9 @@ interface DbRow {
   adset_name: string | null;
   ad_name: string | null;
   objective: string | null;
+  categoria: string | null;
+  tipo_compra: string | null;
+  source: string | null;
   thumbnail_url: string | null;
   image_url: string | null;
   body: string | null;
@@ -41,6 +50,9 @@ interface DbRow {
   ctr: string | number | null;
   cpm: string | number | null;
   cpc: string | number | null;
+  views_total: number | null;
+  views_completed: number | null;
+  vtr: string | number | null;
 }
 
 const num = (v: string | number | null): number | null =>
@@ -54,6 +66,9 @@ function mapRow(r: DbRow): MetaPaidCreativeRow {
     adset_name: r.adset_name,
     ad_name: r.ad_name,
     objective: r.objective,
+    categoria: r.categoria,
+    tipo_compra: r.tipo_compra,
+    source: r.source ?? "graph_api",
     thumbnail_url: r.thumbnail_url,
     image_url: r.image_url,
     body: r.body,
@@ -66,6 +81,9 @@ function mapRow(r: DbRow): MetaPaidCreativeRow {
     ctr: num(r.ctr),
     cpm: num(r.cpm),
     cpc: num(r.cpc),
+    views_total: r.views_total,
+    views_completed: r.views_completed,
+    vtr: num(r.vtr),
   };
 }
 
@@ -74,9 +92,9 @@ export async function getMetaPaidCreatives(): Promise<MetaPaidCreativeRow[]> {
   const { data, error } = await supabase
     .from("meta_paid_creatives")
     .select(
-      "ad_id, mes, campaign_name, adset_name, ad_name, objective, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc",
+      "ad_id, mes, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr",
     )
-    .order("impresiones", { ascending: false })
+    .order("spend", { ascending: false })
     .returns<DbRow[]>();
   if (error) throw new Error(`meta_paid_creatives: ${error.message}`);
   return (data ?? []).map(mapRow);
