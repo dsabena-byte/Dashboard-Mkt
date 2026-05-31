@@ -4,6 +4,7 @@ import { getServerSupabase } from "./supabase-server";
 export interface MetaPaidCreativeRow {
   ad_id: string;
   mes: string;
+  plataforma: string;
   campaign_name: string | null;
   adset_name: string | null;
   ad_name: string | null;
@@ -31,6 +32,7 @@ export interface MetaPaidCreativeRow {
 interface DbRow {
   ad_id: string;
   mes: string;
+  plataforma: string | null;
   campaign_name: string | null;
   adset_name: string | null;
   ad_name: string | null;
@@ -62,6 +64,7 @@ function mapRow(r: DbRow): MetaPaidCreativeRow {
   return {
     ad_id: r.ad_id,
     mes: r.mes,
+    plataforma: r.plataforma ?? "meta",
     campaign_name: r.campaign_name,
     adset_name: r.adset_name,
     ad_name: r.ad_name,
@@ -92,7 +95,7 @@ export async function getMetaPaidCreatives(): Promise<MetaPaidCreativeRow[]> {
   const { data, error } = await supabase
     .from("meta_paid_creatives")
     .select(
-      "ad_id, mes, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr",
+      "ad_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr",
     )
     .order("spend", { ascending: false })
     .returns<DbRow[]>();

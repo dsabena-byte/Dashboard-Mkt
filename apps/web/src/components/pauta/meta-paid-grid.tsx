@@ -153,14 +153,24 @@ export function MetaPaidGrid({
           Mostrando <strong className="text-foreground">{shown.length}</strong> de{" "}
           <strong className="text-foreground">{filtered.length}</strong> piezas
         </span>
-        {remaining > 0 && (
-          <button
-            onClick={() => setVisible((v) => v + PAGE_SIZE)}
-            className="rounded-full border bg-card px-4 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
-          >
-            Mostrar {Math.min(PAGE_SIZE, remaining)} más
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {visible > PAGE_SIZE && (
+            <button
+              onClick={() => setVisible(PAGE_SIZE)}
+              className="rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+            >
+              Restablecer {PAGE_SIZE}
+            </button>
+          )}
+          {remaining > 0 && (
+            <button
+              onClick={() => setVisible((v) => v + PAGE_SIZE)}
+              className="rounded-full border bg-card px-4 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+            >
+              Mostrar {Math.min(PAGE_SIZE, remaining)} más
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
