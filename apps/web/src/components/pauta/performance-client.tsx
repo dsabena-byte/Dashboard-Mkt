@@ -15,6 +15,8 @@ import {
 import { InvestmentDonut, HBarChart, ReachImpressionsChart, MonthlyInvestmentChart } from "@/components/pauta/pauta-charts";
 import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
+import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
+import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 function fmtNum(n: number): string {
@@ -57,7 +59,7 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
   );
 }
 
-export function PerformanceClient({ data }: { data: PautaRow[] }) {
+export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[] }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -396,6 +398,12 @@ export function PerformanceClient({ data }: { data: PautaRow[] }) {
               />
             </div>
           </div>
+
+          <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            Ordenadas por impresiones del mes. Filtra solo por mes (no por categoría/medio).
+          </p>
+          <MetaPaidGrid data={metaPaid} selMeses={selMeses} />
 
           {insight && (
             <>
