@@ -401,9 +401,9 @@ export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; m
 
           <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            Ordenadas por impresiones del mes. Filtra solo por mes (no por categoría/medio).
+            Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Build/Consider).
           </p>
-          <MetaPaidGrid data={metaPaid} selMeses={selMeses} />
+          <MetaPaidGrid data={metaPaid} selMeses={selMeses} selCats={selCats} selRoles={selRoles} />
 
           {insight && (
             <>
