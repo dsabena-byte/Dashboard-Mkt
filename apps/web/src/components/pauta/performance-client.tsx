@@ -59,7 +59,7 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
   );
 }
 
-export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[] }) {
+export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -154,12 +154,17 @@ export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; m
   );
 
   // Inversión mensual ON/OFF (año completo, sin filtros).
+  // Pasados: ejecutado de pauta_performance. Futuros: planificado de planning_media.
   const inversionMensual = useMemo(
     () =>
       HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
         const mes = `${full} 2026`;
         const future = i + 1 > lastMonthWithData;
-        if (future) return { mes: short, digital: null, tvCable: null, dooh: null, ooh: null };
+        if (future) {
+          const plan = planningMonthly[mes];
+          if (!plan) return { mes: short, digital: null, tvCable: null, dooh: null, ooh: null };
+          return { mes: short, digital: plan.digital, tvCable: plan.tvCable, dooh: plan.dooh, ooh: plan.ooh };
+        }
         const row = { mes: short, digital: 0, tvCable: 0, dooh: 0, ooh: 0 };
         for (const r of data.filter((x) => x.mes === mes)) {
           const v = r.inversion ?? 0;
@@ -171,7 +176,7 @@ export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; m
         }
         return row;
       }),
-    [data, lastMonthWithData],
+    [data, lastMonthWithData, planningMonthly],
   );
 
   // Insights: solo si hay una sola categoría seleccionada
@@ -317,6 +322,7 @@ export function PerformanceClient({ data, metaPaid = [] }: { data: PautaRow[]; m
           <div className="rounded-xl border bg-card p-4">
             <p className="mb-2 text-[10px] text-muted-foreground">
               Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
+              Meses con campañas ejecutadas usan el real; meses futuros usan el plan de OMD (tabla planning_media).
             </p>
             <MonthlyInvestmentChart data={inversionMensual} />
           </div>
