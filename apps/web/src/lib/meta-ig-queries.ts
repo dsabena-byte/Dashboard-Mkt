@@ -2,59 +2,6 @@ import "server-only";
 import { getServerSupabase } from "./supabase-server";
 
 const IG_ACCOUNT_ID = "17841404990509161";
-const META_GRAPH = "https://graph.facebook.com/v22.0";
-
-// Trae reach segmentado por follow_type (FOLLOWER / NON_FOLLOWER) a nivel
-// account. La API NO soporta breakdown en metric=reach a nivel media,
-// solo a nivel account. Limita la ventana a 30 días (cap de IG insights
-// para esta combinación de params).
-async function fetchIgReachByFollowType(range: { from: string; to: string }): Promise<{
-  followers: number;
-  nonFollowers: number;
-  windowFrom: string;
-  windowTo: string;
-  error?: string;
-}> {
-  const token = process.env.META_SYSTEM_USER_TOKEN;
-  if (!token) return { followers: 0, nonFollowers: 0, windowFrom: range.from, windowTo: range.to, error: "no token" };
-
-  // Capear a 30 días desde el `to` hacia atrás. IG insights con breakdown
-  // tiene este límite y devuelve error si se excede.
-  const toDate = new Date(`${range.to}T23:59:59Z`);
-  const fromRequested = new Date(`${range.from}T00:00:00Z`);
-  const minAllowed = new Date(toDate.getTime() - 29 * 86400 * 1000); // 29d para que la ventana sea ≤30d inclusivos
-  const effectiveFrom = fromRequested.getTime() < minAllowed.getTime() ? minAllowed : fromRequested;
-  const since = Math.floor(effectiveFrom.getTime() / 1000);
-  const until = Math.floor(toDate.getTime() / 1000);
-  const windowFrom = effectiveFrom.toISOString().slice(0, 10);
-  const windowTo = toDate.toISOString().slice(0, 10);
-
-  try {
-    // 1. Page Access Token (necesario para insights del IG conectado).
-    const pagesRes = await fetch(`${META_GRAPH}/me/accounts?fields=id,access_token&access_token=${encodeURIComponent(token)}`);
-    const pages: { data?: Array<{ access_token?: string }> } = await pagesRes.json();
-    const pat = pages.data?.[0]?.access_token;
-    if (!pat) return { followers: 0, nonFollowers: 0, windowFrom, windowTo, error: "no page token" };
-
-    // 2. Account-level reach con breakdown follow_type.
-    const url = `${META_GRAPH}/${IG_ACCOUNT_ID}/insights?metric=reach&period=day&metric_type=total_value&breakdown=follow_type&since=${since}&until=${until}&access_token=${encodeURIComponent(pat)}`;
-    const insRes = await fetch(url);
-    const ins = await insRes.json();
-    if (!insRes.ok) {
-      return { followers: 0, nonFollowers: 0, windowFrom, windowTo, error: JSON.stringify(ins).slice(0, 200) };
-    }
-    const results = ins?.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
-    let followers = 0, nonFollowers = 0;
-    for (const r of results) {
-      const isFollower = r.dimension_values?.[0] === "FOLLOWER";
-      if (isFollower) followers = r.value ?? 0;
-      else nonFollowers = r.value ?? 0;
-    }
-    return { followers, nonFollowers, windowFrom, windowTo };
-  } catch (e) {
-    return { followers: 0, nonFollowers: 0, windowFrom, windowTo, error: e instanceof Error ? e.message : String(e) };
-  }
-}
 
 export interface IgPostRow {
   post_id: string;
