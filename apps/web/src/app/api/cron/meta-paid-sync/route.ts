@@ -149,8 +149,12 @@ export async function GET(req: Request) {
   // ===== Modo debug: muestra qué ve el token sin intentar sincronizar =====
   if (debug) {
     try {
-      const token = env("META_SYSTEM_USER_TOKEN");
-      const [me, businesses, accountsDirectas] = await Promise.all([
+      // Permite pasar otro token por query (?token=...) solo en debug.
+      // OJO: queda en logs/historial. Es para diagnóstico puntual nada más.
+      const overrideToken = url.searchParams.get("token");
+      const token = overrideToken ?? env("META_SYSTEM_USER_TOKEN");
+      const tokenLabel = overrideToken ? "query-override" : "env(META_SYSTEM_USER_TOKEN)";
+      const [me, businesses, accountsDirectas, permissions] = await Promise.all([
         graphGet<{ id: string; name?: string }>(
           `${GRAPH_API}/me?fields=id,name&access_token=${token}`,
         ).catch((e) => ({ error: String(e) })),
@@ -159,6 +163,9 @@ export async function GET(req: Request) {
         ).catch((e) => ({ error: String(e) })),
         graphGet<{ data: Array<{ id: string; name?: string; account_id?: string }> }>(
           `${GRAPH_API}/me/adaccounts?fields=id,name,account_id&limit=100&access_token=${token}`,
+        ).catch((e) => ({ error: String(e) })),
+        graphGet<{ data: Array<{ permission: string; status: string }> }>(
+          `${GRAPH_API}/me/permissions?access_token=${token}`,
         ).catch((e) => ({ error: String(e) })),
       ]);
 
@@ -181,7 +188,9 @@ export async function GET(req: Request) {
       return NextResponse.json({
         ok: true,
         debug: true,
+        token_source: tokenLabel,
         me,
+        permissions,
         businesses,
         accountsDirectas,
         adAccountsPorBiz,
