@@ -144,6 +144,53 @@ export async function GET(req: Request) {
   const today = new Date();
   const mesParam = url.searchParams.get("mes") ?? `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
   const actOverride = url.searchParams.get("act_id");
+  const debug = url.searchParams.get("debug");
+
+  // ===== Modo debug: muestra qué ve el token sin intentar sincronizar =====
+  if (debug) {
+    try {
+      const token = env("META_SYSTEM_USER_TOKEN");
+      const [me, businesses, accountsDirectas] = await Promise.all([
+        graphGet<{ id: string; name?: string }>(
+          `${GRAPH_API}/me?fields=id,name&access_token=${token}`,
+        ).catch((e) => ({ error: String(e) })),
+        graphGet<{ data: Array<{ id: string; name: string }> }>(
+          `${GRAPH_API}/me/businesses?fields=id,name&limit=50&access_token=${token}`,
+        ).catch((e) => ({ error: String(e) })),
+        graphGet<{ data: Array<{ id: string; name?: string; account_id?: string }> }>(
+          `${GRAPH_API}/me/adaccounts?fields=id,name,account_id&limit=100&access_token=${token}`,
+        ).catch((e) => ({ error: String(e) })),
+      ]);
+
+      // Por cada business, listar las ad accounts owned + client.
+      const bizList = "data" in businesses ? businesses.data : [];
+      const adAccountsPorBiz = await Promise.all(
+        bizList.map(async (b) => {
+          const [owned, client] = await Promise.all([
+            graphGet<{ data: Array<{ id: string; name?: string }> }>(
+              `${GRAPH_API}/${b.id}/owned_ad_accounts?fields=id,name,account_status&limit=100&access_token=${token}`,
+            ).catch((e) => ({ error: String(e) })),
+            graphGet<{ data: Array<{ id: string; name?: string }> }>(
+              `${GRAPH_API}/${b.id}/client_ad_accounts?fields=id,name,account_status&limit=100&access_token=${token}`,
+            ).catch((e) => ({ error: String(e) })),
+          ]);
+          return { business: b, owned, client };
+        }),
+      );
+
+      return NextResponse.json({
+        ok: true,
+        debug: true,
+        me,
+        businesses,
+        accountsDirectas,
+        adAccountsPorBiz,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return NextResponse.json({ ok: false, debug: true, error: msg }, { status: 500 });
+    }
+  }
 
   // Estado para incluir en respuestas de error.
   let act_id: string | null = actOverride;
