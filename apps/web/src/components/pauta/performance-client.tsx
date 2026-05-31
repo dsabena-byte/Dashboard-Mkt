@@ -155,29 +155,46 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
 
   // Inversión mensual ON/OFF (año completo, sin filtros).
   // Pasados: ejecutado de pauta_performance. Futuros: planificado de planning_media.
-  const inversionMensual = useMemo(
-    () =>
-      HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
-        const mes = `${full} 2026`;
-        const future = i + 1 > lastMonthWithData;
-        if (future) {
-          const plan = planningMonthly[mes];
-          if (!plan) return { mes: short, digital: null, tvCable: null, dooh: null, ooh: null };
-          return { mes: short, digital: plan.digital, tvCable: plan.tvCable, dooh: plan.dooh, ooh: plan.ooh };
+  // Se marca isPlanned=true para que el chart use tonos grises en esos meses.
+  // mes_pct = % del total anual (ejecutado + plan) que representa ese mes.
+  const inversionMensual = useMemo(() => {
+    type Row = {
+      mes: string;
+      digital: number | null;
+      tvCable: number | null;
+      dooh: number | null;
+      ooh: number | null;
+      isPlanned: boolean;
+      mes_pct: number | null;
+      pct_marker: number;
+    };
+    const rows: Row[] = HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
+      const mes = `${full} 2026`;
+      const future = i + 1 > lastMonthWithData;
+      if (future) {
+        const plan = planningMonthly[mes];
+        if (!plan) {
+          return { mes: short, digital: null, tvCable: null, dooh: null, ooh: null, isPlanned: true, mes_pct: null, pct_marker: 0 };
         }
-        const row = { mes: short, digital: 0, tvCable: 0, dooh: 0, ooh: 0 };
-        for (const r of data.filter((x) => x.mes === mes)) {
-          const v = r.inversion ?? 0;
-          const k = tipoMedio(r.medio);
-          if (k === "TV Cable") row.tvCable += v;
-          else if (k === "DOOH") row.dooh += v;
-          else if (k === "OOH") row.ooh += v;
-          else row.digital += v;
-        }
-        return row;
-      }),
-    [data, lastMonthWithData, planningMonthly],
-  );
+        return { mes: short, digital: plan.digital, tvCable: plan.tvCable, dooh: plan.dooh, ooh: plan.ooh, isPlanned: true, mes_pct: null, pct_marker: 1 };
+      }
+      const row = { mes: short, digital: 0, tvCable: 0, dooh: 0, ooh: 0, isPlanned: false, mes_pct: null as number | null, pct_marker: 1 };
+      for (const r of data.filter((x) => x.mes === mes)) {
+        const v = r.inversion ?? 0;
+        const k = tipoMedio(r.medio);
+        if (k === "TV Cable") row.tvCable += v;
+        else if (k === "DOOH") row.dooh += v;
+        else if (k === "OOH") row.ooh += v;
+        else row.digital += v;
+      }
+      return row;
+    });
+    const total = rows.reduce((s, r) => s + (r.digital ?? 0) + (r.tvCable ?? 0) + (r.dooh ?? 0) + (r.ooh ?? 0), 0);
+    return rows.map((r) => {
+      const monthTotal = (r.digital ?? 0) + (r.tvCable ?? 0) + (r.dooh ?? 0) + (r.ooh ?? 0);
+      return { ...r, mes_pct: total > 0 && monthTotal > 0 ? (monthTotal / total) * 100 : null };
+    });
+  }, [data, lastMonthWithData, planningMonthly]);
 
   // Insights: solo si hay una sola categoría seleccionada
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
@@ -322,7 +339,9 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
           <div className="rounded-xl border bg-card p-4">
             <p className="mb-2 text-[10px] text-muted-foreground">
               Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
-              Meses con campañas ejecutadas usan el real; meses futuros usan el plan de OMD (tabla planning_media).
+              Meses ejecutados usan el real de pauta_performance; meses futuros usan el plan de OMD
+              (tabla planning_media) y van en tonos más suaves. El % arriba de cada barra es el peso
+              del mes sobre el total anual.
             </p>
             <MonthlyInvestmentChart data={inversionMensual} />
           </div>

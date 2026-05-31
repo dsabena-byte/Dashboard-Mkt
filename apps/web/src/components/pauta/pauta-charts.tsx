@@ -69,11 +69,20 @@ export function InvestmentDonut({ data }: { data: Array<{ name: string; value: n
 export function MonthlyInvestmentChart({
   data,
 }: {
-  data: Array<{ mes: string; digital: number | null; tvCable: number | null; dooh: number | null; ooh: number | null }>;
+  data: Array<{
+    mes: string;
+    digital: number | null;
+    tvCable: number | null;
+    dooh: number | null;
+    ooh: number | null;
+    isPlanned?: boolean;
+    mes_pct?: number | null;
+    pct_marker?: number;
+  }>;
 }) {
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} margin={{ top: 12, right: 16, left: 8, bottom: 4 }}>
+    <ResponsiveContainer width="100%" height={320}>
+      <BarChart data={data} margin={{ top: 24, right: 16, left: 8, bottom: 4 }}>
         <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="mes" fontSize={11} stroke="hsl(var(--muted-foreground))" />
         <YAxis tickFormatter={fmtARS} fontSize={11} stroke="hsl(var(--muted-foreground))" />
@@ -82,10 +91,28 @@ export function MonthlyInvestmentChart({
           contentStyle={tooltipStyle}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="digital"  stackId="inv" name="Digital"  fill="#2b4dff" />
-        <Bar dataKey="tvCable"  stackId="inv" name="TV Cable" fill="#e63946" />
-        <Bar dataKey="dooh"     stackId="inv" name="DOOH"     fill="#ec4899" />
-        <Bar dataKey="ooh"      stackId="inv" name="OOH"      fill="#f59e0b" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="digital" stackId="inv" name="Digital" fill="#2b4dff">
+          {data.map((d, i) => <Cell key={i} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
+        </Bar>
+        <Bar dataKey="tvCable" stackId="inv" name="TV Cable" fill="#e63946">
+          {data.map((d, i) => <Cell key={i} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
+        </Bar>
+        <Bar dataKey="dooh" stackId="inv" name="DOOH" fill="#ec4899">
+          {data.map((d, i) => <Cell key={i} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
+        </Bar>
+        <Bar dataKey="ooh" stackId="inv" name="OOH" fill="#f59e0b" radius={[4, 4, 0, 0]}>
+          {data.map((d, i) => <Cell key={i} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
+        </Bar>
+        {/* Bar invisible para hostear la etiqueta del % anual sobre cada stack */}
+        <Bar dataKey="pct_marker" stackId="inv" fill="transparent" isAnimationActive={false} legendType="none">
+          <LabelList
+            dataKey="mes_pct"
+            position="top"
+            fontSize={10}
+            fill="#475569"
+            formatter={(v: number | null | undefined) => (v != null ? `${v.toFixed(1)}%` : "")}
+          />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
