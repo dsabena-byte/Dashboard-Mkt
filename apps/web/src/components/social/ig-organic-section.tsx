@@ -83,7 +83,7 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
       </header>
 
       {/* KPIs principales */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="Alcance (personas)"
           value={fmtK(data.totalReach)}
@@ -94,8 +94,14 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
           value="145.7K"
         />
         <KpiCard
-          title="Visitas al perfil"
-          value={fmtK(data.profileViews)}
+          title="Alcance · seguidores"
+          value={fmtK(data.reachFollowers)}
+          hint={data.reachFollowers + data.reachNonFollowers > 0 ? `${((data.reachFollowers / (data.reachFollowers + data.reachNonFollowers)) * 100).toFixed(0)}% del alcance` : undefined}
+        />
+        <KpiCard
+          title="Alcance · no seguidores"
+          value={fmtK(data.reachNonFollowers)}
+          hint={data.reachFollowers + data.reachNonFollowers > 0 ? `${((data.reachNonFollowers / (data.reachFollowers + data.reachNonFollowers)) * 100).toFixed(0)}% del alcance` : undefined}
         />
       </div>
 
