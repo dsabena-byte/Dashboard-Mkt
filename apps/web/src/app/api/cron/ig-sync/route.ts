@@ -169,6 +169,8 @@ export async function GET(request: Request) {
     let insightsOk = 0;
     let insightsFailed = 0;
     let reelCount = 0;
+    let breakOk = 0;
+    let breakFailed = 0;
 
     for (const m of mediaData) {
       const isReel = m.media_product_type === "REELS" || m.media_type === "REEL" || m.media_type === "REELS";
@@ -224,6 +226,12 @@ export async function GET(request: Request) {
           if (isFollower) reachFollowers = r.value ?? 0;
           else reachNonFollowers = r.value ?? 0;
         }
+        breakOk++;
+      } else {
+        breakFailed++;
+        if (breakFailed <= 3) {
+          results[`break_error_sample_${m.id}`] = { status: breakRaw.status, body: breakRaw.body };
+        }
       }
 
       postRows.push({
@@ -249,6 +257,73 @@ export async function GET(request: Request) {
     results.insights_ok = insightsOk;
     results.insights_failed = insightsFailed;
     results.reel_count = reelCount;
+    results.break_ok = breakOk;
+    results.break_failed = breakFailed;
+
+    // 5b. Stories — caducan en 24h. Necesita schedule frecuente para captarlas
+    // antes que expiren. Insights con métricas propias de Stories.
+    let storyCount = 0;
+    let storyInsightsOk = 0;
+    let storyInsightsFailed = 0;
+    const storiesRaw = await graphGetRaw(
+      `${GRAPH_API}/${igId}/stories?fields=id,timestamp,permalink,media_type,media_url,thumbnail_url&limit=50&access_token=${pt}`,
+    );
+    if (storiesRaw.status === 200) {
+      const storiesData = (storiesRaw.body as { data?: IgMedia[] }).data ?? [];
+      storyCount = storiesData.length;
+      // Métricas válidas para IG Stories en v22.0.
+      const STORY_INSIGHT_METRICS = "reach,views,replies,total_interactions,profile_visits";
+      for (const s of storiesData) {
+        let reach = 0;
+        let views = 0;
+        let replies = 0;
+        let totalInteractions = 0;
+        let profileVisits = 0;
+        const insRaw = await graphGetRaw(
+          `${GRAPH_API}/${s.id}/insights?metric=${STORY_INSIGHT_METRICS}&access_token=${pt}`,
+        );
+        if (insRaw.status === 200) {
+          const insData = insRaw.body as { data?: IgInsightMetric[] };
+          for (const metric of insData.data ?? []) {
+            const val = metric.values?.[0]?.value ?? 0;
+            if (metric.name === "reach") reach = val;
+            if (metric.name === "views") views = val;
+            if (metric.name === "replies") replies = val;
+            if (metric.name === "total_interactions") totalInteractions = val;
+            if (metric.name === "profile_visits") profileVisits = val;
+          }
+          storyInsightsOk++;
+        } else {
+          storyInsightsFailed++;
+          if (storyInsightsFailed <= 3) {
+            results[`story_insight_error_sample_${s.id}`] = insRaw.body;
+          }
+        }
+        postRows.push({
+          platform: "instagram",
+          post_id: s.id,
+          cuenta_id: igId,
+          fecha_post: s.timestamp ?? new Date().toISOString(),
+          permalink: s.permalink ?? null,
+          message: null,
+          media_type: "STORY",
+          thumbnail_url: s.thumbnail_url ?? s.media_url ?? null,
+          impressions: 0,
+          reach,
+          reach_followers: null,            // breakdown=follow_type no aplica a Stories
+          reach_non_followers: null,
+          engagement: totalInteractions || replies,
+          reactions: 0,
+          video_views: views,
+          clicks: replies + profileVisits,  // re-uso clicks: replies + visitas al perfil generadas
+        });
+      }
+    } else {
+      results.stories_error = storiesRaw.body;
+    }
+    results.story_count = storyCount;
+    results.story_insights_ok = storyInsightsOk;
+    results.story_insights_failed = storyInsightsFailed;
 
     results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
 

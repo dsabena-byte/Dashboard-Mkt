@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/meta-paid-sync",
       "schedule": "30 10 * * *"
+    },
+    {
+      "path": "/api/cron/ig-sync",
+      "schedule": "15 */8 * * *"
     }
   ]
 }
