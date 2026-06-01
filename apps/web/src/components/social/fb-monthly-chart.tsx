@@ -56,10 +56,10 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
         <YAxis
           yAxisId="right"
           orientation="right"
-          stroke="#3b82f6"
+          stroke="#2b4dff"
           fontSize={11}
           tickFormatter={formatTick}
-          label={{ value: "Alcance", angle: 90, position: "insideRight", fontSize: 10, fill: "#3b82f6" }}
+          label={{ value: "Alcance", angle: 90, position: "insideRight", fontSize: 10, fill: "#2b4dff" }}
         />
         <Tooltip
           formatter={(v: number, name: string) => [formatTooltip(v), name]}
@@ -71,7 +71,7 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar yAxisId="right" dataKey="alcance" fill="#3b82f6" name="Alcance (personas)" />
+        <Bar yAxisId="right" dataKey="alcance" fill="#2b4dff" name="Alcance (personas)" />
         <Line
           yAxisId="left"
           type="monotone"

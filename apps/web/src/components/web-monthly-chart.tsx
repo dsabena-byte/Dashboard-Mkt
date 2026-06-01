@@ -71,7 +71,7 @@ export function WebMonthlyChart({
           <Bar dataKey="sesiones_prev" fill="#cbd5e1" name={`Usuarios ${labels.prev}`} />
         )}
         {hasSessionsCurr && (
-          <Bar dataKey="sesiones_curr" fill="#3b82f6" name={`Usuarios ${labels.curr}`} />
+          <Bar dataKey="sesiones_curr" fill="#2b4dff" name={`Usuarios ${labels.curr}`} />
         )}
         {/* Líneas: sesiones (rojo claro año anterior, rojo oscuro año actual) */}
         {hasUsersPrev && (
