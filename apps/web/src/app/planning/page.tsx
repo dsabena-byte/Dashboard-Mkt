@@ -100,11 +100,11 @@ export default async function PlanningPage({ searchParams }: PageProps) {
     formatList.map((f) => [f, colorFor(PALETA_FORMATO, f)]),
   );
 
-  // Bar 2: Build vs Consider por categoría
+  // Bar 2: Awareness vs Consideración por categoría
   const bvcData = byCategoria.map((c) => ({
     category: c.campania,
-    Build: c.build,
-    Consider: c.consider,
+    Awareness: c.build,
+    "Consideración": c.consider,
   }));
 
   // Tabla TV
@@ -125,7 +125,7 @@ export default async function PlanningPage({ searchParams }: PageProps) {
     totals.consider > 0
       ? `${(totals.build / totals.consider).toFixed(1)}x`
       : totals.build > 0
-        ? "100% Build"
+        ? "100% Awareness"
         : "—";
 
   const hasData = rows.length > 0;
@@ -198,9 +198,9 @@ export default async function PlanningPage({ searchParams }: PageProps) {
           hint={totals.topSistema ? formatCurrency(totals.topSistema.inversion) : ""}
         />
         <KpiCard
-          title="Build vs Consider"
+          title="Awareness vs Consideración"
           value={buildVsConsider}
-          hint={`${formatCurrency(totals.build)} Build`}
+          hint={`${formatCurrency(totals.build)} Awareness`}
         />
       </section>
 
@@ -227,11 +227,11 @@ export default async function PlanningPage({ searchParams }: PageProps) {
             height={300}
           />
         </ChartCard>
-        <ChartCard title="Build vs Consideración por categoría">
+        <ChartCard title="Awareness vs Consideración por categoría">
           <StackedBarChart
             data={bvcData}
-            seriesKeys={["Build", "Consider"]}
-            seriesColors={{ Build: "#3b82f6", Consider: "#22c55e" }}
+            seriesKeys={["Awareness", "Consideración"]}
+            seriesColors={{ Awareness: "#3b82f6", "Consideración": "#22c55e" }}
           />
         </ChartCard>
       </section>

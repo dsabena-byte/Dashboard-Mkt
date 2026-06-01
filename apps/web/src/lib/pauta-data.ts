@@ -1,12 +1,12 @@
 // Tipos y helpers para Performance Pauta. La data vive en Supabase
 // (tabla pauta_performance) y se obtiene vía getPautaPerformance().
-// Objetivo: Build = Upper Funnel (Awareness), Consider = Mid Funnel (Consideración)
+// Objetivo: Awareness = Upper Funnel, Consideración = Mid Funnel
 
 export interface PautaRow {
   mes: string;
   categoria: string;
   medio: string;
-  objetivo: string; // "Build" | "Consider"
+  objetivo: string; // "Awareness" | "Consideración"
   tipo_compra: string; // "CPM" | "CPC" | "CPV"
   alcance_plan: number | null;
   alcance: number | null;
@@ -119,7 +119,7 @@ export const PAUTA_INSIGHTS: Record<string, PautaInsight> = {
     conclusion:
       "Campaña Dream Week (6-12 abril). Meta CPM -21,3% ($228 vs $290) generó +27% de impresiones y +16,7% de alcance. CTR de Meta Mid 3,81% vs 0,80% plan (+376%). Inversión ejecutada al 70% del plan (flight más corto).",
     positivos: [
-      "Alcance de Meta Build 4,36M con CPM eficiente ($228).",
+      "Alcance de Meta Awareness 4,36M con CPM eficiente ($228).",
       "TikTok alcanzó 3,1M de personas con CPM -35%.",
       "YouTube CPV -43,6% ($1,41 vs $2,50) con VTR 94,99%.",
     ],
@@ -178,12 +178,12 @@ function emptyTotals(): FunnelTotals {
   return { alcance: 0, impresiones: 0, clics: 0, views: 0, inversion: 0, inversion_plan: 0, frecuenciaPond: 0, cpm: 0, cpc: 0, ctr: 0 };
 }
 
-// Build = upper funnel; Consider = mid funnel.
+// Awareness = upper funnel; Consideración = mid funnel.
 function isUpper(objetivo: string): boolean {
-  return objetivo === "Build";
+  return objetivo === "Awareness";
 }
 function isMid(objetivo: string): boolean {
-  return objetivo === "Consider";
+  return objetivo === "Consideración";
 }
 
 export function computeFunnel(rows: PautaRow[], stage: "upper" | "mid"): FunnelTotals {
@@ -256,7 +256,7 @@ export function computeEfficiency(rows: PautaRow[]): EfficiencyRow[] {
     .map((r) => ({
       medio: r.medio,
       objetivo: r.objetivo,
-      etapa: r.objetivo === "Build" ? "Upper" : "Mid",
+      etapa: r.objetivo === "Awareness" ? "Upper" : "Mid",
       tipo_compra: r.tipo_compra,
       costo_plan: r.costo_plan!,
       costo: r.costo!,
@@ -294,7 +294,7 @@ export function computeFulfillment(rows: PautaRow[]): FulfillmentRow[] {
     if (plan == null || real == null || plan === 0) continue;
     out.push({
       medio: r.medio,
-      etapa: r.objetivo === "Build" ? "Upper" : "Mid",
+      etapa: r.objetivo === "Awareness" ? "Upper" : "Mid",
       kpi,
       plan,
       real,
@@ -308,7 +308,7 @@ export function computeFulfillment(rows: PautaRow[]): FulfillmentRow[] {
 export function reachByMedio(rows: PautaRow[]): Array<{ medio: string; alcance: number }> {
   const map = new Map<string, number>();
   for (const r of rows) {
-    if (r.objetivo === "Consider") continue;
+    if (r.objetivo === "Consideración") continue;
     map.set(r.medio, (map.get(r.medio) ?? 0) + (r.alcance ?? 0));
   }
   return [...map.entries()].map(([medio, alcance]) => ({ medio, alcance })).filter((x) => x.alcance > 0).sort((a, b) => b.alcance - a.alcance);

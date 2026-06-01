@@ -22,10 +22,10 @@ const CAT_COLORS: Record<string, string> = {
   UGC: "#8b5cf6",
 };
 
-// CPM/CPV se usan para Build (awareness); CPC para Consider (tráfico).
-function tipoCompraToRol(tc: string | null): "Build" | "Consider" | null {
-  if (tc === "CPC") return "Consider";
-  if (tc === "CPM" || tc === "CPV") return "Build";
+// CPM/CPV se usan para Awareness; CPC para Consideración (tráfico).
+function tipoCompraToRol(tc: string | null): "Awareness" | "Consideración" | null {
+  if (tc === "CPC") return "Consideración";
+  if (tc === "CPM" || tc === "CPV") return "Awareness";
   return null;
 }
 

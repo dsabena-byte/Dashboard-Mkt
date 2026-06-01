@@ -111,7 +111,7 @@ export default async function OverviewPage({ searchParams }: PageProps) {
   const engOrganico = fbEng + igEng;
 
   // Inversión por etapa sin doble conteo (video → Upper)
-  const upperInv = pautaRows.filter((r) => r.objetivo !== "Consider").reduce((s, r) => s + (r.inversion ?? 0), 0);
+  const upperInv = pautaRows.filter((r) => r.objetivo !== "Consideración").reduce((s, r) => s + (r.inversion ?? 0), 0);
   const midInv = totalInv - upperInv;
 
   // Donut mix ON/OFF (ejecutado por tipo de medio)

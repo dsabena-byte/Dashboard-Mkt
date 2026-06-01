@@ -73,7 +73,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
 
   const opMedios: TipoMedio[] = ["Digital", "TV Cable", "DOOH", "OOH"];
   const opCats = useMemo(() => [...new Set(data.map((r) => r.categoria))].sort(), [data]);
-  const opRoles = ["Build", "Consider"];
+  const opRoles = ["Awareness", "Consideración"];
   const opPlats = useMemo(() => [...new Set(data.map((r) => r.medio))].sort(), [data]);
 
   const rows = useMemo(
@@ -116,7 +116,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
   const totalViews = useMemo(() => rows.reduce((s, r) => s + (r.views ?? 0), 0), [rows]);
 
   // Volumetría mensual (año completo 2026): NO se filtra, siempre muestra el histórico.
-  // Alcance e impresiones se suman sobre filas Build (upper funnel), igual que la KPI.
+  // Alcance e impresiones se suman sobre filas Awareness (upper funnel), igual que la KPI.
   // Meses sin data quedan en 0 hasta que se carguen.
   const HISTORICO_MESES_FIJOS: Array<{ full: string; short: string }> = [
     { full: "Enero", short: "Ene" }, { full: "Febrero", short: "Feb" },
@@ -142,7 +142,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
     () =>
       HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
         const mes = `${full} 2026`;
-        const monthRows = data.filter((r) => r.mes === mes && r.objetivo === "Build");
+        const monthRows = data.filter((r) => r.mes === mes && r.objetivo === "Awareness");
         const future = i + 1 > lastMonthWithData;
         return {
           mes: short,
@@ -464,7 +464,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
 
           <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Build/Consider).
+            Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Awareness/Consideración).
           </p>
           <MetaPaidGrid
             data={metaPaid.filter((r) => r.plataforma === "meta")}
@@ -475,7 +475,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
 
           <SectionTitle>Piezas pautadas · TikTok</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Build/Consider).
+            Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Awareness/Consideración).
           </p>
           <MetaPaidGrid
             data={metaPaid.filter((r) => r.plataforma === "tiktok")}

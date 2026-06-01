@@ -84,15 +84,14 @@ export function aggregateTotals(rows: PlanningMediaRow[]): PlanningTotals {
     const medio = classifyMedio(r);
     byMedio[medio] += r.inversion;
 
-    // Mayor categoría, Mayor plataforma y Build/Consider se calculan SOLO sobre Digital.
-    // (Build/Consider es una construcción de "Rol of Comms" digital; TVC/OOH siempre son
-    // Build pero no entran en la métrica de mix. Mayor categoría matchea el donut "Por
-    // categoría digital".)
+    // Mayor categoría, Mayor plataforma y Awareness/Consideración se calculan SOLO sobre
+    // Digital. (Awareness/Consideración es una construcción de "Rol of Comms" digital; TVC/OOH
+    // siempre son Awareness pero no entran en la métrica de mix.)
     if (r.tipo === "media" && medio === "Digital") {
       byCat.set(r.campania, (byCat.get(r.campania) ?? 0) + r.inversion);
       if (r.sistema) bySis.set(r.sistema, (bySis.get(r.sistema) ?? 0) + r.inversion);
-      if (r.rol === "Build") build += r.inversion;
-      if (r.rol === "Consider") consider += r.inversion;
+      if (r.rol === "Awareness") build += r.inversion;
+      if (r.rol === "Consideración") consider += r.inversion;
     }
   }
 
@@ -126,8 +125,8 @@ export function aggregateByCategoria(rows: PlanningMediaRow[]): CategoryBreakdow
     if (r.tipo !== "media") continue;
     const existing = map.get(r.campania) ?? { campania: r.campania, build: 0, consider: 0, total: 0 };
     existing.total += r.inversion;
-    if (r.rol === "Build") existing.build += r.inversion;
-    if (r.rol === "Consider") existing.consider += r.inversion;
+    if (r.rol === "Awareness") existing.build += r.inversion;
+    if (r.rol === "Consideración") existing.consider += r.inversion;
     map.set(r.campania, existing);
   }
   return [...map.values()].sort((a, b) => b.total - a.total);
