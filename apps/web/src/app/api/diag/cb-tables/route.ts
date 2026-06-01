@@ -5,9 +5,11 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const url = process.env.CB_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const rawUrl = process.env.CB_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.CB_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) throw new Error("Faltan CB_SUPABASE_URL / CB_SUPABASE_SERVICE_ROLE_KEY (o las defaults)");
+    if (!rawUrl || !key) throw new Error("Faltan CB_SUPABASE_URL / CB_SUPABASE_SERVICE_ROLE_KEY (o las defaults)");
+    // Normalizar: sin trailing slash, sin espacios, sin path extra
+    const url = rawUrl.trim().replace(/\/+$/, "").replace(/\/rest\/v1.*$/, "");
     const using = process.env.CB_SUPABASE_URL ? "CB_SUPABASE_*" : "default SUPABASE_*";
 
     // Tablas reales del proyecto CB
@@ -52,7 +54,11 @@ export async function GET() {
       ok: true,
       timestamp: new Date().toISOString(),
       using_env: using,
-      supabase_url_hint: url.replace(/https:\/\/([^.]+)\..*/, "$1") + ".supabase.co",
+      raw_url_length: rawUrl.length,
+      raw_url_first_50: rawUrl.slice(0, 50),
+      raw_url_last_10: rawUrl.slice(-10),
+      normalized_url: url,
+      first_fetch_url: `${url}/rest/v1/cuadro_basico_semanal?select=*&limit=1`,
       found_tables: found.length,
       tables: found,
       errors,
