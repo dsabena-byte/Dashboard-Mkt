@@ -13,12 +13,6 @@ function fmtNum(n: number): string {
   return String(Math.round(n));
 }
 
-function fmtARS(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${Math.round(n)}`;
-}
-
 interface StageMetric {
   label: string;
   value: string;
@@ -40,39 +34,37 @@ export function FunnelWidget({ data }: { data: Record<string, FunnelData> }) {
     {
       key: "awareness",
       title: "BRAND AWARENESS",
-      subtitle: "Audiencia amplia, menos segmentada",
+      subtitle: "Impresiones de pauta (sin sesiones web — etapa media-only)",
       w: 100,
       bg: "#1e88e5",
       fg: "white",
       metrics: [
-        { label: "Inversión", value: fmtARS(f.awareness.inversion) },
-        { label: "Alcance pauta", value: fmtNum(f.awareness.alcance) },
-        { label: "Sesiones web (home)", value: fmtNum(f.awareness.ga4_sesiones) },
+        { label: "Impresiones pauta", value: fmtNum(f.awareness.pauta_impresiones) },
       ],
     },
     {
       key: "interes",
       title: "INTERÉS",
-      subtitle: "Tráfico a páginas de categoría",
+      subtitle: "Alcance + video views de pauta + sesiones a categoría",
       w: 82,
       bg: "#22c55e",
       fg: "white",
       metrics: [
-        { label: "Sesiones categoría", value: fmtNum(f.interes.ga4_sesiones) },
-        { label: "Usuarios", value: fmtNum(f.interes.ga4_usuarios) },
+        { label: "Alcance pauta", value: fmtNum(f.interes.pauta_alcance) },
+        { label: "Video views", value: fmtNum(f.interes.pauta_video_views) },
+        { label: "Sesiones categoría (GA4)", value: fmtNum(f.interes.ga4_sesiones) },
       ],
     },
     {
       key: "consideracion",
       title: "CONSIDERACIÓN",
-      subtitle: "Tráfico a producto / SKU + clicks pauta",
+      subtitle: "Clicks de pauta + sesiones a producto/SKU",
       w: 64,
       bg: "#f97316",
       fg: "white",
       metrics: [
-        { label: "Inversión", value: fmtARS(f.consideracion.inversion) },
-        { label: "Clicks pauta", value: fmtNum(f.consideracion.clics) },
-        { label: "Sesiones PDP", value: fmtNum(f.consideracion.ga4_sesiones) },
+        { label: "Clicks pauta", value: fmtNum(f.consideracion.pauta_clicks) },
+        { label: "Sesiones PDP (GA4)", value: fmtNum(f.consideracion.ga4_sesiones) },
       ],
     },
     {

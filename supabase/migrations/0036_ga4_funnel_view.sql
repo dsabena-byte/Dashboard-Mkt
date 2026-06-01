@@ -1,17 +1,16 @@
 -- 0036: Vista de funnel GA4 — clasifica cada landing en (etapa, categoria_funnel)
 -- para alimentar el funnel del Overview alineado al slide de estrategia Drean.
 --
--- Etapas:
---   awareness     → home (`/es_AR` o root)
---   interes       → páginas de categoría/subcategoría (sin `/p/<SKU>`)
---   consideracion → páginas de producto (`/p/<SKU>`)
+-- Etapas (Awareness NO recibe tráfico de GA4 — es media-only):
+--   interes        → páginas de categoría/subcategoría (sin `/p/<SKU>`)
+--   consideracion  → home + servicio + combo (Brand)  y  páginas de producto `/p/<SKU>` (por categoría)
 --
 -- Categorías funnel (6):
+--   Brand         → Landing / home + Combos + Servicio
 --   Lavado        → Lavado y secado (lavarropas, secarropas)
 --   Refrigeración → Heladeras y Freezers
 --   Cocinas       → Cocción (cocinas, hornos, anafes)
 --   Lavavajillas  → Lavavajillas (categoría propia)
---   Brand         → Landing / home + Combos + Servicio + multi-categoría
 --   Otros         → No clasificado
 
 create or replace view vw_ga4_funnel as
@@ -20,10 +19,16 @@ with classified as (
     fecha,
     landing_page,
     case
+      -- PDP (página de producto) → consideración de su categoría
       when landing_page ~* '/p/[A-Z0-9-]+' then 'consideracion'
-      when landing_page ~* '^/?(es_AR)?/?$' then 'awareness'
-      when landing_page ~* '(lavado|lavarropas|lavavajilla|secarrop|heladera|refriger|freezer|cocci|cocina|horno|anafe|combo|servicio)' then 'interes'
-      else 'awareness'
+      -- Home / landing → consideración (de Brand)
+      when landing_page ~* '^/?(es_AR)?/?$' then 'consideracion'
+      -- Combos y Servicio → consideración (de Brand)
+      when landing_page ~* '(combo|servicio)' then 'consideracion'
+      -- Páginas de categoría → interés
+      when landing_page ~* '(lavarropas|secarrop|/Lavado|lavavajilla|heladera|refriger|freezer|cocci|/Cocina|horno|anafe)' then 'interes'
+      -- Fallback (path desconocido) → consideración de Brand para no perder volumen
+      else 'consideracion'
     end as etapa,
     case
       when landing_page ~* '^/?(es_AR)?/?$'                                                            then 'Brand'
@@ -59,4 +64,4 @@ from classified
 group by fecha, etapa, categoria;
 
 comment on view vw_ga4_funnel is
-  'Clasificación de GA4 por etapa de funnel (awareness/interes/consideracion) y categoría (Lavado/Refrigeración/Cocinas/Brand). Usado por el widget Funnel del Overview.';
+  'Clasificación de GA4 por etapa de funnel (interes/consideracion) y categoría (Lavado/Refrigeración/Cocinas/Lavavajillas/Brand/Otros). Awareness es media-only (Pauta). Home/Servicio/Combo → consideración de Brand. PDP → consideración de su categoría. Páginas de categoría → interés. Usado por el widget Funnel del Overview.';

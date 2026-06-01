@@ -5,12 +5,17 @@ export type FunnelCategoria = "Brand" | "Lavado" | "Refrigeración" | "Cocinas" 
 export type FunnelEtapa = "awareness" | "interes" | "consideracion";
 
 export interface FunnelStageData {
-  inversion: number;        // de pauta_performance
-  alcance: number;          // de pauta (Awareness) — alcance único
-  impresiones: number;      // de pauta (Awareness)
-  clics: number;            // de pauta (Consideración)
-  ga4_sesiones: number;     // de vw_ga4_funnel
-  ga4_usuarios: number;     // de vw_ga4_funnel
+  // Pauta: cada métrica suma a su etapa correspondiente, sin filtrar por objetivo.
+  // Awareness    → impresiones
+  // Interés      → alcance + video views
+  // Consideración → clicks
+  pauta_impresiones: number;
+  pauta_alcance: number;
+  pauta_video_views: number;
+  pauta_clicks: number;
+  // GA4
+  ga4_sesiones: number;
+  ga4_usuarios: number;
 }
 
 export interface FunnelData {
@@ -42,7 +47,14 @@ const PAUTA_TO_FUNNEL: Record<string, FunnelCategoria> = {
 };
 
 function emptyStage(): FunnelStageData {
-  return { inversion: 0, alcance: 0, impresiones: 0, clics: 0, ga4_sesiones: 0, ga4_usuarios: 0 };
+  return {
+    pauta_impresiones: 0,
+    pauta_alcance: 0,
+    pauta_video_views: 0,
+    pauta_clicks: 0,
+    ga4_sesiones: 0,
+    ga4_usuarios: 0,
+  };
 }
 
 function emptyFunnel(): FunnelData {
@@ -51,10 +63,9 @@ function emptyFunnel(): FunnelData {
 
 interface PautaRow {
   categoria: string;
-  objetivo: string;
-  inversion: number | null;
-  alcance: number | null;
   impresiones: number | null;
+  alcance: number | null;
+  views: number | null;
   clics: number | null;
 }
 
@@ -83,7 +94,7 @@ export async function getFunnelData(range: { from: string; to: string }, mes: st
   // Pauta: pauta_performance filtrada por mes (formato "Abril 2026")
   const pautaPromise = supabase
     .from("pauta_performance")
-    .select("categoria, objetivo, inversion, alcance, impresiones, clics")
+    .select("categoria, impresiones, alcance, views, clics")
     .eq("mes", mes)
     .returns<PautaRow[]>();
 
@@ -107,28 +118,25 @@ export async function getFunnelData(range: { from: string; to: string }, mes: st
     out.Total![stage].ga4_usuarios += usuarios;
   }
 
-  // Pauta → suma por (categoria mapeada, etapa según objetivo)
+  // Pauta → métricas se distribuyen por etapa:
+  //   impresiones → awareness, alcance+views → interes, clics → consideracion
   for (const r of pautaRes.data ?? []) {
     const cat = PAUTA_TO_FUNNEL[r.categoria] ?? "Otros";
-    const stage: FunnelEtapa | null =
-      r.objetivo === "Awareness" ? "awareness"
-      : r.objetivo === "Consideración" ? "consideracion"
-      : null;
-    if (!stage) continue;
-    const inv = r.inversion ?? 0;
-    const alc = r.alcance ?? 0;
     const imp = r.impresiones ?? 0;
+    const alc = r.alcance ?? 0;
+    const vv = r.views ?? 0;
     const clk = r.clics ?? 0;
+
     if (out[cat]) {
-      out[cat]![stage].inversion += inv;
-      out[cat]![stage].alcance += alc;
-      out[cat]![stage].impresiones += imp;
-      out[cat]![stage].clics += clk;
+      out[cat]!.awareness.pauta_impresiones += imp;
+      out[cat]!.interes.pauta_alcance += alc;
+      out[cat]!.interes.pauta_video_views += vv;
+      out[cat]!.consideracion.pauta_clicks += clk;
     }
-    out.Total![stage].inversion += inv;
-    out.Total![stage].alcance += alc;
-    out.Total![stage].impresiones += imp;
-    out.Total![stage].clics += clk;
+    out.Total!.awareness.pauta_impresiones += imp;
+    out.Total!.interes.pauta_alcance += alc;
+    out.Total!.interes.pauta_video_views += vv;
+    out.Total!.consideracion.pauta_clicks += clk;
   }
 
   return out;
