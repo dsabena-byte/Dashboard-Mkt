@@ -38,7 +38,43 @@ export async function GET() {
       .filter((p) => p.status === "granted")
       .map((p) => p.permission);
 
-    // 2. Listar Ad Accounts accesibles
+    // 2. Info del System User (id, name)
+    const meRes = await gget(`${GRAPH}/me?fields=id,name&access_token=${token}`);
+    const me = meRes.body as { id?: string; name?: string; error?: unknown };
+
+    // 3. Businesses a los que pertenece este System User
+    const bizRes = await gget(
+      `${GRAPH}/me/businesses?fields=id,name,verification_status&limit=50&access_token=${token}`,
+    );
+    const bizBody = bizRes.body as {
+      data?: Array<{ id: string; name: string; verification_status?: string }>;
+      error?: unknown;
+    };
+    const businesses = bizBody.data ?? [];
+
+    // 4. Ad Accounts CLIENTES (compartidas por terceros como OMD vía BM)
+    // El endpoint /me/adaccounts trae solo las owned por businesses del user.
+    // Para ver las shared, hay que pedir /BMID/client_ad_accounts.
+    const clientAdAccountsByBiz: Array<Record<string, unknown>> = [];
+    for (const biz of businesses) {
+      const cliRes = await gget(
+        `${GRAPH}/${biz.id}/client_ad_accounts?fields=id,name,account_id,account_status,business{id,name},currency&limit=100&access_token=${token}`,
+      );
+      const cliBody = cliRes.body as {
+        data?: Array<Record<string, unknown>>;
+        error?: unknown;
+      };
+      clientAdAccountsByBiz.push({
+        business_id: biz.id,
+        business_name: biz.name,
+        status: cliRes.status,
+        count: cliBody.data?.length ?? 0,
+        accounts: cliBody.data ?? [],
+        error: cliBody.error ?? null,
+      });
+    }
+
+    // 5. Ad Accounts OWNED (las del user directamente — fallback)
     const adAccRes = await gget(
       `${GRAPH}/me/adaccounts?fields=id,name,account_id,account_status,business{id,name},currency,timezone_name&limit=100&access_token=${token}`,
     );
@@ -55,19 +91,21 @@ export async function GET() {
       error?: unknown;
     };
 
-    if (adAccRes.status !== 200) {
-      return NextResponse.json({
-        ok: false,
-        permissions: granted,
-        ad_accounts_error: adAccBody.error ?? adAccBody,
-      });
-    }
-
     const adAccounts = adAccBody.data ?? [];
 
-    // 3. Test de insights para cada Ad Account (últimos 7 días)
+    // 6. Test de insights para cada Ad Account owned + shared (últimos 7 días)
+    const allTestableAccounts: Array<{ id: string; name: string; source: string }> = [
+      ...adAccounts.map((a) => ({ id: a.id, name: a.name, source: "owned" })),
+      ...clientAdAccountsByBiz.flatMap((b) =>
+        ((b.accounts as Array<{ id: string; name: string }>) ?? []).map((a) => ({
+          id: a.id,
+          name: a.name,
+          source: `shared:${b.business_name}`,
+        })),
+      ),
+    ];
     const insightsTest: Array<Record<string, unknown>> = [];
-    for (const acc of adAccounts) {
+    for (const acc of allTestableAccounts) {
       const insRes = await gget(
         `${GRAPH}/${acc.id}/insights?fields=spend,impressions,clicks&date_preset=last_7d&access_token=${token}`,
       );
@@ -75,7 +113,7 @@ export async function GET() {
       insightsTest.push({
         ad_account_id: acc.id,
         name: acc.name,
-        business: acc.business?.name,
+        source: acc.source,
         status: insRes.status,
         insights_sample: body.data?.[0] ?? null,
         error: body.error ?? null,
@@ -85,15 +123,19 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
+      system_user: { id: me.id, name: me.name },
       permissions: granted,
-      ad_accounts_count: adAccounts.length,
-      ad_accounts: adAccounts.map((a) => ({
+      businesses_count: businesses.length,
+      businesses,
+      ad_accounts_owned_count: adAccounts.length,
+      ad_accounts_owned: adAccounts.map((a) => ({
         id: a.id,
         name: a.name,
         business: a.business?.name,
-        status_code: a.account_status, // 1 = active, 2 = disabled, 3 = unsettled, etc.
+        status_code: a.account_status,
         currency: a.currency,
       })),
+      ad_accounts_shared_by_business: clientAdAccountsByBiz,
       insights_test: insightsTest,
     });
   } catch (err) {
