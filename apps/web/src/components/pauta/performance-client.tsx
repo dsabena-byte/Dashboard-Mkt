@@ -112,7 +112,6 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
 
   // Volumetría
   const sumReach = upper.alcance;
-  const maxReach = useMemo(() => Math.max(0, ...rows.map((r) => r.alcance ?? 0)), [rows]);
   const totalViews = useMemo(() => rows.reduce((s, r) => s + (r.views ?? 0), 0), [rows]);
 
   // Volumetría mensual (año completo 2026): NO se filtra, siempre muestra el histórico.
@@ -349,7 +348,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
           {/* Volumetría (sin inversión, ya está arriba) */}
           <SectionTitle>Volumetría de campaña</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Kpi label="Alcance" value={fmtNum(sumReach)} sub={`Suma medios · máx 1: ${fmtNum(maxReach)}`} />
+            <Kpi label="Alcance" value={fmtNum(sumReach)} sub="Suma medios" />
             <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} sub="Total período" />
             <Kpi label="Clicks" value={fmtNum(mid.clics)} sub="Mid funnel" />
             <Kpi label="Video Views" value={fmtNum(totalViews)} sub="CPV" />
