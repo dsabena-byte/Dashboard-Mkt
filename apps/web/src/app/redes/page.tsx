@@ -10,6 +10,7 @@ import { PaginatedPostsPanel } from "@/components/social/paginated-posts-panel";
 import { BrandSentimentSummary } from "@/components/social/brand-sentiment-summary";
 import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { IgOrganicSection } from "@/components/social/ig-organic-section";
+import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import {
@@ -106,6 +107,41 @@ export default async function RedesPage({ searchParams }: PageProps) {
   // Sentiment solo aplica para Instagram. Si filtran por FB/TT, lo ocultamos.
   const showSentiment = red === "all" || red === "INSTAGRAM";
 
+  // ===== Resumen combinado IG + FB (orgánico Drean) =====
+  // Para que coincida con cada sección, repetimos exactamente los mismos
+  // agregados que se usan en IgOrganicSection / FbOrganicSection.
+  const fbPosts = fbOrganic.topPosts;
+  const fbReactions = fbPosts.reduce((s, p) => s + (p.reactions ?? 0), 0);
+  const fbCommentsShares = fbPosts.reduce((s, p) => s + (p.engagement ?? 0), 0);
+  const fbClicks = fbPosts.reduce((s, p) => s + (p.clicks ?? 0), 0);
+  const fbVideoViews = fbPosts.reduce((s, p) => s + (p.video_views ?? 0), 0);
+  const fbEngagementTotal = fbReactions + fbCommentsShares + fbClicks + fbVideoViews;
+
+  const combinedAlcance = fbOrganic.totals.impressions_unique + igOrganic.totalReach;
+  const combinedEngagement = fbEngagementTotal + igOrganic.totalEngagement;
+  const combinedReactions = fbReactions + igOrganic.totalReactions;
+  const combinedComments = fbCommentsShares + igOrganic.totalComments;
+  const combinedVideoViews = fbVideoViews + igOrganic.totalVideoViews;
+  const combinedFollowers = (fbOrganic.totals.fans_total ?? 0) + 145_700; // IG: 145.7K hardcoded como en IgOrganicSection
+  const combinedPosts = fbPosts.length + igOrganic.postCount;
+
+  // Sumar mes a mes los monthlyData (mismo formato { mes, alcance, engagement })
+  const monthlyMap = new Map<string, { mes: string; alcance: number; engagement: number }>();
+  for (const m of fbOrganic.monthlyData) {
+    monthlyMap.set(m.mes, {
+      mes: m.mes,
+      alcance: m.alcance ?? 0,
+      engagement: m.engagement ?? 0,
+    });
+  }
+  for (const m of igOrganic.monthlyData) {
+    const acc = monthlyMap.get(m.mes) ?? { mes: m.mes, alcance: 0, engagement: 0 };
+    acc.alcance += m.alcance ?? 0;
+    acc.engagement += m.engagement ?? 0;
+    monthlyMap.set(m.mes, acc);
+  }
+  const combinedMonthly = [...monthlyMap.values()];
+
   return (
     <div className="space-y-4">
       <header className="flex items-end justify-between">
@@ -117,6 +153,43 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
+
+      {/* ===== Resumen combinado Drean en redes (IG + FB) ===== */}
+      <section className="space-y-4 rounded-lg border bg-card p-6">
+        <header className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ background: "linear-gradient(135deg, #1877F2 0%, #dc2743 100%)" }}>★</div>
+          <div>
+            <h3 className="text-base font-semibold tracking-tight">Drean en redes — Instagram + Facebook</h3>
+            <p className="text-xs text-muted-foreground">
+              KPIs sumados de @dreanargentina + Page Drean en el período seleccionado.
+            </p>
+          </div>
+        </header>
+
+        {/* KPIs principales */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard title="Alcance combinado" value={fmtK(combinedAlcance)} hint={`${combinedPosts} posts entre IG + FB`} />
+          <KpiCard title="Engagement combinado" value={fmtK(combinedEngagement)} hint="Reacciones + comments + clicks + views" />
+          <KpiCard title="Comunidad total" value={fmtK(combinedFollowers)} hint="Followers IG + Fans FB" />
+          <KpiCard title="Posts" value={String(combinedPosts)} hint="IG feed/reels/stories + FB" />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <KpiCard title="Reacciones / Likes" value={fmtK(combinedReactions)} />
+          <KpiCard title="Comentarios" value={fmtK(combinedComments)} />
+          <KpiCard title="Video views" value={fmtK(combinedVideoViews)} />
+        </div>
+
+        {/* Tendencia mensual combinada */}
+        {combinedMonthly.length > 0 && (
+          <div className="rounded-lg border bg-background p-4">
+            <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Evolución mensual combinada — Alcance vs Engagement
+            </h4>
+            <FbMonthlyChart data={combinedMonthly} />
+          </div>
+        )}
+      </section>
 
       <IgOrganicSection data={igOrganic} />
 
