@@ -133,10 +133,12 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
             />
           </section>
 
-          <section className="rounded-xl border bg-card p-4">
-            <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal</h3>
-            <CbWeeklyChart data={weekly} />
-          </section>
+          {weekly.length > 1 && (
+            <section className="rounded-xl border bg-card p-4">
+              <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal</h3>
+              <CbWeeklyChart data={weekly} />
+            </section>
+          )}
 
           <section className="rounded-xl border bg-card p-4">
             <h3 className="mb-3 text-sm font-bold">📊 Cumplimiento por División</h3>
