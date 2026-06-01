@@ -18,6 +18,7 @@ export async function GET() {
     ];
 
     const found: Array<Record<string, unknown>> = [];
+    const errors: Array<Record<string, unknown>> = [];
     for (const name of patterns) {
       const res = await fetch(`${url}/rest/v1/${name}?select=*&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -25,7 +26,6 @@ export async function GET() {
       if (res.ok) {
         const data = await res.json() as Array<Record<string, unknown>>;
         const sample = data[0] ?? null;
-        // Conteo
         const countRes = await fetch(`${url}/rest/v1/${name}?select=*`, {
           method: "HEAD",
           headers: {
@@ -42,6 +42,9 @@ export async function GET() {
           row_count: count,
           sample,
         });
+      } else {
+        const body = await res.text();
+        errors.push({ table: name, status: res.status, body: body.slice(0, 400) });
       }
     }
 
@@ -52,6 +55,7 @@ export async function GET() {
       supabase_url_hint: url.replace(/https:\/\/([^.]+)\..*/, "$1") + ".supabase.co",
       found_tables: found.length,
       tables: found,
+      errors,
       hint: "Si tu tabla no está en la lista, decime el nombre exacto.",
     });
   } catch (err) {
