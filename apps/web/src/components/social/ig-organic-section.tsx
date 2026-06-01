@@ -51,10 +51,25 @@ function HorizontalBars({
 
 export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
   const [showAllPosts, setShowAllPosts] = useState(false);
+  const [sortBy, setSortBy] = useState<"engagement" | "fecha">("engagement");
+  const [filterType, setFilterType] = useState<"all" | "feed" | "reels" | "stories">("all");
 
-  const sortedPosts = [...data.topPosts].sort(
-    (a, b) => (b.reach + b.engagement + b.video_views) - (a.reach + a.engagement + a.video_views),
-  );
+  function matchesType(p: { media_type: string | null }, t: typeof filterType): boolean {
+    if (t === "all") return true;
+    const mt = (p.media_type ?? "").toUpperCase();
+    if (t === "feed") return mt === "FEED" || mt === "IMAGE" || mt === "CAROUSEL_ALBUM";
+    if (t === "reels") return mt === "REELS" || mt === "REEL" || mt === "VIDEO";
+    if (t === "stories") return mt === "STORY";
+    return true;
+  }
+
+  const filteredPosts = data.topPosts.filter((p) => matchesType(p, filterType));
+  const sortedPosts =
+    sortBy === "fecha"
+      ? [...filteredPosts].sort((a, b) => (b.fecha_post ?? "").localeCompare(a.fecha_post ?? ""))
+      : [...filteredPosts].sort(
+          (a, b) => (b.reach + b.engagement + b.video_views) - (a.reach + a.engagement + a.video_views),
+        );
   const visiblePosts = showAllPosts ? sortedPosts : sortedPosts.slice(0, 12);
 
   if (data.postCount === 0 && data.demoAge.length === 0) {
@@ -158,11 +173,44 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
       )}
 
       {/* Top posts */}
-      {sortedPosts.length > 0 && (
+      {data.topPosts.length > 0 && (
         <div className="rounded-lg border bg-background p-4">
-          <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Top posts del per&iacute;odo (por interacciones totales)
-          </h4>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Top posts del per&iacute;odo
+            </h4>
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+              {(["all", "feed", "reels", "stories"] as const).map((t) => {
+                const count = data.topPosts.filter((p) => matchesType(p, t)).length;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => { setFilterType(t); setShowAllPosts(false); }}
+                    className={`rounded-full px-2 py-0.5 transition-colors ${
+                      filterType === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {t === "all" ? "Todos" : t === "feed" ? "Feed" : t === "reels" ? "Reels" : "Stories"} ({count})
+                  </button>
+                );
+              })}
+              <span className="mx-1 h-3 w-px bg-border" aria-hidden />
+              {(["engagement", "fecha"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSortBy(s)}
+                  className={`rounded-full px-2 py-0.5 transition-colors ${
+                    sortBy === s ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {s === "engagement" ? "Por engagement" : "Por fecha"}
+                </button>
+              ))}
+            </div>
+          </div>
+          {sortedPosts.length === 0 ? (
+            <div className="py-8 text-center text-xs text-muted-foreground">Sin posts de tipo &quot;{filterType}&quot; en el per&iacute;odo.</div>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {visiblePosts.map((p) => (
               <a
@@ -197,6 +245,7 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
               </a>
             ))}
           </div>
+          )}
           {sortedPosts.length > 12 && (
             <div className="mt-3 text-center">
               <button

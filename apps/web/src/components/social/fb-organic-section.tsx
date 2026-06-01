@@ -60,9 +60,26 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
   const totalVideoViews = posts.reduce((s, p) => s + (p.video_views ?? 0), 0);
   const engagementTotal = totalReactions + totalCommentsShares + totalClicks + totalVideoViews;
 
-  const sortedPosts = [...posts].sort(
-    (a, b) => (b.reach + b.engagement + b.reactions + b.video_views + b.clicks) - (a.reach + a.engagement + a.reactions + a.video_views + a.clicks),
-  );
+  const [sortBy, setSortBy] = useState<"engagement" | "fecha">("engagement");
+  const [filterType, setFilterType] = useState<"all" | "feed" | "reels" | "stories">("all");
+
+  function matchesType(p: { media_type: string | null }, t: typeof filterType): boolean {
+    if (t === "all") return true;
+    const mt = (p.media_type ?? "").toUpperCase();
+    // Mapeo Meta para FB: PHOTO/ALBUM/STATUS/LINK = feed; VIDEO/REEL = reels; STORY = stories
+    if (t === "feed") return mt === "PHOTO" || mt === "ALBUM" || mt === "STATUS" || mt === "LINK";
+    if (t === "reels") return mt === "VIDEO" || mt === "REEL" || mt === "REELS";
+    if (t === "stories") return mt === "STORY";
+    return true;
+  }
+
+  const filteredPosts = posts.filter((p) => matchesType(p, filterType));
+  const sortedPosts =
+    sortBy === "fecha"
+      ? [...filteredPosts].sort((a, b) => (b.fecha_post ?? "").localeCompare(a.fecha_post ?? ""))
+      : [...filteredPosts].sort(
+          (a, b) => (b.reach + b.engagement + b.reactions + b.video_views + b.clicks) - (a.reach + a.engagement + a.reactions + a.video_views + a.clicks),
+        );
   const visiblePosts = showAllPosts ? sortedPosts : sortedPosts.slice(0, 12);
 
   return (
@@ -180,11 +197,44 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
           )}
 
           {/* Top posts */}
-          {sortedPosts.length > 0 && (
+          {posts.length > 0 && (
             <div className="rounded-lg border bg-background p-4">
-              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Top posts del período (por interacciones totales)
-              </h4>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Top posts del per&iacute;odo
+                </h4>
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                  {(["all", "feed", "reels", "stories"] as const).map((t) => {
+                    const count = posts.filter((p) => matchesType(p, t)).length;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => { setFilterType(t); setShowAllPosts(false); }}
+                        className={`rounded-full px-2 py-0.5 transition-colors ${
+                          filterType === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {t === "all" ? "Todos" : t === "feed" ? "Feed" : t === "reels" ? "Reels" : "Stories"} ({count})
+                      </button>
+                    );
+                  })}
+                  <span className="mx-1 h-3 w-px bg-border" aria-hidden />
+                  {(["engagement", "fecha"] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSortBy(s)}
+                      className={`rounded-full px-2 py-0.5 transition-colors ${
+                        sortBy === s ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {s === "engagement" ? "Por engagement" : "Por fecha"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {sortedPosts.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">Sin posts de tipo &quot;{filterType}&quot; en el per&iacute;odo.</div>
+              ) : (
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {visiblePosts.map((p) => (
                   <a
@@ -219,6 +269,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                   </a>
                 ))}
               </div>
+              )}
               {sortedPosts.length > 12 && (
                 <div className="mt-3 text-center">
                   <button
