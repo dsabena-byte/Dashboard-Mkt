@@ -42,15 +42,34 @@ export async function GET() {
     const meRes = await gget(`${GRAPH}/me?fields=id,name&access_token=${token}`);
     const me = meRes.body as { id?: string; name?: string; error?: unknown };
 
-    // 3. Businesses a los que pertenece este System User
-    const bizRes = await gget(
-      `${GRAPH}/me/businesses?fields=id,name,verification_status&limit=50&access_token=${token}`,
-    );
-    const bizBody = bizRes.body as {
+    // 3. Businesses a los que pertenece este System User (varios endpoints)
+    const [meBizRes, ownedRes, clientRes] = await Promise.all([
+      gget(`${GRAPH}/me/businesses?fields=id,name,verification_status&limit=50&access_token=${token}`),
+      gget(`${GRAPH}/me/owned_businesses?fields=id,name&limit=50&access_token=${token}`),
+      gget(`${GRAPH}/me/client_businesses?fields=id,name&limit=50&access_token=${token}`),
+    ]);
+    const bizBody = meBizRes.body as {
       data?: Array<{ id: string; name: string; verification_status?: string }>;
       error?: unknown;
     };
+    const ownedBody = ownedRes.body as { data?: Array<{ id: string; name: string }>; error?: unknown };
+    const clientBody = clientRes.body as { data?: Array<{ id: string; name: string }>; error?: unknown };
     const businesses = bizBody.data ?? [];
+
+    // 3b. Acceso directo al BM esperado (122350585916257 = Alladio - Negocio Drean)
+    const EXPECTED_BM = "122350585916257";
+    const bmDirectRes = await gget(
+      `${GRAPH}/${EXPECTED_BM}?fields=id,name,verification_status&access_token=${token}`,
+    );
+    const bmDirect = bmDirectRes.body as Record<string, unknown>;
+
+    // 3c. Intentar listar ad accounts directamente del BM esperado
+    const bmClientAccRes = await gget(
+      `${GRAPH}/${EXPECTED_BM}/client_ad_accounts?fields=id,name,account_id,account_status,business{id,name}&limit=100&access_token=${token}`,
+    );
+    const bmOwnedAccRes = await gget(
+      `${GRAPH}/${EXPECTED_BM}/owned_ad_accounts?fields=id,name,account_id,account_status&limit=100&access_token=${token}`,
+    );
 
     // 4. Ad Accounts CLIENTES (compartidas por terceros como OMD vía BM)
     // El endpoint /me/adaccounts trae solo las owned por businesses del user.
@@ -125,8 +144,17 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       system_user: { id: me.id, name: me.name },
       permissions: granted,
-      businesses_count: businesses.length,
-      businesses,
+      businesses_via_me: {
+        me_businesses: { count: businesses.length, data: businesses, error: bizBody.error ?? null },
+        owned_businesses: { count: ownedBody.data?.length ?? 0, data: ownedBody.data ?? [], error: ownedBody.error ?? null },
+        client_businesses: { count: clientBody.data?.length ?? 0, data: clientBody.data ?? [], error: clientBody.error ?? null },
+      },
+      expected_bm_check: {
+        bm_id: EXPECTED_BM,
+        bm_info: bmDirect,
+        client_ad_accounts: bmClientAccRes.body,
+        owned_ad_accounts: bmOwnedAccRes.body,
+      },
       ad_accounts_owned_count: adAccounts.length,
       ad_accounts_owned: adAccounts.map((a) => ({
         id: a.id,
