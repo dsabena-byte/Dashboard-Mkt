@@ -345,24 +345,6 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
             <MonthlyInvestmentChart data={inversionMensual} />
           </div>
 
-          {/* Volumetría (sin inversión, ya está arriba) */}
-          <SectionTitle>Volumetría de campaña</SectionTitle>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Kpi label="Alcance" value={fmtNum(sumReach)} sub="Suma medios" />
-            <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} sub="Total período" />
-            <Kpi label="Clicks" value={fmtNum(mid.clics)} sub="Mid funnel" />
-            <Kpi label="Video Views" value={fmtNum(totalViews)} sub="CPV" />
-            <Kpi label="CTR" value={`${mid.ctr.toFixed(2)}%`} sub="Mid funnel" />
-          </div>
-
-          <SectionTitle>Evolución mensual · Alcance vs Impresiones</SectionTitle>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="mb-2 text-[10px] text-muted-foreground">
-              Año completo 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.
-            </p>
-            <ReachImpressionsChart data={volumetriaMensual} />
-          </div>
-
           <SectionTitle>Desempeño por etapa del funnel</SectionTitle>
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#2b4dff" }}>
@@ -387,6 +369,14 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
                 <Kpi label="CPC" value={fmtARS(mid.cpc)} />
               </div>
             </div>
+          </div>
+
+          <SectionTitle>Evolución mensual · Alcance vs Impresiones</SectionTitle>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="mb-2 text-[10px] text-muted-foreground">
+              Año completo 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.
+            </p>
+            <ReachImpressionsChart data={volumetriaMensual} />
           </div>
 
           <SectionTitle>Embudo de conversión del período</SectionTitle>
