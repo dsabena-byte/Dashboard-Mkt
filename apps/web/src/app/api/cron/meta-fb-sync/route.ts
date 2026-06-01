@@ -307,18 +307,41 @@ export async function GET(request: Request) {
     const storiesRaw = await graphGetRaw(
       `${GRAPH_API}/${PAGE_ID}/stories?fields=id,creation_time,permalink_url,media_type,media_url,thumbnail_url&limit=50&access_token=${pt}`,
     );
+    let storyIdsSkipped = 0;
     if (storiesRaw.status === 200) {
-      const storiesBody = storiesRaw.body as { data?: Array<{ id: string; creation_time?: string; permalink_url?: string; media_type?: string; media_url?: string; thumbnail_url?: string }> };
+      const storiesBody = storiesRaw.body as {
+        data?: Array<Record<string, unknown>>;
+      };
       const storiesData = storiesBody.data ?? [];
       storyCount = storiesData.length;
+      // Diagnóstico: capturar shape de la primera story para detectar nombre de campo del id
+      if (storiesData.length > 0) {
+        results.story_sample_keys = Object.keys(storiesData[0] ?? {});
+        results.story_sample = storiesData[0];
+      }
       const STORY_METRICS = "post_impressions,post_impressions_unique,post_video_views,post_clicks";
-      for (const s of storiesData) {
+      for (const sRaw of storiesData) {
+        const s = sRaw as {
+          id?: string;
+          post_id?: string;
+          story_id?: string;
+          creation_time?: string;
+          permalink_url?: string;
+          media_type?: string;
+          media_url?: string;
+          thumbnail_url?: string;
+        };
+        const storyId = s.id ?? s.post_id ?? s.story_id;
+        if (!storyId) {
+          storyIdsSkipped++;
+          continue;
+        }
         let impressions = 0;
         let reach = 0;
         let videoViews = 0;
         let clicks = 0;
         const insRaw = await graphGetRaw(
-          `${GRAPH_API}/${s.id}/insights?metric=${STORY_METRICS}&access_token=${pt}`,
+          `${GRAPH_API}/${storyId}/insights?metric=${STORY_METRICS}&access_token=${pt}`,
         );
         if (insRaw.status === 200) {
           const insBody = insRaw.body as { data?: InsightMetric[] };
@@ -333,12 +356,12 @@ export async function GET(request: Request) {
         } else {
           storyInsightsFailed++;
           if (storyInsightsFailed <= 3) {
-            (results as Record<string, unknown>)[`story_insight_error_${s.id}`] = insRaw.body;
+            (results as Record<string, unknown>)[`story_insight_error_${storyId}`] = insRaw.body;
           }
         }
         storyRows.push({
           platform: "facebook",
-          post_id: s.id,
+          post_id: storyId,
           cuenta_id: PAGE_ID,
           fecha_post: s.creation_time ?? new Date().toISOString(),
           permalink: s.permalink_url ?? null,
@@ -359,8 +382,11 @@ export async function GET(request: Request) {
     results.story_count = storyCount;
     results.story_insights_ok = storyInsightsOk;
     results.story_insights_failed = storyInsightsFailed;
+    results.story_ids_skipped = storyIdsSkipped;
 
-    results.posts = await supabaseUpsert("meta_posts", [...postRows, ...storyRows], "platform,post_id");
+    // Upserts separados para aislar fallos entre posts y stories
+    results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
+    results.stories = await supabaseUpsert("meta_posts", storyRows, "platform,post_id");
 
     return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), results });
   } catch (err) {
