@@ -108,8 +108,9 @@ export function MonthlyInvestmentChart({
           <LabelList
             dataKey="mes_pct"
             position="top"
-            fontSize={10}
-            fill="#475569"
+            fontSize={13}
+            fontWeight={700}
+            fill="#1e293b"
             formatter={(v: number | null | undefined) => (v != null ? `${v.toFixed(1)}%` : "")}
           />
         </Bar>
