@@ -76,6 +76,17 @@ export default async function WebPage({ searchParams }: PageProps) {
     return { from: from.toISOString().slice(0, 10), to: todayIso };
   })();
 
+  // Wrapper: si una query individual revienta, devolvemos su fallback en vez
+  // de tirar abajo todo el dashboard.
+  const safe = async <T,>(p: Promise<T>, fallback: T, label: string): Promise<T> => {
+    try {
+      return await p;
+    } catch (err) {
+      console.error(`[web/page] ${label} failed:`, err);
+      return fallback;
+    }
+  };
+
   const [
     dailyKpis,
     monthlyDailyKpis,
@@ -94,32 +105,32 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyUsersRow,
     allMonthlyUsers,
   ] = await Promise.all([
-    getWebDailyKpis(range),
-    getWebDailyKpis(yoyRange),
-    getWebBySource(range),
-    getWebByCategory(range),
-    getWebDemographicsSummary(range, 7),
-    getWebTopProducts(range, 10),
-    getWebDailyKpis(prev),
-    getCompetitorWebSnapshot(),
-    getCompetitorMonthlyHistory(),
-    getCompetitorTrafficSources(),
-    getCompetitorKeywords(10),
-    getCompetitorByCategoria(),
-    getGoogleTrends(),
-    getDreanWebMetrics(),
+    safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
+    safe(getWebDailyKpis(yoyRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(yoy)"),
+    safe(getWebBySource(range), [] as Awaited<ReturnType<typeof getWebBySource>>, "getWebBySource"),
+    safe(getWebByCategory(range), [] as Awaited<ReturnType<typeof getWebByCategory>>, "getWebByCategory"),
+    safe(getWebDemographicsSummary(range, 7), { byDevice: [], byRegion: [], rangeLabel: "sin datos" } as Awaited<ReturnType<typeof getWebDemographicsSummary>>, "getWebDemographicsSummary"),
+    safe(getWebTopProducts(range, 10), [] as Awaited<ReturnType<typeof getWebTopProducts>>, "getWebTopProducts"),
+    safe(getWebDailyKpis(prev), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(prev)"),
+    safe(getCompetitorWebSnapshot(), [] as Awaited<ReturnType<typeof getCompetitorWebSnapshot>>, "getCompetitorWebSnapshot"),
+    safe(getCompetitorMonthlyHistory(), [] as Awaited<ReturnType<typeof getCompetitorMonthlyHistory>>, "getCompetitorMonthlyHistory"),
+    safe(getCompetitorTrafficSources(), [] as Awaited<ReturnType<typeof getCompetitorTrafficSources>>, "getCompetitorTrafficSources"),
+    safe(getCompetitorKeywords(10), [] as Awaited<ReturnType<typeof getCompetitorKeywords>>, "getCompetitorKeywords"),
+    safe(getCompetitorByCategoria(), [] as Awaited<ReturnType<typeof getCompetitorByCategoria>>, "getCompetitorByCategoria"),
+    safe(getGoogleTrends(), [] as Awaited<ReturnType<typeof getGoogleTrends>>, "getGoogleTrends"),
+    safe(getDreanWebMetrics(), null as Awaited<ReturnType<typeof getDreanWebMetrics>>, "getDreanWebMetrics"),
     // Si el rango es exactamente UN mes calendario (1 al último día), traer
     // total users únicos de GA4. Si el rango cubre varios meses, devolver null
     // para que la card use la suma diaria (totals.usuarios) en lugar del
     // unique de un solo mes.
-    (() => {
+    safe<Awaited<ReturnType<typeof getMonthlyUsers>> | null>((() => {
       if (!range.from.endsWith("-01")) return Promise.resolve(null);
       const [y, m] = range.from.split("-").map(Number);
       const lastDay = new Date(Date.UTC(y!, m!, 0)).getUTCDate();
       const expectedTo = `${range.from.slice(0, 8)}${String(lastDay).padStart(2, "0")}`;
       return range.to === expectedTo ? getMonthlyUsers(range.from) : Promise.resolve(null);
-    })(),
-    getAllMonthlyUsers(),
+    })(), null, "getMonthlyUsers"),
+    safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>, "getAllMonthlyUsers"),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
