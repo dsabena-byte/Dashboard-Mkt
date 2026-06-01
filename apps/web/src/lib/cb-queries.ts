@@ -21,10 +21,24 @@ import { getCbSupabase } from "./supabase-cb";
 const TABLE = "cuadro_basico_semanal";
 
 export interface CbFilter {
-  semana?: number;
-  division?: string;
-  cliente?: string;
-  tienda?: string;
+  meses?: string[];
+  semanas?: number[];
+  divisiones?: string[];
+  clientes?: string[];
+  tiendas?: string[];
+}
+
+// Mes (ej. "May") en el que cae el lunes de una ISO week.
+// Usamos 2026 como año por defecto (es lo que tiene la data hoy).
+const MES_NAMES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"] as const;
+export function isoWeekToMes(week: number, year = 2026): string {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const week1Mon = new Date(jan4);
+  week1Mon.setUTCDate(jan4.getUTCDate() - jan4Day + 1);
+  const target = new Date(week1Mon);
+  target.setUTCDate(week1Mon.getUTCDate() + (week - 1) * 7);
+  return MES_NAMES[target.getUTCMonth()] ?? "";
 }
 
 export interface CbRow {
@@ -71,10 +85,10 @@ export async function getCbRows(filter: CbFilter = {}): Promise<CbRow[]> {
       .from(TABLE)
       .select("semana, tienda, sku, cliente, division, target_cb, real_cb, target_inf, real_inf, tipo_sku")
       .range(from, from + PAGE - 1);
-    if (filter.semana != null) q = q.eq("semana", filter.semana);
-    if (filter.division) q = q.eq("division", filter.division);
-    if (filter.cliente) q = q.eq("cliente", filter.cliente);
-    if (filter.tienda) q = q.eq("tienda", filter.tienda);
+    if (filter.semanas && filter.semanas.length > 0) q = q.in("semana", filter.semanas);
+    if (filter.divisiones && filter.divisiones.length > 0) q = q.in("division", filter.divisiones);
+    if (filter.clientes && filter.clientes.length > 0) q = q.in("cliente", filter.clientes);
+    if (filter.tiendas && filter.tiendas.length > 0) q = q.in("tienda", filter.tiendas);
     const { data, error } = await q.returns<CbRow[]>();
     if (error) {
       console.error(`[cb-queries] ${TABLE}:`, error.message);

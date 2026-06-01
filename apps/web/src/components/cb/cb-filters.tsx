@@ -1,15 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { MultiDropdown } from "@/components/multi-dropdown";
 
 interface CbFiltersBarProps {
   current: {
-    semana?: number;
-    division?: string;
-    cliente?: string;
-    tienda?: string;
+    meses?: string[];
+    semanas?: number[];
+    divisiones?: string[];
+    clientes?: string[];
+    tiendas?: string[];
   };
   options: {
+    meses: string[];
     semanas: number[];
     divisiones: string[];
     clientes: string[];
@@ -20,88 +23,70 @@ interface CbFiltersBarProps {
 export function CbFiltersBar({ current, options }: CbFiltersBarProps) {
   const router = useRouter();
 
-  function setParam(key: string, value: string) {
+  function update(key: string, values: string[]) {
     const params = new URLSearchParams(window.location.search);
-    if (value) params.set(key, value);
-    else params.delete(key);
+    params.delete(key);
+    for (const v of values) params.append(key, v);
     router.push(`?${params.toString()}` as never);
   }
 
-  function clear() {
+  function clearAll() {
     router.push(window.location.pathname as never);
   }
 
+  const hasAny =
+    (current.meses?.length ?? 0) > 0 ||
+    (current.semanas?.length ?? 0) > 0 ||
+    (current.divisiones?.length ?? 0) > 0 ||
+    (current.clientes?.length ?? 0) > 0 ||
+    (current.tiendas?.length ?? 0) > 0;
+
   return (
-    <div className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5">
-      <Field label="Semana">
-        <select
-          className="w-full rounded border bg-background px-2 py-1.5 text-sm"
-          value={current.semana ?? ""}
-          onChange={(e) => setParam("semana", e.target.value)}
-        >
-          <option value="">Todas</option>
-          {options.semanas.map((s) => (
-            <option key={s} value={s}>Sem {s}</option>
-          ))}
-        </select>
-      </Field>
-
-      <Field label="División">
-        <select
-          className="w-full rounded border bg-background px-2 py-1.5 text-sm"
-          value={current.division ?? ""}
-          onChange={(e) => setParam("division", e.target.value)}
-        >
-          <option value="">Todas</option>
-          {options.divisiones.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-      </Field>
-
-      <Field label="Cliente / Cadena">
-        <select
-          className="w-full rounded border bg-background px-2 py-1.5 text-sm"
-          value={current.cliente ?? ""}
-          onChange={(e) => setParam("cliente", e.target.value)}
-        >
-          <option value="">Todos</option>
-          {options.clientes.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </Field>
-
-      <Field label="Tienda">
-        <select
-          className="w-full rounded border bg-background px-2 py-1.5 text-sm"
-          value={current.tienda ?? ""}
-          onChange={(e) => setParam("tienda", e.target.value)}
-        >
-          <option value="">Todas</option>
-          {options.tiendas.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-      </Field>
-
-      <div className="flex items-end">
+    <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
+      <MultiDropdown
+        label="Mes"
+        placeholder="Todos"
+        selected={current.meses ?? []}
+        options={options.meses.map((m) => ({ value: m, label: m }))}
+        onChange={(v) => update("meses", v)}
+      />
+      <MultiDropdown
+        label="Semana"
+        placeholder="Todas"
+        selected={(current.semanas ?? []).map(String)}
+        options={options.semanas.map((s) => ({ value: String(s), label: `Sem ${s}` }))}
+        onChange={(v) => update("semanas", v)}
+      />
+      <MultiDropdown
+        label="División"
+        placeholder="Todas"
+        selected={current.divisiones ?? []}
+        options={options.divisiones.map((d) => ({ value: d, label: d }))}
+        onChange={(v) => update("divisiones", v)}
+      />
+      <MultiDropdown
+        label="Cliente / Cadena"
+        placeholder="Todos"
+        selected={current.clientes ?? []}
+        options={options.clientes.map((c) => ({ value: c, label: c }))}
+        onChange={(v) => update("clientes", v)}
+      />
+      <MultiDropdown
+        label="Tienda"
+        placeholder="Todas"
+        selected={current.tiendas ?? []}
+        options={options.tiendas.map((t) => ({ value: t, label: t }))}
+        onChange={(v) => update("tiendas", v)}
+      />
+      <div className="ml-auto">
         <button
-          onClick={clear}
-          className="rounded-md bg-rose-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-rose-600"
+          onClick={clearAll}
+          disabled={!hasAny}
+          className="rounded-md border bg-rose-500 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-rose-600 disabled:opacity-50 disabled:hover:bg-rose-500"
         >
-          ⟲ Limpiar
+          ⟲ Limpiar filtros
         </button>
       </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
-      {children}
     </div>
   );
 }
