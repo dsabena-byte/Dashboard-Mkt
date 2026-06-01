@@ -125,21 +125,17 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const combinedFollowers = (fbOrganic.totals.fans_total ?? 0) + 145_700; // IG: 145.7K hardcoded como en IgOrganicSection
   const combinedPosts = fbPosts.length + igOrganic.postCount;
 
-  // Sumar mes a mes los monthlyData (mismo formato { mes, alcance, engagement })
-  const monthlyMap = new Map<string, { mes: string; alcance: number; engagement: number }>();
-  for (const m of fbOrganic.monthlyData) {
-    monthlyMap.set(m.mes, {
-      mes: m.mes,
-      alcance: m.alcance ?? 0,
-      engagement: m.engagement ?? 0,
-    });
+  // Sumar mes a mes los monthlyData. Si NINGUNA red tiene data ese mes
+  // (ambas null), queda null para que recharts no dibuje barra/punto.
+  const monthlyMap = new Map<string, { mes: string; alcance: number | null; engagement: number | null }>();
+  function bump(mes: string, alc: number | null | undefined, eng: number | null | undefined) {
+    const acc = monthlyMap.get(mes) ?? { mes, alcance: null, engagement: null };
+    if (alc != null) acc.alcance = (acc.alcance ?? 0) + alc;
+    if (eng != null) acc.engagement = (acc.engagement ?? 0) + eng;
+    monthlyMap.set(mes, acc);
   }
-  for (const m of igOrganic.monthlyData) {
-    const acc = monthlyMap.get(m.mes) ?? { mes: m.mes, alcance: 0, engagement: 0 };
-    acc.alcance += m.alcance ?? 0;
-    acc.engagement += m.engagement ?? 0;
-    monthlyMap.set(m.mes, acc);
-  }
+  for (const m of fbOrganic.monthlyData) bump(m.mes, m.alcance, m.engagement);
+  for (const m of igOrganic.monthlyData) bump(m.mes, m.alcance, m.engagement);
   const combinedMonthly = [...monthlyMap.values()];
 
   return (
