@@ -220,8 +220,16 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyUsersMap.set(u.mes, u.total_users);
     if (u.sesiones && u.sesiones > 0) monthlySessionsMap.set(u.mes, u.sesiones);
   }
-  // Sesiones del mes seleccionado desde la misma fuente que el gráfico
-  const selectedMonthKey = range.from.endsWith("-01") ? range.from : null;
+  // Sesiones del mes seleccionado desde la misma fuente que el gráfico.
+  // Solo cuando el rango es EXACTAMENTE 1 mes calendario (1 al último día);
+  // si abarca varios meses, fallback a totals.sesiones (suma del rango).
+  const selectedMonthKey = (() => {
+    if (!range.from.endsWith("-01")) return null;
+    const [y, m] = range.from.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(y!, m!, 0)).getUTCDate();
+    const expectedTo = `${range.from.slice(0, 8)}${String(lastDay).padStart(2, "0")}`;
+    return range.to === expectedTo ? range.from : null;
+  })();
   const chartSesiones = selectedMonthKey ? monthlySessionsMap.get(selectedMonthKey) : undefined;
 
   const getMonthVal = (year: number, m: number, kind: "users" | "sessions"): number => {
