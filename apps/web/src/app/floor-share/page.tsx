@@ -1,33 +1,228 @@
+import { KpiCard } from "@/components/kpi-card";
+import { FloorShareFilters } from "@/components/floor-share/floor-share-filters";
+import { FloorShareBrandRanking, FloorShareWeeklyChart, colorForBrand } from "@/components/floor-share/floor-share-charts";
+import {
+  getFloorShareRows,
+  shareByBrand,
+  shareByCatBrand,
+  shareByTienda,
+  weeklyShareByBrand,
+  normalizeCategoria,
+  OWN_BRAND_FS,
+  type FloorShareFilter,
+  type FloorShareRow,
+} from "@/lib/floor-share-queries";
+import { isoWeekToMes } from "@/lib/cb-queries";
+
 export const dynamic = "force-dynamic";
 
-const EXTERNAL_URL = "https://cuadros-basicos.vercel.app/?embed=floorshare";
-const FALLBACK_URL = "https://cuadros-basicos.vercel.app/";
+interface PageProps {
+  searchParams: Record<string, string | string[] | undefined>;
+}
 
-export default function FloorSharePage() {
+function paramArr(searchParams: PageProps["searchParams"], key: string): string[] {
+  const v = searchParams[key];
+  if (v == null) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+function cellBg(pct: number | null): string {
+  if (pct == null) return "text-muted-foreground";
+  if (pct >= 30) return "bg-emerald-50 text-emerald-700 font-semibold";
+  if (pct >= 15) return "bg-amber-50 text-amber-700 font-semibold";
+  return "bg-rose-50 text-rose-600 font-semibold";
+}
+
+export default async function FloorSharePage({ searchParams }: PageProps) {
+  const filter: FloorShareFilter = {
+    meses: paramArr(searchParams, "meses"),
+    semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
+    categorias: paramArr(searchParams, "categorias"),
+    tiendas: paramArr(searchParams, "tiendas"),
+    marcas: paramArr(searchParams, "marcas"),
+  };
+
+  // Trae todo y filtra en JS (igual que CB). Tabla es 70K rows pero los
+  // filtros encadenados lo requieren.
+  const allRows = await getFloorShareRows({});
+
+  function applyFilter(rs: FloorShareRow[], f: FloorShareFilter): FloorShareRow[] {
+    return rs.filter((r) =>
+      (!f.meses || f.meses.length === 0 || f.meses.includes(isoWeekToMes(r.semana))) &&
+      (!f.semanas || f.semanas.length === 0 || f.semanas.includes(r.semana)) &&
+      (!f.categorias || f.categorias.length === 0 || f.categorias.includes(normalizeCategoria(r.categoria))) &&
+      (!f.tiendas || f.tiendas.length === 0 || f.tiendas.includes(r.numero_tienda)) &&
+      (!f.marcas || f.marcas.length === 0 || f.marcas.includes(r.marca))
+    );
+  }
+
+  const rows = applyFilter(allRows, filter);
+
+  const uniq = <T,>(arr: (T | null | undefined)[]): T[] =>
+    [...new Set(arr.filter((x): x is T => x != null))];
+
+  const MES_ORDER = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+  const options = {
+    meses: uniq(applyFilter(allRows, { ...filter, meses: [] }).map((r) => isoWeekToMes(r.semana)))
+      .sort((a, b) => MES_ORDER.indexOf(a) - MES_ORDER.indexOf(b)),
+    semanas: uniq(applyFilter(allRows, { ...filter, semanas: [] }).map((r) => r.semana)).sort((a, b) => a - b),
+    categorias: uniq(applyFilter(allRows, { ...filter, categorias: [] }).map((r) => normalizeCategoria(r.categoria))).sort(),
+    tiendas: uniq(applyFilter(allRows, { ...filter, tiendas: [] })
+      .map((r) => ({ value: r.numero_tienda, label: `${r.numero_tienda} - ${r.nombre_tienda}` })))
+      .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    marcas: uniq(applyFilter(allRows, { ...filter, marcas: [] }).map((r) => r.marca)).sort(),
+  };
+
+  const totalRanking = shareByBrand(rows);
+  const dreanRank = totalRanking.findIndex((r) => r.marca === OWN_BRAND_FS);
+  const dreanShare = totalRanking.find((r) => r.marca === OWN_BRAND_FS)?.share ?? 0;
+  const catBrand = shareByCatBrand(rows);
+  const byTienda = shareByTienda(rows);
+  const totalUnidades = rows.reduce((s, r) => s + (r.unidades ?? 0), 0);
+  const totalTiendas = new Set(rows.map((r) => r.numero_tienda)).size;
+  const totalMarcas = new Set(rows.map((r) => r.marca)).size;
+
+  // Top 5 marcas para el chart semanal
+  const top5 = totalRanking.slice(0, 5).map((r) => r.marca);
+  // Drean siempre incluido aunque no esté en top 5
+  if (!top5.includes(OWN_BRAND_FS) && rows.some((r) => r.marca === OWN_BRAND_FS)) {
+    top5.unshift(OWN_BRAND_FS);
+  }
+  const weekly = weeklyShareByBrand(rows, top5);
+
+  // Share por categoría — agrupado para la tabla
+  const cats = uniq(rows.map((r) => normalizeCategoria(r.categoria))).sort();
+
+  const hasData = rows.length > 0;
+
   return (
-    <div className="flex h-[calc(100vh-2rem)] flex-col gap-3">
-      <header className="flex items-end justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Floor Share</h2>
-          <p className="text-sm text-muted-foreground">
-            Share de góndola por categoría · Ranking de marcas · Evolución mensual.
-          </p>
-        </div>
-        <a
-          href={FALLBACK_URL}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="rounded-md border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/60"
-        >
-          Abrir en nueva pestaña ↗
-        </a>
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-2xl font-semibold tracking-tight">Floor Share</h2>
+        <p className="text-sm text-muted-foreground">
+          Share de góndola por categoría · Ranking de marcas · Evolución mensual.
+        </p>
       </header>
-      <iframe
-        src={EXTERNAL_URL}
-        title="Floor Share — Trade Marketing"
-        className="h-full w-full flex-1 rounded-lg border bg-card"
-        allow="fullscreen"
-      />
+
+      <FloorShareFilters current={filter} options={options} />
+
+      {!hasData ? (
+        <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
+          Sin datos para los filtros seleccionados.
+        </div>
+      ) : (
+        <>
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard
+              title="Share Drean"
+              value={`${dreanShare.toFixed(1)}%`}
+              hint={`Ranking #${dreanRank + 1} de ${totalRanking.length} marcas`}
+            />
+            <KpiCard
+              title="Unidades en góndola"
+              value={totalUnidades.toLocaleString()}
+              hint="Suma del período / filtro"
+            />
+            <KpiCard
+              title="Tiendas auditadas"
+              value={String(totalTiendas)}
+              hint="con presencia"
+            />
+            <KpiCard
+              title="Marcas activas"
+              value={String(totalMarcas)}
+              hint="en góndola"
+            />
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-3 text-sm font-bold">🏆 Ranking de marcas (share total)</h3>
+              <FloorShareBrandRanking data={totalRanking.slice(0, 12)} highlight={OWN_BRAND_FS} />
+            </div>
+            <div className="rounded-xl border bg-card overflow-hidden">
+              <div className="px-4 py-3">
+                <h3 className="text-sm font-bold">📊 Share por categoría</h3>
+                <p className="text-[11px] text-muted-foreground">Top 5 marcas en cada categoría.</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-[#0a1849] text-white text-[11px] uppercase tracking-wide">
+                      <th className="px-3 py-2 text-left">Categoría</th>
+                      <th className="px-3 py-2 text-left">Marca</th>
+                      <th className="px-3 py-2 text-right">Share</th>
+                      <th className="px-3 py-2 text-right">Unidades</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cats.flatMap((cat) => {
+                      const items = catBrand.filter((r) => normalizeCategoria(r.categoria) === cat).slice(0, 5);
+                      return items.map((r, i) => (
+                        <tr key={`${cat}-${r.marca}`} className="border-b last:border-0">
+                          {i === 0 ? (
+                            <td rowSpan={items.length} className="px-3 py-1.5 font-semibold align-top bg-muted/30">{cat}</td>
+                          ) : null}
+                          <td className="px-3 py-1.5">
+                            <span
+                              className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+                              style={{ backgroundColor: colorForBrand(r.marca) }}
+                            />
+                            {r.marca}
+                            {r.marca === OWN_BRAND_FS && <span className="ml-1 text-rose-500">★</span>}
+                          </td>
+                          <td className={`px-3 py-1.5 text-right tabular-nums ${cellBg(r.share)}`}>{r.share.toFixed(1)}%</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{r.unidades.toLocaleString()}</td>
+                        </tr>
+                      ));
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          {weekly.length > 1 && (
+            <section className="rounded-xl border bg-card p-4">
+              <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal — Top 5 marcas</h3>
+              <FloorShareWeeklyChart data={weekly} marcas={top5} />
+            </section>
+          )}
+
+          <section className="rounded-xl border bg-card overflow-hidden">
+            <div className="px-4 py-3">
+              <h3 className="text-sm font-bold">🏬 Detalle por Tienda — Share Drean</h3>
+              <p className="text-[11px] text-muted-foreground">Top 50 tiendas con mayor share de Drean.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-[#0a1849] text-white text-[11px] uppercase tracking-wide">
+                    <th className="px-3 py-2 text-left">#</th>
+                    <th className="px-3 py-2 text-left">Tienda</th>
+                    <th className="px-3 py-2 text-right">Share Drean</th>
+                    <th className="px-3 py-2 text-right">Unid. Drean</th>
+                    <th className="px-3 py-2 text-right">Total unid.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byTienda.slice(0, 50).map((r) => (
+                    <tr key={r.numero_tienda} className="border-b last:border-0">
+                      <td className="px-3 py-1.5 text-muted-foreground">{r.numero_tienda}</td>
+                      <td className="px-3 py-1.5">{r.nombre_tienda}</td>
+                      <td className={`px-3 py-1.5 text-right tabular-nums ${cellBg(r.drean_share)}`}>{r.drean_share.toFixed(1)}%</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{r.drean_unidades.toLocaleString()}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{r.total_unidades.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }
