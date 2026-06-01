@@ -44,12 +44,14 @@ export async function getAvailableWeeks(): Promise<{ weeks: number[]; debug: str
   const { data, error } = await supabase
     .from(TABLE)
     .select("semana")
-    .order("semana", { ascending: false })
-    .range(0, 4999);
+    .not("semana", "is", null)
+    .order("semana", { ascending: false, nullsFirst: false })
+    .range(0, 9999);
   if (error) return { weeks: [], debug: `error: ${error.message} (code=${error.code})` };
-  const rows = (data ?? []) as Array<{ semana: number }>;
-  const weeks = [...new Set(rows.map((r) => r.semana))].sort((a, b) => b - a);
-  return { weeks, debug: `rows_scanned=${rows.length} weeks_found=${weeks.length}` };
+  const rows = (data ?? []) as Array<{ semana: number | null }>;
+  const weeks = [...new Set(rows.map((r) => r.semana).filter((s): s is number => s != null))]
+    .sort((a, b) => b - a);
+  return { weeks, debug: `rows_scanned=${rows.length} weeks_found=${weeks.length} first=${weeks[0] ?? "—"} last=${weeks[weeks.length - 1] ?? "—"}` };
 }
 
 export async function getFloorShareRows(filter: FloorShareFilter = {}): Promise<FloorShareRow[]> {
