@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   GitBranch,
@@ -14,6 +15,8 @@ import {
   Store,
   LayoutGrid,
   PieChart,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +35,23 @@ const NAV = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
-  return (
-    <aside className="flex h-screen w-60 flex-col border-r bg-card">
+  // Cerrar drawer al navegar
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Lock scroll cuando el drawer está abierto en mobile
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [open]);
+
+  const navContent = (
+    <>
       <div className="border-b px-4 py-5">
         <Image
           src="/drean-logo.png"
@@ -46,7 +63,7 @@ export function Sidebar() {
         />
         <p className="mt-3 text-sm text-muted-foreground">Marketing Management</p>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -70,6 +87,49 @@ export function Sidebar() {
       <div className="border-t px-4 py-3 text-xs text-muted-foreground">
         v0.1.0 · Fase 1
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Top bar móvil con hamburguesa */}
+      <div className="sticky top-0 z-30 flex items-center gap-3 border-b bg-card px-4 py-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="rounded-md p-2 hover:bg-secondary"
+          aria-label="Abrir menú"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <Image src="/drean-logo.png" alt="Drean" width={120} height={38} className="h-7 w-auto" />
+      </div>
+
+      {/* Sidebar desktop (md+) */}
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r bg-card md:flex">
+        {navContent}
+      </aside>
+
+      {/* Drawer mobile */}
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+            onClick={() => setOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card shadow-xl md:hidden">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="absolute right-2 top-2 rounded-md p-1.5 hover:bg-secondary"
+              aria-label="Cerrar menú"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            {navContent}
+          </aside>
+        </>
+      )}
+    </>
   );
 }
