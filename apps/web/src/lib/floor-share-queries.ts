@@ -16,7 +16,7 @@ import { getCbSupabase } from "./supabase-cb";
 // ============================================================================
 
 const TABLE = "floor_share";
-const PAGE = 1000;
+const PAGE = 5000;
 
 export interface FloorShareRow {
   periodo: string;
@@ -35,6 +35,19 @@ export interface FloorShareFilter {
   categorias?: string[];
   tiendas?: string[];
   marcas?: string[];
+}
+
+// Devuelve las semanas disponibles, descendente. Usado para limitar el
+// universo inicial (las últimas N semanas) y evitar fetchear 70K rows.
+export async function getAvailableWeeks(): Promise<number[]> {
+  const supabase = getCbSupabase();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("semana")
+    .order("semana", { ascending: false })
+    .returns<Array<{ semana: number }>>();
+  if (error || !data) return [];
+  return [...new Set(data.map((r) => r.semana))].sort((a, b) => b - a);
 }
 
 export async function getFloorShareRows(filter: FloorShareFilter = {}): Promise<FloorShareRow[]> {

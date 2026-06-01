@@ -2,6 +2,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { FloorShareFilters } from "@/components/floor-share/floor-share-filters";
 import { FloorShareBrandRanking, FloorShareWeeklyChart, colorForBrand } from "@/components/floor-share/floor-share-charts";
 import {
+  getAvailableWeeks,
   getFloorShareRows,
   shareByBrand,
   shareByCatBrand,
@@ -15,6 +16,7 @@ import {
 import { isoWeekToMes } from "@/lib/cb-queries";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 interface PageProps {
   searchParams: Record<string, string | string[] | undefined>;
@@ -42,18 +44,37 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
     marcas: paramArr(searchParams, "marcas"),
   };
 
-  // Trae todo y filtra en JS (igual que CB). Tabla es 70K rows pero los
-  // filtros encadenados lo requieren.
-  const allRows = await getFloorShareRows({});
+  // Por performance: si no hay semanas seleccionadas, limitamos el universo
+  // a las últimas 12 semanas con data (de 70K rows totales). Si el user
+  // selecciona semanas/meses, fetcheamos solo esas.
+  async function fetchRows(): Promise<{ rows: FloorShareRow[]; error: string | null }> {
+    try {
+      const baseFilter: FloorShareFilter = { ...filter };
+      if (!baseFilter.semanas || baseFilter.semanas.length === 0) {
+        const allWeeks = await getAvailableWeeks();
+        baseFilter.semanas = allWeeks.slice(0, 12);
+      }
+      // Sin filtros de mes/cat/tienda/marca aquí — los aplico en JS para los
+      // filtros encadenados. Solo paso semanas para reducir el fetch.
+      const data = await getFloorShareRows({ semanas: baseFilter.semanas });
+      return { rows: data, error: null };
+    } catch (err) {
+      return { rows: [], error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  const { rows: allRows, error: fetchError } = await fetchRows();
 
   function applyFilter(rs: FloorShareRow[], f: FloorShareFilter): FloorShareRow[] {
-    return rs.filter((r) =>
-      (!f.meses || f.meses.length === 0 || f.meses.includes(isoWeekToMes(r.semana))) &&
-      (!f.semanas || f.semanas.length === 0 || f.semanas.includes(r.semana)) &&
-      (!f.categorias || f.categorias.length === 0 || f.categorias.includes(normalizeCategoria(r.categoria))) &&
-      (!f.tiendas || f.tiendas.length === 0 || f.tiendas.includes(r.numero_tienda)) &&
-      (!f.marcas || f.marcas.length === 0 || f.marcas.includes(r.marca))
-    );
+    return rs.filter((r) => {
+      if (r.semana == null) return false;
+      if (f.meses && f.meses.length > 0 && !f.meses.includes(isoWeekToMes(r.semana))) return false;
+      if (f.semanas && f.semanas.length > 0 && !f.semanas.includes(r.semana)) return false;
+      if (f.categorias && f.categorias.length > 0 && !f.categorias.includes(normalizeCategoria(r.categoria ?? ""))) return false;
+      if (f.tiendas && f.tiendas.length > 0 && !f.tiendas.includes(r.numero_tienda ?? "")) return false;
+      if (f.marcas && f.marcas.length > 0 && !f.marcas.includes(r.marca ?? "")) return false;
+      return true;
+    });
   }
 
   const rows = applyFilter(allRows, filter);
@@ -107,6 +128,12 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
       </header>
 
       <FloorShareFilters current={filter} options={options} />
+
+      {fetchError && (
+        <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">
+          <strong>Error cargando floor_share:</strong> <code>{fetchError}</code>
+        </div>
+      )}
 
       {!hasData ? (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
