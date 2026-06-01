@@ -97,8 +97,23 @@ export async function getMetaPaidCreatives(): Promise<MetaPaidCreativeRow[]> {
     .select(
       "ad_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr",
     )
+    .neq("categoria", "UGC")
     .order("spend", { ascending: false })
     .returns<DbRow[]>();
   if (error) throw new Error(`meta_paid_creatives: ${error.message}`);
+  return (data ?? []).map(mapRow);
+}
+
+export async function getMetaUgcCreatives(): Promise<MetaPaidCreativeRow[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("meta_paid_creatives")
+    .select(
+      "ad_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr",
+    )
+    .eq("categoria", "UGC")
+    .order("spend", { ascending: false })
+    .returns<DbRow[]>();
+  if (error) throw new Error(`meta_paid_creatives UGC: ${error.message}`);
   return (data ?? []).map(mapRow);
 }

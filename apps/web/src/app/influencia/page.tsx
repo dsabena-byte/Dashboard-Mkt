@@ -1,9 +1,19 @@
 import { KpiCard } from "@/components/kpi-card";
 import { getInfluenciaPerformance } from "@/lib/pauta-queries";
+import { getMetaUgcCreatives } from "@/lib/meta-paid-queries";
 import { MEDIO_COLORS } from "@/lib/pauta-data";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
 
 export const dynamic = "force-dynamic";
+
+async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await p;
+  } catch {
+    return fallback;
+  }
+}
 
 function fmtNum(n: number): string {
   return formatNumber(Math.round(n));
@@ -11,7 +21,10 @@ function fmtNum(n: number): string {
 const fmtARS = formatCurrency;
 
 export default async function InfluenciaPage() {
-  const rows = await getInfluenciaPerformance();
+  const [rows, ugcCreatives] = await Promise.all([
+    getInfluenciaPerformance(),
+    safe(getMetaUgcCreatives(), [] as Awaited<ReturnType<typeof getMetaUgcCreatives>>),
+  ]);
 
   const totalInv = rows.reduce((s, r) => s + (r.inversion ?? 0), 0);
   const totalInvPlan = rows.reduce((s, r) => s + (r.inversion_plan ?? 0), 0);
@@ -51,6 +64,25 @@ export default async function InfluenciaPage() {
           {totalViews > 0 && (
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <KpiCard title="Video Views" value={fmtNum(totalViews)} hint="Suma del período" />
+            </section>
+          )}
+
+          {ugcCreatives.length > 0 && (
+            <section className="space-y-3">
+              <div className="mt-2 flex items-end justify-between">
+                <div>
+                  <h3 className="text-sm font-medium">Piezas pautadas · UGC (Meta IG + FB)</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Ordenadas por inversión. {ugcCreatives.length} piezas en total.
+                  </p>
+                </div>
+              </div>
+              <MetaPaidGrid
+                data={ugcCreatives}
+                selMeses={[]}
+                selCats={[]}
+                selRoles={[]}
+              />
             </section>
           )}
 
