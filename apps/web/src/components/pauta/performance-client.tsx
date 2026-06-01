@@ -108,8 +108,6 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
     }
     return { invDigital: d, invTv: t, invDooh: dh, invOoh: o };
   }, [rows]);
-  const totalInvPlan = useMemo(() => rows.reduce((s, r) => s + (r.inversion_plan ?? 0), 0), [rows]);
-
   // Volumetría
   const sumReach = upper.alcance;
   const totalViews = useMemo(() => rows.reduce((s, r) => s + (r.views ?? 0), 0), [rows]);
@@ -355,10 +353,6 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
                 <Kpi label="Frecuencia" value={upper.frecuenciaPond.toFixed(2)} />
                 <Kpi label="CPM prom." value={fmtARS(upper.cpm)} />
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Plan: <strong className="text-foreground">{fmtARS(totalInvPlan)}</strong>{" "}
-                <span className="text-muted-foreground/70">(total filtrado)</span>
-              </p>
             </div>
             <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#c9a227" }}>
               <h3 className="mb-3 text-sm font-bold">🔥 Mid Funnel — Consideración</h3>
