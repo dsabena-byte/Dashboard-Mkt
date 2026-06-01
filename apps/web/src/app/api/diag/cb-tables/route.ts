@@ -10,12 +10,11 @@ export async function GET() {
     if (!url || !key) throw new Error("Faltan CB_SUPABASE_URL / CB_SUPABASE_SERVICE_ROLE_KEY (o las defaults)");
     const using = process.env.CB_SUPABASE_URL ? "CB_SUPABASE_*" : "default SUPABASE_*";
 
-    // Patrones candidatos
+    // Tablas reales del proyecto CB
     const patterns = [
-      "cuadros_basicos", "cuadro_basico", "cb_checklist", "cb_visitas",
-      "cb_detalle", "cb_resultados", "cb", "infaltables", "estrategicos",
-      "floor_share", "floorshare", "gondola", "share_gondola",
-      "trade_marketing", "trade_mkt",
+      "cuadro_basico_semanal",
+      "floor_share",
+      "sync_status",
     ];
 
     const found: Array<Record<string, unknown>> = [];
