@@ -24,12 +24,23 @@ function fechaToMesLabel(fecha: string): string {
   return `${MES_NAMES[idx] ?? month} ${year}`;
 }
 
-function bucketForChart(sistema: string | null): "digital" | "tvCable" | "dooh" | "ooh" {
+// 7.5% de costos impositivos/agencia/fee que descontamos al valor planificado
+// para que el chart muestre la inversión neta proyectada.
+const PLAN_NET_FACTOR = 0.925;
+
+function bucketForChart(sistema: string | null): "digital" | "tvCable" | "dooh" | "ooh" | null {
   if (!sistema) return "digital";
-  const s = sistema.toUpperCase();
-  if (s.includes("TV CABLE") || s === "TVC" || s === "TVA") return "tvCable";
-  if (s === "DOOH") return "dooh";
-  if (s === "OOH" || s.includes("VÍA PÚBLICA") || s.includes("VIA PUBLICA")) return "ooh";
+  const s = sistema.toUpperCase().trim();
+  // Skip: nunca tuvieron inversión, no las graficamos
+  if (s === "RADIO" || s === "RADIO TACTICO" || s.includes("OTROS")) return null;
+  // TV
+  if (s.includes("TV CABLE") || s === "TVC" || s === "TVA" || s === "TV") return "tvCable";
+  // DOOH (incluye OOH Táctico que en realidad es digital out-of-home)
+  if (s === "DOOH" || s.includes("TACTICO") || s.includes("TÁCTICO")) return "dooh";
+  // OOH tradicional (incluye OOH GF / Vía Pública)
+  if (s.includes("OOH") || s.includes("VÍA PÚBLICA") || s.includes("VIA PUBLICA")) return "ooh";
+  // MELI / Mercado Ads → Digital (explícito)
+  if (s.includes("MELI") || s.includes("MERCADO ADS")) return "digital";
   return "digital";
 }
 
@@ -40,10 +51,11 @@ async function getPlanningMonthly(): Promise<PlanningByMes> {
   const acc: PlanningByMes = {};
   for (const r of rows) {
     if (r.tipo !== "media") continue;
-    const mes = fechaToMesLabel(r.fecha);
     const b = bucketForChart(r.sistema);
+    if (!b) continue;
+    const mes = fechaToMesLabel(r.fecha);
     if (!acc[mes]) acc[mes] = { digital: 0, tvCable: 0, dooh: 0, ooh: 0 };
-    acc[mes][b] += r.inversion ?? 0;
+    acc[mes][b] += (r.inversion ?? 0) * PLAN_NET_FACTOR;
   }
   return acc;
 }
