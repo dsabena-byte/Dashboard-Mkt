@@ -297,7 +297,70 @@ export async function GET(request: Request) {
       };
     });
 
-    results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
+    // ===== FB Stories =====
+    // Stories caducan en 24h; capturamos las activas en el momento del run.
+    // Métricas válidas para FB Page Stories en v22.0.
+    let storyCount = 0;
+    let storyInsightsOk = 0;
+    let storyInsightsFailed = 0;
+    const storyRows: Array<Record<string, unknown>> = [];
+    const storiesRaw = await graphGetRaw(
+      `${GRAPH_API}/${PAGE_ID}/stories?fields=id,creation_time,permalink_url,media_type,media_url,thumbnail_url&limit=50&access_token=${pt}`,
+    );
+    if (storiesRaw.status === 200) {
+      const storiesBody = storiesRaw.body as { data?: Array<{ id: string; creation_time?: string; permalink_url?: string; media_type?: string; media_url?: string; thumbnail_url?: string }> };
+      const storiesData = storiesBody.data ?? [];
+      storyCount = storiesData.length;
+      const STORY_METRICS = "post_impressions,post_impressions_unique,post_video_views,post_clicks";
+      for (const s of storiesData) {
+        let impressions = 0;
+        let reach = 0;
+        let videoViews = 0;
+        let clicks = 0;
+        const insRaw = await graphGetRaw(
+          `${GRAPH_API}/${s.id}/insights?metric=${STORY_METRICS}&access_token=${pt}`,
+        );
+        if (insRaw.status === 200) {
+          const insBody = insRaw.body as { data?: InsightMetric[] };
+          for (const metric of insBody.data ?? []) {
+            const val = (metric.values?.[0]?.value as number | undefined) ?? 0;
+            if (metric.name === "post_impressions") impressions = val;
+            if (metric.name === "post_impressions_unique") reach = val;
+            if (metric.name === "post_video_views") videoViews = val;
+            if (metric.name === "post_clicks") clicks = val;
+          }
+          storyInsightsOk++;
+        } else {
+          storyInsightsFailed++;
+          if (storyInsightsFailed <= 3) {
+            (results as Record<string, unknown>)[`story_insight_error_${s.id}`] = insRaw.body;
+          }
+        }
+        storyRows.push({
+          platform: "facebook",
+          post_id: s.id,
+          cuenta_id: PAGE_ID,
+          fecha_post: s.creation_time ?? new Date().toISOString(),
+          permalink: s.permalink_url ?? null,
+          message: null,
+          media_type: "STORY",
+          thumbnail_url: s.thumbnail_url ?? s.media_url ?? null,
+          impressions,
+          reach,
+          engagement: 0,
+          reactions: 0,
+          video_views: videoViews,
+          clicks,
+        });
+      }
+    } else {
+      results.stories_error = storiesRaw.body;
+    }
+    results.story_count = storyCount;
+    results.story_insights_ok = storyInsightsOk;
+    results.story_insights_failed = storyInsightsFailed;
+
+    results.posts = await supabaseUpsert("meta_posts", [...postRows, ...storyRows], "platform,post_id");
 
     return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), results });
   } catch (err) {
