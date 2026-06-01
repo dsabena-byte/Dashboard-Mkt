@@ -169,7 +169,7 @@ export default async function OverviewPage({ searchParams }: PageProps) {
       </header>
 
       {/* ===== 1. HERO KPIs ===== */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <KpiCard title="Inversión ejecutada" value={fmtARS(totalInv)} hint={planning.total > 0 ? `${planExec.toFixed(0)}% del plan (${fmtARS(planning.total)})` : "Pauta del mes"} />
         <KpiCard title="Alcance campañas" value={fmtNum(upper.alcance)} hint="Suma de medios" />
         <KpiCard title="Usuarios web" value={fmtNum(web.usuarios)} hint={`${fmtNum(web.sesiones)} sesiones`} />

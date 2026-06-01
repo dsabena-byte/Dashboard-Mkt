@@ -140,7 +140,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-end justify-between">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Redes Sociales</h2>
           <p className="text-sm text-muted-foreground">
@@ -275,7 +275,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       </section>
 
       {/* KPI cards */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <KpiCard title="Engagement prom" value={`${kpis.engagement_promedio.toFixed(2)}%`} hint={`Máx ${kpis.max_engagement.toFixed(2)}%`} />
         <KpiCard title="Total likes" value={fmtK(kpis.total_likes)} hint={`${kpis.posts} posts`} />
         <KpiCard title="Total views" value={fmtK(kpis.total_views)} hint="Videos e IG" />

@@ -375,7 +375,7 @@ export default async function WebPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-end justify-between">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Web · Drean</h2>
           <p className="text-sm text-muted-foreground">

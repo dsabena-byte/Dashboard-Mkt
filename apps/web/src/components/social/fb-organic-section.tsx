@@ -123,7 +123,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
           </div>
 
           {/* Engagement total como card resaltado + sub-cards */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
               <div className="text-xs font-medium text-blue-600">Engagement total</div>
               <div className="mt-1 text-2xl font-bold text-blue-700">

@@ -291,7 +291,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
       {tab === "Overview" && (
         <div>
           {/* Inversión: total + desglose ON / OFF */}
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <KpiCard title="Inversión total" value={fmtARS(totalInv)} hint={totalHint} />
             <KpiCard
               title="Digital (ON)"
