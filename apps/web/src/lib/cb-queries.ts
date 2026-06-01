@@ -86,8 +86,7 @@ export async function getCbRows(filter: CbFilter = {}): Promise<CbRow[]> {
   const supabase = getServerSupabase();
   let q = supabase
     .from(TABLE)
-    .select("fecha, semana, mes, categoria, supervisor, promotor, cliente_cadena, tienda_id, tienda_nombre, cb_total, cb_ok, infalt_total, infalt_ok, estrat_total, estrat_ok")
-    .returns<CbRow[]>();
+    .select("fecha, semana, mes, categoria, supervisor, promotor, cliente_cadena, tienda_id, tienda_nombre, cb_total, cb_ok, infalt_total, infalt_ok, estrat_total, estrat_ok");
 
   if (filter.mes) q = q.eq("mes", filter.mes);
   if (filter.semana != null) q = q.eq("semana", filter.semana);
@@ -97,7 +96,7 @@ export async function getCbRows(filter: CbFilter = {}): Promise<CbRow[]> {
   if (filter.cliente_cadena) q = q.eq("cliente_cadena", filter.cliente_cadena);
   if (filter.tienda) q = q.eq("tienda_id", filter.tienda);
 
-  const { data, error } = await q;
+  const { data, error } = await q.returns<CbRow[]>();
   if (error) {
     // Mientras no esté la tabla, devolvemos vacío silenciosamente para
     // que la página no rompa.
