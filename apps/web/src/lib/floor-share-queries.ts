@@ -39,15 +39,17 @@ export interface FloorShareFilter {
 
 // Devuelve las semanas disponibles, descendente. Usado para limitar el
 // universo inicial (las últimas N semanas) y evitar fetchear 70K rows.
-export async function getAvailableWeeks(): Promise<number[]> {
+export async function getAvailableWeeks(): Promise<{ weeks: number[]; debug: string }> {
   const supabase = getCbSupabase();
   const { data, error } = await supabase
     .from(TABLE)
     .select("semana")
     .order("semana", { ascending: false })
-    .returns<Array<{ semana: number }>>();
-  if (error || !data) return [];
-  return [...new Set(data.map((r) => r.semana))].sort((a, b) => b - a);
+    .range(0, 4999);
+  if (error) return { weeks: [], debug: `error: ${error.message} (code=${error.code})` };
+  const rows = (data ?? []) as Array<{ semana: number }>;
+  const weeks = [...new Set(rows.map((r) => r.semana))].sort((a, b) => b - a);
+  return { weeks, debug: `rows_scanned=${rows.length} weeks_found=${weeks.length}` };
 }
 
 export async function getFloorShareRows(filter: FloorShareFilter = {}): Promise<FloorShareRow[]> {

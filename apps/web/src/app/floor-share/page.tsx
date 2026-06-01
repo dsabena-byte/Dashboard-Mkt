@@ -47,23 +47,25 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
   // Por performance: si no hay semanas seleccionadas, limitamos el universo
   // a las últimas 12 semanas con data (de 70K rows totales). Si el user
   // selecciona semanas/meses, fetcheamos solo esas.
-  async function fetchRows(): Promise<{ rows: FloorShareRow[]; error: string | null; weeks_used: number[] }> {
+  async function fetchRows(): Promise<{ rows: FloorShareRow[]; error: string | null; weeks_used: number[]; weeks_debug: string }> {
     try {
       const baseFilter: FloorShareFilter = { ...filter };
       let weeks_used: number[] = baseFilter.semanas ?? [];
+      let weeks_debug = "filter-provided";
       if (!baseFilter.semanas || baseFilter.semanas.length === 0) {
-        const allWeeks = await getAvailableWeeks();
-        weeks_used = allWeeks.slice(0, 12);
+        const { weeks, debug } = await getAvailableWeeks();
+        weeks_used = weeks.slice(0, 12);
         baseFilter.semanas = weeks_used;
+        weeks_debug = debug;
       }
       const data = await getFloorShareRows({ semanas: baseFilter.semanas });
-      return { rows: data, error: null, weeks_used };
+      return { rows: data, error: null, weeks_used, weeks_debug };
     } catch (err) {
-      return { rows: [], error: err instanceof Error ? err.message : String(err), weeks_used: [] };
+      return { rows: [], error: err instanceof Error ? err.message : String(err), weeks_used: [], weeks_debug: "exception" };
     }
   }
 
-  const { rows: allRows, error: fetchError, weeks_used } = await fetchRows();
+  const { rows: allRows, error: fetchError, weeks_used, weeks_debug } = await fetchRows();
 
   function applyFilter(rs: FloorShareRow[], f: FloorShareFilter): FloorShareRow[] {
     return rs.filter((r) => {
@@ -136,7 +138,7 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
       )}
 
       <div className="rounded-lg border bg-sky-50 p-2 text-[11px] text-sky-900">
-        debug: {allRows.length} rows fetched · weeks_used = [{weeks_used.join(", ") || "ninguna"}] · rows filtrados = {rows.length}
+        debug: {allRows.length} rows fetched · weeks_used = [{weeks_used.join(", ") || "ninguna"}] · rows filtrados = {rows.length} · weeks_debug = {weeks_debug}
       </div>
 
       {!hasData ? (
