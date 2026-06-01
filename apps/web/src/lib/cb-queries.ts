@@ -1,5 +1,5 @@
 import "server-only";
-import { getServerSupabase } from "./supabase-server";
+import { getCbSupabase } from "./supabase-cb";
 
 // ============================================================================
 // Cuadros Básicos — types y queries
@@ -83,7 +83,7 @@ export interface CbFilterOptions {
 const TABLE = "cb_visitas"; // ← ajustar cuando se confirme tabla real
 
 export async function getCbRows(filter: CbFilter = {}): Promise<CbRow[]> {
-  const supabase = getServerSupabase();
+  const supabase = getCbSupabase();
   let q = supabase
     .from(TABLE)
     .select("fecha, semana, mes, categoria, supervisor, promotor, cliente_cadena, tienda_id, tienda_nombre, cb_total, cb_ok, infalt_total, infalt_ok, estrat_total, estrat_ok");
@@ -107,7 +107,7 @@ export async function getCbRows(filter: CbFilter = {}): Promise<CbRow[]> {
 }
 
 export async function getCbFilterOptions(): Promise<CbFilterOptions> {
-  const supabase = getServerSupabase();
+  const supabase = getCbSupabase();
   const { data, error } = await supabase
     .from(TABLE)
     .select("mes, semana, categoria, supervisor, promotor, cliente_cadena, tienda_id")

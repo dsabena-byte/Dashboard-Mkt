@@ -3,16 +3,12 @@ import { NextResponse } from "next/server";
 // Diagnóstico de tablas de Cuadros Básicos / Floor Share en Supabase.
 // Lista candidatas + 1 fila de ejemplo + columnas para cada una.
 
-function env(key: string): string {
-  const v = process.env[key];
-  if (!v) throw new Error(`Env var ${key} no configurada`);
-  return v;
-}
-
 export async function GET() {
   try {
-    const url = env("NEXT_PUBLIC_SUPABASE_URL");
-    const key = env("SUPABASE_SERVICE_ROLE_KEY");
+    const url = process.env.CB_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.CB_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) throw new Error("Faltan CB_SUPABASE_URL / CB_SUPABASE_SERVICE_ROLE_KEY (o las defaults)");
+    const using = process.env.CB_SUPABASE_URL ? "CB_SUPABASE_*" : "default SUPABASE_*";
 
     // Patrones candidatos
     const patterns = [
@@ -53,6 +49,8 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
+      using_env: using,
+      supabase_url_hint: url.replace(/https:\/\/([^.]+)\..*/, "$1") + ".supabase.co",
       found_tables: found.length,
       tables: found,
       hint: "Si tu tabla no está en la lista, decime el nombre exacto.",
