@@ -57,7 +57,13 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   // Trae TODO una sola vez y filtra en JS. La tabla es chica (~6K rows)
   // y nos permite armar filtros encadenados (elegir Cliente acota Tienda)
   // sin múltiples queries.
-  const allRows = await getCbRows({});
+  let allRows: CbRow[] = [];
+  let fetchError: string | null = null;
+  try {
+    allRows = await getCbRows({});
+  } catch (err) {
+    fetchError = err instanceof Error ? err.message : String(err);
+  }
 
   function applyFilter(rs: CbRow[], f: CbFilter): CbRow[] {
     return rs.filter((r) =>
@@ -103,6 +109,12 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       </header>
 
       <CbFiltersBar current={filter} options={options} />
+
+      {fetchError && (
+        <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">
+          <strong>Error cargando cuadro_basico_semanal:</strong> <code>{fetchError}</code>
+        </div>
+      )}
 
       {!hasData ? (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
