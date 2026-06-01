@@ -1,0 +1,135 @@
+import "server-only";
+import { getServerSupabase } from "./supabase-server";
+
+export type FunnelCategoria = "Brand" | "Lavado" | "Refrigeración" | "Cocinas" | "Lavavajillas" | "Otros";
+export type FunnelEtapa = "awareness" | "interes" | "consideracion";
+
+export interface FunnelStageData {
+  inversion: number;        // de pauta_performance
+  alcance: number;          // de pauta (Awareness) — alcance único
+  impresiones: number;      // de pauta (Awareness)
+  clics: number;            // de pauta (Consideración)
+  ga4_sesiones: number;     // de vw_ga4_funnel
+  ga4_usuarios: number;     // de vw_ga4_funnel
+}
+
+export interface FunnelData {
+  awareness: FunnelStageData;
+  interes: FunnelStageData;
+  consideracion: FunnelStageData;
+}
+
+// Categorías que admite el selector del widget. "Total" = no filtra.
+export const FUNNEL_CATEGORIAS: Array<"Total" | FunnelCategoria> = [
+  "Total", "Brand", "Lavado", "Refrigeración", "Cocinas", "Lavavajillas",
+];
+
+// Mapeo Pauta.categoria → FunnelCategoria del Overview.
+// Pauta usa "Cocción" + "Promoción" que no existen en GA4; los mapeamos así:
+// - Cocción    → Cocinas (mismo concepto)
+// - Promoción  → Brand   (multi-categoria, alineado con definición)
+const PAUTA_TO_FUNNEL: Record<string, FunnelCategoria> = {
+  Brand: "Brand",
+  Lavado: "Lavado",
+  "Refrigeración": "Refrigeración",
+  "Refrigeracion": "Refrigeración",
+  "Cocción": "Cocinas",
+  Coccion: "Cocinas",
+  Cocinas: "Cocinas",
+  Lavavajillas: "Lavavajillas",
+  "Promoción": "Brand",
+  Promocion: "Brand",
+};
+
+function emptyStage(): FunnelStageData {
+  return { inversion: 0, alcance: 0, impresiones: 0, clics: 0, ga4_sesiones: 0, ga4_usuarios: 0 };
+}
+
+function emptyFunnel(): FunnelData {
+  return { awareness: emptyStage(), interes: emptyStage(), consideracion: emptyStage() };
+}
+
+interface PautaRow {
+  categoria: string;
+  objetivo: string;
+  inversion: number | null;
+  alcance: number | null;
+  impresiones: number | null;
+  clics: number | null;
+}
+
+interface Ga4Row {
+  etapa: string;
+  categoria: string;
+  sesiones: number | null;
+  usuarios: number | null;
+}
+
+/**
+ * Devuelve los datos del funnel agrupados por (categoria → stage).
+ * Incluye "Total" (suma de todas las categorías).
+ */
+export async function getFunnelData(range: { from: string; to: string }, mes: string): Promise<Record<string, FunnelData>> {
+  const supabase = getServerSupabase();
+
+  // GA4: vw_ga4_funnel filtrada por rango
+  const ga4Promise = supabase
+    .from("vw_ga4_funnel")
+    .select("etapa, categoria, sesiones, usuarios")
+    .gte("fecha", range.from)
+    .lte("fecha", range.to)
+    .returns<Ga4Row[]>();
+
+  // Pauta: pauta_performance filtrada por mes (formato "Abril 2026")
+  const pautaPromise = supabase
+    .from("pauta_performance")
+    .select("categoria, objetivo, inversion, alcance, impresiones, clics")
+    .eq("mes", mes)
+    .returns<PautaRow[]>();
+
+  const [ga4Res, pautaRes] = await Promise.all([ga4Promise, pautaPromise]);
+
+  const out: Record<string, FunnelData> = { Total: emptyFunnel() };
+  for (const c of FUNNEL_CATEGORIAS) if (c !== "Total") out[c] = emptyFunnel();
+
+  // GA4 → suma por (categoria, etapa)
+  for (const r of ga4Res.data ?? []) {
+    const cat = (r.categoria as FunnelCategoria) ?? "Otros";
+    const stage = r.etapa as FunnelEtapa;
+    if (!["awareness", "interes", "consideracion"].includes(stage)) continue;
+    const sesiones = r.sesiones ?? 0;
+    const usuarios = r.usuarios ?? 0;
+    if (out[cat]) {
+      out[cat]![stage].ga4_sesiones += sesiones;
+      out[cat]![stage].ga4_usuarios += usuarios;
+    }
+    out.Total![stage].ga4_sesiones += sesiones;
+    out.Total![stage].ga4_usuarios += usuarios;
+  }
+
+  // Pauta → suma por (categoria mapeada, etapa según objetivo)
+  for (const r of pautaRes.data ?? []) {
+    const cat = PAUTA_TO_FUNNEL[r.categoria] ?? "Otros";
+    const stage: FunnelEtapa | null =
+      r.objetivo === "Awareness" ? "awareness"
+      : r.objetivo === "Consideración" ? "consideracion"
+      : null;
+    if (!stage) continue;
+    const inv = r.inversion ?? 0;
+    const alc = r.alcance ?? 0;
+    const imp = r.impresiones ?? 0;
+    const clk = r.clics ?? 0;
+    if (out[cat]) {
+      out[cat]![stage].inversion += inv;
+      out[cat]![stage].alcance += alc;
+      out[cat]![stage].impresiones += imp;
+      out[cat]![stage].clics += clk;
+    }
+    out.Total![stage].inversion += inv;
+    out.Total![stage].alcance += alc;
+    out.Total![stage].impresiones += imp;
+    out.Total![stage].clics += clk;
+  }
+
+  return out;
+}

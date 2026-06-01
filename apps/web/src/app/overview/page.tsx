@@ -28,6 +28,8 @@ import {
   OWN_BRAND,
 } from "@/lib/social-posts-queries";
 import { getPlanningMedia, aggregateTotals } from "@/lib/planning-media-queries";
+import { getFunnelData } from "@/lib/funnel-queries";
+import { FunnelWidget } from "@/components/overview/funnel-widget";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -86,7 +88,7 @@ export default async function OverviewPage({ searchParams }: PageProps) {
   const byMedio = computeByMedio(pautaRows);
 
   // ===== FETCH paralelo y resiliente =====
-  const [webRows, monthlyUsers, fb, ig, posts, followers, planningRows] = await Promise.all([
+  const [webRows, monthlyUsers, fb, ig, posts, followers, planningRows, funnelData] = await Promise.all([
     safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>),
     safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>),
     safe(getFbOrganicSummary(range), null),
@@ -94,6 +96,7 @@ export default async function OverviewPage({ searchParams }: PageProps) {
     safe(getSocialPosts({ marca: "all", red: "all", from: range.from, to: range.to }), [] as Awaited<ReturnType<typeof getSocialPosts>>),
     safe(getSocialFollowers(), [] as Awaited<ReturnType<typeof getSocialFollowers>>),
     safe(getPlanningMedia({ fecha: [mr.planning] }), [] as Awaited<ReturnType<typeof getPlanningMedia>>),
+    safe(getFunnelData(range, mes), {} as Awaited<ReturnType<typeof getFunnelData>>),
   ]);
 
   const web = aggregateDaily(webRows);
@@ -174,7 +177,27 @@ export default async function OverviewPage({ searchParams }: PageProps) {
         <KpiCard title="Engagement orgánico" value={fmtNum(engOrganico)} hint="FB + IG del mes" />
       </section>
 
-      {/* ===== 2. INVERSIÓN & ESTRATEGIA ===== */}
+      {/* ===== 2. FUNNEL ESTRATÉGICO ===== */}
+      <SectionTitle>Funnel estratégico Drean</SectionTitle>
+      <div className="rounded-xl border bg-card p-6">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold tracking-tight">Funnel de marketing</h3>
+            <p className="text-xs text-muted-foreground">
+              KPIs combinados de Pauta (inversión, alcance, clicks) + GA4 (sesiones por etapa). Filtrá por categoría.
+            </p>
+          </div>
+        </div>
+        {Object.keys(funnelData).length > 0 ? (
+          <FunnelWidget data={funnelData} />
+        ) : (
+          <div className="rounded-lg border bg-amber-50 p-4 text-xs text-amber-900">
+            Aplicá la migration <code>0036_ga4_funnel_view.sql</code> para activar este widget.
+          </div>
+        )}
+      </div>
+
+      {/* ===== 3. INVERSIÓN & ESTRATEGIA ===== */}
       <SectionTitle>Inversión &amp; Estrategia</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border bg-card p-4">
