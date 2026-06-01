@@ -108,8 +108,17 @@ export default async function WebPage({ searchParams }: PageProps) {
     getCompetitorByCategoria(),
     getGoogleTrends(),
     getDreanWebMetrics(),
-    // Si el rango empieza el 1 de algún mes, traer total users únicos de ese mes
-    range.from.endsWith("-01") ? getMonthlyUsers(range.from) : Promise.resolve(null),
+    // Si el rango es exactamente UN mes calendario (1 al último día), traer
+    // total users únicos de GA4. Si el rango cubre varios meses, devolver null
+    // para que la card use la suma diaria (totals.usuarios) en lugar del
+    // unique de un solo mes.
+    (() => {
+      if (!range.from.endsWith("-01")) return Promise.resolve(null);
+      const [y, m] = range.from.split("-").map(Number);
+      const lastDay = new Date(Date.UTC(y!, m!, 0)).getUTCDate();
+      const expectedTo = `${range.from.slice(0, 8)}${String(lastDay).padStart(2, "0")}`;
+      return range.to === expectedTo ? getMonthlyUsers(range.from) : Promise.resolve(null);
+    })(),
     getAllMonthlyUsers(),
   ]);
 
