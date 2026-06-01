@@ -41,16 +41,18 @@ export interface FloorShareFilter {
 // universo inicial (las últimas N semanas) y evitar fetchear 70K rows.
 export async function getAvailableWeeks(): Promise<{ weeks: number[]; debug: string }> {
   const supabase = getCbSupabase();
+  // Sin .order ni .not — los aplico en JS. PostgREST default = 1000 rows.
   const { data, error } = await supabase
     .from(TABLE)
     .select("semana")
-    .not("semana", "is", null)
-    .order("semana", { ascending: false, nullsFirst: false })
     .range(0, 9999);
   if (error) return { weeks: [], debug: `error: ${error.message} (code=${error.code})` };
-  const rows = (data ?? []) as Array<{ semana: number | null }>;
-  const weeks = [...new Set(rows.map((r) => r.semana).filter((s): s is number => s != null))]
-    .sort((a, b) => b - a);
+  const rows = (data ?? []) as Array<{ semana: unknown }>;
+  const weeks = [...new Set(
+    rows
+      .map((r) => (typeof r.semana === "number" ? r.semana : Number(r.semana)))
+      .filter((n) => Number.isFinite(n))
+  )].sort((a, b) => b - a);
   return { weeks, debug: `rows_scanned=${rows.length} weeks_found=${weeks.length} first=${weeks[0] ?? "—"} last=${weeks[weeks.length - 1] ?? "—"}` };
 }
 
