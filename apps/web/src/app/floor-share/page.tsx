@@ -8,6 +8,7 @@ import {
   getTiendaClienteMap,
   shareByBrand,
   shareByCatBrand,
+  shareByCliente,
   shareByTienda,
   weeklyShareByBrand,
   normalizeCategoria,
@@ -137,9 +138,9 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     categorias: uniq(applyFilter(allRows, { ...filter, categorias: [] }).map((r) => normalizeCategoria(r.categoria))).sort(),
     clientes: uniq(applyFilter(allRows, { ...filter, clientes: [] }).map((r) => r.cliente)).sort(),
     tiendas: uniq(applyFilter(allRows, { ...filter, tiendas: [] })
-      .map((r) => ({ value: r.numero_tienda, label: `${r.numero_tienda} - ${r.nombre_tienda}` })))
+      .map((r) => ({ value: r.numero_tienda, label: r.nombre_tienda ?? r.numero_tienda })))
       .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)
-      .sort((a, b) => a.label.localeCompare(b.label)),
+      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" })),
     marcas: uniq(applyFilter(allRows, { ...filter, marcas: [] }).map((r) => r.marca)).sort(),
   };
 
@@ -148,6 +149,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const dreanShare = totalRanking.find((r) => r.marca === OWN_BRAND_FS)?.share ?? 0;
   const catBrand = shareByCatBrand(rows);
   const byTienda = shareByTienda(rows);
+  const byCliente = shareByCliente(rows);
   const totalUnidades = rows.reduce((s, r) => s + (r.unidades ?? 0), 0);
   const totalTiendas = new Set(rows.map((r) => r.numero_tienda)).size;
   const totalMarcas = new Set(rows.map((r) => r.marca)).size;
@@ -268,6 +270,37 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               <FloorShareWeeklyChart data={weekly} marcas={top5} />
             </section>
           )}
+
+          <section className="rounded-xl border bg-card overflow-hidden">
+            <div className="px-4 py-3">
+              <h3 className="text-sm font-bold">🏢 Detalle por Cliente / Cadena — Share Drean</h3>
+              <p className="text-[11px] text-muted-foreground">Ordenado por % share Drean descendente.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-[#0a1849] text-white text-[11px] uppercase tracking-wide">
+                    <th className="px-3 py-2 text-left">Cliente / Cadena</th>
+                    <th className="hidden px-3 py-2 text-right sm:table-cell">Tiendas</th>
+                    <th className="px-3 py-2 text-right">Share Drean</th>
+                    <th className="hidden px-3 py-2 text-right md:table-cell">Unid. Drean</th>
+                    <th className="hidden px-3 py-2 text-right md:table-cell">Total unid.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byCliente.map((r) => (
+                    <tr key={r.cliente} className="border-b last:border-0">
+                      <td className="px-3 py-1.5 font-medium">{r.cliente}</td>
+                      <td className="hidden px-3 py-1.5 text-right tabular-nums text-muted-foreground sm:table-cell">{r.tiendas}</td>
+                      <td className={`px-3 py-1.5 text-right tabular-nums ${cellBg(r.drean_share)}`}>{r.drean_share.toFixed(1)}%</td>
+                      <td className="hidden px-3 py-1.5 text-right tabular-nums md:table-cell">{r.drean_unidades.toLocaleString()}</td>
+                      <td className="hidden px-3 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">{r.total_unidades.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           <section className="rounded-xl border bg-card overflow-hidden">
             <div className="px-4 py-3">

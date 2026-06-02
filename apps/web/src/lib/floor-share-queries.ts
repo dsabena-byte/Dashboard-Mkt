@@ -42,20 +42,28 @@ export interface FloorShareFilter {
 
 // Carga el mapping numero_tienda → cliente desde cuadro_basico_semanal.
 // El campo "tienda" en CB viene como "74 - NOMBRE..." → extraemos el prefix.
+// Paginamos por si la tabla tiene más de 10K rows.
 export async function getTiendaClienteMap(): Promise<Map<string, string>> {
   const supabase = getCbSupabase();
-  const { data, error } = await supabase
-    .from("cuadro_basico_semanal")
-    .select("tienda, cliente")
-    .range(0, 9999);
-  if (error || !data) return new Map();
   const map = new Map<string, string>();
-  for (const r of data as Array<{ tienda: string | null; cliente: string | null }>) {
-    if (!r.tienda || !r.cliente) continue;
-    const match = r.tienda.match(/^\s*(\d+)\s*[-–]/);
-    if (match) {
-      map.set(match[1]!, r.cliente);
+  let from = 0;
+  const PAGE_CB = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("cuadro_basico_semanal")
+      .select("tienda, cliente")
+      .range(from, from + PAGE_CB - 1);
+    if (error || !data) break;
+    for (const r of data as Array<{ tienda: string | null; cliente: string | null }>) {
+      if (!r.tienda || !r.cliente) continue;
+      const match = r.tienda.match(/^\s*(\d+)\s*[-–]/);
+      if (match) {
+        map.set(match[1]!, r.cliente);
+      }
     }
+    if (data.length < PAGE_CB) break;
+    from += PAGE_CB;
+    if (from > 100_000) break;
   }
   return map;
 }
@@ -185,6 +193,34 @@ export function weeklyShareByBrand(rows: FloorShareRow[], topMarcas: string[]): 
       }
       return { semana, shares };
     });
+}
+
+export interface ClienteShare {
+  cliente: string;
+  total_unidades: number;
+  drean_unidades: number;
+  drean_share: number;
+  tiendas: number;
+}
+
+export function shareByCliente<T extends FloorShareRow & { cliente: string }>(rows: T[]): ClienteShare[] {
+  const map = new Map<string, { total: number; drean: number; tiendas: Set<string> }>();
+  for (const r of rows) {
+    const acc = map.get(r.cliente) ?? { total: 0, drean: 0, tiendas: new Set<string>() };
+    acc.total += r.unidades ?? 0;
+    if (r.marca === OWN_BRAND_FS) acc.drean += r.unidades ?? 0;
+    if (r.numero_tienda) acc.tiendas.add(r.numero_tienda);
+    map.set(r.cliente, acc);
+  }
+  return [...map.entries()]
+    .map(([cliente, v]) => ({
+      cliente,
+      total_unidades: v.total,
+      drean_unidades: v.drean,
+      drean_share: v.total > 0 ? (v.drean / v.total) * 100 : 0,
+      tiendas: v.tiendas.size,
+    }))
+    .sort((a, b) => b.drean_share - a.drean_share);
 }
 
 export interface TiendaShare {
