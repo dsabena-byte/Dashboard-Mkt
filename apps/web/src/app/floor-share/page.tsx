@@ -36,6 +36,35 @@ function cellBg(pct: number | null): string {
 }
 
 export default async function FloorSharePage({ searchParams }: PageProps) {
+  try {
+    return await renderFloorShare(searchParams);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack ?? "" : "";
+    return (
+      <div className="space-y-4">
+        <header>
+          <h2 className="text-2xl font-semibold tracking-tight">Floor Share</h2>
+          <p className="text-sm text-muted-foreground">
+            Share de góndola por categoría · Ranking de marcas · Evolución mensual.
+          </p>
+        </header>
+        <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">
+          <strong>Render error:</strong>
+          <pre className="mt-2 whitespace-pre-wrap break-words text-[10px]">{message}</pre>
+          {stack && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-[10px]">stack</summary>
+              <pre className="mt-1 whitespace-pre-wrap break-words text-[9px]">{stack}</pre>
+            </details>
+          )}
+        </div>
+      </div>
+    );
+  }
+}
+
+async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const filter: FloorShareFilter = {
     meses: paramArr(searchParams, "meses"),
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
