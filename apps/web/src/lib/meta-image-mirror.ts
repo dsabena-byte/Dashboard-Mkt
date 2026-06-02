@@ -15,12 +15,12 @@ function publicUrl(supabaseUrl: string, key: string): string {
   return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/${BUCKET}/${key}`;
 }
 
-async function exists(supabaseUrl: string, serviceKey: string, key: string): Promise<boolean> {
-  const r = await fetch(`${supabaseUrl}/storage/v1/object/info/authenticated/${BUCKET}/${encodeURIComponent(key)}`, {
-    method: "GET",
-    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
-  });
-  return r.status === 200;
+async function exists(supabaseUrl: string, key: string): Promise<boolean> {
+  // El bucket es público — un HEAD a la URL pública dice si existe.
+  // /object/info/* requería autenticación y el endpoint exacto cambió
+  // entre versiones de Supabase Storage.
+  const r = await fetch(publicUrl(supabaseUrl, key), { method: "HEAD" });
+  return r.ok;
 }
 
 /**
@@ -35,7 +35,7 @@ export async function mirrorMetaImage(metaUrl: string | null | undefined, key: s
 
   // Si ya está en el bucket, devolvemos la URL pública sin re-descargar
   try {
-    if (await exists(supabaseUrl, serviceKey, key)) {
+    if (await exists(supabaseUrl, key)) {
       return publicUrl(supabaseUrl, key);
     }
   } catch {
