@@ -280,11 +280,12 @@ export async function GET(request: Request) {
       }
     }
 
-    const postRows = await Promise.all(postsData.map(async (p) => {
+    const postRows: Array<Record<string, unknown>> = [];
+    for (const p of postsData) {
       const ins = postInsightsMap.get(p.id) ?? {};
       const rawThumb = p.attachments?.data?.[0]?.media?.image?.src ?? null;
       const mirroredThumb = await mirrorMetaImage(rawThumb, `facebook/${p.id}.jpg`);
-      return {
+      postRows.push({
         platform: "facebook",
         post_id: p.id,
         cuenta_id: PAGE_ID,
@@ -299,8 +300,8 @@ export async function GET(request: Request) {
         reactions: p.reactions?.summary?.total_count ?? 0,
         video_views: ins.post_video_views ?? 0,
         clicks: ins.post_clicks ?? 0,
-      };
-    }));
+      });
+    }
 
     // ===== FB Stories — DESHABILITADO =====
     // Junio 2026: el endpoint /{page-id}/stores de Graph API v22 devuelve
