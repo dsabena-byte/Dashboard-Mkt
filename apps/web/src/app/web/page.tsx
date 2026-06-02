@@ -476,8 +476,8 @@ export default async function WebPage({ searchParams }: PageProps) {
                 <th className="px-3 py-2">Categoría</th>
                 <th className="px-3 py-2 text-right">Usuarios</th>
                 <th className="px-3 py-2 text-right">%</th>
-                <th className="px-3 py-2 text-right">Sesiones</th>
-                <th className="px-3 py-2 text-right">PV</th>
+                <th className="hidden px-3 py-2 text-right sm:table-cell">Sesiones</th>
+                <th className="hidden px-3 py-2 text-right md:table-cell">PV</th>
               </tr>
             </thead>
             <tbody>
@@ -494,8 +494,8 @@ export default async function WebPage({ searchParams }: PageProps) {
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                     {totals.usuarios > 0 ? `${(((c.usuarios || c.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.pageviews)}</td>
+                  <td className="hidden px-3 py-2 text-right tabular-nums sm:table-cell">{formatNumber(c.sesiones)}</td>
+                  <td className="hidden px-3 py-2 text-right tabular-nums md:table-cell">{formatNumber(c.pageviews)}</td>
                 </tr>
               ))}
             </tbody>
@@ -549,9 +549,9 @@ export default async function WebPage({ searchParams }: PageProps) {
                 <thead className="border-b bg-muted/40">
                   <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                     <th className="px-3 py-2">Producto</th>
-                    <th className="px-3 py-2">Cat.</th>
+                    <th className="hidden px-3 py-2 sm:table-cell">Cat.</th>
                     <th className="px-3 py-2 text-right">Usuarios</th>
-                    <th className="px-3 py-2 text-right">% total</th>
+                    <th className="hidden px-3 py-2 text-right md:table-cell">% total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -561,11 +561,21 @@ export default async function WebPage({ searchParams }: PageProps) {
                       : (p.sku ?? "(sin nombre)");
                     return (
                       <tr key={p.landing_page} className="border-b last:border-0">
-                        <td className="px-3 py-2 max-w-[260px] truncate text-xs" title={p.producto_slug ?? p.landing_page}>
-                          <div>{nombre}</div>
-                          <div className="font-mono text-[10px] text-muted-foreground">{p.sku ?? ""}</div>
+                        <td className="px-3 py-2 max-w-[220px] text-xs sm:max-w-[260px] sm:truncate" title={p.producto_slug ?? p.landing_page}>
+                          <div className="line-clamp-2 sm:line-clamp-1">{nombre}</div>
+                          <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+                            <span>{p.sku ?? ""}</span>
+                            {/* Categoría inline en mobile */}
+                            <span className="inline-flex items-center gap-1 sm:hidden">
+                              <span
+                                className="inline-block h-1.5 w-1.5 rounded-full align-middle"
+                                style={{ backgroundColor: PALETA_CAT_WEB[p.categoria] ?? "#94a3b8" }}
+                              />
+                              {p.categoria}
+                            </span>
+                          </div>
                         </td>
-                        <td className="px-3 py-2 text-xs">
+                        <td className="hidden px-3 py-2 text-xs sm:table-cell">
                           <span
                             className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
                             style={{ backgroundColor: PALETA_CAT_WEB[p.categoria] ?? "#94a3b8" }}
@@ -573,7 +583,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                           {p.categoria}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.usuarios || p.sesiones)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        <td className="hidden px-3 py-2 text-right tabular-nums text-muted-foreground md:table-cell">
                           {(() => {
                             const base = monthlyUsersRow?.total_users ?? totals.usuarios;
                             return base > 0 ? `${(((p.usuarios || p.sesiones) / base) * 100).toFixed(1)}%` : "—";
@@ -692,8 +702,8 @@ export default async function WebPage({ searchParams }: PageProps) {
                   <th className="px-3 py-1.5">Canal</th>
                   <th className="px-3 py-1.5 text-right">Usuarios</th>
                   <th className="px-3 py-1.5 text-right">%</th>
-                  <th className="px-3 py-1.5 text-right">Sesiones</th>
-                  <th className="px-3 py-1.5 text-right">PV/ses</th>
+                  <th className="hidden px-3 py-1.5 text-right sm:table-cell">Sesiones</th>
+                  <th className="hidden px-3 py-1.5 text-right md:table-cell">PV/ses</th>
                 </tr>
               </thead>
               <tbody>
@@ -710,8 +720,8 @@ export default async function WebPage({ searchParams }: PageProps) {
                     <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                       {totals.usuarios > 0 ? `${(((c.usuarios || c.sesiones) / totals.usuarios) * 100).toFixed(1)}%` : "—"}
                     </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{formatNumber(c.sesiones)}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                    <td className="hidden px-3 py-1.5 text-right tabular-nums sm:table-cell">{formatNumber(c.sesiones)}</td>
+                    <td className="hidden px-3 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
                       {c.sesiones > 0 ? (c.pageviews / c.sesiones).toFixed(2) : "—"}
                     </td>
                   </tr>
