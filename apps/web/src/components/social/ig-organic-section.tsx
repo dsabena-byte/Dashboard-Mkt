@@ -242,15 +242,39 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
                 >
                   Sin img
                 </div>
+                {/* Badge de tipo (Story / Reel / Feed) */}
+                {p.media_type && (
+                  <span className="mb-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {(p.media_type ?? "").toUpperCase() === "STORY" ? "Story" :
+                      (p.media_type ?? "").toUpperCase().includes("REEL") || (p.media_type ?? "").toUpperCase() === "VIDEO" ? "Reel" :
+                      "Feed"}
+                  </span>
+                )}
                 <p className="line-clamp-2 text-[10px] text-foreground" title={p.message ?? ""}>
-                  {p.message || <span className="italic text-muted-foreground">Sin texto</span>}
+                  {p.message || <span className="italic text-muted-foreground">
+                    {(p.media_type ?? "").toUpperCase() === "STORY" ? "Story (sin caption)" : "Sin texto"}
+                  </span>}
                 </p>
                 <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] tabular-nums text-muted-foreground">
-                  {p.reach > 0 && <span>{"👁"} {fmtK(p.reach)}</span>}
-                  <span>{"❤"} {fmtK(p.reactions)}</span>
-                  <span>{"💬"} {fmtK(p.engagement)}</span>
-                  {p.clicks > 0 && <span>{"🔖"} {fmtK(p.clicks)}</span>}
-                  {p.video_views > 0 && <span>{"▶"} {fmtK(p.video_views)}</span>}
+                  {(p.media_type ?? "").toUpperCase() === "STORY" ? (
+                    <>
+                      {p.reach > 0 && <span>{"👁"} {fmtK(p.reach)}</span>}
+                      {p.video_views > 0 && <span>{"▶"} {fmtK(p.video_views)}</span>}
+                      {p.engagement > 0 && <span>{"💬"} {fmtK(p.engagement)}</span>}
+                      {p.clicks > 0 && <span>{"👤"} {fmtK(p.clicks)}</span>}
+                      {p.reach === 0 && p.video_views === 0 && p.engagement === 0 && (
+                        <span className="italic">Sin métricas</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {p.reach > 0 && <span>{"👁"} {fmtK(p.reach)}</span>}
+                      <span>{"❤"} {fmtK(p.reactions)}</span>
+                      <span>{"💬"} {fmtK(p.engagement)}</span>
+                      {p.clicks > 0 && <span>{"🔖"} {fmtK(p.clicks)}</span>}
+                      {p.video_views > 0 && <span>{"▶"} {fmtK(p.video_views)}</span>}
+                    </>
+                  )}
                 </div>
               </a>
             ))}
