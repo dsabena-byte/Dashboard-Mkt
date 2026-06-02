@@ -226,12 +226,22 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
                     src={p.thumbnail_url}
                     alt=""
                     className="mb-1.5 aspect-square w-full rounded object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      t.style.display = "none";
+                      if (t.nextElementSibling instanceof HTMLElement) {
+                        t.nextElementSibling.style.display = "flex";
+                      }
+                    }}
                   />
-                ) : (
-                  <div className="mb-1.5 flex aspect-square w-full items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
-                    Sin img
-                  </div>
-                )}
+                ) : null}
+                <div
+                  className="mb-1.5 flex aspect-square w-full items-center justify-center rounded bg-muted text-[10px] text-muted-foreground"
+                  style={{ display: p.thumbnail_url ? "none" : "flex" }}
+                >
+                  Sin img
+                </div>
                 <p className="line-clamp-2 text-[10px] text-foreground" title={p.message ?? ""}>
                   {p.message || <span className="italic text-muted-foreground">Sin texto</span>}
                 </p>
