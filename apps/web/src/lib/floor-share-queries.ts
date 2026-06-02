@@ -193,7 +193,8 @@ export function shareByTienda(rows: FloorShareRow[]): TiendaShare[] {
     .sort((a, b) => b.drean_share - a.drean_share);
 }
 
-export function normalizeCategoria(c: string): string {
+export function normalizeCategoria(c: string | null | undefined): string {
+  if (!c) return "Otros";
   const v = c.toLowerCase();
   if (v.startsWith("cocci") || v.includes("cocina")) return "Cocción";
   if (v.startsWith("refrig") || v.includes("freezer")) return "Refrigeración";
