@@ -65,7 +65,13 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
     }
   }
 
-  const { rows: allRows, error: fetchError, weeks_used, weeks_debug } = await fetchRows();
+  const { rows: allRowsRaw, error: fetchError, weeks_used, weeks_debug } = await fetchRows();
+
+  // Filtramos rows con campos críticos null antes de cualquier aggregation.
+  // Cualquier null en marca/categoria/numero_tienda rompía las agregaciones.
+  const allRows = allRowsRaw.filter(
+    (r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null,
+  );
 
   function applyFilter(rs: FloorShareRow[], f: FloorShareFilter): FloorShareRow[] {
     return rs.filter((r) => {

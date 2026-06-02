@@ -133,7 +133,7 @@ export function shareByCatBrand(rows: FloorShareRow[]): CatBrandShare[] {
       share: tot > 0 ? (unidades / tot) * 100 : 0,
     });
   }
-  return out.sort((a, b) => a.categoria.localeCompare(b.categoria) || b.share - a.share);
+  return out.sort((a, b) => (a.categoria ?? "").localeCompare(b.categoria ?? "") || b.share - a.share);
 }
 
 export interface WeeklyBrandPoint {

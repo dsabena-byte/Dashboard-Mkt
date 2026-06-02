@@ -168,16 +168,16 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
                   <tr>
                     <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">Cliente/Cadena</th>
                     <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">% CB</th>
-                    <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">% Infaltables</th>
-                    <th colSpan={2} className="px-3 py-1 text-center text-[11px] uppercase tracking-wide">% Estratégico</th>
+                    <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">% Infaltables</th>
+                    <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">% Estratégico</th>
                   </tr>
                   <tr className="text-[10px] uppercase tracking-wide opacity-80">
                     <th className="px-2 py-1 text-right">%</th>
                     <th className="border-r border-white/10 px-2 py-1 text-right">Δ</th>
-                    <th className="px-2 py-1 text-right">%</th>
-                    <th className="border-r border-white/10 px-2 py-1 text-right">Δ</th>
-                    <th className="px-2 py-1 text-right">%</th>
-                    <th className="px-2 py-1 text-right">Δ</th>
+                    <th className="hidden px-2 py-1 text-right md:table-cell">%</th>
+                    <th className="hidden border-r border-white/10 px-2 py-1 text-right md:table-cell">Δ</th>
+                    <th className="hidden px-2 py-1 text-right md:table-cell">%</th>
+                    <th className="hidden px-2 py-1 text-right md:table-cell">Δ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -186,10 +186,10 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
                       <td className="px-3 py-1.5 font-medium">{r.key}</td>
                       <td className={`px-2 py-1.5 text-right tabular-nums ${cellBg(r.cb_pct)}`}>{r.cb_pct.toFixed(0)}%</td>
                       <td className={`border-r border-border px-2 py-1.5 text-right tabular-nums ${deltaClass(r.cb_pct)}`}>{deltaPp(r.cb_pct)}</td>
-                      <td className={`px-2 py-1.5 text-right tabular-nums ${cellBg(r.infalt_pct)}`}>{r.infalt_pct.toFixed(0)}%</td>
-                      <td className={`border-r border-border px-2 py-1.5 text-right tabular-nums ${deltaClass(r.infalt_pct)}`}>{deltaPp(r.infalt_pct)}</td>
-                      <td className={`px-2 py-1.5 text-right tabular-nums ${cellBg(r.estrat_pct)}`}>{r.estrat_pct.toFixed(0)}%</td>
-                      <td className={`px-2 py-1.5 text-right tabular-nums ${deltaClass(r.estrat_pct)}`}>{deltaPp(r.estrat_pct)}</td>
+                      <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${cellBg(r.infalt_pct)}`}>{r.infalt_pct.toFixed(0)}%</td>
+                      <td className={`hidden border-r border-border px-2 py-1.5 text-right tabular-nums md:table-cell ${deltaClass(r.infalt_pct)}`}>{deltaPp(r.infalt_pct)}</td>
+                      <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${cellBg(r.estrat_pct)}`}>{r.estrat_pct.toFixed(0)}%</td>
+                      <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${deltaClass(r.estrat_pct)}`}>{deltaPp(r.estrat_pct)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,10 +198,10 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
                     <td className="px-3 py-2">TOTAL CADENAS</td>
                     <td className="px-2 py-2 text-right tabular-nums">{totals.cb_pct.toFixed(0)}%</td>
                     <td className="px-2 py-2 text-right tabular-nums">{deltaPp(totals.cb_pct)}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{totals.infalt_pct.toFixed(0)}%</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{deltaPp(totals.infalt_pct)}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{totals.estrat_pct.toFixed(0)}%</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{deltaPp(totals.estrat_pct)}</td>
+                    <td className="hidden px-2 py-2 text-right tabular-nums md:table-cell">{totals.infalt_pct.toFixed(0)}%</td>
+                    <td className="hidden px-2 py-2 text-right tabular-nums md:table-cell">{deltaPp(totals.infalt_pct)}</td>
+                    <td className="hidden px-2 py-2 text-right tabular-nums md:table-cell">{totals.estrat_pct.toFixed(0)}%</td>
+                    <td className="hidden px-2 py-2 text-right tabular-nums md:table-cell">{deltaPp(totals.estrat_pct)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -217,18 +217,21 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-[11px] font-semibold uppercase tracking-wide">
-                    <th className="border-b bg-muted/40 px-3 py-2 text-left text-muted-foreground">Cliente</th>
+                    <th className="hidden border-b bg-muted/40 px-3 py-2 text-left text-muted-foreground sm:table-cell">Cliente</th>
                     <th className="border-b bg-muted/40 px-3 py-2 text-left text-muted-foreground">Tienda</th>
-                    <th className="border-b bg-blue-100 px-3 py-2 text-center text-blue-800">% CB Lavado</th>
-                    <th className="border-b bg-cyan-100 px-3 py-2 text-center text-cyan-800">% CB Refri</th>
-                    <th className="border-b bg-pink-100 px-3 py-2 text-center text-pink-800">% CB Cocción</th>
+                    <th className="border-b bg-blue-100 px-3 py-2 text-center text-blue-800">Lavado</th>
+                    <th className="border-b bg-cyan-100 px-3 py-2 text-center text-cyan-800">Refri</th>
+                    <th className="border-b bg-pink-100 px-3 py-2 text-center text-pink-800">Cocción</th>
                   </tr>
                 </thead>
                 <tbody>
                   {byTienda.slice(0, 50).map((r, i) => (
                     <tr key={`${r.cliente}-${r.tienda}-${i}`} className="border-b last:border-0">
-                      <td className="px-3 py-1.5 text-muted-foreground">{r.cliente}</td>
-                      <td className="px-3 py-1.5">{r.tienda}</td>
+                      <td className="hidden px-3 py-1.5 text-muted-foreground sm:table-cell">{r.cliente}</td>
+                      <td className="px-3 py-1.5">
+                        <div>{r.tienda}</div>
+                        <div className="text-[10px] text-muted-foreground sm:hidden">{r.cliente}</div>
+                      </td>
                       <td className={`px-2 py-1.5 text-center tabular-nums ${cellBg(r.cb_lavado)}`}>
                         {r.cb_lavado != null ? `${r.cb_lavado.toFixed(0)}%` : "—"}
                       </td>
