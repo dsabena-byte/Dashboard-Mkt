@@ -1,6 +1,7 @@
 import { KpiCard } from "@/components/kpi-card";
 import { FloorShareFilters } from "@/components/floor-share/floor-share-filters";
-import { FloorShareBrandRanking, FloorShareWeeklyChart, colorForBrand } from "@/components/floor-share/floor-share-charts";
+import { FloorShareBrandRanking, FloorShareWeeklyChart } from "@/components/floor-share/floor-share-charts";
+import { colorForBrand } from "@/lib/floor-share-colors";
 import {
   getAvailableWeeks,
   getFloorShareRows,
