@@ -52,18 +52,18 @@ export function Sidebar() {
 
   const navContent = (
     <>
-      <div className="border-b px-4 py-5">
+      <div className="border-b px-4 py-4">
         <Image
           src="/drean-logo.png"
           alt="Drean"
           width={1239}
           height={387}
           priority
-          className="w-4/5 h-auto"
+          className="w-3/5 h-auto"
         />
-        <p className="mt-3 text-sm text-muted-foreground">Marketing Management</p>
+        <p className="mt-2 text-xs text-muted-foreground">Marketing Management</p>
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {NAV.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -72,19 +72,19 @@ export function Sidebar() {
               key={item.href}
               href={{ pathname: item.href }}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
                 active
                   ? "bg-secondary text-secondary-foreground font-medium"
                   : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
               )}
             >
-              <Icon className="h-4 w-4" />
-              {item.label}
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{item.label}</span>
             </Link>
           );
         })}
       </nav>
-      <div className="border-t px-4 py-3 text-xs text-muted-foreground">
+      <div className="border-t px-4 py-2 text-[10px] text-muted-foreground">
         v0.1.0 · Fase 1
       </div>
     </>
