@@ -5,6 +5,7 @@ import { colorForBrand } from "@/lib/floor-share-colors";
 import {
   getAvailableWeeks,
   getFloorShareRows,
+  getTiendaClienteMap,
   shareByBrand,
   shareByCatBrand,
   shareByTienda,
@@ -70,6 +71,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     meses: paramArr(searchParams, "meses"),
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
     categorias: paramArr(searchParams, "categorias"),
+    clientes: paramArr(searchParams, "clientes"),
     tiendas: paramArr(searchParams, "tiendas"),
     marcas: paramArr(searchParams, "marcas"),
   };
@@ -95,20 +97,26 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     }
   }
 
-  const { rows: allRowsRaw, error: fetchError, weeks_used, weeks_debug } = await fetchRows();
+  const [{ rows: allRowsRaw, error: fetchError, weeks_used, weeks_debug }, clienteMap] = await Promise.all([
+    fetchRows(),
+    getTiendaClienteMap(),
+  ]);
 
   // Filtramos rows con campos críticos null antes de cualquier aggregation.
   // Cualquier null en marca/categoria/numero_tienda rompía las agregaciones.
-  const allRows = allRowsRaw.filter(
-    (r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null,
-  );
+  // Y enriquecemos cada row con cliente derivado del map (cb_visitas).
+  type EnrichedRow = FloorShareRow & { cliente: string };
+  const allRows: EnrichedRow[] = allRowsRaw
+    .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null)
+    .map((r) => ({ ...r, cliente: clienteMap.get(r.numero_tienda) ?? "Sin cliente" }));
 
-  function applyFilter(rs: FloorShareRow[], f: FloorShareFilter): FloorShareRow[] {
+  function applyFilter(rs: EnrichedRow[], f: FloorShareFilter): EnrichedRow[] {
     return rs.filter((r) => {
       if (r.semana == null) return false;
       if (f.meses && f.meses.length > 0 && !f.meses.includes(isoWeekToMes(r.semana))) return false;
       if (f.semanas && f.semanas.length > 0 && !f.semanas.includes(r.semana)) return false;
       if (f.categorias && f.categorias.length > 0 && !f.categorias.includes(normalizeCategoria(r.categoria ?? ""))) return false;
+      if (f.clientes && f.clientes.length > 0 && !f.clientes.includes(r.cliente)) return false;
       if (f.tiendas && f.tiendas.length > 0 && !f.tiendas.includes(r.numero_tienda ?? "")) return false;
       if (f.marcas && f.marcas.length > 0 && !f.marcas.includes(r.marca ?? "")) return false;
       return true;
@@ -127,6 +135,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       .sort((a, b) => MES_ORDER.indexOf(a) - MES_ORDER.indexOf(b)),
     semanas: uniq(applyFilter(allRows, { ...filter, semanas: [] }).map((r) => r.semana)).sort((a, b) => a - b),
     categorias: uniq(applyFilter(allRows, { ...filter, categorias: [] }).map((r) => normalizeCategoria(r.categoria))).sort(),
+    clientes: uniq(applyFilter(allRows, { ...filter, clientes: [] }).map((r) => r.cliente)).sort(),
     tiendas: uniq(applyFilter(allRows, { ...filter, tiendas: [] })
       .map((r) => ({ value: r.numero_tienda, label: `${r.numero_tienda} - ${r.nombre_tienda}` })))
       .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)

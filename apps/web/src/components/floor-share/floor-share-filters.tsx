@@ -8,6 +8,7 @@ interface Props {
     meses?: string[];
     semanas?: number[];
     categorias?: string[];
+    clientes?: string[];
     tiendas?: string[];
     marcas?: string[];
   };
@@ -15,6 +16,7 @@ interface Props {
     meses: string[];
     semanas: number[];
     categorias: string[];
+    clientes: string[];
     tiendas: { value: string; label: string }[];
     marcas: string[];
   };
@@ -38,6 +40,7 @@ export function FloorShareFilters({ current, options }: Props) {
     (current.meses?.length ?? 0) > 0 ||
     (current.semanas?.length ?? 0) > 0 ||
     (current.categorias?.length ?? 0) > 0 ||
+    (current.clientes?.length ?? 0) > 0 ||
     (current.tiendas?.length ?? 0) > 0 ||
     (current.marcas?.length ?? 0) > 0;
 
@@ -63,6 +66,13 @@ export function FloorShareFilters({ current, options }: Props) {
         selected={current.categorias ?? []}
         options={options.categorias.map((c) => ({ value: c, label: c }))}
         onChange={(v) => update("categorias", v)}
+      />
+      <MultiDropdown
+        label="Cliente / Cadena"
+        placeholder="Todos"
+        selected={current.clientes ?? []}
+        options={options.clientes.map((c) => ({ value: c, label: c }))}
+        onChange={(v) => update("clientes", v)}
       />
       <MultiDropdown
         label="Tienda"

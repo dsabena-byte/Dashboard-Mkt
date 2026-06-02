@@ -34,7 +34,28 @@ export interface FloorShareFilter {
   semanas?: number[];
   categorias?: string[];
   tiendas?: string[];
+  clientes?: string[];
   marcas?: string[];
+}
+
+// Carga el mapping numero_tienda → cliente desde cuadro_basico_semanal.
+// El campo "tienda" en CB viene como "74 - NOMBRE..." → extraemos el prefix.
+export async function getTiendaClienteMap(): Promise<Map<string, string>> {
+  const supabase = getCbSupabase();
+  const { data, error } = await supabase
+    .from("cuadro_basico_semanal")
+    .select("tienda, cliente")
+    .range(0, 9999);
+  if (error || !data) return new Map();
+  const map = new Map<string, string>();
+  for (const r of data as Array<{ tienda: string | null; cliente: string | null }>) {
+    if (!r.tienda || !r.cliente) continue;
+    const match = r.tienda.match(/^\s*(\d+)\s*[-–]/);
+    if (match) {
+      map.set(match[1]!, r.cliente);
+    }
+  }
+  return map;
 }
 
 // Devuelve las semanas disponibles, descendente. Usado para limitar el
