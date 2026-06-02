@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { mirrorMetaImage } from "@/lib/meta-image-mirror";
+
+export const maxDuration = 300;
 
 const PAGE_ID = "257587170945975";
 const GRAPH_API = "https://graph.facebook.com/v22.0";
@@ -208,6 +211,9 @@ export async function GET(request: Request) {
       // (error #100 "Incompatible breakdowns"). Lo dejamos null y resolvemos
       // el split FOLLOWER/NON_FOLLOWER a nivel account en la query de /redes.
 
+      const rawThumb = m.thumbnail_url ?? m.media_url ?? null;
+      const mirroredThumb = await mirrorMetaImage(rawThumb, `instagram/${m.id}.jpg`);
+
       postRows.push({
         platform: "instagram",
         post_id: m.id,
@@ -216,7 +222,7 @@ export async function GET(request: Request) {
         permalink: m.permalink ?? null,
         message: m.caption ?? null,
         media_type: m.media_product_type ?? m.media_type ?? "IMAGE",
-        thumbnail_url: m.thumbnail_url ?? m.media_url ?? null,
+        thumbnail_url: mirroredThumb,
         impressions: 0,
         reach,
         reach_followers: reachFollowers,
@@ -271,6 +277,8 @@ export async function GET(request: Request) {
             results[`story_insight_error_sample_${s.id}`] = insRaw.body;
           }
         }
+        const storyRawThumb = s.thumbnail_url ?? s.media_url ?? null;
+        const storyMirrored = await mirrorMetaImage(storyRawThumb, `instagram/${s.id}.jpg`);
         postRows.push({
           platform: "instagram",
           post_id: s.id,
@@ -279,7 +287,7 @@ export async function GET(request: Request) {
           permalink: s.permalink ?? null,
           message: null,
           media_type: "STORY",
-          thumbnail_url: s.thumbnail_url ?? s.media_url ?? null,
+          thumbnail_url: storyMirrored,
           impressions: 0,
           reach,
           reach_followers: null,            // breakdown=follow_type no aplica a Stories

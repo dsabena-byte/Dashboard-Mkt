@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { mirrorMetaImage } from "@/lib/meta-image-mirror";
+
+export const maxDuration = 300;
 
 const PAGE_ID = "257587170945975";
 const GRAPH_API = "https://graph.facebook.com/v22.0";
@@ -277,8 +280,10 @@ export async function GET(request: Request) {
       }
     }
 
-    const postRows = postsData.map((p) => {
+    const postRows = await Promise.all(postsData.map(async (p) => {
       const ins = postInsightsMap.get(p.id) ?? {};
+      const rawThumb = p.attachments?.data?.[0]?.media?.image?.src ?? null;
+      const mirroredThumb = await mirrorMetaImage(rawThumb, `facebook/${p.id}.jpg`);
       return {
         platform: "facebook",
         post_id: p.id,
@@ -287,7 +292,7 @@ export async function GET(request: Request) {
         permalink: p.permalink_url ?? null,
         message: p.message ?? null,
         media_type: p.attachments?.data?.[0]?.media_type ?? null,
-        thumbnail_url: p.attachments?.data?.[0]?.media?.image?.src ?? null,
+        thumbnail_url: mirroredThumb,
         impressions: ins.post_impressions ?? 0,
         reach: ins.post_impressions_unique ?? 0,
         engagement: (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
@@ -295,7 +300,7 @@ export async function GET(request: Request) {
         video_views: ins.post_video_views ?? 0,
         clicks: ins.post_clicks ?? 0,
       };
-    });
+    }));
 
     // ===== FB Stories — DESHABILITADO =====
     // Junio 2026: el endpoint /{page-id}/stores de Graph API v22 devuelve
