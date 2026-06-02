@@ -1,0 +1,35 @@
+name: IG sync (cada 6h)
+
+# GitHub Actions cron — corre 4 veces por día para capturar las Stories
+# de IG mientras están vivas (caducan en 24h). Vercel Hobby solo permite
+# crons diarios, por eso usamos GitHub Actions con un curl al endpoint.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"  # 00:00, 06:00, 12:00, 18:00 UTC (= 21:00, 03:00, 09:00, 15:00 ART)
+  workflow_dispatch:        # Permite disparar manualmente desde el UI de Actions
+
+jobs:
+  trigger-ig-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger /api/cron/ig-sync
+        run: |
+          set -euo pipefail
+          URL="${IG_SYNC_URL:-https://dashboard-mkt-seven.vercel.app/api/cron/ig-sync?days=7}"
+          echo "GET $URL"
+          if [ -n "${CRON_SECRET:-}" ]; then
+            curl -fsS --max-time 480 "$URL" \
+              -H "Authorization: Bearer $CRON_SECRET" | tee out.json
+          else
+            curl -fsS --max-time 480 "$URL" | tee out.json
+          fi
+          # Falla si el JSON tiene "ok":false
+          if grep -q '"ok":false' out.json; then
+            echo "Cron devolvió ok=false"
+            exit 1
+          fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          IG_SYNC_URL: ${{ vars.IG_SYNC_URL }}
