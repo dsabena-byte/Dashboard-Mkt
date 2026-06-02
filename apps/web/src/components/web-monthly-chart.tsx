@@ -55,7 +55,8 @@ export function WebMonthlyChart({
       <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={formatTick} />
+        <YAxis yAxisId="left" stroke="#2b4dff" fontSize={11} tickFormatter={formatTick} />
+        <YAxis yAxisId="right" orientation="right" stroke="#dc2626" fontSize={11} tickFormatter={formatTick} />
         <Tooltip
           formatter={(v: number) => formatNumber(v)}
           contentStyle={{
@@ -68,14 +69,15 @@ export function WebMonthlyChart({
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {/* Barras: usuarios (año anterior en gris, año actual en azul) */}
         {hasSessionsPrev && (
-          <Bar dataKey="sesiones_prev" fill="#cbd5e1" name={`Usuarios ${labels.prev}`} />
+          <Bar yAxisId="left" dataKey="sesiones_prev" fill="#cbd5e1" name={`Usuarios ${labels.prev}`} />
         )}
         {hasSessionsCurr && (
-          <Bar dataKey="sesiones_curr" fill="#2b4dff" name={`Usuarios ${labels.curr}`} />
+          <Bar yAxisId="left" dataKey="sesiones_curr" fill="#2b4dff" name={`Usuarios ${labels.curr}`} />
         )}
         {/* Líneas: sesiones (rojo claro año anterior, rojo oscuro año actual) */}
         {hasUsersPrev && (
           <Line
+            yAxisId="right"
             type="monotone"
             dataKey="usuarios_prev"
             stroke="#fca5a5"
@@ -86,6 +88,7 @@ export function WebMonthlyChart({
           />
         )}
         <Line
+          yAxisId="right"
           type="monotone"
           dataKey="usuarios_curr"
           stroke="#dc2626"
