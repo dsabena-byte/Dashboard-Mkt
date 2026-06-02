@@ -16,7 +16,9 @@ import { getCbSupabase } from "./supabase-cb";
 // ============================================================================
 
 const TABLE = "floor_share";
-const PAGE = 5000;
+// PostgREST default max_rows = 1000. Si pedimos más, igual nos devuelve 1000
+// y el loop corta pensando que terminó. PAGE = 1000 hace que pagine bien.
+const PAGE = 1000;
 
 export interface FloorShareRow {
   periodo: string;
@@ -62,19 +64,22 @@ export async function getTiendaClienteMap(): Promise<Map<string, string>> {
 // universo inicial (las últimas N semanas) y evitar fetchear 70K rows.
 export async function getAvailableWeeks(): Promise<{ weeks: number[]; debug: string }> {
   const supabase = getCbSupabase();
-  // Sin .order ni .not — los aplico en JS. PostgREST default = 1000 rows.
+  // Estrategia robusta: tomamos max(semana) y derivamos las últimas N semanas
+  // hacia atrás. No podemos hacer .select("semana") con .range() porque la
+  // tabla tiene ~12K rows por semana y la primera página queda toda en una.
   const { data, error } = await supabase
     .from(TABLE)
     .select("semana")
-    .range(0, 9999);
+    .order("semana", { ascending: false })
+    .limit(1);
   if (error) return { weeks: [], debug: `error: ${error.message} (code=${error.code})` };
-  const rows = (data ?? []) as Array<{ semana: unknown }>;
-  const weeks = [...new Set(
-    rows
-      .map((r) => (typeof r.semana === "number" ? r.semana : Number(r.semana)))
-      .filter((n) => Number.isFinite(n))
-  )].sort((a, b) => b - a);
-  return { weeks, debug: `rows_scanned=${rows.length} weeks_found=${weeks.length} first=${weeks[0] ?? "—"} last=${weeks[weeks.length - 1] ?? "—"}` };
+  const maxRow = (data ?? [])[0] as { semana: number | null } | undefined;
+  const maxSem = typeof maxRow?.semana === "number" ? maxRow.semana : null;
+  if (maxSem == null) return { weeks: [], debug: "no max semana" };
+  // Asumimos semanas continuas hacia atrás (12 últimas).
+  const weeks: number[] = [];
+  for (let i = 0; i < 26 && maxSem - i > 0; i++) weeks.push(maxSem - i);
+  return { weeks, debug: `max=${maxSem} derived=${weeks.length}` };
 }
 
 export async function getFloorShareRows(filter: FloorShareFilter = {}): Promise<FloorShareRow[]> {
