@@ -33,3 +33,5 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           IG_SYNC_URL: ${{ vars.IG_SYNC_URL }}
+
+# refresh mirror
