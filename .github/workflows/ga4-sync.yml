@@ -15,14 +15,20 @@ jobs:
           set -euo pipefail
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/ga4-web-traffic?days=3"
           echo "GET $URL"
-          if [ -n "${CRON_SECRET:-}" ]; then
-            curl -fsS --max-time 600 "$URL" \
-              -H "Authorization: Bearer $CRON_SECRET" | tee out.json
-          else
-            curl -fsS --max-time 600 "$URL" | tee out.json
+          # Capturamos status code Y body para diagnosticar errores
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 600 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" \
+            "$URL")
+          echo "HTTP $HTTP_CODE"
+          echo "Response body:"
+          cat response.json
+          echo ""
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Endpoint returned HTTP $HTTP_CODE"
+            exit 1
           fi
-          if grep -q '"ok":false' out.json; then
-            echo "Cron devolvió ok=false"
+          if grep -q '"ok":false' response.json; then
+            echo "::error::Cron devolvió ok=false"
             exit 1
           fi
         env:
