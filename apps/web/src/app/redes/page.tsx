@@ -66,14 +66,27 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const ytdRange = { from: `${currentYear}-01-01`, to: new Date().toISOString().slice(0, 10) };
   const range = parseDateRange(searchParams, ytdRange);
 
+  const safe = async <T,>(p: Promise<T>, fallback: T, label: string): Promise<T> => {
+    try {
+      return await p;
+    } catch (err) {
+      console.error(`[redes/page] ${label} failed:`, err);
+      return fallback;
+    }
+  };
+
+  // Solo wrappeamos los queries NUEVOS en safe(): insights_log puede no existir
+  // si el user no corrió la migration 0040 todavía, y getTopPostsLastNDays
+  // depende de meta_posts. Los queries originales se dejan tal cual para no
+  // cambiar el contrato de tipos del resto del page.
   const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
     getFbOrganicSummary({ from: range.from, to: range.to }),
     getIgOrganicSummary({ from: range.from, to: range.to }),
-    getInsightsByCategoria("organico_drean", 12),
-    getTopPostsLastNDays(30, 5),
+    safe(getInsightsByCategoria("organico_drean", 12), [] as Awaited<ReturnType<typeof getInsightsByCategoria>>, "getInsightsByCategoria"),
+    safe(getTopPostsLastNDays(30, 5), { instagram: [], facebook: [] } as Awaited<ReturnType<typeof getTopPostsLastNDays>>, "getTopPostsLastNDays"),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
