@@ -12,8 +12,9 @@ import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { IgOrganicSection } from "@/components/social/ig-organic-section";
 import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { InsightsPanel } from "@/components/insights/insights-panel";
+import { TopContentPanel } from "@/components/insights/top-content-panel";
 import { RedesTabs } from "@/components/social/redes-tabs";
-import { getInsightsByCategoria } from "@/lib/insights-queries";
+import { getInsightsByCategoria, getTopPostsLastNDays } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import {
@@ -65,13 +66,14 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const ytdRange = { from: `${currentYear}-01-01`, to: new Date().toISOString().slice(0, 10) };
   const range = parseDateRange(searchParams, ytdRange);
 
-  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico] = await Promise.all([
+  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
     getFbOrganicSummary({ from: range.from, to: range.to }),
     getIgOrganicSummary({ from: range.from, to: range.to }),
     getInsightsByCategoria("organico_drean", 12),
+    getTopPostsLastNDays(30, 5),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
@@ -167,9 +169,10 @@ export default async function RedesPage({ searchParams }: PageProps) {
       {tab === "insights" && (
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Análisis automático sobre el orgánico Drean (IG + FB) comparando los últimos 30 días vs los 30 días previos.
+            Top contenidos del período + análisis automático comparando los últimos 30 días vs los 30 días previos.
             El cron corre 1x/día. Para forzar una recorrida: GitHub → Actions → &quot;Organic insights&quot; → Run workflow.
           </p>
+          <TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />
           <InsightsPanel insights={insightsOrganico} titulo="📊 Insights orgánico Drean (últimos 30d vs 30d previos)" />
         </div>
       )}
