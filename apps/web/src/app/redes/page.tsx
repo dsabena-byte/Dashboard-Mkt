@@ -11,6 +11,8 @@ import { BrandSentimentSummary } from "@/components/social/brand-sentiment-summa
 import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { IgOrganicSection } from "@/components/social/ig-organic-section";
 import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
+import { InsightsPanel } from "@/components/insights/insights-panel";
+import { getInsightsByCategoria } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import {
@@ -61,12 +63,13 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const ytdRange = { from: `${currentYear}-01-01`, to: new Date().toISOString().slice(0, 10) };
   const range = parseDateRange(searchParams, ytdRange);
 
-  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic] = await Promise.all([
+  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
     getFbOrganicSummary({ from: range.from, to: range.to }),
     getIgOrganicSummary({ from: range.from, to: range.to }),
+    getInsightsByCategoria("organico_drean", 12),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
@@ -149,6 +152,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
+
+      {/* ===== Insights automáticos del orgánico Drean ===== */}
+      <InsightsPanel insights={insightsOrganico} titulo="📊 Insights orgánico Drean (últimos 30d vs 30d previos)" />
 
       {/* ===== Resumen combinado Drean en redes (IG + FB) ===== */}
       <section className="space-y-4 rounded-lg border bg-card p-6">
