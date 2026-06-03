@@ -78,15 +78,13 @@ export function FloorShareFilters({ current, options }: Props) {
         options={options.tiendas}
         onChange={(v) => update("tiendas", v)}
       />
-      <div className="ml-auto">
-        <button
-          onClick={clearAll}
-          disabled={!hasAny}
-          className="rounded-md border bg-rose-500 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-rose-600 disabled:opacity-50 disabled:hover:bg-rose-500"
-        >
-          ⟲ Limpiar filtros
-        </button>
-      </div>
+      <button
+        onClick={clearAll}
+        disabled={!hasAny}
+        className="h-9 shrink-0 rounded-md border bg-rose-500 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-rose-600 disabled:opacity-50 disabled:hover:bg-rose-500"
+      >
+        ⟲ Limpiar
+      </button>
     </div>
   );
 }
