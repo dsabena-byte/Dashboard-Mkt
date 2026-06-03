@@ -1,3 +1,5 @@
+"use client";
+
 import type { TopPostRow } from "@/lib/insights-queries";
 
 function fmtNum(n: number): string {
