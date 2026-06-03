@@ -1,24 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/meta-fb-sync",
-      "schedule": "0 10 * * *"
-    },
-    {
-      "path": "/api/cron/ga4-web-traffic",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/ig-sentiment-analysis?batch=5",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/meta-paid-sync",
-      "schedule": "30 10 * * *"
-    },
-    {
-      "path": "/api/cron/ig-sync",
-      "schedule": "15 8 * * *"
-    }
-  ]
+  "crons": []
 }

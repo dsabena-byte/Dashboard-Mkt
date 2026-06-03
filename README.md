@@ -16,38 +16,47 @@ conversiones) e incorpora inteligencia competitiva (web + redes sociales).
 flowchart LR
   subgraph Sources["Fuentes de datos"]
     GA[Google Ads]
-    META[Meta Ads]
+    META[Meta Ads / Graph API]
     GA4[Google Analytics 4]
-    SHEETS[Google Sheets<br/>scraping RRSS]
-    PLAN[Excel<br/>planning]
+    SHEETS[Google Sheets<br/>planning + mkt-canal]
   end
 
   subgraph Scrape["Scraping"]
-    APIFY[Apify<br/>SimilarWeb]
+    APIFY[Apify<br/>SimilarWeb + RRSS]
   end
 
-  subgraph Orchestration["Orquestación"]
-    N8N[N8N workflows]
+  subgraph OrchA["Orquestación A: GH Actions"]
+    GHA[GitHub Actions<br/>workflows .yml<br/>cada 6-12h]
+  end
+
+  subgraph OrchB["Orquestación B: N8N"]
+    N8N[N8N workflows<br/>Apify + Sheets]
+  end
+
+  subgraph App["Frontend + APIs"]
+    NEXT[Next.js 14 en Vercel<br/>/api/cron/* endpoints]
   end
 
   subgraph Storage["Storage"]
     SUPA[(Supabase<br/>Postgres)]
   end
 
-  subgraph Frontend["Frontend"]
-    NEXT[Next.js 14<br/>en Vercel]
-  end
+  META --> NEXT
+  GA4 --> NEXT
+  GHA -->|curl /api/cron/*| NEXT
+  NEXT --> SUPA
 
-  GA --> N8N
-  META --> N8N
-  GA4 --> N8N
-  SHEETS --> N8N
-  PLAN --> N8N
   APIFY --> N8N
+  SHEETS --> N8N
   N8N --> SUPA
+
   SUPA --> NEXT
-  NEXT -.->|alertas| N8N
 ```
+
+Los crons periódicos (Meta FB / IG / paid, GA4, sentiment) viven en
+`.github/workflows/` y disparan los endpoints `/api/cron/*` del Next app.
+El detalle de cada workflow está en
+[`docs/crons-github-actions.md`](docs/crons-github-actions.md).
 
 **Stack**
 

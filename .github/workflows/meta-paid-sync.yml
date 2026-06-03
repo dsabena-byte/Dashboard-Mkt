@@ -1,0 +1,29 @@
+name: Meta paid creatives sync (1x/día)
+
+on:
+  schedule:
+    - cron: "30 10 * * *"  # 10:30 UTC = 07:30 ART
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger /api/cron/meta-paid-sync
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/meta-paid-sync"
+          echo "GET $URL"
+          if [ -n "${CRON_SECRET:-}" ]; then
+            curl -fsS --max-time 600 "$URL" \
+              -H "Authorization: Bearer $CRON_SECRET" | tee out.json
+          else
+            curl -fsS --max-time 600 "$URL" | tee out.json
+          fi
+          if grep -q '"ok":false' out.json; then
+            echo "Cron devolvió ok=false"
+            exit 1
+          fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

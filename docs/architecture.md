@@ -24,15 +24,25 @@
 - `(fecha, utm_source, utm_medium, utm_campaign)` → para el funnel
 - `(fecha, canal, campania)` → para cumplimiento vs planning
 
-### 3. Orquestación (N8N)
+### 3. Orquestación
 
-Workflows scheduled (cada hora / diario) que:
+Dos sistemas:
 
-1. Llaman a las APIs de cada plataforma.
-2. Normalizan (lowercase UTMs, parseo de fechas, etc.).
-3. UPSERT a Supabase usando los `UNIQUE` constraints del schema (idempotente).
+**a) GitHub Actions** (`.github/workflows/`)
+Disparan los endpoints de sync periódicos del propio Next app. Cron jobs con
+frecuencia configurable (no limitados a 1x/día como Vercel Hobby) y logs
+visibles por run. Detalle completo en
+[`docs/crons-github-actions.md`](crons-github-actions.md).
 
-Cada workflow se exporta como JSON y se versiona en `n8n-workflows/`.
+Workflows: GA4 (6h), Meta FB (12h), IG (6h), Meta Paid (1d), IG Sentiment (1d).
+
+**b) N8N workflows** (`n8n-workflows/`)
+Cubren los integraciones externas que necesitan más control de step-by-step:
+Apify scraping (competidores web + RRSS), Google Sheets ingest (planning,
+mkt-canal acciones), Drive sync. Schedules propios en n8n.
+
+Cada workflow normaliza, hace upsert con `UNIQUE` constraints para
+idempotencia, y guarda payload original en columnas `raw jsonb`.
 
 ### 4. Frontend (Next.js 14)
 
@@ -45,7 +55,7 @@ Cada workflow se exporta como JSON y se versiona en `n8n-workflows/`.
 
 ### 5. Alertas
 
-Cron job (N8N o Vercel cron) que:
+Cron job (N8N o GitHub Actions) que:
 
 1. Lee `vw_cumplimiento_planning` filtrado por las reglas activas en `alerts_config`.
 2. Para cada regla, evalúa `desvio_pct` vs `threshold_pct`.
