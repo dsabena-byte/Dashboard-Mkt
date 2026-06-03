@@ -267,10 +267,18 @@ export async function GET(request: Request) {
 
     // =====================================================
     // REPORT 4: Usuarios únicos por mes (→ ga4_monthly_users)
-    // =====================================================
+    // ----------------------------------------------------
+    // IMPORTANTE: este reporte NO usa el `?days=` del request porque
+    // GA4 devuelve un valor por mes calendario incluido en el rango.
+    // Si pedimos solo los últimos 3 días, GA4 nos da yearMonth=202606
+    // con sesiones de Jun 1-3, y el upsert por `mes` sobreescribe el
+    // total mensual con esos pocos días. Para evitar perder data
+    // histórica, siempre pedimos desde el inicio del año actual hasta
+    // ayer (incluye el mes en curso completo + meses anteriores).
+    const monthlyStart = `${new Date().getUTCFullYear()}-01-01`;
     try {
       const monthlyRows = await runReport(accessToken, {
-        dateRanges: [{ startDate, endDate }],
+        dateRanges: [{ startDate: monthlyStart, endDate }],
         dimensions: [{ name: "yearMonth" }],
         metrics: [
           { name: "totalUsers" },
