@@ -12,6 +12,7 @@ import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { IgOrganicSection } from "@/components/social/ig-organic-section";
 import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { InsightsPanel } from "@/components/insights/insights-panel";
+import { RedesTabs } from "@/components/social/redes-tabs";
 import { getInsightsByCategoria } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
@@ -59,6 +60,7 @@ function fmtK(n: number): string {
 export default async function RedesPage({ searchParams }: PageProps) {
   const marca = getParam(searchParams, "marca", "all");
   const red = getParam(searchParams, "red", "all");
+  const tab = getParam(searchParams, "tab", "analitica");
   const currentYear = new Date().getFullYear();
   const ytdRange = { from: `${currentYear}-01-01`, to: new Date().toISOString().slice(0, 10) };
   const range = parseDateRange(searchParams, ytdRange);
@@ -153,8 +155,27 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
 
-      {/* ===== Insights automáticos del orgánico Drean ===== */}
-      <InsightsPanel insights={insightsOrganico} titulo="📊 Insights orgánico Drean (últimos 30d vs 30d previos)" />
+      <RedesTabs
+        current={tab}
+        tabs={[
+          { key: "analitica", label: "📊 Analítica" },
+          { key: "insights", label: "💡 Insights y oportunidades", badge: insightsOrganico.length || undefined },
+        ]}
+        preserveParams={searchParams}
+      />
+
+      {tab === "insights" && (
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Análisis automático sobre el orgánico Drean (IG + FB) comparando los últimos 30 días vs los 30 días previos.
+            El cron corre 1x/día. Para forzar una recorrida: GitHub → Actions → &quot;Organic insights&quot; → Run workflow.
+          </p>
+          <InsightsPanel insights={insightsOrganico} titulo="📊 Insights orgánico Drean (últimos 30d vs 30d previos)" />
+        </div>
+      )}
+
+      {tab !== "analitica" ? null : (
+        <>
 
       {/* ===== Resumen combinado Drean en redes (IG + FB) ===== */}
       <section className="space-y-4 rounded-lg border bg-card p-6">
@@ -446,6 +467,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
           avgEngagement={brandAvgEng}
         />
       </section>
+        </>
+      )}
     </div>
   );
 }
