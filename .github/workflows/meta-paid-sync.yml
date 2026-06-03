@@ -1,8 +1,12 @@
 name: Meta paid creatives sync (1x/día)
 
+# DESHABILITADO el schedule automático hasta que OMD comparta la Ad Account
+# de Drean con nuestro BM 122350585916257. Se puede disparar manual desde
+# Actions → Run workflow. Una vez que OMD comparta, reactivar el schedule
+# descomentando el bloque on.schedule.
 on:
-  schedule:
-    - cron: "30 10 * * *"  # 10:30 UTC = 07:30 ART
+  # schedule:
+  #   - cron: "30 10 * * *"  # 10:30 UTC = 07:30 ART
   workflow_dispatch:
 
 jobs:
