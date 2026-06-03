@@ -1,6 +1,6 @@
 "use client";
 
-import type { TopPostRow } from "@/lib/insights-queries";
+import type { TopAndBottom, TopPostRow } from "@/lib/insights-queries";
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -13,12 +13,14 @@ function truncate(s: string | null, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
 
-const PLATFORM_BADGE: Record<string, { label: string; bg: string; emoji: string }> = {
-  instagram: { label: "Instagram", bg: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", emoji: "IG" },
-  facebook: { label: "Facebook", bg: "#1877F2", emoji: "FB" },
+const PLATFORM_BADGE: Record<string, { label: string; bg: string }> = {
+  instagram: { label: "Instagram — @dreanargentina", bg: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" },
+  facebook: { label: "Facebook — Page Drean", bg: "#1877F2" },
 };
 
-function PostCard({ p, rank }: { p: TopPostRow; rank: number }) {
+function PostCard({ p, rank, variant }: { p: TopPostRow; rank: number; variant: "top" | "bottom" }) {
+  const accent = variant === "top" ? "bg-emerald-500" : "bg-rose-500";
+  const rateColor = variant === "top" ? "text-emerald-600" : "text-rose-600";
   return (
     <a
       href={p.permalink ?? "#"}
@@ -27,7 +29,7 @@ function PostCard({ p, rank }: { p: TopPostRow; rank: number }) {
       className="group block overflow-hidden rounded-lg border bg-card transition-colors hover:bg-muted/50"
     >
       <div className="relative aspect-square w-full overflow-hidden bg-muted">
-        <span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-foreground/85 px-2 py-0.5 text-[10px] font-bold text-background">
+        <span className={`absolute left-1.5 top-1.5 z-10 rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${accent}`}>
           #{rank}
         </span>
         {p.thumbnail_url ? (
@@ -58,7 +60,7 @@ function PostCard({ p, rank }: { p: TopPostRow; rank: number }) {
           {truncate(p.message, 90) || <span className="italic text-muted-foreground">Sin texto</span>}
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-muted-foreground">
-          <span className="font-semibold text-foreground">{p.eng_rate.toFixed(2)}%</span>
+          <span className={`font-semibold ${rateColor}`}>{p.eng_rate.toFixed(2)}%</span>
           <span>eng. rate</span>
           <span className="mx-0.5 opacity-30">•</span>
           <span>{"👁"} {fmtNum(p.reach)}</span>
@@ -69,68 +71,82 @@ function PostCard({ p, rank }: { p: TopPostRow; rank: number }) {
   );
 }
 
+function PlatformBlock({
+  platform,
+  data,
+}: {
+  platform: "instagram" | "facebook";
+  data: TopAndBottom;
+}) {
+  if (data.top.length === 0 && data.bottom.length === 0) return null;
+  const badge = PLATFORM_BADGE[platform]!;
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-bold text-white"
+          style={{ background: badge.bg }}
+        >
+          {platform === "instagram" ? "IG" : "FB"}
+        </span>
+        <span className="text-xs font-semibold">{badge.label}</span>
+      </div>
+
+      {data.top.length > 0 && (
+        <div>
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+            🟢 Top 5 — mejor performance
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {data.top.map((p, i) => (
+              <PostCard key={p.post_id} p={p} rank={i + 1} variant="top" />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.bottom.length > 0 && (
+        <div>
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-700">
+            🔴 Bottom 5 — peor performance
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {data.bottom.map((p, i) => (
+              <PostCard key={p.post_id} p={p} rank={i + 1} variant="bottom" />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TopContentPanel({
   instagram,
   facebook,
 }: {
-  instagram: TopPostRow[];
-  facebook: TopPostRow[];
+  instagram: TopAndBottom;
+  facebook: TopAndBottom;
 }) {
-  if (instagram.length === 0 && facebook.length === 0) {
+  if (instagram.top.length === 0 && facebook.top.length === 0) {
     return (
       <section className="rounded-xl border bg-card p-4">
-        <h3 className="text-sm font-bold">🏆 Top contenidos últimos 30 días</h3>
+        <h3 className="text-sm font-bold">🏆 Top & Bottom contenidos — últimos 30 días</h3>
         <p className="mt-1 text-xs text-muted-foreground">Sin posts con suficiente alcance en el período.</p>
       </section>
     );
   }
 
   return (
-    <section className="space-y-4 rounded-xl border bg-card p-4">
+    <section className="space-y-5 rounded-xl border bg-card p-4">
       <div>
-        <h3 className="text-sm font-bold">🏆 Top contenidos últimos 30 días</h3>
+        <h3 className="text-sm font-bold">🏆 Top & Bottom contenidos — últimos 30 días</h3>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          Top 5 por engagement rate (engagement / alcance). Filtrados con reach ≥ 500.
+          Top 5 (mejor) y Bottom 5 (peor) por engagement rate (engagement / alcance). Filtra reach &lt; 500 para evitar outliers.
         </p>
       </div>
-
-      {instagram.length > 0 && (
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <span
-              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-bold text-white"
-              style={{ background: PLATFORM_BADGE.instagram!.bg }}
-            >
-              IG
-            </span>
-            <span className="text-xs font-semibold">Instagram — @dreanargentina</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {instagram.map((p, i) => (
-              <PostCard key={p.post_id} p={p} rank={i + 1} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {facebook.length > 0 && (
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <span
-              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-bold text-white"
-              style={{ background: PLATFORM_BADGE.facebook!.bg }}
-            >
-              FB
-            </span>
-            <span className="text-xs font-semibold">Facebook — Page Drean</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {facebook.map((p, i) => (
-              <PostCard key={p.post_id} p={p} rank={i + 1} />
-            ))}
-          </div>
-        </div>
-      )}
+      <PlatformBlock platform="instagram" data={instagram} />
+      <PlatformBlock platform="facebook" data={facebook} />
     </section>
   );
 }

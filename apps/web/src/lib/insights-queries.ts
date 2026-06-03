@@ -52,9 +52,18 @@ export interface TopPostRow {
   eng_rate: number; // % calculado
 }
 
-// Devuelve los top N posts de los últimos `days` días para cada platform,
-// rankeados por engagement rate (eng / reach). Filtra outliers (reach < 500).
-export async function getTopPostsLastNDays(days = 30, perPlatform = 5): Promise<{ instagram: TopPostRow[]; facebook: TopPostRow[] }> {
+export interface TopAndBottom {
+  top: TopPostRow[];
+  bottom: TopPostRow[];
+}
+
+// Devuelve top N (mejor eng_rate) y bottom N (peor) por platform sobre los
+// últimos `days` días. Filtra outliers con reach < 500 (de stories o posts
+// recién publicados que aún no acumularon alcance).
+export async function getTopAndBottomPostsLastNDays(
+  days = 30,
+  perPlatform = 5,
+): Promise<{ instagram: TopAndBottom; facebook: TopAndBottom }> {
   const supabase = getServerSupabase();
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - days);
@@ -64,21 +73,30 @@ export async function getTopPostsLastNDays(days = 30, perPlatform = 5): Promise<
     .gte("fecha_post", since.toISOString())
     .returns<Array<Omit<TopPostRow, "eng_rate">>>();
   if (error) {
-    console.error("[insights-queries] getTopPostsLastNDays:", error.message);
-    return { instagram: [], facebook: [] };
+    console.error("[insights-queries] getTopAndBottomPostsLastNDays:", error.message);
+    return { instagram: { top: [], bottom: [] }, facebook: { top: [], bottom: [] } };
   }
   const rows = (data ?? []).filter((r) => (r.reach ?? 0) >= 500);
   const withRate: TopPostRow[] = rows.map((r) => ({
     ...r,
     eng_rate: r.reach > 0 ? (r.engagement / r.reach) * 100 : 0,
   }));
-  const ig = withRate
-    .filter((r) => r.platform === "instagram")
-    .sort((a, b) => b.eng_rate - a.eng_rate)
-    .slice(0, perPlatform);
-  const fb = withRate
-    .filter((r) => r.platform === "facebook")
-    .sort((a, b) => b.eng_rate - a.eng_rate)
-    .slice(0, perPlatform);
-  return { instagram: ig, facebook: fb };
+  function split(platform: string): TopAndBottom {
+    const filtered = withRate.filter((r) => r.platform === platform);
+    const top = [...filtered].sort((a, b) => b.eng_rate - a.eng_rate).slice(0, perPlatform);
+    const topIds = new Set(top.map((p) => p.post_id));
+    // Bottom: los con peor eng_rate excluyendo los que están en top.
+    const bottom = [...filtered]
+      .filter((p) => !topIds.has(p.post_id))
+      .sort((a, b) => a.eng_rate - b.eng_rate)
+      .slice(0, perPlatform);
+    return { top, bottom };
+  }
+  return { instagram: split("instagram"), facebook: split("facebook") };
+}
+
+// Wrapper de back-compat — solo top (lo que ya usaba la página).
+export async function getTopPostsLastNDays(days = 30, perPlatform = 5): Promise<{ instagram: TopPostRow[]; facebook: TopPostRow[] }> {
+  const both = await getTopAndBottomPostsLastNDays(days, perPlatform);
+  return { instagram: both.instagram.top, facebook: both.facebook.top };
 }

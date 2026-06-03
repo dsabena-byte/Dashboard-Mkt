@@ -14,7 +14,7 @@ import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { InsightsPanel } from "@/components/insights/insights-panel";
 import { TopContentPanel } from "@/components/insights/top-content-panel";
 import { RedesTabs } from "@/components/social/redes-tabs";
-import { getInsightsByCategoria, getTopPostsLastNDays } from "@/lib/insights-queries";
+import { getInsightsByCategoria, getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import {
@@ -86,7 +86,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
     getFbOrganicSummary({ from: range.from, to: range.to }),
     getIgOrganicSummary({ from: range.from, to: range.to }),
     safe(getInsightsByCategoria("organico_drean", 12), [] as Awaited<ReturnType<typeof getInsightsByCategoria>>, "getInsightsByCategoria"),
-    safe(getTopPostsLastNDays(30, 5), { instagram: [], facebook: [] } as Awaited<ReturnType<typeof getTopPostsLastNDays>>, "getTopPostsLastNDays"),
+    safe(
+      getTopAndBottomPostsLastNDays(30, 5),
+      { instagram: { top: [], bottom: [] }, facebook: { top: [], bottom: [] } } as Awaited<ReturnType<typeof getTopAndBottomPostsLastNDays>>,
+      "getTopAndBottomPostsLastNDays",
+    ),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
