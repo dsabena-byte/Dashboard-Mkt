@@ -10,7 +10,6 @@ interface Props {
     categorias?: string[];
     clientes?: string[];
     tiendas?: string[];
-    marcas?: string[];
   };
   options: {
     meses: string[];
@@ -18,7 +17,6 @@ interface Props {
     categorias: string[];
     clientes: string[];
     tiendas: { value: string; label: string }[];
-    marcas: string[];
   };
 }
 
@@ -41,8 +39,7 @@ export function FloorShareFilters({ current, options }: Props) {
     (current.semanas?.length ?? 0) > 0 ||
     (current.categorias?.length ?? 0) > 0 ||
     (current.clientes?.length ?? 0) > 0 ||
-    (current.tiendas?.length ?? 0) > 0 ||
-    (current.marcas?.length ?? 0) > 0;
+    (current.tiendas?.length ?? 0) > 0;
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
@@ -80,13 +77,6 @@ export function FloorShareFilters({ current, options }: Props) {
         selected={current.tiendas ?? []}
         options={options.tiendas}
         onChange={(v) => update("tiendas", v)}
-      />
-      <MultiDropdown
-        label="Marca"
-        placeholder="Todas"
-        selected={current.marcas ?? []}
-        options={options.marcas.map((m) => ({ value: m, label: m }))}
-        onChange={(v) => update("marcas", v)}
       />
       <div className="ml-auto">
         <button

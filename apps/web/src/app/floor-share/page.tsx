@@ -76,7 +76,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     categorias: paramArr(searchParams, "categorias"),
     clientes: paramArr(searchParams, "clientes"),
     tiendas: paramArr(searchParams, "tiendas"),
-    marcas: paramArr(searchParams, "marcas"),
   };
 
   // Por performance: si no hay semanas seleccionadas, limitamos el universo
@@ -143,7 +142,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       .map((r) => ({ value: r.numero_tienda, label: r.nombre_tienda ?? r.numero_tienda })))
       .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)
       .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" })),
-    marcas: uniq(applyFilter(allRows, { ...filter, marcas: [] }).map((r) => r.marca)).sort(),
   };
 
   const totalRanking = shareByBrand(rows);
