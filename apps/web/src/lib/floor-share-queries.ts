@@ -195,64 +195,157 @@ export function weeklyShareByBrand(rows: FloorShareRow[], topMarcas: string[]): 
     });
 }
 
+// Objetivos por categoría (% share Drean)
+export const FS_OBJ_PCT: Record<"lavado" | "refri" | "coccion", number> = {
+  lavado: 32,
+  refri: 25,
+  coccion: 23,
+};
+
+function categoriaKind(c: string | null | undefined): "lavado" | "refri" | "coccion" | null {
+  if (!c) return null;
+  const v = c.toLowerCase();
+  if (v.includes("lava") || v.includes("seca")) return "lavado";
+  if (v.includes("refrig") || v.includes("freezer") || v.includes("frio")) return "refri";
+  if (v.includes("cocci") || v.includes("cocina")) return "coccion";
+  return null;
+}
+
+export interface CategoryBlock {
+  drean_units: number;
+  total_units: number;
+  share: number; // 0..100
+}
+
+function emptyBlock(): CategoryBlock {
+  return { drean_units: 0, total_units: 0, share: 0 };
+}
+
+function finalize(b: CategoryBlock): CategoryBlock {
+  b.share = b.total_units > 0 ? (b.drean_units / b.total_units) * 100 : 0;
+  return b;
+}
+
+export interface OverallShare {
+  total: CategoryBlock;
+  lavado: CategoryBlock;
+  refri: CategoryBlock;
+  coccion: CategoryBlock;
+  tiendas: number;
+}
+
+export function computeOverall<T extends FloorShareRow>(rows: T[]): OverallShare {
+  const out: OverallShare = {
+    total: emptyBlock(),
+    lavado: emptyBlock(),
+    refri: emptyBlock(),
+    coccion: emptyBlock(),
+    tiendas: 0,
+  };
+  const tiendas = new Set<string>();
+  for (const r of rows) {
+    const u = r.unidades ?? 0;
+    out.total.total_units += u;
+    if (r.marca === OWN_BRAND_FS) out.total.drean_units += u;
+    const k = categoriaKind(r.categoria);
+    if (k) {
+      out[k].total_units += u;
+      if (r.marca === OWN_BRAND_FS) out[k].drean_units += u;
+    }
+    if (r.numero_tienda) tiendas.add(r.numero_tienda);
+  }
+  finalize(out.total);
+  finalize(out.lavado);
+  finalize(out.refri);
+  finalize(out.coccion);
+  out.tiendas = tiendas.size;
+  return out;
+}
+
 export interface ClienteShare {
   cliente: string;
-  total_unidades: number;
-  drean_unidades: number;
-  drean_share: number;
+  total: CategoryBlock;
+  lavado: CategoryBlock;
+  refri: CategoryBlock;
+  coccion: CategoryBlock;
   tiendas: number;
 }
 
 export function shareByCliente<T extends FloorShareRow & { cliente: string }>(rows: T[]): ClienteShare[] {
-  const map = new Map<string, { total: number; drean: number; tiendas: Set<string> }>();
+  const map = new Map<string, ClienteShare>();
+  const tiendasByCliente = new Map<string, Set<string>>();
   for (const r of rows) {
-    const acc = map.get(r.cliente) ?? { total: 0, drean: 0, tiendas: new Set<string>() };
-    acc.total += r.unidades ?? 0;
-    if (r.marca === OWN_BRAND_FS) acc.drean += r.unidades ?? 0;
-    if (r.numero_tienda) acc.tiendas.add(r.numero_tienda);
-    map.set(r.cliente, acc);
+    let acc = map.get(r.cliente);
+    if (!acc) {
+      acc = { cliente: r.cliente, total: emptyBlock(), lavado: emptyBlock(), refri: emptyBlock(), coccion: emptyBlock(), tiendas: 0 };
+      map.set(r.cliente, acc);
+      tiendasByCliente.set(r.cliente, new Set());
+    }
+    const u = r.unidades ?? 0;
+    acc.total.total_units += u;
+    if (r.marca === OWN_BRAND_FS) acc.total.drean_units += u;
+    const k = categoriaKind(r.categoria);
+    if (k) {
+      acc[k].total_units += u;
+      if (r.marca === OWN_BRAND_FS) acc[k].drean_units += u;
+    }
+    if (r.numero_tienda) tiendasByCliente.get(r.cliente)!.add(r.numero_tienda);
   }
-  return [...map.entries()]
-    .map(([cliente, v]) => ({
-      cliente,
-      total_unidades: v.total,
-      drean_unidades: v.drean,
-      drean_share: v.total > 0 ? (v.drean / v.total) * 100 : 0,
-      tiendas: v.tiendas.size,
-    }))
-    .sort((a, b) => b.drean_share - a.drean_share);
+  for (const v of map.values()) {
+    finalize(v.total);
+    finalize(v.lavado);
+    finalize(v.refri);
+    finalize(v.coccion);
+    v.tiendas = tiendasByCliente.get(v.cliente)?.size ?? 0;
+  }
+  return [...map.values()].sort((a, b) => a.cliente.localeCompare(b.cliente, "es", { sensitivity: "base" }));
 }
 
 export interface TiendaShare {
   numero_tienda: string;
   nombre_tienda: string;
-  total_unidades: number;
-  drean_unidades: number;
-  drean_share: number;
+  cliente: string;
+  total: CategoryBlock;
+  lavado: CategoryBlock;
+  refri: CategoryBlock;
+  coccion: CategoryBlock;
 }
 
-export function shareByTienda(rows: FloorShareRow[]): TiendaShare[] {
-  const map = new Map<string, { numero: string; nombre: string; total: number; drean: number }>();
+export function shareByTienda<T extends FloorShareRow & { cliente: string }>(rows: T[]): TiendaShare[] {
+  const map = new Map<string, TiendaShare>();
   for (const r of rows) {
-    const acc = map.get(r.numero_tienda) ?? {
-      numero: r.numero_tienda,
-      nombre: r.nombre_tienda,
-      total: 0,
-      drean: 0,
-    };
-    acc.total += r.unidades ?? 0;
-    if (r.marca === OWN_BRAND_FS) acc.drean += r.unidades ?? 0;
-    map.set(r.numero_tienda, acc);
+    let acc = map.get(r.numero_tienda);
+    if (!acc) {
+      acc = {
+        numero_tienda: r.numero_tienda,
+        nombre_tienda: r.nombre_tienda,
+        cliente: r.cliente,
+        total: emptyBlock(),
+        lavado: emptyBlock(),
+        refri: emptyBlock(),
+        coccion: emptyBlock(),
+      };
+      map.set(r.numero_tienda, acc);
+    }
+    const u = r.unidades ?? 0;
+    acc.total.total_units += u;
+    if (r.marca === OWN_BRAND_FS) acc.total.drean_units += u;
+    const k = categoriaKind(r.categoria);
+    if (k) {
+      acc[k].total_units += u;
+      if (r.marca === OWN_BRAND_FS) acc[k].drean_units += u;
+    }
   }
-  return [...map.values()]
-    .map((v) => ({
-      numero_tienda: v.numero,
-      nombre_tienda: v.nombre,
-      total_unidades: v.total,
-      drean_unidades: v.drean,
-      drean_share: v.total > 0 ? (v.drean / v.total) * 100 : 0,
-    }))
-    .sort((a, b) => b.drean_share - a.drean_share);
+  for (const v of map.values()) {
+    finalize(v.total);
+    finalize(v.lavado);
+    finalize(v.refri);
+    finalize(v.coccion);
+  }
+  return [...map.values()].sort((a, b) => {
+    const c = a.cliente.localeCompare(b.cliente, "es", { sensitivity: "base" });
+    return c !== 0 ? c : (a.nombre_tienda ?? "").localeCompare(b.nombre_tienda ?? "", "es", { sensitivity: "base" });
+  });
 }
 
 export function normalizeCategoria(c: string | null | undefined): string {
