@@ -178,7 +178,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         current={tab}
         tabs={[
           { key: "analitica", label: "📊 Analítica" },
-          { key: "insights", label: "💡 Insights y oportunidades", badge: insightsOrganico.length || undefined },
+          { key: "insights", label: "💡 Insights Drean", badge: insightsOrganico.length || undefined },
         ]}
         preserveParams={searchParams}
       />
