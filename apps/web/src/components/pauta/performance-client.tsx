@@ -16,6 +16,8 @@ import { InvestmentDonut, HBarChart, ReachImpressionsChart, MonthlyInvestmentCha
 import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
+import { PautaInsightsPanel } from "@/components/pauta/pauta-insights-panel";
+import { computePautaInsights } from "@/lib/pauta-insights";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -24,7 +26,7 @@ function fmtNum(n: number): string {
 }
 const fmtARS = formatCurrency;
 
-const TABS = ["Overview", "Por Medio"] as const;
+const TABS = ["Overview", "Por Medio", "Insights Pauta"] as const;
 type Tab = (typeof TABS)[number];
 
 type TipoMedio = "Digital" | "TV Cable" | "DOOH" | "OOH";
@@ -488,6 +490,21 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
             selCats={selCats}
             selRoles={selRoles}
           />
+        </div>
+      )}
+
+      {/* ===== INSIGHTS PAUTA ===== */}
+      {tab === "Insights Pauta" && (
+        <div>
+          <SectionTitle>Insights Pauta — mix óptimo de inversión</SectionTitle>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Análisis sobre las filas filtradas. Detecta medios sobre/sub-eficientes y recomienda reasignaciones para
+            maximizar alcance, impresiones y clics por peso invertido.
+          </p>
+          {(() => {
+            const { efficiency, insights, benchmarks } = computePautaInsights(rows);
+            return <PautaInsightsPanel efficiency={efficiency} insights={insights} benchmarks={benchmarks} />;
+          })()}
         </div>
       )}
     </div>
