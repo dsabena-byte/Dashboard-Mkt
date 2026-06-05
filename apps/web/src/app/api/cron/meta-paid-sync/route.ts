@@ -303,9 +303,20 @@ export async function GET(req: Request) {
           const ins = ad.insights?.data?.[0];
           if (!ins) return null; // sin impresiones en el período -> se ignora
           const img = pickImage(ad.creative);
-          // Espejamos la imagen al bucket de Supabase (URL eterna). Si falla,
-          // mirrorMetaImage devuelve la URL original de Meta.
-          const mirrored = await mirrorMetaImage(img.best, `paid/${ad.id}.jpg`);
+          // La imagen de mayor resolución es la del post original (full_picture),
+          // mejor que el thumbnail/preview del creative. La buscamos vía el
+          // story id; si no se puede (dark post o sin permiso), usamos img.best.
+          let bestImg = img.best;
+          if (img.storyId) {
+            const post = await graphGet<{ full_picture?: string }>(
+              `${GRAPH_API}/${img.storyId}?fields=full_picture&access_token=${token}`,
+            ).catch(() => ({} as { full_picture?: string }));
+            if (post.full_picture) bestImg = post.full_picture;
+          }
+          // Espejamos al bucket de Supabase (URL eterna). Key '-hd' para no
+          // chocar con el espejado anterior de menor resolución (el helper
+          // saltea la descarga si la key ya existe).
+          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd.jpg`);
           // Link a la pieza = el post real detrás del ad. Para "dark posts"
           // (anuncios que no son post público) no hay link válido -> null.
           const permalink = img.storyId ? `https://www.facebook.com/${img.storyId}` : null;
