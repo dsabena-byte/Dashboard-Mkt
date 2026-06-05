@@ -41,15 +41,21 @@ jobs:
           if [ -n "$QS" ]; then URL="${BASE}?${QS}"; else URL="${BASE}"; fi
           echo "GET $URL"
 
+          # -sS (sin -f) para capturar el body aun en HTTP 4xx/5xx: el JSON de
+          # error trae la causa (phase, error, lista de cuentas que ve el token).
           if [ -n "${CRON_SECRET:-}" ]; then
-            curl -fsS --max-time 600 "$URL" \
-              -H "Authorization: Bearer $CRON_SECRET" | tee out.json
+            HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 600 "$URL" \
+              -H "Authorization: Bearer $CRON_SECRET")
           else
-            curl -fsS --max-time 600 "$URL" | tee out.json
+            HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 600 "$URL")
           fi
+          echo "HTTP $HTTP"
+          echo "----- respuesta -----"
+          cat out.json || true
           echo ""
-          if grep -q '"ok":false' out.json; then
-            echo "Cron devolvió ok=false"
+          echo "---------------------"
+          if [ "$HTTP" -ge 400 ] || grep -q '"ok":false' out.json; then
+            echo "Cron falló (HTTP $HTTP)"
             exit 1
           fi
         env:
