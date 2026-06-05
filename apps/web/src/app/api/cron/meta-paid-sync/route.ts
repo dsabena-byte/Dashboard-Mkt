@@ -250,7 +250,11 @@ export async function GET(req: Request) {
   let phase = "init";
 
   try {
-    const token = env("META_SYSTEM_USER_TOKEN");
+    // META_PAID_TOKEN_OVERRIDE permite backfills puntuales con un token de
+    // usuario (ej. token personal con acceso a la cuenta) sin tocar el token
+    // del system user que usa el resto de la automatización. Si no está, usa
+    // el del system user como siempre.
+    const token = process.env.META_PAID_TOKEN_OVERRIDE || env("META_SYSTEM_USER_TOKEN");
     const { since, until, mesLabel } = mesRange(mesParam);
 
     if (!act_id) {
