@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import { mirrorMetaImage } from "@/lib/meta-image-mirror";
+
+// El mirroring (descarga de Meta + subida al bucket) de varias piezas puede
+// tardar unos segundos; ampliamos el límite de ejecución de la función.
+export const maxDuration = 60;
 
 // Sincroniza piezas pautadas (ads) de Meta + sus insights del mes elegido a
 // la tabla meta_paid_creatives. Por defecto: mes actual.
@@ -102,6 +107,7 @@ interface AdCreative {
   thumbnail_url?: string;
   image_url?: string;
   body?: string;
+  effective_object_story_id?: string;
   object_story_spec?: CreativeStorySpec;
 }
 interface AdInsight {
@@ -128,14 +134,16 @@ interface MetaAd {
 }
 interface AdsResp { data: MetaAd[]; paging?: { next?: string }; }
 
-function pickImage(c?: AdCreative): { thumb?: string; image?: string; copy?: string } {
+function pickImage(c?: AdCreative): { best?: string; copy?: string; storyId?: string } {
   if (!c) return {};
   const storyLink = c.object_story_spec?.link_data;
   const storyVid = c.object_story_spec?.video_data;
   return {
-    thumb: c.thumbnail_url,
-    image: c.image_url ?? storyLink?.picture ?? storyVid?.image_url,
+    // Mejor imagen disponible: image_url full > cover de video > thumbnail
+    // (que pedimos en 720px) > picture del link.
+    best: c.image_url ?? storyVid?.image_url ?? c.thumbnail_url ?? storyLink?.picture,
     copy: c.body ?? storyLink?.message ?? storyVid?.message,
+    storyId: c.effective_object_story_id,
   };
 }
 
@@ -271,7 +279,7 @@ export async function GET(req: Request) {
       "adset_id",
       "campaign{name,objective}",
       "adset{name}",
-      "creative{thumbnail_url,image_url,body,object_story_spec{link_data{picture,message,link},video_data{image_url,message}}}",
+      "creative{thumbnail_url.thumbnail_width(720).thumbnail_height(720),image_url,body,effective_object_story_id,object_story_spec{link_data{picture,message,link},video_data{image_url,message}}}",
       `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,date_start,date_stop}`,
     ].join(",");
 
@@ -289,41 +297,49 @@ export async function GET(req: Request) {
     }
 
     phase = "upsert";
-    const rows = allAds
-      .map((ad) => {
-      const ins = ad.insights?.data?.[0];
-      if (!ins) return null; // sin impresiones en el período -> se ignora
-      const img = pickImage(ad.creative);
-      return {
-        ad_id: ad.id,
-        mes: mesLabel,
-        fecha_desde: ins.date_start ?? since,
-        fecha_hasta: ins.date_stop ?? until,
-        act_id,
-        campaign_id: ad.campaign_id ?? null,
-        campaign_name: ad.campaign?.name ?? null,
-        adset_id: ad.adset_id ?? null,
-        adset_name: ad.adset?.name ?? null,
-        ad_name: ad.name ?? null,
-        objective: ad.campaign?.objective ?? null,
-        plataforma: "meta",
-        thumbnail_url: img.thumb ?? null,
-        image_url: img.image ?? null,
-        body: img.copy ?? null,
-        permalink_url: `https://www.facebook.com/${ad.id}`,
-        impresiones: Math.round(toNum(ins.impressions) ?? 0),
-        alcance: Math.round(toNum(ins.reach) ?? 0),
-        frecuencia: toNum(ins.frequency),
-        clicks: Math.round(toNum(ins.clicks) ?? 0),
-        spend: toNum(ins.spend) ?? 0,
-        ctr: toNum(ins.ctr),
-        cpm: toNum(ins.cpm),
-        cpc: toNum(ins.cpc),
-        raw: ad as unknown,
-        fetched_at: new Date().toISOString(),
-      };
-    })
-    .filter((r): r is NonNullable<typeof r> => r !== null);
+    const rows = (
+      await Promise.all(
+        allAds.map(async (ad) => {
+          const ins = ad.insights?.data?.[0];
+          if (!ins) return null; // sin impresiones en el período -> se ignora
+          const img = pickImage(ad.creative);
+          // Espejamos la imagen al bucket de Supabase (URL eterna). Si falla,
+          // mirrorMetaImage devuelve la URL original de Meta.
+          const mirrored = await mirrorMetaImage(img.best, `paid/${ad.id}.jpg`);
+          // Link a la pieza = el post real detrás del ad. Para "dark posts"
+          // (anuncios que no son post público) no hay link válido -> null.
+          const permalink = img.storyId ? `https://www.facebook.com/${img.storyId}` : null;
+          return {
+            ad_id: ad.id,
+            mes: mesLabel,
+            fecha_desde: ins.date_start ?? since,
+            fecha_hasta: ins.date_stop ?? until,
+            act_id,
+            campaign_id: ad.campaign_id ?? null,
+            campaign_name: ad.campaign?.name ?? null,
+            adset_id: ad.adset_id ?? null,
+            adset_name: ad.adset?.name ?? null,
+            ad_name: ad.name ?? null,
+            objective: ad.campaign?.objective ?? null,
+            plataforma: "meta",
+            thumbnail_url: mirrored,
+            image_url: mirrored,
+            body: img.copy ?? null,
+            permalink_url: permalink,
+            impresiones: Math.round(toNum(ins.impressions) ?? 0),
+            alcance: Math.round(toNum(ins.reach) ?? 0),
+            frecuencia: toNum(ins.frequency),
+            clicks: Math.round(toNum(ins.clicks) ?? 0),
+            spend: toNum(ins.spend) ?? 0,
+            ctr: toNum(ins.ctr),
+            cpm: toNum(ins.cpm),
+            cpc: toNum(ins.cpc),
+            raw: ad as unknown,
+            fetched_at: new Date().toISOString(),
+          };
+        }),
+      )
+    ).filter((r): r is NonNullable<typeof r> => r !== null);
 
     const upsertResult = await supabaseUpsert(rows);
 
