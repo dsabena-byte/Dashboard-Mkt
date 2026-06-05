@@ -5,8 +5,11 @@ Google Ads, Meta Ads, GA4 y canales offline, compara performance real vs
 planning, visualiza el funnel completo (impresiones → clicks → sesiones →
 conversiones) e incorpora inteligencia competitiva (web + redes sociales).
 
-> Fase 1 (esta entrega): infraestructura, modelo de datos y frontend base.
-> Las integraciones con N8N, Apify y Google Sheets vienen en fase 2.
+> Estado: app desplegada en Vercel con datos reales. Los syncs de **GA4,
+> Meta (orgánico FB/IG) y paid creatives corren con GitHub Actions** que
+> disparan los endpoints `/api/cron/*` del propio Next app — **no usan N8N**.
+> N8N queda reservado solo para Apify (scraping de competidores) y Google
+> Sheets (planning). Ver [`docs/crons-github-actions.md`](docs/crons-github-actions.md).
 
 ---
 
@@ -199,20 +202,54 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 
 **Lo que YA funciona:**
 
-- [x] Schema de Supabase (8 tablas + 2 vistas)
-- [x] Seed de datos de prueba
-- [x] Monorepo con pnpm workspaces
-- [x] Cliente Supabase tipado (browser + server + service role)
-- [x] Frontend Next.js 14 con sidebar y 6 páginas placeholder
+- [x] Schema de Supabase + migraciones versionadas
+- [x] Monorepo con pnpm workspaces y cliente Supabase tipado
+- [x] Frontend Next.js 14 leyendo datos reales (RSC + Supabase) con charts (Recharts)
+- [x] Despliegue en Vercel (`dashboard-mkt-seven.vercel.app`)
+- [x] Sync **GA4** (tráfico, landings, compras) vía GitHub Actions
+- [x] Sync **Meta orgánico** (Page Drean FB + @dreanargentina IG) + sentiment IG
+- [x] Endpoint de **paid creatives** Meta (`/api/cron/meta-paid-sync`) — operativo, a la espera de acceso a la Ad Account (ver Operación)
 - [x] Convenciones UTM documentadas
 
 **Lo que falta (fase 2+):**
 
-- [ ] Workflows N8N de ingesta (Google Ads, Meta, GA4, Sheets)
-- [ ] Integración Apify (scraping de competidores web)
-- [ ] Lectura real de datos en el frontend (RSC + Supabase)
-- [ ] Charts con Recharts
+- [ ] Integración Apify (scraping de competidores web) vía N8N
 - [ ] Auth con Supabase (magic link)
-- [ ] Despliegue en Vercel
 
 Ver [`docs/next-phases.md`](docs/next-phases.md) para el roadmap detallado.
+
+---
+
+## Operación / Troubleshooting
+
+Los syncs corren como GitHub Actions (detalle en
+[`docs/crons-github-actions.md`](docs/crons-github-actions.md)). Para ver si
+uno falló: repo → **Actions** → workflow → run rojo → logs con el JSON del
+endpoint. Dos gotchas que ya nos mordieron:
+
+### GA4 — el refresh token se muere cada ~7 días
+
+Síntoma: el sync GA4 falla con `invalid_grant: Token has been expired or revoked`.
+Causa: la app OAuth (Google Cloud → **Google Auth Platform → Público**) está en
+estado **"Prueba/Testing"**, y en ese modo Google **caduca los refresh tokens a
+los 7 días**. Fix permanente: **Publicar app** (pasar a "En producción"); ahí el
+token deja de expirar. Si hay que regenerarlo, usar
+[OAuth Playground](https://developers.google.com/oauthplayground) **con el client
+propio** ("Use your own OAuth credentials", el cliente *Dashboard Vercel*) y scope
+`https://www.googleapis.com/auth/analytics.readonly`; pegar el refresh token nuevo
+en la env var **`GOOGLE_REFRESH_TOKEN`** de Vercel y **redeploy**.
+
+### Meta paid — el system user no ve la cuenta
+
+Síntoma: `/api/cron/meta-paid-sync` devuelve `No encontré cuenta con 'drean'...
+Disponibles: (ninguna)`. Causa: el token (`META_SYSTEM_USER_TOKEN`) es de un
+**usuario del sistema** que **no tiene asignada la Ad Account** de Drean (que vive
+dentro de la cuenta **Mabe Argentina**, `act_1428795852368328`, del BM de OMD). El
+acceso *personal* a Ads Manager **no** alcanza: hay que asignarle la cuenta al
+usuario del sistema (compartirla con nuestro BM `122350585916257` o crear un system
+user en el BM de OMD). Además, como la cuenta no se llama "Drean", el
+autodescubrimiento por nombre falla → hay que forzar la cuenta con el input
+**`act_id=act_1428795852368328`** del workflow (o `?act_id=` en el endpoint). El
+workflow acepta inputs `debug` (lista cuentas/permisos que ve el token), `act_id`
+y `mes` para diagnóstico. _(Pendiente: soportar una env var `META_AD_ACCOUNT_ID`
+para fijar la cuenta sin pasar el input en cada corrida.)_

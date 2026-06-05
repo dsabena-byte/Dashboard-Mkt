@@ -45,15 +45,52 @@ async function graphGet<T = unknown>(url: string): Promise<T> {
 interface AdAccount { id: string; name: string; account_id: string; }
 interface AdAccountsResp { data: AdAccount[]; }
 
-async function discoverActId(token: string): Promise<{ act_id: string; name: string }> {
-  const url = `${GRAPH_API}/me/adaccounts?fields=id,name,account_id&limit=100&access_token=${token}`;
-  const r = await graphGet<AdAccountsResp>(url);
-  const drean = r.data.find((a) => /drean/i.test(a.name));
-  if (!drean) {
-    const names = r.data.map((a) => a.name).join(", ");
-    throw new Error(`No encontré cuenta con 'drean' en el nombre. Disponibles: ${names || "(ninguna)"}`);
+// Junta todas las ad accounts visibles para el token: las directas
+// (/me/adaccounts) + las owned/client de cada business. Las cuentas compartidas
+// como partner (caso OMD → nuestro BM) suelen aparecer SOLO como client_ad_accounts
+// del business y NO en /me/adaccounts, por eso hay que mirar ambos lados.
+async function listAllAdAccounts(token: string): Promise<AdAccount[]> {
+  const fields = "fields=id,name,account_id&limit=200";
+  const direct = await graphGet<AdAccountsResp>(
+    `${GRAPH_API}/me/adaccounts?${fields}&access_token=${token}`,
+  ).catch(() => ({ data: [] as AdAccount[] }));
+
+  const biz = await graphGet<{ data: Array<{ id: string }> }>(
+    `${GRAPH_API}/me/businesses?fields=id&limit=50&access_token=${token}`,
+  ).catch(() => ({ data: [] as Array<{ id: string }> }));
+
+  const all: AdAccount[] = [...(direct.data ?? [])];
+  for (const b of biz.data ?? []) {
+    for (const edge of ["owned_ad_accounts", "client_ad_accounts"]) {
+      const r = await graphGet<AdAccountsResp>(
+        `${GRAPH_API}/${b.id}/${edge}?${fields}&access_token=${token}`,
+      ).catch(() => ({ data: [] as AdAccount[] }));
+      all.push(...(r.data ?? []));
+    }
   }
-  return { act_id: drean.id, name: drean.name };
+
+  const seen = new Set<string>();
+  const unique: AdAccount[] = [];
+  for (const a of all) {
+    if (!seen.has(a.id)) {
+      seen.add(a.id);
+      unique.push(a);
+    }
+  }
+  return unique;
+}
+
+async function discoverActId(token: string): Promise<{ act_id: string; name: string }> {
+  const accounts = await listAllAdAccounts(token);
+  // La cuenta de Drean vive dentro de "Mabe Argentina", así que por defecto
+  // matcheamos drean|mabe. Configurable vía META_AD_ACCOUNT_NAME_RE.
+  const re = new RegExp(process.env.META_AD_ACCOUNT_NAME_RE ?? "drean|mabe", "i");
+  const match = accounts.find((a) => re.test(a.name));
+  if (!match) {
+    const names = accounts.map((a) => a.name).join(", ");
+    throw new Error(`No encontré cuenta que matchee /${re.source}/i. Disponibles: ${names || "(ninguna)"}`);
+  }
+  return { act_id: match.id, name: match.name };
 }
 
 interface CreativeStorySpec {
@@ -201,13 +238,23 @@ export async function GET(req: Request) {
     }
   }
 
-  // Estado para incluir en respuestas de error.
-  let act_id: string | null = actOverride;
-  let act_name = actOverride ?? "(override)";
+  // Precedencia de la cuenta: ?act_id= (query) > META_AD_ACCOUNT_ID (env) >
+  // autodescubrimiento por nombre. El env var es la forma estable de fijar la
+  // cuenta (ej. act_1428795852368328 = Mabe Argentina) sin depender del nombre.
+  const envActRaw = process.env.META_AD_ACCOUNT_ID;
+  const envActId = envActRaw
+    ? envActRaw.startsWith("act_") ? envActRaw : `act_${envActRaw}`
+    : null;
+  let act_id: string | null = actOverride ?? envActId;
+  let act_name = actOverride ? "(query act_id)" : envActId ? "(env META_AD_ACCOUNT_ID)" : "(pendiente)";
   let phase = "init";
 
   try {
-    const token = env("META_SYSTEM_USER_TOKEN");
+    // META_PAID_TOKEN_OVERRIDE permite backfills puntuales con un token de
+    // usuario (ej. token personal con acceso a la cuenta) sin tocar el token
+    // del system user que usa el resto de la automatización. Si no está, usa
+    // el del system user como siempre.
+    const token = process.env.META_PAID_TOKEN_OVERRIDE || env("META_SYSTEM_USER_TOKEN");
     const { since, until, mesLabel } = mesRange(mesParam);
 
     if (!act_id) {
