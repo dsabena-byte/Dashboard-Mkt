@@ -239,17 +239,56 @@ propio** ("Use your own OAuth credentials", el cliente *Dashboard Vercel*) y sco
 `https://www.googleapis.com/auth/analytics.readonly`; pegar el refresh token nuevo
 en la env var **`GOOGLE_REFRESH_TOKEN`** de Vercel y **redeploy**.
 
-### Meta paid — el system user no ve la cuenta
+### Meta paid — acceso por API a la cuenta de Drean
 
-Síntoma: `/api/cron/meta-paid-sync` devuelve `No encontré cuenta con 'drean'...
-Disponibles: (ninguna)`. Causa: el token (`META_SYSTEM_USER_TOKEN`) es de un
-**usuario del sistema** que **no tiene asignada la Ad Account** de Drean (que vive
-dentro de la cuenta **Mabe Argentina**, `act_1428795852368328`, del BM de OMD). El
-acceso *personal* a Ads Manager **no** alcanza: hay que asignarle la cuenta al
-usuario del sistema (compartirla con nuestro BM `122350585916257` o crear un system
-user en el BM de OMD). Además, como la cuenta no se llama "Drean", el
-autodescubrimiento por nombre falla → hay que forzar la cuenta con el input
-**`act_id=act_1428795852368328`** del workflow (o `?act_id=` en el endpoint). El
-workflow acepta inputs `debug` (lista cuentas/permisos que ve el token), `act_id`
-y `mes` para diagnóstico. _(Pendiente: soportar una env var `META_AD_ACCOUNT_ID`
-para fijar la cuenta sin pasar el input en cada corrida.)_
+La pauta de Drean en Meta corre dentro de la cuenta publicitaria **Mabe Argentina**
+(`act_1428795852368328`), propiedad del BM de OMD (`796317087092108`). El cron
+`meta-paid-sync` lee esa cuenta con el **token del system user**
+(`META_SYSTEM_USER_TOKEN`) que vive en nuestro BM (`122350585916257`).
+
+**Pendiente operativo:** para que el cron corra solo todos los días, OMD tiene
+que **compartir la cuenta Mabe con nuestro BM como partner** (acceso "Ver
+rendimiento" o superior). Mientras eso no esté, el `schedule` queda
+deshabilitado y el endpoint devuelve `No encontré cuenta… Disponibles: (ninguna)`.
+
+**Backfill puntual sin esperar a OMD:** si alguien con acceso personal a la
+cuenta genera un token de usuario en el [Graph API Explorer](https://developers.facebook.com/tools/explorer/)
+(scopes: `ads_read`, `read_insights`, `business_management`; al autorizar, tildar
+**OMD Argentina** en la pantalla de negocios), se puede correr el sync una vez
+seteando estas envs en Vercel:
+
+| Env var | Valor |
+|---|---|
+| `META_PAID_TOKEN_OVERRIDE` | el token `EAA...` de usuario (temporal, ~1-2 h) |
+| `META_AD_ACCOUNT_ID` | `act_1428795852368328` (fija la cuenta sin depender del nombre) |
+
+Y disparar el workflow desde **Actions → Meta paid creatives sync → Run workflow**
+con el input `mes` (`YYYY-MM`). El workflow también acepta `debug=true` (lista
+cuentas y permisos que ve el token, sin sincronizar) y `act_id` (override por
+corrida). Después de cada backfill **borrar `META_PAID_TOKEN_OVERRIDE`** por
+higiene.
+
+**Imágenes permanentes (mirror al bucket):** las URLs de imágenes de Meta están
+firmadas y caducan en 1-2 días. El endpoint espeja cada thumbnail al bucket
+`meta-thumbs` de Supabase (migración `0039`) — la URL pública del bucket no
+caduca. Para piezas de **video**, Meta solo expone un `thumbnail_url` de 64×64
+desde el ad; la versión en alta vive en el post original y se trae vía
+`effective_object_story_id → full_picture`, **leído con el token del system user**
+(no con el override de usuario: el usuario típicamente no administra la Página).
+
+### TikTok / Programmatic / YouTube — sin automatización todavía
+
+La grilla "Piezas pautadas" del dashboard tiene 4 secciones (Meta, TikTok,
+Programmatic, YouTube) que comparten la **misma tabla `meta_paid_creatives`**,
+discriminadas por la columna `plataforma`. Hoy solo Meta tiene cron de API;
+las otras 3 entran por **carga manual** (`source = 'looker_export'`).
+
+| Plataforma | API necesaria | Estado |
+|---|---|---|
+| **TikTok** | TikTok Marketing API — requiere **app de desarrollador aprobada** (App ID + Secret + OAuth con el anunciante). El acceso al Business Center *solo* **no alcanza**: no hay API keys estáticas, todo es OAuth contra una app registrada. Pendiente: pedir a DDB/OMD si ya tienen una app aprobada para Mabe (`advertiser_id 7601141532934225927`). | Manual (export desde Business Center → Custom reports). Loader manual o `INSERT` armado a mano contra `meta_paid_creatives` con `plataforma='tiktok'`, `source='looker_export'`. |
+| **YouTube** | Google Ads API (YouTube vive ahí, no en GA4). Proyecto aparte: OAuth + Developer Token de Google Ads + autorización del MCC que opera la cuenta. | Manual. Limitación conocida: el export de Looker **no trae inversión por anuncio** en YouTube. |
+| **Programmatic** | DSP que pautó (DV360 / The Trade Desk / etc.). Cada DSP tiene su API. Decidir cuál primero según volumen. | Manual. |
+
+Las imágenes de estas 3 plataformas no se pueden enriquecer con el truco de
+`full_picture` (es exclusivo de Meta) — vienen sin thumbnail hasta que se
+integre la API correspondiente.
