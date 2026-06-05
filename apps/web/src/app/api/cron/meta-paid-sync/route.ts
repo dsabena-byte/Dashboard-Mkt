@@ -263,6 +263,11 @@ export async function GET(req: Request) {
     // del system user que usa el resto de la automatización. Si no está, usa
     // el del system user como siempre.
     const token = process.env.META_PAID_TOKEN_OVERRIDE || env("META_SYSTEM_USER_TOKEN");
+    // La imagen en alta (full_picture) se lee desde el POST de la Página, no
+    // desde la cuenta publicitaria. El token del system user administra la
+    // Página Drean, así que para esa llamada usamos siempre ese (el token
+    // override de usuario suele NO tener rol en la Página -> error #10).
+    const pageToken = env("META_SYSTEM_USER_TOKEN");
     const { since, until, mesLabel } = mesRange(mesParam);
 
     if (!act_id) {
@@ -309,14 +314,14 @@ export async function GET(req: Request) {
           let bestImg = img.best;
           if (img.storyId) {
             const post = await graphGet<{ full_picture?: string }>(
-              `${GRAPH_API}/${img.storyId}?fields=full_picture&access_token=${token}`,
+              `${GRAPH_API}/${img.storyId}?fields=full_picture&access_token=${pageToken}`,
             ).catch(() => ({} as { full_picture?: string }));
             if (post.full_picture) bestImg = post.full_picture;
           }
           // Espejamos al bucket de Supabase (URL eterna). Key '-hd' para no
           // chocar con el espejado anterior de menor resolución (el helper
           // saltea la descarga si la key ya existe).
-          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd.jpg`);
+          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd2.jpg`);
           // Link a la pieza = el post real detrás del ad. Para "dark posts"
           // (anuncios que no son post público) no hay link válido -> null.
           const permalink = img.storyId ? `https://www.facebook.com/${img.storyId}` : null;
