@@ -40,6 +40,31 @@ export interface FloorShareFilter {
   marcas?: string[];
 }
 
+// Cuenta total de tiendas relevadas en floor_share: distinct numero_tienda
+// con al menos una fila con datos reales (cualquier semana, cualquier categoría).
+// Tiendas sin ninguna data no se cuentan. Sin filtro de período — es el
+// universo histórico de relevamiento.
+export async function getTotalTiendasRelevadas(): Promise<number> {
+  const supabase = getCbSupabase();
+  const ids = new Set<string>();
+  let from = 0;
+  const PAGE = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("floor_share")
+      .select("numero_tienda")
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    for (const r of data as Array<{ numero_tienda: string | null }>) {
+      if (r.numero_tienda) ids.add(r.numero_tienda);
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+    if (from > 200_000) break;
+  }
+  return ids.size;
+}
+
 // Devuelve el universo total de tiendas Drean (parseando el prefix numérico
 // del campo `tienda` en cuadro_basico_semanal). El dash original de CB
 // reporta este número como el "total tiendas" de Floor Share aunque algunas

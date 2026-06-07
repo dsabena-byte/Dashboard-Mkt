@@ -7,6 +7,7 @@ import {
   getAvailableWeeks,
   getFloorShareRows,
   getTiendaClienteMap,
+  getTotalTiendasRelevadas,
   shareByBrand,
   shareByCatBrand,
   shareByCliente,
@@ -99,9 +100,14 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     }
   }
 
-  const [{ rows: allRowsRaw, error: fetchError, weeks_used, weeks_debug }, clienteMap] = await Promise.all([
+  const [
+    { rows: allRowsRaw, error: fetchError, weeks_used, weeks_debug },
+    clienteMap,
+    totalTiendasRelevadas,
+  ] = await Promise.all([
     fetchRows(),
     getTiendaClienteMap(),
+    getTotalTiendasRelevadas(),
   ]);
 
   // Filtramos rows con campos críticos null antes de cualquier aggregation.
@@ -199,7 +205,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
                 {overall.total.share.toFixed(1)}%
               </div>
               <div className="mt-2 text-[11px] opacity-80">
-                {overall.tiendas} tiendas relevadas · {overall.total.drean_units.toLocaleString()} unidades exhibidas / {overall.total.total_units.toLocaleString()} total piso
+                {totalTiendasRelevadas} tiendas relevadas · {overall.total.drean_units.toLocaleString()} unidades exhibidas / {overall.total.total_units.toLocaleString()} total piso
               </div>
             </div>
             <CategoryCard label="Cocción" obj={FS_OBJ_PCT.coccion} block={overall.coccion} />
