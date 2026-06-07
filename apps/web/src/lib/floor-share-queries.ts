@@ -40,6 +40,33 @@ export interface FloorShareFilter {
   marcas?: string[];
 }
 
+// Devuelve el universo total de tiendas Drean (parseando el prefix numérico
+// del campo `tienda` en cuadro_basico_semanal). El dash original de CB
+// reporta este número como el "total tiendas" de Floor Share aunque algunas
+// no tengan registro en la tabla floor_share.
+export async function getUniversoTiendas(): Promise<number> {
+  const supabase = getCbSupabase();
+  const ids = new Set<string>();
+  let from = 0;
+  const PAGE_CB = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("cuadro_basico_semanal")
+      .select("tienda")
+      .range(from, from + PAGE_CB - 1);
+    if (error || !data) break;
+    for (const r of data as Array<{ tienda: string | null }>) {
+      if (!r.tienda) continue;
+      const m = r.tienda.match(/^\s*(\d+)\s*[-–]/);
+      if (m) ids.add(m[1]!);
+    }
+    if (data.length < PAGE_CB) break;
+    from += PAGE_CB;
+    if (from > 200_000) break;
+  }
+  return ids.size;
+}
+
 // Carga el mapping numero_tienda → cliente desde cuadro_basico_semanal.
 // El campo "tienda" en CB viene como "74 - NOMBRE..." → extraemos el prefix.
 // Paginamos por si la tabla tiene más de 10K rows.
