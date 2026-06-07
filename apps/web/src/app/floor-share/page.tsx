@@ -186,10 +186,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         </div>
       )}
 
-      <div className="rounded-lg border bg-sky-50 p-2 text-[11px] text-sky-900">
-        debug: {allRows.length} rows fetched · weeks_used = [{weeks_used.join(", ") || "ninguna"}] · rows filtrados = {rows.length} · weeks_debug = {weeks_debug}
-      </div>
-
       {!hasData ? (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
           Sin datos para los filtros seleccionados.

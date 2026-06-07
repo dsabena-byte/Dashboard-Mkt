@@ -42,7 +42,7 @@ export function FloorShareFilters({ current, options }: Props) {
     (current.tiendas?.length ?? 0) > 0;
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
+    <div className="grid grid-cols-2 items-end gap-3 rounded-xl border bg-card p-4 sm:grid-cols-3 lg:grid-cols-6">
       <MultiDropdown
         label="Mes"
         placeholder="Todos"
