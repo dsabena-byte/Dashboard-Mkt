@@ -76,6 +76,30 @@ export interface CbFilterOptions {
 
 const PAGE = 1000;
 
+// Cuenta total de tiendas relevadas en cuadro_basico_semanal: distinct tienda
+// con al menos una fila real (cualquier semana, cualquier categoría).
+// Sin filtro de período — universo histórico de relevamiento. Tiendas sin
+// data en ninguna categoría no aparecen porque no tendrían filas en absoluto.
+export async function getTotalTiendasRelevadasCB(): Promise<number> {
+  const supabase = getCbSupabase();
+  const ids = new Set<string>();
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select("tienda")
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    for (const r of data as Array<{ tienda: string | null }>) {
+      if (r.tienda) ids.add(r.tienda);
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+    if (from > 200_000) break;
+  }
+  return ids.size;
+}
+
 export async function getCbRows(filter: CbFilter = {}): Promise<CbRow[]> {
   const supabase = getCbSupabase();
   const all: CbRow[] = [];

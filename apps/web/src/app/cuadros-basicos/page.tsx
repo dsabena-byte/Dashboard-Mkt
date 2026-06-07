@@ -9,6 +9,7 @@ import {
   computeByDim,
   computeByTienda,
   getCbRows,
+  getTotalTiendasRelevadasCB,
   isoWeekToMes,
   type CbFilter,
   type CbRow,
@@ -59,8 +60,14 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   // sin múltiples queries.
   let allRows: CbRow[] = [];
   let fetchError: string | null = null;
+  let totalTiendasRelevadas = 0;
   try {
-    allRows = await getCbRows({});
+    const [rows, totalTiendas] = await Promise.all([
+      getCbRows({}),
+      getTotalTiendasRelevadasCB(),
+    ]);
+    allRows = rows;
+    totalTiendasRelevadas = totalTiendas;
   } catch (err) {
     fetchError = err instanceof Error ? err.message : String(err);
   }
@@ -139,9 +146,9 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
               hint={`${totals.estrat_ok.toLocaleString()} / ${totals.estrat_target.toLocaleString()} · ${deltaPp(totals.estrat_pct)}`}
             />
             <KpiCard
-              title="Tiendas"
-              value={String(totals.tiendas)}
-              hint="auditadas en el período"
+              title="Tiendas relevadas"
+              value={String(totalTiendasRelevadas)}
+              hint={`Universo histórico · ${totals.tiendas} con data en el período filtrado`}
             />
           </section>
 
