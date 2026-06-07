@@ -101,7 +101,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   }
 
   const [
-    { rows: allRowsRaw, error: fetchError, weeks_used, weeks_debug },
+    { rows: allRowsRaw, error: fetchError },
     clienteMap,
     totalTiendasRelevadas,
   ] = await Promise.all([
