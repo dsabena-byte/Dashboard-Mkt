@@ -199,7 +199,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
                 {overall.total.share.toFixed(1)}%
               </div>
               <div className="mt-2 text-[11px] opacity-80">
-                {overall.tiendas} tiendas · {overall.total.drean_units.toLocaleString()} unidades exhibidas / {overall.total.total_units.toLocaleString()} total piso
+                {overall.tiendas} tiendas relevadas · {overall.total.drean_units.toLocaleString()} unidades exhibidas / {overall.total.total_units.toLocaleString()} total piso
               </div>
             </div>
             <CategoryCard label="Cocción" obj={FS_OBJ_PCT.coccion} block={overall.coccion} />
