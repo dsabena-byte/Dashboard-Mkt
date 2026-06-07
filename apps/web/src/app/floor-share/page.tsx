@@ -79,8 +79,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   };
 
   // Por performance: si no hay semanas seleccionadas, limitamos el universo
-  // a las últimas 12 semanas con data (de 70K rows totales). Si el user
-  // selecciona semanas/meses, fetcheamos solo esas.
+  // a las últimas 26 semanas con data (≈6 meses) para abarcar todas las
+  // tiendas activas. Si el user selecciona semanas/meses, fetcheamos solo esas.
   async function fetchRows(): Promise<{ rows: FloorShareRow[]; error: string | null; weeks_used: number[]; weeks_debug: string }> {
     try {
       const baseFilter: FloorShareFilter = { ...filter };
@@ -88,7 +88,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       let weeks_debug = "filter-provided";
       if (!baseFilter.semanas || baseFilter.semanas.length === 0) {
         const { weeks, debug } = await getAvailableWeeks();
-        weeks_used = weeks.slice(0, 12);
+        weeks_used = weeks.slice(0, 26);
         baseFilter.semanas = weeks_used;
         weeks_debug = debug;
       }
