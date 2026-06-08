@@ -1,4 +1,3 @@
-import { KpiCard } from "@/components/kpi-card";
 import type { CbBaselineMedidas, CbSuggestion } from "@/lib/cb-queries";
 
 interface Props {
@@ -11,6 +10,33 @@ function pctCell(pct: number | null): string {
   if (pct >= 80) return "bg-emerald-50 text-emerald-700 font-semibold";
   if (pct >= 70) return "bg-amber-50 text-amber-700 font-semibold";
   return "bg-rose-50 text-rose-600 font-semibold";
+}
+
+function StatCard({ label, value, hint, pill, pillColor }: {
+  label: string;
+  value: string;
+  hint?: string;
+  pill?: string;
+  pillColor?: "emerald" | "rose" | "slate";
+}) {
+  const pillClass =
+    pillColor === "emerald" ? "bg-emerald-100 text-emerald-700"
+    : pillColor === "rose" ? "bg-rose-100 text-rose-700"
+    : "bg-slate-100 text-slate-700";
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-1 text-3xl font-bold text-rose-500">{value}</div>
+      {hint && <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">{hint}</div>}
+      {pill && (
+        <div className="mt-3 border-t pt-2 text-[11px] flex items-center justify-end">
+          <span className={`rounded-full px-2 py-0.5 font-semibold tabular-nums ${pillClass}`}>
+            {pill}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function CbSuggestionsTab({ baseline, suggestions }: Props) {
@@ -53,30 +79,44 @@ export function CbSuggestionsTab({ baseline, suggestions }: Props) {
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiCard
-          title="Baseline · % CB medidas"
-          value={baseline.cb_pct_avg != null ? `${baseline.cb_pct_avg.toFixed(1)}%` : "—"}
-          hint={`${baseline.tiendas_medidas} tiendas hoy en el programa CB · últimas 3 semanas`}
-        />
-        <KpiCard
-          title="Tiendas analizadas"
+        <div className="rounded-xl bg-[#0a1849] p-5 text-white">
+          <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+            Baseline · Cumplimiento medidas
+          </div>
+          <div className="mt-2 text-4xl font-bold text-rose-300">
+            {baseline.cb_pct_avg != null ? `${baseline.cb_pct_avg.toFixed(1)}%` : "—"}
+          </div>
+          <div className="mt-2 text-[11px] opacity-80">
+            {baseline.tiendas_medidas} tiendas en programa CB · últimas 3 semanas
+          </div>
+        </div>
+
+        <StatCard
+          label="Tiendas analizadas"
           value={String(suggestions.length)}
-          hint={`No medidas · presentes en reporte últimas 3 semanas`}
+          hint="No medidas · presentes en reporte"
         />
-        <KpiCard
-          title="✅ Sugeridas (≥ baseline)"
+
+        <StatCard
+          label="✅ Sugeridas (≥ baseline)"
           value={String(sugeridas.length)}
-          hint={`% CB promedio de las sugeridas: ${cbPromSugeridas.toFixed(1)}%`}
+          hint={`% CB promedio: ${cbPromSugeridas.toFixed(1)}%`}
+          pill={`+${(cbPromSugeridas - (baseline.cb_pct_avg ?? 0)).toFixed(1)} pp`}
+          pillColor="emerald"
         />
-        <KpiCard
-          title="🎯 % CB nuevo global"
+
+        <StatCard
+          label="🎯 % CB nuevo global"
           value={`${cbNuevoGlobal.toFixed(1)}%`}
-          hint={`Sumando las ${sugeridas.length} sugeridas a las ${baseline.tiendas_medidas} medidas · ${cbDeltaPp >= 0 ? "+" : ""}${cbDeltaPp.toFixed(1)} pp vs baseline`}
+          hint={`Sumando ${sugeridas.length} sugeridas a ${baseline.tiendas_medidas} medidas`}
+          pill={`${cbDeltaPp >= 0 ? "+" : ""}${cbDeltaPp.toFixed(1)} pp vs baseline`}
+          pillColor={cbDeltaPp >= 0 ? "emerald" : "rose"}
         />
-        <KpiCard
-          title="⚠ Sin catálogo CB"
+
+        <StatCard
+          label="⚠ Sin catálogo CB"
           value={String(sinCatalogo.length)}
-          hint={`Cadenas no definidas en CB · imposible computar % hoy`}
+          hint="Cadenas no definidas en CB"
         />
       </section>
 
