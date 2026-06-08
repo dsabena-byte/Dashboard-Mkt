@@ -2,6 +2,8 @@ import { KpiCard } from "@/components/kpi-card";
 import { CbFiltersBar } from "@/components/cb/cb-filters";
 import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
 import { CbCategoryChart } from "@/components/cb/cb-category-chart";
+import { CbTabsNav } from "@/components/cb/cb-tabs-nav";
+import { CbSuggestionsTab } from "@/components/cb/cb-suggestions-tab";
 import {
   computeTotals,
   computeWeeklyEvolution,
@@ -10,6 +12,9 @@ import {
   computeByTienda,
   getCbRows,
   getTotalTiendasRelevadasCB,
+  getCbBaselineMedidas,
+  getCbSuggestions,
+  aggregateSuggestionsByCadena,
   isoWeekToMes,
   type CbFilter,
   type CbRow,
@@ -47,6 +52,49 @@ function cellBg(pct: number | null): string {
 }
 
 export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
+  const tab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
+
+  // Tab "sugerencias": render aislado, no toca la lógica del overview existente
+  if (tab === "sugerencias") {
+    let baseline: Awaited<ReturnType<typeof getCbBaselineMedidas>> = {
+      cb_pct_avg: null, infalt_pct_avg: null, tiendas_medidas: 0,
+    };
+    let suggestions: Awaited<ReturnType<typeof getCbSuggestions>> = [];
+    let sugError: string | null = null;
+    try {
+      [baseline, suggestions] = await Promise.all([
+        getCbBaselineMedidas(),
+        getCbSuggestions(),
+      ]);
+    } catch (err) {
+      sugError = err instanceof Error ? err.message : String(err);
+    }
+    const byCadena = aggregateSuggestionsByCadena(suggestions);
+    return (
+      <div className="space-y-4">
+        <header>
+          <h2 className="text-2xl font-semibold tracking-tight">Cuadros Básicos</h2>
+          <p className="text-sm text-muted-foreground">
+            Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
+          </p>
+        </header>
+        <CbTabsNav />
+        {sugError && (
+          <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">
+            <strong>Error cargando sugerencias:</strong> <code>{sugError}</code>
+            <p className="mt-2">
+              Asegurate de haber aplicado la migración <code>0042_reporte_existencia.sql</code>{" "}
+              en el proyecto CB y de haber sincronizado al menos una vez el archivo{" "}
+              <code>Reporte de Existencia U3-sem.csv</code>.
+            </p>
+          </div>
+        )}
+        <CbSuggestionsTab baseline={baseline} suggestions={suggestions} byCadena={byCadena} />
+      </div>
+    );
+  }
+
+  // Tab "overview" (default) — comportamiento idéntico al original
   const filter: CbFilter = {
     meses: paramArr(searchParams, "meses"),
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
@@ -114,6 +162,8 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
         </p>
       </header>
+
+      <CbTabsNav />
 
       <CbFiltersBar current={filter} options={options} />
 

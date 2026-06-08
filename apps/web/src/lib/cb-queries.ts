@@ -315,3 +315,98 @@ export function computeByTienda(rows: CbRow[]): CbByTienda[] {
     cb_coccion: v.coc_t > 0 ? (v.coc_o / v.coc_t) * 100 : null,
   }));
 }
+
+// ============================================================================
+// Sugerencias de tiendas a sumar al programa CB
+// ----------------------------------------------------------------------------
+// Fuentes:
+//   - vw_cb_baseline_medidas  → % CB e Infaltable promedio de tiendas medidas
+//   - vw_cb_suggestions       → % CB calculado para cada tienda del Reporte
+//                                de Existencias que NO está siendo medida
+// Tabla cruda:
+//   - reporte_existencia      → observaciones (tienda × SKU × fecha)
+//
+// Migración: supabase/migrations/0042_reporte_existencia.sql
+// ============================================================================
+
+export interface CbBaselineMedidas {
+  cb_pct_avg: number | null;
+  infalt_pct_avg: number | null;
+  tiendas_medidas: number;
+}
+
+export async function getCbBaselineMedidas(): Promise<CbBaselineMedidas> {
+  const supabase = getCbSupabase();
+  const { data, error } = await supabase
+    .from("vw_cb_baseline_medidas")
+    .select("cb_pct_avg, infalt_pct_avg, tiendas_medidas")
+    .limit(1)
+    .maybeSingle<CbBaselineMedidas>();
+  if (error) {
+    console.error("[cb-queries] vw_cb_baseline_medidas:", error.message);
+    return { cb_pct_avg: null, infalt_pct_avg: null, tiendas_medidas: 0 };
+  }
+  return data ?? { cb_pct_avg: null, infalt_pct_avg: null, tiendas_medidas: 0 };
+}
+
+export interface CbSuggestion {
+  numero_tienda: string;
+  tienda: string;
+  cadena: string;
+  cb_target: number;
+  cb_ok: number;
+  cb_pct: number | null;
+  infalt_target: number;
+  infalt_ok: number;
+  infalt_pct: number | null;
+  estrat_target: number;
+  estrat_ok: number;
+  estrat_pct: number | null;
+}
+
+export async function getCbSuggestions(): Promise<CbSuggestion[]> {
+  const supabase = getCbSupabase();
+  const all: CbSuggestion[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("vw_cb_suggestions")
+      .select("numero_tienda, tienda, cadena, cb_target, cb_ok, cb_pct, infalt_target, infalt_ok, infalt_pct, estrat_target, estrat_ok, estrat_pct")
+      .range(from, from + PAGE - 1)
+      .returns<CbSuggestion[]>();
+    if (error) {
+      console.error("[cb-queries] vw_cb_suggestions:", error.message);
+      return all;
+    }
+    const batch = data ?? [];
+    all.push(...batch);
+    if (batch.length < PAGE) break;
+    from += PAGE;
+    if (from > 50_000) break;
+  }
+  return all;
+}
+
+export interface CbSuggestionsByCadena {
+  cadena: string;
+  tiendas: number;
+  cb_pct_promedio: number;
+}
+
+export function aggregateSuggestionsByCadena(suggestions: CbSuggestion[]): CbSuggestionsByCadena[] {
+  const map = new Map<string, { cb_t: number; cb_o: number; count: number }>();
+  for (const s of suggestions) {
+    const acc = map.get(s.cadena) ?? { cb_t: 0, cb_o: 0, count: 0 };
+    acc.cb_t += s.cb_target;
+    acc.cb_o += s.cb_ok;
+    acc.count += 1;
+    map.set(s.cadena, acc);
+  }
+  return [...map.entries()]
+    .map(([cadena, v]) => ({
+      cadena,
+      tiendas: v.count,
+      cb_pct_promedio: v.cb_t > 0 ? (v.cb_o / v.cb_t) * 100 : 0,
+    }))
+    .sort((a, b) => b.cb_pct_promedio - a.cb_pct_promedio);
+}
