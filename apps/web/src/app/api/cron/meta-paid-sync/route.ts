@@ -153,6 +153,129 @@ function toNum(v: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Parsea el nombre OMD-convention "Drean - {Categoria} - {Medio} - {TipoCompra} - {SKU} [extra]"
+// Devuelve la clasificación inferida o nulls si no matchea el patrón.
+function parseAdName(adName: string | null | undefined): {
+  categoria: string | null;
+  tipo_compra: string | null;
+  rol: string | null;
+} {
+  if (!adName) return { categoria: null, tipo_compra: null, rol: null };
+  // Separadores tolerantes (algunos ads tienen "Lavado- Meta" sin espacio).
+  const parts = adName.split(/\s*-\s*/).map((p) => p.trim());
+  // Esperado: ["Drean", "{Categoria}", "{Medio}", "{TipoCompra}", "{SKU}", ...]
+  if (parts.length < 4) return { categoria: null, tipo_compra: null, rol: null };
+  const rawCat = (parts[1] ?? "").toLowerCase();
+  const rawTipo = (parts[3] ?? "").toUpperCase();
+  const categoria = (() => {
+    if (rawCat.startsWith("lavado")) return "Lavado";
+    if (rawCat.startsWith("refriger") || rawCat.startsWith("heladera")) return "Refrigeración";
+    if (rawCat.startsWith("cocci") || rawCat.startsWith("cocina")) return "Cocción";
+    if (rawCat.startsWith("brand")) return "Brand";
+    if (rawCat.startsWith("promo")) return "Promoción";
+    if (rawCat.startsWith("ugc")) return "UGC";
+    return null;
+  })();
+  const tipo_compra = /^(CPC|CPM|CPV)$/.test(rawTipo) ? rawTipo : null;
+  const rol = tipo_compra === "CPC" ? "Consideración"
+            : tipo_compra === "CPM" || tipo_compra === "CPV" ? "Awareness"
+            : null;
+  return { categoria, tipo_compra, rol };
+}
+
+// Agrega meta_paid_creatives del mes por (categoria, rol, tipo_compra) y
+// upsertea a pauta_performance con medio='Meta'. Esto hace que el mes aparezca
+// en el dropdown de /performance + alimenta los cards/charts agregados.
+async function aggregateToPautaPerformance(mesLabel: string): Promise<string> {
+  const url = env("NEXT_PUBLIC_SUPABASE_URL");
+  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+
+  const fetchUrl =
+    `${url}/rest/v1/meta_paid_creatives?` +
+    `select=categoria,rol,tipo_compra,impresiones,alcance,clicks,spend,views_total` +
+    `&mes=eq.${encodeURIComponent(mesLabel)}` +
+    `&categoria=not.is.null&rol=not.is.null&tipo_compra=not.is.null`;
+  const fetched = await fetch(fetchUrl, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  if (!fetched.ok) {
+    return `aggregate fetch failed: ${fetched.status}`;
+  }
+  type AggRow = {
+    categoria: string;
+    rol: string;
+    tipo_compra: string;
+    impresiones: number | null;
+    alcance: number | null;
+    clicks: number | null;
+    spend: number | string | null;
+    views_total: number | null;
+  };
+  const raws = (await fetched.json()) as AggRow[];
+  if (raws.length === 0) return "sin filas para agregar";
+
+  // Group by (categoria, rol, tipo_compra)
+  const acc = new Map<string, {
+    categoria: string; rol: string; tipo_compra: string;
+    impresiones: number; alcance: number; clicks: number; spend: number; views: number;
+  }>();
+  for (const r of raws) {
+    const k = `${r.categoria}|${r.rol}|${r.tipo_compra}`;
+    const cur = acc.get(k) ?? {
+      categoria: r.categoria, rol: r.rol, tipo_compra: r.tipo_compra,
+      impresiones: 0, alcance: 0, clicks: 0, spend: 0, views: 0,
+    };
+    cur.impresiones += Number(r.impresiones ?? 0);
+    cur.alcance += Number(r.alcance ?? 0);
+    cur.clicks += Number(r.clicks ?? 0);
+    cur.spend += Number(r.spend ?? 0);
+    cur.views += Number(r.views_total ?? 0);
+    acc.set(k, cur);
+  }
+
+  // Construir filas para pauta_performance
+  const rows = [...acc.values()].map((v) => {
+    const costo =
+      v.tipo_compra === "CPC" && v.clicks > 0 ? v.spend / v.clicks
+      : v.tipo_compra === "CPM" && v.impresiones > 0 ? (v.spend / v.impresiones) * 1000
+      : v.tipo_compra === "CPV" && v.views > 0 ? v.spend / v.views
+      : null;
+    const ctr = v.impresiones > 0 ? v.clicks / v.impresiones : null;
+    return {
+      mes: mesLabel,
+      categoria: v.categoria,
+      medio: "Meta",
+      objetivo: v.rol,
+      tipo_compra: v.tipo_compra,
+      impresiones: v.impresiones || null,
+      alcance: v.alcance || null,
+      clics: v.clicks || null,
+      views: v.views || null,
+      inversion: Number(v.spend.toFixed(2)),
+      costo: costo != null ? Number(costo.toFixed(4)) : null,
+      ctr: ctr != null ? Number(ctr.toFixed(4)) : null,
+    };
+  });
+
+  // Upsert a pauta_performance (unique key: mes, categoria, medio, objetivo, tipo_compra)
+  const upUrl = `${url}/rest/v1/pauta_performance?on_conflict=mes,categoria,medio,objetivo,tipo_compra`;
+  const upRes = await fetch(upUrl, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!upRes.ok) {
+    const txt = await upRes.text();
+    return `aggregate upsert failed: ${upRes.status} ${txt.slice(0, 200)}`;
+  }
+  return `${rows.length} filas pauta_performance`;
+}
+
 async function supabaseUpsert(rows: unknown[]): Promise<string> {
   if (rows.length === 0) return "sin filas";
   const url = env("NEXT_PUBLIC_SUPABASE_URL");
@@ -325,6 +448,7 @@ export async function GET(req: Request) {
           // Link a la pieza = el post real detrás del ad. Para "dark posts"
           // (anuncios que no son post público) no hay link válido -> null.
           const permalink = img.storyId ? `https://www.facebook.com/${img.storyId}` : null;
+          const classified = parseAdName(ad.name);
           return {
             ad_id: ad.id,
             mes: mesLabel,
@@ -337,6 +461,9 @@ export async function GET(req: Request) {
             adset_name: ad.adset?.name ?? null,
             ad_name: ad.name ?? null,
             objective: ad.campaign?.objective ?? null,
+            categoria: classified.categoria,
+            tipo_compra: classified.tipo_compra,
+            rol: classified.rol,
             plataforma: "meta",
             thumbnail_url: mirrored,
             image_url: mirrored,
@@ -359,6 +486,12 @@ export async function GET(req: Request) {
 
     const upsertResult = await supabaseUpsert(rows);
 
+    // Después del upsert per-ad, agregar por (categoria, rol, tipo_compra) y
+    // volcar a pauta_performance. Hace aparecer el mes en /performance.
+    const aggregateResult = await aggregateToPautaPerformance(mesLabel).catch(
+      (e) => `aggregate error: ${e instanceof Error ? e.message : String(e)}`,
+    );
+
     return NextResponse.json({
       ok: true,
       act_id,
@@ -369,6 +502,7 @@ export async function GET(req: Request) {
       ads_total: allAds.length,
       ads_con_insights: rows.length,
       upsert: upsertResult,
+      aggregate: aggregateResult,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
