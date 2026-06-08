@@ -1,8 +1,12 @@
 name: Meta paid creatives sync (1x/día)
 
-# Schedule diario 07:30 ART (10:30 UTC). Sincroniza el mes en curso de la Ad
-# Account de Mabe Argentina (act_1428795852368328) que OMD comparte con nuestro
-# BM. Para correr manual o backfill de meses pasados usar workflow_dispatch.
+# Schedule diario 07:30 ART (10:30 UTC). Sincroniza el mes en curso + los 2
+# anteriores de la Ad Account de Mabe Argentina (act_1428795852368328) que OMD
+# comparte con nuestro BM. Cubrir 3 meses captura atribuciones tardías de Meta
+# (típicas en los primeros 14 días del mes siguiente).
+#
+# Manual: si pasás un `mes` específico vía workflow_dispatch, sincroniza solo
+# ese mes (útil para backfill puntual).
 on:
   schedule:
     - cron: "30 10 * * *"  # 10:30 UTC = 07:30 ART
@@ -17,44 +21,64 @@ on:
         required: false
         default: ""
       mes:
-        description: "Mes a sincronizar YYYY-MM (ej. 2026-05). Vacío = mes actual."
+        description: "Mes específico YYYY-MM (ej. 2026-05). Vacío = sincroniza mes actual + 2 anteriores."
         required: false
         default: ""
 
 jobs:
   trigger:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Trigger /api/cron/meta-paid-sync
         run: |
           set -euo pipefail
           BASE="https://dashboard-mkt-seven.vercel.app/api/cron/meta-paid-sync"
 
-          # Armar query string desde los inputs (cada uno opcional).
-          QS=""
-          if [ "${DEBUG:-false}" = "true" ]; then QS="${QS}&debug=1"; fi
-          if [ -n "${ACT_ID:-}" ]; then QS="${QS}&act_id=${ACT_ID}"; fi
-          if [ -n "${MES:-}" ]; then QS="${QS}&mes=${MES}"; fi
-          QS="${QS#&}"  # sacar el '&' inicial
-          if [ -n "$QS" ]; then URL="${BASE}?${QS}"; else URL="${BASE}"; fi
-          echo "GET $URL"
+          # Build common query suffix (debug + act_id)
+          COMMON_QS=""
+          if [ "${DEBUG:-false}" = "true" ]; then COMMON_QS="${COMMON_QS}&debug=1"; fi
+          if [ -n "${ACT_ID:-}" ]; then COMMON_QS="${COMMON_QS}&act_id=${ACT_ID}"; fi
 
-          # -sS (sin -f) para capturar el body aun en HTTP 4xx/5xx: el JSON de
-          # error trae la causa (phase, error, lista de cuentas que ve el token).
-          if [ -n "${CRON_SECRET:-}" ]; then
-            HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 600 "$URL" \
-              -H "Authorization: Bearer $CRON_SECRET")
+          # Lista de meses a sincronizar
+          if [ -n "${MES:-}" ]; then
+            # Manual con mes específico
+            MESES_TO_SYNC="${MES}"
           else
-            HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 600 "$URL")
+            # Schedule o manual sin mes: últimos 3 meses (current + 2 prior)
+            MESES_TO_SYNC=$(for OFFSET in 0 1 2; do
+              date -u -d "-${OFFSET} months" +%Y-%m
+            done | tr '\n' ' ')
           fi
-          echo "HTTP $HTTP"
-          echo "----- respuesta -----"
-          cat out.json || true
-          echo ""
-          echo "---------------------"
-          if [ "$HTTP" -ge 400 ] || grep -q '"ok":false' out.json; then
-            echo "Cron falló (HTTP $HTTP)"
+          echo "Meses a sincronizar: ${MESES_TO_SYNC}"
+
+          FAIL_COUNT=0
+          for MES_TO_SYNC in $MESES_TO_SYNC; do
+            QS="mes=${MES_TO_SYNC}${COMMON_QS}"
+            URL="${BASE}?${QS}"
+            echo ""
+            echo "===== Sincronizando ${MES_TO_SYNC} ====="
+            echo "GET $URL"
+            if [ -n "${CRON_SECRET:-}" ]; then
+              HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 600 "$URL" \
+                -H "Authorization: Bearer $CRON_SECRET")
+            else
+              HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 600 "$URL")
+            fi
+            echo "HTTP $HTTP"
+            echo "----- respuesta -----"
+            cat out.json || true
+            echo ""
+            echo "---------------------"
+            if [ "$HTTP" -ge 400 ] || grep -q '"ok":false' out.json; then
+              echo "Cron falló para ${MES_TO_SYNC} (HTTP $HTTP)"
+              FAIL_COUNT=$((FAIL_COUNT + 1))
+            fi
+          done
+
+          if [ "$FAIL_COUNT" -gt 0 ]; then
+            echo ""
+            echo "⚠️  $FAIL_COUNT mes(es) fallaron"
             exit 1
           fi
         env:
