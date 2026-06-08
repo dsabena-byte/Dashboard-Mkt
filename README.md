@@ -5,11 +5,16 @@ Google Ads, Meta Ads, GA4 y canales offline, compara performance real vs
 planning, visualiza el funnel completo (impresiones → clicks → sesiones →
 conversiones) e incorpora inteligencia competitiva (web + redes sociales).
 
-> Estado: app desplegada en Vercel con datos reales. Los syncs de **GA4,
-> Meta (orgánico FB/IG) y paid creatives corren con GitHub Actions** que
-> disparan los endpoints `/api/cron/*` del propio Next app — **no usan N8N**.
-> N8N queda reservado solo para Apify (scraping de competidores) y Google
-> Sheets (planning). Ver [`docs/crons-github-actions.md`](docs/crons-github-actions.md).
+> Estado: app desplegada en Vercel con datos reales. Tres orquestadores:
+>
+> - **GitHub Actions** dispara los endpoints `/api/cron/*` del Next app para
+>   GA4, Meta (orgánico FB/IG), paid creatives, sentiment, organic insights.
+>   Ver [`docs/crons-github-actions.md`](docs/crons-github-actions.md).
+> - **Apps Script "Sync Drive Tablero CB"** lee folders de Drive (CSVs de
+>   Cuadros Básicos, Floor Share y Planning de Pauta) y los upsertea a
+>   Supabase. Sin OAuth tokens — corre con la cuenta Google del dueño del
+>   script. Ver [`docs/planning-media-sync.md`](docs/planning-media-sync.md).
+> - **N8N** queda solo para Apify (scraping de competidores web/social).
 
 ---
 
@@ -18,10 +23,9 @@ conversiones) e incorpora inteligencia competitiva (web + redes sociales).
 ```mermaid
 flowchart LR
   subgraph Sources["Fuentes de datos"]
-    GA[Google Ads]
     META[Meta Ads / Graph API]
     GA4[Google Analytics 4]
-    SHEETS[Google Sheets<br/>planning + mkt-canal]
+    DRIVE[Google Drive<br/>CSVs CB / FS / Pauta]
   end
 
   subgraph Scrape["Scraping"]
@@ -32,8 +36,12 @@ flowchart LR
     GHA[GitHub Actions<br/>workflows .yml<br/>cada 6-12h]
   end
 
-  subgraph OrchB["Orquestación B: N8N"]
-    N8N[N8N workflows<br/>Apify + Sheets]
+  subgraph OrchB["Orquestación B: Apps Script"]
+    GAS[Apps Script<br/>Sync Drive Tablero CB<br/>trigger 1h]
+  end
+
+  subgraph OrchC["Orquestación C: N8N"]
+    N8N[N8N workflows<br/>Apify only]
   end
 
   subgraph App["Frontend + APIs"]
@@ -49,26 +57,31 @@ flowchart LR
   GHA -->|curl /api/cron/*| NEXT
   NEXT --> SUPA
 
+  DRIVE --> GAS
+  GAS -->|REST upsert| SUPA
+
   APIFY --> N8N
-  SHEETS --> N8N
   N8N --> SUPA
 
   SUPA --> NEXT
 ```
 
-Los crons periódicos (Meta FB / IG / paid, GA4, sentiment) viven en
-`.github/workflows/` y disparan los endpoints `/api/cron/*` del Next app.
-El detalle de cada workflow está en
+Los crons de APIs (Meta FB/IG/paid, GA4, sentiment, organic-insights) viven
+en `.github/workflows/` y disparan endpoints `/api/cron/*` — detalle en
 [`docs/crons-github-actions.md`](docs/crons-github-actions.md).
+
+Los syncs de archivos de Drive (Cuadros Básicos, Floor Share, Planning de
+Pauta) viven en el Apps Script "Sync Drive Tablero CB" que se ejecuta cada
+hora — detalle en [`docs/planning-media-sync.md`](docs/planning-media-sync.md).
 
 **Stack**
 
 - **Storage**: Supabase (Postgres 15)
 - **Frontend**: Next.js 14 App Router + TypeScript + Tailwind + shadcn/ui
 - **Visualización**: Recharts
-- **Orquestación**: N8N (ingesta scheduled)
-- **Scraping**: Apify actors (competencia web, fase 2)
-- **Hosting**: Vercel (frontend) + Supabase (DB) + N8N self-hosted/cloud
+- **Orquestación**: GitHub Actions (APIs) + Google Apps Script (Drive→Supabase) + N8N (Apify)
+- **Scraping**: Apify actors (competencia web/social) vía N8N
+- **Hosting**: Vercel (frontend) + Supabase (DB) + Apps Script (Google nativo) + N8N self-hosted/cloud
 
 ---
 
@@ -181,7 +194,7 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 - [`docs/n8n-social-setup.md`](docs/n8n-social-setup.md) — setup del workflow Social Sheet → social_competitor + social_metrics
 - [`docs/n8n-scraper-drean-setup.md`](docs/n8n-scraper-drean-setup.md) — setup del scraper adaptado de Tombaio para RRSS de Drean
 - [`docs/n8n-competitor-web-setup.md`](docs/n8n-competitor-web-setup.md) — setup del scraper de tráfico web de competidores (Apify SimilarWeb)
-- [`docs/n8n-planning-media-setup.md`](docs/n8n-planning-media-setup.md) — setup del workflow Pauta-omd (Sheet wide → planning_media)
+- [`docs/planning-media-sync.md`](docs/planning-media-sync.md) — sync de Planning de Pauta (Drive CSV → planning_media) vía Apps Script
 - [`docs/next-phases.md`](docs/next-phases.md) — roadmap fases 2/3/4
 
 ---
@@ -275,6 +288,43 @@ caduca. Para piezas de **video**, Meta solo expone un `thumbnail_url` de 64×64
 desde el ad; la versión en alta vive en el post original y se trae vía
 `effective_object_story_id → full_picture`, **leído con el token del system user**
 (no con el override de usuario: el usuario típicamente no administra la Página).
+
+### Apps Script "Sync Drive Tablero CB" — sync de archivos de Drive
+
+Tres folders de Drive se sincronizan a Supabase con un único Apps Script:
+
+| Folder Drive            | Property            | Tabla Supabase             | Filename pattern                                                       |
+|-------------------------|---------------------|-----------------------------|------------------------------------------------------------------------|
+| Cuadros Básicos         | `CB_FOLDER_ID`      | `cuadro_basico_semanal` + `contactos` | `NN.csv` (semana) o `tienda-promotor-supervisor*.csv` |
+| Floor Share             | `FS_FOLDER_ID`      | `floor_share`               | `YYYY-MM_Categoria.csv` o `NN_Categoria.csv`                           |
+| Planning de Pauta       | `PLANNING_FOLDER_ID`| `planning_media`            | `Mes-Pauta.csv` (nuevo) o `Mes-Categoria.csv` (legacy abril/mayo)      |
+
+**Por qué Apps Script y no GitHub Actions / Vercel:**
+
+- Corre con la cuenta Google del dueño del script → cero OAuth refresh tokens
+  para mantener / rotar / publicar.
+- Triggers nativos de Google (`syncAll` cada 1h) sin secrets.
+- Tabla `sync_status` trackea cada archivo por `drive_modified` → solo se
+  reprocesa lo que cambió (idempotente y barato).
+- Upsert con `Prefer: resolution=merge-duplicates` por unique key compuesta
+  → la data histórica nunca se pisa con ceros aunque borres archivos del folder.
+
+**Script Properties requeridas:**
+
+| Property                  | Para qué                                              |
+|---------------------------|-------------------------------------------------------|
+| `SUPABASE_URL`            | Endpoint REST del proyecto                            |
+| `SUPABASE_SECRET_KEY`     | Service role (server-side, full access)               |
+| `CB_FOLDER_ID`            | ID del folder con CSVs de CB                          |
+| `FS_FOLDER_ID`            | ID del folder con CSVs de Floor Share                 |
+| `PLANNING_FOLDER_ID`      | ID del folder con CSVs de Planning (Pauta-omd)        |
+
+**Convenciones por folder** y troubleshooting completo en
+[`docs/planning-media-sync.md`](docs/planning-media-sync.md).
+
+**Para subir data nueva:** arrastrar el CSV al folder correspondiente con el
+filename del patrón. El próximo trigger horario lo levanta solo. Para forzar
+manual: Apps Script editor → función `syncAll` → Run.
 
 ### TikTok / Programmatic / YouTube — sin automatización todavía
 
