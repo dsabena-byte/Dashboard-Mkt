@@ -81,47 +81,6 @@ export function CbSuggestionsTab({ baseline, suggestions, byCadena }: Props) {
         />
       </section>
 
-      {byCadena.length > 0 && (
-        <section className="rounded-xl border bg-card overflow-hidden">
-          <div className="px-4 py-3">
-            <h3 className="text-sm font-bold">📊 Cumplimiento promedio por cadena (no medidas)</h3>
-            <p className="text-[11px] text-muted-foreground">
-              Tiendas analizadas y su % CB promedio agrupadas por cadena.
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-[#0a1849] text-white">
-                <tr>
-                  <th className="px-3 py-2 text-left">Cadena</th>
-                  <th className="px-3 py-2 text-right">Tiendas</th>
-                  <th className="px-3 py-2 text-right">% CB promedio</th>
-                  <th className="px-3 py-2 text-right">Δ vs baseline</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byCadena.map((c) => {
-                  const delta = c.cb_pct_promedio - threshold;
-                  const deltaClass = delta >= 0 ? "text-emerald-600" : "text-rose-500";
-                  return (
-                    <tr key={c.cadena} className="border-b last:border-0">
-                      <td className="px-3 py-1.5 font-medium">{c.cadena}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{c.tiendas}</td>
-                      <td className={`px-3 py-1.5 text-right tabular-nums ${pctCell(c.cb_pct_promedio)}`}>
-                        {c.cb_pct_promedio.toFixed(1)}%
-                      </td>
-                      <td className={`px-3 py-1.5 text-right tabular-nums ${deltaClass}`}>
-                        {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
       <section className="rounded-xl border bg-card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <h3 className="text-sm font-bold">✅ Tiendas sugeridas para sumar al programa</h3>
