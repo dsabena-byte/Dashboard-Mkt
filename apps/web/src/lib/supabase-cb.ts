@@ -21,6 +21,12 @@ export function getCbSupabase() {
   const url = normalizeUrl(rawUrl);
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    // Forzar no-cache: Next.js / Vercel pueden cachear los fetch a Supabase
+    // si no se especifica. Sin esto, vistas como vw_cb_baseline_medidas
+    // pueden devolver datos viejos aunque la DB tenga semanas nuevas cargadas.
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+    },
   });
 }
 
