@@ -291,40 +291,151 @@ desde el ad; la versión en alta vive en el post original y se trae vía
 
 ### Apps Script "Sync Drive Tablero CB" — sync de archivos de Drive
 
-Tres folders de Drive se sincronizan a Supabase con un único Apps Script:
+Tres folders de Drive se sincronizan a Supabase con un único Apps Script que
+corre cada hora.
 
-| Folder Drive            | Property            | Tabla Supabase             | Filename pattern                                                       |
-|-------------------------|---------------------|-----------------------------|------------------------------------------------------------------------|
-| Cuadros Básicos         | `CB_FOLDER_ID`      | `cuadro_basico_semanal` + `contactos` | `NN.csv` (semana) o `tienda-promotor-supervisor*.csv` |
-| Floor Share             | `FS_FOLDER_ID`      | `floor_share`               | `YYYY-MM_Categoria.csv` o `NN_Categoria.csv`                           |
-| Planning de Pauta       | `PLANNING_FOLDER_ID`| `planning_media`            | `Mes-Pauta.csv` (nuevo) o `Mes-Categoria.csv` (legacy abril/mayo)      |
+| Folder Drive            | Property            | Tabla Supabase             | Proyecto Supabase         | Filename pattern                                                  |
+|-------------------------|---------------------|----------------------------|---------------------------|-------------------------------------------------------------------|
+| Cuadros Básicos         | `CB_FOLDER_ID`      | `cuadro_basico_semanal` + `contactos` | **CB** (`fsvdcpqzchrezkxflyfi`) | `NN.csv` (semana) o `tienda-promotor-supervisor*.csv` |
+| Floor Share             | `FS_FOLDER_ID`      | `floor_share`              | **CB** (`fsvdcpqzchrezkxflyfi`) | `YYYY-MM_Categoria.csv` o `NN_Categoria.csv`                      |
+| Planning de Pauta       | `PLANNING_FOLDER_ID`| `planning_media`           | **Principal** (`vtcrhyyirqexczycuwhe`) | `Mes-Pauta.xlsx` (planilla viva de OMD con 12 meses adentro)      |
+
+**⚠️ Arquitectura multi-proyecto**: el dashboard usa **2 proyectos de Supabase**:
+
+- **Principal** (`vtcrhyyirqexczycuwhe`) — donde viven `planning_media`,
+  `meta_posts`, `ga4_*`, `pauta_performance`, `insights_log`, etc. Las
+  dashboards de Next leen de acá.
+- **CB** (`fsvdcpqzchrezkxflyfi`) — donde viven `cuadro_basico_semanal`,
+  `floor_share`, `contactos`, **`sync_status`**.
+
+El Apps Script escribe CB y Floor Share al proyecto CB (configurado en
+`SUPABASE_URL`), pero **planning_media vive en el principal**. Por eso el
+script usa un par de properties separado (`PLANNING_SUPABASE_URL` y
+`PLANNING_SUPABASE_SECRET_KEY`) y una rama condicional en `syncPlanning` que
+arma un `planningCtx` distinto al `ctx` general antes de upsertear.
 
 **Por qué Apps Script y no GitHub Actions / Vercel:**
 
 - Corre con la cuenta Google del dueño del script → cero OAuth refresh tokens
   para mantener / rotar / publicar.
 - Triggers nativos de Google (`syncAll` cada 1h) sin secrets.
-- Tabla `sync_status` trackea cada archivo por `drive_modified` → solo se
-  reprocesa lo que cambió (idempotente y barato).
+- Tabla `sync_status` (proyecto CB) trackea cada archivo por `drive_modified`
+  → solo se reprocesa lo que cambió (idempotente y barato). Detalle clave: la
+  comparación es contra `file.getLastUpdated()` en Drive, así que basta con
+  editar el archivo para forzar re-sync. Si querés re-procesar a la fuerza
+  sin tocar el archivo, borrar la fila de `sync_status` correspondiente.
 - Upsert con `Prefer: resolution=merge-duplicates` por unique key compuesta
   → la data histórica nunca se pisa con ceros aunque borres archivos del folder.
 
-**Script Properties requeridas:**
+**Script Properties requeridas (7 en total):**
 
-| Property                  | Para qué                                              |
-|---------------------------|-------------------------------------------------------|
-| `SUPABASE_URL`            | Endpoint REST del proyecto                            |
-| `SUPABASE_SECRET_KEY`     | Service role (server-side, full access)               |
-| `CB_FOLDER_ID`            | ID del folder con CSVs de CB                          |
-| `FS_FOLDER_ID`            | ID del folder con CSVs de Floor Share                 |
-| `PLANNING_FOLDER_ID`      | ID del folder con CSVs de Planning (Pauta-omd)        |
+| Property                          | Para qué                                                        |
+|-----------------------------------|-----------------------------------------------------------------|
+| `SUPABASE_URL`                    | URL del proyecto **CB** (CB / FS / contactos / sync_status)     |
+| `SUPABASE_SECRET_KEY`             | service_role del proyecto CB                                    |
+| `CB_FOLDER_ID`                    | ID del folder con CSVs de Cuadros Básicos                       |
+| `FS_FOLDER_ID`                    | ID del folder con CSVs de Floor Share                           |
+| `PLANNING_FOLDER_ID`              | ID del folder con `Mes-Pauta.xlsx` (Pauta-omd)                  |
+| `PLANNING_SUPABASE_URL`           | URL del proyecto **Principal** (`vtcrhyyirqexczycuwhe`)         |
+| `PLANNING_SUPABASE_SECRET_KEY`    | service_role del proyecto principal                             |
 
-**Convenciones por folder** y troubleshooting completo en
+#### Formato del archivo `Mes-Pauta.xlsx` (planning de pauta)
+
+OMD mantiene una planilla viva tipo `Junio-Pauta.xlsx` que contiene **todo el
+año** (12 columnas mensuales) **con todas las categorías interleavadas**. Cada
+mes te manda una versión nueva renombrada al mes vigente
+(`Julio-Pauta.xlsx`, `Agosto-Pauta.xlsx`, etc.). El script parsea las 12
+columnas mensuales de cada archivo, así jul-dic se mantienen actualizados con
+el forecast más reciente y los meses pasados se refrescan si OMD ajustó algo.
+
+**Estructura del Excel:**
+
+| Campaña | Rol Of Comms | Sistema | Formato & Channel | Enero | Febrero | ... | Diciembre |
+|---|---|---|---|---|---|---|---|
+| (vacío) | Build | Total OFF | (vacío) | $-, $-, ... | (← fila skipeada por subtotal) |
+| Brand | Build | TVC | Tanda | $- | $- | ... | $- |
+| Brand | Build | OOH | Cartel Unicenter | $- | $- | ... | $9.800.000 |
+| Heladera | Build | YouTube | Bumper | ... | (Heladera se mappea a "Refrigeración") |
+| (vacío) | Build | Total ON | (vacío) | (← otra fila skipeada) |
+| (vacío) | (vacío) | (vacío) | PERCEPCIÓN IIBB | $295.835 | ... | (cost row, campania='General', tipo='costo') |
+
+**Reglas del parser `syncPlanning`:**
+
+1. **Filename**: `Mes-Pauta.{csv,xlsx}` (mes en español, sin acentos). Para
+   `.xlsx`, el script convierte a Google Sheets en memoria via Advanced Drive
+   Service y borra la copia temporal al terminar.
+2. **Detección de headers**: busca dinámicamente la fila que contiene
+   `Formato` + (`Sistema` o `Rol`) + (`Campaña` o categoría inferible del
+   filename). Las filas vacías arriba del header (logo, "2026", "Q1/Q2/Q3/Q4")
+   se ignoran.
+3. **Mapping de categorías** (`normalizePlanningCategoria`): "heladera" →
+   `Refrigeración`, "refriger*" → `Refrigeración`, "cocina*" → `Cocina`,
+   "lavado" → `Lavado`, "brand" → `Brand`, "promo*" → `Promoción`,
+   "ugc" → `UGC`.
+4. **Detección de subtotales** (`esPlanningSkip`): salta filas donde
+   **sistema** o **formato** arrancan con `Total` o `Subtotal` (ej. "Total
+   OFF", "Total ON", "TOTAL", "Total Campaña"). **Sin este filtro la inversión
+   se cuenta 2.2× (subtotales + detalle)**.
+5. **Detección de costos** (`esPlanningCosto`): filas cuyo `formato` matchea
+   `/iibb|percep|cheque|impuesto|tech\s*fee|comisi/i` se marcan como
+   `tipo='costo'`. Si la fila no tiene categoría asignada (típico de costos
+   generales del mes), se le asigna `campania='General'`. Sin este fallback los
+   costos no aparecen en `Costos adicionales` del dashboard.
+6. **Parsing de moneda** (`parseLocaleNumber`): strippea `$`, espacios, `%`;
+   convierte formato AR (`65.253.780,00`) a número JS. Sin el strip del `$`,
+   todos los valores quedan en `null` y no se emite nada.
+7. **12 columnas mensuales**: el parser detecta `Enero`..`Diciembre` como
+   headers y emite una fila de `planning_media` por cada (data row × mes con
+   inversión > 0). La fecha resultante usa el año de `PLANNING_YEAR` (default:
+   año actual) y el mes correspondiente.
+
+**Convenciones y troubleshooting completo** en
 [`docs/planning-media-sync.md`](docs/planning-media-sync.md).
 
-**Para subir data nueva:** arrastrar el CSV al folder correspondiente con el
-filename del patrón. El próximo trigger horario lo levanta solo. Para forzar
-manual: Apps Script editor → función `syncAll` → Run.
+#### Operación cotidiana
+
+**Subir un mes nuevo** (cada vez que OMD te mande pauta nueva):
+1. Renombrar el archivo a `Mes-Pauta.xlsx` (ej. `Julio-Pauta.xlsx`).
+2. Arrastrarlo al folder de Drive `PLANNING_FOLDER_ID`.
+3. Esperar hasta 1h (trigger horario) o forzar manual: Apps Script editor →
+   `syncAll` → Run.
+4. Verificar en `/planning` que el mes nuevo aparezca con los totales correctos.
+
+**Forzar re-procesamiento de un archivo ya sincronizado** (debugging):
+```sql
+-- En el proyecto CB
+delete from sync_status where filename = 'Junio-Pauta.xlsx';
+```
+Luego correr `syncAll`. El archivo se reprocesará desde cero.
+
+**Verificación de integridad post-sync** (los totales del DB tienen que
+matchear el Excel — sumar `Total OFF` + `Total ON` del mes):
+```sql
+-- En el proyecto principal
+select fecha,
+       sum(inversion) filter (where tipo='media') as media,
+       sum(inversion) filter (where tipo='costo') as costos
+from planning_media
+group by fecha
+order by fecha;
+```
+
+#### Pre-requisitos del entorno
+
+Para que el sync funcione hay que tener:
+
+1. **Advanced Drive Service v2** habilitado en el Apps Script
+   (Services → Drive API → Add → Identifier `Drive`, Version `v2`). Sin esto,
+   los `.xlsx` no se pueden convertir a Sheets para parseo.
+2. **Permisos OAuth**: la primera vez que corra `syncAll`, Google pide
+   autorización para Drive (read/write para conversión temporal) y
+   UrlFetchApp (para hablar con Supabase). Aceptar todo.
+3. **Tabla `sync_status`** existente en el proyecto CB con columnas
+   `filename, drive_id, drive_modified, synced_at, rows_processed, status,
+   error_msg`.
+4. **Tabla `planning_media`** existente en el proyecto principal (creada por
+   `supabase/migrations/0004_planning_media.sql`) con la unique key compuesta
+   `(fecha, campania, rol, sistema, formato, tipo)`.
 
 ### TikTok / Programmatic / YouTube — sin automatización todavía
 
