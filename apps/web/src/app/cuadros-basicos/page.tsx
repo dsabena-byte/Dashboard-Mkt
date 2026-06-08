@@ -1,4 +1,3 @@
-import { KpiCard } from "@/components/kpi-card";
 import { CbFiltersBar } from "@/components/cb/cb-filters";
 import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
 import { CbCategoryChart } from "@/components/cb/cb-category-chart";
@@ -179,26 +178,30 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       ) : (
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard
-              title="% Cuadro Básico"
-              value={`${totals.cb_pct.toFixed(0)}%`}
-              hint={`${totals.cb_ok.toLocaleString()} / ${totals.cb_target.toLocaleString()} · Obj 80% (${deltaPp(totals.cb_pct)})`}
-            />
-            <KpiCard
-              title="% Infaltables"
-              value={`${totals.infalt_pct.toFixed(0)}%`}
-              hint={`${totals.infalt_ok.toLocaleString()} / ${totals.infalt_target.toLocaleString()} · ${deltaPp(totals.infalt_pct)}`}
-            />
-            <KpiCard
-              title="% Estratégico"
-              value={`${totals.estrat_pct.toFixed(0)}%`}
-              hint={`${totals.estrat_ok.toLocaleString()} / ${totals.estrat_target.toLocaleString()} · ${deltaPp(totals.estrat_pct)}`}
-            />
-            <KpiCard
-              title="Tiendas relevadas"
-              value={String(totalTiendasRelevadas)}
-              hint={`Universo histórico · ${totals.tiendas} con data en el período filtrado`}
-            />
+            <div className="rounded-xl bg-[#0a1849] p-5 text-white">
+              <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                Cuadro Básico Drean — Cumplimiento global
+              </div>
+              <div className="mt-2 text-4xl font-bold text-rose-300">
+                {totals.cb_pct.toFixed(1)}%
+              </div>
+              <div className="mt-2 text-[11px] opacity-80">
+                {totalTiendasRelevadas} tiendas relevadas · {totals.cb_ok.toLocaleString()} cumplidos / {totals.cb_target.toLocaleString()} target
+              </div>
+            </div>
+            <CbMetricCard label="Infaltables" pct={totals.infalt_pct} ok={totals.infalt_ok} target={totals.infalt_target} obj={OBJ_PCT} />
+            <CbMetricCard label="Estratégico" pct={totals.estrat_pct} ok={totals.estrat_ok} target={totals.estrat_target} obj={OBJ_PCT} />
+            <div className="rounded-xl border bg-card p-5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tiendas relevadas</div>
+              <div className="mt-1 text-3xl font-bold text-rose-500">{totalTiendasRelevadas}</div>
+              <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">Universo histórico</div>
+              <div className="mt-3 border-t pt-2 text-[11px] flex items-center justify-between">
+                <span className="text-muted-foreground">Con data filtrada</span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold tabular-nums text-slate-700">
+                  {totals.tiendas}
+                </span>
+              </div>
+            </div>
           </section>
 
           {weekly.length > 1 && (
@@ -305,6 +308,25 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+function CbMetricCard({ label, pct, ok, target, obj }: { label: string; pct: number; ok: number; target: number; obj: number }) {
+  const delta = pct - obj;
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-1 text-3xl font-bold text-rose-500">{pct.toFixed(1)}%</div>
+      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+        {ok.toLocaleString()} / {target.toLocaleString()}
+      </div>
+      <div className="mt-3 border-t pt-2 text-[11px] flex items-center justify-between">
+        <span className="text-muted-foreground">Obj {obj}%</span>
+        <span className={`rounded-full px-2 py-0.5 font-semibold tabular-nums ${delta >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+          {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp
+        </span>
+      </div>
     </div>
   );
 }
