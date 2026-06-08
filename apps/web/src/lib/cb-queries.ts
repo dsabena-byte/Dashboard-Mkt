@@ -333,20 +333,29 @@ export interface CbBaselineMedidas {
   cb_pct_avg: number | null;
   infalt_pct_avg: number | null;
   tiendas_medidas: number;
+  cb_ok_total: number;
+  cb_target_total: number;
+  infalt_ok_total: number;
+  infalt_target_total: number;
 }
+
+const EMPTY_BASELINE: CbBaselineMedidas = {
+  cb_pct_avg: null, infalt_pct_avg: null, tiendas_medidas: 0,
+  cb_ok_total: 0, cb_target_total: 0, infalt_ok_total: 0, infalt_target_total: 0,
+};
 
 export async function getCbBaselineMedidas(): Promise<CbBaselineMedidas> {
   const supabase = getCbSupabase();
   const { data, error } = await supabase
     .from("vw_cb_baseline_medidas")
-    .select("cb_pct_avg, infalt_pct_avg, tiendas_medidas")
+    .select("cb_pct_avg, infalt_pct_avg, tiendas_medidas, cb_ok_total, cb_target_total, infalt_ok_total, infalt_target_total")
     .limit(1)
     .maybeSingle<CbBaselineMedidas>();
   if (error) {
     console.error("[cb-queries] vw_cb_baseline_medidas:", error.message);
-    return { cb_pct_avg: null, infalt_pct_avg: null, tiendas_medidas: 0 };
+    return EMPTY_BASELINE;
   }
-  return data ?? { cb_pct_avg: null, infalt_pct_avg: null, tiendas_medidas: 0 };
+  return data ?? EMPTY_BASELINE;
 }
 
 export interface CbSuggestion {

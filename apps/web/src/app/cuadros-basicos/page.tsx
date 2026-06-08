@@ -58,6 +58,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   if (tab === "sugerencias") {
     let baseline: Awaited<ReturnType<typeof getCbBaselineMedidas>> = {
       cb_pct_avg: null, infalt_pct_avg: null, tiendas_medidas: 0,
+      cb_ok_total: 0, cb_target_total: 0, infalt_ok_total: 0, infalt_target_total: 0,
     };
     let suggestions: Awaited<ReturnType<typeof getCbSuggestions>> = [];
     let sugError: string | null = null;

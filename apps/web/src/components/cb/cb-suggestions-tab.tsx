@@ -30,12 +30,18 @@ export function CbSuggestionsTab({ baseline, suggestions, byCadena }: Props) {
   // Sin catálogo: tiendas cuya cadena no está en el programa CB (cb_target=0)
   const sinCatalogo = suggestions.filter((s) => s.cb_target === 0);
 
-  // Impacto estimado: si sumáramos todas las sugeridas, ¿cómo subiría el avg?
-  // Cálculo simple: nuevo_pct = (sum(ok_total) + sum(ok_sugeridas)) / (sum(target_total) + sum(target_sugeridas))
-  // Aproximación visual usando los pcts (no exactos pero orientativos).
+  // Sumatoria de las sugeridas
   const sumOkSug = sugeridas.reduce((a, s) => a + s.cb_ok, 0);
   const sumTargetSug = sugeridas.reduce((a, s) => a + s.cb_target, 0);
   const cbPromSugeridas = sumTargetSug > 0 ? (sumOkSug / sumTargetSug) * 100 : 0;
+
+  // % CB global REAL si se suman las sugeridas a las tiendas medidas hoy.
+  // Suma algebraica simple — ambos universos cubren las últimas 3 semanas:
+  // nuevo = (cb_ok_medidas + ok_sugeridas) / (cb_target_medidas + target_sugeridas)
+  const cbNuevoGlobal = (baseline.cb_target_total + sumTargetSug) > 0
+    ? ((baseline.cb_ok_total + sumOkSug) / (baseline.cb_target_total + sumTargetSug)) * 100
+    : 0;
+  const cbDeltaPp = baseline.cb_pct_avg != null ? cbNuevoGlobal - baseline.cb_pct_avg : 0;
 
   return (
     <div className="space-y-4">
@@ -47,7 +53,7 @@ export function CbSuggestionsTab({ baseline, suggestions, byCadena }: Props) {
         ({threshold.toFixed(1)}%) son candidatas a sumar al programa para mejorar el cumplimiento global.
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
           title="Baseline · % CB medidas"
           value={baseline.cb_pct_avg != null ? `${baseline.cb_pct_avg.toFixed(1)}%` : "—"}
@@ -61,7 +67,12 @@ export function CbSuggestionsTab({ baseline, suggestions, byCadena }: Props) {
         <KpiCard
           title="✅ Sugeridas (≥ baseline)"
           value={String(sugeridas.length)}
-          hint={`% CB potencial promedio: ${cbPromSugeridas.toFixed(1)}%`}
+          hint={`% CB promedio de las sugeridas: ${cbPromSugeridas.toFixed(1)}%`}
+        />
+        <KpiCard
+          title="🎯 % CB nuevo global"
+          value={`${cbNuevoGlobal.toFixed(1)}%`}
+          hint={`Sumando las ${sugeridas.length} sugeridas a las ${baseline.tiendas_medidas} medidas · ${cbDeltaPp >= 0 ? "+" : ""}${cbDeltaPp.toFixed(1)} pp vs baseline`}
         />
         <KpiCard
           title="⚠ Sin catálogo CB"
