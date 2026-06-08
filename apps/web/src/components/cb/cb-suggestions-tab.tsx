@@ -150,32 +150,53 @@ export function CbSuggestionsTab({ baseline, suggestions }: Props) {
         <section className="rounded-xl border bg-card overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <h3 className="text-sm font-bold">📉 Resto de tiendas analizadas (bajo baseline)</h3>
-            <span className="text-[11px] text-muted-foreground">No sumar por ahora — % CB &lt; {threshold.toFixed(1)}%</span>
+            <span className="text-[11px] text-muted-foreground">
+              No sumar por ahora — % CB &lt; {threshold.toFixed(1)}% · ordenado por % CB descendente
+            </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-muted/40">
-                <tr className="text-[11px] uppercase tracking-wide">
-                  <th className="border-b px-3 py-2 text-left">Tienda</th>
-                  <th className="border-b px-3 py-2 text-left">Cadena</th>
-                  <th className="border-b px-2 py-2 text-right">% CB</th>
-                  <th className="hidden border-b px-2 py-2 text-right md:table-cell">% Infalt</th>
-                  <th className="hidden border-b px-2 py-2 text-right md:table-cell">% Estrat</th>
+              <thead className="bg-[#0a1849] text-white">
+                <tr>
+                  <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">#</th>
+                  <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">Tienda</th>
+                  <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">Cadena</th>
+                  <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase">% CB</th>
+                  <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase md:table-cell">% Infaltable</th>
+                  <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase md:table-cell">% Estratégico</th>
+                </tr>
+                <tr className="text-[10px] uppercase opacity-80">
+                  <th className="px-2 py-1 text-right">%</th>
+                  <th className="border-r border-white/10 px-2 py-1 text-right">ok/tot</th>
+                  <th className="hidden px-2 py-1 text-right md:table-cell">%</th>
+                  <th className="hidden border-r border-white/10 px-2 py-1 text-right md:table-cell">ok/tot</th>
+                  <th className="hidden px-2 py-1 text-right md:table-cell">%</th>
+                  <th className="hidden px-2 py-1 text-right md:table-cell">ok/tot</th>
                 </tr>
               </thead>
               <tbody>
-                {resto.slice(0, 50).map((s) => (
+                {resto.slice(0, 50).map((s, i) => (
                   <tr key={s.numero_tienda} className="border-b last:border-0">
-                    <td className="px-3 py-1.5">{s.tienda}</td>
-                    <td className="px-3 py-1.5 text-muted-foreground">{s.cadena}</td>
+                    <td className="px-3 py-1.5 text-muted-foreground">{i + 1}</td>
+                    <td className="px-3 py-1.5 font-medium">{s.tienda}</td>
+                    <td className="px-3 py-1.5">{s.cadena}</td>
                     <td className={`px-2 py-1.5 text-right tabular-nums ${pctCell(s.cb_pct)}`}>
                       {s.cb_pct != null ? `${s.cb_pct.toFixed(1)}%` : "—"}
+                    </td>
+                    <td className="border-r border-border px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                      {s.cb_ok}/{s.cb_target}
                     </td>
                     <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${pctCell(s.infalt_pct)}`}>
                       {s.infalt_pct != null ? `${s.infalt_pct.toFixed(1)}%` : "—"}
                     </td>
+                    <td className="hidden border-r border-border px-2 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
+                      {s.infalt_ok}/{s.infalt_target}
+                    </td>
                     <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${pctCell(s.estrat_pct)}`}>
                       {s.estrat_pct != null ? `${s.estrat_pct.toFixed(1)}%` : "—"}
+                    </td>
+                    <td className="hidden px-2 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
+                      {s.estrat_ok}/{s.estrat_target}
                     </td>
                   </tr>
                 ))}
