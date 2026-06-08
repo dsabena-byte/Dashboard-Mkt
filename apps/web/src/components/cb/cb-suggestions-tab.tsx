@@ -1,10 +1,9 @@
 import { KpiCard } from "@/components/kpi-card";
-import type { CbBaselineMedidas, CbSuggestion, CbSuggestionsByCadena } from "@/lib/cb-queries";
+import type { CbBaselineMedidas, CbSuggestion } from "@/lib/cb-queries";
 
 interface Props {
   baseline: CbBaselineMedidas;
   suggestions: CbSuggestion[];
-  byCadena: CbSuggestionsByCadena[];
 }
 
 function pctCell(pct: number | null): string {
@@ -14,7 +13,7 @@ function pctCell(pct: number | null): string {
   return "bg-rose-50 text-rose-600 font-semibold";
 }
 
-export function CbSuggestionsTab({ baseline, suggestions, byCadena }: Props) {
+export function CbSuggestionsTab({ baseline, suggestions }: Props) {
   const threshold = baseline.cb_pct_avg ?? 0;
 
   // Sugeridas: tiendas con cb_pct >= threshold y cb_target > 0

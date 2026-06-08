@@ -14,7 +14,6 @@ import {
   getTotalTiendasRelevadasCB,
   getCbBaselineMedidas,
   getCbSuggestions,
-  aggregateSuggestionsByCadena,
   isoWeekToMes,
   type CbFilter,
   type CbRow,
@@ -70,7 +69,6 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
     } catch (err) {
       sugError = err instanceof Error ? err.message : String(err);
     }
-    const byCadena = aggregateSuggestionsByCadena(suggestions);
     return (
       <div className="space-y-4">
         <header>
@@ -90,7 +88,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
             </p>
           </div>
         )}
-        <CbSuggestionsTab baseline={baseline} suggestions={suggestions} byCadena={byCadena} />
+        <CbSuggestionsTab baseline={baseline} suggestions={suggestions} />
       </div>
     );
   }
