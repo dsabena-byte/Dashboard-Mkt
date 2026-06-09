@@ -74,23 +74,35 @@ function DetailColumn({ title, count, pillColor, items }: {
       <div className="divide-y">
         {sorted.length === 0 ? (
           <div className="px-3 py-3 text-[11px] text-muted-foreground">Sin modelos en esta sección.</div>
-        ) : sorted.map((i, idx) => (
-          <div key={`${i.modelo}-${idx}`} className={`flex items-center justify-between px-3 py-2 text-xs ${i.presente ? "bg-emerald-50/40" : "bg-rose-50/40"}`}>
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex h-5 w-5 items-center justify-center rounded ${i.presente ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>
-                {i.presente ? "✓" : "✗"}
-              </span>
-              <div>
-                <div className="font-semibold tabular-nums">{i.modelo}</div>
-                <div className="text-[10px] uppercase text-muted-foreground">{i.categoria}</div>
+        ) : sorted.map((i, idx) => {
+          // Si está presente y el SKU encontrado difiere del modelo canónico,
+          // mostramos cuál fue (un homólogo equivalente, no el modelo principal).
+          const showFoundSku = i.presente === 1 && i.found_sku && i.found_sku !== i.modelo;
+          return (
+            <div key={`${i.modelo}-${idx}`} className={`flex items-center justify-between px-3 py-2 text-xs ${i.presente ? "bg-emerald-50/40" : "bg-rose-50/40"}`}>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex h-5 w-5 items-center justify-center rounded ${i.presente ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>
+                  {i.presente ? "✓" : "✗"}
+                </span>
+                <div>
+                  <div className="font-semibold tabular-nums">{i.modelo}</div>
+                  <div className="text-[10px] uppercase text-muted-foreground">
+                    {i.categoria}
+                    {showFoundSku && (
+                      <span className="ml-1 font-semibold normal-case text-emerald-700">
+                        · encontrado: {i.found_sku}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className={`text-right tabular-nums ${i.presente ? "text-emerald-700" : "text-rose-600"}`}>
+                <div className="font-semibold">{i.presente ? "100%" : "0%"}</div>
+                <div className="text-[10px]">{i.presente}/1</div>
               </div>
             </div>
-            <div className={`text-right tabular-nums ${i.presente ? "text-emerald-700" : "text-rose-600"}`}>
-              <div className="font-semibold">{i.presente ? "100%" : "0%"}</div>
-              <div className="text-[10px]">{i.presente}/1</div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

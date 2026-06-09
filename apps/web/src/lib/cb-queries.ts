@@ -431,6 +431,7 @@ export interface CbSuggestionDetail {
   categoria: string;       // LAVADO Y SECADO | REFRIGERACION | COCCION
   modelo: string;
   presente: number;        // 0 o 1
+  found_sku: string | null; // SKU real encontrado (el modelo si está, sino un homólogo)
 }
 
 export async function getCbSuggestionsDetail(): Promise<CbSuggestionDetail[]> {
@@ -440,7 +441,7 @@ export async function getCbSuggestionsDetail(): Promise<CbSuggestionDetail[]> {
   while (true) {
     const { data, error } = await supabase
       .from("vw_cb_suggestions_detail")
-      .select("numero_tienda, cuadro_basico, categoria, modelo, presente")
+      .select("numero_tienda, cuadro_basico, categoria, modelo, presente, found_sku")
       .range(from, from + PAGE - 1)
       .returns<CbSuggestionDetail[]>();
     if (error) {
