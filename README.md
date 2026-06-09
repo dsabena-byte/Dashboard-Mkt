@@ -240,6 +240,24 @@ Los syncs corren como GitHub Actions (detalle en
 uno falló: repo → **Actions** → workflow → run rojo → logs con el JSON del
 endpoint. Dos gotchas que ya nos mordieron:
 
+### Competencia Web — Drean usa SimilarWeb (no GA4) en la sección de benchmark
+
+La página `/web` tiene una sección "Competencia Web" que compara Drean contra
+competidores (Whirlpool, Philco, Electrolux, Gafa, Newsan).
+
+**Decisión**: Drean usa **SimilarWeb** (igual que los competidores), NO GA4.
+Razón: la comparación tiene que ser apples-to-apples — SimilarWeb estima
+visitas con un panel + modelos, GA4 mide sesiones reales first-party. Mezclar
+fuentes hace que Drean parezca artificialmente más grande (o más chico) que
+los competidores.
+
+GA4 sigue usándose en el **resto** de la página `/web` (KPIs de Drean,
+canales, landings, demografía) que son métricas propias, no de benchmark.
+
+Si alguna vez se quiere volver al modelo viejo (Drean=GA4 en la tabla y chart
+de competencia), revertir el commit que removió `getDreanWebMetrics()` de la
+sección.
+
 ### GA4 — el refresh token se muere cada ~7 días
 
 Síntoma: el sync GA4 falla con `invalid_grant: Token has been expired or revoked`.

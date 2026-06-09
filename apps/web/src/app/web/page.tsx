@@ -27,7 +27,6 @@ import {
   getCompetitorMonthlyHistory,
   getCompetitorTrafficSources,
   getCompetitorWebSnapshot,
-  getDreanWebMetrics,
   getGoogleTrends,
 } from "@/lib/competitor-web-queries";
 import { lastClosedMonthRange, parseDateRange } from "@/lib/dates";
@@ -101,7 +100,6 @@ export default async function WebPage({ searchParams }: PageProps) {
     competitorKeywords,
     porCategoria,
     googleTrends,
-    dreanGa4,
     monthlyUsersRow,
     allMonthlyUsers,
   ] = await Promise.all([
@@ -118,7 +116,6 @@ export default async function WebPage({ searchParams }: PageProps) {
     safe(getCompetitorKeywords(10), [] as Awaited<ReturnType<typeof getCompetitorKeywords>>, "getCompetitorKeywords"),
     safe(getCompetitorByCategoria(), [] as Awaited<ReturnType<typeof getCompetitorByCategoria>>, "getCompetitorByCategoria"),
     safe(getGoogleTrends(), [] as Awaited<ReturnType<typeof getGoogleTrends>>, "getGoogleTrends"),
-    safe(getDreanWebMetrics(), null as Awaited<ReturnType<typeof getDreanWebMetrics>>, "getDreanWebMetrics"),
     // Si el rango es exactamente UN mes calendario (1 al último día), traer
     // total users únicos de GA4. Si el rango cubre varios meses, devolver null
     // para que la card use la suma diaria (totals.usuarios) en lugar del
@@ -141,29 +138,14 @@ export default async function WebPage({ searchParams }: PageProps) {
   const lastClosedMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
   const lastClosedMonthStr = `${lastClosedYear}-${String(lastClosedMonthNum).padStart(2, "0")}-01`;
 
-  // Drean: visitas GA4, KPIs engagement SimilarWeb (apples-to-apples).
-  const dreanClosedGa4 = dreanGa4?.mesesMetrics?.find((m) => m.fecha === lastClosedMonthStr);
-  const webSnapshot = webSnapshotRaw.map((r) => {
-    if (r.competidor !== "Drean" || !dreanGa4) return r;
-    return {
-      ...r,
-      fecha: dreanClosedGa4?.fecha ?? dreanGa4.fecha,
-      visitas_estimadas: dreanClosedGa4?.visitas ?? dreanGa4.visitas_estimadas,
-    };
-  });
-  const monthlyHistory = monthlyHistoryRaw.map((m) => {
-    if (m.competidor !== "Drean" || !dreanGa4) return m;
-    const merged = new Map<string, number>();
-    for (const p of m.meses) merged.set(p.fecha, p.visitas);
-    for (const p of dreanGa4.meses) merged.set(p.fecha, p.visitas);
-    const meses = [...merged.entries()]
-      .map(([fecha, visitas]) => ({ fecha, visitas }))
-      .sort((a, b) => a.fecha.localeCompare(b.fecha));
-    return { ...m, meses };
-  });
-  for (const m of monthlyHistory) {
-    m.meses = m.meses.filter((p) => p.fecha <= lastClosedMonthStr);
-  }
+  // Toda la sección de Competencia Web usa SimilarWeb (incluyendo Drean) para
+  // que la comparación use la misma metodología. Antes Drean usaba GA4 (real)
+  // y el resto SimilarWeb (estimación) lo que mezclaba fuentes — ya no.
+  const webSnapshot = webSnapshotRaw;
+  const monthlyHistory = monthlyHistoryRaw.map((m) => ({
+    ...m,
+    meses: m.meses.filter((p) => p.fecha <= lastClosedMonthStr),
+  }));
 
   // Trends agrupados por keyword
   const trendsByKw = new Map<string, Array<{ fecha: string; interes: number }>>();
@@ -763,7 +745,7 @@ export default async function WebPage({ searchParams }: PageProps) {
             Tráfico web — Benchmark de dominios
           </h3>
           <p className="text-xs text-muted-foreground">
-            <strong>Visitas Drean</strong>: Google Analytics (sesiones reales first-party). <strong>Resto de KPIs</strong> (bounce/pages/duration) y <strong>competidores</strong>: SimilarWeb (estimación panel + modelos) para que la comparación use la misma metodología. Período mostrado:{" "}
+            <strong>Fuente única: SimilarWeb</strong> (estimación panel + modelos) para Drean y todos los competidores, así la comparación usa la misma metodología. Período mostrado:{" "}
             <strong>{latestMonth ? fmtMonthFull(latestMonth) : "—"}</strong>
             {previousMonth && (
               <>
@@ -805,14 +787,8 @@ export default async function WebPage({ searchParams }: PageProps) {
                     <tr key={row.competidor} className="border-b last:border-0">
                       <td className="px-4 py-2 font-medium">
                         {row.competidor}
-                        <span
-                          className={`ml-2 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${
-                            row.competidor === "Drean"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {row.competidor === "Drean" ? "GA4" : "SimilarWeb"}
+                        <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-slate-600">
+                          SimilarWeb
                         </span>
                         {isSpike && (
                           <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
@@ -856,7 +832,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           Historia mensual de visitas
         </h3>
         <p className="text-xs text-muted-foreground">
-          Drean: GA4 real. Competidores: SimilarWeb. Picos sostenidos = campaña activa.
+          Fuente única: SimilarWeb (Drean + competidores). Picos sostenidos = campaña activa.
         </p>
         <div className="mt-4">
           <CompetitorMonthlyChart data={monthlyHistory} />
