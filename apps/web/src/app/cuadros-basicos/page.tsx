@@ -13,6 +13,7 @@ import {
   getTotalTiendasRelevadasCB,
   getCbBaselineMedidas,
   getCbSuggestions,
+  getCbSuggestionsDetail,
   isoWeekToMes,
   type CbFilter,
   type CbRow,
@@ -59,11 +60,13 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       cb_ok_total: 0, cb_target_total: 0, infalt_ok_total: 0, infalt_target_total: 0,
     };
     let suggestions: Awaited<ReturnType<typeof getCbSuggestions>> = [];
+    let details: Awaited<ReturnType<typeof getCbSuggestionsDetail>> = [];
     let sugError: string | null = null;
     try {
-      [baseline, suggestions] = await Promise.all([
+      [baseline, suggestions, details] = await Promise.all([
         getCbBaselineMedidas(),
         getCbSuggestions(),
+        getCbSuggestionsDetail(),
       ]);
     } catch (err) {
       sugError = err instanceof Error ? err.message : String(err);
@@ -87,7 +90,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
             </p>
           </div>
         )}
-        <CbSuggestionsTab baseline={baseline} suggestions={suggestions} />
+        <CbSuggestionsTab baseline={baseline} suggestions={suggestions} details={details} />
       </div>
     );
   }

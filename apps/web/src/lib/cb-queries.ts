@@ -419,3 +419,39 @@ export function aggregateSuggestionsByCadena(suggestions: CbSuggestion[]): CbSug
     }))
     .sort((a, b) => b.cb_pct_promedio - a.cb_pct_promedio);
 }
+
+// ----------------------------------------------------------------------------
+// Detalle por (tienda × modelo) para el drill-down de cada tienda
+// Migración: supabase/migrations/0047_cb_suggestions_detail.sql
+// ----------------------------------------------------------------------------
+
+export interface CbSuggestionDetail {
+  numero_tienda: string;
+  cuadro_basico: string;   // INFALTABLE | ESTRATEGICO
+  categoria: string;       // LAVADO Y SECADO | REFRIGERACION | COCCION
+  modelo: string;
+  presente: number;        // 0 o 1
+}
+
+export async function getCbSuggestionsDetail(): Promise<CbSuggestionDetail[]> {
+  const supabase = getCbSupabase();
+  const all: CbSuggestionDetail[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("vw_cb_suggestions_detail")
+      .select("numero_tienda, cuadro_basico, categoria, modelo, presente")
+      .range(from, from + PAGE - 1)
+      .returns<CbSuggestionDetail[]>();
+    if (error) {
+      console.error("[cb-queries] vw_cb_suggestions_detail:", error.message);
+      return all;
+    }
+    const batch = data ?? [];
+    all.push(...batch);
+    if (batch.length < PAGE) break;
+    from += PAGE;
+    if (from > 100_000) break;
+  }
+  return all;
+}

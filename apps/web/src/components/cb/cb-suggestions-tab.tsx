@@ -1,8 +1,12 @@
-import type { CbBaselineMedidas, CbSuggestion } from "@/lib/cb-queries";
+"use client";
+
+import { useMemo, useState } from "react";
+import type { CbBaselineMedidas, CbSuggestion, CbSuggestionDetail } from "@/lib/cb-queries";
 
 interface Props {
   baseline: CbBaselineMedidas;
   suggestions: CbSuggestion[];
+  details: CbSuggestionDetail[];
 }
 
 function pctCell(pct: number | null): string {
@@ -39,21 +43,144 @@ function StatCard({ label, value, hint, pill, pillColor }: {
   );
 }
 
-export function CbSuggestionsTab({ baseline, suggestions }: Props) {
+// Panel de detalle: lista de modelos infaltables + estratégicos para una tienda
+function DetailPanel({ tiendaLabel, items }: { tiendaLabel: string; items: CbSuggestionDetail[] }) {
+  const inf = items.filter((i) => i.cuadro_basico === "INFALTABLE");
+  const est = items.filter((i) => i.cuadro_basico === "ESTRATEGICO");
+  const infOk = inf.filter((i) => i.presente === 1).length;
+  const estOk = est.filter((i) => i.presente === 1).length;
+  return (
+    <div className="space-y-3 bg-slate-50 p-4">
+      <div className="text-xs font-semibold">🔍 Detalle de SKUs — {tiendaLabel}</div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <DetailColumn title="📌 Infaltables" count={`${infOk} / ${inf.length}`} pillColor="bg-violet-100 text-violet-700" items={inf} />
+        <DetailColumn title="🎯 Estratégicos" count={`${estOk} / ${est.length}`} pillColor="bg-rose-100 text-rose-700" items={est} />
+      </div>
+    </div>
+  );
+}
+
+function DetailColumn({ title, count, pillColor, items }: {
+  title: string; count: string; pillColor: string; items: CbSuggestionDetail[];
+}) {
+  // Orden: ausentes primero (los rojos arriba para llamar la atención), después presentes
+  const sorted = [...items].sort((a, b) => (a.presente - b.presente) || a.modelo.localeCompare(b.modelo));
+  return (
+    <div className="rounded-lg border bg-white">
+      <div className="flex items-center justify-between border-b px-3 py-2">
+        <span className="text-xs font-semibold">{title}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillColor}`}>{count}</span>
+      </div>
+      <div className="divide-y">
+        {sorted.length === 0 ? (
+          <div className="px-3 py-3 text-[11px] text-muted-foreground">Sin modelos en esta sección.</div>
+        ) : sorted.map((i, idx) => (
+          <div key={`${i.modelo}-${idx}`} className={`flex items-center justify-between px-3 py-2 text-xs ${i.presente ? "bg-emerald-50/40" : "bg-rose-50/40"}`}>
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex h-5 w-5 items-center justify-center rounded ${i.presente ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>
+                {i.presente ? "✓" : "✗"}
+              </span>
+              <div>
+                <div className="font-semibold tabular-nums">{i.modelo}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">{i.categoria}</div>
+              </div>
+            </div>
+            <div className={`text-right tabular-nums ${i.presente ? "text-emerald-700" : "text-rose-600"}`}>
+              <div className="font-semibold">{i.presente ? "100%" : "0%"}</div>
+              <div className="text-[10px]">{i.presente}/1</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Fila expandible: cuando se hace click, expande mostrando el detalle
+function ExpandableRow({ s, index, details, colSpan }: {
+  s: CbSuggestion;
+  index: number;
+  details: CbSuggestionDetail[];
+  colSpan: number;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <tr
+        onClick={() => setOpen((v) => !v)}
+        className="cursor-pointer border-b last:border-0 hover:bg-slate-50 transition-colors"
+      >
+        <td className="px-3 py-1.5 text-muted-foreground">
+          <span className="mr-1 inline-block w-3 text-[10px]">{open ? "▼" : "▶"}</span>
+          {index + 1}
+        </td>
+        <td className="px-3 py-1.5 font-medium">{s.tienda}</td>
+        <td className="px-3 py-1.5">{s.cadena}</td>
+        <td className={`px-2 py-1.5 text-right tabular-nums ${pctCell(s.cb_pct)}`}>
+          {s.cb_pct != null ? `${s.cb_pct.toFixed(1)}%` : "—"}
+        </td>
+        <td className="border-r border-border px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+          {s.cb_ok}/{s.cb_target}
+        </td>
+        <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${pctCell(s.infalt_pct)}`}>
+          {s.infalt_pct != null ? `${s.infalt_pct.toFixed(1)}%` : "—"}
+        </td>
+        <td className="hidden border-r border-border px-2 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
+          {s.infalt_ok}/{s.infalt_target}
+        </td>
+        <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${pctCell(s.estrat_pct)}`}>
+          {s.estrat_pct != null ? `${s.estrat_pct.toFixed(1)}%` : "—"}
+        </td>
+        <td className="hidden px-2 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
+          {s.estrat_ok}/{s.estrat_target}
+        </td>
+      </tr>
+      {open && (
+        <tr className="border-b last:border-0">
+          <td colSpan={colSpan} className="p-0">
+            <DetailPanel tiendaLabel={s.tienda} items={details} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+export function CbSuggestionsTab({ baseline, suggestions, details }: Props) {
   const threshold = baseline.cb_pct_avg ?? 0;
 
   // Sugeridas: tiendas con cb_pct >= threshold y cb_target > 0
-  const sugeridas = suggestions
-    .filter((s) => s.cb_target > 0 && (s.cb_pct ?? 0) >= threshold)
-    .sort((a, b) => (b.cb_pct ?? 0) - (a.cb_pct ?? 0));
+  const sugeridas = useMemo(
+    () => suggestions
+      .filter((s) => s.cb_target > 0 && (s.cb_pct ?? 0) >= threshold)
+      .sort((a, b) => (b.cb_pct ?? 0) - (a.cb_pct ?? 0)),
+    [suggestions, threshold],
+  );
 
   // Resto: tiendas analizadas pero bajo threshold
-  const resto = suggestions
-    .filter((s) => s.cb_target > 0 && (s.cb_pct ?? 0) < threshold)
-    .sort((a, b) => (b.cb_pct ?? 0) - (a.cb_pct ?? 0));
+  const resto = useMemo(
+    () => suggestions
+      .filter((s) => s.cb_target > 0 && (s.cb_pct ?? 0) < threshold)
+      .sort((a, b) => (b.cb_pct ?? 0) - (a.cb_pct ?? 0)),
+    [suggestions, threshold],
+  );
 
   // Sin catálogo: tiendas cuya cadena no está en el programa CB (cb_target=0)
-  const sinCatalogo = suggestions.filter((s) => s.cb_target === 0);
+  const sinCatalogo = useMemo(
+    () => suggestions.filter((s) => s.cb_target === 0),
+    [suggestions],
+  );
+
+  // Group details por numero_tienda para lookup O(1) al expandir
+  const detailsByTienda = useMemo(() => {
+    const map = new Map<string, CbSuggestionDetail[]>();
+    for (const d of details) {
+      const arr = map.get(d.numero_tienda) ?? [];
+      arr.push(d);
+      map.set(d.numero_tienda, arr);
+    }
+    return map;
+  }, [details]);
 
   // Sumatoria de las sugeridas
   const sumOkSug = sugeridas.reduce((a, s) => a + s.cb_ok, 0);
@@ -73,9 +200,10 @@ export function CbSuggestionsTab({ baseline, suggestions }: Props) {
       <header className="rounded-xl border bg-sky-50 p-4 text-xs text-sky-900">
         <strong>¿Cómo funciona?</strong> Se analiza el archivo{" "}
         <code>Reporte de Existencias U3</code> contra el catálogo CB definido por cadena en{" "}
-        <code>cuadro_basico_semanal</code>. Las tiendas que <strong>no medimos hoy</strong> pero
+        <code>cb_homologos</code>. Las tiendas que <strong>no medimos hoy</strong> pero
         cuyo % CB calculado supera el <strong>promedio actual de medidas</strong>{" "}
-        ({threshold.toFixed(1)}%) son candidatas a sumar al programa para mejorar el cumplimiento global.
+        ({threshold.toFixed(1)}%) son candidatas a sumar al programa.{" "}
+        <strong>Click en cualquier tienda</strong> para ver el detalle de SKUs cumplidos / faltantes.
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -124,7 +252,7 @@ export function CbSuggestionsTab({ baseline, suggestions }: Props) {
         <div className="flex items-center justify-between px-4 py-3">
           <h3 className="text-sm font-bold">✅ Tiendas sugeridas para sumar al programa</h3>
           <span className="text-[11px] text-muted-foreground">
-            % CB ≥ baseline ({threshold.toFixed(1)}%) · ordenado por % CB descendente
+            % CB ≥ baseline ({threshold.toFixed(1)}%) · click para detalle
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -156,29 +284,13 @@ export function CbSuggestionsTab({ baseline, suggestions }: Props) {
                 </tr>
               ) : (
                 sugeridas.map((s, i) => (
-                  <tr key={s.numero_tienda} className="border-b last:border-0">
-                    <td className="px-3 py-1.5 text-muted-foreground">{i + 1}</td>
-                    <td className="px-3 py-1.5 font-medium">{s.tienda}</td>
-                    <td className="px-3 py-1.5">{s.cadena}</td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums ${pctCell(s.cb_pct)}`}>
-                      {s.cb_pct != null ? `${s.cb_pct.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="border-r border-border px-2 py-1.5 text-right tabular-nums text-muted-foreground">
-                      {s.cb_ok}/{s.cb_target}
-                    </td>
-                    <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${pctCell(s.infalt_pct)}`}>
-                      {s.infalt_pct != null ? `${s.infalt_pct.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="hidden border-r border-border px-2 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
-                      {s.infalt_ok}/{s.infalt_target}
-                    </td>
-                    <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${pctCell(s.estrat_pct)}`}>
-                      {s.estrat_pct != null ? `${s.estrat_pct.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="hidden px-2 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
-                      {s.estrat_ok}/{s.estrat_target}
-                    </td>
-                  </tr>
+                  <ExpandableRow
+                    key={s.numero_tienda}
+                    s={s}
+                    index={i}
+                    details={detailsByTienda.get(s.numero_tienda) ?? []}
+                    colSpan={9}
+                  />
                 ))
               )}
             </tbody>
@@ -191,7 +303,7 @@ export function CbSuggestionsTab({ baseline, suggestions }: Props) {
           <div className="flex items-center justify-between px-4 py-3">
             <h3 className="text-sm font-bold">📉 Resto de tiendas analizadas (bajo baseline)</h3>
             <span className="text-[11px] text-muted-foreground">
-              No sumar por ahora — % CB &lt; {threshold.toFixed(1)}% · ordenado por % CB descendente
+              No sumar por ahora — % CB &lt; {threshold.toFixed(1)}% · click para detalle
             </span>
           </div>
           <div className="overflow-x-auto">
@@ -216,29 +328,13 @@ export function CbSuggestionsTab({ baseline, suggestions }: Props) {
               </thead>
               <tbody>
                 {resto.slice(0, 50).map((s, i) => (
-                  <tr key={s.numero_tienda} className="border-b last:border-0">
-                    <td className="px-3 py-1.5 text-muted-foreground">{i + 1}</td>
-                    <td className="px-3 py-1.5 font-medium">{s.tienda}</td>
-                    <td className="px-3 py-1.5">{s.cadena}</td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums ${pctCell(s.cb_pct)}`}>
-                      {s.cb_pct != null ? `${s.cb_pct.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="border-r border-border px-2 py-1.5 text-right tabular-nums text-muted-foreground">
-                      {s.cb_ok}/{s.cb_target}
-                    </td>
-                    <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${pctCell(s.infalt_pct)}`}>
-                      {s.infalt_pct != null ? `${s.infalt_pct.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="hidden border-r border-border px-2 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
-                      {s.infalt_ok}/{s.infalt_target}
-                    </td>
-                    <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${pctCell(s.estrat_pct)}`}>
-                      {s.estrat_pct != null ? `${s.estrat_pct.toFixed(1)}%` : "—"}
-                    </td>
-                    <td className="hidden px-2 py-1.5 text-right tabular-nums text-muted-foreground md:table-cell">
-                      {s.estrat_ok}/{s.estrat_target}
-                    </td>
-                  </tr>
+                  <ExpandableRow
+                    key={s.numero_tienda}
+                    s={s}
+                    index={i}
+                    details={detailsByTienda.get(s.numero_tienda) ?? []}
+                    colSpan={9}
+                  />
                 ))}
               </tbody>
             </table>
