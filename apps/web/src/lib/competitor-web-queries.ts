@@ -172,16 +172,32 @@ export async function getCompetitorMonthlyHistory(): Promise<
     meses: Array<{ fecha: string; visitas: number }>;
   }>
 > {
+  // Mergeamos los meses de TODOS los snapshots históricos. SimilarWeb solo
+  // devuelve los últimos ~3 meses en cada corrida, así que si solo usáramos
+  // el snapshot más reciente perderíamos los meses viejos. Como fetchAll()
+  // ordena por fecha DESC, el snapshot más reciente entra primero y "gana"
+  // su valor por mes (la estimación más fresca de SimilarWeb).
   const all = await fetchAll();
-  // Quedarse con el snapshot más reciente por competidor (el raw más actualizado)
-  const latestByComp = new Map<string, CompetitorWebRow>();
+  const byComp = new Map<string, { dominio: string; meses: Map<string, number> }>();
   for (const r of all) {
-    if (!latestByComp.has(r.competidor)) latestByComp.set(r.competidor, r);
+    if (!byComp.has(r.competidor)) {
+      byComp.set(r.competidor, { dominio: r.dominio, meses: new Map() });
+    }
+    const entry = byComp.get(r.competidor)!;
+    const serie = extractMonthlyFromRaw(r.raw);
+    for (const p of serie) {
+      // Solo set si no existe → el más reciente (que vino primero) gana
+      if (!entry.meses.has(p.fecha)) {
+        entry.meses.set(p.fecha, p.visitas);
+      }
+    }
   }
-  return [...latestByComp.values()].map((r) => ({
-    competidor: r.competidor,
-    dominio: r.dominio,
-    meses: extractMonthlyFromRaw(r.raw),
+  return [...byComp.entries()].map(([competidor, { dominio, meses }]) => ({
+    competidor,
+    dominio,
+    meses: [...meses.entries()]
+      .map(([fecha, visitas]) => ({ fecha, visitas }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha)),
   }));
 }
 

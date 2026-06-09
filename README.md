@@ -240,6 +240,23 @@ Los syncs corren como GitHub Actions (detalle en
 uno falló: repo → **Actions** → workflow → run rojo → logs con el JSON del
 endpoint. Dos gotchas que ya nos mordieron:
 
+### Competencia Web — historial mensual acumula de TODOS los snapshots
+
+El scraper de SimilarWeb (Apify, vía N8N) corre semanal y guarda un snapshot
+nuevo en `competitor_web` por cada corrida. Cada snapshot trae en el campo
+`raw` los últimos ~3 meses de visitas estimadas por SimilarWeb.
+
+**Decisión clave**: `getCompetitorMonthlyHistory()` mergea los meses de
+**todos los snapshots** (no solo el último). Razón: si una corrida nueva
+solo trae Mar/Abr/May, el código viejo "perdía" los meses anteriores que
+estaban en snapshots viejos (Feb, Ene...). El merge preserva esos meses,
+y cuando dos snapshots tienen el mismo mes, gana el más reciente (estimación
+más fresca de SimilarWeb).
+
+Como `fetchAll()` ordena por `fecha DESC`, el orden de iteración garantiza
+que el snapshot más reciente entre primero al `Map<fecha, visitas>` y los
+viejos solo agreguen meses que no estaban.
+
 ### Competencia Web — Drean usa SimilarWeb (no GA4) en la sección de benchmark
 
 La página `/web` tiene una sección "Competencia Web" que compara Drean contra
