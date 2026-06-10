@@ -156,9 +156,48 @@ export async function getCanalTotals(year = 2026): Promise<{ impresiones: number
     .limit(20000);
   if (res.error) return null;
   const rows = (res.data ?? []) as Array<{ impresiones: number | null; clics: number | null }>;
+  if (rows.length === 0) return null; // tabla vacía → "—" (no 0 engañoso)
   let impresiones = 0, clicks = 0;
   for (const r of rows) { impresiones += r.impresiones ?? 0; clicks += r.clics ?? 0; }
+  if (impresiones === 0 && clicks === 0) return null;
   return { impresiones, clicks };
+}
+
+// ---------- Mercado (share + índice de precio) por categoría ----------
+const MERCADO_TO_CORE: Record<string, CoreCat> = {
+  Lavado: "Lavado",
+  Refrigeración: "Refrigeración",
+  Refrigeracion: "Refrigeración",
+  Cocción: "Cocción",
+  Coccion: "Cocción",
+  Cocinas: "Cocción",
+};
+export interface MercadoByCategoria {
+  byCat: Record<CoreCat, { share: number | null; index: number | null }>;
+  mes: string | null;
+}
+export async function getMercadoByCategoria(): Promise<MercadoByCategoria | null> {
+  const supabase = getServerSupabase();
+  const res = await supabase
+    .from("mercado_categoria")
+    .select("mes, categoria, share_mercado, index_precio")
+    .order("mes", { ascending: false })
+    .limit(1000);
+  if (res.error) return null;
+  const rows = (res.data ?? []) as Array<{ mes: string; categoria: string; share_mercado: number | null; index_precio: number | null }>;
+  if (rows.length === 0) return null;
+  const latest = rows[0]!.mes;
+  const byCat: Record<CoreCat, { share: number | null; index: number | null }> = {
+    Lavado: { share: null, index: null },
+    Refrigeración: { share: null, index: null },
+    Cocción: { share: null, index: null },
+  };
+  for (const r of rows) {
+    if (r.mes !== latest) continue;
+    const core = MERCADO_TO_CORE[r.categoria];
+    if (core) byCat[core] = { share: r.share_mercado, index: r.index_precio };
+  }
+  return { byCat, mes: latest };
 }
 
 // ---------- Ensamblado del modelo ----------
@@ -167,7 +206,7 @@ export interface BrandCell {
   value: number | null; // valor numérico para la barra de intensidad
 }
 export interface BrandRow {
-  kind: "Mental" | "Físico";
+  kind: "Mental" | "Físico" | "Mercado";
   label: string;
   unidad: string;            // "personas" | "%" | "x" | "visitas" ...
   cells: BrandCell[];        // [Lavado, Refrigeración, Cocción, Drean]
@@ -185,6 +224,7 @@ function fmtNum(n: number): string {
 }
 const fmtPct = (n: number) => `${n.toFixed(0)}%`;
 const fmtFreq = (n: number) => `${n.toFixed(1)}x`;
+const fmtIdx = (n: number) => n.toFixed(0);
 
 export function buildBrandModel(
   pauta: PautaByCategoria | null,
@@ -194,6 +234,7 @@ export function buildBrandModel(
   web: WebByCategoria | null,
   influencia: { alcance: number; views: number } | null,
   canal: { impresiones: number; clicks: number } | null,
+  mercado: MercadoByCategoria | null,
 ): BrandComponent[] {
   const orgSum = (cat: CoreCat | "drean", field: "reach" | "views" | "engagement", pilares: readonly string[] = BRAND_PILARES) => {
     if (!organic) return 0;
@@ -207,7 +248,7 @@ export function buildBrandModel(
   });
   // fila normal: valor por categoría core + Drean
   const numRow = (
-    kind: "Mental" | "Físico",
+    kind: BrandRow["kind"],
     label: string,
     unidad: string,
     valFn: (c: CoreCat) => number | null,
@@ -218,7 +259,7 @@ export function buildBrandModel(
     cells: [...CORE.map((c) => mk(valFn(c), fmt)), mk(dreanVal, fmt)],
   });
   // fila a nivel Drean (sin desagregar por categoría)
-  const dreanRow = (kind: "Mental" | "Físico", label: string, unidad: string, dreanVal: number | null, fmt: (n: number) => string): BrandRow => ({
+  const dreanRow = (kind: BrandRow["kind"], label: string, unidad: string, dreanVal: number | null, fmt: (n: number) => string): BrandRow => ({
     kind, label, unidad,
     cells: [mk(null, fmt), mk(null, fmt), mk(null, fmt), mk(dreanVal, fmt)],
   });
@@ -229,6 +270,17 @@ export function buildBrandModel(
   const fsDrean = fs ? CORE.reduce((s, c) => s + fs[FS_KEY[c]].avgU4M * PESO[c], 0) : null;
   const cbVal = (c: CoreCat) => (cb ? cb.cbByCategoria[FS_KEY[c]] : null);
   const cbDrean = cb ? cb.cb.avg : null;
+  const mShare = (c: CoreCat) => mercado?.byCat[c].share ?? null;
+  const mIndex = (c: CoreCat) => mercado?.byCat[c].index ?? null;
+  const wAvg = (fn: (c: CoreCat) => number | null): number | null => {
+    let s = 0;
+    for (const c of CORE) {
+      const v = fn(c);
+      if (v == null) return null;
+      s += v * PESO[c];
+    }
+    return s;
+  };
 
   return [
     {
@@ -252,7 +304,7 @@ export function buildBrandModel(
       rows: [
         numRow("Mental", "Alcance contenido de marca (Liderazgo+Calidad)", "personas",
           (c) => orgSum(c, "reach", lidCal), orgSum("drean", "reach", lidCal), fmtNum),
-        numRow("Físico", "% CB · portfolio presente", "%", cbVal, cbDrean, fmtPct),
+        numRow("Físico", "% CB · disponibilidad en PDV", "%", cbVal, cbDrean, fmtPct),
       ],
     },
     {
@@ -267,7 +319,14 @@ export function buildBrandModel(
           (c) => pauta?.byCat[c].clicks ?? null, pauta?.drean.clicks ?? null, fmtNum),
         dreanRow("Mental", "Mkt de Influencia · alcance", "personas", influencia ? influencia.alcance : null, fmtNum),
         dreanRow("Mental", "Mkt de Canal · impresiones", "impresiones", canal ? canal.impresiones : null, fmtNum),
-        numRow("Físico", "% CB · disponibilidad", "%", cbVal, cbDrean, fmtPct),
+      ],
+    },
+    {
+      title: "Equity de mercado",
+      subtitle: "resultado — la fuerza de marca convirtiendo en ventas y precio",
+      rows: [
+        numRow("Mercado", "Share de mercado %", "%", mShare, wAvg(mShare), fmtPct),
+        numRow("Mercado", "Índice de precio (vs categoría)", "idx", mIndex, wAvg(mIndex), fmtIdx),
       ],
     },
   ];
