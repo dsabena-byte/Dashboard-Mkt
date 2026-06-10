@@ -344,7 +344,7 @@ export function buildBrandModel(
       const sv = mField(`sv${seg}` as keyof MercadoCell);
       const idx = mField(`idx${seg}` as keyof MercadoCell);
       return {
-        title: `Equity de mercado · ${seg}`,
+        title: `Indicadores de Mercado · ${seg}`,
         subtitle: "share y precio del segmento — fuerza de marca",
         rows: [
           numRow("Mercado", "Share units %", "%", su, wAvg(su), fmtPct),
