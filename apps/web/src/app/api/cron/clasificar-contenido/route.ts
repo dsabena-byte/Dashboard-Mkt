@@ -38,26 +38,30 @@ async function supabaseQuery<T>(query: string): Promise<T> {
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
   const res = await fetch(`${url}/rest/v1/${query}`, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
+    cache: "no-store",
   });
   if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
   return res.json() as Promise<T>;
 }
 
-async function supabasePatch(platform: string, postId: string, data: Record<string, unknown>): Promise<void> {
+async function supabasePatch(platform: string, postId: string, data: Record<string, unknown>): Promise<number> {
   const url = env("NEXT_PUBLIC_SUPABASE_URL");
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
   const q = `meta_posts?platform=eq.${encodeURIComponent(platform)}&post_id=eq.${encodeURIComponent(postId)}`;
   const res = await fetch(`${url}/rest/v1/${q}`, {
     method: "PATCH",
+    cache: "no-store",
     headers: {
       apikey: key,
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
-      Prefer: "return=minimal",
+      Prefer: "return=representation",
     },
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error(`Supabase PATCH ${res.status}: ${await res.text()}`);
+  const updated = (await res.json()) as unknown[];
+  return Array.isArray(updated) ? updated.length : 0;
 }
 
 interface PostRow {
@@ -144,13 +148,13 @@ export async function GET(request: Request) {
       const c = clasif.get(i + 1);
       if (!c) continue;
       try {
-        await supabasePatch(posts[i]!.platform, posts[i]!.post_id, {
+        const updated = await supabasePatch(posts[i]!.platform, posts[i]!.post_id, {
           categoria: c.categoria,
           pilar_contenido: c.pilar,
           clasif_confianza: c.confianza,
           clasif_at: now,
         });
-        ok++;
+        ok += updated;
       } catch (e) {
         errors.push(e instanceof Error ? e.message.slice(0, 100) : String(e));
       }
