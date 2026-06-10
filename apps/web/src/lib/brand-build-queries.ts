@@ -172,30 +172,49 @@ const MERCADO_TO_CORE: Record<string, CoreCat> = {
   Coccion: "Cocción",
   Cocinas: "Cocción",
 };
+export interface MercadoCell {
+  suHigh: number | null; suMid: number | null; suLow: number | null;
+  svHigh: number | null; svMid: number | null; svLow: number | null;
+  idxHigh: number | null; idxMid: number | null; idxLow: number | null;
+}
 export interface MercadoByCategoria {
-  byCat: Record<CoreCat, { share: number | null; index: number | null }>;
+  byCat: Record<CoreCat, MercadoCell>;
   mes: string | null;
+}
+interface MercadoRowDb {
+  mes: string;
+  categoria: string;
+  share_units_high: number | null; share_units_mid: number | null; share_units_low: number | null;
+  share_value_high: number | null; share_value_mid: number | null; share_value_low: number | null;
+  index_price_high: number | null; index_price_mid: number | null; index_price_low: number | null;
 }
 export async function getMercadoByCategoria(): Promise<MercadoByCategoria | null> {
   const supabase = getServerSupabase();
   const res = await supabase
     .from("mercado_categoria")
-    .select("mes, categoria, share_mercado, index_precio")
+    .select("mes, categoria, share_units_high, share_units_mid, share_units_low, share_value_high, share_value_mid, share_value_low, index_price_high, index_price_mid, index_price_low")
     .order("mes", { ascending: false })
     .limit(1000);
   if (res.error) return null;
-  const rows = (res.data ?? []) as Array<{ mes: string; categoria: string; share_mercado: number | null; index_precio: number | null }>;
+  const rows = (res.data ?? []) as MercadoRowDb[];
   if (rows.length === 0) return null;
   const latest = rows[0]!.mes;
-  const byCat: Record<CoreCat, { share: number | null; index: number | null }> = {
-    Lavado: { share: null, index: null },
-    Refrigeración: { share: null, index: null },
-    Cocción: { share: null, index: null },
-  };
+  const empty = (): MercadoCell => ({
+    suHigh: null, suMid: null, suLow: null,
+    svHigh: null, svMid: null, svLow: null,
+    idxHigh: null, idxMid: null, idxLow: null,
+  });
+  const byCat: Record<CoreCat, MercadoCell> = { Lavado: empty(), Refrigeración: empty(), Cocción: empty() };
   for (const r of rows) {
     if (r.mes !== latest) continue;
     const core = MERCADO_TO_CORE[r.categoria];
-    if (core) byCat[core] = { share: r.share_mercado, index: r.index_precio };
+    if (core) {
+      byCat[core] = {
+        suHigh: r.share_units_high, suMid: r.share_units_mid, suLow: r.share_units_low,
+        svHigh: r.share_value_high, svMid: r.share_value_mid, svLow: r.share_value_low,
+        idxHigh: r.index_price_high, idxMid: r.index_price_mid, idxLow: r.index_price_low,
+      };
+    }
   }
   return { byCat, mes: latest };
 }
@@ -270,8 +289,7 @@ export function buildBrandModel(
   const fsDrean = fs ? CORE.reduce((s, c) => s + fs[FS_KEY[c]].avgU4M * PESO[c], 0) : null;
   const cbVal = (c: CoreCat) => (cb ? cb.cbByCategoria[FS_KEY[c]] : null);
   const cbDrean = cb ? cb.cb.avg : null;
-  const mShare = (c: CoreCat) => mercado?.byCat[c].share ?? null;
-  const mIndex = (c: CoreCat) => mercado?.byCat[c].index ?? null;
+  const mField = (f: keyof MercadoCell) => (c: CoreCat) => mercado?.byCat[c][f] ?? null;
   const wAvg = (fn: (c: CoreCat) => number | null): number | null => {
     let s = 0;
     for (const c of CORE) {
@@ -321,13 +339,19 @@ export function buildBrandModel(
         dreanRow("Mental", "Mkt de Canal · impresiones", "impresiones", canal ? canal.impresiones : null, fmtNum),
       ],
     },
-    {
-      title: "Equity de mercado",
-      subtitle: "resultado — la fuerza de marca convirtiendo en ventas y precio",
-      rows: [
-        numRow("Mercado", "Share de mercado %", "%", mShare, wAvg(mShare), fmtPct),
-        numRow("Mercado", "Índice de precio (vs categoría)", "idx", mIndex, wAvg(mIndex), fmtIdx),
-      ],
-    },
+    ...(["High", "Mid", "Low"] as const).map((seg) => {
+      const su = mField(`su${seg}` as keyof MercadoCell);
+      const sv = mField(`sv${seg}` as keyof MercadoCell);
+      const idx = mField(`idx${seg}` as keyof MercadoCell);
+      return {
+        title: `Equity de mercado · ${seg}`,
+        subtitle: "share y precio del segmento — fuerza de marca",
+        rows: [
+          numRow("Mercado", "Share units %", "%", su, wAvg(su), fmtPct),
+          numRow("Mercado", "Share value %", "%", sv, wAvg(sv), fmtPct),
+          numRow("Mercado", "Índice de precio (vs categoría)", "idx", idx, wAvg(idx), fmtIdx),
+        ],
+      };
+    }),
   ];
 }
