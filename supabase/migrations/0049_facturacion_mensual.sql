@@ -26,7 +26,8 @@ insert into facturacion_mensual (mes, facturacion, moneda, fuente) values
   ('2026-01-01', 17603000, 'USD', 'carga manual'),
   ('2026-02-01', 15500000, 'USD', 'carga manual'),
   ('2026-03-01', 19299000, 'USD', 'carga manual'),
-  ('2026-04-01', 23423000, 'USD', 'carga manual')
+  ('2026-04-01', 23423000, 'USD', 'carga manual'),
+  ('2026-05-01', 19767000, 'USD', 'carga manual')
 on conflict (mes) do update
   set facturacion = excluded.facturacion,
       moneda      = excluded.moneda,
