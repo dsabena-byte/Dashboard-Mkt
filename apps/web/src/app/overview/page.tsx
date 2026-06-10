@@ -19,6 +19,7 @@ import {
   getWebByCategoria,
   getInfluenciaTotals,
   getCanalTotals,
+  getMercadoByCategoria,
   buildBrandModel,
 } from "@/lib/brand-build-queries";
 
@@ -274,12 +275,13 @@ export default async function OverviewPage() {
   const cb = cbRes.data;
   const cbError = cbRes.error;
   const pautaByCat = await safe(getPautaByCategoria(), null);
-  const [webByCat, influencia, canal] = await Promise.all([
+  const [webByCat, influencia, canal, mercado] = await Promise.all([
     safe(getWebByCategoria(), null),
     safe(getInfluenciaTotals(), null),
     safe(getCanalTotals(), null),
+    safe(getMercadoByCategoria(), null),
   ]);
-  const brandModel = buildBrandModel(pautaByCat, brandMix, floorShare, cb, webByCat, influencia, canal);
+  const brandModel = buildBrandModel(pautaByCat, brandMix, floorShare, cb, webByCat, influencia, canal, mercado);
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
   const cuatris = CUATRIS.map((c) => {
@@ -552,7 +554,7 @@ export default async function OverviewPage() {
                   {comp.rows.map((r) => (
                     <tr key={r.label} className="border-t">
                       <td className="px-2 py-1.5">
-                        <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+                        <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : r.kind === "Físico" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
                           {r.kind}
                         </span>
                         <span className="text-foreground">{r.label}</span>
