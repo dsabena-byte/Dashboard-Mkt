@@ -11,6 +11,7 @@ import {
   type FsCatKey,
   type FsCatU4M,
 } from "@/lib/floor-share-queries";
+import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -50,6 +51,14 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 async function tryFloorShare(): Promise<{ data: Awaited<ReturnType<typeof getFloorShareU4M>>; error: string | null }> {
   try {
     return { data: await getFloorShareU4M(), error: null };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+async function tryCb(): Promise<{ data: Awaited<ReturnType<typeof getCbU3M>>; error: string | null }> {
+  try {
+    return { data: await getCbU3M(), error: null };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : String(e) };
   }
@@ -138,16 +147,31 @@ function KpiBig({
   );
 }
 
-function FsCard({ label, cat }: { label: string; cat: FsCatU4M }) {
-  const hasData = cat.months.length > 0;
-  const delta = cat.avgU4M - cat.target;
-  const lastMes = hasData ? cat.months[cat.months.length - 1]!.mes : null;
-  const projOnTrack = cat.projection != null && cat.projection >= cat.target;
+// Card de progreso reutilizable (Floor Share U4M, CB U3M): resultado promedio
+// grande + badge, objetivo, último mes, proyección y trayectoria mensual.
+interface ProgressMetric {
+  label: string;
+  target: number;
+  avg: number;
+  latest: number | null;
+  projection: number | null;
+  meets: boolean;
+  months: { mes: string; pct: number }[];
+  avgLabel: string; // "Promedio U4M" / "Promedio U3M"
+}
+
+function ProgressCard({ m }: { m: ProgressMetric }) {
+  const hasData = m.months.length > 0;
+  const delta = m.avg - m.target;
+  const lastMes = hasData ? m.months[m.months.length - 1]!.mes : null;
+  const projOnTrack = m.projection != null && m.projection >= m.target;
   return (
     <div className="rounded-xl border bg-card p-5">
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-base font-semibold tracking-tight">{label}</div>
-        <span className="text-[11px] text-muted-foreground">Obj {cat.target}%</span>
+        <div className="text-base font-semibold tracking-tight">{m.label}</div>
+        <span className="rounded-md border bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground/80">
+          Meta {m.target}%
+        </span>
       </div>
 
       {!hasData ? (
@@ -155,32 +179,32 @@ function FsCard({ label, cat }: { label: string; cat: FsCatU4M }) {
       ) : (
         <>
           <div className="flex items-baseline gap-2">
-            <span className={`text-3xl font-bold tabular-nums ${cat.meetsAvg ? "text-emerald-600" : "text-rose-500"}`}>
-              {cat.avgU4M.toFixed(1)}%
+            <span className={`text-3xl font-bold tabular-nums ${m.meets ? "text-emerald-600" : "text-rose-500"}`}>
+              {m.avg.toFixed(1)}%
             </span>
-            <StatusBadge kind={cat.meetsAvg ? "ok" : "bad"}>{cat.meetsAvg ? "cumple" : "no cumple"}</StatusBadge>
+            <StatusBadge kind={m.meets ? "ok" : "bad"}>{m.meets ? "cumple" : "no cumple"}</StatusBadge>
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            Promedio U4M · {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp vs objetivo
+            {m.avgLabel} · {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp vs objetivo
           </div>
 
           <dl className="mt-3 space-y-1.5 border-t pt-2.5 text-xs">
             <div className="flex items-center justify-between">
               <dt className="text-muted-foreground">Último mes{lastMes ? ` (${lastMes})` : ""}</dt>
-              <dd className="font-semibold tabular-nums">{cat.latest != null ? `${cat.latest.toFixed(1)}%` : "—"}</dd>
+              <dd className="font-semibold tabular-nums">{m.latest != null ? `${m.latest.toFixed(1)}%` : "—"}</dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-muted-foreground">Proyección próx. mes</dt>
-              <dd className={`font-semibold tabular-nums ${cat.projection != null ? (projOnTrack ? "text-emerald-600" : "text-rose-500") : ""}`}>
-                {cat.projection != null ? `${cat.projection.toFixed(1)}%` : "—"}
+              <dd className={`font-semibold tabular-nums ${m.projection != null ? (projOnTrack ? "text-emerald-600" : "text-rose-500") : ""}`}>
+                {m.projection != null ? `${m.projection.toFixed(1)}%` : "—"}
               </dd>
             </div>
           </dl>
 
           <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            {cat.months.map((m) => (
-              <span key={m.mes}>
-                {m.mes} <span className="font-semibold tabular-nums text-foreground">{m.share.toFixed(0)}%</span>
+            {m.months.map((mm) => (
+              <span key={mm.mes}>
+                {mm.mes} <span className="font-semibold tabular-nums text-foreground">{mm.pct.toFixed(0)}%</span>
               </span>
             ))}
           </div>
@@ -190,18 +214,47 @@ function FsCard({ label, cat }: { label: string; cat: FsCatU4M }) {
   );
 }
 
+function fsToProgress(label: string, c: FsCatU4M): ProgressMetric {
+  return {
+    label,
+    target: c.target,
+    avg: c.avgU4M,
+    latest: c.latest,
+    projection: c.projection,
+    meets: c.meetsAvg,
+    months: c.months.map((mm) => ({ mes: mm.mes, pct: mm.share })),
+    avgLabel: "Promedio U4M",
+  };
+}
+
+function cbToProgress(label: string, c: CbMetricU3M): ProgressMetric {
+  return {
+    label,
+    target: c.target,
+    avg: c.avg,
+    latest: c.latest,
+    projection: c.projection,
+    meets: c.meets,
+    months: c.months,
+    avgLabel: "Promedio U3M",
+  };
+}
+
 export default async function OverviewPage() {
   const now = new Date();
   const curYear = now.getUTCFullYear();
   const curMonth = now.getUTCMonth() + 1;
 
-  const [bgt, factRows, floorShareRes] = await Promise.all([
+  const [bgt, factRows, floorShareRes, cbRes] = await Promise.all([
     safe(getBgtData(), { rows: [], syncedAt: null }),
     safe(getFacturacionMensual(), [] as Awaited<ReturnType<typeof getFacturacionMensual>>),
     tryFloorShare(),
+    tryCb(),
   ]);
   const floorShare = floorShareRes.data;
   const fsError = floorShareRes.error;
+  const cb = cbRes.data;
+  const cbError = cbRes.error;
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
   const cuatris = CUATRIS.map((c) => {
@@ -328,7 +381,7 @@ export default async function OverviewPage() {
                     value={c.desvio != null ? fmtPct(c.desvio) : "—"}
                     status={c.desvio != null ? (c.desvio < MAX_DESVIO ? "ok" : "bad") : "neutral"}
                     showBadge={c.evaluable && c.desvioOk != null}
-                    objetivo={<>objetivo: sobre-ejecución &lt; {MAX_DESVIO}%</>}
+                    objetivo={<>meta: sobre-ejecución <b className="font-semibold text-foreground/80">&lt; {MAX_DESVIO}%</b></>}
                   />
                 </div>
 
@@ -339,7 +392,7 @@ export default async function OverviewPage() {
                     value={c.invFact != null ? fmtPct(c.invFact, false, 2) : "—"}
                     status={c.invFact != null ? (c.invFact <= MAX_INV_FACT ? "ok" : "bad") : "neutral"}
                     showBadge={c.evaluable && c.invFactOk != null}
-                    objetivo={<>objetivo: ≤ {invFactLabel}%{c.fact == null ? " · falta facturación" : ""}</>}
+                    objetivo={<>meta: <b className="font-semibold text-foreground/80">≤ {invFactLabel}%</b>{c.fact == null ? " · falta facturación" : ""}</>}
                   />
                 </div>
               </>
@@ -382,8 +435,45 @@ export default async function OverviewPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
           {(["lavado", "refri", "coccion"] as FsCatKey[]).map((k) => (
-            <FsCard key={k} label={FS_CAT_LABEL[k]} cat={floorShare[k]} />
+            <ProgressCard key={k} m={fsToProgress(FS_CAT_LABEL[k], floorShare[k])} />
           ))}
+        </div>
+      )}
+
+      {/* ===== OBJETIVO 3 ===== */}
+      <section className="mt-6 rounded-xl border border-l-4 border-l-primary bg-primary/[0.035] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 3</span>
+              <h3 className="text-sm font-bold tracking-tight">Cumplimiento de Cuadros Básicos (Trade)</h3>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Desarrollar y ejecutar el nuevo proceso de CB del área comercial para alcanzar un cumplimiento promedio de Infaltables y Estratégicos (Trade) del 80% en los últimos 3 meses.
+              {cb && cb.mesesUsados.length > 0 && (
+                <span className="text-foreground/70"> · U3M: {cb.mesesUsados.join(" · ")}</span>
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">80%</span><span className="text-muted-foreground">Infaltables</span></span>
+            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">80%</span><span className="text-muted-foreground">Estratégicos</span></span>
+          </div>
+        </div>
+      </section>
+
+      {cbError ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+          No se pudo cargar Cuadros Básicos: <code className="break-all">{cbError}</code>
+        </div>
+      ) : cb == null ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+          Sin datos de Cuadros Básicos en la ventana de los últimos 3 meses.
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ProgressCard m={cbToProgress("Infaltables", cb.infaltables)} />
+          <ProgressCard m={cbToProgress("Estratégicos (Trade)", cb.estrategicos)} />
         </div>
       )}
     </div>
