@@ -5,7 +5,7 @@
 -- La completa el cron /api/cron/clasificar-contenido (LLM sobre el caption
 -- `message`). Es idempotente: solo procesa filas sin clasificar.
 --
--- Categorías: Lavado | Refrigeración | Cocción | Transversal
+-- Categorías (alineadas con pauta): Brand | Lavado | Refrigeración | Cocción | Promoción
 -- Pilares (5): Liderazgo marca/porfolio | Calidad superior | Respaldo Posventa
 --              | Elegir bien | Experiencia uso
 -- =============================================================================
@@ -17,7 +17,7 @@ alter table meta_posts
   add column if not exists clasif_at         timestamptz; -- cuándo se clasificó
 
 comment on column meta_posts.categoria is
-  'Categoría de producto del contenido orgánico (Lavado/Refrigeración/Cocción/Transversal). Clasificado por LLM.';
+  'Categoría del contenido orgánico, alineada con pauta (Brand/Lavado/Refrigeración/Cocción/Promoción). Clasificado por LLM.';
 comment on column meta_posts.pilar_contenido is
   'Pilar de contenido (Liderazgo marca/porfolio | Calidad superior | Respaldo Posventa | Elegir bien | Experiencia uso). Clasificado por LLM.';
 

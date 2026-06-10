@@ -1,10 +1,12 @@
 // Badge de clasificación de contenido orgánico (categoría + pilar) para las
 // tarjetas de posts de IG/FB. Permite validar visualmente la clasificación LLM.
+// Colores alineados con la paleta de categorías de pauta.
 const CAT_COLOR: Record<string, string> = {
+  Brand: "#3b82f6",
   Lavado: "#a78bfa",
   Refrigeración: "#22c55e",
   Cocción: "#f97316",
-  Transversal: "#64748b",
+  Promoción: "#facc15",
 };
 
 export function ClasifBadge({
