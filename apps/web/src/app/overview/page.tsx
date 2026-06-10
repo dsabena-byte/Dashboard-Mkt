@@ -555,7 +555,7 @@ export default async function OverviewPage() {
                     <tr key={r.label} className="border-t">
                       <td className="px-2 py-1.5">
                         <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : r.kind === "Físico" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
-                          {r.kind}
+                          {r.kind === "Mental" ? "Comunicación" : r.kind === "Físico" ? "Tienda" : "Mercado"}
                         </span>
                         <span className="text-foreground">{r.label}</span>
                       </td>
