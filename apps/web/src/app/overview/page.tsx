@@ -158,6 +158,7 @@ interface ProgressMetric {
   meets: boolean;
   months: { mes: string; pct: number }[];
   avgLabel: string; // "Promedio U4M" / "Promedio U3M"
+  info?: boolean;   // true = indicador de referencia (sin scoring de meta)
 }
 
 function ProgressCard({ m }: { m: ProgressMetric }) {
@@ -165,13 +166,16 @@ function ProgressCard({ m }: { m: ProgressMetric }) {
   const delta = m.avg - m.target;
   const lastMes = hasData ? m.months[m.months.length - 1]!.mes : null;
   const projOnTrack = m.projection != null && m.projection >= m.target;
+  const valueColor = m.info ? "text-foreground" : m.meets ? "text-emerald-600" : "text-rose-500";
   return (
     <div className="rounded-xl border bg-card p-5">
       <div className="mb-2 flex items-center justify-between">
         <div className="text-base font-semibold tracking-tight">{m.label}</div>
-        <span className="rounded-md border bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground/80">
-          Meta {m.target}%
-        </span>
+        {m.info ? (
+          <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">info</span>
+        ) : (
+          <span className="rounded-md border bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground/80">Meta {m.target}%</span>
+        )}
       </div>
 
       {!hasData ? (
@@ -179,13 +183,16 @@ function ProgressCard({ m }: { m: ProgressMetric }) {
       ) : (
         <>
           <div className="flex items-baseline gap-2">
-            <span className={`text-3xl font-bold tabular-nums ${m.meets ? "text-emerald-600" : "text-rose-500"}`}>
+            <span className={`text-3xl font-bold tabular-nums ${valueColor}`}>
               {m.avg.toFixed(1)}%
             </span>
-            <StatusBadge kind={m.meets ? "ok" : "bad"}>{m.meets ? "cumple" : "no cumple"}</StatusBadge>
+            {!m.info && (
+              <StatusBadge kind={m.meets ? "ok" : "bad"}>{m.meets ? "cumple" : "no cumple"}</StatusBadge>
+            )}
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {m.avgLabel} · {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp vs objetivo
+            {m.avgLabel}
+            {m.info ? "" : <> · {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp vs objetivo</>}
           </div>
 
           <dl className="mt-3 space-y-1.5 border-t pt-2.5 text-xs">
@@ -227,7 +234,7 @@ function fsToProgress(label: string, c: FsCatU4M): ProgressMetric {
   };
 }
 
-function cbToProgress(label: string, c: CbMetricU3M): ProgressMetric {
+function cbToProgress(label: string, c: CbMetricU3M, info = false): ProgressMetric {
   return {
     label,
     target: c.target,
@@ -237,6 +244,7 @@ function cbToProgress(label: string, c: CbMetricU3M): ProgressMetric {
     meets: c.meets,
     months: c.months,
     avgLabel: "Promedio U3M",
+    info,
   };
 }
 
@@ -298,7 +306,7 @@ export default async function OverviewPage() {
   const dataLoaded = bgt.rows.length > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Objetivos de Marketing {YEAR}</h2>
         <p className="text-sm text-muted-foreground">
@@ -307,38 +315,38 @@ export default async function OverviewPage() {
       </header>
 
       {/* ===== OBJETIVO 1 ===== */}
-      <section className="mt-6 rounded-xl border border-l-4 border-l-primary bg-primary/[0.035] px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 1</span>
-              <h3 className="text-sm font-bold tracking-tight">Ejecución del Presupuesto de Marketing</h3>
+      <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
+        <div className="border-b border-primary/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 1</span>
+                <h3 className="text-sm font-bold tracking-tight">Ejecución del Presupuesto de Marketing</h3>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Ejecutar el presupuesto del Plan de Marketing con un desvío menor al {MAX_DESVIO}% vs el BGT vigente del cuatrimestre (T1 · BGT, T2 · 4+8, T3 · 8+4), sin superar el {invFactLabel}% de Inversión real / Facturación.
+              </p>
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Ejecutar el presupuesto del Plan de Marketing con un desvío menor al {MAX_DESVIO}% vs el BGT vigente del cuatrimestre (T1 · BGT, T2 · 4+8, T3 · 8+4), sin superar el {invFactLabel}% de Inversión real / Facturación.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-            <span className="inline-flex items-baseline gap-1">
-              <span className="text-sm font-bold text-primary">&lt; {MAX_DESVIO}%</span>
-              <span className="text-muted-foreground">desvío</span>
-            </span>
-            <span className="inline-flex items-baseline gap-1">
-              <span className="text-sm font-bold text-primary">≤ {invFactLabel}%</span>
-              <span className="text-muted-foreground">Inv / Fact</span>
-            </span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              <span className="inline-flex items-baseline gap-1">
+                <span className="text-sm font-bold text-primary">&lt; {MAX_DESVIO}%</span>
+                <span className="text-muted-foreground">desvío</span>
+              </span>
+              <span className="inline-flex items-baseline gap-1">
+                <span className="text-sm font-bold text-primary">≤ {invFactLabel}%</span>
+                <span className="text-muted-foreground">Inv / Fact</span>
+              </span>
+            </div>
           </div>
         </div>
-      </section>
 
-      {!dataLoaded && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-          No se pudo cargar la data de BGT (data.json). Verificá la conectividad o la variable <code>BGT_DATA_JSON_URL</code>.
-        </div>
-      )}
-
-      {/* Tarjetas por cuatrimestre */}
-      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="p-4">
+          {!dataLoaded && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+              No se pudo cargar la data de BGT (data.json). Verificá la conectividad o la variable <code>BGT_DATA_JSON_URL</code>.
+            </div>
+          )}
+          <div className="grid gap-4 lg:grid-cols-3">
         {cuatris.map((c) => (
           <div key={c.id} className="rounded-xl border bg-card p-5">
             <div className="mb-3 flex items-center justify-between">
@@ -399,83 +407,91 @@ export default async function OverviewPage() {
             )}
           </div>
         ))}
-      </div>
+          </div>
+        </div>
+      </section>
 
       {/* ===== OBJETIVO 2 ===== */}
-      <section className="mt-6 rounded-xl border border-l-4 border-l-primary bg-primary/[0.035] px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 2</span>
-              <h3 className="text-sm font-bold tracking-tight">Floor Share de exhibición — categorías core</h3>
+      <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
+        <div className="border-b border-primary/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 2</span>
+                <h3 className="text-sm font-bold tracking-tight">Floor Share de exhibición — categorías core</h3>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Alcanzar el Floor Share objetivo en las tres categorías core, en promedio de los últimos 4 meses: Lavado 32%, Refrigeración 25%, Cocción 23%.
+                {floorShare && floorShare.mesesUsados.length > 0 && (
+                  <span className="text-foreground/70"> · U4M: {floorShare.mesesUsados.join(" · ")}</span>
+                )}
+              </p>
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Alcanzar el Floor Share objetivo en las tres categorías core, en promedio de los últimos 4 meses: Lavado 32%, Refrigeración 25%, Cocción 23%.
-              {floorShare && floorShare.mesesUsados.length > 0 && (
-                <span className="text-foreground/70"> · U4M: {floorShare.mesesUsados.join(" · ")}</span>
-              )}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">32%</span><span className="text-muted-foreground">Lavado</span></span>
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">25%</span><span className="text-muted-foreground">Refri</span></span>
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">23%</span><span className="text-muted-foreground">Cocción</span></span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">32%</span><span className="text-muted-foreground">Lavado</span></span>
-            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">25%</span><span className="text-muted-foreground">Refri</span></span>
-            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">23%</span><span className="text-muted-foreground">Cocción</span></span>
-          </div>
+        </div>
+        <div className="p-4">
+          {fsError ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+              No se pudo cargar Floor Share: <code className="break-all">{fsError}</code>
+            </div>
+          ) : floorShare == null ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+              Sin datos de Floor Share en la ventana de los últimos 4 meses.
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-3">
+              {(["lavado", "refri", "coccion"] as FsCatKey[]).map((k) => (
+                <ProgressCard key={k} m={fsToProgress(FS_CAT_LABEL[k], floorShare[k])} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
-
-      {fsError ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-          No se pudo cargar Floor Share: <code className="break-all">{fsError}</code>
-        </div>
-      ) : floorShare == null ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-          Sin datos de Floor Share en la ventana de los últimos 4 meses.
-        </div>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-3">
-          {(["lavado", "refri", "coccion"] as FsCatKey[]).map((k) => (
-            <ProgressCard key={k} m={fsToProgress(FS_CAT_LABEL[k], floorShare[k])} />
-          ))}
-        </div>
-      )}
 
       {/* ===== OBJETIVO 3 ===== */}
-      <section className="mt-6 rounded-xl border border-l-4 border-l-primary bg-primary/[0.035] px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 3</span>
-              <h3 className="text-sm font-bold tracking-tight">Cumplimiento de Cuadros Básicos (Trade)</h3>
+      <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
+        <div className="border-b border-primary/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 3</span>
+                <h3 className="text-sm font-bold tracking-tight">Cumplimiento de Cuadro Básico (% CB)</h3>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Desarrollar y ejecutar el nuevo proceso de CB del área comercial para alcanzar un % CB promedio del 80% en los últimos 3 meses. Infaltables y Estratégicos se muestran como referencia.
+                {cb && cb.mesesUsados.length > 0 && (
+                  <span className="text-foreground/70"> · U3M: {cb.mesesUsados.join(" · ")}</span>
+                )}
+              </p>
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Desarrollar y ejecutar el nuevo proceso de CB del área comercial para alcanzar un cumplimiento promedio de Infaltables y Estratégicos (Trade) del 80% en los últimos 3 meses.
-              {cb && cb.mesesUsados.length > 0 && (
-                <span className="text-foreground/70"> · U3M: {cb.mesesUsados.join(" · ")}</span>
-              )}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">80%</span><span className="text-muted-foreground">% CB</span></span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">80%</span><span className="text-muted-foreground">Infaltables</span></span>
-            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">80%</span><span className="text-muted-foreground">Estratégicos</span></span>
-          </div>
+        </div>
+        <div className="p-4">
+          {cbError ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+              No se pudo cargar Cuadros Básicos: <code className="break-all">{cbError}</code>
+            </div>
+          ) : cb == null ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+              Sin datos de Cuadros Básicos en la ventana de los últimos 3 meses.
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-3">
+              <ProgressCard m={cbToProgress("% CB", cb.cb)} />
+              <ProgressCard m={cbToProgress("Infaltables", cb.infaltables, true)} />
+              <ProgressCard m={cbToProgress("Estratégicos", cb.estrategicos, true)} />
+            </div>
+          )}
         </div>
       </section>
-
-      {cbError ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-          No se pudo cargar Cuadros Básicos: <code className="break-all">{cbError}</code>
-        </div>
-      ) : cb == null ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-          Sin datos de Cuadros Básicos en la ventana de los últimos 3 meses.
-        </div>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ProgressCard m={cbToProgress("Infaltables", cb.infaltables)} />
-          <ProgressCard m={cbToProgress("Estratégicos (Trade)", cb.estrategicos)} />
-        </div>
-      )}
     </div>
   );
 }

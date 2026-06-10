@@ -369,8 +369,9 @@ export interface CbMetricU3M {
 
 export interface CbU3M {
   mesesUsados: string[];
-  infaltables: CbMetricU3M;
-  estrategicos: CbMetricU3M;
+  cb: CbMetricU3M;            // % CB — la métrica de la meta (80%)
+  infaltables: CbMetricU3M;   // info de referencia
+  estrategicos: CbMetricU3M;  // info de referencia
 }
 
 export async function getCbU3M(monthsBack = 3): Promise<CbU3M | null> {
@@ -395,12 +396,12 @@ export async function getCbU3M(monthsBack = 3): Promise<CbU3M | null> {
   const u3Keys = [...byKey.keys()].sort().slice(-monthsBack);
   const u3 = u3Keys.map((k) => byKey.get(k)!.mes);
 
-  const build = (metric: "infalt" | "estrat"): CbMetricU3M => {
+  const build = (metric: "cb" | "infalt" | "estrat"): CbMetricU3M => {
     const months: CbMonthPct[] = [];
     for (const k of u3Keys) {
       const t = computeTotals(byKey.get(k)!.rows);
-      const target = metric === "infalt" ? t.infalt_target : t.estrat_target;
-      const pct = metric === "infalt" ? t.infalt_pct : t.estrat_pct;
+      const target = metric === "cb" ? t.cb_target : metric === "infalt" ? t.infalt_target : t.estrat_target;
+      const pct = metric === "cb" ? t.cb_pct : metric === "infalt" ? t.infalt_pct : t.estrat_pct;
       if (target > 0) months.push({ mes: byKey.get(k)!.mes, pct });
     }
     const avg = months.length ? months.reduce((s, m) => s + m.pct, 0) / months.length : 0;
@@ -417,6 +418,7 @@ export async function getCbU3M(monthsBack = 3): Promise<CbU3M | null> {
 
   return {
     mesesUsados: u3,
+    cb: build("cb"),
     infaltables: build("infalt"),
     estrategicos: build("estrat"),
   };
