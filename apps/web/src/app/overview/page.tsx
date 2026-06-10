@@ -141,7 +141,7 @@ export default async function OverviewPage() {
               <h3 className="text-sm font-bold tracking-tight">Ejecución del Presupuesto de Marketing</h3>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Real vs BGT vigente del cuatrimestre (T1 · BGT, T2 · 4+8, T3 · 8+4). Sub-ejecución permitida.
+              Ejecutar el presupuesto del Plan de Marketing con un desvío menor al {MAX_DESVIO}% vs el BGT vigente del cuatrimestre (T1 · BGT, T2 · 4+8, T3 · 8+4), sin superar el {invFactLabel}% de Inversión real / Facturación.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
