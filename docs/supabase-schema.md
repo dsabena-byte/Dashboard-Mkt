@@ -105,7 +105,13 @@ values ('2026-05-01', 0, 'USD', 'carga manual')
 on conflict (mes) do update set facturacion = excluded.facturacion, updated_at = now();
 ```
 
-> ℹ️ El presupuesto (`BGT 2026`, `4+8 2026`, `8+4 2026`) y el `REAL 2026` todavía **no** viven en Supabase: se leen del `data.json` del dash de BGT Mkt (ver `BGT_DATA_JSON_URL`). Migrarlos a Supabase está pendiente (ver TODO en el README).
+### `bgt_marketing` — presupuesto y ejecución real de Marketing
+
+Migration `0050_bgt_marketing.sql`. Grano: una fila por `(presupuesto, anio, mes, cuenta, concepto)` con montos `ars` y `usd`. Versiones (`presupuesto`): `BGT 2026`, `4+8 2026`, `8+4 2026`, `REAL 2026` y equivalentes de años previos.
+
+Se sincroniza desde el `data.json` de BGT Mkt (origen SharePoint) vía la ruta cron **`/api/cron/bgt-sync`** (workflow `.github/workflows/bgt-sync.yml`, diario). El cron baja el JSON, **suma los conceptos repetidos** por la clave natural y hace upsert (`on_conflict=presupuesto,anio,mes,cuenta,concepto`). El Overview lee de esta tabla; si todavía no corrió el sync, cae al `data.json` directo (`BGT_DATA_JSON_URL`).
+
+> ℹ️ El **iframe** del dash BGT Mkt (`/funnel`) sigue leyendo el `data.json` directo por ahora; repuntarlo a Supabase queda como próximo paso.
 
 ### Tablas GA4 demo
 
