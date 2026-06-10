@@ -372,6 +372,8 @@ export interface CbU3M {
   cb: CbMetricU3M;            // % CB — la métrica de la meta (80%)
   infaltables: CbMetricU3M;   // info de referencia
   estrategicos: CbMetricU3M;  // info de referencia
+  // % CB por categoría (división) en la ventana U3M — para Salud de Marca.
+  cbByCategoria: { lavado: number | null; refri: number | null; coccion: number | null };
 }
 
 export async function getCbU3M(monthsBack = 3): Promise<CbU3M | null> {
@@ -416,11 +418,24 @@ export async function getCbU3M(monthsBack = 3): Promise<CbU3M | null> {
     };
   };
 
+  // % CB por categoría (división) sobre las filas de la ventana U3M.
+  const u3Rows = u3Keys.flatMap((k) => byKey.get(k)!.rows);
+  const acc = { lavado: { t: 0, o: 0 }, refri: { t: 0, o: 0 }, coccion: { t: 0, o: 0 } };
+  for (const r of u3Rows) {
+    const k = divKind(r.division);
+    if (k) {
+      acc[k].t += r.target_cb ?? 0;
+      acc[k].o += r.real_cb ?? 0;
+    }
+  }
+  const pct = (a: { t: number; o: number }) => (a.t > 0 ? (a.o / a.t) * 100 : null);
+
   return {
     mesesUsados: u3,
     cb: build("cb"),
     infaltables: build("infalt"),
     estrategicos: build("estrat"),
+    cbByCategoria: { lavado: pct(acc.lavado), refri: pct(acc.refri), coccion: pct(acc.coccion) },
   };
 }
 
