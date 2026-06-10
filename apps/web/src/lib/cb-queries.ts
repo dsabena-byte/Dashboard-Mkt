@@ -317,6 +317,112 @@ export function computeByTienda(rows: CbRow[]): CbByTienda[] {
 }
 
 // ============================================================================
+// Objetivo 3 (Overview) — Cumplimiento CB (Infaltables / Estratégicos),
+// promedio de los últimos 3 meses (U3M), objetivo 80%. Devuelve trayectoria
+// mensual, último mes y proyección lineal del próximo mes.
+// ============================================================================
+
+const MES_ORDER_CB = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+function linearNextCb(values: number[]): number | null {
+  const n = values.length;
+  if (n === 0) return null;
+  if (n === 1) return values[0]!;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) {
+    sx += i; sy += values[i]!; sxy += i * values[i]!; sxx += i * i;
+  }
+  const denom = n * sxx - sx * sx;
+  if (denom === 0) return values[n - 1]!;
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  return Math.max(0, intercept + slope * n);
+}
+
+async function getCbRecentWeeks(back = 16): Promise<number[]> {
+  const supabase = getCbSupabase();
+  const { data } = await supabase
+    .from(TABLE)
+    .select("semana")
+    .order("semana", { ascending: false })
+    .limit(1);
+  const maxSem = (data?.[0] as { semana: number | null } | undefined)?.semana ?? null;
+  if (maxSem == null) return [];
+  const weeks: number[] = [];
+  for (let i = 0; i < back && maxSem - i > 0; i++) weeks.push(maxSem - i);
+  return weeks;
+}
+
+export interface CbMonthPct {
+  mes: string;
+  pct: number;
+}
+
+export interface CbMetricU3M {
+  target: number;
+  avg: number;             // promedio de los meses de la ventana
+  latest: number | null;   // cumplimiento del último mes
+  projection: number | null;
+  meets: boolean;
+  months: CbMonthPct[];
+}
+
+export interface CbU3M {
+  mesesUsados: string[];
+  infaltables: CbMetricU3M;
+  estrategicos: CbMetricU3M;
+}
+
+export async function getCbU3M(monthsBack = 3): Promise<CbU3M | null> {
+  const weeks = await getCbRecentWeeks(16);
+  const rows = weeks.length > 0 ? await getCbRows({ semanas: weeks }) : await getCbRows();
+  if (rows.length === 0) return null;
+
+  // Agrupar por mes calendario (clave YYYY-MM, año 2026 — es lo que tiene la data).
+  const byKey = new Map<string, { mes: string; rows: CbRow[] }>();
+  for (const r of rows) {
+    if (r.semana == null) continue;
+    const mes = isoWeekToMes(r.semana);
+    const idx = MES_ORDER_CB.indexOf(mes);
+    if (idx < 0) continue;
+    const key = `2026-${String(idx + 1).padStart(2, "0")}`;
+    const acc = byKey.get(key);
+    if (acc) acc.rows.push(r);
+    else byKey.set(key, { mes, rows: [r] });
+  }
+  if (byKey.size === 0) return null;
+
+  const u3Keys = [...byKey.keys()].sort().slice(-monthsBack);
+  const u3 = u3Keys.map((k) => byKey.get(k)!.mes);
+
+  const build = (metric: "infalt" | "estrat"): CbMetricU3M => {
+    const months: CbMonthPct[] = [];
+    for (const k of u3Keys) {
+      const t = computeTotals(byKey.get(k)!.rows);
+      const target = metric === "infalt" ? t.infalt_target : t.estrat_target;
+      const pct = metric === "infalt" ? t.infalt_pct : t.estrat_pct;
+      if (target > 0) months.push({ mes: byKey.get(k)!.mes, pct });
+    }
+    const avg = months.length ? months.reduce((s, m) => s + m.pct, 0) / months.length : 0;
+    const latest = months.length ? months[months.length - 1]!.pct : null;
+    return {
+      target: OBJ_PCT,
+      avg,
+      latest,
+      projection: linearNextCb(months.map((m) => m.pct)),
+      meets: months.length > 0 && avg >= OBJ_PCT,
+      months,
+    };
+  };
+
+  return {
+    mesesUsados: u3,
+    infaltables: build("infalt"),
+    estrategicos: build("estrat"),
+  };
+}
+
+// ============================================================================
 // Sugerencias de tiendas a sumar al programa CB
 // ----------------------------------------------------------------------------
 // Fuentes:
