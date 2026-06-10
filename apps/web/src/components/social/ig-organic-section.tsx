@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
 import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
+import { ClasifBadge } from "@/components/social/clasif-badge";
 import type { IgOrganicSummary, IgDemoBreakdown } from "@/lib/meta-ig-queries";
 
 function fmtK(n: number | null | undefined): string {
@@ -250,6 +251,8 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
                       "Feed"}
                   </span>
                 )}
+                {/* Clasificación: categoría + pilar */}
+                <ClasifBadge categoria={p.categoria} pilar={p.pilar_contenido} />
                 <p className="line-clamp-2 text-[10px] text-foreground" title={p.message ?? ""}>
                   {p.message || <span className="italic text-muted-foreground">
                     {(p.media_type ?? "").toUpperCase() === "STORY" ? "Story (sin caption)" : "Sin texto"}
