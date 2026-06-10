@@ -5,7 +5,8 @@ export const maxDuration = 60;
 
 // Taxonomía (editable). El cron clasifica el contenido orgánico de Drean
 // (meta_posts) por categoría de producto y por pilar de contenido.
-const CATEGORIAS = ["Lavado", "Refrigeración", "Cocción", "Transversal"] as const;
+// Categorías alineadas con las de pauta (pauta_performance).
+const CATEGORIAS = ["Brand", "Lavado", "Refrigeración", "Cocción", "Promoción"] as const;
 const PILARES = [
   "Liderazgo marca/porfolio",
   "Calidad superior",
@@ -15,17 +16,18 @@ const PILARES = [
 ] as const;
 
 const PILAR_DEFS = `
-- "Liderazgo marca/porfolio": recupera percepción de categoría (TOM, poder de marca) mostrando liderazgo y un portfolio de productos único/superioridad tangible.
+- "Liderazgo marca/porfolio": liderazgo, portfolio de productos único, superioridad/premium tangible, tecnología propia.
 - "Calidad superior": convierte la calidad de Drean en evidencia; durabilidad y calidad que se siente ("toda tu vida").
 - "Respaldo Posventa": el servicio/posventa como argumento de compra; red instalada como diferencial (vs marcas sin servicio).
 - "Elegir bien": compra inteligente; costo oculto/riesgo de comprar barato vs lo que realmente conviene y da tranquilidad.
-- "Experiencia uso": experiencias de uso que validan la elección y conectan emocionalmente; preferencia y recomendación.`;
+- "Experiencia uso": experiencias REALES de uso/testimonios que validan la elección y conectan emocionalmente.`;
 
 const CATEGORIA_DEFS = `
 - "Lavado": lavarropas, secarropas, lavasecarropas.
 - "Refrigeración": heladeras, freezers.
 - "Cocción": cocinas, hornos, anafes, microondas.
-- "Transversal": marca/institucional o multi-categoría sin foco en una sola.`;
+- "Promoción": ofertas, descuentos, financiación/cuotas, % off o eventos comerciales (Drean Week, Hot Sale, Cyber, etc.).
+- "Brand": institucional/marca o multi-categoría sin foco en un producto ni en una promo.`;
 
 function env(key: string): string {
   const v = process.env[key];
@@ -92,7 +94,12 @@ PILARES válidos:${PILAR_DEFS}
 Posts (caption):
 ${list}
 
-Devolvé SOLO un JSON: {"items":[{"i":<número>,"categoria":"<una de las categorías>","pilar":"<uno de los pilares>","confianza":<0..1>}]}. Usá EXACTAMENTE los nombres dados. Si no hay foco claro de categoría, usá "Transversal".`;
+Reglas:
+- Si el post muestra o menciona un tipo de producto específico (lavarropas, heladera, cocina, etc.), usá ESA categoría aunque el tono sea de marca.
+- Si es una promo/oferta/evento comercial (Drean Week, Hot Sale, cuotas, % off), usá "Promoción".
+- Usá "Brand" solo si es institucional/multi-categoría, sin foco de producto ni promo.
+
+Devolvé SOLO un JSON: {"items":[{"i":<número>,"categoria":"<una de las categorías>","pilar":"<uno de los pilares>","confianza":<0..1>}]}. Usá EXACTAMENTE los nombres dados.`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -110,7 +117,7 @@ Devolvé SOLO un JSON: {"items":[{"i":<número>,"categoria":"<una de las categor
   const parsed = JSON.parse(data.choices[0]?.message?.content ?? "{}") as { items?: Clasif[] };
   const map = new Map<number, Clasif>();
   for (const it of parsed.items ?? []) {
-    const categoria = (CATEGORIAS as readonly string[]).includes(it.categoria) ? it.categoria : "Transversal";
+    const categoria = (CATEGORIAS as readonly string[]).includes(it.categoria) ? it.categoria : "Brand";
     const pilar = (PILARES as readonly string[]).includes(it.pilar) ? it.pilar : null;
     if (pilar) map.set(it.i, { i: it.i, categoria, pilar, confianza: Number(it.confianza) || 0 });
   }
