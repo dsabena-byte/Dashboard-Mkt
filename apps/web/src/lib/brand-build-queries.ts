@@ -165,10 +165,15 @@ export async function getCanalTotals(year = 2026): Promise<{ impresiones: number
 }
 
 // ---------- Ensamblado del modelo ----------
+export interface BrandCell {
+  display: string;
+  value: number | null; // valor numérico para la barra de intensidad
+}
 export interface BrandRow {
   kind: "Mental" | "Físico";
   label: string;
-  cells: string[]; // [Lavado, Refrigeración, Cocción, Drean]
+  unidad: string;            // "personas" | "%" | "x" | "visitas" ...
+  cells: BrandCell[];        // [Lavado, Refrigeración, Cocción, Drean]
 }
 export interface BrandComponent {
   title: string;
@@ -181,9 +186,8 @@ function fmtNum(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(Math.round(n));
 }
-function pctStr(n: number | null): string {
-  return n == null ? "—" : `${n.toFixed(0)}%`;
-}
+const fmtPct = (n: number) => `${n.toFixed(0)}%`;
+const fmtFreq = (n: number) => `${n.toFixed(1)}x`;
 
 export function buildBrandModel(
   pauta: PautaByCategoria | null,
@@ -200,63 +204,75 @@ export function buildBrandModel(
     return cats.reduce((s, c) => s + pilares.reduce((ss, p) => ss + (organic.cells[c]?.[p]?.[field] ?? 0), 0), 0);
   };
 
-  // row helper: fn(core) para las 3 categorías + valor drean ya formateado
-  const row = (kind: "Mental" | "Físico", label: string, fn: (c: CoreCat) => string, drean: string): BrandRow => ({
-    kind, label, cells: [...CORE.map(fn), drean],
+  const mk = (v: number | null, fmt: (n: number) => string): BrandCell => ({
+    display: v == null ? "—" : fmt(v),
+    value: v,
   });
-  const dreanOnly = (kind: "Mental" | "Físico", label: string, drean: string): BrandRow => ({
-    kind, label, cells: ["—", "—", "—", drean],
+  // fila normal: valor por categoría core + Drean
+  const numRow = (
+    kind: "Mental" | "Físico",
+    label: string,
+    unidad: string,
+    valFn: (c: CoreCat) => number | null,
+    dreanVal: number | null,
+    fmt: (n: number) => string,
+  ): BrandRow => ({
+    kind, label, unidad,
+    cells: [...CORE.map((c) => mk(valFn(c), fmt)), mk(dreanVal, fmt)],
+  });
+  // fila a nivel Drean (sin desagregar por categoría)
+  const dreanRow = (kind: "Mental" | "Físico", label: string, unidad: string, dreanVal: number | null, fmt: (n: number) => string): BrandRow => ({
+    kind, label, unidad,
+    cells: [mk(null, fmt), mk(null, fmt), mk(null, fmt), mk(dreanVal, fmt)],
   });
 
   const lidCal = ["Liderazgo marca/porfolio", "Calidad superior"] as const;
-
-  // Frecuencia = impresiones / alcance
-  const freq = (a: PautaAgg | undefined) => (a && a.alcance > 0 ? `${(a.impresiones / a.alcance).toFixed(1)}x` : "—");
-
-  const fsDrean = fs ? pctStr(CORE.reduce((s, c) => s + fs[FS_KEY[c]].avgU4M * PESO[c], 0)) : "—";
-  const cbCell = (c: CoreCat) => pctStr(cb ? cb.cbByCategoria[FS_KEY[c]] : null);
-  const cbDrean = pctStr(cb ? cb.cb.avg : null);
+  const freq = (a: PautaAgg | undefined) => (a && a.alcance > 0 ? a.impresiones / a.alcance : null);
+  const fsVal = (c: CoreCat) => (fs ? fs[FS_KEY[c]].avgU4M : null);
+  const fsDrean = fs ? CORE.reduce((s, c) => s + fs[FS_KEY[c]].avgU4M * PESO[c], 0) : null;
+  const cbVal = (c: CoreCat) => (cb ? cb.cbByCategoria[FS_KEY[c]] : null);
+  const cbDrean = cb ? cb.cb.avg : null;
 
   return [
     {
       title: "TOM / SOM · Saliencia",
       subtitle: "Awareness — personas alcanzadas y estímulos",
       rows: [
-        row("Mental", "Alcance · personas (pauta + orgánico)",
-          (c) => fmtNum((pauta?.byCat[c].alcance ?? 0) + orgSum(c, "reach")),
-          fmtNum((pauta?.drean.alcance ?? 0) + orgSum("drean", "reach"))),
-        row("Mental", "Frecuencia (impresiones/alcance)",
-          (c) => freq(pauta?.byCat[c]), freq(pauta?.drean)),
-        row("Mental", "Visualizaciones (pauta + orgánico)",
-          (c) => fmtNum((pauta?.byCat[c].views ?? 0) + orgSum(c, "views")),
-          fmtNum((pauta?.drean.views ?? 0) + orgSum("drean", "views"))),
-        row("Físico", "Floor Share %", (c) => pctStr(fs ? fs[FS_KEY[c]].avgU4M : null), fsDrean),
+        numRow("Mental", "Alcance · personas (pauta + orgánico)", "personas",
+          (c) => (pauta?.byCat[c].alcance ?? 0) + orgSum(c, "reach"),
+          (pauta?.drean.alcance ?? 0) + orgSum("drean", "reach"), fmtNum),
+        numRow("Mental", "Frecuencia (impresiones/alcance)", "x",
+          (c) => freq(pauta?.byCat[c]), freq(pauta?.drean), fmtFreq),
+        numRow("Mental", "Visualizaciones (pauta + orgánico)", "views",
+          (c) => (pauta?.byCat[c].views ?? 0) + orgSum(c, "views"),
+          (pauta?.drean.views ?? 0) + orgSum("drean", "views"), fmtNum),
+        numRow("Físico", "Floor Share %", "%", fsVal, fsDrean, fmtPct),
       ],
     },
     {
       title: "Poder de marca",
       subtitle: "Significancia + Diferenciación — calidad del estímulo",
       rows: [
-        row("Mental", "Alcance contenido de marca (Liderazgo+Calidad)",
-          (c) => fmtNum(orgSum(c, "reach", lidCal)), fmtNum(orgSum("drean", "reach", lidCal))),
-        row("Físico", "% CB · portfolio presente", cbCell, cbDrean),
+        numRow("Mental", "Alcance contenido de marca (Liderazgo+Calidad)", "personas",
+          (c) => orgSum(c, "reach", lidCal), orgSum("drean", "reach", lidCal), fmtNum),
+        numRow("Físico", "% CB · portfolio presente", "%", cbVal, cbDrean, fmtPct),
       ],
     },
     {
       title: "Intención de compra",
       subtitle: "Consideración — señales de intención",
       rows: [
-        row("Mental", "Usuarios web (personas)",
-          (c) => fmtNum(web?.byCat[c].usuarios ?? 0), fmtNum(web?.drean.usuarios ?? 0)),
-        row("Mental", "Sesiones web",
-          (c) => fmtNum(web?.byCat[c].sesiones ?? 0), fmtNum(web?.drean.sesiones ?? 0)),
-        row("Mental", "Páginas visitadas",
-          (c) => fmtNum(web?.byCat[c].pageviews ?? 0), fmtNum(web?.drean.pageviews ?? 0)),
-        row("Mental", "Clicks pauta",
-          (c) => fmtNum(pauta?.byCat[c].clicks ?? 0), fmtNum(pauta?.drean.clicks ?? 0)),
-        dreanOnly("Mental", "Mkt de Influencia · alcance", influencia ? fmtNum(influencia.alcance) : "—"),
-        dreanOnly("Mental", "Mkt de Canal · impresiones", canal ? fmtNum(canal.impresiones) : "—"),
-        row("Físico", "% CB · disponibilidad", cbCell, cbDrean),
+        numRow("Mental", "Usuarios web (personas)", "personas",
+          (c) => web?.byCat[c].usuarios ?? null, web?.drean.usuarios ?? null, fmtNum),
+        numRow("Mental", "Sesiones web", "sesiones",
+          (c) => web?.byCat[c].sesiones ?? null, web?.drean.sesiones ?? null, fmtNum),
+        numRow("Mental", "Páginas visitadas", "páginas",
+          (c) => web?.byCat[c].pageviews ?? null, web?.drean.pageviews ?? null, fmtNum),
+        numRow("Mental", "Clicks pauta", "clicks",
+          (c) => pauta?.byCat[c].clicks ?? null, pauta?.drean.clicks ?? null, fmtNum),
+        dreanRow("Mental", "Mkt de Influencia · alcance", "personas", influencia ? influencia.alcance : null, fmtNum),
+        dreanRow("Mental", "Mkt de Canal · impresiones", "impresiones", canal ? canal.impresiones : null, fmtNum),
+        numRow("Físico", "% CB · disponibilidad", "%", cbVal, cbDrean, fmtPct),
       ],
     },
   ];
