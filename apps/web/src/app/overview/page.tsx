@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import {
   getBgtData,
   sumVersion,
@@ -14,8 +15,8 @@ import {
 import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
 import {
   getOrganicPilarMix,
-  BRAND_CATEGORIAS,
-  BRAND_PILARES,
+  getPautaByCategoria,
+  buildBrandModel,
 } from "@/lib/brand-build-queries";
 
 export const dynamic = "force-dynamic";
@@ -269,6 +270,8 @@ export default async function OverviewPage() {
   const fsError = floorShareRes.error;
   const cb = cbRes.data;
   const cbError = cbRes.error;
+  const pautaByCat = await safe(getPautaByCategoria(), null);
+  const brandModel = buildBrandModel(pautaByCat, brandMix, floorShare, cb);
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
   const cuatris = CUATRIS.map((c) => {
@@ -508,72 +511,58 @@ export default async function OverviewPage() {
                 <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 4</span>
                 <h3 className="text-sm font-bold tracking-tight">Salud de Marca — cómo la construimos</h3>
               </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Se mide con la investigación de fin de año; mientras tanto seguimos los indicadores que la construyen. Mix de contenido orgánico por categoría y pilar (desde {YEAR}).
+              <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">
+                El resultado se mide con la investigación de fin de año. Mientras tanto seguimos los indicadores proyectivos que la construyen, mapeados a cada componente: <b>disponibilidad mental</b> (medios + contenido) × <b>física</b> (Floor Share + CB).
               </p>
             </div>
-            <div className="text-xs text-muted-foreground">Baseline 2025: <b className="text-foreground/80">30,2%</b></div>
+            <div className="text-right text-xs text-muted-foreground">
+              <div>Salud de Marca 2025 · Drean</div>
+              <div className="text-base font-bold text-foreground">33,6%</div>
+              <div className="text-[10px]">ponderado Lav 60 · Refri 30 · Coc 10</div>
+            </div>
           </div>
         </div>
 
-        <div className="p-4">
-          {brandMix == null ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-              Sin contenido orgánico clasificado todavía. Aplicá la migración <code>0051</code> y corré el clasificador.
-            </div>
-          ) : (
-            (() => {
-              const maxCell = Math.max(
-                1,
-                ...BRAND_CATEGORIAS.flatMap((c) => BRAND_PILARES.map((p) => brandMix.cells[c]![p]!.posts)),
-              );
-              return (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                        <th className="px-2 py-1.5">Categoría</th>
-                        {BRAND_PILARES.map((p) => (
-                          <th key={p} className="px-2 py-1.5 text-center font-medium">{p}</th>
-                        ))}
-                        <th className="px-2 py-1.5 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {BRAND_CATEGORIAS.map((c) => (
-                        <tr key={c} className="border-t">
-                          <td className="px-2 py-1.5 font-medium">{c}</td>
-                          {BRAND_PILARES.map((p) => {
-                            const v = brandMix.cells[c]![p]!.posts;
-                            return (
-                              <td
-                                key={p}
-                                className="px-2 py-1.5 text-center tabular-nums"
-                                style={{ backgroundColor: v > 0 ? `rgba(59,130,246,${(0.08 + 0.5 * (v / maxCell)).toFixed(3)})` : undefined }}
-                              >
-                                {v > 0 ? v : <span className="text-muted-foreground">·</span>}
-                              </td>
-                            );
-                          })}
-                          <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{brandMix.totalByCat[c] ?? 0}</td>
-                        </tr>
+        <div className="overflow-x-auto p-4">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                <th className="px-2 py-1.5 text-left">Componente / Indicador</th>
+                <th className="px-2 py-1.5 text-right">Lavado</th>
+                <th className="px-2 py-1.5 text-right">Refrigeración</th>
+                <th className="px-2 py-1.5 text-right">Cocción</th>
+                <th className="px-2 py-1.5 text-right font-semibold text-foreground/70">Drean</th>
+              </tr>
+            </thead>
+            <tbody>
+              {brandModel.map((comp) => (
+                <Fragment key={comp.title}>
+                  <tr className="border-t bg-muted/40">
+                    <td colSpan={5} className="px-2 py-1.5">
+                      <span className="text-xs font-bold">{comp.title}</span>
+                      <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">{comp.subtitle}</span>
+                    </td>
+                  </tr>
+                  {comp.rows.map((r) => (
+                    <tr key={r.label} className="border-t">
+                      <td className="px-2 py-1.5">
+                        <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+                          {r.kind}
+                        </span>
+                        <span className="text-muted-foreground">{r.label}</span>
+                      </td>
+                      {r.cells.map((cell, i) => (
+                        <td key={i} className={`px-2 py-1.5 text-right tabular-nums ${i === 3 ? "font-semibold" : ""}`}>{cell}</td>
                       ))}
-                      <tr className="border-t-2">
-                        <td className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">Total</td>
-                        {BRAND_PILARES.map((p) => (
-                          <td key={p} className="px-2 py-1.5 text-center font-semibold tabular-nums">{brandMix.totalByPilar[p] ?? 0}</td>
-                        ))}
-                        <td className="px-2 py-1.5 text-right font-bold tabular-nums">{brandMix.total}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    # de posts orgánicos de Drean clasificados por categoría × pilar. Más intensidad = más volumen de contenido en ese mensaje. Próximo paso: sumar pauta por categoría y conectar con TOM/SOM, Poder e Intención (mental) × Floor Share + CB (físico).
-                  </p>
-                </div>
-              );
-            })()
-          )}
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Indicadores proyectivos (leading) por componente de Salud de Marca · categoría core + Drean general (ponderado 60/30/10). No reemplazan la investigación: muestran cómo venimos construyendo el resultado. Próximo: sumar más señales y momentum.
+          </p>
         </div>
       </section>
     </div>

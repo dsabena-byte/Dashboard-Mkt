@@ -22,8 +22,8 @@ import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
 
 const NAV = [
-  { href: "/overview",    label: "Overview",         icon: LayoutDashboard },
-  { href: "/funnel",      label: "BGT Mkt",          icon: GitBranch },
+  { href: "/overview",    label: "Objetivos Marketing", icon: LayoutDashboard },
+  { href: "/funnel",      label: "BGT Inversión",       icon: GitBranch },
   { href: "/planning",    label: "Planning Pauta",   icon: Target },
   { href: "/performance", label: "Performance Pauta", icon: BarChart3 },
   { href: "/influencia",  label: "Mkt de Influencia", icon: Megaphone },
