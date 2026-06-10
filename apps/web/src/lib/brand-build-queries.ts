@@ -242,8 +242,6 @@ export function buildBrandModel(
       rows: [
         row("Mental", "Alcance contenido de marca (Liderazgo+Calidad)",
           (c) => fmtNum(orgSum(c, "reach", lidCal)), fmtNum(orgSum("drean", "reach", lidCal))),
-        row("Mental", "Engagement orgánico (interacciones)",
-          (c) => fmtNum(orgSum(c, "engagement")), fmtNum(orgSum("drean", "engagement"))),
         row("Físico", "% CB · portfolio presente", cbCell, cbDrean),
       ],
     },
