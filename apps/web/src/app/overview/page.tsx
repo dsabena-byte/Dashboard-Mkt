@@ -39,6 +39,13 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
+const MES_CAP = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+function coverageLabel(months: number[]): string {
+  if (months.length === 0) return "";
+  if (months.length === 1) return MES_CAP[months[0]! - 1]!;
+  return `${MES_CAP[months[0]! - 1]}–${MES_CAP[months[months.length - 1]! - 1]}`;
+}
+
 function mesesUpFor(months: number[]): string[] {
   return months.map((m) => MESES_UP[m - 1]!);
 }
@@ -95,10 +102,18 @@ export default async function OverviewPage() {
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
   const cuatris = CUATRIS.map((c) => {
-    const mesesUp = mesesUpFor(c.months);
-    const mesesYm = mesesYmFor(c.months);
     const estado = estadoFor(c.months, curYear, curMonth);
     const bgtAvailable = hasVersion(bgt.rows, c.bgtVersion);
+
+    // En curso: medimos "cómo venimos" sobre los meses ya cerrados del
+    // cuatrimestre (los que tienen Real + BGT + facturación). Cerrado/futuro:
+    // cuatrimestre completo.
+    const closedMonths = c.months.filter((m) => m < curMonth);
+    const partial = estado === "en curso" && closedMonths.length > 0;
+    const useMonths = partial ? closedMonths : c.months;
+
+    const mesesUp = mesesUpFor(useMonths);
+    const mesesYm = mesesYmFor(useMonths);
 
     const bgtVal = sumVersion(bgt.rows, c.bgtVersion, mesesUp, "usd");
     const realVal = sumVersion(bgt.rows, REAL_VERSION, mesesUp, "usd");
@@ -107,13 +122,16 @@ export default async function OverviewPage() {
     const desvio = bgtAvailable && bgtVal > 0 ? ((realVal - bgtVal) / bgtVal) * 100 : null;
     const invFact = fact && fact > 0 ? (realVal / fact) * 100 : null;
 
-    const evaluable = estado === "cerrado";
+    // Cerrado se evalúa sobre el cuatrimestre; en curso, sobre lo acumulado a la fecha.
+    const evaluable = estado === "cerrado" || partial;
     // Solo incumple si se SOBRE-ejecuta el BGT en más del umbral.
     // Sub-ejecutar (desvío negativo) está permitido.
     const desvioOk = desvio != null ? desvio < MAX_DESVIO : null;
     const invFactOk = invFact != null ? invFact <= MAX_INV_FACT : null;
 
-    return { ...c, estado, bgtAvailable, bgtVal, realVal, fact, desvio, invFact, evaluable, desvioOk, invFactOk };
+    const coverage = partial ? coverageLabel(useMonths) : null;
+
+    return { ...c, estado, bgtAvailable, partial, coverage, bgtVal, realVal, fact, desvio, invFact, evaluable, desvioOk, invFactOk };
   });
 
   const syncLabel = bgt.syncedAt
@@ -172,7 +190,10 @@ export default async function OverviewPage() {
                 <div className="text-base font-semibold tracking-tight">
                   {c.id} <span className="text-sm font-normal text-muted-foreground">· {c.label}</span>
                 </div>
-                <div className="text-xs text-muted-foreground">Real vs {c.bgtLabel}</div>
+                <div className="text-xs text-muted-foreground">
+                  Real vs {c.bgtLabel}
+                  {c.coverage && <span className="text-foreground/70"> · acum. a {c.coverage}</span>}
+                </div>
               </div>
               <StatusBadge kind={c.estado === "cerrado" ? "neutral" : c.estado === "en curso" ? "ok" : "neutral"}>
                 {c.estado}
@@ -186,11 +207,11 @@ export default async function OverviewPage() {
             ) : (
               <dl className="space-y-2.5 text-sm">
                 <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">BGT vigente</dt>
+                  <dt className="text-muted-foreground">BGT vigente{c.partial ? " (a la fecha)" : ""}</dt>
                   <dd className="font-semibold tabular-nums">{fmtUSD(c.bgtVal)}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">Real ejecutado</dt>
+                  <dt className="text-muted-foreground">Real ejecutado{c.partial ? " (a la fecha)" : ""}</dt>
                   <dd className="font-semibold tabular-nums">{fmtUSD(c.realVal)}</dd>
                 </div>
 
