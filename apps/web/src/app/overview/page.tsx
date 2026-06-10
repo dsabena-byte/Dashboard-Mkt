@@ -333,7 +333,7 @@ export default async function OverviewPage() {
               <h3 className="text-sm font-bold tracking-tight">Floor Share de exhibición — categorías core</h3>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Alcanzar el share de góndola objetivo en las tres categorías core, en promedio de los últimos 4 meses: Lavado 32%, Refrigeración 25%, Cocción 23%.
+              Alcanzar el Floor Share objetivo en las tres categorías core, en promedio de los últimos 4 meses: Lavado 32%, Refrigeración 25%, Cocción 23%.
               {floorShare && floorShare.mesesUsados.length > 0 && (
                 <span className="text-foreground/70"> · U4M: {floorShare.mesesUsados.join(" · ")}</span>
               )}
