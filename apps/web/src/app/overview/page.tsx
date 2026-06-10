@@ -1,59 +1,39 @@
-import { KpiCard } from "@/components/kpi-card";
-import { MonthSelector } from "@/components/overview/month-selector";
-import { InvestmentDonut } from "@/components/pauta/pauta-charts";
-import { WebMonthlyChart } from "@/components/web-monthly-chart";
 import {
-  MEDIO_COLORS,
-  computeFunnel,
-  computeByMedio,
-  investmentByCategoria,
-  extractMeses,
-  defaultMes,
-} from "@/lib/pauta-data";
-import { getPautaPerformance } from "@/lib/pauta-queries";
-import {
-  getWebDailyKpis,
-  aggregateDaily,
-  getAllMonthlyUsers,
-} from "@/lib/web-queries";
-import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
-import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
-import {
-  getSocialPosts,
-  getSocialFollowers,
-  getLatestFollowers,
-  computeBrandStats,
-  BRAND_LABELS,
-  BRAND_COLORS,
-  OWN_BRAND,
-} from "@/lib/social-posts-queries";
-import { getPlanningMedia, aggregateTotals } from "@/lib/planning-media-queries";
-import { getFunnelData } from "@/lib/funnel-queries";
-import { FunnelWidget } from "@/components/overview/funnel-widget";
+  getBgtData,
+  sumVersion,
+  hasVersion,
+  MESES_UP,
+} from "@/lib/bgt-queries";
+import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-interface PageProps {
-  searchParams: Record<string, string | string[] | undefined>;
-}
+const YEAR = 2026;
+const REAL_VERSION = `REAL ${YEAR}`;
 
-// Mapeo mes de pauta → rango de fechas + mes de planning (YYYY-MM-01)
-const MONTH_MAP: Record<string, { from: string; to: string; planning: string }> = {
-  "Abril 2026": { from: "2026-04-01", to: "2026-04-30", planning: "2026-04-01" },
-  "Mayo 2026": { from: "2026-05-01", to: "2026-05-31", planning: "2026-05-01" },
-};
+// Umbrales del Objetivo 1
+const MAX_DESVIO = 5; // % — desvío Real vs BGT vigente
+const MAX_INV_FACT = 1.3; // % — Inversión Mkt real / Facturación
 
-function fmtNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(Math.round(n));
+const MES_LABEL = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+];
+
+// Cuatrimestres 2026 y la versión de BGT "vigente" que se compara en cada uno.
+interface Cuatri {
+  id: "T1" | "T2" | "T3";
+  label: string;
+  months: number[]; // 1-12
+  bgtVersion: string;
+  bgtLabel: string;
 }
-function fmtARS(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${Math.round(n)}`;
-}
+const CUATRIS: Cuatri[] = [
+  { id: "T1", label: "Ene–Abr", months: [1, 2, 3, 4], bgtVersion: `BGT ${YEAR}`, bgtLabel: "BGT" },
+  { id: "T2", label: "May–Ago", months: [5, 6, 7, 8], bgtVersion: `4+8 ${YEAR}`, bgtLabel: "BGT 4+8" },
+  { id: "T3", label: "Sep–Dic", months: [9, 10, 11, 12], bgtVersion: `8+4 ${YEAR}`, bgtLabel: "BGT 8+4" },
+];
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try {
@@ -63,262 +43,247 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
+function mesesUpFor(months: number[]): string[] {
+  return months.map((m) => MESES_UP[m - 1]!);
+}
+function mesesYmFor(months: number[]): string[] {
+  return months.map((m) => `${YEAR}-${String(m).padStart(2, "0")}-01`);
+}
+
+function fmtUSD(n: number): string {
+  const a = Math.abs(n);
+  const sign = n < 0 ? "-" : "";
+  if (a >= 1e9) return `${sign}US$ ${(a / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `${sign}US$ ${(a / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `${sign}US$ ${(a / 1e3).toFixed(0)}K`;
+  return `${sign}US$ ${Math.round(a)}`;
+}
+function fmtPct(n: number, signed = true): string {
+  return `${signed && n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+}
+
+type Estado = "cerrado" | "en curso" | "futuro";
+function estadoFor(months: number[], curYear: number, curMonth: number): Estado {
+  if (curYear > YEAR) return "cerrado";
+  if (curYear < YEAR) return "futuro";
+  const last = Math.max(...months);
+  const first = Math.min(...months);
+  if (curMonth > last) return "cerrado";
+  if (curMonth < first) return "futuro";
+  return "en curso";
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <div className="mb-3 mt-6 text-sm font-medium text-muted-foreground">{children}</div>;
 }
 
-const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+function StatusBadge({ kind, children }: { kind: "ok" | "bad" | "neutral"; children: React.ReactNode }) {
+  const cls =
+    kind === "ok"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : kind === "bad"
+        ? "bg-red-50 text-red-700 border-red-200"
+        : "bg-muted text-muted-foreground border-transparent";
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}>
+      {children}
+    </span>
+  );
+}
 
-export default async function OverviewPage({ searchParams }: PageProps) {
-  // ===== PAUTA (Supabase, server-side) =====
-  const allPauta = await safe(getPautaPerformance(), [] as Awaited<ReturnType<typeof getPautaPerformance>>);
-  const pautaMeses = extractMeses(allPauta);
-  const fallbackMes = defaultMes(pautaMeses) || "Abril 2026";
-  const mesParam = Array.isArray(searchParams.mes) ? searchParams.mes[0] : searchParams.mes;
-  const mes = mesParam && MONTH_MAP[mesParam] ? mesParam : fallbackMes;
-  const mr = MONTH_MAP[mes] ?? MONTH_MAP[fallbackMes] ?? { from: "2026-04-01", to: "2026-04-30", planning: "2026-04-01" };
-  const range = { from: mr.from, to: mr.to };
+export default async function OverviewPage() {
+  const now = new Date();
+  const curYear = now.getUTCFullYear();
+  const curMonth = now.getUTCMonth() + 1;
 
-  const pautaRows = allPauta.filter((r) => r.mes === mes);
-  const upper = computeFunnel(pautaRows, "upper");
-  const mid = computeFunnel(pautaRows, "mid");
-  const totalInv = pautaRows.reduce((s, r) => s + (r.inversion ?? 0), 0);
-  const totalViews = pautaRows.reduce((s, r) => s + (r.views ?? 0), 0);
-  const catInv = investmentByCategoria(pautaRows);
-  const byMedio = computeByMedio(pautaRows);
-
-  // ===== FETCH paralelo y resiliente =====
-  const [webRows, monthlyUsers, fb, ig, posts, followers, planningRows, funnelData] = await Promise.all([
-    safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>),
-    safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>),
-    safe(getFbOrganicSummary(range), null),
-    safe(getIgOrganicSummary(range), null),
-    safe(getSocialPosts({ marca: "all", red: "all", from: range.from, to: range.to }), [] as Awaited<ReturnType<typeof getSocialPosts>>),
-    safe(getSocialFollowers(), [] as Awaited<ReturnType<typeof getSocialFollowers>>),
-    safe(getPlanningMedia({ fecha: [mr.planning] }), [] as Awaited<ReturnType<typeof getPlanningMedia>>),
-    safe(getFunnelData(range, mes), {} as Awaited<ReturnType<typeof getFunnelData>>),
+  const [bgt, factRows] = await Promise.all([
+    safe(getBgtData(), { rows: [], syncedAt: null }),
+    safe(getFacturacionMensual(), [] as Awaited<ReturnType<typeof getFacturacionMensual>>),
   ]);
 
-  const web = aggregateDaily(webRows);
-  const planning = aggregateTotals(planningRows);
-  const brandStats = computeBrandStats(posts, followers, "all").sort((a, b) => b.engagement_promedio - a.engagement_promedio);
+  // ===== Cálculo por cuatrimestre (todo en USD) =====
+  const cuatris = CUATRIS.map((c) => {
+    const mesesUp = mesesUpFor(c.months);
+    const mesesYm = mesesYmFor(c.months);
+    const estado = estadoFor(c.months, curYear, curMonth);
+    const bgtAvailable = hasVersion(bgt.rows, c.bgtVersion);
 
-  // Comunidad: followers Drean IG + FB
-  const fbFollowers = getLatestFollowers(followers, OWN_BRAND, "FACEBOOK");
-  const igFollowers = getLatestFollowers(followers, OWN_BRAND, "INSTAGRAM");
-  const comunidad = fbFollowers + igFollowers;
+    const bgtVal = sumVersion(bgt.rows, c.bgtVersion, mesesUp, "usd");
+    const realVal = sumVersion(bgt.rows, REAL_VERSION, mesesUp, "usd");
+    const fact = sumFacturacion(factRows, mesesYm);
 
-  // Engagement orgánico del mes (FB + IG)
-  const fbEng = fb ? fb.totals.reactions_total + fb.totals.clicks + fb.totals.video_views + fb.topPosts.reduce((s, p) => s + p.engagement, 0) : 0;
-  const igEng = ig ? ig.totalEngagement : 0;
-  const engOrganico = fbEng + igEng;
+    const desvio = bgtAvailable && bgtVal > 0 ? ((realVal - bgtVal) / bgtVal) * 100 : null;
+    const invFact = fact && fact > 0 ? (realVal / fact) * 100 : null;
 
-  // Inversión por etapa sin doble conteo (video → Upper)
-  const upperInv = pautaRows.filter((r) => r.objetivo !== "Consideración").reduce((s, r) => s + (r.inversion ?? 0), 0);
-  const midInv = totalInv - upperInv;
+    const evaluable = estado === "cerrado";
+    const desvioOk = desvio != null ? Math.abs(desvio) < MAX_DESVIO : null;
+    const invFactOk = invFact != null ? invFact <= MAX_INV_FACT : null;
 
-  // Donut mix ON/OFF (ejecutado por tipo de medio)
-  let invDigital = 0, invTv = 0, invOoh = 0;
-  for (const r of pautaRows) {
-    const v = r.inversion ?? 0;
-    if (r.medio === "TV Cable") invTv += v;
-    else if (r.medio === "DOOH") invOoh += v;
-    else invDigital += v;
-  }
-  const mixOnOff = [
-    { name: "Digital", value: invDigital, color: "#2b4dff" },
-    { name: "TV Cable", value: invTv, color: "#e63946" },
-    { name: "OOH / DOOH", value: invOoh, color: "#f59e0b" },
-  ].filter((d) => d.value > 0);
+    return { ...c, estado, bgtAvailable, bgtVal, realVal, fact, desvio, invFact, evaluable, desvioOk, invFactOk };
+  });
 
-  // Monthly users chart (desde enero 2026 a la fecha)
-  const monthlyData = monthlyUsers
-    .filter((m) => m.mes >= "2026-01-01")
-    .map((m) => {
-      const d = new Date(`${m.mes}T00:00:00Z`);
-      return {
-        mes: `${MES_SHORT[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`,
-        usuarios_curr: m.total_users,
-        usuarios_prev: 0,
-        sesiones_curr: m.sesiones ?? 0,
-        sesiones_prev: 0,
-      };
-    });
+  // ===== Detalle mensual (BGT vigente del cuatrimestre vs Real, mes a mes) =====
+  const monthly = Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1;
+    const c = CUATRIS.find((q) => q.months.includes(month))!;
+    const mesUp = [MESES_UP[i]!];
+    const ym = `${YEAR}-${String(month).padStart(2, "0")}-01`;
+    const bgtVal = hasVersion(bgt.rows, c.bgtVersion) ? sumVersion(bgt.rows, c.bgtVersion, mesUp, "usd") : null;
+    const realVal = sumVersion(bgt.rows, REAL_VERSION, mesUp, "usd");
+    const fact = sumFacturacion(factRows, [ym]);
+    const desvio = bgtVal && bgtVal > 0 ? ((realVal - bgtVal) / bgtVal) * 100 : null;
+    const invFact = fact && fact > 0 ? (realVal / fact) * 100 : null;
+    return { month, label: MES_LABEL[i]!, bgtLabel: c.bgtLabel, bgtVal, realVal, fact, desvio, invFact };
+  });
 
-  // Funnel compacto
-  const funnelStages = [
-    { label: "Impresiones", value: upper.impresiones, w: 100, bg: "#0a1849" },
-    { label: "Alcance (suma medios)", value: upper.alcance, w: 80, bg: "#142b6f" },
-    { label: "Video Views", value: totalViews, w: 60, bg: "#1e3a8a" },
-    { label: "Clicks", value: mid.clics, w: 42, bg: "#2b4dff" },
-  ];
-
-  const planExec = planning.total > 0 ? (totalInv / planning.total) * 100 : 0;
-  const maxReachMedio = Math.max(...byMedio.map((x) => x.alcance), 1);
+  const syncLabel = bgt.syncedAt
+    ? new Date(bgt.syncedAt).toLocaleString("es-AR", {
+        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+      })
+    : "—";
+  const dataLoaded = bgt.rows.length > 0;
+  const factLoaded = factRows.length > 0;
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Overview Ejecutivo</h2>
-          <p className="text-sm text-muted-foreground">
-            Estado de situación de la estrategia de marketing Drean · {mes}
-          </p>
-        </div>
-        <MonthSelector months={pautaMeses} current={mes} />
+      <header>
+        <h2 className="text-2xl font-semibold tracking-tight">Objetivos de Marketing {YEAR}</h2>
+        <p className="text-sm text-muted-foreground">
+          Seguimiento descriptivo de los objetivos del área · Fuente BGT: SharePoint · Última sincronización: {syncLabel}
+        </p>
       </header>
 
-      {/* ===== 1. HERO KPIs ===== */}
-      <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-        <KpiCard title="Inversión ejecutada" value={fmtARS(totalInv)} hint={planning.total > 0 ? `${planExec.toFixed(0)}% del plan (${fmtARS(planning.total)})` : "Pauta del mes"} />
-        <KpiCard title="Alcance campañas" value={fmtNum(upper.alcance)} hint="Suma de medios" />
-        <KpiCard title="Usuarios web" value={fmtNum(web.usuarios)} hint={`${fmtNum(web.sesiones)} sesiones`} />
-        <KpiCard title="Comunidad en redes" value={comunidad > 0 ? fmtNum(comunidad) : "—"} hint="Followers IG + FB" />
-        <KpiCard title="Engagement orgánico" value={fmtNum(engOrganico)} hint="FB + IG del mes" />
-      </section>
+      {/* ===== OBJETIVO 1 ===== */}
+      <SectionTitle>Objetivo 1 · Ejecución del Presupuesto de Marketing</SectionTitle>
 
-      {/* ===== 2. FUNNEL ESTRATÉGICO ===== */}
-      <SectionTitle>Funnel estratégico Drean</SectionTitle>
-      <div className="rounded-xl border bg-card p-6">
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold tracking-tight">Funnel de marketing</h3>
-            <p className="text-xs text-muted-foreground">
-              KPIs combinados de Pauta (inversión, alcance, clicks) + GA4 (sesiones por etapa). Filtrá por categoría.
-            </p>
-          </div>
-        </div>
-        {Object.keys(funnelData).length > 0 ? (
-          <FunnelWidget data={funnelData} />
-        ) : (
-          <div className="rounded-lg border bg-amber-50 p-4 text-xs text-amber-900">
-            Aplicá la migration <code>0036_ga4_funnel_view.sql</code> para activar este widget.
-          </div>
-        )}
-      </div>
-
-      {/* ===== 3. INVERSIÓN & ESTRATEGIA ===== */}
-      <SectionTitle>Inversión &amp; Estrategia</SectionTitle>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-bold">Mix ON / OFF — inversión ejecutada</h3>
-          <InvestmentDonut data={mixOnOff} />
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-bold">Inversión por categoría</h3>
-          <InvestmentDonut data={catInv} />
-        </div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <KpiCard title="Ejecutado vs Plan" value={planning.total > 0 ? `${planExec.toFixed(0)}%` : "—"} hint={planning.total > 0 ? `Plan: ${fmtARS(planning.total)}` : "Sin plan cargado"} />
-        <KpiCard title="Inversión Upper (Awareness)" value={fmtARS(upperInv)} hint="Reach + Video" />
-        <KpiCard title="Inversión Mid (Consideración)" value={fmtARS(midInv)} hint="Tráfico / CPC" />
-      </div>
-
-      {/* ===== 3. RESULTADOS DE MEDIOS — FUNNEL ===== */}
-      <SectionTitle>Resultados de medios — Funnel</SectionTitle>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border bg-card p-6">
-          <div className="flex flex-col items-center gap-1.5">
-            {funnelStages.map((s) => (
-              <div key={s.label} className="flex items-center justify-between rounded-lg px-5 py-3 text-white" style={{ width: `${s.w}%`, backgroundColor: s.bg }}>
-                <span className="text-[11px] font-medium uppercase tracking-wide opacity-90">{s.label}</span>
-                <span className="text-lg font-bold">{fmtNum(s.value)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <h3 className="mb-3 text-sm font-bold">Top plataformas por alcance</h3>
-          <div className="space-y-2">
-            {byMedio.filter((m) => m.alcance > 0).sort((a, b) => b.alcance - a.alcance).slice(0, 6).map((m) => (
-              <div key={m.medio} className="text-xs">
-                <div className="mb-1 flex justify-between">
-                  <span className="font-medium">{m.medio}</span>
-                  <span className="tabular-nums text-muted-foreground">{fmtNum(m.alcance)}</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                  <div className="h-full rounded-full" style={{ width: `${(m.alcance / maxReachMedio) * 100}%`, backgroundColor: MEDIO_COLORS[m.medio] ?? "#94a3b8" }} />
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="rounded-xl border bg-card p-5">
+        <p className="text-sm text-foreground">
+          Ejecutar el presupuesto del Plan de Marketing con un <b>desvío menor al {MAX_DESVIO}%</b> vs
+          el <b>BGT vigente del cuatrimestre</b>, y <b>nunca superando el {MAX_INV_FACT.toString().replace(".", ",")}%</b> de
+          la <b>Inversión real / Facturación</b>.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <span className="rounded-md bg-muted px-2 py-1">T1 → Real vs <b>BGT</b></span>
+          <span className="rounded-md bg-muted px-2 py-1">T2 → Real vs <b>BGT 4+8</b></span>
+          <span className="rounded-md bg-muted px-2 py-1">T3 → Real vs <b>BGT 8+4</b></span>
         </div>
       </div>
 
-      {/* ===== 4. SITIO WEB (GA4) ===== */}
-      <SectionTitle>Sitio web propio · GA4</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-4">
-        <KpiCard title="Usuarios" value={fmtNum(web.usuarios)} hint="Período seleccionado" />
-        <KpiCard title="Sesiones" value={fmtNum(web.sesiones)} />
-        <KpiCard title="Conversiones" value={fmtNum(web.conversiones)} hint={web.conversion_rate != null ? `${(web.conversion_rate * 100).toFixed(2)}% conv.` : undefined} />
-        <KpiCard title="Pageviews" value={fmtNum(web.pageviews)} hint={web.pages_per_session != null ? `${web.pages_per_session.toFixed(1)} pág/sesión` : undefined} />
-      </div>
-      {monthlyData.length > 0 && (
-        <div className="rounded-xl border bg-card p-4">
-          <h3 className="mb-3 text-sm font-bold">Evolución mensual de usuarios y sesiones</h3>
-          <WebMonthlyChart data={monthlyData} labels={{ curr: "Usuarios", prev: "" }} />
+      {!dataLoaded && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+          No se pudo cargar la data de BGT (data.json). Verificá la conectividad o la variable <code>BGT_DATA_JSON_URL</code>.
         </div>
       )}
 
-      {/* ===== 5. MARCA EN REDES ===== */}
-      <SectionTitle>Marca en redes — Drean vs competencia</SectionTitle>
+      {/* Tarjetas por cuatrimestre */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {cuatris.map((c) => (
+          <div key={c.id} className="rounded-xl border bg-card p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <div className="text-base font-semibold tracking-tight">
+                  {c.id} <span className="text-sm font-normal text-muted-foreground">· {c.label}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">Real vs {c.bgtLabel}</div>
+              </div>
+              <StatusBadge kind={c.estado === "cerrado" ? "neutral" : c.estado === "en curso" ? "ok" : "neutral"}>
+                {c.estado}
+              </StatusBadge>
+            </div>
+
+            {!c.bgtAvailable ? (
+              <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                Versión <b>{c.bgtLabel}</b> aún no cargada en el BGT.
+              </div>
+            ) : (
+              <dl className="space-y-2.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">BGT vigente</dt>
+                  <dd className="font-semibold tabular-nums">{fmtUSD(c.bgtVal)}</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Real ejecutado</dt>
+                  <dd className="font-semibold tabular-nums">{fmtUSD(c.realVal)}</dd>
+                </div>
+
+                <div className="border-t pt-2.5">
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Desvío vs BGT</dt>
+                    <dd className="flex items-center gap-2">
+                      <span className={`font-semibold tabular-nums ${c.desvio != null && Math.abs(c.desvio) < MAX_DESVIO ? "text-emerald-600" : "text-red-600"}`}>
+                        {c.desvio != null ? fmtPct(c.desvio) : "—"}
+                      </span>
+                      {c.evaluable && c.desvioOk != null && (
+                        <StatusBadge kind={c.desvioOk ? "ok" : "bad"}>{c.desvioOk ? "cumple" : "no cumple"}</StatusBadge>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">Meta: desvío &lt; {MAX_DESVIO}%</div>
+                </div>
+
+                <div className="border-t pt-2.5">
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Inv. Mkt / Facturación</dt>
+                    <dd className="flex items-center gap-2">
+                      <span className={`font-semibold tabular-nums ${c.invFact != null && c.invFact <= MAX_INV_FACT ? "text-emerald-600" : c.invFact != null ? "text-red-600" : ""}`}>
+                        {c.invFact != null ? fmtPct(c.invFact, false) : "—"}
+                      </span>
+                      {c.evaluable && c.invFactOk != null && (
+                        <StatusBadge kind={c.invFactOk ? "ok" : "bad"}>{c.invFactOk ? "cumple" : "no cumple"}</StatusBadge>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    Meta: ≤ {MAX_INV_FACT.toString().replace(".", ",")}%
+                    {c.fact == null && " · falta facturación del período"}
+                  </div>
+                </div>
+              </dl>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Detalle mensual */}
+      <SectionTitle>Detalle mensual {YEAR} · Real vs BGT vigente (USD)</SectionTitle>
+      {!factLoaded && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          Aplicá la migración <code>0049_facturacion_mensual.sql</code> para activar el indicador Inv / Facturación.
+        </div>
+      )}
       <div className="rounded-xl border bg-card">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="border-b bg-muted/40">
               <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2">Marca</th>
-                <th className="px-3 py-2 text-right">Followers</th>
-                <th className="px-3 py-2 text-right">Posts</th>
-                <th className="px-3 py-2 text-right">Eng. prom</th>
-                <th className="px-3 py-2 text-right">% Pos</th>
-                <th className="px-3 py-2 text-right">Likes</th>
-                <th className="px-3 py-2 text-right">Views</th>
+                <th className="px-3 py-2">Mes</th>
+                <th className="px-3 py-2">BGT vigente</th>
+                <th className="px-3 py-2 text-right">BGT</th>
+                <th className="px-3 py-2 text-right">Real</th>
+                <th className="px-3 py-2 text-right">Desvío</th>
+                <th className="px-3 py-2 text-right">Facturación</th>
+                <th className="px-3 py-2 text-right">Inv / Fact</th>
               </tr>
             </thead>
             <tbody>
-              {brandStats.length === 0 ? (
-                <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Sin datos de redes en el período.</td></tr>
-              ) : brandStats.map((b) => (
-                <tr key={b.marca} className="border-b last:border-0">
-                  <td className="px-3 py-2 font-medium">
-                    <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: BRAND_COLORS[b.marca] ?? "#94a3b8" }} />
-                    {BRAND_LABELS[b.marca] ?? b.marca}
-                    {b.marca === OWN_BRAND && <span className="ml-1 text-rose-500">★</span>}
+              {monthly.map((m) => (
+                <tr key={m.month} className="border-b last:border-0">
+                  <td className="px-3 py-2 font-medium">{m.label}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{m.bgtLabel}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.bgtVal != null ? fmtUSD(m.bgtVal) : "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{m.realVal > 0 ? fmtUSD(m.realVal) : "—"}</td>
+                  <td className={`px-3 py-2 text-right tabular-nums ${m.desvio != null ? (Math.abs(m.desvio) < MAX_DESVIO ? "text-emerald-600" : "text-red-600") : "text-muted-foreground"}`}>
+                    {m.desvio != null ? fmtPct(m.desvio) : "—"}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{b.followers > 0 ? fmtNum(b.followers) : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{b.posts}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold">{b.engagement_promedio.toFixed(2)}%</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-emerald-600">{Math.round(b.positivo)}%</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.total_likes)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{b.total_views > 0 ? fmtNum(b.total_views) : "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.fact != null ? fmtUSD(m.fact) : "—"}</td>
+                  <td className={`px-3 py-2 text-right tabular-nums ${m.invFact != null ? (m.invFact <= MAX_INV_FACT ? "text-emerald-600" : "text-red-600") : "text-muted-foreground"}`}>
+                    {m.invFact != null ? fmtPct(m.invFact, false) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <KpiCard title="Instagram Drean" value={ig ? fmtNum(ig.totalReach) : "—"} hint={ig ? `Alcance · ${fmtNum(ig.totalEngagement)} eng.` : undefined} />
-        <KpiCard title="Facebook Drean" value={fb ? fmtNum(fb.totals.impressions_unique) : "—"} hint={fb ? `Alcance · ${fmtNum(fbEng)} eng.` : undefined} />
-        <KpiCard title="Comunidad total" value={comunidad > 0 ? fmtNum(comunidad) : "—"} hint="Followers IG + FB" />
-      </div>
-
-      {/* ===== 6. ACCESOS RÁPIDOS ===== */}
-      <SectionTitle>Accesos rápidos</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { href: "/performance", label: "Performance Pauta", desc: "Resultados de medios por categoría" },
-          { href: "/planning", label: "Planning Pauta", desc: "Inversión planificada ON + OFF" },
-          { href: "/web", label: "Análisis Web", desc: "GA4: tráfico, canales, audiencia" },
-          { href: "/redes", label: "Análisis Redes", desc: "Orgánico Drean + competencia" },
-        ].map((l) => (
-          <a key={l.href} href={l.href} className="rounded-xl border bg-card p-4 transition-colors hover:bg-muted/50">
-            <div className="text-sm font-bold">{l.label}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{l.desc}</div>
-          </a>
-        ))}
       </div>
     </div>
   );

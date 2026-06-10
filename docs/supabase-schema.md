@@ -94,6 +94,19 @@ Ver `docs/architecture.md`. Migrations `0031_pauta_performance.sql` y `0004_plan
 
 ⚠️ Después del rename `Build → Awareness` y `Consider → Consideración` (migration 0035), los valores en `objetivo` (pauta_performance) y `rol` (planning_media) usan los nombres nuevos. Hay un trigger en planning_media para normalizar nuevos inserts.
 
+### `facturacion_mensual` — facturación real de la empresa
+
+Migration `0049_facturacion_mensual.sql`. Una fila por mes (`mes` = primer día, `YYYY-MM-01`), con `facturacion` (numeric) y `moneda` (default `USD`). Alimenta el indicador **Inv. Mkt / Facturación** del Objetivo 1 del Overview. La inversión real sale del dash de BGT Mkt (versión `REAL 2026`, USD), así que la facturación se carga en la misma moneda.
+
+Carga / actualización de un mes:
+```sql
+insert into facturacion_mensual (mes, facturacion, moneda, fuente)
+values ('2026-05-01', 0, 'USD', 'carga manual')
+on conflict (mes) do update set facturacion = excluded.facturacion, updated_at = now();
+```
+
+> ℹ️ El presupuesto (`BGT 2026`, `4+8 2026`, `8+4 2026`) y el `REAL 2026` todavía **no** viven en Supabase: se leen del `data.json` del dash de BGT Mkt (ver `BGT_DATA_JSON_URL`). Migrarlos a Supabase está pendiente (ver TODO en el README).
+
 ### Tablas GA4 demo
 
 `ga4_demo_age_gender`, `ga4_demo_geo`, `ga4_demo_interest` — sync vía cron N8n.
