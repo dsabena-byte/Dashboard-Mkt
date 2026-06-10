@@ -152,10 +152,20 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
     [data, lastMonthWithData],
   );
 
+  // Mes corriente (1..12) para 2026: el mes en curso y los futuros se muestran
+  // como PLANIFICADO (el ejecutado del mes en curso queda muy bajo a mitad de
+  // mes); solo los meses ya cerrados muestran ejecutado.
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    if (y > 2026) return 13;
+    if (y < 2026) return 1;
+    return now.getUTCMonth() + 1;
+  }, []);
+
   // Inversión mensual ON/OFF (año completo, sin filtros).
-  // Pasados: ejecutado de pauta_performance. Futuros: planificado de planning_media.
-  // Se marca isPlanned=true para que el chart use tonos grises en esos meses.
-  // mes_pct = % del total anual (ejecutado + plan) que representa ese mes.
+  // Meses cerrados (< mes corriente): ejecutado de pauta_performance.
+  // Mes corriente y futuros: planificado de planning_media (isPlanned=true → tonos grises).
   const inversionMensual = useMemo(() => {
     type Row = {
       mes: string;
@@ -169,8 +179,8 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
     };
     const rows: Row[] = HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
       const mes = `${full} 2026`;
-      const future = i + 1 > lastMonthWithData;
-      if (future) {
+      const usePlan = i + 1 >= currentMonth;
+      if (usePlan) {
         const plan = planningMonthly[mes];
         if (!plan) {
           return { mes: short, digital: null, tvCable: null, dooh: null, ooh: null, isPlanned: true, mes_pct: null, pct_marker: 0 };
@@ -193,7 +203,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
       const monthTotal = (r.digital ?? 0) + (r.tvCable ?? 0) + (r.dooh ?? 0) + (r.ooh ?? 0);
       return { ...r, mes_pct: total > 0 && monthTotal > 0 ? (monthTotal / total) * 100 : null };
     });
-  }, [data, lastMonthWithData, planningMonthly]);
+  }, [data, currentMonth, planningMonthly]);
 
   // Insights: solo si hay una sola categoría seleccionada
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
