@@ -1,6 +1,7 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
 import { getPautaPerformance, getInfluenciaPerformance } from "./pauta-queries";
+import { getWebByCategory } from "./web-queries";
 import type { FloorShareU4M } from "./floor-share-queries";
 import type { CbU3M } from "./cb-queries";
 
@@ -106,38 +107,34 @@ export async function getPautaByCategoria(): Promise<PautaByCategoria> {
   return { byCat, drean };
 }
 
-// ---------- Web por categoría (GA4 funnel: usuarios + páginas) ----------
+// ---------- Web por categoría (vw_drean_web_by_category) ----------
+// Home y Otros = Brand → solo suman a Drean total. Lavavajillas tampoco es core.
 const WEB_TO_CORE: Record<string, CoreCat> = {
   Lavado: "Lavado",
   Refrigeración: "Refrigeración",
+  Refrigeracion: "Refrigeración",
   Cocinas: "Cocción",
   Cocción: "Cocción",
+  Coccion: "Cocción",
 };
-interface WebAgg { usuarios: number; sesiones: number; pageviews: number }
+interface WebAgg { usuarios: number; pageviews: number }
 export interface WebByCategoria {
   byCat: Record<CoreCat, WebAgg>;
   drean: WebAgg;
 }
-interface WebRow { categoria: string | null; usuarios: number | null; sesiones: number | null; pageviews: number | null }
 
 export async function getWebByCategoria(year = 2026): Promise<WebByCategoria | null> {
-  const supabase = getServerSupabase();
-  const res = await supabase
-    .from("vw_ga4_funnel")
-    .select("categoria, usuarios, sesiones, pageviews")
-    .gte("fecha", `${year}-01-01`)
-    .limit(20000);
-  if (res.error) return null;
-  const rows = (res.data ?? []) as WebRow[];
-  if (rows.length === 0) return null;
-  const mk = (): WebAgg => ({ usuarios: 0, sesiones: 0, pageviews: 0 });
+  const to = new Date().toISOString().slice(0, 10);
+  const rows = await getWebByCategory({ from: `${year}-01-01`, to });
+  if (!rows || rows.length === 0) return null;
+  const mk = (): WebAgg => ({ usuarios: 0, pageviews: 0 });
   const byCat: Record<CoreCat, WebAgg> = { Lavado: mk(), Refrigeración: mk(), Cocción: mk() };
   const drean: WebAgg = mk();
   for (const r of rows) {
-    const u = r.usuarios ?? 0, s = r.sesiones ?? 0, pv = r.pageviews ?? 0;
-    drean.usuarios += u; drean.sesiones += s; drean.pageviews += pv;
-    const core = r.categoria ? WEB_TO_CORE[r.categoria] : undefined;
-    if (core) { byCat[core].usuarios += u; byCat[core].sesiones += s; byCat[core].pageviews += pv; }
+    const u = r.usuarios ?? 0, pv = r.pageviews ?? 0;
+    drean.usuarios += u; drean.pageviews += pv;
+    const core = WEB_TO_CORE[r.categoria];
+    if (core) { byCat[core].usuarios += u; byCat[core].pageviews += pv; }
   }
   return { byCat, drean };
 }
@@ -264,8 +261,6 @@ export function buildBrandModel(
       rows: [
         numRow("Mental", "Usuarios web (personas)", "personas",
           (c) => web?.byCat[c].usuarios ?? null, web?.drean.usuarios ?? null, fmtNum),
-        numRow("Mental", "Sesiones web", "sesiones",
-          (c) => web?.byCat[c].sesiones ?? null, web?.drean.sesiones ?? null, fmtNum),
         numRow("Mental", "Páginas visitadas", "páginas",
           (c) => web?.byCat[c].pageviews ?? null, web?.drean.pageviews ?? null, fmtNum),
         numRow("Mental", "Clicks pauta", "clicks",
