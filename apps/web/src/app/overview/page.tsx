@@ -15,6 +15,7 @@ const REAL_VERSION = `REAL ${YEAR}`;
 // Umbrales del Objetivo 1
 const MAX_DESVIO = 5; // % — desvío Real vs BGT vigente
 const MAX_INV_FACT = 1.3; // % — Inversión Mkt real / Facturación
+const invFactLabel = MAX_INV_FACT.toString().replace(".", ","); // "1,3"
 
 const MES_LABEL = [
   "Ene", "Feb", "Mar", "Abr", "May", "Jun",
@@ -156,23 +157,46 @@ export default async function OverviewPage() {
       </header>
 
       {/* ===== OBJETIVO 1 ===== */}
-      <SectionTitle>Objetivo 1 · Ejecución del Presupuesto de Marketing</SectionTitle>
+      <section className="mt-6 overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/[0.07] via-primary/[0.03] to-transparent shadow-sm">
+        <div className="border-l-4 border-primary p-5 sm:p-7">
+          <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Objetivo 1</div>
+          <h3 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">
+            Ejecución del Presupuesto de Marketing
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-foreground/90 sm:text-base">
+            Ejecutar el presupuesto del Plan de Marketing con un <b>desvío menor al {MAX_DESVIO}%</b> vs
+            el <b>BGT vigente del cuatrimestre</b>, y <b>nunca superando el {invFactLabel}%</b> de
+            la <b>Inversión real / Facturación</b>.
+          </p>
 
-      <div className="rounded-xl border bg-card p-5">
-        <p className="text-sm text-foreground">
-          Ejecutar el presupuesto del Plan de Marketing con un <b>desvío menor al {MAX_DESVIO}%</b> vs
-          el <b>BGT vigente del cuatrimestre</b>, y <b>nunca superando el {MAX_INV_FACT.toString().replace(".", ",")}%</b> de
-          la <b>Inversión real / Facturación</b>.
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          El límite del {MAX_DESVIO}% aplica solo a la <b>sobre-ejecución</b>: gastar menos que el BGT no se considera desvío.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span className="rounded-md bg-muted px-2 py-1">T1 → Real vs <b>BGT</b></span>
-          <span className="rounded-md bg-muted px-2 py-1">T2 → Real vs <b>BGT 4+8</b></span>
-          <span className="rounded-md bg-muted px-2 py-1">T3 → Real vs <b>BGT 8+4</b></span>
+          {/* Metas destacadas */}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border bg-card p-4 shadow-sm">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Meta principal · Ejecución</div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-3xl font-bold tracking-tight text-primary">&lt; {MAX_DESVIO}%</span>
+                <span className="text-xs text-muted-foreground">sobre-ejecución vs BGT vigente</span>
+              </div>
+            </div>
+            <div className="rounded-xl border bg-card p-4 shadow-sm">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tope de eficiencia</div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-3xl font-bold tracking-tight text-primary">≤ {invFactLabel}%</span>
+                <span className="text-xs text-muted-foreground">Inversión Mkt / Facturación</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-4 text-xs text-muted-foreground">
+            El límite del {MAX_DESVIO}% aplica solo a la <b>sobre-ejecución</b>: gastar menos que el BGT no se considera desvío.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span className="rounded-md border bg-card px-2 py-1">T1 → Real vs <b>BGT</b></span>
+            <span className="rounded-md border bg-card px-2 py-1">T2 → Real vs <b>BGT 4+8</b></span>
+            <span className="rounded-md border bg-card px-2 py-1">T3 → Real vs <b>BGT 8+4</b></span>
+          </div>
         </div>
-      </div>
+      </section>
 
       {!dataLoaded && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
