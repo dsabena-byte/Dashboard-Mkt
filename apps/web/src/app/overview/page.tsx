@@ -133,34 +133,27 @@ export default async function OverviewPage() {
       </header>
 
       {/* ===== OBJETIVO 1 ===== */}
-      <section className="mt-6 rounded-xl border border-l-4 border-l-primary bg-primary/[0.035] p-5">
-        <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Objetivo 1</div>
-        <h3 className="mt-0.5 text-lg font-bold tracking-tight">Ejecución del Presupuesto de Marketing</h3>
-        <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-foreground/90">
-          Ejecutar el presupuesto del Plan de Marketing con un <b>desvío menor al {MAX_DESVIO}%</b> vs
-          el <b>BGT vigente del cuatrimestre</b>, y <b>nunca superando el {invFactLabel}%</b> de
-          la <b>Inversión real / Facturación</b>.
-        </p>
-
-        {/* Metas (destacado inline) */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-sm">
-          <span className="inline-flex items-baseline gap-1.5">
-            <span className="text-base font-bold text-primary">&lt; {MAX_DESVIO}%</span>
-            <span className="text-xs text-muted-foreground">sobre-ejecución vs BGT vigente</span>
-          </span>
-          <span className="inline-flex items-baseline gap-1.5">
-            <span className="text-base font-bold text-primary">≤ {invFactLabel}%</span>
-            <span className="text-xs text-muted-foreground">Inversión Mkt / Facturación</span>
-          </span>
-        </div>
-
-        <p className="mt-3 text-xs text-muted-foreground">
-          El límite del {MAX_DESVIO}% aplica solo a la <b>sobre-ejecución</b>: gastar menos que el BGT no se considera desvío.
-        </p>
-        <div className="mt-2.5 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span className="rounded-md border bg-card px-2 py-1">T1 → Real vs <b>BGT</b></span>
-          <span className="rounded-md border bg-card px-2 py-1">T2 → Real vs <b>BGT 4+8</b></span>
-          <span className="rounded-md border bg-card px-2 py-1">T3 → Real vs <b>BGT 8+4</b></span>
+      <section className="mt-6 rounded-xl border border-l-4 border-l-primary bg-primary/[0.035] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 1</span>
+              <h3 className="text-sm font-bold tracking-tight">Ejecución del Presupuesto de Marketing</h3>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Real vs BGT vigente del cuatrimestre (T1 · BGT, T2 · 4+8, T3 · 8+4). Sub-ejecución permitida.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            <span className="inline-flex items-baseline gap-1">
+              <span className="text-sm font-bold text-primary">&lt; {MAX_DESVIO}%</span>
+              <span className="text-muted-foreground">desvío</span>
+            </span>
+            <span className="inline-flex items-baseline gap-1">
+              <span className="text-sm font-bold text-primary">≤ {invFactLabel}%</span>
+              <span className="text-muted-foreground">Inv / Fact</span>
+            </span>
+          </div>
         </div>
       </section>
 
