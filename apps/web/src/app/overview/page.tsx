@@ -12,6 +12,11 @@ import {
   type FsCatU4M,
 } from "@/lib/floor-share-queries";
 import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
+import {
+  getOrganicPilarMix,
+  BRAND_CATEGORIAS,
+  BRAND_PILARES,
+} from "@/lib/brand-build-queries";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -253,11 +258,12 @@ export default async function OverviewPage() {
   const curYear = now.getUTCFullYear();
   const curMonth = now.getUTCMonth() + 1;
 
-  const [bgt, factRows, floorShareRes, cbRes] = await Promise.all([
+  const [bgt, factRows, floorShareRes, cbRes, brandMix] = await Promise.all([
     safe(getBgtData(), { rows: [], syncedAt: null }),
     safe(getFacturacionMensual(), [] as Awaited<ReturnType<typeof getFacturacionMensual>>),
     tryFloorShare(),
     tryCb(),
+    safe(getOrganicPilarMix(), null),
   ]);
   const floorShare = floorShareRes.data;
   const fsError = floorShareRes.error;
@@ -489,6 +495,84 @@ export default async function OverviewPage() {
               <ProgressCard m={cbToProgress("Infaltables", cb.infaltables, true)} />
               <ProgressCard m={cbToProgress("Estratégicos", cb.estrategicos, true)} />
             </div>
+          )}
+        </div>
+      </section>
+
+      {/* ===== OBJETIVO 4 ===== */}
+      <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
+        <div className="border-b border-primary/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 4</span>
+                <h3 className="text-sm font-bold tracking-tight">Salud de Marca — cómo la construimos</h3>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Se mide con la investigación de fin de año; mientras tanto seguimos los indicadores que la construyen. Mix de contenido orgánico por categoría y pilar (desde {YEAR}).
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground">Baseline 2025: <b className="text-foreground/80">30,2%</b></div>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {brandMix == null ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+              Sin contenido orgánico clasificado todavía. Aplicá la migración <code>0051</code> y corré el clasificador.
+            </div>
+          ) : (
+            (() => {
+              const maxCell = Math.max(
+                1,
+                ...BRAND_CATEGORIAS.flatMap((c) => BRAND_PILARES.map((p) => brandMix.cells[c]![p]!.posts)),
+              );
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <th className="px-2 py-1.5">Categoría</th>
+                        {BRAND_PILARES.map((p) => (
+                          <th key={p} className="px-2 py-1.5 text-center font-medium">{p}</th>
+                        ))}
+                        <th className="px-2 py-1.5 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {BRAND_CATEGORIAS.map((c) => (
+                        <tr key={c} className="border-t">
+                          <td className="px-2 py-1.5 font-medium">{c}</td>
+                          {BRAND_PILARES.map((p) => {
+                            const v = brandMix.cells[c]![p]!.posts;
+                            return (
+                              <td
+                                key={p}
+                                className="px-2 py-1.5 text-center tabular-nums"
+                                style={{ backgroundColor: v > 0 ? `rgba(59,130,246,${(0.08 + 0.5 * (v / maxCell)).toFixed(3)})` : undefined }}
+                              >
+                                {v > 0 ? v : <span className="text-muted-foreground">·</span>}
+                              </td>
+                            );
+                          })}
+                          <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{brandMix.totalByCat[c] ?? 0}</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t-2">
+                        <td className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">Total</td>
+                        {BRAND_PILARES.map((p) => (
+                          <td key={p} className="px-2 py-1.5 text-center font-semibold tabular-nums">{brandMix.totalByPilar[p] ?? 0}</td>
+                        ))}
+                        <td className="px-2 py-1.5 text-right font-bold tabular-nums">{brandMix.total}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    # de posts orgánicos de Drean clasificados por categoría × pilar. Más intensidad = más volumen de contenido en ese mensaje. Próximo paso: sumar pauta por categoría y conectar con TOM/SOM, Poder e Intención (mental) × Floor Share + CB (físico).
+                  </p>
+                </div>
+              );
+            })()
           )}
         </div>
       </section>
