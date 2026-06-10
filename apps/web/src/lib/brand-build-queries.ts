@@ -343,9 +343,6 @@ export function buildBrandModel(
         numRow("Mercado", "Share value · High %", "%", mField("svHigh"), wAvg(mField("svHigh")), fmtPct),
         numRow("Mercado", "Share value · Mid %", "%", mField("svMid"), wAvg(mField("svMid")), fmtPct),
         numRow("Mercado", "Share value · Low %", "%", mField("svLow"), wAvg(mField("svLow")), fmtPct),
-        numRow("Mercado", "Share units · High %", "%", mField("suHigh"), wAvg(mField("suHigh")), fmtPct),
-        numRow("Mercado", "Share units · Mid %", "%", mField("suMid"), wAvg(mField("suMid")), fmtPct),
-        numRow("Mercado", "Share units · Low %", "%", mField("suLow"), wAvg(mField("suLow")), fmtPct),
       ],
     },
   ];
