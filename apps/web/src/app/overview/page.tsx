@@ -16,6 +16,9 @@ import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
 import {
   getOrganicPilarMix,
   getPautaByCategoria,
+  getWebByCategoria,
+  getInfluenciaTotals,
+  getCanalTotals,
   buildBrandModel,
 } from "@/lib/brand-build-queries";
 
@@ -271,7 +274,12 @@ export default async function OverviewPage() {
   const cb = cbRes.data;
   const cbError = cbRes.error;
   const pautaByCat = await safe(getPautaByCategoria(), null);
-  const brandModel = buildBrandModel(pautaByCat, brandMix, floorShare, cb);
+  const [webByCat, influencia, canal] = await Promise.all([
+    safe(getWebByCategoria(), null),
+    safe(getInfluenciaTotals(), null),
+    safe(getCanalTotals(), null),
+  ]);
+  const brandModel = buildBrandModel(pautaByCat, brandMix, floorShare, cb, webByCat, influencia, canal);
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
   const cuatris = CUATRIS.map((c) => {
