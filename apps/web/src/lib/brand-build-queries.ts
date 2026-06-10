@@ -113,34 +113,31 @@ const WEB_TO_CORE: Record<string, CoreCat> = {
   Cocinas: "Cocción",
   Cocción: "Cocción",
 };
-interface WebAgg { usuarios: number; pageviews: number }
+interface WebAgg { usuarios: number; sesiones: number; pageviews: number }
 export interface WebByCategoria {
   byCat: Record<CoreCat, WebAgg>;
   drean: WebAgg;
 }
-interface WebRow { categoria: string | null; usuarios: number | null; pageviews: number | null }
+interface WebRow { categoria: string | null; usuarios: number | null; sesiones: number | null; pageviews: number | null }
 
 export async function getWebByCategoria(year = 2026): Promise<WebByCategoria | null> {
   const supabase = getServerSupabase();
   const res = await supabase
     .from("vw_ga4_funnel")
-    .select("categoria, usuarios, pageviews")
+    .select("categoria, usuarios, sesiones, pageviews")
     .gte("fecha", `${year}-01-01`)
     .limit(20000);
   if (res.error) return null;
   const rows = (res.data ?? []) as WebRow[];
   if (rows.length === 0) return null;
-  const byCat: Record<CoreCat, WebAgg> = {
-    Lavado: { usuarios: 0, pageviews: 0 },
-    Refrigeración: { usuarios: 0, pageviews: 0 },
-    Cocción: { usuarios: 0, pageviews: 0 },
-  };
-  const drean: WebAgg = { usuarios: 0, pageviews: 0 };
+  const mk = (): WebAgg => ({ usuarios: 0, sesiones: 0, pageviews: 0 });
+  const byCat: Record<CoreCat, WebAgg> = { Lavado: mk(), Refrigeración: mk(), Cocción: mk() };
+  const drean: WebAgg = mk();
   for (const r of rows) {
-    const u = r.usuarios ?? 0, pv = r.pageviews ?? 0;
-    drean.usuarios += u; drean.pageviews += pv;
+    const u = r.usuarios ?? 0, s = r.sesiones ?? 0, pv = r.pageviews ?? 0;
+    drean.usuarios += u; drean.sesiones += s; drean.pageviews += pv;
     const core = r.categoria ? WEB_TO_CORE[r.categoria] : undefined;
-    if (core) { byCat[core].usuarios += u; byCat[core].pageviews += pv; }
+    if (core) { byCat[core].usuarios += u; byCat[core].sesiones += s; byCat[core].pageviews += pv; }
   }
   return { byCat, drean };
 }
@@ -251,6 +248,8 @@ export function buildBrandModel(
       rows: [
         row("Mental", "Usuarios web (personas)",
           (c) => fmtNum(web?.byCat[c].usuarios ?? 0), fmtNum(web?.drean.usuarios ?? 0)),
+        row("Mental", "Sesiones web",
+          (c) => fmtNum(web?.byCat[c].sesiones ?? 0), fmtNum(web?.drean.sesiones ?? 0)),
         row("Mental", "Páginas visitadas",
           (c) => fmtNum(web?.byCat[c].pageviews ?? 0), fmtNum(web?.drean.pageviews ?? 0)),
         row("Mental", "Clicks pauta",
