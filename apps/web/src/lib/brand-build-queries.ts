@@ -322,7 +322,6 @@ export function buildBrandModel(
       rows: [
         numRow("Mental", "Alcance contenido de marca (Liderazgo+Calidad)", "personas",
           (c) => orgSum(c, "reach", lidCal), orgSum("drean", "reach", lidCal), fmtNum),
-        numRow("Físico", "% CB · disponibilidad en PDV", "%", cbVal, cbDrean, fmtPct),
         numRow("Mercado", "Índice de precio · High", "idx", mField("idxHigh"), wAvg(mField("idxHigh")), fmtIdx),
         numRow("Mercado", "Índice de precio · Mid", "idx", mField("idxMid"), wAvg(mField("idxMid")), fmtIdx),
         numRow("Mercado", "Índice de precio · Low", "idx", mField("idxLow"), wAvg(mField("idxLow")), fmtIdx),
@@ -340,6 +339,7 @@ export function buildBrandModel(
           (c) => pauta?.byCat[c].clicks ?? null, pauta?.drean.clicks ?? null, fmtNum),
         dreanRow("Mental", "Mkt de Influencia · alcance", "personas", influencia ? influencia.alcance : null, fmtNum),
         dreanRow("Mental", "Mkt de Canal · impresiones", "impresiones", canal ? canal.impresiones : null, fmtNum),
+        numRow("Físico", "% CB · disponibilidad en PDV", "%", cbVal, cbDrean, fmtPct),
         numRow("Mercado", "Share value · High %", "%", mField("svHigh"), wAvg(mField("svHigh")), fmtPct),
         numRow("Mercado", "Share value · Mid %", "%", mField("svMid"), wAvg(mField("svMid")), fmtPct),
         numRow("Mercado", "Share value · Low %", "%", mField("svLow"), wAvg(mField("svLow")), fmtPct),
