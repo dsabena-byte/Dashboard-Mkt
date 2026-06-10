@@ -1,11 +1,12 @@
 import "server-only";
+import { getServerSupabase } from "./supabase-server";
 
 /**
- * Datos del dash de "BGT Mkt". NO viven en Supabase: se sincronizan desde
- * SharePoint a un data.json en GitHub (mismo origen que usa el iframe de
- * /funnel). El Overview lo lee server-side para el Objetivo 1.
+ * Datos del dash de "BGT Mkt". Fuente unificada: tabla Supabase `bgt_marketing`,
+ * sincronizada desde el data.json de SharePoint vía /api/cron/bgt-sync.
+ * Como fallback (antes de que corra el primer sync), lee el data.json directo.
  *
- * Formato de cada fila (array):
+ * Formato del data.json (cada fila es un array):
  *   [ presupuesto, cuenta, anio, mes(UPPER), concepto, ars, usd ]
  */
 const DEFAULT_BGT_URL =
@@ -31,7 +32,52 @@ export const MESES_UP = [
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
 ];
 
+interface DbBgtRow {
+  presupuesto: string;
+  anio: number;
+  mes: string;
+  cuenta: string;
+  concepto: string;
+  ars: string | number | null;
+  usd: string | number | null;
+  updated_at: string | null;
+}
+
 export async function getBgtData(): Promise<BgtData> {
+  // 1) Fuente unificada: tabla Supabase bgt_marketing.
+  try {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase
+      .from("bgt_marketing")
+      .select("presupuesto, anio, mes, cuenta, concepto, ars, usd, updated_at")
+      .order("anio", { ascending: false })
+      .limit(20000)
+      .returns<DbBgtRow[]>();
+    if (!error && data && data.length > 0) {
+      const rows: BgtRow[] = data.map((r) => ({
+        presupuesto: r.presupuesto,
+        cuenta: r.cuenta,
+        anio: String(r.anio),
+        mes: String(r.mes).toUpperCase(),
+        concepto: r.concepto,
+        ars: Number(r.ars) || 0,
+        usd: Number(r.usd) || 0,
+      }));
+      const syncedAt = data.reduce<string | null>(
+        (m, r) => (r.updated_at && (!m || r.updated_at > m) ? r.updated_at : m),
+        null,
+      );
+      return { rows, syncedAt };
+    }
+  } catch {
+    // cae al fallback
+  }
+
+  // 2) Fallback: data.json externo (antes del primer sync).
+  return fetchBgtDataJson();
+}
+
+async function fetchBgtDataJson(): Promise<BgtData> {
   const url = process.env.BGT_DATA_JSON_URL || DEFAULT_BGT_URL;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`BGT data.json: ${res.status}`);

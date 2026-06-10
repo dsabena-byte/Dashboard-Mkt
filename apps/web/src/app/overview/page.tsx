@@ -128,7 +128,7 @@ export default async function OverviewPage() {
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Objetivos de Marketing {YEAR}</h2>
         <p className="text-sm text-muted-foreground">
-          Seguimiento descriptivo de los objetivos del área · Fuente BGT: SharePoint · Última sincronización: {syncLabel}
+          Seguimiento descriptivo de los objetivos del área · Fuente BGT: SharePoint → Supabase · Última sincronización: {syncLabel}
         </p>
       </header>
 
