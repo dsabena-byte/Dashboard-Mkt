@@ -462,42 +462,56 @@ function linearNext(values: number[]): number | null {
   return Math.max(0, intercept + slope * n); // próximo índice = n
 }
 
+// Mes calendario de una fila, usando `periodo` ("2026-W14") para conocer el
+// año; cae a isoWeekToMes(semana, 2026) si falta. Devuelve clave ordenable
+// (YYYY-MM) + nombre corto del mes.
+function rowMonth(periodo: string | null, semana: number): { key: string; mes: string } | null {
+  let year = 2026;
+  let week = semana;
+  if (periodo) {
+    const m = periodo.match(/(\d{4})\D+(\d{1,2})/);
+    if (m) {
+      year = parseInt(m[1]!, 10);
+      week = parseInt(m[2]!, 10);
+    }
+  }
+  const mes = isoWeekToMes(week, year);
+  const idx = MES_ORDER_FS.indexOf(mes);
+  if (idx < 0) return null;
+  return { key: `${year}-${String(idx + 1).padStart(2, "0")}`, mes };
+}
+
 export async function getFloorShareU4M(monthsBack = 4): Promise<FloorShareU4M | null> {
   const { weeks } = await getAvailableWeeks();
-  if (weeks.length === 0) return null;
-
-  // Semanas candidatas → mes (sin fetchear: isoWeekToMes es determinístico).
-  const weekMes = weeks
-    .map((w) => ({ w, mes: isoWeekToMes(w) }))
-    .filter((x) => x.mes);
-  const mesesPresentes = [...new Set(weekMes.map((x) => x.mes))]
-    .sort((a, b) => MES_ORDER_FS.indexOf(a) - MES_ORDER_FS.indexOf(b));
-  const u4 = mesesPresentes.slice(-monthsBack);
-  const u4Set = new Set(u4);
-  const semanas = weekMes.filter((x) => u4Set.has(x.mes)).map((x) => x.w);
-  if (semanas.length === 0) return null;
-
-  const rows = await getFloorShareRows({ semanas });
+  // Traemos las semanas recientes (mismo camino que el dash de Floor Share) y
+  // recién después agrupamos por mes real, para no quedarnos sin datos por
+  // pre-filtrar semanas mal.
+  const semanas = weeks.slice(0, 24);
+  const rows = semanas.length > 0 ? await getFloorShareRows({ semanas }) : await getFloorShareRows();
   if (rows.length === 0) return null;
 
-  // Agrupar rows por mes.
-  const byMes = new Map<string, FloorShareRow[]>();
+  // Agrupar por mes calendario (clave YYYY-MM).
+  const byKey = new Map<string, { mes: string; rows: FloorShareRow[] }>();
   for (const r of rows) {
     if (r.semana == null) continue;
-    const mes = isoWeekToMes(r.semana);
-    if (!u4Set.has(mes)) continue;
-    const arr = byMes.get(mes);
-    if (arr) arr.push(r);
-    else byMes.set(mes, [r]);
+    const ym = rowMonth(r.periodo, r.semana);
+    if (!ym) continue;
+    const acc = byKey.get(ym.key);
+    if (acc) acc.rows.push(r);
+    else byKey.set(ym.key, { mes: ym.mes, rows: [r] });
   }
+  if (byKey.size === 0) return null;
+
+  // Últimos `monthsBack` meses con datos.
+  const u4Keys = [...byKey.keys()].sort().slice(-monthsBack);
+  const u4 = u4Keys.map((k) => byKey.get(k)!.mes);
 
   const buildCat = (cat: FsCatKey): FsCatU4M => {
     const months: FsMonthShare[] = [];
-    for (const mes of u4) {
-      const rs = byMes.get(mes);
-      if (!rs || rs.length === 0) continue;
-      const block = computeOverall(rs)[cat];
-      if (block.total_units > 0) months.push({ mes, share: block.share });
+    for (const k of u4Keys) {
+      const grp = byKey.get(k)!;
+      const block = computeOverall(grp.rows)[cat];
+      if (block.total_units > 0) months.push({ mes: grp.mes, share: block.share });
     }
     const avgU4M = months.length ? months.reduce((s, m) => s + m.share, 0) / months.length : 0;
     const latest = months.length ? months[months.length - 1]!.share : null;
