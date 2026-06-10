@@ -116,7 +116,9 @@ export default async function OverviewPage() {
     const invFact = fact && fact > 0 ? (realVal / fact) * 100 : null;
 
     const evaluable = estado === "cerrado";
-    const desvioOk = desvio != null ? Math.abs(desvio) < MAX_DESVIO : null;
+    // Solo incumple si se SOBRE-ejecuta el BGT en más del umbral.
+    // Sub-ejecutar (desvío negativo) está permitido.
+    const desvioOk = desvio != null ? desvio < MAX_DESVIO : null;
     const invFactOk = invFact != null ? invFact <= MAX_INV_FACT : null;
 
     return { ...c, estado, bgtAvailable, bgtVal, realVal, fact, desvio, invFact, evaluable, desvioOk, invFactOk };
@@ -161,6 +163,9 @@ export default async function OverviewPage() {
           Ejecutar el presupuesto del Plan de Marketing con un <b>desvío menor al {MAX_DESVIO}%</b> vs
           el <b>BGT vigente del cuatrimestre</b>, y <b>nunca superando el {MAX_INV_FACT.toString().replace(".", ",")}%</b> de
           la <b>Inversión real / Facturación</b>.
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          El límite del {MAX_DESVIO}% aplica solo a la <b>sobre-ejecución</b>: gastar menos que el BGT no se considera desvío.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="rounded-md bg-muted px-2 py-1">T1 → Real vs <b>BGT</b></span>
@@ -210,7 +215,7 @@ export default async function OverviewPage() {
                   <div className="flex items-center justify-between">
                     <dt className="text-muted-foreground">Desvío vs BGT</dt>
                     <dd className="flex items-center gap-2">
-                      <span className={`font-semibold tabular-nums ${c.desvio != null && Math.abs(c.desvio) < MAX_DESVIO ? "text-emerald-600" : "text-red-600"}`}>
+                      <span className={`font-semibold tabular-nums ${c.desvio != null ? (c.desvio < MAX_DESVIO ? "text-emerald-600" : "text-red-600") : ""}`}>
                         {c.desvio != null ? fmtPct(c.desvio) : "—"}
                       </span>
                       {c.evaluable && c.desvioOk != null && (
@@ -218,7 +223,7 @@ export default async function OverviewPage() {
                       )}
                     </dd>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">Meta: desvío &lt; {MAX_DESVIO}%</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">Meta: sobre-ejecución &lt; {MAX_DESVIO}% (sub-ejecución permitida)</div>
                 </div>
 
                 <div className="border-t pt-2.5">
@@ -272,7 +277,7 @@ export default async function OverviewPage() {
                   <td className="px-3 py-2 text-muted-foreground">{m.bgtLabel}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.bgtVal != null ? fmtUSD(m.bgtVal) : "—"}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{m.realVal > 0 ? fmtUSD(m.realVal) : "—"}</td>
-                  <td className={`px-3 py-2 text-right tabular-nums ${m.desvio != null ? (Math.abs(m.desvio) < MAX_DESVIO ? "text-emerald-600" : "text-red-600") : "text-muted-foreground"}`}>
+                  <td className={`px-3 py-2 text-right tabular-nums ${m.desvio != null ? (m.desvio < MAX_DESVIO ? "text-emerald-600" : "text-red-600") : "text-muted-foreground"}`}>
                     {m.desvio != null ? fmtPct(m.desvio) : "—"}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.fact != null ? fmtUSD(m.fact) : "—"}</td>
