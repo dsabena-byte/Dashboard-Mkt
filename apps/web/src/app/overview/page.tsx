@@ -106,6 +106,38 @@ function StatusBadge({ kind, children }: { kind: "ok" | "bad" | "neutral"; child
   );
 }
 
+// KPI con el lenguaje visual común: rótulo + badge de estado, valor grande
+// coloreado y línea de objetivo. Reutilizado por los KPIs del Objetivo 1.
+function KpiBig({
+  label,
+  value,
+  status,
+  showBadge,
+  objetivo,
+}: {
+  label: string;
+  value: string;
+  status: "ok" | "bad" | "neutral";
+  showBadge: boolean;
+  objetivo: React.ReactNode;
+}) {
+  const color = status === "ok" ? "text-emerald-600" : status === "bad" ? "text-rose-500" : "text-foreground";
+  return (
+    <div className="border-t pt-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        {showBadge && status !== "neutral" && (
+          <StatusBadge kind={status}>{status === "ok" ? "cumple" : "no cumple"}</StatusBadge>
+        )}
+      </div>
+      <div className="mt-0.5 flex items-baseline gap-2">
+        <span className={`text-2xl font-bold tabular-nums ${color}`}>{value}</span>
+        <span className="text-[11px] text-muted-foreground">{objetivo}</span>
+      </div>
+    </div>
+  );
+}
+
 function FsCard({ label, cat }: { label: string; cat: FsCatU4M }) {
   const hasData = cat.months.length > 0;
   const delta = cat.avgU4M - cat.target;
@@ -277,20 +309,8 @@ export default async function OverviewPage() {
               </div>
             ) : (
               <>
-                {/* Resultado principal: desvío Real vs BGT */}
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-3xl font-bold tabular-nums ${c.desvio != null ? (c.desvio < MAX_DESVIO ? "text-emerald-600" : "text-rose-500") : "text-foreground"}`}>
-                    {c.desvio != null ? fmtPct(c.desvio) : "—"}
-                  </span>
-                  {c.evaluable && c.desvioOk != null && (
-                    <StatusBadge kind={c.desvioOk ? "ok" : "bad"}>{c.desvioOk ? "cumple" : "no cumple"}</StatusBadge>
-                  )}
-                </div>
-                <div className="mt-0.5 text-[11px] text-muted-foreground">
-                  Desvío Real vs {c.bgtLabel} · objetivo: sobre-ejecución &lt; {MAX_DESVIO}%
-                </div>
-
-                <dl className="mt-3 space-y-1.5 border-t pt-2.5 text-xs">
+                {/* Contexto: montos del cuatrimestre */}
+                <dl className="space-y-1.5 text-xs">
                   <div className="flex items-center justify-between">
                     <dt className="text-muted-foreground">BGT vigente{c.partial ? " (a la fecha)" : ""}</dt>
                     <dd className="font-semibold tabular-nums">{fmtUSD(c.bgtVal)}</dd>
@@ -299,15 +319,28 @@ export default async function OverviewPage() {
                     <dt className="text-muted-foreground">Real ejecutado{c.partial ? " (a la fecha)" : ""}</dt>
                     <dd className="font-semibold tabular-nums">{fmtUSD(c.realVal)}</dd>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-muted-foreground">Inv. Mkt / Facturación</dt>
-                    <dd className={`font-semibold tabular-nums ${c.invFact != null ? (c.invFact <= MAX_INV_FACT ? "text-emerald-600" : "text-rose-500") : ""}`}>
-                      {c.invFact != null ? fmtPct(c.invFact, false, 2) : "—"}
-                    </dd>
-                  </div>
                 </dl>
-                <div className="mt-2 text-[11px] text-muted-foreground">
-                  Objetivo Inv / Fact: ≤ {invFactLabel}%{c.fact == null ? " · falta facturación del período" : ""}
+
+                {/* KPI 1 — Desvío vs BGT */}
+                <div className="mt-3">
+                  <KpiBig
+                    label="Desvío vs BGT"
+                    value={c.desvio != null ? fmtPct(c.desvio) : "—"}
+                    status={c.desvio != null ? (c.desvio < MAX_DESVIO ? "ok" : "bad") : "neutral"}
+                    showBadge={c.evaluable && c.desvioOk != null}
+                    objetivo={<>objetivo: sobre-ejecución &lt; {MAX_DESVIO}%</>}
+                  />
+                </div>
+
+                {/* KPI 2 — Inversión Mkt / Facturación */}
+                <div className="mt-3">
+                  <KpiBig
+                    label="Inv. Mkt / Facturación"
+                    value={c.invFact != null ? fmtPct(c.invFact, false, 2) : "—"}
+                    status={c.invFact != null ? (c.invFact <= MAX_INV_FACT ? "ok" : "bad") : "neutral"}
+                    showBadge={c.evaluable && c.invFactOk != null}
+                    objetivo={<>objetivo: ≤ {invFactLabel}%{c.fact == null ? " · falta facturación" : ""}</>}
+                  />
                 </div>
               </>
             )}
