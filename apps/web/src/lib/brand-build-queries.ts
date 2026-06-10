@@ -314,6 +314,8 @@ export function buildBrandModel(
           (c) => (pauta?.byCat[c].views ?? 0) + orgSum(c, "views"),
           (pauta?.drean.views ?? 0) + orgSum("drean", "views"), fmtNum),
         numRow("Físico", "Floor Share %", "%", fsVal, fsDrean, fmtPct),
+        numRow("Mercado", "Share value · Mid %", "%", mField("svMid"), wAvg(mField("svMid")), fmtPct),
+        numRow("Mercado", "Share value · Low %", "%", mField("svLow"), wAvg(mField("svLow")), fmtPct),
       ],
     },
     {
@@ -325,6 +327,7 @@ export function buildBrandModel(
         numRow("Mercado", "Índice de precio · High", "idx", mField("idxHigh"), wAvg(mField("idxHigh")), fmtIdx),
         numRow("Mercado", "Índice de precio · Mid", "idx", mField("idxMid"), wAvg(mField("idxMid")), fmtIdx),
         numRow("Mercado", "Índice de precio · Low", "idx", mField("idxLow"), wAvg(mField("idxLow")), fmtIdx),
+        numRow("Mercado", "Share value · High %", "%", mField("svHigh"), wAvg(mField("svHigh")), fmtPct),
       ],
     },
     {
@@ -340,9 +343,6 @@ export function buildBrandModel(
         dreanRow("Mental", "Mkt de Influencia · alcance", "personas", influencia ? influencia.alcance : null, fmtNum),
         dreanRow("Mental", "Mkt de Canal · impresiones", "impresiones", canal ? canal.impresiones : null, fmtNum),
         numRow("Físico", "% CB · disponibilidad en PDV", "%", cbVal, cbDrean, fmtPct),
-        numRow("Mercado", "Share value · High %", "%", mField("svHigh"), wAvg(mField("svHigh")), fmtPct),
-        numRow("Mercado", "Share value · Mid %", "%", mField("svMid"), wAvg(mField("svMid")), fmtPct),
-        numRow("Mercado", "Share value · Low %", "%", mField("svLow"), wAvg(mField("svLow")), fmtPct),
       ],
     },
   ];
