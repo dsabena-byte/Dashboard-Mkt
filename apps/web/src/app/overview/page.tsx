@@ -5,9 +5,16 @@ import {
   MESES_UP,
 } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
+import {
+  getFloorShareU4M,
+  FS_CAT_LABEL,
+  type FsCatKey,
+  type FsCatU4M,
+} from "@/lib/floor-share-queries";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
+export const maxDuration = 60;
 
 const YEAR = 2026;
 const REAL_VERSION = `REAL ${YEAR}`;
@@ -90,14 +97,67 @@ function StatusBadge({ kind, children }: { kind: "ok" | "bad" | "neutral"; child
   );
 }
 
+function FsCard({ label, cat }: { label: string; cat: FsCatU4M }) {
+  const hasData = cat.months.length > 0;
+  const delta = cat.avgU4M - cat.target;
+  const lastMes = hasData ? cat.months[cat.months.length - 1]!.mes : null;
+  const projOnTrack = cat.projection != null && cat.projection >= cat.target;
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-base font-semibold tracking-tight">{label}</div>
+        <span className="text-[11px] text-muted-foreground">Obj {cat.target}%</span>
+      </div>
+
+      {!hasData ? (
+        <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Sin datos en la ventana.</div>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-2">
+            <span className={`text-3xl font-bold tabular-nums ${cat.meetsAvg ? "text-emerald-600" : "text-rose-500"}`}>
+              {cat.avgU4M.toFixed(1)}%
+            </span>
+            <StatusBadge kind={cat.meetsAvg ? "ok" : "bad"}>{cat.meetsAvg ? "cumple" : "no cumple"}</StatusBadge>
+          </div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Promedio U4M · {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp vs objetivo
+          </div>
+
+          <dl className="mt-3 space-y-1.5 border-t pt-2.5 text-xs">
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Último mes{lastMes ? ` (${lastMes})` : ""}</dt>
+              <dd className="font-semibold tabular-nums">{cat.latest != null ? `${cat.latest.toFixed(1)}%` : "—"}</dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Proyección próx. mes</dt>
+              <dd className={`font-semibold tabular-nums ${cat.projection != null ? (projOnTrack ? "text-emerald-600" : "text-rose-500") : ""}`}>
+                {cat.projection != null ? `${cat.projection.toFixed(1)}%` : "—"}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            {cat.months.map((m) => (
+              <span key={m.mes}>
+                {m.mes} <span className="font-semibold tabular-nums text-foreground">{m.share.toFixed(0)}%</span>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default async function OverviewPage() {
   const now = new Date();
   const curYear = now.getUTCFullYear();
   const curMonth = now.getUTCMonth() + 1;
 
-  const [bgt, factRows] = await Promise.all([
+  const [bgt, factRows, floorShare] = await Promise.all([
     safe(getBgtData(), { rows: [], syncedAt: null }),
     safe(getFacturacionMensual(), [] as Awaited<ReturnType<typeof getFacturacionMensual>>),
+    safe(getFloorShareU4M(), null),
   ]);
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
@@ -252,6 +312,41 @@ export default async function OverviewPage() {
           </div>
         ))}
       </div>
+
+      {/* ===== OBJETIVO 2 ===== */}
+      <section className="mt-6 rounded-xl border border-l-4 border-l-primary bg-primary/[0.035] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 2</span>
+              <h3 className="text-sm font-bold tracking-tight">Floor Share de exhibición — categorías core</h3>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Alcanzar el share de góndola objetivo en las tres categorías core, en promedio de los últimos 4 meses: Lavado 32%, Refrigeración 25%, Cocción 23%.
+              {floorShare && floorShare.mesesUsados.length > 0 && (
+                <span className="text-foreground/70"> · U4M: {floorShare.mesesUsados.join(" · ")}</span>
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">32%</span><span className="text-muted-foreground">Lavado</span></span>
+            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">25%</span><span className="text-muted-foreground">Refri</span></span>
+            <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">23%</span><span className="text-muted-foreground">Cocción</span></span>
+          </div>
+        </div>
+      </section>
+
+      {floorShare == null ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+          No se pudo cargar Floor Share. Verificá las variables <code>CB_SUPABASE_URL</code> / <code>CB_SUPABASE_SERVICE_ROLE_KEY</code>.
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {(["lavado", "refri", "coccion"] as FsCatKey[]).map((k) => (
+            <FsCard key={k} label={FS_CAT_LABEL[k]} cat={floorShare[k]} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

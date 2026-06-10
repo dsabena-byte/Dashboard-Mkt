@@ -1,5 +1,6 @@
 import "server-only";
 import { getCbSupabase } from "./supabase-cb";
+import { isoWeekToMes } from "./cb-queries";
 
 // ============================================================================
 // Floor Share — queries contra cuadros-basicos.supabase / tabla floor_share
@@ -408,4 +409,113 @@ export function normalizeCategoria(c: string | null | undefined): string {
   if (v.startsWith("lava") || v.includes("seca")) return "Lavado y Secado";
   // Capitaliza primera letra
   return c.charAt(0).toUpperCase() + c.slice(1);
+}
+
+// ============================================================================
+// Objetivo 2 (Overview) — Floor Share por categoría core, promedio U4 meses.
+// Devuelve, además del promedio del objetivo, la trayectoria mensual, el
+// último mes (cómo venimos hoy) y una proyección lineal simple del próximo mes.
+// ============================================================================
+
+const MES_ORDER_FS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+export type FsCatKey = "lavado" | "refri" | "coccion";
+export const FS_CAT_LABEL: Record<FsCatKey, string> = {
+  lavado: "Lavado",
+  refri: "Refrigeración",
+  coccion: "Cocción",
+};
+
+export interface FsMonthShare {
+  mes: string;
+  share: number; // 0..100
+}
+
+export interface FsCatU4M {
+  target: number;
+  avgU4M: number;          // promedio de los shares mensuales de la ventana
+  latest: number | null;   // share del último mes con dato
+  projection: number | null; // proyección lineal del próximo mes
+  meetsAvg: boolean;
+  months: FsMonthShare[];  // trayectoria (orden calendario)
+}
+
+export interface FloorShareU4M {
+  mesesUsados: string[];
+  lavado: FsCatU4M;
+  refri: FsCatU4M;
+  coccion: FsCatU4M;
+}
+
+// Proyección del próximo punto por regresión lineal simple sobre la serie.
+function linearNext(values: number[]): number | null {
+  const n = values.length;
+  if (n === 0) return null;
+  if (n === 1) return values[0]!;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) {
+    sx += i; sy += values[i]!; sxy += i * values[i]!; sxx += i * i;
+  }
+  const denom = n * sxx - sx * sx;
+  if (denom === 0) return values[n - 1]!;
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  return Math.max(0, intercept + slope * n); // próximo índice = n
+}
+
+export async function getFloorShareU4M(monthsBack = 4): Promise<FloorShareU4M | null> {
+  const { weeks } = await getAvailableWeeks();
+  if (weeks.length === 0) return null;
+
+  // Semanas candidatas → mes (sin fetchear: isoWeekToMes es determinístico).
+  const weekMes = weeks
+    .map((w) => ({ w, mes: isoWeekToMes(w) }))
+    .filter((x) => x.mes);
+  const mesesPresentes = [...new Set(weekMes.map((x) => x.mes))]
+    .sort((a, b) => MES_ORDER_FS.indexOf(a) - MES_ORDER_FS.indexOf(b));
+  const u4 = mesesPresentes.slice(-monthsBack);
+  const u4Set = new Set(u4);
+  const semanas = weekMes.filter((x) => u4Set.has(x.mes)).map((x) => x.w);
+  if (semanas.length === 0) return null;
+
+  const rows = await getFloorShareRows({ semanas });
+  if (rows.length === 0) return null;
+
+  // Agrupar rows por mes.
+  const byMes = new Map<string, FloorShareRow[]>();
+  for (const r of rows) {
+    if (r.semana == null) continue;
+    const mes = isoWeekToMes(r.semana);
+    if (!u4Set.has(mes)) continue;
+    const arr = byMes.get(mes);
+    if (arr) arr.push(r);
+    else byMes.set(mes, [r]);
+  }
+
+  const buildCat = (cat: FsCatKey): FsCatU4M => {
+    const months: FsMonthShare[] = [];
+    for (const mes of u4) {
+      const rs = byMes.get(mes);
+      if (!rs || rs.length === 0) continue;
+      const block = computeOverall(rs)[cat];
+      if (block.total_units > 0) months.push({ mes, share: block.share });
+    }
+    const avgU4M = months.length ? months.reduce((s, m) => s + m.share, 0) / months.length : 0;
+    const latest = months.length ? months[months.length - 1]!.share : null;
+    const projection = linearNext(months.map((m) => m.share));
+    return {
+      target: FS_OBJ_PCT[cat],
+      avgU4M,
+      latest,
+      projection,
+      meetsAvg: months.length > 0 && avgU4M >= FS_OBJ_PCT[cat],
+      months,
+    };
+  };
+
+  return {
+    mesesUsados: u4,
+    lavado: buildCat("lavado"),
+    refri: buildCat("refri"),
+    coccion: buildCat("coccion"),
+  };
 }
