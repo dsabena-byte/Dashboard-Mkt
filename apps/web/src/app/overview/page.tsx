@@ -276,49 +276,40 @@ export default async function OverviewPage() {
                 Versión <b>{c.bgtLabel}</b> aún no cargada en el BGT.
               </div>
             ) : (
-              <dl className="space-y-2.5 text-sm">
-                <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">BGT vigente{c.partial ? " (a la fecha)" : ""}</dt>
-                  <dd className="font-semibold tabular-nums">{fmtUSD(c.bgtVal)}</dd>
+              <>
+                {/* Resultado principal: desvío Real vs BGT */}
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-3xl font-bold tabular-nums ${c.desvio != null ? (c.desvio < MAX_DESVIO ? "text-emerald-600" : "text-rose-500") : "text-foreground"}`}>
+                    {c.desvio != null ? fmtPct(c.desvio) : "—"}
+                  </span>
+                  {c.evaluable && c.desvioOk != null && (
+                    <StatusBadge kind={c.desvioOk ? "ok" : "bad"}>{c.desvioOk ? "cumple" : "no cumple"}</StatusBadge>
+                  )}
                 </div>
-                <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">Real ejecutado{c.partial ? " (a la fecha)" : ""}</dt>
-                  <dd className="font-semibold tabular-nums">{fmtUSD(c.realVal)}</dd>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  Desvío Real vs {c.bgtLabel} · objetivo: sobre-ejecución &lt; {MAX_DESVIO}%
                 </div>
 
-                <div className="border-t pt-2.5">
+                <dl className="mt-3 space-y-1.5 border-t pt-2.5 text-xs">
                   <div className="flex items-center justify-between">
-                    <dt className="text-muted-foreground">Desvío vs BGT</dt>
-                    <dd className="flex items-center gap-2">
-                      <span className={`font-semibold tabular-nums ${c.desvio != null ? (c.desvio < MAX_DESVIO ? "text-emerald-600" : "text-red-600") : ""}`}>
-                        {c.desvio != null ? fmtPct(c.desvio) : "—"}
-                      </span>
-                      {c.evaluable && c.desvioOk != null && (
-                        <StatusBadge kind={c.desvioOk ? "ok" : "bad"}>{c.desvioOk ? "cumple" : "no cumple"}</StatusBadge>
-                      )}
-                    </dd>
+                    <dt className="text-muted-foreground">BGT vigente{c.partial ? " (a la fecha)" : ""}</dt>
+                    <dd className="font-semibold tabular-nums">{fmtUSD(c.bgtVal)}</dd>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">Meta: sobre-ejecución &lt; {MAX_DESVIO}% (sub-ejecución permitida)</div>
-                </div>
-
-                <div className="border-t pt-2.5">
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Real ejecutado{c.partial ? " (a la fecha)" : ""}</dt>
+                    <dd className="font-semibold tabular-nums">{fmtUSD(c.realVal)}</dd>
+                  </div>
                   <div className="flex items-center justify-between">
                     <dt className="text-muted-foreground">Inv. Mkt / Facturación</dt>
-                    <dd className="flex items-center gap-2">
-                      <span className={`font-semibold tabular-nums ${c.invFact != null && c.invFact <= MAX_INV_FACT ? "text-emerald-600" : c.invFact != null ? "text-red-600" : ""}`}>
-                        {c.invFact != null ? fmtPct(c.invFact, false, 2) : "—"}
-                      </span>
-                      {c.evaluable && c.invFactOk != null && (
-                        <StatusBadge kind={c.invFactOk ? "ok" : "bad"}>{c.invFactOk ? "cumple" : "no cumple"}</StatusBadge>
-                      )}
+                    <dd className={`font-semibold tabular-nums ${c.invFact != null ? (c.invFact <= MAX_INV_FACT ? "text-emerald-600" : "text-rose-500") : ""}`}>
+                      {c.invFact != null ? fmtPct(c.invFact, false, 2) : "—"}
                     </dd>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">
-                    Meta: ≤ {MAX_INV_FACT.toString().replace(".", ",")}%
-                    {c.fact == null && " · falta facturación del período"}
-                  </div>
+                </dl>
+                <div className="mt-2 text-[11px] text-muted-foreground">
+                  Objetivo Inv / Fact: ≤ {invFactLabel}%{c.fact == null ? " · falta facturación del período" : ""}
                 </div>
-              </dl>
+              </>
             )}
           </div>
         ))}
