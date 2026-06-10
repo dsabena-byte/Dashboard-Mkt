@@ -1,0 +1,30 @@
+name: Clasificar contenido orgánico (categoría × pilar)
+
+on:
+  schedule:
+    - cron: "0 9 * * *"  # 06:00 ART
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger /api/cron/clasificar-contenido
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/clasificar-contenido?batch=30"
+          echo "GET $URL"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 600 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" \
+            "$URL")
+          echo "HTTP $HTTP_CODE"
+          cat response.json; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Endpoint returned HTTP $HTTP_CODE"; exit 1
+          fi
+          if grep -q '"ok":false' response.json; then
+            echo "::error::Cron devolvió ok=false"; exit 1
+          fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
