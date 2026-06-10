@@ -15,6 +15,8 @@ export interface IgPostRow {
   reactions: number;
   video_views: number;
   clicks: number;
+  categoria: string | null;
+  pilar_contenido: string | null;
 }
 
 export interface IgDemoBreakdown {
@@ -86,7 +88,7 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
   const [postsRes, demoRes] = await Promise.all([
     supabase
       .from("meta_posts")
-      .select("post_id, fecha_post, permalink, message, media_type, thumbnail_url, reach, reach_followers, reach_non_followers, engagement, reactions, video_views, clicks")
+      .select("post_id, fecha_post, permalink, message, media_type, thumbnail_url, reach, reach_followers, reach_non_followers, engagement, reactions, video_views, clicks, categoria, pilar_contenido")
       .eq("platform", "instagram")
       .gte("fecha_post", `${fromIso}T00:00:00Z`)
       .lte("fecha_post", `${toIso}T23:59:59Z`)

@@ -35,6 +35,8 @@ export interface FbPostRow {
   reactions: number;
   video_views: number;
   clicks: number;
+  categoria: string | null;
+  pilar_contenido: string | null;
 }
 
 export interface FbDemographicRow {
@@ -165,7 +167,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     supabase
       .from("meta_posts")
       .select(
-        "post_id, fecha_post, permalink, message, media_type, thumbnail_url, impressions, reach, engagement, reactions, video_views, clicks",
+        "post_id, fecha_post, permalink, message, media_type, thumbnail_url, impressions, reach, engagement, reactions, video_views, clicks, categoria, pilar_contenido",
       )
       .eq("platform", "facebook")
       .gte("fecha_post", `${fromIso}T00:00:00Z`)
