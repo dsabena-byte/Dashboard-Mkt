@@ -551,19 +551,36 @@ export default async function OverviewPage() {
                       <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">{comp.subtitle}</span>
                     </td>
                   </tr>
-                  {comp.rows.map((r) => (
-                    <tr key={r.label} className="border-t">
-                      <td className="px-2 py-1.5">
-                        <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
-                          {r.kind}
-                        </span>
-                        <span className="text-muted-foreground">{r.label}</span>
-                      </td>
-                      {r.cells.map((cell, i) => (
-                        <td key={i} className={`px-2 py-1.5 text-right tabular-nums ${i === 3 ? "font-semibold" : ""}`}>{cell}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {comp.rows.map((r) => {
+                    // intensidad relativa al máximo entre las 3 categorías core
+                    const coreMax = Math.max(0, ...r.cells.slice(0, 3).map((c) => c.value ?? 0));
+                    return (
+                      <tr key={r.label} className="border-t">
+                        <td className="px-2 py-1.5">
+                          <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+                            {r.kind}
+                          </span>
+                          <span className="text-muted-foreground">{r.label}</span>
+                        </td>
+                        {r.cells.map((cell, i) => {
+                          if (i === 3) {
+                            return <td key={i} className="px-2 py-1.5 text-right font-semibold tabular-nums">{cell.display}</td>;
+                          }
+                          const pct = cell.value != null && coreMax > 0 ? (cell.value / coreMax) * 100 : 0;
+                          return (
+                            <td key={i} className="px-2 py-1.5 text-right">
+                              <div className="relative">
+                                {cell.value != null && cell.value > 0 && (
+                                  <div className="absolute inset-y-0 right-0 rounded bg-primary/15" style={{ width: `${Math.max(3, pct)}%` }} />
+                                )}
+                                <span className="relative tabular-nums">{cell.display}</span>
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </Fragment>
               ))}
             </tbody>
