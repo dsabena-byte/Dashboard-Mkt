@@ -46,6 +46,15 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
+// Floor Share con error explícito (para distinguir "error" de "sin datos").
+async function tryFloorShare(): Promise<{ data: Awaited<ReturnType<typeof getFloorShareU4M>>; error: string | null }> {
+  try {
+    return { data: await getFloorShareU4M(), error: null };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 const MES_CAP = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 function coverageLabel(months: number[]): string {
   if (months.length === 0) return "";
@@ -154,11 +163,13 @@ export default async function OverviewPage() {
   const curYear = now.getUTCFullYear();
   const curMonth = now.getUTCMonth() + 1;
 
-  const [bgt, factRows, floorShare] = await Promise.all([
+  const [bgt, factRows, floorShareRes] = await Promise.all([
     safe(getBgtData(), { rows: [], syncedAt: null }),
     safe(getFacturacionMensual(), [] as Awaited<ReturnType<typeof getFacturacionMensual>>),
-    safe(getFloorShareU4M(), null),
+    tryFloorShare(),
   ]);
+  const floorShare = floorShareRes.data;
+  const fsError = floorShareRes.error;
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
   const cuatris = CUATRIS.map((c) => {
@@ -336,9 +347,13 @@ export default async function OverviewPage() {
         </div>
       </section>
 
-      {floorShare == null ? (
+      {fsError ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-          No se pudo cargar Floor Share. Verificá las variables <code>CB_SUPABASE_URL</code> / <code>CB_SUPABASE_SERVICE_ROLE_KEY</code>.
+          No se pudo cargar Floor Share: <code className="break-all">{fsError}</code>
+        </div>
+      ) : floorShare == null ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+          Sin datos de Floor Share en la ventana de los últimos 4 meses.
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
