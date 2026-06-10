@@ -156,8 +156,10 @@ export async function getCanalTotals(year = 2026): Promise<{ impresiones: number
     .limit(20000);
   if (res.error) return null;
   const rows = (res.data ?? []) as Array<{ impresiones: number | null; clics: number | null }>;
+  if (rows.length === 0) return null; // tabla vacía → "—" (no 0 engañoso)
   let impresiones = 0, clicks = 0;
   for (const r of rows) { impresiones += r.impresiones ?? 0; clicks += r.clics ?? 0; }
+  if (impresiones === 0 && clicks === 0) return null;
   return { impresiones, clicks };
 }
 
@@ -252,7 +254,7 @@ export function buildBrandModel(
       rows: [
         numRow("Mental", "Alcance contenido de marca (Liderazgo+Calidad)", "personas",
           (c) => orgSum(c, "reach", lidCal), orgSum("drean", "reach", lidCal), fmtNum),
-        numRow("Físico", "% CB · portfolio presente", "%", cbVal, cbDrean, fmtPct),
+        numRow("Físico", "% CB · disponibilidad en PDV", "%", cbVal, cbDrean, fmtPct),
       ],
     },
     {
@@ -267,7 +269,6 @@ export function buildBrandModel(
           (c) => pauta?.byCat[c].clicks ?? null, pauta?.drean.clicks ?? null, fmtNum),
         dreanRow("Mental", "Mkt de Influencia · alcance", "personas", influencia ? influencia.alcance : null, fmtNum),
         dreanRow("Mental", "Mkt de Canal · impresiones", "impresiones", canal ? canal.impresiones : null, fmtNum),
-        numRow("Físico", "% CB · disponibilidad", "%", cbVal, cbDrean, fmtPct),
       ],
     },
   ];

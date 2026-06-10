@@ -513,80 +513,63 @@ export default async function OverviewPage() {
       {/* ===== OBJETIVO 4 ===== */}
       <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
         <div className="border-b border-primary/10 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 4</span>
-                <h3 className="text-sm font-bold tracking-tight">Salud de Marca — cómo la construimos</h3>
-              </div>
-              <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">
-                El resultado se mide con la investigación de fin de año. Mientras tanto seguimos los indicadores proyectivos que la construyen, mapeados a cada componente: <b>disponibilidad mental</b> (medios + contenido) × <b>física</b> (Floor Share + CB).
-              </p>
-            </div>
-            <div className="text-right text-xs text-muted-foreground">
-              <div>Salud de Marca 2025 · Drean</div>
-              <div className="text-base font-bold text-foreground">33,6%</div>
-              <div className="text-[10px]">ponderado Lav 60 · Refri 30 · Coc 10</div>
-            </div>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 4</span>
+            <h3 className="text-sm font-bold tracking-tight">Salud de Marca — cómo la construimos</h3>
           </div>
+          <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">
+            El resultado se mide con la investigación de fin de año. Mientras tanto seguimos los indicadores proyectivos que la construyen, mapeados a cada dimensión de marca: <b>disponibilidad mental</b> (medios + contenido) × <b>física</b> (Floor Share + CB).
+          </p>
         </div>
 
         <div className="overflow-x-auto p-4">
-          <table className="w-full text-xs">
+          <table className="w-full table-fixed text-xs">
+            <colgroup>
+              <col className="w-[34%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+              <col className="w-[18%]" />
+            </colgroup>
             <thead>
-              <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-2 py-1.5 text-left">Componente / Indicador</th>
-                <th className="px-2 py-1.5 text-right">Lavado</th>
-                <th className="px-2 py-1.5 text-right">Refrigeración</th>
-                <th className="px-2 py-1.5 text-right">Cocción</th>
-                <th className="px-2 py-1.5 text-right font-semibold text-foreground/70">Drean</th>
+              <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="px-2 py-2 text-left">Dimensión / Indicador</th>
+                <th className="px-2 py-2 text-right">Lavado</th>
+                <th className="px-2 py-2 text-right">Refrigeración</th>
+                <th className="px-2 py-2 text-right">Cocción</th>
+                <th className="border-l px-2 py-2 text-right">Drean</th>
               </tr>
             </thead>
             <tbody>
               {brandModel.map((comp) => (
                 <Fragment key={comp.title}>
-                  <tr className="border-t bg-muted/40">
-                    <td colSpan={5} className="px-2 py-1.5">
-                      <span className="text-xs font-bold">{comp.title}</span>
-                      <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">{comp.subtitle}</span>
+                  <tr>
+                    <td colSpan={5} className="px-2 pb-1 pt-4">
+                      <span className="text-[13px] font-bold uppercase tracking-wide text-primary">{comp.title}</span>
+                      <span className="ml-2 text-[10px] font-normal normal-case text-muted-foreground">{comp.subtitle}</span>
                     </td>
                   </tr>
-                  {comp.rows.map((r) => {
-                    // intensidad relativa al máximo entre las 3 categorías core
-                    const coreMax = Math.max(0, ...r.cells.slice(0, 3).map((c) => c.value ?? 0));
-                    return (
-                      <tr key={r.label} className="border-t">
-                        <td className="px-2 py-1.5">
-                          <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
-                            {r.kind}
-                          </span>
-                          <span className="text-muted-foreground">{r.label}</span>
+                  {comp.rows.map((r) => (
+                    <tr key={r.label} className="border-t">
+                      <td className="px-2 py-1.5">
+                        <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+                          {r.kind}
+                        </span>
+                        <span className="text-foreground">{r.label}</span>
+                      </td>
+                      {r.cells.map((cell, i) => (
+                        <td key={i} className={`px-2 py-1.5 text-right tabular-nums ${i === 3 ? "border-l font-semibold text-foreground" : "text-foreground/90"}`}>
+                          {cell.display}
                         </td>
-                        {r.cells.map((cell, i) => {
-                          if (i === 3) {
-                            return <td key={i} className="px-2 py-1.5 text-right font-semibold tabular-nums">{cell.display}</td>;
-                          }
-                          const pct = cell.value != null && coreMax > 0 ? (cell.value / coreMax) * 100 : 0;
-                          return (
-                            <td key={i} className="px-2 py-1.5 text-right">
-                              <div className="relative">
-                                {cell.value != null && cell.value > 0 && (
-                                  <div className="absolute inset-y-0 right-0 rounded bg-primary/15" style={{ width: `${Math.max(3, pct)}%` }} />
-                                )}
-                                <span className="relative tabular-nums">{cell.display}</span>
-                              </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
+                      ))}
+                    </tr>
+                  ))}
                 </Fragment>
               ))}
             </tbody>
           </table>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Indicadores proyectivos (leading) por componente de Salud de Marca · categoría core + Drean general (ponderado 60/30/10). No reemplazan la investigación: muestran cómo venimos construyendo el resultado. Próximo: sumar más señales y momentum.
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Indicadores proyectivos (leading) por dimensión de marca · categoría core + Drean general (ponderado 60/30/10). No reemplazan la investigación de fin de año: muestran cómo venimos construyendo el resultado.
           </p>
         </div>
       </section>
