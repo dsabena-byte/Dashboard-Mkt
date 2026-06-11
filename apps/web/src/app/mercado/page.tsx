@@ -1,5 +1,6 @@
 import { getMercadoRows, mesLabel, type MercadoRow } from "@/lib/mercado-queries";
 import { MercadoBrandChart, type BrandChartPoint } from "@/components/mercado/mercado-brand-chart";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -13,6 +14,8 @@ const METRICS: Array<{ key: MetricKey; label: string; short: string; suffix: str
   { key: "unit_share", label: "Unit share %", short: "Unit Share", suffix: "%", deltaUnit: " pts" },
   { key: "index_price", label: "Índice de precio (base 100)", short: "Índice de Precio", suffix: "", deltaUnit: "" },
 ];
+
+const CAT_ORDER = ["Lavado", "Refrigeración", "Cocción"];
 
 // Definición de segmentos para Lavado (lavarropas automáticos, por capacidad).
 const SEG_DESC_LAVADO: Record<string, string> = {
@@ -144,12 +147,18 @@ function MoversPanel({ windows, deltaUnit, metricLabel }: { windows: WindowMover
   );
 }
 
-export default async function MercadoPage() {
+export default async function MercadoPage({ searchParams }: { searchParams?: { cat?: string } }) {
   const rows = await getMercadoRows();
 
-  // Agrupar por categoría · segmento
+  // Categorías presentes en los datos (en orden fijo)
+  const present = new Set(rows.map((r) => r.categoria));
+  const categorias = [...CAT_ORDER.filter((c) => present.has(c)), ...[...present].filter((c) => !CAT_ORDER.includes(c))];
+  const selected = searchParams?.cat && categorias.includes(searchParams.cat) ? searchParams.cat : categorias[0];
+
+  // Agrupar por categoría · segmento, solo la categoría seleccionada
   const groups = new Map<string, MercadoRow[]>();
   for (const r of rows) {
+    if (r.categoria !== selected) continue;
     const k = `${r.categoria}__${r.segmento}`;
     const arr = groups.get(k);
     if (arr) arr.push(r);
@@ -175,6 +184,25 @@ export default async function MercadoPage() {
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
           Sin datos de mercado todavía. Aplicá la migración <code>0053_mercado_share.sql</code> y cargá el seed (
           <code>supabase/seed/mercado_lavado.sql</code>). Esta misma data alimenta el Objetivo 4 del dash de Objetivos.
+        </div>
+      )}
+
+      {categorias.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {categorias.map((c) => (
+            <Link
+              key={c}
+              href={`/mercado?cat=${encodeURIComponent(c)}`}
+              scroll={false}
+              className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                c === selected
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {c}
+            </Link>
+          ))}
         </div>
       )}
 
