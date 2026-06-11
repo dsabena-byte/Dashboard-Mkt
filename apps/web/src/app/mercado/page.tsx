@@ -25,7 +25,7 @@ const SEG_ORDER = ["High", "Mid", "Low"];
 // Definición de segmentos por categoría.
 const SEG_DESC: Record<string, Record<string, string>> = {
   // Lavado: lavarropas automáticos, por capacidad de carga.
-  Lavado: { High: "≥ 9 kg", Mid: "8 – 8,9 kg", Low: "< 8 kg" },
+  Lavado: { High: "≥ 9 kg", Mid: "8 – 8,9 kg", Low: "hasta 7,4 kg" },
   // Refrigeración: heladeras, por tecnología/formato.
   Refrigeración: { High: "Side by Side, Bottom, Multi-Door", Mid: "No Frost resto", Low: "Cíclicas" },
   // Cocción: cocinas, por ancho.
