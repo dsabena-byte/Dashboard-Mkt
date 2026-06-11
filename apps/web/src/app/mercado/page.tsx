@@ -8,10 +8,10 @@ const PALETTE = ["#ec4899", "#22c55e", "#f59e0b", "#a855f7", "#06b6d4", "#94a3b8
 const HIGHLIGHT = "#2b4dff";
 
 type MetricKey = "value_share" | "unit_share" | "index_price";
-const METRICS: Array<{ key: MetricKey; label: string; suffix: string; deltaUnit: string }> = [
-  { key: "value_share", label: "Value share %", suffix: "%", deltaUnit: " pts" },
-  { key: "unit_share", label: "Unit share %", suffix: "%", deltaUnit: " pts" },
-  { key: "index_price", label: "Índice de precio (base 100)", suffix: "", deltaUnit: "" },
+const METRICS: Array<{ key: MetricKey; label: string; short: string; suffix: string; deltaUnit: string }> = [
+  { key: "value_share", label: "Value share %", short: "Value Share", suffix: "%", deltaUnit: " pts" },
+  { key: "unit_share", label: "Unit share %", short: "Unit Share", suffix: "%", deltaUnit: " pts" },
+  { key: "index_price", label: "Índice de precio (base 100)", short: "Índice de Precio", suffix: "", deltaUnit: "" },
 ];
 
 const WINDOWS: Array<{ key: string; label: string; n: number }> = [
@@ -97,11 +97,11 @@ function DeltaPill({ d, unit }: { d: number; unit: string }) {
   );
 }
 
-function MoversPanel({ windows, deltaUnit }: { windows: WindowMovers[]; deltaUnit: string }) {
+function MoversPanel({ windows, deltaUnit, metricLabel }: { windows: WindowMovers[]; deltaUnit: string; metricLabel: string }) {
   return (
     <div className="rounded-lg border bg-muted/30 p-3">
       <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Mayores variaciones
+        Mayores variaciones · {metricLabel}
       </div>
       <div className="space-y-3">
         {windows.map((w) => (
@@ -204,7 +204,7 @@ export default async function MercadoPage() {
                     <div className="mb-1 text-xs font-medium text-muted-foreground">{m.label}</div>
                     <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} suffix={m.suffix} />
                   </div>
-                  <MoversPanel windows={computeMovers(grp, m.key)} deltaUnit={m.deltaUnit} />
+                  <MoversPanel windows={computeMovers(grp, m.key)} deltaUnit={m.deltaUnit} metricLabel={m.short} />
                 </div>
               ))}
             </div>
