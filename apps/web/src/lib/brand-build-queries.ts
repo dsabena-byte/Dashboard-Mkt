@@ -194,6 +194,7 @@ export async function getMercadoByCategoria(): Promise<MercadoByCategoria | null
     .from("mercado_share")
     .select("mes, categoria, segmento, value_share, index_price")
     .eq("marca", "DREAN")
+    .eq("agregacion", "MAT")
     .order("mes", { ascending: false })
     .limit(3000);
   if (res.error) return null;
