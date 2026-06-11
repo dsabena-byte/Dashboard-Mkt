@@ -107,7 +107,7 @@ function DeltaPill({ d, unit }: { d: number; unit: string }) {
 function MoversPanel({ windows, deltaUnit, metricLabel }: { windows: WindowMovers[]; deltaUnit: string; metricLabel: string }) {
   return (
     <div className="rounded-lg border bg-muted/30 p-3">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="mb-2 truncate whitespace-nowrap text-[10px] font-semibold uppercase text-muted-foreground">
         Mayores variaciones · {metricLabel}
       </div>
       <div className="space-y-3">
