@@ -2,13 +2,13 @@
 -- 0053_mercado_share: share de mercado (units/value) e índice de precio por
 -- MARCA (Drean + competencia), categoría y segmento, en serie mensual (MAT).
 --
--- Reemplaza a mercado_categoria (que era solo Drean). Fuente: Euromonitor.
+-- Reemplaza a mercado_categoria (que era solo Drean). Fuente: GFK.
 --   - unit_share / value_share : % (0..100).
 --   - index_price : base 100 (vs mercado).
 --   - mes : mes de cierre de la ventana MAT (rolling 12m).
 --   - segmento : High | Mid | Low.
 --
--- Carga manual (export Euromonitor → seed SQL en supabase/seed/).
+-- Carga manual (export GFK → seed SQL en supabase/seed/).
 -- Alimenta el dash /mercado (evolución por marca) y el Objetivo 4 (Drean).
 -- =============================================================================
 
@@ -28,7 +28,7 @@ create table if not exists mercado_share (
 create index if not exists idx_mercado_share on mercado_share (categoria, segmento, mes);
 
 comment on table mercado_share is
-  'Share de mercado (units/value en %) e índice de precio (base 100) por marca/categoría/segmento/mes (serie MAT). Fuente Euromonitor. Alimenta /mercado y el Objetivo 4 del Overview.';
+  'Share de mercado (units/value en %) e índice de precio (base 100) por marca/categoría/segmento/mes (serie MAT). Fuente GFK. Alimenta /mercado y el Objetivo 4 del Overview.';
 
 -- Reemplaza la tabla vieja (solo Drean, sin marca).
 drop table if exists mercado_categoria;

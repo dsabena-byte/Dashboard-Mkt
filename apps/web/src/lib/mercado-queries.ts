@@ -2,7 +2,7 @@ import "server-only";
 import { getServerSupabase } from "./supabase-server";
 
 // Serie mensual de mercado por marca (Drean + competencia), categoría y
-// segmento. Fuente: tabla mercado_share (carga manual desde Euromonitor).
+// segmento. Fuente: tabla mercado_share (carga manual desde GFK).
 
 export interface MercadoRow {
   mes: string; // YYYY-MM-01
