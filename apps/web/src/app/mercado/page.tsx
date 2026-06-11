@@ -238,6 +238,10 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
           costado de cada serie, las marcas con mayor variación en los últimos 4 / 8 / 12 meses. Fuente: GFK (
           <code>mercado_share</code>).
         </p>
+        <p className="mt-1 text-xs font-medium text-muted-foreground">
+          Cada punto del eje es un <strong>MAT</strong>: acumulado móvil de los 12 meses que terminan en ese mes (ej.
+          “Abr 26” = May’25–Abr’26).
+        </p>
         {SEG_DESC[selected!] && (
           <p className="mt-1 text-xs text-muted-foreground">
             <strong>{selected}</strong> {CAT_NOTE[selected!]}:{" "}
@@ -310,7 +314,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
               {METRICS.map((m) => {
                 const isShare = m.key !== "index_price";
                 return (
-                  <div key={m.key} className="space-y-1.5">
+                  <div key={m.key}>
                     <div className="grid gap-4 lg:grid-cols-[8rem_1fr_15rem]">
                       <div>
                         <div className="mb-1 text-[10px] font-medium text-muted-foreground">
@@ -325,11 +329,14 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
                       <div>
                         <div className="mb-1 text-xs font-medium text-muted-foreground">{m.label}</div>
                         <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
+                        <div className="text-[10px] italic text-muted-foreground">
+                          Cada mes = MAT (acum. móvil 12 meses al mes indicado)
+                        </div>
+                        {/* Leyenda pegada justo debajo del gráfico principal */}
+                        <BrandLegend brands={allRanked} colorOf={colorOf} />
                       </div>
                       <MoversPanel windows={computeMovers(grp, m.key)} deltaUnit={m.deltaUnit} metricLabel={m.short} />
                     </div>
-                    {/* Leyenda de marcas debajo de cada gráfico, para no tener que bajar al fondo */}
-                    <BrandLegend brands={allRanked} colorOf={colorOf} />
                   </div>
                 );
               })}
