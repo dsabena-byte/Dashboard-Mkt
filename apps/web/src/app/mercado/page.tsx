@@ -47,7 +47,7 @@ export default async function MercadoPage() {
 
       {rows.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-          Sin datos de mercado todavía. Aplicá la migración <code>0053_mercado_share.sql</code> y cargá el seed (<code>supabase/seed/mercado_lavado_high.sql</code>). Esta misma data alimenta el Objetivo 4 del dash de Objetivos.
+          Sin datos de mercado todavía. Aplicá la migración <code>0053_mercado_share.sql</code> y cargá el seed (<code>supabase/seed/mercado_lavado.sql</code>). Esta misma data alimenta el Objetivo 4 del dash de Objetivos.
         </div>
       )}
 
