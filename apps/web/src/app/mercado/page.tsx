@@ -197,7 +197,7 @@ function MoversPanel({ windows, deltaUnit, metricLabel }: { windows: WindowMover
 // Leyenda de marcas con su color. Se repite debajo de cada gráfico.
 function BrandLegend({ brands, colorOf }: { brands: string[]; colorOf: Record<string, string> }) {
   return (
-    <div className="flex flex-nowrap items-center gap-x-3 overflow-x-auto text-[11px]">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
       {brands.map((b) => (
         <span
           key={b}
