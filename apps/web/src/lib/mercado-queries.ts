@@ -1,50 +1,29 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
 
-// Serie mensual de mercado (share value e índice de precio por segmento),
-// por categoría. Fuente: tabla mercado_categoria (carga manual).
+// Serie mensual de mercado por marca (Drean + competencia), categoría y
+// segmento. Fuente: tabla mercado_share (carga manual desde Euromonitor).
 
-export interface MercadoPoint {
+export interface MercadoRow {
   mes: string; // YYYY-MM-01
   categoria: string;
-  svHigh: number | null;
-  svMid: number | null;
-  svLow: number | null;
-  idxHigh: number | null;
-  idxMid: number | null;
-  idxLow: number | null;
+  segmento: string; // High | Mid | Low
+  marca: string;
+  unit_share: number | null;  // %
+  value_share: number | null; // %
+  index_price: number | null; // base 100
 }
 
-interface DbRow {
-  mes: string;
-  categoria: string;
-  share_value_high: number | null;
-  share_value_mid: number | null;
-  share_value_low: number | null;
-  index_price_high: number | null;
-  index_price_mid: number | null;
-  index_price_low: number | null;
-}
-
-export async function getMercadoSeries(): Promise<MercadoPoint[]> {
+export async function getMercadoRows(): Promise<MercadoRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
-    .from("mercado_categoria")
-    .select("mes, categoria, share_value_high, share_value_mid, share_value_low, index_price_high, index_price_mid, index_price_low")
+    .from("mercado_share")
+    .select("mes, categoria, segmento, marca, unit_share, value_share, index_price")
     .order("mes", { ascending: true })
-    .limit(3000)
-    .returns<DbRow[]>();
+    .limit(20000)
+    .returns<MercadoRow[]>();
   if (error || !data) return [];
-  return data.map((r) => ({
-    mes: r.mes,
-    categoria: r.categoria,
-    svHigh: r.share_value_high,
-    svMid: r.share_value_mid,
-    svLow: r.share_value_low,
-    idxHigh: r.index_price_high,
-    idxMid: r.index_price_mid,
-    idxLow: r.index_price_low,
-  }));
+  return data;
 }
 
 const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
