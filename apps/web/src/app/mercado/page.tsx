@@ -1,11 +1,15 @@
 import { getMercadoRows, mesLabel, type MercadoRow } from "@/lib/mercado-queries";
 import { MercadoBrandChart, type BrandChartPoint } from "@/components/mercado/mercado-brand-chart";
+import { MercadoStackedBars, type StackedPoint } from "@/components/mercado/mercado-stacked-bars";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-const PALETTE = ["#ec4899", "#22c55e", "#f59e0b", "#a855f7", "#06b6d4", "#94a3b8", "#64748b"];
+const PALETTE = [
+  "#ec4899", "#22c55e", "#f59e0b", "#a855f7", "#06b6d4", "#84cc16", "#f43f5e",
+  "#0ea5e9", "#eab308", "#14b8a6", "#8b5cf6", "#f97316", "#64748b", "#94a3b8",
+];
 const HIGHLIGHT = "#2b4dff";
 
 type MetricKey = "value_share" | "unit_share" | "index_price";
@@ -35,6 +39,8 @@ const CAT_NOTE: Record<string, string> = {
   Cocción: "(cocinas) por ancho",
 };
 
+// El dato es MAT (acumulado móvil 12m). U12M = año móvil vs año móvil de hace 12
+// meses (variación interanual limpia); U4M/U8M = tendencia más reciente del MAT.
 const WINDOWS: Array<{ key: string; label: string; n: number }> = [
   { key: "U4", label: "U4M", n: 4 },
   { key: "U8", label: "U8M", n: 8 },
@@ -51,6 +57,21 @@ function pivot(rows: MercadoRow[], brands: string[], metric: MetricKey): BrandCh
     byMes.set(label, p);
   }
   return [...byMes.values()];
+}
+
+// Composición por marca en el primer y último año móvil (MAT) del grupo → barras
+// apiladas. Incluye TODAS las marcas para que la pila sume ~100%.
+function stackedData(grp: MercadoRow[], metric: MetricKey, allBrands: string[]): StackedPoint[] {
+  const months = [...new Set(grp.map((r) => r.mes))].sort();
+  if (months.length === 0) return [];
+  const ends = months.length > 1 ? [months[0]!, months[months.length - 1]!] : [months[0]!];
+  const val = new Map<string, number | null>();
+  for (const r of grp) val.set(`${r.mes}__${r.marca}`, r[metric]);
+  return ends.map((mes) => {
+    const p: StackedPoint = { period: mesLabel(mes) };
+    for (const b of allBrands) p[b] = val.get(`${mes}__${b}`) ?? null;
+    return p;
+  });
 }
 
 interface Delta {
@@ -232,45 +253,60 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
         const [categoria, segmento] = key.split("__");
         // último mes del grupo → ranking de marcas por value share
         const lastMes = grp.reduce((m, r) => (r.mes > m ? r.mes : m), grp[0]!.mes);
-        const ranked = grp
+        const allRanked = grp
           .filter((r) => r.mes === lastMes)
           .sort((a, b) => (b.value_share ?? 0) - (a.value_share ?? 0))
           .map((r) => r.marca);
-        const brands = [...new Set(["DREAN", ...ranked])].filter((b) => ranked.includes(b)).slice(0, 6);
-        if (!brands.includes("DREAN") && ranked.includes("DREAN")) brands[brands.length - 1] = "DREAN";
-        const others = brands.filter((b) => b !== "DREAN");
+        // Color por marca, compartido entre líneas, barras apiladas y leyenda.
+        const colorOf: Record<string, string> = {};
+        let pi = 0;
+        for (const b of allRanked) colorOf[b] = b === "DREAN" ? HIGHLIGHT : PALETTE[pi++ % PALETTE.length]!;
+        // Líneas: Drean + top 6 por value share (legibilidad). Barras: todas.
+        const brands = [...new Set(["DREAN", ...allRanked])].filter((b) => allRanked.includes(b)).slice(0, 6);
+        if (!brands.includes("DREAN") && allRanked.includes("DREAN")) brands[brands.length - 1] = "DREAN";
 
         return (
           <section key={key} className="rounded-xl border bg-card p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-base font-semibold tracking-tight">
-                {categoria}{" "}
-                <span className="text-sm font-normal text-muted-foreground">
-                  · segmento {segmento}
-                  {SEG_DESC[categoria!]?.[segmento!] ? ` (${SEG_DESC[categoria!]![segmento!]})` : ""}
-                </span>
-              </h3>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
-                <span className="inline-flex items-center gap-1.5 font-semibold">
-                  <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: HIGHLIGHT }} />DREAN
-                </span>
-                {others.map((b, i) => (
-                  <span key={b} className="inline-flex items-center gap-1.5 text-muted-foreground">
-                    <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: PALETTE[i % PALETTE.length] }} />
-                    {b}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <h3 className="mb-3 text-base font-semibold tracking-tight">
+              {categoria}{" "}
+              <span className="text-sm font-normal text-muted-foreground">
+                · segmento {segmento}
+                {SEG_DESC[categoria!]?.[segmento!] ? ` (${SEG_DESC[categoria!]![segmento!]})` : ""}
+              </span>
+            </h3>
             <div className="space-y-4">
-              {METRICS.map((m) => (
-                <div key={m.key} className="grid gap-4 lg:grid-cols-[1fr_15rem]">
-                  <div>
-                    <div className="mb-1 text-xs font-medium text-muted-foreground">{m.label}</div>
-                    <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} suffix={m.suffix} />
+              {METRICS.map((m) => {
+                const stacked = m.key !== "index_price";
+                return (
+                  <div
+                    key={m.key}
+                    className={`grid gap-4 ${stacked ? "lg:grid-cols-[8rem_1fr_15rem]" : "lg:grid-cols-[1fr_15rem]"}`}
+                  >
+                    {stacked && (
+                      <div>
+                        <div className="mb-1 text-[10px] font-medium text-muted-foreground">Composición (MAT)</div>
+                        <MercadoStackedBars data={stackedData(grp, m.key, allRanked)} brands={allRanked} colors={colorOf} suffix={m.suffix} />
+                      </div>
+                    )}
+                    <div>
+                      <div className="mb-1 text-xs font-medium text-muted-foreground">{m.label}</div>
+                      <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
+                    </div>
+                    <MoversPanel windows={computeMovers(grp, m.key)} deltaUnit={m.deltaUnit} metricLabel={m.short} />
                   </div>
-                  <MoversPanel windows={computeMovers(grp, m.key)} deltaUnit={m.deltaUnit} metricLabel={m.short} />
-                </div>
+                );
+              })}
+            </div>
+            {/* Leyenda completa de marcas, abajo */}
+            <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 border-t pt-3 text-[11px]">
+              {allRanked.map((b) => (
+                <span
+                  key={b}
+                  className={`inline-flex items-center gap-1.5 ${b === "DREAN" ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                >
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: colorOf[b] }} />
+                  {b}
+                </span>
               ))}
             </div>
           </section>

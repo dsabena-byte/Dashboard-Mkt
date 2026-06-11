@@ -23,11 +23,13 @@ export function MercadoBrandChart({
   brands,
   highlight = "DREAN",
   suffix = "",
+  colors,
 }: {
   data: BrandChartPoint[];
   brands: string[];
   highlight?: string;
   suffix?: string;
+  colors?: Record<string, string>;
 }) {
   if (data.length === 0) {
     return <div className="flex h-44 items-center justify-center text-xs text-muted-foreground">Sin datos.</div>;
@@ -41,10 +43,18 @@ export function MercadoBrandChart({
         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `${v}${suffix}`} width={42} />
         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number, n: string) => [`${v}${suffix}`, n]} />
         {others.map((b, i) => (
-          <Line key={b} type="monotone" dataKey={b} stroke={PALETTE[i % PALETTE.length]} strokeWidth={1.5} dot={false} connectNulls />
+          <Line
+            key={b}
+            type="monotone"
+            dataKey={b}
+            stroke={colors?.[b] ?? PALETTE[i % PALETTE.length]}
+            strokeWidth={1.5}
+            dot={false}
+            connectNulls
+          />
         ))}
         {brands.includes(highlight) && (
-          <Line type="monotone" dataKey={highlight} stroke={HIGHLIGHT} strokeWidth={3} dot={{ r: 2.5 }} connectNulls />
+          <Line type="monotone" dataKey={highlight} stroke={colors?.[highlight] ?? HIGHLIGHT} strokeWidth={3} dot={{ r: 2.5 }} connectNulls />
         )}
       </LineChart>
     </ResponsiveContainer>
