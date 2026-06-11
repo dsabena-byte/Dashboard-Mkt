@@ -12,13 +12,17 @@ export interface MercadoRow {
   unit_share: number | null;  // %
   value_share: number | null; // %
   index_price: number | null; // base 100
+  agregacion?: string; // MAT | mensual
 }
 
-export async function getMercadoRows(): Promise<MercadoRow[]> {
+// agregacion: 'MAT' (acum. móvil 12m) o 'mensual' (valor del mes). Se filtra para
+// que las dos series no se mezclen. Default 'MAT' (lo cargado hasta ahora).
+export async function getMercadoRows(agregacion: "MAT" | "mensual" = "MAT"): Promise<MercadoRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
     .from("mercado_share")
-    .select("mes, categoria, segmento, marca, unit_share, value_share, index_price")
+    .select("mes, categoria, segmento, marca, unit_share, value_share, index_price, agregacion")
+    .eq("agregacion", agregacion)
     .order("mes", { ascending: true })
     .limit(20000)
     .returns<MercadoRow[]>();
