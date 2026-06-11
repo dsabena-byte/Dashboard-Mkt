@@ -14,6 +14,13 @@ const METRICS: Array<{ key: MetricKey; label: string; short: string; suffix: str
   { key: "index_price", label: "Índice de precio (base 100)", short: "Índice de Precio", suffix: "", deltaUnit: "" },
 ];
 
+// Definición de segmentos para Lavado (lavarropas automáticos, por capacidad).
+const SEG_DESC_LAVADO: Record<string, string> = {
+  High: "≥ 9 kg",
+  Mid: "8 – 8,9 kg",
+  Low: "< 8 kg",
+};
+
 const WINDOWS: Array<{ key: string; label: string; n: number }> = [
   { key: "U4", label: "U4M", n: 4 },
   { key: "U8", label: "U8M", n: 8 },
@@ -158,6 +165,10 @@ export default async function MercadoPage() {
           costado de cada serie, las marcas con mayor variación en los últimos 4 / 8 / 12 meses. Fuente: Euromonitor (
           <code>mercado_share</code>).
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Lavado (lavarropas automáticos) por capacidad: <strong>High</strong> ≥ 9 kg · <strong>Mid</strong> 8 – 8,9 kg ·{" "}
+          <strong>Low</strong> &lt; 8 kg.
+        </p>
       </header>
 
       {rows.length === 0 && (
@@ -183,7 +194,11 @@ export default async function MercadoPage() {
           <section key={key} className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-base font-semibold tracking-tight">
-                {categoria} <span className="text-sm font-normal text-muted-foreground">· segmento {segmento}</span>
+                {categoria}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  · segmento {segmento}
+                  {categoria === "Lavado" && SEG_DESC_LAVADO[segmento!] ? ` (${SEG_DESC_LAVADO[segmento!]})` : ""}
+                </span>
               </h3>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
                 <span className="inline-flex items-center gap-1.5 font-semibold">
