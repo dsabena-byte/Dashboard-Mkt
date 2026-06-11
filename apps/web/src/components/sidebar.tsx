@@ -16,6 +16,7 @@ import {
   LayoutGrid,
   PieChart,
   TrendingUp,
+  HeartPulse,
   Menu,
   X,
 } from "lucide-react";
@@ -24,6 +25,8 @@ import { LogoutButton } from "@/components/auth/logout-button";
 
 const NAV = [
   { href: "/overview",    label: "Objetivos Marketing", icon: LayoutDashboard },
+  { href: "/salud-marca", label: "Salud de Marca",      icon: HeartPulse },
+  { href: "/mercado",     label: "Análisis de Mercado", icon: TrendingUp },
   { href: "/funnel",      label: "BGT Inversión",       icon: GitBranch },
   { href: "/planning",    label: "Planning Pauta",   icon: Target },
   { href: "/performance", label: "Performance Pauta", icon: BarChart3 },
@@ -33,7 +36,6 @@ const NAV = [
   { href: "/mkt-canal",   label: "Mkt de Canal",     icon: Store },
   { href: "/cuadros-basicos", label: "Cuadros Básicos", icon: LayoutGrid },
   { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
-  { href: "/mercado",         label: "Análisis de Mercado", icon: TrendingUp },
 ] as const;
 
 export function Sidebar() {

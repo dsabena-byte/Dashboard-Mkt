@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import {
   getBgtData,
   sumVersion,
@@ -13,15 +12,7 @@ import {
   type FsCatU4M,
 } from "@/lib/floor-share-queries";
 import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
-import {
-  getOrganicPilarMix,
-  getPautaByCategoria,
-  getWebByCategoria,
-  getInfluenciaTotals,
-  getCanalTotals,
-  getMercadoByCategoria,
-  buildBrandModel,
-} from "@/lib/brand-build-queries";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -263,25 +254,16 @@ export default async function OverviewPage() {
   const curYear = now.getUTCFullYear();
   const curMonth = now.getUTCMonth() + 1;
 
-  const [bgt, factRows, floorShareRes, cbRes, brandMix] = await Promise.all([
+  const [bgt, factRows, floorShareRes, cbRes] = await Promise.all([
     safe(getBgtData(), { rows: [], syncedAt: null }),
     safe(getFacturacionMensual(), [] as Awaited<ReturnType<typeof getFacturacionMensual>>),
     tryFloorShare(),
     tryCb(),
-    safe(getOrganicPilarMix(), null),
   ]);
   const floorShare = floorShareRes.data;
   const fsError = floorShareRes.error;
   const cb = cbRes.data;
   const cbError = cbRes.error;
-  const pautaByCat = await safe(getPautaByCategoria(), null);
-  const [webByCat, influencia, canal, mercado] = await Promise.all([
-    safe(getWebByCategoria(), null),
-    safe(getInfluenciaTotals(), null),
-    safe(getCanalTotals(), null),
-    safe(getMercadoByCategoria(), null),
-  ]);
-  const brandModel = buildBrandModel(pautaByCat, brandMix, floorShare, cb, webByCat, influencia, canal, mercado);
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
   const cuatris = CUATRIS.map((c) => {
@@ -514,65 +496,20 @@ export default async function OverviewPage() {
 
       {/* ===== OBJETIVO 4 ===== */}
       <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
-        <div className="border-b border-primary/10 px-4 py-3">
+        <div className="px-4 py-3">
           <div className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 4</span>
-            <h3 className="text-sm font-bold tracking-tight">Salud de Marca — cómo la construimos</h3>
+            <h3 className="text-sm font-bold tracking-tight">Salud de Marca</h3>
           </div>
           <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">
-            El resultado se mide con la investigación de fin de año. Mientras tanto seguimos los indicadores proyectivos que la construyen, mapeados a cada dimensión de marca: <b>disponibilidad mental</b> (medios + contenido) × <b>física</b> (Floor Share + CB).
+            El resultado se mide con la investigación de fin de año. Mientras tanto seguimos los indicadores proyectivos que la construyen, mapeados a cada dimensión de marca: <b>Comunicación</b> (medios + contenido) · <b>Tienda</b> (Floor Share + CB) · <b>Mercado</b> (market share + índice de precio).
           </p>
-        </div>
-
-        <div className="overflow-x-auto p-4">
-          <table className="w-full table-fixed text-xs">
-            <colgroup>
-              <col className="w-[34%]" />
-              <col className="w-[16%]" />
-              <col className="w-[16%]" />
-              <col className="w-[16%]" />
-              <col className="w-[18%]" />
-            </colgroup>
-            <thead>
-              <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <th className="px-2 py-2 text-left">Dimensión / Indicador</th>
-                <th className="px-2 py-2 text-right">Lavado</th>
-                <th className="px-2 py-2 text-right">Refrigeración</th>
-                <th className="px-2 py-2 text-right">Cocción</th>
-                <th className="border-l px-2 py-2 text-right">Drean</th>
-              </tr>
-            </thead>
-            <tbody>
-              {brandModel.map((comp) => (
-                <Fragment key={comp.title}>
-                  <tr>
-                    <td colSpan={5} className="px-2 pb-1 pt-4">
-                      <span className="text-[13px] font-bold uppercase tracking-wide text-primary">{comp.title}</span>
-                      <span className="ml-2 text-[10px] font-normal normal-case text-muted-foreground">{comp.subtitle}</span>
-                    </td>
-                  </tr>
-                  {comp.rows.map((r) => (
-                    <tr key={r.label} className="border-t">
-                      <td className="px-2 py-1.5">
-                        <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : r.kind === "Físico" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
-                          {r.kind === "Mental" ? "Comunicación" : r.kind === "Físico" ? "Tienda" : "Mercado"}
-                        </span>
-                        <span className="text-foreground">{r.label}</span>
-                      </td>
-                      {r.cells.map((cell, i) => (
-                        <td key={i} className={`px-2 py-1.5 text-right tabular-nums ${i === 3 ? "border-l font-semibold text-foreground" : "text-foreground/90"}`}>
-                          {cell.display}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-3 text-[11px] text-muted-foreground">
-            Indicadores proyectivos (leading) por dimensión de marca · categoría core + Drean general (ponderado 60/30/10). No reemplazan la investigación de fin de año: muestran cómo venimos construyendo el resultado.
-          </p>
+          <Link
+            href="/salud-marca"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-card px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
+          >
+            Ver análisis completo →
+          </Link>
         </div>
       </section>
     </div>
