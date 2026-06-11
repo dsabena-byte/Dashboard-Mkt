@@ -130,3 +130,33 @@ export async function getPosicionamiento(categoria: string, brands: string[]): P
 
   return { mesMercado: mes, rows };
 }
+
+// ============================================================================
+// Serie mensual de Drean por segmento (para cruzar contra Salud de Marca Kantar
+// en los momentos de medición). Devuelve mes (YYYY-MM-01) → segmento → métricas.
+// ============================================================================
+export interface DreanMesSeg {
+  vs: Record<Seg, number | null>;
+  us: Record<Seg, number | null>;
+  ip: Record<Seg, number | null>;
+}
+export async function getDreanSerie(categoria: string): Promise<Map<string, DreanMesSeg>> {
+  const supabase = getServerSupabase();
+  const { data } = await supabase
+    .from("mercado_share")
+    .select("mes, segmento, value_share, unit_share, index_price")
+    .eq("categoria", categoria)
+    .eq("marca", "DREAN")
+    .in("segmento", ["High", "Mid", "Low"])
+    .eq("agregacion", "mensual")
+    .limit(5000);
+  const out = new Map<string, DreanMesSeg>();
+  for (const r of (data ?? []) as Array<{ mes: string; segmento: Seg; value_share: number | null; unit_share: number | null; index_price: number | null }>) {
+    const e = out.get(r.mes) ?? { vs: { High: null, Mid: null, Low: null }, us: { High: null, Mid: null, Low: null }, ip: { High: null, Mid: null, Low: null } };
+    e.vs[r.segmento] = r.value_share;
+    e.us[r.segmento] = r.unit_share;
+    e.ip[r.segmento] = r.index_price;
+    out.set(r.mes, e);
+  }
+  return out;
+}

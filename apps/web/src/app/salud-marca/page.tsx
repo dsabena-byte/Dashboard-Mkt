@@ -11,7 +11,7 @@ import {
 } from "@/lib/brand-build-queries";
 import { getFloorShareU4M } from "@/lib/floor-share-queries";
 import { getCbU3M } from "@/lib/cb-queries";
-import { getPosicionamiento, type PosBrand } from "@/lib/salud-marca-queries";
+import { getPosicionamiento, getDreanSerie, type PosBrand, type DreanMesSeg } from "@/lib/salud-marca-queries";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -62,6 +62,18 @@ const POS_DIMS: Array<{ title: string; subtitle: string; rows: PosRow[] }> = [
   },
 ];
 
+// Salud de Marca Kantar (Drean, categoría Lavado) por ola de medición.
+// Valores transcritos del tracking Kantar. Cada ola se cruza con la data de
+// mercado del mes correspondiente (donde tenemos serie GFK).
+const WAVES = [
+  { label: "jun-24", mes: "2024-06-01", tom: 53, som: 77, int: 43, poder: 19.9, salud: 48.2 },
+  { label: "nov-24", mes: "2024-11-01", tom: 44, som: 74, int: 40, poder: 19.2, salud: 44.3 },
+  { label: "jun-25", mes: "2025-06-01", tom: 45, som: 74, int: 38, poder: 19.6, salud: 44.2 },
+  { label: "nov-25", mes: "2025-11-01", tom: 40.1, som: 69.1, int: 40, poder: 17.4, salud: 41.7 },
+  { label: "nov-26", mes: "2026-11-01", tom: 40, som: 71, int: 40, poder: 18, salud: 42.3 },
+] as const;
+type Wave = (typeof WAVES)[number];
+
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try {
     return await p;
@@ -70,78 +82,38 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
-export default async function SaludMarcaPage({ searchParams }: { searchParams?: { tab?: string } }) {
+export default async function SaludMarcaPage({ searchParams }: { searchParams?: { tab?: string; view?: string } }) {
   const tab = TABS.find((t) => t.key === searchParams?.tab) ?? TABS[0];
 
-  // ===== Lavado: vista comparativa por marca (nuevo diseño) =====
+  // ===== Lavado: dos sub-vistas (Evolución vs Mercado en el tiempo / Competencia) =====
   if (tab.key === "lavado") {
-    const pos = await safe(getPosicionamiento("Lavado", LAVADO_BRANDS), { mesMercado: null, rows: [] });
+    const view = searchParams?.view === "competencia" ? "competencia" : "evolucion";
+    const subtabs: Array<[string, string]> = [
+      ["evolucion", "Evolución · Salud de Marca vs Mercado"],
+      ["competencia", "Competencia"],
+    ];
     return (
       <div className="space-y-5">
         <Header tab={tab} />
-        <section className="overflow-hidden rounded-xl border bg-card">
-          <div className="border-b px-4 py-3">
-            <h3 className="text-sm font-bold tracking-tight">Lavado — posicionamiento vs competencia</h3>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Indicadores con data comparativa (GFK + Floor Share). Mercado: último mes mensual
-              {pos.mesMercado ? ` (${pos.mesMercado.slice(0, 7)})` : ""}. Floor Share: total Lavado, últimas semanas.
-            </p>
-          </div>
-          <div className="overflow-x-auto p-4">
-            <table className="w-full table-fixed text-xs">
-              <colgroup>
-                <col className="w-[32%]" />
-                {LAVADO_BRANDS.map((b) => (
-                  <col key={b} className="w-[13.6%]" />
-                ))}
-              </colgroup>
-              <thead>
-                <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <th className="px-2 py-2 text-left">Dimensión / Indicador</th>
-                  {LAVADO_BRANDS.map((b) => (
-                    <th key={b} className={`px-2 py-2 text-right ${b === HIGHLIGHT ? "border-l text-primary" : ""}`}>
-                      {b}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {POS_DIMS.map((dim) => (
-                  <Fragment key={dim.title}>
-                    <tr>
-                      <td colSpan={1 + LAVADO_BRANDS.length} className="px-2 pb-1 pt-4">
-                        <span className="text-[13px] font-bold uppercase tracking-wide text-primary">{dim.title}</span>
-                        <span className="ml-2 text-[10px] font-normal normal-case text-muted-foreground">{dim.subtitle}</span>
-                      </td>
-                    </tr>
-                    {dim.rows.map((r) => (
-                      <tr key={r.label} className="border-t">
-                        <td className="px-2 py-1.5">
-                          <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Tienda" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
-                            {r.kind}
-                          </span>
-                          <span className="text-foreground">{r.label}</span>
-                        </td>
-                        {pos.rows.map((p) => (
-                          <td
-                            key={p.marca}
-                            className={`px-2 py-1.5 text-right tabular-nums ${p.marca === HIGHLIGHT ? "border-l font-semibold text-foreground" : "text-foreground/90"}`}
-                          >
-                            {r.fmt(r.get(p))}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-3 text-[11px] text-muted-foreground">
-              Posicionamiento competitivo: solo indicadores donde hay data vs competencia (mercado GFK + floor share).
-              Los indicadores de comunicación (solo Drean) y % CB se siguen en sus dashboards propios.
-            </p>
-          </div>
-        </section>
+        <div className="flex flex-wrap gap-2">
+          {subtabs.map(([k, l]) => (
+            <Link
+              key={k}
+              href={`/salud-marca?tab=lavado&view=${k}`}
+              scroll={false}
+              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                view === k ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {l}
+            </Link>
+          ))}
+        </div>
+        {view === "competencia" ? (
+          <CompetenciaView pos={await safe(getPosicionamiento("Lavado", LAVADO_BRANDS), { mesMercado: null, rows: [] })} />
+        ) : (
+          <EvolucionView serie={await safe(getDreanSerie("Lavado"), new Map<string, DreanMesSeg>())} />
+        )}
       </div>
     );
   }
@@ -217,6 +189,169 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
         </div>
       </section>
     </div>
+  );
+}
+
+// Vista competitiva por marca (preservada).
+function CompetenciaView({ pos }: { pos: { mesMercado: string | null; rows: PosBrand[] } }) {
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-bold tracking-tight">Lavado — posicionamiento vs competencia</h3>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          Indicadores con data comparativa (GFK + Floor Share). Mercado: último mes mensual
+          {pos.mesMercado ? ` (${pos.mesMercado.slice(0, 7)})` : ""}. Floor Share: total Lavado, últimas semanas.
+        </p>
+      </div>
+      <div className="overflow-x-auto p-4">
+        <table className="w-full table-fixed text-xs">
+          <colgroup>
+            <col className="w-[32%]" />
+            {LAVADO_BRANDS.map((b) => (
+              <col key={b} className="w-[13.6%]" />
+            ))}
+          </colgroup>
+          <thead>
+            <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className="px-2 py-2 text-left">Dimensión / Indicador</th>
+              {LAVADO_BRANDS.map((b) => (
+                <th key={b} className={`px-2 py-2 text-right ${b === HIGHLIGHT ? "border-l text-primary" : ""}`}>
+                  {b}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {POS_DIMS.map((dim) => (
+              <Fragment key={dim.title}>
+                <tr>
+                  <td colSpan={1 + LAVADO_BRANDS.length} className="px-2 pb-1 pt-4">
+                    <span className="text-[13px] font-bold uppercase tracking-wide text-primary">{dim.title}</span>
+                    <span className="ml-2 text-[10px] font-normal normal-case text-muted-foreground">{dim.subtitle}</span>
+                  </td>
+                </tr>
+                {dim.rows.map((r) => (
+                  <tr key={r.label} className="border-t">
+                    <td className="px-2 py-1.5">
+                      <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Tienda" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
+                        {r.kind}
+                      </span>
+                      <span className="text-foreground">{r.label}</span>
+                    </td>
+                    {pos.rows.map((p) => (
+                      <td key={p.marca} className={`px-2 py-1.5 text-right tabular-nums ${p.marca === HIGHLIGHT ? "border-l font-semibold text-foreground" : "text-foreground/90"}`}>
+                        {r.fmt(r.get(p))}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// Vista evolución: Salud de Marca Kantar (Drean Lavado) vs variables de mercado,
+// por ola de medición (columnas = momentos). Sirve para ver qué variable de
+// mercado se mueve junto a cada indicador de salud de marca.
+function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
+  const facv = (v: number | null) => (v == null ? 1 : v / 100);
+  const poderMercado = (s?: DreanMesSeg): number | null => {
+    if (!s || (s.vs.High == null && s.vs.Mid == null)) return null;
+    return ((s.vs.High ?? 0) + (s.vs.Mid ?? 0)) * facv(s.ip.High) * facv(s.ip.Mid) * facv(s.ip.Low);
+  };
+  const p1 = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
+  const i0 = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
+  const n1 = (v: number | null) => (v == null ? "—" : v.toFixed(1));
+
+  const kantar: Array<{ label: string; get: (w: Wave) => number; bold?: boolean }> = [
+    { label: "Top of Mind", get: (w) => w.tom },
+    { label: "Share of Mind", get: (w) => w.som },
+    { label: "Intención de compra", get: (w) => w.int },
+    { label: "Poder de Marca", get: (w) => w.poder },
+    { label: "Salud de Marca", get: (w) => w.salud, bold: true },
+  ];
+  type MRow = { label: string; get: (s?: DreanMesSeg) => number | null; fmt: (v: number | null) => string };
+  const mkt: MRow[] = [
+    { label: "Value share · High %", get: (s) => s?.vs.High ?? null, fmt: p1 },
+    { label: "Value share · Mid %", get: (s) => s?.vs.Mid ?? null, fmt: p1 },
+    { label: "Value share · Low %", get: (s) => s?.vs.Low ?? null, fmt: p1 },
+    { label: "Unit share · High %", get: (s) => s?.us.High ?? null, fmt: p1 },
+    { label: "Unit share · Mid %", get: (s) => s?.us.Mid ?? null, fmt: p1 },
+    { label: "Unit share · Low %", get: (s) => s?.us.Low ?? null, fmt: p1 },
+    { label: "Índice de precio · High", get: (s) => s?.ip.High ?? null, fmt: i0 },
+    { label: "Índice de precio · Mid", get: (s) => s?.ip.Mid ?? null, fmt: i0 },
+    { label: "Índice de precio · Low", get: (s) => s?.ip.Low ?? null, fmt: i0 },
+    { label: "Poder de Marca (mercado)", get: poderMercado, fmt: n1 },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-bold tracking-tight">Lavado — Salud de Marca (Kantar) vs Mercado, en el tiempo</h3>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          Drean. Columnas = olas de medición de Salud de Marca. La data de mercado (GFK) aparece donde tenemos serie
+          (desde 2025); las olas previas quedan sin dato de mercado.
+        </p>
+      </div>
+      <div className="overflow-x-auto p-4">
+        <table className="w-full table-fixed text-xs">
+          <colgroup>
+            <col className="w-[28%]" />
+            {WAVES.map((w) => (
+              <col key={w.label} className="w-[14.4%]" />
+            ))}
+          </colgroup>
+          <thead>
+            <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className="px-2 py-2 text-left">Indicador</th>
+              {WAVES.map((w) => (
+                <th key={w.label} className="px-2 py-2 text-right">{w.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colSpan={1 + WAVES.length} className="px-2 pb-1 pt-3">
+                <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Salud de Marca · Kantar</span>
+              </td>
+            </tr>
+            {kantar.map((r) => (
+              <tr key={r.label} className="border-t">
+                <td className={`px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : "text-foreground"}`}>{r.label}</td>
+                {WAVES.map((w) => (
+                  <td key={w.label} className={`px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
+                    {r.get(w).toFixed(1)}%
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr>
+              <td colSpan={1 + WAVES.length} className="px-2 pb-1 pt-4">
+                <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Mercado · GFK (Drean)</span>
+              </td>
+            </tr>
+            {mkt.map((r) => (
+              <tr key={r.label} className="border-t">
+                <td className="px-2 py-1.5 text-foreground">{r.label}</td>
+                {WAVES.map((w) => (
+                  <td key={w.label} className="px-2 py-1.5 text-right tabular-nums text-foreground/90">
+                    {r.fmt(r.get(serie.get(w.mes)))}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Objetivo: ver qué variable de mercado se mueve junto a cada indicador de Salud de Marca para construir mejores
+          conexiones. Kantar transcrito del tracking; mercado GFK mensual.
+        </p>
+      </div>
+    </section>
   );
 }
 
