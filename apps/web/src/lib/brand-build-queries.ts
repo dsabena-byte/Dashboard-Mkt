@@ -184,21 +184,26 @@ export interface MercadoByCategoria {
 interface MercadoRowDb {
   mes: string;
   categoria: string;
-  share_units_high: number | null; share_units_mid: number | null; share_units_low: number | null;
-  share_value_high: number | null; share_value_mid: number | null; share_value_low: number | null;
-  index_price_high: number | null; index_price_mid: number | null; index_price_low: number | null;
+  segmento: string;
+  value_share: number | null;
+  index_price: number | null;
 }
 export async function getMercadoByCategoria(): Promise<MercadoByCategoria | null> {
   const supabase = getServerSupabase();
   const res = await supabase
-    .from("mercado_categoria")
-    .select("mes, categoria, share_units_high, share_units_mid, share_units_low, share_value_high, share_value_mid, share_value_low, index_price_high, index_price_mid, index_price_low")
+    .from("mercado_share")
+    .select("mes, categoria, segmento, value_share, index_price")
+    .eq("marca", "DREAN")
     .order("mes", { ascending: false })
-    .limit(1000);
+    .limit(3000);
   if (res.error) return null;
   const rows = (res.data ?? []) as MercadoRowDb[];
   if (rows.length === 0) return null;
-  const latest = rows[0]!.mes;
+  // Último mes con dato por categoría (rows vienen ordenadas desc).
+  const latestByCat: Record<string, string> = {};
+  for (const r of rows) {
+    if (!(r.categoria in latestByCat)) latestByCat[r.categoria] = r.mes;
+  }
   const empty = (): MercadoCell => ({
     suHigh: null, suMid: null, suLow: null,
     svHigh: null, svMid: null, svLow: null,
@@ -206,17 +211,14 @@ export async function getMercadoByCategoria(): Promise<MercadoByCategoria | null
   });
   const byCat: Record<CoreCat, MercadoCell> = { Lavado: empty(), Refrigeración: empty(), Cocción: empty() };
   for (const r of rows) {
-    if (r.mes !== latest) continue;
     const core = MERCADO_TO_CORE[r.categoria];
-    if (core) {
-      byCat[core] = {
-        suHigh: r.share_units_high, suMid: r.share_units_mid, suLow: r.share_units_low,
-        svHigh: r.share_value_high, svMid: r.share_value_mid, svLow: r.share_value_low,
-        idxHigh: r.index_price_high, idxMid: r.index_price_mid, idxLow: r.index_price_low,
-      };
-    }
+    if (!core || r.mes !== latestByCat[r.categoria]) continue;
+    const cell = byCat[core];
+    if (r.segmento === "High") { cell.svHigh = r.value_share; cell.idxHigh = r.index_price; }
+    else if (r.segmento === "Mid") { cell.svMid = r.value_share; cell.idxMid = r.index_price; }
+    else if (r.segmento === "Low") { cell.svLow = r.value_share; cell.idxLow = r.index_price; }
   }
-  return { byCat, mes: latest };
+  return { byCat, mes: null };
 }
 
 // ---------- Ensamblado del modelo ----------
