@@ -1,5 +1,4 @@
--- Lavado / High+Mid+Low - Washing Machines AR (MAT mensual, May'25-Abr'26). Fuente: GFK.
--- Shares en % (0..100); index_price base 100. Solo valores absolutos.
+-- Lavado - GFK (MAT mensual, May'25-Abr'26). Shares en % (0..100); index_price base 100. Solo valores absolutos.
 delete from mercado_share where categoria='Lavado';
 insert into mercado_share (mes,categoria,segmento,marca,unit_share,value_share,index_price) values
 ('2025-04-01','Lavado','High','BGH',0.11,0.06,60.0),
