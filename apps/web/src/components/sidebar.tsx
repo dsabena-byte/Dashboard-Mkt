@@ -15,6 +15,7 @@ import {
   Store,
   LayoutGrid,
   PieChart,
+  TrendingUp,
   Menu,
   X,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const NAV = [
   { href: "/mkt-canal",   label: "Mkt de Canal",     icon: Store },
   { href: "/cuadros-basicos", label: "Cuadros Básicos", icon: LayoutGrid },
   { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
+  { href: "/mercado",         label: "Análisis de Mercado", icon: TrendingUp },
 ] as const;
 
 export function Sidebar() {
