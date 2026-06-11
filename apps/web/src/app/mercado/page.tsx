@@ -197,11 +197,11 @@ function MoversPanel({ windows, deltaUnit, metricLabel }: { windows: WindowMover
 // Leyenda de marcas con su color. Se repite debajo de cada gráfico.
 function BrandLegend({ brands, colorOf }: { brands: string[]; colorOf: Record<string, string> }) {
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+    <div className="flex flex-nowrap items-center gap-x-3 overflow-x-auto text-[11px]">
       {brands.map((b) => (
         <span
           key={b}
-          className={`inline-flex items-center gap-1.5 ${b === "DREAN" ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+          className={`inline-flex shrink-0 items-center gap-1.5 ${b === "DREAN" ? "font-semibold text-foreground" : "text-muted-foreground"}`}
         >
           <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: colorOf[b] }} />
           {b}
@@ -212,7 +212,7 @@ function BrandLegend({ brands, colorOf }: { brands: string[]; colorOf: Record<st
 }
 
 export default async function MercadoPage({ searchParams }: { searchParams?: { cat?: string; agg?: string } }) {
-  const agg: "MAT" | "mensual" = searchParams?.agg === "mensual" ? "mensual" : "MAT";
+  const agg: "MAT" | "mensual" = searchParams?.agg === "MAT" ? "MAT" : "mensual";
   const rows = await getMercadoRows(agg);
   const esMAT = agg === "MAT";
 
@@ -272,7 +272,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
 
       {/* Selector de agregación: MAT (acum. 12m) vs Mensual (valor del mes) */}
       <div className="flex flex-wrap items-center gap-2">
-        {(["MAT", "mensual"] as const).map((a) => (
+        {(["mensual", "MAT"] as const).map((a) => (
           <Link
             key={a}
             href={`/mercado?cat=${encodeURIComponent(selected ?? "")}&agg=${a}`}
@@ -357,9 +357,11 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
                       <div>
                         <div className="mb-1 text-xs font-medium text-muted-foreground">{m.label}</div>
                         <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
-                        <div className="text-[10px] italic text-muted-foreground">
-                          {esMAT ? "Cada mes = MAT (acum. móvil 12 meses al mes indicado)" : "Valores mensuales (valor del mes)"}
-                        </div>
+                        {esMAT && (
+                          <div className="text-[10px] italic text-muted-foreground">
+                            Cada mes = MAT (acum. móvil 12 meses al mes indicado)
+                          </div>
+                        )}
                         {/* Leyenda pegada justo debajo del gráfico principal */}
                         <BrandLegend brands={allRanked} colorOf={colorOf} />
                       </div>
