@@ -17,11 +17,14 @@ const METRICS: Array<{ key: MetricKey; label: string; short: string; suffix: str
 
 const CAT_ORDER = ["Lavado", "Refrigeración", "Cocción"];
 
-// Definición de segmentos para Lavado (lavarropas automáticos, por capacidad).
-const SEG_DESC_LAVADO: Record<string, string> = {
-  High: "≥ 9 kg",
-  Mid: "8 – 8,9 kg",
-  Low: "< 8 kg",
+// Definición de segmentos por categoría.
+const SEG_DESC: Record<string, Record<string, string>> = {
+  // Lavado: lavarropas automáticos, por capacidad de carga.
+  Lavado: { High: "≥ 9 kg", Mid: "8 – 8,9 kg", Low: "< 8 kg" },
+  // Refrigeración: heladeras, por tecnología/formato.
+  Refrigeración: { High: "Side by Side, Bottom, Multi-Door", Mid: "No Frost resto", Low: "Cíclicas" },
+  // Cocción: cocinas, por ancho.
+  Cocción: { High: "> 56 cm", Mid: "55 – 56 cm", Low: "< 55 cm" },
 };
 
 const WINDOWS: Array<{ key: string; label: string; n: number }> = [
@@ -175,8 +178,14 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
           <code>mercado_share</code>).
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Lavado (lavarropas automáticos) por capacidad: <strong>High</strong> ≥ 9 kg · <strong>Mid</strong> 8 – 8,9 kg ·{" "}
-          <strong>Low</strong> &lt; 8 kg.
+          <strong>Lavado</strong> (lavarropas automáticos) por capacidad: High ≥ 9 kg · Mid 8 – 8,9 kg · Low &lt; 8 kg.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          <strong>Refrigeración</strong> (heladeras) por tecnología: High Side by Side / Bottom / Multi-Door · Mid No
+          Frost resto · Low Cíclicas.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          <strong>Cocción</strong> (cocinas) por ancho: High &gt; 56 cm · Mid 55 – 56 cm · Low &lt; 55 cm.
         </p>
       </header>
 
@@ -225,7 +234,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
                 {categoria}{" "}
                 <span className="text-sm font-normal text-muted-foreground">
                   · segmento {segmento}
-                  {categoria === "Lavado" && SEG_DESC_LAVADO[segmento!] ? ` (${SEG_DESC_LAVADO[segmento!]})` : ""}
+                  {SEG_DESC[categoria!]?.[segmento!] ? ` (${SEG_DESC[categoria!]![segmento!]})` : ""}
                 </span>
               </h3>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
