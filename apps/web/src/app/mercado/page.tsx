@@ -162,7 +162,7 @@ export default async function MercadoPage() {
         <h2 className="text-2xl font-semibold tracking-tight">Análisis de Mercado</h2>
         <p className="text-sm text-muted-foreground">
           Value share, Unit share e Índice de precio en el tiempo — Drean vs competencia, por categoría y segmento. Al
-          costado de cada serie, las marcas con mayor variación en los últimos 4 / 8 / 12 meses. Fuente: Euromonitor (
+          costado de cada serie, las marcas con mayor variación en los últimos 4 / 8 / 12 meses. Fuente: GFK (
           <code>mercado_share</code>).
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
