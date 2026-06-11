@@ -19,6 +19,8 @@ export interface PosBrand {
   vs: Record<Seg, number | null>;
   ip: Record<Seg, number | null>;
   floor: number | null; // floor share % (total categoría, valor único)
+  poderRaw: number | null; // Poder de Marca crudo = VS_High × Π(IP_seg/100)
+  poder: number | null;    // mismo, indexado a líder = 100
 }
 
 export interface Posicionamiento {
@@ -93,7 +95,21 @@ export async function getPosicionamiento(categoria: string, brands: string[]): P
       vs: { High: m?.High.vs ?? null, Mid: m?.Mid.vs ?? null, Low: m?.Low.vs ?? null },
       ip: { High: m?.High.ip ?? null, Mid: m?.Mid.ip ?? null, Low: m?.Low.ip ?? null },
       floor: f != null ? Math.round(f * 10) / 10 : null,
+      poderRaw: null,
+      poder: null,
     };
   });
+
+  // Poder de Marca = ValueShare_High × Π(IP_seg/100), IP faltante = 1,0.
+  // Se expone crudo y también indexado a líder = 100 entre las marcas mostradas.
+  const fac = (v: number | null) => (v == null ? 1 : v / 100);
+  const raw = rows.map((p) => (p.vs.High == null ? null : p.vs.High * fac(p.ip.High) * fac(p.ip.Mid) * fac(p.ip.Low)));
+  const leader = Math.max(0, ...raw.filter((x): x is number => x != null));
+  rows.forEach((p, i) => {
+    const r = raw[i];
+    p.poderRaw = r != null ? Math.round(r * 10) / 10 : null;
+    p.poder = r != null && leader > 0 ? Math.round((r / leader) * 100) : null;
+  });
+
   return { mesMercado: mes, rows };
 }
