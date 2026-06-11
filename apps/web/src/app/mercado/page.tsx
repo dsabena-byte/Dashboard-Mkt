@@ -16,6 +16,7 @@ const METRICS: Array<{ key: MetricKey; label: string; short: string; suffix: str
 ];
 
 const CAT_ORDER = ["Lavado", "Refrigeración", "Cocción"];
+const SEG_ORDER = ["High", "Mid", "Low"];
 
 // Definición de segmentos por categoría.
 const SEG_DESC: Record<string, Record<string, string>> = {
@@ -215,7 +216,13 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
         </div>
       )}
 
-      {[...groups.entries()].map(([key, grp]) => {
+      {[...groups.entries()]
+        .sort(([a], [b]) => {
+          const sa = SEG_ORDER.indexOf(a.split("__")[1]!);
+          const sb = SEG_ORDER.indexOf(b.split("__")[1]!);
+          return (sa < 0 ? 99 : sa) - (sb < 0 ? 99 : sb);
+        })
+        .map(([key, grp]) => {
         const [categoria, segmento] = key.split("__");
         // último mes del grupo → ranking de marcas por value share
         const lastMes = grp.reduce((m, r) => (r.mes > m ? r.mes : m), grp[0]!.mes);
