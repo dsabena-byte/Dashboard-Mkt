@@ -56,8 +56,10 @@ const POS_DIMS: Array<{ title: string; subtitle: string; rows: PosRow[] }> = [
       { label: "Índice de precio · High", kind: "Mercado", get: (p) => p.ip.High, fmt: idx },
       { label: "Índice de precio · Mid", kind: "Mercado", get: (p) => p.ip.Mid, fmt: idx },
       { label: "Índice de precio · Low", kind: "Mercado", get: (p) => p.ip.Low, fmt: idx },
-      { label: "Poder de Marca (crudo = VS High × Π IP/100)", kind: "Mercado", get: (p) => p.poderRaw, fmt: (v) => (v == null ? "—" : v.toFixed(1)) },
-      { label: "Poder de Marca (índice, líder = 100)", kind: "Mercado", get: (p) => p.poder, fmt: idx },
+      { label: "Poder de Marca · High (crudo)", kind: "Mercado", get: (p) => p.poderRaw, fmt: (v) => (v == null ? "—" : v.toFixed(1)) },
+      { label: "Poder de Marca · High (índice, líder = 100)", kind: "Mercado", get: (p) => p.poder, fmt: idx },
+      { label: "Poder de Marca · High+Mid (crudo)", kind: "Mercado", get: (p) => p.poderHmRaw, fmt: (v) => (v == null ? "—" : v.toFixed(1)) },
+      { label: "Poder de Marca · High+Mid (índice, líder = 100)", kind: "Mercado", get: (p) => p.poderHm, fmt: idx },
     ],
   },
 ];

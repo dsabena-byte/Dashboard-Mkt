@@ -21,6 +21,8 @@ export interface PosBrand {
   floor: number | null; // floor share % (total categoría, valor único)
   poderRaw: number | null; // Poder de Marca crudo = VS_High × Π(IP_seg/100)
   poder: number | null;    // mismo, indexado a líder = 100
+  poderHmRaw: number | null; // variante (VS_High + VS_Mid) × Π(IP_seg/100)
+  poderHm: number | null;    // variante, indexado a líder = 100
 }
 
 export interface Posicionamiento {
@@ -97,18 +99,33 @@ export async function getPosicionamiento(categoria: string, brands: string[]): P
       floor: f != null ? Math.round(f * 10) / 10 : null,
       poderRaw: null,
       poder: null,
+      poderHmRaw: null,
+      poderHm: null,
     };
   });
 
-  // Poder de Marca = ValueShare_High × Π(IP_seg/100), IP faltante = 1,0.
-  // Se expone crudo y también indexado a líder = 100 entre las marcas mostradas.
+  // Poder de Marca = base × Π(IP_seg/100), IP faltante = 1,0. Dos bases:
+  //   - High      : ValueShare_High
+  //   - High+Mid  : ValueShare_High + ValueShare_Mid
+  // Cada una se expone cruda e indexada a líder = 100 entre las marcas mostradas.
   const fac = (v: number | null) => (v == null ? 1 : v / 100);
-  const raw = rows.map((p) => (p.vs.High == null ? null : p.vs.High * fac(p.ip.High) * fac(p.ip.Mid) * fac(p.ip.Low)));
-  const leader = Math.max(0, ...raw.filter((x): x is number => x != null));
+  const ipProd = (p: PosBrand) => fac(p.ip.High) * fac(p.ip.Mid) * fac(p.ip.Low);
+  const rawH = rows.map((p) => (p.vs.High == null ? null : p.vs.High * ipProd(p)));
+  const rawHM = rows.map((p) => {
+    if (p.vs.High == null && p.vs.Mid == null) return null;
+    return ((p.vs.High ?? 0) + (p.vs.Mid ?? 0)) * ipProd(p);
+  });
+  const idxTo = (arr: (number | null)[]) => {
+    const leader = Math.max(0, ...arr.filter((x): x is number => x != null));
+    return arr.map((r) => (r != null && leader > 0 ? Math.round((r / leader) * 100) : null));
+  };
+  const idxH = idxTo(rawH);
+  const idxHM = idxTo(rawHM);
   rows.forEach((p, i) => {
-    const r = raw[i];
-    p.poderRaw = r != null ? Math.round(r * 10) / 10 : null;
-    p.poder = r != null && leader > 0 ? Math.round((r / leader) * 100) : null;
+    p.poderRaw = rawH[i] != null ? Math.round(rawH[i]! * 10) / 10 : null;
+    p.poder = idxH[i] ?? null;
+    p.poderHmRaw = rawHM[i] != null ? Math.round(rawHM[i]! * 10) / 10 : null;
+    p.poderHm = idxHM[i] ?? null;
   });
 
   return { mesMercado: mes, rows };
