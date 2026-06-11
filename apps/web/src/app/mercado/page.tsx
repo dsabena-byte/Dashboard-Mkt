@@ -211,8 +211,10 @@ function BrandLegend({ brands, colorOf }: { brands: string[]; colorOf: Record<st
   );
 }
 
-export default async function MercadoPage({ searchParams }: { searchParams?: { cat?: string } }) {
-  const rows = await getMercadoRows();
+export default async function MercadoPage({ searchParams }: { searchParams?: { cat?: string; agg?: string } }) {
+  const agg: "MAT" | "mensual" = searchParams?.agg === "mensual" ? "mensual" : "MAT";
+  const rows = await getMercadoRows(agg);
+  const esMAT = agg === "MAT";
 
   // Categorías presentes en los datos (en orden fijo)
   const present = new Set(rows.map((r) => r.categoria));
@@ -239,8 +241,16 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
           <code>mercado_share</code>).
         </p>
         <p className="mt-1 text-xs font-medium text-muted-foreground">
-          Cada punto del eje es un <strong>MAT</strong>: acumulado móvil de los 12 meses que terminan en ese mes (ej.
-          “Abr 26” = May’25–Abr’26).
+          {esMAT ? (
+            <>
+              Cada punto del eje es un <strong>MAT</strong>: acumulado móvil de los 12 meses que terminan en ese mes (ej.
+              “Abr 26” = May’25–Abr’26).
+            </>
+          ) : (
+            <>
+              Cada punto del eje es el <strong>valor del mes</strong> (serie mensual).
+            </>
+          )}
         </p>
         {SEG_DESC[selected!] && (
           <p className="mt-1 text-xs text-muted-foreground">
@@ -260,12 +270,30 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
         </div>
       )}
 
+      {/* Selector de agregación: MAT (acum. 12m) vs Mensual (valor del mes) */}
+      <div className="flex flex-wrap items-center gap-2">
+        {(["MAT", "mensual"] as const).map((a) => (
+          <Link
+            key={a}
+            href={`/mercado?cat=${encodeURIComponent(selected ?? "")}&agg=${a}`}
+            scroll={false}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+              a === agg
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-card text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {a === "MAT" ? "MAT (12m)" : "Mensual"}
+          </Link>
+        ))}
+      </div>
+
       {categorias.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {categorias.map((c) => (
             <Link
               key={c}
-              href={`/mercado?cat=${encodeURIComponent(c)}`}
+              href={`/mercado?cat=${encodeURIComponent(c)}&agg=${agg}`}
               scroll={false}
               className={`rounded-full border px-3 py-1 text-sm transition-colors ${
                 c === selected
@@ -318,7 +346,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
                     <div className="grid gap-4 lg:grid-cols-[8rem_1fr_15rem]">
                       <div>
                         <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                          {isShare ? "Composición (MAT)" : "Inicio vs actual"}
+                          {isShare ? `Composición (${esMAT ? "MAT" : "mes"})` : "Inicio vs actual"}
                         </div>
                         {isShare ? (
                           <MercadoStackedBars data={stackedData(grp, m.key, allRanked)} brands={allRanked} colors={colorOf} suffix={m.suffix} />
@@ -330,7 +358,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
                         <div className="mb-1 text-xs font-medium text-muted-foreground">{m.label}</div>
                         <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
                         <div className="text-[10px] italic text-muted-foreground">
-                          Cada mes = MAT (acum. móvil 12 meses al mes indicado)
+                          {esMAT ? "Cada mes = MAT (acum. móvil 12 meses al mes indicado)" : "Valores mensuales (valor del mes)"}
                         </div>
                         {/* Leyenda pegada justo debajo del gráfico principal */}
                         <BrandLegend brands={allRanked} colorOf={colorOf} />
