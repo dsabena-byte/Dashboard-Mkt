@@ -28,6 +28,13 @@ const SEG_DESC: Record<string, Record<string, string>> = {
   Cocción: { High: "> 56 cm", Mid: "55 – 56 cm", Low: "< 55 cm" },
 };
 
+// Texto del criterio de segmentación por categoría (producto + variable).
+const CAT_NOTE: Record<string, string> = {
+  Lavado: "(lavarropas automáticos) por capacidad",
+  Refrigeración: "(heladeras) por tecnología",
+  Cocción: "(cocinas) por ancho",
+};
+
 const WINDOWS: Array<{ key: string; label: string; n: number }> = [
   { key: "U4", label: "U4M", n: 4 },
   { key: "U8", label: "U8M", n: 8 },
@@ -178,16 +185,15 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
           costado de cada serie, las marcas con mayor variación en los últimos 4 / 8 / 12 meses. Fuente: GFK (
           <code>mercado_share</code>).
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          <strong>Lavado</strong> (lavarropas automáticos) por capacidad: High ≥ 9 kg · Mid 8 – 8,9 kg · Low &lt; 8 kg.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          <strong>Refrigeración</strong> (heladeras) por tecnología: High Side by Side / Bottom / Multi-Door · Mid No
-          Frost resto · Low Cíclicas.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          <strong>Cocción</strong> (cocinas) por ancho: High &gt; 56 cm · Mid 55 – 56 cm · Low &lt; 55 cm.
-        </p>
+        {SEG_DESC[selected!] && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            <strong>{selected}</strong> {CAT_NOTE[selected!]}:{" "}
+            {SEG_ORDER.filter((s) => SEG_DESC[selected!]![s])
+              .map((s) => `${s} ${SEG_DESC[selected!]![s]}`)
+              .join(" · ")}
+            .
+          </p>
+        )}
       </header>
 
       {rows.length === 0 && (
