@@ -1523,11 +1523,13 @@ insert into mercado_share (mes,categoria,segmento,marca,unit_share,value_share,i
 ('2024-02-01','Lavado','Total','Tradebrands and exclusives',1.09,null,null,'MAT'),
 ('2024-02-01','Lavado','Total','WHIRLPOOL',5.39,null,null,'MAT'),
 -- Proyección nov-26 (MAT) — inputs para estimación baseline. Drean: VS High/Mid + US Total.
--- (VS Low no se usa en el modelo.) Samsung: solo US Total (se estima su SOM).
+-- (VS Low no se usa en el modelo.) Samsung: solo US Total (SOM). Philco: VS High/Mid (TOM).
 ('2026-11-01','Lavado','High','DREAN',null,15.38,null,'MAT'),
 ('2026-11-01','Lavado','Mid','DREAN',null,41.52,null,'MAT'),
 ('2026-11-01','Lavado','Total','DREAN',28.1,null,null,'MAT'),
 ('2026-11-01','Lavado','Total','SAMSUNG',6.5,null,null,'MAT'),
+('2026-11-01','Lavado','High','PHILCO',null,26.25,null,'MAT'),
+('2026-11-01','Lavado','Mid','PHILCO',null,4.5,null,'MAT'),
 ('2022-04-01','Lavado','High','BEKO',null,0.03,null,'MAT'),
 ('2022-04-01','Lavado','High','CANDY',null,5.41,null,'MAT'),
 ('2022-04-01','Lavado','High','DREAN',null,26.75,null,'MAT'),
