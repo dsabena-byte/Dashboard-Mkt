@@ -410,22 +410,70 @@ function EvolucionView({ marca, serieU12 }: { marca: string; serieU12: Map<strin
     const H = s?.vs.High, M = s?.vs.Mid;
     return H == null || M == null ? null : 0.85 * H + 0.15 * M;
   };
-  const estTom = (serie: Map<string, DreanMesSeg>, mes: string): number | null => {
+  // Ecuaciones por marca: TOM ← blend(0,85·VS_High+0,15·VS_Mid); SOM ← blend(US_Total).
+  // Cada marca se calibra por separado (R²/LOO sobre sus 5 olas). Solo se estima donde hay señal.
+  const tomEq = (a: number, b: number) => (serie: Map<string, DreanMesSeg>, mes: string): number | null => {
     const d = blend(dTom, serie, mes);
-    return d == null ? null : 13.23 + 1.154 * d;
+    return d == null ? null : a + b * d;
   };
-  const estSom = (serie: Map<string, DreanMesSeg>, mes: string): number | null => {
+  const somEq = (a: number, b: number) => (serie: Map<string, DreanMesSeg>, mes: string): number | null => {
     const d = blend((s) => s?.usTotal ?? null, serie, mes);
-    return d == null ? null : 33.73 + 1.083 * d;
+    return d == null ? null : a + b * d;
   };
+  type EstCfg = { tom?: (s: Map<string, DreanMesSeg>, m: string) => number | null; tomBand?: number; som?: (s: Map<string, DreanMesSeg>, m: string) => number | null; somBand?: number; nota: ReactNode };
+  const notaModelo = (
+    <p>
+      <strong>1. Blend 50/50 (metodología Kantar).</strong> Driver = 0,5·U12(T) + 0,5·U12(T-12, un año antes). <strong>TOM</strong> ←
+      value share gama alta (0,85·VS<sub>High</sub> + 0,15·VS<sub>Mid</sub>); <strong>SOM</strong> ← unit share total. <strong>2.</strong> Es la
+      <em> inercia comercial</em> (no incluye medios/tienda/comunicación). <strong>3.</strong> Cada marca se calibra por separado.
+    </p>
+  );
+  const EST: Record<string, EstCfg> = {
+    Drean: {
+      tom: tomEq(13.23, 1.154), tomBand: 2.3, som: somEq(33.73, 1.083), somBand: 1.4,
+      nota: (
+        <>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Drean — se estiman TOM y SOM (marca enfocada en la categoría, fuerte relación mercado↔salud)</p>
+          {notaModelo}
+          <p>Ecuaciones: <strong>TOM ≈ 13,2 + 1,154·driver</strong> (R²=0,90, ±2,3) · <strong>SOM ≈ 33,7 + 1,083·driver</strong> (R²=0,94, ±1,4). Intención y Poder no se estiman.</p>
+        </>
+      ),
+    },
+    Samsung: {
+      som: somEq(8.82, 3.405), somBand: 1.4,
+      nota: (
+        <>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Samsung — solo se estima SOM</p>
+          <p><strong>SOM ≈ 8,8 + 3,41·driver</strong> (R²=0,88): su share of mind en lavado sigue su volumen (US Total).</p>
+          <p><strong>TOM no se estima</strong>: su notoriedad no depende del share en lavado (marca multicategoría; R²=0,16, pendiente negativa) → se mantiene en su nivel real.</p>
+        </>
+      ),
+    },
+    Philco: {
+      tom: tomEq(1.2, 0.33), tomBand: 0.6,
+      nota: (
+        <>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Philco — solo se estima TOM (señal moderada/frágil)</p>
+          <p><strong>TOM ≈ 1,2 + 0,33·driver</strong> (R²=0,72; marca chica, N=5). SOM: sin señal suficiente.</p>
+        </>
+      ),
+    },
+    Whirlpool: {
+      nota: <p>{marca} — <strong>no se estima</strong> TOM ni SOM: el mercado de lavado no predice su salud de marca (relación débil/espuria; marca multicategoría). Solo se muestran los valores reales.</p>,
+    },
+    LG: {
+      nota: <p>{marca} — <strong>no se estima</strong> TOM ni SOM: el mercado de lavado no predice su salud de marca (relación débil/espuria; marca multicategoría). Solo se muestran los valores reales.</p>,
+    },
+  };
+  const cfg: EstCfg | undefined = EST[marca];
   // Salud de Marca compuesta = 0,25·(TOM + SOM + Intención + Poder); null si falta alguno.
   const saludDe = (k: KVals): number | null => {
     const xs = [k.tom, k.som, k.int, k.poder];
     return xs.every((v) => v != null) ? 0.25 * (xs[0]! + xs[1]! + xs[2]! + xs[3]!) : null;
   };
-  const kantar: Array<{ label: string; get: (k: KVals) => number | null; fmt: (v: number | null) => string; bold?: boolean; est?: (serie: Map<string, DreanMesSeg>, mes: string) => number | null; band?: number }> = [
-    { label: "Top of Mind", get: (k) => k.tom, fmt: kPct, est: estTom, band: 2.3 },
-    { label: "Share of Mind", get: (k) => k.som, fmt: kPct, est: estSom, band: 1.4 },
+  const kantar: Array<{ label: string; get: (k: KVals) => number | null; fmt: (v: number | null) => string; bold?: boolean; estKey?: "tom" | "som" }> = [
+    { label: "Top of Mind", get: (k) => k.tom, fmt: kPct, estKey: "tom" },
+    { label: "Share of Mind", get: (k) => k.som, fmt: kPct, estKey: "som" },
     { label: "Intención de compra", get: (k) => k.int, fmt: kPct },
     { label: "Poder de Marca", get: (k) => k.poder, fmt: kPct },
     // Componentes de la hélice de Poder de Marca (índice base 100).
@@ -585,8 +633,10 @@ function EvolucionView({ marca, serieU12 }: { marca: string; serieU12: Map<strin
                   <td className={`whitespace-nowrap px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
                   {WAVES.map((w, i) => {
                     const actual = vals[i] ?? null;
-                    // Si no hay medición y hay modelo, estimamos desde el mercado (solo Drean, donde está calibrado).
-                    const est = actual == null && r.est && esDrean ? r.est(serieU12, w.mes) : null;
+                    // Si no hay medición y la marca tiene ecuación para ese indicador, estimamos desde el mercado.
+                    const estFn = r.estKey === "tom" ? cfg?.tom : r.estKey === "som" ? cfg?.som : undefined;
+                    const band = r.estKey === "tom" ? cfg?.tomBand : cfg?.somBand;
+                    const est = actual == null && estFn ? estFn(serieU12, w.mes) : null;
                     return (
                       <td key={w.label} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
                         {actual != null ? (
@@ -595,7 +645,7 @@ function EvolucionView({ marca, serieU12 }: { marca: string; serieU12: Map<strin
                             <Delta curr={actual} prev={prevs[i] ?? null} />
                           </>
                         ) : est != null ? (
-                          <span className="text-blue-600" title={`Estimado desde el mercado proyectado (±${r.band} pts)`}>
+                          <span className="text-blue-600" title={`Estimado desde el mercado (±${band} pts)`}>
                             ≈{r.fmt(est)}
                             <Delta curr={est} prev={prevs[i] ?? null} />
                           </span>
@@ -610,33 +660,8 @@ function EvolucionView({ marca, serieU12 }: { marca: string; serieU12: Map<strin
             })}
           </tbody>
         </table>
-        {esDrean && (
-        <div className="mt-3 space-y-1.5 text-[11px] leading-relaxed text-muted-foreground">
-          <p className="font-semibold text-foreground">
-            <span className="text-blue-600">≈</span> Cómo se predicen TOM y SOM (estimación baseline de mercado, para olas sin medición Kantar — ej. nov-26)
-          </p>
-          <p>
-            <strong>1. Blend 50/50 (metodología Kantar).</strong> La investigación pondera 50% compradores de los últimos
-            12 meses y 50% de 12–24 meses. Por eso el driver de cada ola = <strong>0,5·U12(T) + 0,5·U12(T-12)</strong>
-            (año móvil de la ola y el de un año antes).
-          </p>
-          <p>
-            <strong>2. Qué predice a cada uno</strong> (elegido por correlación + validación LOO entre olas medidas y mercado):
-            <strong> TOM ← value share de gama alta</strong> (notoriedad/posicionamiento), D = 0,85·VS<sub>High</sub> + 0,15·VS<sub>Mid</sub>.
-            <strong> SOM ← unit share total</strong> (volumen real de toda la categoría).
-          </p>
-          <p>
-            <strong>3. Ecuaciones</strong> (OLS sobre las 5 olas medidas, nov-23 → nov-25):
-            TOM ≈ 13,2 + 1,154·driver (R²=0,90, banda ±2,3) ·
-            SOM ≈ 33,7 + 1,083·driver (R²=0,94, banda ±1,4).
-          </p>
-          <p>
-            <strong>4. Alcance y límites.</strong> Es la <em>inercia comercial</em>: dice a dónde va la salud de marca si solo
-            jugara el mercado. <strong>No</strong> incluye el efecto de medios/tienda/comunicación (esos suman <em>por encima</em>
-            de esta base). <strong>Intención</strong> y <strong>Poder</strong> no se estiman (sin señal confiable en la data,
-            incluido Índice de Precio). El U12 proyectado de la ola se construye con la rampa explicada en el bloque de Mercado.
-          </p>
-        </div>
+        {cfg?.nota && (
+          <div className="mt-3 space-y-1.5 text-[11px] leading-relaxed text-muted-foreground">{cfg.nota}</div>
         )}
       </div>
     </section>
@@ -653,12 +678,12 @@ function EvolucionView({ marca, serieU12 }: { marca: string; serieU12: Map<strin
         `${marca}. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.`,
         esDrean ? (
           <>
-            <strong>nov-26 (proyección).</strong> Valores <strong>mensuales finales</strong> asumidos para nov-26 — Value Share:
-            High 20% · Mid 45% · Low 40% · Unit Share Total 35%. El U12 que se muestra es el <strong>año móvil que cierra en
+            <strong>nov-26 (proyección).</strong> Valores <strong>mensuales finales</strong> asumidos para nov-26 — VS High 20% ·
+            VS Mid 45% · US Total 35% (los que usa el modelo). El U12 que se muestra es el <strong>año móvil que cierra en
             nov-26</strong> = promedio de los 12 meses dic-25 → nov-26, construido con los meses reales más una
             <strong> rampa lineal</strong> desde el último dato real hasta esos valores finales. Por eso el U12 queda por debajo del
-            mensual final: VS High <strong>15,4</strong> · VS Mid <strong>41,5</strong> · VS Low <strong>33,1</strong> · US Total{" "}
-            <strong>28,1</strong> (el año móvil arrastra los meses flojos de 2026 y no rebota tan rápido).
+            mensual final: VS High <strong>15,4</strong> · VS Mid <strong>41,5</strong> · US Total <strong>28,1</strong> (el año
+            móvil arrastra los meses flojos de 2026 y no rebota tan rápido).
           </>
         ) : undefined,
       )}
