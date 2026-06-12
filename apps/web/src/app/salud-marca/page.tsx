@@ -281,7 +281,7 @@ function Delta({ curr, prev }: { curr: number | null; prev: number | null }) {
   const color = dir === "up" ? "text-emerald-600" : dir === "down" ? "text-red-600" : "text-muted-foreground";
   const pct = prev !== 0 ? (delta / prev) * 100 : null;
   const label = pct == null ? (delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)) : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
-  return <span className={`block text-[9px] leading-tight ${color}`}>{icon} {label}</span>;
+  return <span className={`ml-1 text-[9px] ${color}`}>{icon}{label}</span>;
 }
 
 function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
@@ -329,9 +329,9 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
       <div className="overflow-x-auto p-4">
         <table className="w-full table-fixed text-xs">
           <colgroup>
-            <col className="w-[24%]" />
+            <col className="w-[16%]" />
             {WAVES.map((w) => (
-              <col key={w.label} className="w-[19%]" />
+              <col key={w.label} className="w-[21%]" />
             ))}
           </colgroup>
           <thead>
@@ -355,8 +355,8 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
                 <tr key={r.label} className="border-t">
                   <td className={`px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
                   {WAVES.map((w, i) => (
-                    <td key={w.label} className={`px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
-                      <span className="block">{r.fmt(vals[i] ?? null)}</span>
+                    <td key={w.label} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
+                      {r.fmt(vals[i] ?? null)}
                       <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
                     </td>
                   ))}
@@ -375,8 +375,8 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
                 <tr key={r.label} className="border-t">
                   <td className="px-2 py-1.5 text-foreground">{r.label}</td>
                   {WAVES.map((w, i) => (
-                    <td key={w.label} className="px-2 py-1.5 text-right tabular-nums text-foreground/90">
-                      <span className="block">{r.fmt(vals[i] ?? null)}</span>
+                    <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground/90">
+                      {r.fmt(vals[i] ?? null)}
                       <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
                     </td>
                   ))}
