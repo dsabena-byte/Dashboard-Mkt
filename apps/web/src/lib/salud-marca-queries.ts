@@ -141,7 +141,7 @@ export interface DreanMesSeg {
   ip: Record<Seg, number | null>;
   usTotal: number | null; // unit share de la categoría completa (segmento "Total")
 }
-export async function getDreanSerie(categoria: string): Promise<Map<string, DreanMesSeg>> {
+export async function getDreanSerie(categoria: string, agregacion: "mensual" | "MAT" = "mensual"): Promise<Map<string, DreanMesSeg>> {
   const supabase = getServerSupabase();
   const { data } = await supabase
     .from("mercado_share")
@@ -149,7 +149,7 @@ export async function getDreanSerie(categoria: string): Promise<Map<string, Drea
     .eq("categoria", categoria)
     .eq("marca", "DREAN")
     .in("segmento", ["High", "Mid", "Low", "Total"])
-    .eq("agregacion", "mensual")
+    .eq("agregacion", agregacion)
     .limit(5000);
   const out = new Map<string, DreanMesSeg>();
   for (const r of (data ?? []) as Array<{ mes: string; segmento: string; value_share: number | null; unit_share: number | null; index_price: number | null }>) {
