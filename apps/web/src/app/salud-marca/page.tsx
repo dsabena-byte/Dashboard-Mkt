@@ -297,9 +297,19 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
   // (Significancia/Diferenciación/Saliencia) van como índice (base 100, sin %).
   const kPct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
   const kIdx = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
-  const kantar: Array<{ label: string; get: (w: Wave) => number | null; fmt: (v: number | null) => string; bold?: boolean }> = [
-    { label: "Top of Mind", get: (w) => w.tom, fmt: kPct },
-    { label: "Share of Mind", get: (w) => w.som, fmt: kPct },
+  // Estimación baseline desde mercado (señal robusta solo para TOM y SOM):
+  //   TOM ≈ 9,8 + 1,074·(0,55·VS_High + 0,35·VS_Mid + 0,10·VS_Low)   ±3,5
+  //   SOM ≈ 35,2 + 1,112·US_Total                                     ±1,3
+  // Es una línea base de inercia comercial; no captura medios/tienda/comunicación.
+  const estTom = (s?: DreanMesSeg): number | null => {
+    const H = s?.vs.High, M = s?.vs.Mid, L = s?.vs.Low;
+    if (H == null || M == null || L == null) return null;
+    return 9.8 + 1.074 * (0.55 * H + 0.35 * M + 0.1 * L);
+  };
+  const estSom = (s?: DreanMesSeg): number | null => (s?.usTotal == null ? null : 35.15 + 1.112 * s.usTotal);
+  const kantar: Array<{ label: string; get: (w: Wave) => number | null; fmt: (v: number | null) => string; bold?: boolean; est?: (s?: DreanMesSeg) => number | null; band?: number }> = [
+    { label: "Top of Mind", get: (w) => w.tom, fmt: kPct, est: estTom, band: 3.5 },
+    { label: "Share of Mind", get: (w) => w.som, fmt: kPct, est: estSom, band: 1.3 },
     { label: "Intención de compra", get: (w) => w.int, fmt: kPct },
     { label: "Poder de Marca", get: (w) => w.poder, fmt: kPct },
     // Componentes de la hélice de Poder de Marca (Drean, índice base 100).
@@ -440,17 +450,40 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
               return (
                 <tr key={r.label} className="border-t">
                   <td className={`whitespace-nowrap px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
-                  {WAVES.map((w, i) => (
-                    <td key={w.label} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
-                      {r.fmt(vals[i] ?? null)}
-                      <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
-                    </td>
-                  ))}
+                  {WAVES.map((w, i) => {
+                    const actual = vals[i] ?? null;
+                    // Si no hay medición pero la fila tiene modelo, estimamos desde el mercado (U12) de esa ola.
+                    const est = actual == null && r.est ? r.est(serieU12.get(w.mes)) : null;
+                    return (
+                      <td key={w.label} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
+                        {actual != null ? (
+                          <>
+                            {r.fmt(actual)}
+                            <Delta curr={actual} prev={prevs[i] ?? null} />
+                          </>
+                        ) : est != null ? (
+                          <span className="text-blue-600" title={`Estimado desde el mercado proyectado (±${r.band} pts)`}>
+                            ≈{r.fmt(est)}
+                            <Delta curr={est} prev={prevs[i] ?? null} />
+                          </span>
+                        ) : (
+                          r.fmt(null)
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
           </tbody>
         </table>
+        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+          <span className="font-semibold text-blue-600">≈</span> = estimación baseline desde el mercado proyectado (solo
+          <strong> TOM</strong> y <strong>SOM</strong>, las que tienen señal robusta). TOM ≈ 9,8 + 1,074·(0,55·VS<sub>High</sub> +
+          0,35·VS<sub>Mid</sub> + 0,10·VS<sub>Low</sub>) ±3,5 · SOM ≈ 35,2 + 1,112·US<sub>Total</sub> ±1,3. Es la
+          <em> inercia comercial</em>: no incluye medios, tienda ni comunicación. Se completa al cargar el mercado proyectado
+          (segmentos High/Mid/Low y Total) en el bloque U12 para esa ola.
+        </p>
       </div>
     </section>
   );
