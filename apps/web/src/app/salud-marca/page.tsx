@@ -114,7 +114,10 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
         {view === "competencia" ? (
           <CompetenciaView pos={await safe(getPosicionamiento("Lavado", LAVADO_BRANDS), { mesMercado: null, rows: [] })} />
         ) : (
-          <EvolucionView serie={await safe(getDreanSerie("Lavado"), new Map<string, DreanMesSeg>())} />
+          <EvolucionView
+            serie={await safe(getDreanSerie("Lavado"), new Map<string, DreanMesSeg>())}
+            serieU12={await safe(getDreanSerie("Lavado", "MAT"), new Map<string, DreanMesSeg>())}
+          />
         )}
       </div>
     );
@@ -284,7 +287,7 @@ function Delta({ curr, prev }: { curr: number | null; prev: number | null }) {
   return <span className={`ml-1 text-[9px] ${color}`}>{icon}{label}</span>;
 }
 
-function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
+function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; serieU12: Map<string, DreanMesSeg> }) {
   const p1 = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
   const i0 = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
 
@@ -317,7 +320,54 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
     { label: "Índice de precio · Low", get: (s) => s?.ip.Low ?? null, fmt: i0 },
   ];
 
+  // Tabla de mercado standalone (misma estructura/indicadores) para una serie dada.
+  // Se usa para la U12 (MAT, año móvil). Las olas sin dato muestran "—".
+  const mercadoTable = (s: Map<string, DreanMesSeg>, title: string, subtitle: string) => (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-bold tracking-tight">{title}</h3>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>
+      </div>
+      <div className="overflow-x-auto p-4">
+        <table className="w-full table-fixed text-xs">
+          <colgroup>
+            <col className="w-[16%]" />
+            {WAVES.map((w) => (
+              <col key={w.label} className="w-[21%]" />
+            ))}
+          </colgroup>
+          <thead>
+            <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className="px-2 py-2 text-left">Indicador</th>
+              {WAVES.map((w) => (
+                <th key={w.label} className="px-2 py-2 text-right">{w.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {mkt.map((r) => {
+              const vals = WAVES.map((w) => r.get(s.get(w.mes)));
+              const prevs = prevAvail(vals);
+              return (
+                <tr key={r.label} className="border-t">
+                  <td className="px-2 py-1.5 text-foreground">{r.label}</td>
+                  {WAVES.map((w, i) => (
+                    <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground/90">
+                      {r.fmt(vals[i] ?? null)}
+                      <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+
   return (
+    <div className="space-y-5">
     <section className="overflow-hidden rounded-xl border bg-card">
       <div className="border-b px-4 py-3">
         <h3 className="text-sm font-bold tracking-tight">Lavado — Salud de Marca (Kantar) vs Mercado, en el tiempo</h3>
@@ -391,6 +441,12 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
         </p>
       </div>
     </section>
+    {mercadoTable(
+      serieU12,
+      "Lavado — Mercado · GFK · U12 (año móvil)",
+      "Drean. Mismos indicadores, pero en MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola. Las olas sin serie MAT quedan en “—”.",
+    )}
+    </div>
   );
 }
 
