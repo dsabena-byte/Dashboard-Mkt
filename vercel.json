@@ -2,7 +2,8 @@
   "crons": [],
   "git": {
     "deploymentEnabled": {
-      "claude/sweet-galileo-nxlzes": false
+      "claude/sweet-galileo-nxlzes": false,
+      "claude/dev": false
     }
   }
 }
