@@ -140,6 +140,7 @@ export interface DreanMesSeg {
   us: Record<Seg, number | null>;
   ip: Record<Seg, number | null>;
   usTotal: number | null; // unit share de la categoría completa (segmento "Total")
+  vsTotal: number | null; // value share de la categoría completa (segmento "Total")
 }
 export async function getDreanSerie(categoria: string, agregacion: "mensual" | "MAT" = "mensual"): Promise<Map<string, DreanMesSeg>> {
   const supabase = getServerSupabase();
@@ -153,10 +154,11 @@ export async function getDreanSerie(categoria: string, agregacion: "mensual" | "
     .limit(5000);
   const out = new Map<string, DreanMesSeg>();
   for (const r of (data ?? []) as Array<{ mes: string; segmento: string; value_share: number | null; unit_share: number | null; index_price: number | null }>) {
-    const e = out.get(r.mes) ?? { vs: { High: null, Mid: null, Low: null }, us: { High: null, Mid: null, Low: null }, ip: { High: null, Mid: null, Low: null }, usTotal: null };
+    const e = out.get(r.mes) ?? { vs: { High: null, Mid: null, Low: null }, us: { High: null, Mid: null, Low: null }, ip: { High: null, Mid: null, Low: null }, usTotal: null, vsTotal: null };
     if (r.segmento === "Total") {
-      // "Total" = categoría completa, solo trae unit share.
+      // "Total" = categoría completa (unit + value share; sin índice).
       e.usTotal = r.unit_share;
+      e.vsTotal = r.value_share;
     } else {
       const seg = r.segmento as Seg;
       e.vs[seg] = r.value_share;
