@@ -65,19 +65,60 @@ const POS_DIMS: Array<{ title: string; subtitle: string; rows: PosRow[] }> = [
 // Salud de Marca Kantar (Drean, categoría Lavado) por ola de medición.
 // Valores transcritos del tracking Kantar. Cada ola se cruza con la data de
 // mercado del mes correspondiente (donde tenemos serie GFK).
-// poder/sig/dif/sal = hélice Kantar de Drean (Poder de Marca y sus 3 componentes:
-// Significancia 40% · Diferenciación 30% · Saliencia 30%, en índice base 100).
+// Olas de medición (metadata). Los valores Kantar por marca están en KANTAR.
 // "2024" del tracking = Nov 2024 (ola nov-24); "2025" = Nov 2025 (ola nov-25).
 const WAVES = [
-  { label: "nov-23", mes: "2023-11-01", tom: 54, som: 80, int: 34, poder: 18.4, salud: 46.6, sig: 138, dif: 109, sal: 262 },
-  { label: "jun-24", mes: "2024-06-01", tom: 53, som: 77, int: 43, poder: 19.9, salud: 48.2, sig: 151, dif: 107, sal: 251 },
-  { label: "nov-24", mes: "2024-11-01", tom: 44, som: 74, int: 40, poder: 19.2, salud: 44.3, sig: 147, dif: 115, sal: 232 },
-  { label: "jun-25", mes: "2025-06-01", tom: 45, som: 74, int: 38, poder: 19.6, salud: 44.2, sig: 143, dif: 107, sal: 246 },
-  { label: "nov-25", mes: "2025-11-01", tom: 40.1, som: 69.1, int: 40, poder: 17.4, salud: 41.7, sig: 127, dif: 106, sal: 237 },
-  // Ola futura a estimar — sin datos todavía.
-  { label: "nov-26", mes: "2026-11-01", tom: null, som: null, int: null, poder: null, salud: null, sig: null, dif: null, sal: null },
+  { label: "nov-23", mes: "2023-11-01" },
+  { label: "jun-24", mes: "2024-06-01" },
+  { label: "nov-24", mes: "2024-11-01" },
+  { label: "jun-25", mes: "2025-06-01" },
+  { label: "nov-25", mes: "2025-11-01" },
+  { label: "nov-26", mes: "2026-11-01" }, // ola futura a estimar
 ] as const;
-type Wave = (typeof WAVES)[number];
+
+// Marcas con tracking Kantar disponible (selector). El nombre en mayúscula es la marca en mercado_share.
+const SM_BRANDS = ["Drean", "Samsung", "Whirlpool", "LG", "Philco"] as const;
+type KVals = { tom: number | null; som: number | null; int: number | null; poder: number | null; sig: number | null; dif: number | null; sal: number | null };
+const NK: KVals = { tom: null, som: null, int: null, poder: null, sig: null, dif: null, sal: null };
+// Kantar por marca y ola. TOM/SOM/Intención en %; Poder en %; hélice (sig/dif/sal) en índice base 100.
+// Intención de compra = "Sería mi primera opción". Competidores: nov-23 solo Poder+hélice; nov-26 sin dato.
+const KANTAR: Record<string, Record<string, KVals>> = {
+  Drean: {
+    "nov-23": { tom: 54, som: 80, int: 34, poder: 18.4, sig: 138, dif: 109, sal: 262 },
+    "jun-24": { tom: 53, som: 77, int: 43, poder: 19.9, sig: 151, dif: 107, sal: 251 },
+    "nov-24": { tom: 44, som: 74, int: 40, poder: 19.2, sig: 147, dif: 115, sal: 232 },
+    "jun-25": { tom: 45, som: 74, int: 38, poder: 19.6, sig: 143, dif: 107, sal: 246 },
+    "nov-25": { tom: 40.1, som: 69.1, int: 40, poder: 17.4, sig: 127, dif: 106, sal: 237 },
+  },
+  Samsung: {
+    "nov-23": { tom: null, som: null, int: null, poder: 16.7, sig: 140, dif: 196, sal: 121 },
+    "jun-24": { tom: 12, som: 54, int: 28, poder: 16.6, sig: 139, dif: 181, sal: 126 },
+    "nov-24": { tom: 10, som: 51, int: 35, poder: 17.9, sig: 159, dif: 186, sal: 114 },
+    "jun-25": { tom: 11, som: 51, int: 37, poder: 17.4, sig: 154, dif: 184, sal: 124 },
+    "nov-25": { tom: 14, som: 47, int: 34, poder: 16.0, sig: 131, dif: 179, sal: 124 },
+  },
+  Whirlpool: {
+    "nov-23": { tom: null, som: null, int: null, poder: 14.1, sig: 129, dif: 145, sal: 128 },
+    "jun-24": { tom: 9, som: 50, int: 25, poder: 13.8, sig: 127, dif: 146, sal: 119 },
+    "nov-24": { tom: 14, som: 47, int: 32, poder: 15.1, sig: 134, dif: 150, sal: 130 },
+    "jun-25": { tom: 13, som: 43, int: 28, poder: 13.5, sig: 135, dif: 144, sal: 119 },
+    "nov-25": { tom: 12, som: 38, int: 24, poder: 13.6, sig: 130, dif: 150, sal: 116 },
+  },
+  LG: {
+    "nov-23": { tom: null, som: null, int: null, poder: 11.0, sig: 105, dif: 151, sal: 83 },
+    "jun-24": { tom: 5, som: 36, int: 21, poder: 11.0, sig: 104, dif: 149, sal: 94 },
+    "nov-24": { tom: 7, som: 27, int: 17, poder: 10.9, sig: 103, dif: 154, sal: 88 },
+    "jun-25": { tom: 7, som: 35, int: 15, poder: 10.7, sig: 98, dif: 153, sal: 101 },
+    "nov-25": { tom: 7, som: 30, int: 18, poder: 10.7, sig: 115, dif: 131, sal: 93 },
+  },
+  Philco: {
+    "nov-23": { tom: null, som: null, int: null, poder: 5.4, sig: 81, dif: 75, sal: 73 },
+    "jun-24": { tom: 2, som: 9, int: 7, poder: 5.5, sig: 89, dif: 82, sal: 67 },
+    "nov-24": { tom: 1, som: 12, int: 8, poder: 5.7, sig: 83, dif: 83, sal: 70 },
+    "jun-25": { tom: 2, som: 15, int: 9, poder: 5.9, sig: 89, dif: 71, sal: 79 },
+    "nov-25": { tom: 3, som: 15, int: 14, poder: 6.1, sig: 87, dif: 75, sal: 87 },
+  },
+};
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try {
@@ -152,20 +193,21 @@ function BrandBuildTable({ brandModel, idx, label, title, subtitle, kinds }: {
   );
 }
 
-export default async function SaludMarcaPage({ searchParams }: { searchParams?: { tab?: string; view?: string } }) {
+export default async function SaludMarcaPage({ searchParams }: { searchParams?: { tab?: string; view?: string; marca?: string } }) {
   const tab = TABS.find((t) => t.key === searchParams?.tab) ?? TABS[0];
 
   // ===== Lavado: dos sub-vistas (Evolución vs Mercado en el tiempo / Competencia) =====
   if (tab.key === "lavado") {
     const view = searchParams?.view === "competencia" ? "competencia" : "evolucion";
+    const marca = (SM_BRANDS as readonly string[]).includes(searchParams?.marca ?? "") ? searchParams!.marca! : "Drean";
     const subtabs: Array<[string, string]> = [
       ["evolucion", "Evolución · Salud de Marca vs Mercado"],
       ["competencia", "Competencia"],
     ];
     // Para la vista Evolución: además de Kantar + U12, mostramos abajo el modelo de
-    // construcción de marca de Lavado (conexión KPIs de comunicación ↔ dimensiones).
+    // construcción de marca (solo Drean: la data de comunicación es de Drean).
     let brandModelLavado: ReturnType<typeof buildBrandModel> | null = null;
-    if (view === "evolucion") {
+    if (view === "evolucion" && marca === "Drean") {
       const [floorShare, cb, brandMix, pautaByCat] = await Promise.all([
         safe(getFloorShareU4M(), null as Awaited<ReturnType<typeof getFloorShareU4M>> | null),
         safe(getCbU3M(), null as Awaited<ReturnType<typeof getCbU3M>> | null),
@@ -202,7 +244,8 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
         ) : (
           <>
             <EvolucionView
-              serieU12={await safe(getDreanSerie("Lavado", "MAT"), new Map<string, DreanMesSeg>())}
+              marca={marca}
+              serieU12={await safe(getDreanSerie("Lavado", "MAT", marca.toUpperCase()), new Map<string, DreanMesSeg>())}
             />
             {brandModelLavado && (
               <BrandBuildTable
@@ -340,7 +383,9 @@ function Delta({ curr, prev }: { curr: number | null; prev: number | null }) {
   return <span className={`ml-1 text-[9px] ${color}`}>{icon}{label}</span>;
 }
 
-function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
+function EvolucionView({ marca, serieU12 }: { marca: string; serieU12: Map<string, DreanMesSeg> }) {
+  const kFor = (label: string): KVals => KANTAR[marca]?.[label] ?? NK;
+  const esDrean = marca === "Drean"; // el modelo de estimación está calibrado sobre Drean
   const p1 = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
   const i0 = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
 
@@ -373,16 +418,21 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
     const d = blend((s) => s?.usTotal ?? null, serie, mes);
     return d == null ? null : 33.73 + 1.083 * d;
   };
-  const kantar: Array<{ label: string; get: (w: Wave) => number | null; fmt: (v: number | null) => string; bold?: boolean; est?: (serie: Map<string, DreanMesSeg>, mes: string) => number | null; band?: number }> = [
-    { label: "Top of Mind", get: (w) => w.tom, fmt: kPct, est: estTom, band: 2.3 },
-    { label: "Share of Mind", get: (w) => w.som, fmt: kPct, est: estSom, band: 1.4 },
-    { label: "Intención de compra", get: (w) => w.int, fmt: kPct },
-    { label: "Poder de Marca", get: (w) => w.poder, fmt: kPct },
-    // Componentes de la hélice de Poder de Marca (Drean, índice base 100).
-    { label: "· Significancia (índice)", get: (w) => w.sig, fmt: kIdx },
-    { label: "· Diferenciación (índice)", get: (w) => w.dif, fmt: kIdx },
-    { label: "· Saliencia (índice)", get: (w) => w.sal, fmt: kIdx },
-    { label: "Salud de Marca", get: (w) => w.salud, fmt: kPct, bold: true },
+  // Salud de Marca compuesta = 0,25·(TOM + SOM + Intención + Poder); null si falta alguno.
+  const saludDe = (k: KVals): number | null => {
+    const xs = [k.tom, k.som, k.int, k.poder];
+    return xs.every((v) => v != null) ? 0.25 * (xs[0]! + xs[1]! + xs[2]! + xs[3]!) : null;
+  };
+  const kantar: Array<{ label: string; get: (k: KVals) => number | null; fmt: (v: number | null) => string; bold?: boolean; est?: (serie: Map<string, DreanMesSeg>, mes: string) => number | null; band?: number }> = [
+    { label: "Top of Mind", get: (k) => k.tom, fmt: kPct, est: estTom, band: 2.3 },
+    { label: "Share of Mind", get: (k) => k.som, fmt: kPct, est: estSom, band: 1.4 },
+    { label: "Intención de compra", get: (k) => k.int, fmt: kPct },
+    { label: "Poder de Marca", get: (k) => k.poder, fmt: kPct },
+    // Componentes de la hélice de Poder de Marca (índice base 100).
+    { label: "· Significancia (índice)", get: (k) => k.sig, fmt: kIdx },
+    { label: "· Diferenciación (índice)", get: (k) => k.dif, fmt: kIdx },
+    { label: "· Saliencia (índice)", get: (k) => k.sal, fmt: kIdx },
+    { label: "Salud de Marca", get: saludDe, fmt: kPct, bold: true },
   ];
   type MRow = { label: string; get: (s?: DreanMesSeg) => number | null; fmt: (v: number | null) => string };
   const mkt: MRow[] = [
@@ -489,10 +539,26 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
   const kantarTable = () => (
     <section className="overflow-hidden rounded-xl border bg-card">
       <div className="border-b px-4 py-3">
-        <h3 className="text-sm font-bold tracking-tight">Lavado — Salud de Marca (Kantar)</h3>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
-          Drean. Columnas = olas de medición. Debajo de cada valor, el desvío vs la ola anterior.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold tracking-tight">Lavado — Salud de Marca (Kantar)</h3>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {marca}. Columnas = olas de medición. Debajo de cada valor, el desvío vs la ola anterior.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {SM_BRANDS.map((b) => (
+              <Link
+                key={b}
+                href={`/salud-marca?tab=lavado&view=evolucion&marca=${b}`}
+                scroll={false}
+                className={`rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${b === marca ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
+              >
+                {b}
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="overflow-x-auto p-4">
         <table className="w-full table-fixed text-xs">
@@ -512,15 +578,15 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
           </thead>
           <tbody>
             {kantar.map((r) => {
-              const vals = WAVES.map((w) => r.get(w));
+              const vals = WAVES.map((w) => r.get(kFor(w.label)));
               const prevs = prevAvail(vals);
               return (
                 <tr key={r.label} className="border-t">
                   <td className={`whitespace-nowrap px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
                   {WAVES.map((w, i) => {
                     const actual = vals[i] ?? null;
-                    // Si no hay medición pero la fila tiene modelo, estimamos desde el mercado (U12) de esa ola.
-                    const est = actual == null && r.est ? r.est(serieU12, w.mes) : null;
+                    // Si no hay medición y hay modelo, estimamos desde el mercado (solo Drean, donde está calibrado).
+                    const est = actual == null && r.est && esDrean ? r.est(serieU12, w.mes) : null;
                     return (
                       <td key={w.label} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
                         {actual != null ? (
@@ -544,6 +610,7 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
             })}
           </tbody>
         </table>
+        {esDrean && (
         <div className="mt-3 space-y-1.5 text-[11px] leading-relaxed text-muted-foreground">
           <p className="font-semibold text-foreground">
             <span className="text-blue-600">≈</span> Cómo se predicen TOM y SOM (estimación baseline de mercado, para olas sin medición Kantar — ej. nov-26)
@@ -570,6 +637,7 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
             incluido Índice de Precio). El U12 proyectado de la ola se construye con la rampa explicada en el bloque de Mercado.
           </p>
         </div>
+        )}
       </div>
     </section>
   );
@@ -582,15 +650,17 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
       {mercadoTable(
         serieU12,
         "Lavado — Mercado · GFK (U12 · año móvil)",
-        "Drean. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.",
-        <>
-          <strong>nov-26 (proyección).</strong> Valores <strong>mensuales finales</strong> asumidos para nov-26 — Value Share:
-          High 20% · Mid 45% · Low 40% · Unit Share Total 35%. El U12 que se muestra es el <strong>año móvil que cierra en
-          nov-26</strong> = promedio de los 12 meses dic-25 → nov-26, construido con los meses reales más una
-          <strong> rampa lineal</strong> desde el último dato real hasta esos valores finales. Por eso el U12 queda por debajo del
-          mensual final: VS High <strong>15,4</strong> · VS Mid <strong>41,5</strong> · VS Low <strong>33,1</strong> · US Total{" "}
-          <strong>28,1</strong> (el año móvil arrastra los meses flojos de 2026 y no rebota tan rápido).
-        </>,
+        `${marca}. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.`,
+        esDrean ? (
+          <>
+            <strong>nov-26 (proyección).</strong> Valores <strong>mensuales finales</strong> asumidos para nov-26 — Value Share:
+            High 20% · Mid 45% · Low 40% · Unit Share Total 35%. El U12 que se muestra es el <strong>año móvil que cierra en
+            nov-26</strong> = promedio de los 12 meses dic-25 → nov-26, construido con los meses reales más una
+            <strong> rampa lineal</strong> desde el último dato real hasta esos valores finales. Por eso el U12 queda por debajo del
+            mensual final: VS High <strong>15,4</strong> · VS Mid <strong>41,5</strong> · VS Low <strong>33,1</strong> · US Total{" "}
+            <strong>28,1</strong> (el año móvil arrastra los meses flojos de 2026 y no rebota tan rápido).
+          </>
+        ) : undefined,
       )}
     </div>
   );
