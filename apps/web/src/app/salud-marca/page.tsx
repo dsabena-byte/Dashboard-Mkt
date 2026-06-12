@@ -89,12 +89,13 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 
 // Tabla del modelo de construcción de marca (reutilizable): conexión de KPIs de
 // comunicación/tienda/mercado con las dimensiones de marca (Saliencia → Poder → Intención).
-function BrandBuildTable({ brandModel, idx, label, title, subtitle }: {
+function BrandBuildTable({ brandModel, idx, label, title, subtitle, kinds }: {
   brandModel: ReturnType<typeof buildBrandModel>;
   idx: number;
   label: string;
   title: string;
   subtitle?: string;
+  kinds?: Array<"Mental" | "Físico" | "Mercado">; // si se pasa, filtra filas por tipo
 }) {
   return (
     <section className="overflow-hidden rounded-xl border bg-card">
@@ -117,7 +118,10 @@ function BrandBuildTable({ brandModel, idx, label, title, subtitle }: {
             </tr>
           </thead>
           <tbody>
-            {brandModel.map((comp) => (
+            {brandModel.map((comp) => {
+              const rows = kinds ? comp.rows.filter((r) => kinds.includes(r.kind)) : comp.rows;
+              if (rows.length === 0) return null;
+              return (
               <Fragment key={comp.title}>
                 <tr>
                   <td colSpan={2} className="px-2 pb-1 pt-4">
@@ -125,7 +129,7 @@ function BrandBuildTable({ brandModel, idx, label, title, subtitle }: {
                     <span className="ml-2 text-[10px] font-normal normal-case text-muted-foreground">{comp.subtitle}</span>
                   </td>
                 </tr>
-                {comp.rows.map((r) => (
+                {rows.map((r) => (
                   <tr key={r.label} className="border-t">
                     <td className="px-2 py-1.5">
                       <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : r.kind === "Físico" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
@@ -139,7 +143,8 @@ function BrandBuildTable({ brandModel, idx, label, title, subtitle }: {
                   </tr>
                 ))}
               </Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -204,8 +209,9 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
                 brandModel={brandModelLavado}
                 idx={0}
                 label="Lavado"
+                kinds={["Mental"]}
                 title="Construcción de Marca (Comunicación) — Lavado"
-                subtitle="Conexión KPIs ↔ dimensiones (Saliencia → Poder → Intención). Medición desde ene-26; lectura direccional, todavía sin calibrar contra olas."
+                subtitle="Solo KPIs de comunicación (el mercado ya está arriba). Conexión con las dimensiones (Saliencia → Poder → Intención). Medición desde ene-26; lectura direccional."
               />
             )}
           </>
