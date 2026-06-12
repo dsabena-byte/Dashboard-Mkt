@@ -1523,7 +1523,7 @@ insert into mercado_share (mes,categoria,segmento,marca,unit_share,value_share,i
 ('2024-02-01','Lavado','Total','Tradebrands and exclusives',1.09,null,null,'MAT'),
 ('2024-02-01','Lavado','Total','WHIRLPOOL',5.39,null,null,'MAT'),
 -- Proyección Drean nov-26 (MAT) — inputs para estimación baseline de TOM/SOM.
-('2026-11-01','Lavado','High','DREAN',null,20.0,null,'MAT'),
-('2026-11-01','Lavado','Mid','DREAN',null,45.0,null,'MAT'),
-('2026-11-01','Lavado','Low','DREAN',null,40.0,null,'MAT'),
-('2026-11-01','Lavado','Total','DREAN',35.0,null,null,'MAT');
+('2026-11-01','Lavado','High','DREAN',null,15.38,null,'MAT'),
+('2026-11-01','Lavado','Mid','DREAN',null,41.52,null,'MAT'),
+('2026-11-01','Lavado','Low','DREAN',null,33.05,null,'MAT'),
+('2026-11-01','Lavado','Total','DREAN',28.1,null,null,'MAT');
