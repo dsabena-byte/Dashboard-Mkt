@@ -334,9 +334,9 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
       <div className="overflow-x-auto border-t p-4">
         <table className="w-full table-fixed text-xs">
           <colgroup>
-            <col className="w-[10%]" />
+            <col className="w-[22%]" />
             {WAVES.map((w) => (
-              <col key={w.label} className="w-[15%]" />
+              <col key={w.label} className="w-[13%]" />
             ))}
           </colgroup>
           <thead>
@@ -353,7 +353,7 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
               const prevs = prevAvail(vals);
               return (
                 <tr key={r.label} className="border-t">
-                  <td className="px-2 py-1.5 text-foreground">{r.label}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-foreground">{r.label}</td>
                   {WAVES.map((w, i) => (
                     <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground/90">
                       {r.fmt(vals[i] ?? null)}
@@ -381,9 +381,9 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
       <div className="overflow-x-auto p-4">
         <table className="w-full table-fixed text-xs">
           <colgroup>
-            <col className="w-[10%]" />
+            <col className="w-[22%]" />
             {WAVES.map((w) => (
-              <col key={w.label} className="w-[15%]" />
+              <col key={w.label} className="w-[13%]" />
             ))}
           </colgroup>
           <thead>
@@ -400,7 +400,7 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
               const prevs = prevAvail(vals);
               return (
                 <tr key={r.label} className="border-t">
-                  <td className={`px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
+                  <td className={`whitespace-nowrap px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
                   {WAVES.map((w, i) => (
                     <td key={w.label} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
                       {r.fmt(vals[i] ?? null)}
