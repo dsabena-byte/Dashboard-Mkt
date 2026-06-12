@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import {
   getOrganicPilarMix,
@@ -349,7 +349,7 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
 
   // Bloque de mercado standalone y COLAPSABLE de forma independiente (<details>).
   // Tocando el título se contrae/expande. Se usa para mensual y U12 (MAT).
-  const mercadoTable = (s: Map<string, DreanMesSeg>, title: string, subtitle: string) => (
+  const mercadoTable = (s: Map<string, DreanMesSeg>, title: string, subtitle: string, note?: ReactNode) => (
     <details open className="overflow-hidden rounded-xl border bg-card">
       <summary className="cursor-pointer select-none px-4 py-3 marker:text-muted-foreground">
         <span className="text-sm font-bold tracking-tight">{title}</span>
@@ -415,6 +415,7 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
             })}
           </tbody>
         </table>
+        {note && <div className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{note}</div>}
       </div>
     </details>
   );
@@ -498,6 +499,14 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
         serieU12,
         "Lavado — Mercado · GFK (U12 · año móvil)",
         "Drean. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.",
+        <>
+          <strong>nov-26 (proyección).</strong> Valores <strong>mensuales finales</strong> asumidos para nov-26 — Value Share:
+          High 20% · Mid 45% · Low 40% · Unit Share Total 35%. El U12 que se muestra es el <strong>año móvil que cierra en
+          nov-26</strong> = promedio de los 12 meses dic-25 → nov-26, construido con los meses reales más una
+          <strong> rampa lineal</strong> desde el último dato real hasta esos valores finales. Por eso el U12 queda por debajo del
+          mensual final: VS High <strong>15,4</strong> · VS Mid <strong>41,5</strong> · VS Low <strong>33,1</strong> · US Total{" "}
+          <strong>28,1</strong> (el año móvil arrastra los meses flojos de 2026 y no rebota tan rápido).
+        </>,
       )}
     </div>
   );
