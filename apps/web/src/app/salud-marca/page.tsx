@@ -314,6 +314,7 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
     { label: "Value share · High %", get: (s) => s?.vs.High ?? null, fmt: p1 },
     { label: "Value share · Mid %", get: (s) => s?.vs.Mid ?? null, fmt: p1 },
     { label: "Value share · Low %", get: (s) => s?.vs.Low ?? null, fmt: p1 },
+    { label: "Value share · Total %", get: (s) => s?.vsTotal ?? null, fmt: p1 },
     { label: "Unit share · High %", get: (s) => s?.us.High ?? null, fmt: p1 },
     { label: "Unit share · Mid %", get: (s) => s?.us.Mid ?? null, fmt: p1 },
     { label: "Unit share · Low %", get: (s) => s?.us.Low ?? null, fmt: p1 },
