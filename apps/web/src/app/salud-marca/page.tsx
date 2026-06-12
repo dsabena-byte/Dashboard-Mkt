@@ -259,25 +259,29 @@ function CompetenciaView({ pos }: { pos: { mesMercado: string | null; rows: PosB
 // Vista evolución: Salud de Marca Kantar (Drean Lavado) vs variables de mercado,
 // por ola de medición (columnas = momentos). Sirve para ver qué variable de
 // mercado se mueve junto a cada indicador de salud de marca.
-// Variación de la última medición vs la anterior (último par de valores no nulos).
-// Flechita con color: ▲ verde (creció) / ▼ rojo (bajó) / ▬ gris (se mantuvo), + % de cambio.
-function Trend({ values }: { values: (number | null)[] }) {
-  const nn = values.filter((v): v is number => v != null);
-  if (nn.length < 2) return <span className="text-muted-foreground/40">—</span>;
-  const last = nn[nn.length - 1]!;
-  const prev = nn[nn.length - 2]!;
-  const delta = last - prev;
+// Para cada posición, el último valor no nulo ANTERIOR (para comparar contra la
+// medición previa, salteando olas sin dato).
+function prevAvail(values: (number | null)[]): (number | null)[] {
+  const out: (number | null)[] = [];
+  let last: number | null = null;
+  for (const v of values) {
+    out.push(last);
+    if (v != null) last = v;
+  }
+  return out;
+}
+
+// Desvío de una medición vs la anterior: flechita con color (▲ verde creció /
+// ▼ rojo bajó / ▬ gris se mantuvo) + % de cambio. Va debajo de cada valor.
+function Delta({ curr, prev }: { curr: number | null; prev: number | null }) {
+  if (curr == null || prev == null) return null;
+  const delta = curr - prev;
   const dir = delta === 0 ? "flat" : delta > 0 ? "up" : "down";
   const icon = dir === "up" ? "▲" : dir === "down" ? "▼" : "▬";
   const color = dir === "up" ? "text-emerald-600" : dir === "down" ? "text-red-600" : "text-muted-foreground";
   const pct = prev !== 0 ? (delta / prev) * 100 : null;
   const label = pct == null ? (delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)) : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
-  return (
-    <span className={`inline-flex items-center gap-0.5 tabular-nums ${color}`}>
-      <span className="text-[8px] leading-none">{icon}</span>
-      {label}
-    </span>
-  );
+  return <span className={`block text-[9px] leading-tight ${color}`}>{icon} {label}</span>;
 }
 
 function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
@@ -327,9 +331,8 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
           <colgroup>
             <col className="w-[24%]" />
             {WAVES.map((w) => (
-              <col key={w.label} className="w-[14%]" />
+              <col key={w.label} className="w-[19%]" />
             ))}
-            <col className="w-[20%]" />
           </colgroup>
           <thead>
             <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -337,46 +340,49 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
               {WAVES.map((w) => (
                 <th key={w.label} className="px-2 py-2 text-right">{w.label}</th>
               ))}
-              <th className="px-2 py-2 text-right">Var. vs ant.</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td colSpan={2 + WAVES.length} className="px-2 pb-1 pt-3">
+              <td colSpan={1 + WAVES.length} className="px-2 pb-1 pt-3">
                 <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Salud de Marca · Kantar</span>
               </td>
             </tr>
-            {kantar.map((r) => (
-              <tr key={r.label} className="border-t">
-                <td className={`px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
-                {WAVES.map((w) => (
-                  <td key={w.label} className={`px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
-                    {r.fmt(r.get(w))}
-                  </td>
-                ))}
-                <td className="px-2 py-1.5 text-right">
-                  <Trend values={WAVES.map((w) => r.get(w))} />
-                </td>
-              </tr>
-            ))}
+            {kantar.map((r) => {
+              const vals = WAVES.map((w) => r.get(w));
+              const prevs = prevAvail(vals);
+              return (
+                <tr key={r.label} className="border-t">
+                  <td className={`px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
+                  {WAVES.map((w, i) => (
+                    <td key={w.label} className={`px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
+                      <span className="block">{r.fmt(vals[i] ?? null)}</span>
+                      <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
             <tr>
-              <td colSpan={2 + WAVES.length} className="px-2 pb-1 pt-4">
+              <td colSpan={1 + WAVES.length} className="px-2 pb-1 pt-4">
                 <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Mercado · GFK (Drean)</span>
               </td>
             </tr>
-            {mkt.map((r) => (
-              <tr key={r.label} className="border-t">
-                <td className="px-2 py-1.5 text-foreground">{r.label}</td>
-                {WAVES.map((w) => (
-                  <td key={w.label} className="px-2 py-1.5 text-right tabular-nums text-foreground/90">
-                    {r.fmt(r.get(serie.get(w.mes)))}
-                  </td>
-                ))}
-                <td className="px-2 py-1.5 text-right">
-                  <Trend values={WAVES.map((w) => r.get(serie.get(w.mes)))} />
-                </td>
-              </tr>
-            ))}
+            {mkt.map((r) => {
+              const vals = WAVES.map((w) => r.get(serie.get(w.mes)));
+              const prevs = prevAvail(vals);
+              return (
+                <tr key={r.label} className="border-t">
+                  <td className="px-2 py-1.5 text-foreground">{r.label}</td>
+                  {WAVES.map((w, i) => (
+                    <td key={w.label} className="px-2 py-1.5 text-right tabular-nums text-foreground/90">
+                      <span className="block">{r.fmt(vals[i] ?? null)}</span>
+                      <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <p className="mt-3 text-[11px] text-muted-foreground">
