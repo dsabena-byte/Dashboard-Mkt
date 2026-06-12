@@ -544,14 +544,32 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
             })}
           </tbody>
         </table>
-        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-blue-600">≈</span> = estimación baseline desde el mercado proyectado (solo
-          <strong> TOM</strong> y <strong>SOM</strong>, las que tienen señal robusta). Usa el <strong>blend 50/50</strong> de
-          la metodología Kantar: driver = 0,5·U12(T) + 0,5·U12(T-12, un año antes). TOM ≈ 13,2 + 1,154·driver
-          (D = 0,85·VS<sub>High</sub> + 0,15·VS<sub>Mid</sub>) ±2,3 · SOM ≈ 33,7 + 1,083·driver (US<sub>Total</sub>) ±1,4. Es la
-          <em> inercia comercial</em>: no incluye medios, tienda ni comunicación. Se completa al cargar el mercado proyectado
-          (segmentos High/Mid/Low y Total) en el bloque U12 para esa ola.
-        </p>
+        <div className="mt-3 space-y-1.5 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="font-semibold text-foreground">
+            <span className="text-blue-600">≈</span> Cómo se predicen TOM y SOM (estimación baseline de mercado, para olas sin medición Kantar — ej. nov-26)
+          </p>
+          <p>
+            <strong>1. Blend 50/50 (metodología Kantar).</strong> La investigación pondera 50% compradores de los últimos
+            12 meses y 50% de 12–24 meses. Por eso el driver de cada ola = <strong>0,5·U12(T) + 0,5·U12(T-12)</strong>
+            (año móvil de la ola y el de un año antes).
+          </p>
+          <p>
+            <strong>2. Qué predice a cada uno</strong> (elegido por correlación + validación LOO entre olas medidas y mercado):
+            <strong> TOM ← value share de gama alta</strong> (notoriedad/posicionamiento), D = 0,85·VS<sub>High</sub> + 0,15·VS<sub>Mid</sub>.
+            <strong> SOM ← unit share total</strong> (volumen real de toda la categoría).
+          </p>
+          <p>
+            <strong>3. Ecuaciones</strong> (OLS sobre las 5 olas medidas, nov-23 → nov-25):
+            TOM ≈ 13,2 + 1,154·driver (R²=0,90, banda ±2,3) ·
+            SOM ≈ 33,7 + 1,083·driver (R²=0,94, banda ±1,4).
+          </p>
+          <p>
+            <strong>4. Alcance y límites.</strong> Es la <em>inercia comercial</em>: dice a dónde va la salud de marca si solo
+            jugara el mercado. <strong>No</strong> incluye el efecto de medios/tienda/comunicación (esos suman <em>por encima</em>
+            de esta base). <strong>Intención</strong> y <strong>Poder</strong> no se estiman (sin señal confiable en la data,
+            incluido Índice de Precio). El U12 proyectado de la ola se construye con la rampa explicada en el bloque de Mercado.
+          </p>
+        </div>
       </div>
     </section>
   );
