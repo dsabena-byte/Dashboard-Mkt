@@ -142,13 +142,13 @@ export interface DreanMesSeg {
   usTotal: number | null; // unit share de la categoría completa (segmento "Total")
   vsTotal: number | null; // value share de la categoría completa (segmento "Total")
 }
-export async function getDreanSerie(categoria: string, agregacion: "mensual" | "MAT" = "mensual"): Promise<Map<string, DreanMesSeg>> {
+export async function getDreanSerie(categoria: string, agregacion: "mensual" | "MAT" = "mensual", marca = "DREAN"): Promise<Map<string, DreanMesSeg>> {
   const supabase = getServerSupabase();
   const { data } = await supabase
     .from("mercado_share")
     .select("mes, segmento, value_share, unit_share, index_price")
     .eq("categoria", categoria)
-    .eq("marca", "DREAN")
+    .eq("marca", marca)
     .in("segmento", ["High", "Mid", "Low", "Total"])
     .eq("agregacion", agregacion)
     .limit(5000);
