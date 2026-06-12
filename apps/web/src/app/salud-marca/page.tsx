@@ -354,7 +354,7 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
   //   driver_TOM = 0,5·D(T) + 0,5·D(T-12),  D = 0,85·VS_High + 0,15·VS_Mid
   //   TOM ≈ 13,23 + 1,154·driver_TOM     (R2=0,90, LOO 2,3; 5 olas incl. nov-23)
   //   driver_SOM = 0,5·US_Total(T) + 0,5·US_Total(T-12)
-  //   SOM ≈ 34,84 + 1,051·driver_SOM     (R2=0,88, LOO 1,9; 4 olas, falta US_Total nov-22)
+  //   SOM ≈ 33,73 + 1,083·driver_SOM     (R2=0,94, LOO 1,4; 5 olas incl. nov-23)
   // Es inercia comercial; no captura medios/tienda/comunicación.
   const prev12 = (mes: string) => { const [y, m] = mes.split("-"); return `${Number(y) - 1}-${m}-01`; };
   const blend = (fn: (s?: DreanMesSeg) => number | null, serie: Map<string, DreanMesSeg>, mes: string): number | null => {
@@ -371,11 +371,11 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
   };
   const estSom = (serie: Map<string, DreanMesSeg>, mes: string): number | null => {
     const d = blend((s) => s?.usTotal ?? null, serie, mes);
-    return d == null ? null : 34.84 + 1.051 * d;
+    return d == null ? null : 33.73 + 1.083 * d;
   };
   const kantar: Array<{ label: string; get: (w: Wave) => number | null; fmt: (v: number | null) => string; bold?: boolean; est?: (serie: Map<string, DreanMesSeg>, mes: string) => number | null; band?: number }> = [
     { label: "Top of Mind", get: (w) => w.tom, fmt: kPct, est: estTom, band: 2.3 },
-    { label: "Share of Mind", get: (w) => w.som, fmt: kPct, est: estSom, band: 1.9 },
+    { label: "Share of Mind", get: (w) => w.som, fmt: kPct, est: estSom, band: 1.4 },
     { label: "Intención de compra", get: (w) => w.int, fmt: kPct },
     { label: "Poder de Marca", get: (w) => w.poder, fmt: kPct },
     // Componentes de la hélice de Poder de Marca (Drean, índice base 100).
@@ -548,7 +548,7 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
           <span className="font-semibold text-blue-600">≈</span> = estimación baseline desde el mercado proyectado (solo
           <strong> TOM</strong> y <strong>SOM</strong>, las que tienen señal robusta). Usa el <strong>blend 50/50</strong> de
           la metodología Kantar: driver = 0,5·U12(T) + 0,5·U12(T-12, un año antes). TOM ≈ 13,2 + 1,154·driver
-          (D = 0,85·VS<sub>High</sub> + 0,15·VS<sub>Mid</sub>) ±2,3 · SOM ≈ 34,8 + 1,051·driver (US<sub>Total</sub>) ±1,9. Es la
+          (D = 0,85·VS<sub>High</sub> + 0,15·VS<sub>Mid</sub>) ±2,3 · SOM ≈ 33,7 + 1,083·driver (US<sub>Total</sub>) ±1,4. Es la
           <em> inercia comercial</em>: no incluye medios, tienda ni comunicación. Se completa al cargar el mercado proyectado
           (segmentos High/Mid/Low y Total) en el bloque U12 para esa ola.
         </p>
