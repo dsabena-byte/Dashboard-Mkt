@@ -65,12 +65,15 @@ const POS_DIMS: Array<{ title: string; subtitle: string; rows: PosRow[] }> = [
 // Salud de Marca Kantar (Drean, categoría Lavado) por ola de medición.
 // Valores transcritos del tracking Kantar. Cada ola se cruza con la data de
 // mercado del mes correspondiente (donde tenemos serie GFK).
+// poder/sig/dif/sal = hélice Kantar de Drean (Poder de Marca y sus 3 componentes:
+// Significancia 40% · Diferenciación 30% · Saliencia 30%, en índice base 100).
+// "2024" del tracking = Nov 2024 (ola nov-24); "2025" = Nov 2025 (ola nov-25).
 const WAVES = [
-  { label: "jun-24", mes: "2024-06-01", tom: 53, som: 77, int: 43, poder: 19.9, salud: 48.2 },
-  { label: "nov-24", mes: "2024-11-01", tom: 44, som: 74, int: 40, poder: 19.2, salud: 44.3 },
-  { label: "jun-25", mes: "2025-06-01", tom: 45, som: 74, int: 38, poder: 19.6, salud: 44.2 },
-  { label: "nov-25", mes: "2025-11-01", tom: 40.1, som: 69.1, int: 40, poder: 17.4, salud: 41.7 },
-  { label: "nov-26", mes: "2026-11-01", tom: 40, som: 71, int: 40, poder: 18, salud: 42.3 },
+  { label: "jun-24", mes: "2024-06-01", tom: 53, som: 77, int: 43, poder: 19.9, salud: 48.2, sig: 151, dif: 107, sal: 251 },
+  { label: "nov-24", mes: "2024-11-01", tom: 44, som: 74, int: 40, poder: 19.2, salud: 44.3, sig: 147, dif: 115, sal: 232 },
+  { label: "jun-25", mes: "2025-06-01", tom: 45, som: 74, int: 38, poder: 19.6, salud: 44.2, sig: 143, dif: 107, sal: 246 },
+  { label: "nov-25", mes: "2025-11-01", tom: 40.1, som: 69.1, int: 40, poder: 17.4, salud: 41.7, sig: 127, dif: 106, sal: 237 },
+  { label: "nov-26", mes: "2026-11-01", tom: 40, som: 71, int: 40, poder: 18, salud: 42.3, sig: null, dif: null, sal: null },
 ] as const;
 type Wave = (typeof WAVES)[number];
 
@@ -267,12 +270,20 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
   const i0 = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
   const n1 = (v: number | null) => (v == null ? "—" : v.toFixed(1));
 
-  const kantar: Array<{ label: string; get: (w: Wave) => number; bold?: boolean }> = [
-    { label: "Top of Mind", get: (w) => w.tom },
-    { label: "Share of Mind", get: (w) => w.som },
-    { label: "Intención de compra", get: (w) => w.int },
-    { label: "Poder de Marca", get: (w) => w.poder },
-    { label: "Salud de Marca", get: (w) => w.salud, bold: true },
+  // Filas Kantar. Las de funnel/poder/salud van en %; los componentes de la hélice
+  // (Significancia/Diferenciación/Saliencia) van como índice (base 100, sin %).
+  const kPct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
+  const kIdx = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
+  const kantar: Array<{ label: string; get: (w: Wave) => number | null; fmt: (v: number | null) => string; bold?: boolean }> = [
+    { label: "Top of Mind", get: (w) => w.tom, fmt: kPct },
+    { label: "Share of Mind", get: (w) => w.som, fmt: kPct },
+    { label: "Intención de compra", get: (w) => w.int, fmt: kPct },
+    { label: "Poder de Marca", get: (w) => w.poder, fmt: kPct },
+    // Componentes de la hélice de Poder de Marca (Drean, índice base 100).
+    { label: "· Significancia (índice)", get: (w) => w.sig, fmt: kIdx },
+    { label: "· Diferenciación (índice)", get: (w) => w.dif, fmt: kIdx },
+    { label: "· Saliencia (índice)", get: (w) => w.sal, fmt: kIdx },
+    { label: "Salud de Marca", get: (w) => w.salud, fmt: kPct, bold: true },
   ];
   type MRow = { label: string; get: (s?: DreanMesSeg) => number | null; fmt: (v: number | null) => string };
   const mkt: MRow[] = [
@@ -282,6 +293,7 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
     { label: "Unit share · High %", get: (s) => s?.us.High ?? null, fmt: p1 },
     { label: "Unit share · Mid %", get: (s) => s?.us.Mid ?? null, fmt: p1 },
     { label: "Unit share · Low %", get: (s) => s?.us.Low ?? null, fmt: p1 },
+    { label: "Unit share · Total %", get: (s) => s?.usTotal ?? null, fmt: p1 },
     { label: "Índice de precio · High", get: (s) => s?.ip.High ?? null, fmt: i0 },
     { label: "Índice de precio · Mid", get: (s) => s?.ip.Mid ?? null, fmt: i0 },
     { label: "Índice de precio · Low", get: (s) => s?.ip.Low ?? null, fmt: i0 },
@@ -321,10 +333,10 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
             </tr>
             {kantar.map((r) => (
               <tr key={r.label} className="border-t">
-                <td className={`px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : "text-foreground"}`}>{r.label}</td>
+                <td className={`px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
                 {WAVES.map((w) => (
                   <td key={w.label} className={`px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
-                    {r.get(w).toFixed(1)}%
+                    {r.fmt(r.get(w))}
                   </td>
                 ))}
               </tr>

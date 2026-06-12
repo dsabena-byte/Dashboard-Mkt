@@ -139,6 +139,7 @@ export interface DreanMesSeg {
   vs: Record<Seg, number | null>;
   us: Record<Seg, number | null>;
   ip: Record<Seg, number | null>;
+  usTotal: number | null; // unit share de la categoría completa (segmento "Total")
 }
 export async function getDreanSerie(categoria: string): Promise<Map<string, DreanMesSeg>> {
   const supabase = getServerSupabase();
@@ -147,15 +148,21 @@ export async function getDreanSerie(categoria: string): Promise<Map<string, Drea
     .select("mes, segmento, value_share, unit_share, index_price")
     .eq("categoria", categoria)
     .eq("marca", "DREAN")
-    .in("segmento", ["High", "Mid", "Low"])
+    .in("segmento", ["High", "Mid", "Low", "Total"])
     .eq("agregacion", "mensual")
     .limit(5000);
   const out = new Map<string, DreanMesSeg>();
-  for (const r of (data ?? []) as Array<{ mes: string; segmento: Seg; value_share: number | null; unit_share: number | null; index_price: number | null }>) {
-    const e = out.get(r.mes) ?? { vs: { High: null, Mid: null, Low: null }, us: { High: null, Mid: null, Low: null }, ip: { High: null, Mid: null, Low: null } };
-    e.vs[r.segmento] = r.value_share;
-    e.us[r.segmento] = r.unit_share;
-    e.ip[r.segmento] = r.index_price;
+  for (const r of (data ?? []) as Array<{ mes: string; segmento: string; value_share: number | null; unit_share: number | null; index_price: number | null }>) {
+    const e = out.get(r.mes) ?? { vs: { High: null, Mid: null, Low: null }, us: { High: null, Mid: null, Low: null }, ip: { High: null, Mid: null, Low: null }, usTotal: null };
+    if (r.segmento === "Total") {
+      // "Total" = categoría completa, solo trae unit share.
+      e.usTotal = r.unit_share;
+    } else {
+      const seg = r.segmento as Seg;
+      e.vs[seg] = r.value_share;
+      e.us[seg] = r.unit_share;
+      e.ip[seg] = r.index_price;
+    }
     out.set(r.mes, e);
   }
   return out;

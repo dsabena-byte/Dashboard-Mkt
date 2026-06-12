@@ -225,6 +225,8 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
   const groups = new Map<string, MercadoRow[]>();
   for (const r of rows) {
     if (r.categoria !== selected) continue;
+    // "Total" (categoría completa) se analiza en Salud de Marca, no como segmento acá.
+    if (r.segmento === "Total") continue;
     const k = `${r.categoria}__${r.segmento}`;
     const arr = groups.get(k);
     if (arr) arr.push(r);
