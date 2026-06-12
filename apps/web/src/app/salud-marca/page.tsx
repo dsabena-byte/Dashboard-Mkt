@@ -314,11 +314,9 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
     { label: "Value share · High %", get: (s) => s?.vs.High ?? null, fmt: p1 },
     { label: "Value share · Mid %", get: (s) => s?.vs.Mid ?? null, fmt: p1 },
     { label: "Value share · Low %", get: (s) => s?.vs.Low ?? null, fmt: p1 },
-    { label: "Value share · Total %", get: (s) => s?.vsTotal ?? null, fmt: p1 },
     { label: "Unit share · High %", get: (s) => s?.us.High ?? null, fmt: p1 },
     { label: "Unit share · Mid %", get: (s) => s?.us.Mid ?? null, fmt: p1 },
     { label: "Unit share · Low %", get: (s) => s?.us.Low ?? null, fmt: p1 },
-    { label: "Unit share · Total %", get: (s) => s?.usTotal ?? null, fmt: p1 },
     { label: "Índice de precio · High", get: (s) => s?.ip.High ?? null, fmt: i0 },
     { label: "Índice de precio · Mid", get: (s) => s?.ip.Mid ?? null, fmt: i0 },
     { label: "Índice de precio · Low", get: (s) => s?.ip.Low ?? null, fmt: i0 },
@@ -326,23 +324,14 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
   // Grupos de indicadores de mercado, separados visualmente con un encabezado/línea.
   const mktGroups: Record<string, string> = { vs: "Value Share", us: "Unit Share", ip: "Índice de Precio" };
   const mktGroupOf = (l: string) => (l.startsWith("Value") ? "vs" : l.startsWith("Unit") ? "us" : "ip");
-  // Indicador general (ponderado) por grupo:
-  //   Value Share = High·0,50 + Mid·0,35 + Low·0,15
-  //   Unit Share  = High·0,25 + Mid·0,60 + Low·0,15
-  //   Índice      = (IP_High/100) · (IP_Mid/100) · (IP_Low/100)  (producto de índices)
-  // Requiere los 3 segmentos; si falta alguno, devuelve null ("—").
+  // Fila resumen al pie de cada grupo:
+  //   Value Share / Unit Share = Total (Marca) de GFK (no calculado).
+  //   Índice = (IP_High/100) · (IP_Mid/100) · (IP_Low/100) → producto de índices (calculado).
+  const summaryLabel: Record<string, string> = { vs: "Value Share · Total (GFK)", us: "Unit Share · Total (GFK)", ip: "Índice general" };
   const general = (sv: DreanMesSeg | undefined, grp: string): number | null => {
     if (!sv) return null;
-    if (grp === "vs") {
-      const { High, Mid, Low } = sv.vs;
-      if (High == null || Mid == null || Low == null) return null;
-      return High * 0.5 + Mid * 0.35 + Low * 0.15;
-    }
-    if (grp === "us") {
-      const { High, Mid, Low } = sv.us;
-      if (High == null || Mid == null || Low == null) return null;
-      return High * 0.25 + Mid * 0.6 + Low * 0.15;
-    }
+    if (grp === "vs") return sv.vsTotal;
+    if (grp === "us") return sv.usTotal;
     const { High, Mid, Low } = sv.ip;
     if (High == null || Mid == null || Low == null) return null;
     return (High / 100) * (Mid / 100) * (Low / 100);
@@ -402,7 +391,7 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
                   </tr>
                   {lastOfGroup && (
                     <tr className="border-t bg-muted/40 font-semibold">
-                      <td className="whitespace-nowrap px-2 py-1.5 pl-4 text-foreground">{mktGroups[grp]} general</td>
+                      <td className="whitespace-nowrap px-2 py-1.5 pl-4 text-foreground">{summaryLabel[grp]}</td>
                       {WAVES.map((w, i) => (
                         <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground">
                           {genFmt(genVals[i] ?? null)}
