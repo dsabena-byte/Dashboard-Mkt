@@ -320,15 +320,15 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
     { label: "Índice de precio · Low", get: (s) => s?.ip.Low ?? null, fmt: i0 },
   ];
 
-  // Tabla de mercado standalone (misma estructura/indicadores) para una serie dada.
-  // Se usa para la U12 (MAT, año móvil). Las olas sin dato muestran "—".
+  // Bloque de mercado standalone y COLAPSABLE de forma independiente (<details>).
+  // Tocando el título se contrae/expande. Se usa para mensual y U12 (MAT).
   const mercadoTable = (s: Map<string, DreanMesSeg>, title: string, subtitle: string) => (
-    <section className="overflow-hidden rounded-xl border bg-card">
-      <div className="border-b px-4 py-3">
-        <h3 className="text-sm font-bold tracking-tight">{title}</h3>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>
-      </div>
-      <div className="overflow-x-auto p-4">
+    <details open className="overflow-hidden rounded-xl border bg-card">
+      <summary className="cursor-pointer select-none px-4 py-3 marker:text-muted-foreground">
+        <span className="text-sm font-bold tracking-tight">{title}</span>
+        <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">{subtitle}</span>
+      </summary>
+      <div className="overflow-x-auto border-t p-4">
         <table className="w-full table-fixed text-xs">
           <colgroup>
             <col className="w-[16%]" />
@@ -363,17 +363,16 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
   );
 
-  return (
-    <div className="space-y-5">
+  // Bloque Kantar standalone (la parte de marca, siempre visible).
+  const kantarTable = () => (
     <section className="overflow-hidden rounded-xl border bg-card">
       <div className="border-b px-4 py-3">
-        <h3 className="text-sm font-bold tracking-tight">Lavado — Salud de Marca (Kantar) vs Mercado, en el tiempo</h3>
+        <h3 className="text-sm font-bold tracking-tight">Lavado — Salud de Marca (Kantar)</h3>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          Drean. Columnas = olas de medición de Salud de Marca. La data de mercado (GFK) aparece donde tenemos serie
-          (desde 2025); las olas previas quedan sin dato de mercado.
+          Drean. Columnas = olas de medición. Debajo de cada valor, el desvío vs la ola anterior.
         </p>
       </div>
       <div className="overflow-x-auto p-4">
@@ -393,11 +392,6 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td colSpan={1 + WAVES.length} className="px-2 pb-1 pt-3">
-                <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Salud de Marca · Kantar</span>
-              </td>
-            </tr>
             {kantar.map((r) => {
               const vals = WAVES.map((w) => r.get(w));
               const prevs = prevAvail(vals);
@@ -413,39 +407,27 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
                 </tr>
               );
             })}
-            <tr>
-              <td colSpan={1 + WAVES.length} className="px-2 pb-1 pt-4">
-                <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Mercado · GFK (Drean)</span>
-              </td>
-            </tr>
-            {mkt.map((r) => {
-              const vals = WAVES.map((w) => r.get(serie.get(w.mes)));
-              const prevs = prevAvail(vals);
-              return (
-                <tr key={r.label} className="border-t">
-                  <td className="px-2 py-1.5 text-foreground">{r.label}</td>
-                  {WAVES.map((w, i) => (
-                    <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground/90">
-                      {r.fmt(vals[i] ?? null)}
-                      <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
           </tbody>
         </table>
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          Objetivo: ver qué variable de mercado se mueve junto a cada indicador de Salud de Marca para construir mejores
-          conexiones. Kantar transcrito del tracking; mercado GFK mensual.
-        </p>
       </div>
     </section>
-    {mercadoTable(
-      serieU12,
-      "Lavado — Mercado · GFK · U12 (año móvil)",
-      "Drean. Mismos indicadores, pero en MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola. Las olas sin serie MAT quedan en “—”.",
-    )}
+  );
+
+  // Tres bloques independientes: Kantar (marca, siempre visible) y dos de Mercado
+  // (mensual y U12), cada uno colapsable por separado para enfocar el análisis.
+  return (
+    <div className="space-y-5">
+      {kantarTable()}
+      {mercadoTable(
+        serie,
+        "Lavado — Mercado · GFK (mensual)",
+        "Drean. Valor del mes de cada ola. Tocá el título para contraer/expandir este bloque.",
+      )}
+      {mercadoTable(
+        serieU12,
+        "Lavado — Mercado · GFK · U12 (año móvil)",
+        "Drean. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.",
+      )}
     </div>
   );
 }
