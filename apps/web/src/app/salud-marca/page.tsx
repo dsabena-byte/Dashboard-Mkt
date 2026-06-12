@@ -323,6 +323,9 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
     { label: "Índice de precio · Mid", get: (s) => s?.ip.Mid ?? null, fmt: i0 },
     { label: "Índice de precio · Low", get: (s) => s?.ip.Low ?? null, fmt: i0 },
   ];
+  // Grupos de indicadores de mercado, separados visualmente con un encabezado/línea.
+  const mktGroups: Record<string, string> = { vs: "Value Share", us: "Unit Share", ip: "Índice de Precio" };
+  const mktGroupOf = (l: string) => (l.startsWith("Value") ? "vs" : l.startsWith("Unit") ? "us" : "ip");
 
   // Bloque de mercado standalone y COLAPSABLE de forma independiente (<details>).
   // Tocando el título se contrae/expande. Se usa para mensual y U12 (MAT).
@@ -349,19 +352,30 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
             </tr>
           </thead>
           <tbody>
-            {mkt.map((r) => {
+            {mkt.map((r, ri) => {
+              const grp = mktGroupOf(r.label);
+              const newGroup = ri === 0 || mktGroupOf(mkt[ri - 1]!.label) !== grp;
               const vals = WAVES.map((w) => r.get(s.get(w.mes)));
               const prevs = prevAvail(vals);
               return (
-                <tr key={r.label} className="border-t">
-                  <td className="whitespace-nowrap px-2 py-1.5 text-foreground">{r.label}</td>
-                  {WAVES.map((w, i) => (
-                    <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground/90">
-                      {r.fmt(vals[i] ?? null)}
-                      <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
-                    </td>
-                  ))}
-                </tr>
+                <Fragment key={r.label}>
+                  {newGroup && (
+                    <tr className={ri === 0 ? "" : "border-t-2 border-foreground/25"}>
+                      <td colSpan={1 + WAVES.length} className="whitespace-nowrap px-2 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wide text-primary">
+                        {mktGroups[grp]}
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="border-t">
+                    <td className="whitespace-nowrap px-2 py-1.5 pl-4 text-foreground">{r.label}</td>
+                    {WAVES.map((w, i) => (
+                      <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground/90">
+                        {r.fmt(vals[i] ?? null)}
+                        <Delta curr={vals[i] ?? null} prev={prevs[i] ?? null} />
+                      </td>
+                    ))}
+                  </tr>
+                </Fragment>
               );
             })}
           </tbody>
