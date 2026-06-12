@@ -87,6 +87,66 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
+// Tabla del modelo de construcción de marca (reutilizable): conexión de KPIs de
+// comunicación/tienda/mercado con las dimensiones de marca (Saliencia → Poder → Intención).
+function BrandBuildTable({ brandModel, idx, label, title, subtitle }: {
+  brandModel: ReturnType<typeof buildBrandModel>;
+  idx: number;
+  label: string;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-bold tracking-tight">
+          {title}
+          {subtitle && <span className="ml-2 text-[11px] font-normal text-muted-foreground">{subtitle}</span>}
+        </h3>
+      </div>
+      <div className="overflow-x-auto p-4">
+        <table className="w-full table-fixed text-xs">
+          <colgroup>
+            <col className="w-[72%]" />
+            <col className="w-[28%]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className="px-2 py-2 text-left">Dimensión / Indicador</th>
+              <th className="px-2 py-2 text-right">{label}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {brandModel.map((comp) => (
+              <Fragment key={comp.title}>
+                <tr>
+                  <td colSpan={2} className="px-2 pb-1 pt-4">
+                    <span className="text-[13px] font-bold uppercase tracking-wide text-primary">{comp.title}</span>
+                    <span className="ml-2 text-[10px] font-normal normal-case text-muted-foreground">{comp.subtitle}</span>
+                  </td>
+                </tr>
+                {comp.rows.map((r) => (
+                  <tr key={r.label} className="border-t">
+                    <td className="px-2 py-1.5">
+                      <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : r.kind === "Físico" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
+                        {r.kind === "Mental" ? "Comunicación" : r.kind === "Físico" ? "Tienda" : "Mercado"}
+                      </span>
+                      <span className="text-foreground">{r.label}</span>
+                    </td>
+                    <td className="border-l px-2 py-1.5 text-right font-semibold tabular-nums text-foreground">
+                      {r.cells[idx]?.display ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default async function SaludMarcaPage({ searchParams }: { searchParams?: { tab?: string; view?: string } }) {
   const tab = TABS.find((t) => t.key === searchParams?.tab) ?? TABS[0];
 
@@ -97,6 +157,24 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
       ["evolucion", "Evolución · Salud de Marca vs Mercado"],
       ["competencia", "Competencia"],
     ];
+    // Para la vista Evolución: además de Kantar + U12, mostramos abajo el modelo de
+    // construcción de marca de Lavado (conexión KPIs de comunicación ↔ dimensiones).
+    let brandModelLavado: ReturnType<typeof buildBrandModel> | null = null;
+    if (view === "evolucion") {
+      const [floorShare, cb, brandMix, pautaByCat] = await Promise.all([
+        safe(getFloorShareU4M(), null as Awaited<ReturnType<typeof getFloorShareU4M>> | null),
+        safe(getCbU3M(), null as Awaited<ReturnType<typeof getCbU3M>> | null),
+        safe(getOrganicPilarMix(), null),
+        safe(getPautaByCategoria(), null),
+      ]);
+      const [webByCat, influencia, canal, mercado] = await Promise.all([
+        safe(getWebByCategoria(), null),
+        safe(getInfluenciaTotals(), null),
+        safe(getCanalTotals(), null),
+        safe(getMercadoByCategoria(), null),
+      ]);
+      brandModelLavado = buildBrandModel(pautaByCat, brandMix, floorShare, cb, webByCat, influencia, canal, mercado);
+    }
     return (
       <div className="space-y-5">
         <Header tab={tab} />
@@ -117,9 +195,20 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
         {view === "competencia" ? (
           <CompetenciaView pos={await safe(getPosicionamiento("Lavado", LAVADO_BRANDS), { mesMercado: null, rows: [] })} />
         ) : (
-          <EvolucionView
-            serieU12={await safe(getDreanSerie("Lavado", "MAT"), new Map<string, DreanMesSeg>())}
-          />
+          <>
+            <EvolucionView
+              serieU12={await safe(getDreanSerie("Lavado", "MAT"), new Map<string, DreanMesSeg>())}
+            />
+            {brandModelLavado && (
+              <BrandBuildTable
+                brandModel={brandModelLavado}
+                idx={0}
+                label="Lavado"
+                title="Construcción de Marca (Comunicación) — Lavado"
+                subtitle="Conexión KPIs ↔ dimensiones (Saliencia → Poder → Intención). Medición desde ene-26; lectura direccional, todavía sin calibrar contra olas."
+              />
+            )}
+          </>
         )}
       </div>
     );
@@ -144,57 +233,13 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
   return (
     <div className="space-y-5">
       <Header tab={tab} />
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="border-b px-4 py-3">
-          <h3 className="text-sm font-bold tracking-tight">
-            {esMarca ? "Marca — Drean general" : tab.label}
-            {esMarca && (
-              <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                ponderado por categoría (Lavado 60 / Refrigeración 30 / Cocción 10)
-              </span>
-            )}
-          </h3>
-        </div>
-        <div className="overflow-x-auto p-4">
-          <table className="w-full table-fixed text-xs">
-            <colgroup>
-              <col className="w-[72%]" />
-              <col className="w-[28%]" />
-            </colgroup>
-            <thead>
-              <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <th className="px-2 py-2 text-left">Dimensión / Indicador</th>
-                <th className="px-2 py-2 text-right">{tab.label}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {brandModel.map((comp) => (
-                <Fragment key={comp.title}>
-                  <tr>
-                    <td colSpan={2} className="px-2 pb-1 pt-4">
-                      <span className="text-[13px] font-bold uppercase tracking-wide text-primary">{comp.title}</span>
-                      <span className="ml-2 text-[10px] font-normal normal-case text-muted-foreground">{comp.subtitle}</span>
-                    </td>
-                  </tr>
-                  {comp.rows.map((r) => (
-                    <tr key={r.label} className="border-t">
-                      <td className="px-2 py-1.5">
-                        <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : r.kind === "Físico" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
-                          {r.kind === "Mental" ? "Comunicación" : r.kind === "Físico" ? "Tienda" : "Mercado"}
-                        </span>
-                        <span className="text-foreground">{r.label}</span>
-                      </td>
-                      <td className="border-l px-2 py-1.5 text-right font-semibold tabular-nums text-foreground">
-                        {r.cells[tab.idx]?.display ?? "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <BrandBuildTable
+        brandModel={brandModel}
+        idx={tab.idx}
+        label={tab.label}
+        title={esMarca ? "Marca — Drean general" : tab.label}
+        subtitle={esMarca ? "ponderado por categoría (Lavado 60 / Refrigeración 30 / Cocción 10)" : undefined}
+      />
     </div>
   );
 }
