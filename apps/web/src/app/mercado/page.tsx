@@ -20,8 +20,7 @@ const METRICS: Array<{ key: MetricKey; label: string; short: string; suffix: str
 ];
 
 const CAT_ORDER = ["Lavado", "Refrigeración", "Cocción"];
-// "Total" = categoría completa (sin abrir por segmento). Va último.
-const SEG_ORDER = ["High", "Mid", "Low", "Total"];
+const SEG_ORDER = ["High", "Mid", "Low"];
 
 // Definición de segmentos por categoría.
 const SEG_DESC: Record<string, Record<string, string>> = {
@@ -226,6 +225,8 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
   const groups = new Map<string, MercadoRow[]>();
   for (const r of rows) {
     if (r.categoria !== selected) continue;
+    // "Total" (categoría completa) se analiza en Salud de Marca, no como segmento acá.
+    if (r.segmento === "Total") continue;
     const k = `${r.categoria}__${r.segmento}`;
     const arr = groups.get(k);
     if (arr) arr.push(r);
@@ -316,16 +317,12 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
         })
         .map(([key, grp]) => {
         const [categoria, segmento] = key.split("__");
-        // último mes del grupo → ranking de marcas por value share (o unit share si
-        // el grupo no tiene value share, p. ej. el segmento "Total" solo trae unidades).
+        // último mes del grupo → ranking de marcas por value share
         const lastMes = grp.reduce((m, r) => (r.mes > m ? r.mes : m), grp[0]!.mes);
-        const rankBy = (r: MercadoRow) => (r.value_share ?? r.unit_share) ?? 0;
         const allRanked = grp
           .filter((r) => r.mes === lastMes)
-          .sort((a, b) => rankBy(b) - rankBy(a))
+          .sort((a, b) => (b.value_share ?? 0) - (a.value_share ?? 0))
           .map((r) => r.marca);
-        // Solo las métricas con algún dato en el grupo (Total solo tiene unit share).
-        const metrics = METRICS.filter((m) => grp.some((r) => r[m.key] != null));
         // Color por marca, compartido entre líneas, barras apiladas y leyenda.
         const colorOf: Record<string, string> = {};
         let pi = 0;
@@ -344,7 +341,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
               </span>
             </h3>
             <div className="space-y-6">
-              {metrics.map((m) => {
+              {METRICS.map((m) => {
                 const isShare = m.key !== "index_price";
                 return (
                   <div key={m.key} className="grid gap-4 lg:grid-cols-[1fr_15rem]">
