@@ -69,7 +69,7 @@ const POS_DIMS: Array<{ title: string; subtitle: string; rows: PosRow[] }> = [
 // Significancia 40% · Diferenciación 30% · Saliencia 30%, en índice base 100).
 // "2024" del tracking = Nov 2024 (ola nov-24); "2025" = Nov 2025 (ola nov-25).
 const WAVES = [
-  { label: "nov-23", mes: "2023-11-01", tom: 54, som: 80, int: 34, poder: 18.4, salud: null, sig: 138, dif: 109, sal: 262 },
+  { label: "nov-23", mes: "2023-11-01", tom: 54, som: 80, int: 34, poder: 18.4, salud: 46.6, sig: 138, dif: 109, sal: 262 },
   { label: "jun-24", mes: "2024-06-01", tom: 53, som: 77, int: 43, poder: 19.9, salud: 48.2, sig: 151, dif: 107, sal: 251 },
   { label: "nov-24", mes: "2024-11-01", tom: 44, som: 74, int: 40, poder: 19.2, salud: 44.3, sig: 147, dif: 115, sal: 232 },
   { label: "jun-25", mes: "2025-06-01", tom: 45, som: 74, int: 38, poder: 19.6, salud: 44.2, sig: 143, dif: 107, sal: 246 },
