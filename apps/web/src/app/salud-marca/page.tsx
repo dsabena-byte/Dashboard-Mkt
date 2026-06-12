@@ -259,15 +259,30 @@ function CompetenciaView({ pos }: { pos: { mesMercado: string | null; rows: PosB
 // Vista evolución: Salud de Marca Kantar (Drean Lavado) vs variables de mercado,
 // por ola de medición (columnas = momentos). Sirve para ver qué variable de
 // mercado se mueve junto a cada indicador de salud de marca.
+// Variación de la última medición vs la anterior (último par de valores no nulos).
+// Flechita con color: ▲ verde (creció) / ▼ rojo (bajó) / ▬ gris (se mantuvo), + % de cambio.
+function Trend({ values }: { values: (number | null)[] }) {
+  const nn = values.filter((v): v is number => v != null);
+  if (nn.length < 2) return <span className="text-muted-foreground/40">—</span>;
+  const last = nn[nn.length - 1]!;
+  const prev = nn[nn.length - 2]!;
+  const delta = last - prev;
+  const dir = delta === 0 ? "flat" : delta > 0 ? "up" : "down";
+  const icon = dir === "up" ? "▲" : dir === "down" ? "▼" : "▬";
+  const color = dir === "up" ? "text-emerald-600" : dir === "down" ? "text-red-600" : "text-muted-foreground";
+  const pct = prev !== 0 ? (delta / prev) * 100 : null;
+  const label = pct == null ? (delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)) : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+  return (
+    <span className={`inline-flex items-center gap-0.5 tabular-nums ${color}`}>
+      <span className="text-[8px] leading-none">{icon}</span>
+      {label}
+    </span>
+  );
+}
+
 function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
-  const facv = (v: number | null) => (v == null ? 1 : v / 100);
-  const poderMercado = (s?: DreanMesSeg): number | null => {
-    if (!s || (s.vs.High == null && s.vs.Mid == null)) return null;
-    return ((s.vs.High ?? 0) + (s.vs.Mid ?? 0)) * facv(s.ip.High) * facv(s.ip.Mid) * facv(s.ip.Low);
-  };
   const p1 = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
   const i0 = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
-  const n1 = (v: number | null) => (v == null ? "—" : v.toFixed(1));
 
   // Filas Kantar. Las de funnel/poder/salud van en %; los componentes de la hélice
   // (Significancia/Diferenciación/Saliencia) van como índice (base 100, sin %).
@@ -296,7 +311,6 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
     { label: "Índice de precio · High", get: (s) => s?.ip.High ?? null, fmt: i0 },
     { label: "Índice de precio · Mid", get: (s) => s?.ip.Mid ?? null, fmt: i0 },
     { label: "Índice de precio · Low", get: (s) => s?.ip.Low ?? null, fmt: i0 },
-    { label: "Poder de Marca (mercado)", get: poderMercado, fmt: n1 },
   ];
 
   return (
@@ -311,10 +325,11 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
       <div className="overflow-x-auto p-4">
         <table className="w-full table-fixed text-xs">
           <colgroup>
-            <col className="w-[28%]" />
+            <col className="w-[24%]" />
             {WAVES.map((w) => (
-              <col key={w.label} className="w-[18%]" />
+              <col key={w.label} className="w-[14%]" />
             ))}
+            <col className="w-[20%]" />
           </colgroup>
           <thead>
             <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -322,11 +337,12 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
               {WAVES.map((w) => (
                 <th key={w.label} className="px-2 py-2 text-right">{w.label}</th>
               ))}
+              <th className="px-2 py-2 text-right">Var. vs ant.</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td colSpan={1 + WAVES.length} className="px-2 pb-1 pt-3">
+              <td colSpan={2 + WAVES.length} className="px-2 pb-1 pt-3">
                 <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Salud de Marca · Kantar</span>
               </td>
             </tr>
@@ -338,10 +354,13 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
                     {r.fmt(r.get(w))}
                   </td>
                 ))}
+                <td className="px-2 py-1.5 text-right">
+                  <Trend values={WAVES.map((w) => r.get(w))} />
+                </td>
               </tr>
             ))}
             <tr>
-              <td colSpan={1 + WAVES.length} className="px-2 pb-1 pt-4">
+              <td colSpan={2 + WAVES.length} className="px-2 pb-1 pt-4">
                 <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Mercado · GFK (Drean)</span>
               </td>
             </tr>
@@ -353,6 +372,9 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
                     {r.fmt(r.get(serie.get(w.mes)))}
                   </td>
                 ))}
+                <td className="px-2 py-1.5 text-right">
+                  <Trend values={WAVES.map((w) => r.get(serie.get(w.mes)))} />
+                </td>
               </tr>
             ))}
           </tbody>
