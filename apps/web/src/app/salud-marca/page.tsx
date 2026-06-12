@@ -73,7 +73,6 @@ const WAVES = [
   { label: "nov-24", mes: "2024-11-01", tom: 44, som: 74, int: 40, poder: 19.2, salud: 44.3, sig: 147, dif: 115, sal: 232 },
   { label: "jun-25", mes: "2025-06-01", tom: 45, som: 74, int: 38, poder: 19.6, salud: 44.2, sig: 143, dif: 107, sal: 246 },
   { label: "nov-25", mes: "2025-11-01", tom: 40.1, som: 69.1, int: 40, poder: 17.4, salud: 41.7, sig: 127, dif: 106, sal: 237 },
-  { label: "nov-26", mes: "2026-11-01", tom: 40, som: 71, int: 40, poder: 18, salud: 42.3, sig: null, dif: null, sal: null },
 ] as const;
 type Wave = (typeof WAVES)[number];
 
@@ -314,7 +313,7 @@ function EvolucionView({ serie }: { serie: Map<string, DreanMesSeg> }) {
           <colgroup>
             <col className="w-[28%]" />
             {WAVES.map((w) => (
-              <col key={w.label} className="w-[14.4%]" />
+              <col key={w.label} className="w-[18%]" />
             ))}
           </colgroup>
           <thead>
