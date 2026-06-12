@@ -297,18 +297,19 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
   // (Significancia/Diferenciación/Saliencia) van como índice (base 100, sin %).
   const kPct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
   const kIdx = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
-  // Estimación baseline desde mercado (señal robusta solo para TOM y SOM):
-  //   TOM ≈ 9,8 + 1,074·(0,55·VS_High + 0,35·VS_Mid + 0,10·VS_Low)   ±3,5
-  //   SOM ≈ 35,2 + 1,112·US_Total                                     ±1,3
+  // Estimación baseline desde mercado (señal robusta solo para TOM y SOM), calibrada por
+  // LOO cross-validation sobre las olas medidas (Low se descarta: no aporta a TOM):
+  //   TOM ≈ 13,15 + 1,237·(0,80·VS_High + 0,20·VS_Mid)   R2=0,89  ±3,0
+  //   SOM ≈ 35,2 + 1,112·US_Total                        R2=0,95  ±1,3
   // Es una línea base de inercia comercial; no captura medios/tienda/comunicación.
   const estTom = (s?: DreanMesSeg): number | null => {
-    const H = s?.vs.High, M = s?.vs.Mid, L = s?.vs.Low;
-    if (H == null || M == null || L == null) return null;
-    return 9.8 + 1.074 * (0.55 * H + 0.35 * M + 0.1 * L);
+    const H = s?.vs.High, M = s?.vs.Mid;
+    if (H == null || M == null) return null;
+    return 13.15 + 1.237 * (0.8 * H + 0.2 * M);
   };
   const estSom = (s?: DreanMesSeg): number | null => (s?.usTotal == null ? null : 35.15 + 1.112 * s.usTotal);
   const kantar: Array<{ label: string; get: (w: Wave) => number | null; fmt: (v: number | null) => string; bold?: boolean; est?: (s?: DreanMesSeg) => number | null; band?: number }> = [
-    { label: "Top of Mind", get: (w) => w.tom, fmt: kPct, est: estTom, band: 3.5 },
+    { label: "Top of Mind", get: (w) => w.tom, fmt: kPct, est: estTom, band: 3.0 },
     { label: "Share of Mind", get: (w) => w.som, fmt: kPct, est: estSom, band: 1.3 },
     { label: "Intención de compra", get: (w) => w.int, fmt: kPct },
     { label: "Poder de Marca", get: (w) => w.poder, fmt: kPct },
@@ -479,8 +480,8 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
         </table>
         <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
           <span className="font-semibold text-blue-600">≈</span> = estimación baseline desde el mercado proyectado (solo
-          <strong> TOM</strong> y <strong>SOM</strong>, las que tienen señal robusta). TOM ≈ 9,8 + 1,074·(0,55·VS<sub>High</sub> +
-          0,35·VS<sub>Mid</sub> + 0,10·VS<sub>Low</sub>) ±3,5 · SOM ≈ 35,2 + 1,112·US<sub>Total</sub> ±1,3. Es la
+          <strong> TOM</strong> y <strong>SOM</strong>, las que tienen señal robusta; calibradas por LOO cross-validation).
+          TOM ≈ 13,2 + 1,237·(0,80·VS<sub>High</sub> + 0,20·VS<sub>Mid</sub>) ±3,0 · SOM ≈ 35,2 + 1,112·US<sub>Total</sub> ±1,3. Es la
           <em> inercia comercial</em>: no incluye medios, tienda ni comunicación. Se completa al cargar el mercado proyectado
           (segmentos High/Mid/Low y Total) en el bloque U12 para esa ola.
         </p>
