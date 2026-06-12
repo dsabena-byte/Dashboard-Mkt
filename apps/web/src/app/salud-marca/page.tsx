@@ -118,7 +118,6 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
           <CompetenciaView pos={await safe(getPosicionamiento("Lavado", LAVADO_BRANDS), { mesMercado: null, rows: [] })} />
         ) : (
           <EvolucionView
-            serie={await safe(getDreanSerie("Lavado"), new Map<string, DreanMesSeg>())}
             serieU12={await safe(getDreanSerie("Lavado", "MAT"), new Map<string, DreanMesSeg>())}
           />
         )}
@@ -290,7 +289,7 @@ function Delta({ curr, prev }: { curr: number | null; prev: number | null }) {
   return <span className={`ml-1 text-[9px] ${color}`}>{icon}{label}</span>;
 }
 
-function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; serieU12: Map<string, DreanMesSeg> }) {
+function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
   const p1 = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
   const i0 = (v: number | null) => (v == null ? "—" : `${Math.round(v)}`);
 
@@ -462,13 +461,8 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
     <div className="space-y-5">
       {kantarTable()}
       {mercadoTable(
-        serie,
-        "Lavado — Mercado · GFK (mensual)",
-        "Drean. Valor del mes de cada ola. Tocá el título para contraer/expandir este bloque.",
-      )}
-      {mercadoTable(
         serieU12,
-        "Lavado — Mercado · GFK · U12 (año móvil)",
+        "Lavado — Mercado · GFK (U12 · año móvil)",
         "Drean. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.",
       )}
     </div>
