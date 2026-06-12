@@ -351,10 +351,10 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
   // Estimación baseline desde mercado, con BLEND 50/50 (metodología Kantar): la salud de
   // marca de una ola pondera 50% compradores de los últimos 12m (U12 en T) + 50% de 12-24m
   // (U12 en T-12, un año antes). Calibrado por OLS sobre las olas medidas:
-  //   driver_TOM = 0,5·D(T) + 0,5·D(T-12),  D = 0,8·VS_High + 0,2·VS_Mid
-  //   TOM ≈ 11,08 + 1,172·driver_TOM     (R2=0,83, LOO 3,8)
+  //   driver_TOM = 0,5·D(T) + 0,5·D(T-12),  D = 0,85·VS_High + 0,15·VS_Mid
+  //   TOM ≈ 13,23 + 1,154·driver_TOM     (R2=0,90, LOO 2,3; 5 olas incl. nov-23)
   //   driver_SOM = 0,5·US_Total(T) + 0,5·US_Total(T-12)
-  //   SOM ≈ 34,84 + 1,051·driver_SOM     (R2=0,88, LOO 1,9)
+  //   SOM ≈ 34,84 + 1,051·driver_SOM     (R2=0,88, LOO 1,9; 4 olas, falta US_Total nov-22)
   // Es inercia comercial; no captura medios/tienda/comunicación.
   const prev12 = (mes: string) => { const [y, m] = mes.split("-"); return `${Number(y) - 1}-${m}-01`; };
   const blend = (fn: (s?: DreanMesSeg) => number | null, serie: Map<string, DreanMesSeg>, mes: string): number | null => {
@@ -363,18 +363,18 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
   };
   const dTom = (s?: DreanMesSeg): number | null => {
     const H = s?.vs.High, M = s?.vs.Mid;
-    return H == null || M == null ? null : 0.8 * H + 0.2 * M;
+    return H == null || M == null ? null : 0.85 * H + 0.15 * M;
   };
   const estTom = (serie: Map<string, DreanMesSeg>, mes: string): number | null => {
     const d = blend(dTom, serie, mes);
-    return d == null ? null : 11.08 + 1.172 * d;
+    return d == null ? null : 13.23 + 1.154 * d;
   };
   const estSom = (serie: Map<string, DreanMesSeg>, mes: string): number | null => {
     const d = blend((s) => s?.usTotal ?? null, serie, mes);
     return d == null ? null : 34.84 + 1.051 * d;
   };
   const kantar: Array<{ label: string; get: (w: Wave) => number | null; fmt: (v: number | null) => string; bold?: boolean; est?: (serie: Map<string, DreanMesSeg>, mes: string) => number | null; band?: number }> = [
-    { label: "Top of Mind", get: (w) => w.tom, fmt: kPct, est: estTom, band: 3.8 },
+    { label: "Top of Mind", get: (w) => w.tom, fmt: kPct, est: estTom, band: 2.3 },
     { label: "Share of Mind", get: (w) => w.som, fmt: kPct, est: estSom, band: 1.9 },
     { label: "Intención de compra", get: (w) => w.int, fmt: kPct },
     { label: "Poder de Marca", get: (w) => w.poder, fmt: kPct },
@@ -547,8 +547,8 @@ function EvolucionView({ serieU12 }: { serieU12: Map<string, DreanMesSeg> }) {
         <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
           <span className="font-semibold text-blue-600">≈</span> = estimación baseline desde el mercado proyectado (solo
           <strong> TOM</strong> y <strong>SOM</strong>, las que tienen señal robusta). Usa el <strong>blend 50/50</strong> de
-          la metodología Kantar: driver = 0,5·U12(T) + 0,5·U12(T-12, un año antes). TOM ≈ 11,1 + 1,172·driver
-          (D = 0,80·VS<sub>High</sub> + 0,20·VS<sub>Mid</sub>) ±3,8 · SOM ≈ 34,8 + 1,051·driver (US<sub>Total</sub>) ±1,9. Es la
+          la metodología Kantar: driver = 0,5·U12(T) + 0,5·U12(T-12, un año antes). TOM ≈ 13,2 + 1,154·driver
+          (D = 0,85·VS<sub>High</sub> + 0,15·VS<sub>Mid</sub>) ±2,3 · SOM ≈ 34,8 + 1,051·driver (US<sub>Total</sub>) ±1,9. Es la
           <em> inercia comercial</em>: no incluye medios, tienda ni comunicación. Se completa al cargar el mercado proyectado
           (segmentos High/Mid/Low y Total) en el bloque U12 para esa ola.
         </p>
