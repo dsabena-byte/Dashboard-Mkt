@@ -326,6 +326,27 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
   // Grupos de indicadores de mercado, separados visualmente con un encabezado/línea.
   const mktGroups: Record<string, string> = { vs: "Value Share", us: "Unit Share", ip: "Índice de Precio" };
   const mktGroupOf = (l: string) => (l.startsWith("Value") ? "vs" : l.startsWith("Unit") ? "us" : "ip");
+  // Indicador general (ponderado) por grupo:
+  //   Value Share = High·0,50 + Mid·0,35 + Low·0,15
+  //   Unit Share  = High·0,25 + Mid·0,60 + Low·0,15
+  //   Índice      = (IP_High/100) · (IP_Mid/100) · (IP_Low/100)  (producto de índices)
+  // Requiere los 3 segmentos; si falta alguno, devuelve null ("—").
+  const general = (sv: DreanMesSeg | undefined, grp: string): number | null => {
+    if (!sv) return null;
+    if (grp === "vs") {
+      const { High, Mid, Low } = sv.vs;
+      if (High == null || Mid == null || Low == null) return null;
+      return High * 0.5 + Mid * 0.35 + Low * 0.15;
+    }
+    if (grp === "us") {
+      const { High, Mid, Low } = sv.us;
+      if (High == null || Mid == null || Low == null) return null;
+      return High * 0.25 + Mid * 0.6 + Low * 0.15;
+    }
+    const { High, Mid, Low } = sv.ip;
+    if (High == null || Mid == null || Low == null) return null;
+    return (High / 100) * (Mid / 100) * (Low / 100);
+  };
 
   // Bloque de mercado standalone y COLAPSABLE de forma independiente (<details>).
   // Tocando el título se contrae/expande. Se usa para mensual y U12 (MAT).
@@ -355,8 +376,12 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
             {mkt.map((r, ri) => {
               const grp = mktGroupOf(r.label);
               const newGroup = ri === 0 || mktGroupOf(mkt[ri - 1]!.label) !== grp;
+              const lastOfGroup = ri === mkt.length - 1 || mktGroupOf(mkt[ri + 1]!.label) !== grp;
               const vals = WAVES.map((w) => r.get(s.get(w.mes)));
               const prevs = prevAvail(vals);
+              const genVals = lastOfGroup ? WAVES.map((w) => general(s.get(w.mes), grp)) : [];
+              const genPrev = lastOfGroup ? prevAvail(genVals) : [];
+              const genFmt = (v: number | null) => (v == null ? "—" : grp === "ip" ? v.toFixed(2) : `${v.toFixed(1)}%`);
               return (
                 <Fragment key={r.label}>
                   {newGroup && (
@@ -375,6 +400,17 @@ function EvolucionView({ serie, serieU12 }: { serie: Map<string, DreanMesSeg>; s
                       </td>
                     ))}
                   </tr>
+                  {lastOfGroup && (
+                    <tr className="border-t bg-muted/40 font-semibold">
+                      <td className="whitespace-nowrap px-2 py-1.5 pl-4 text-foreground">{mktGroups[grp]} general</td>
+                      {WAVES.map((w, i) => (
+                        <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground">
+                          {genFmt(genVals[i] ?? null)}
+                          <Delta curr={genVals[i] ?? null} prev={genPrev[i] ?? null} />
+                        </td>
+                      ))}
+                    </tr>
+                  )}
                 </Fragment>
               );
             })}
