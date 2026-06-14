@@ -52,7 +52,7 @@ function HorizontalBars({
 
 export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
   const [showAllPosts, setShowAllPosts] = useState(false);
-  const [sortBy, setSortBy] = useState<"engagement" | "fecha">("engagement");
+  const [sortBy, setSortBy] = useState<"engagement" | "fecha">("fecha");
   const [filterType, setFilterType] = useState<"all" | "feed" | "reels" | "stories">("all");
 
   function matchesType(p: { media_type: string | null }, t: typeof filterType): boolean {

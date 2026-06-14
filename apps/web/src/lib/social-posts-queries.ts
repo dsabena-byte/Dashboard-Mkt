@@ -417,6 +417,54 @@ function normalizePilar(pilar: string | null): string | null {
   return parts[0] ? applyDisplayName(parts[0]) : null;
 }
 
+// ===== Construcción orgánica de alcance / views / interacción por pilar y categoría =====
+// Suma cómo se construye cada métrica desde los posteos orgánicos (IG + FB).
+const PILAR_ORDER = ["Producto", "Branding", "Promoción", "Influencer", "Educativo"];
+function normalizeCategoria(c: string | null): string | null {
+  if (!c) return null;
+  const v = c.toLowerCase();
+  if (v.includes("lava")) return "Lavado";
+  if (v.includes("refri") || v.includes("frío") || v.includes("frio")) return "Refrigeración";
+  if (v.includes("cocc") || v.includes("cocci") || v.includes("cocin")) return "Cocción";
+  if (v.includes("brand") || v.includes("marca")) return "Brand";
+  return null;
+}
+export interface BuildupRow {
+  label: string;
+  alcance: number;
+  views: number;
+  interaccion: number;
+  posts: number;
+}
+export interface OrganicBuildup {
+  byPilar: BuildupRow[];
+  byCategoria: BuildupRow[];
+}
+type OrganicPostMin = { pilar_contenido: string | null; categoria: string | null; reach?: number | null; video_views?: number | null; engagement?: number | null };
+export function computeOrganicBuildup(posts: OrganicPostMin[]): OrganicBuildup {
+  const agg = (keyFn: (p: OrganicPostMin) => string | null, order: string[] | null): BuildupRow[] => {
+    const map = new Map<string, BuildupRow>();
+    for (const p of posts) {
+      const k = keyFn(p);
+      if (!k) continue;
+      const r = map.get(k) ?? { label: k, alcance: 0, views: 0, interaccion: 0, posts: 0 };
+      r.alcance += p.reach ?? 0;
+      r.views += p.video_views ?? 0;
+      r.interaccion += p.engagement ?? 0;
+      r.posts += 1;
+      map.set(k, r);
+    }
+    const rows = [...map.values()];
+    if (order) rows.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
+    else rows.sort((a, b) => b.alcance - a.alcance);
+    return rows;
+  };
+  return {
+    byPilar: agg((p) => normalizePilar(p.pilar_contenido), PILAR_ORDER),
+    byCategoria: agg((p) => normalizeCategoria(p.categoria), null),
+  };
+}
+
 export function computePilarStats(posts: SocialPost[]): PilarStat[] {
   const normalized = posts.map((p) => ({ ...p, pilar: normalizePilar(p.pilar) }));
   const pilars = [...new Set(normalized.map((p) => p.pilar).filter(Boolean) as string[])];

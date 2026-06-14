@@ -61,7 +61,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
   const totalVideoViews = posts.reduce((s, p) => s + (p.video_views ?? 0), 0);
   const engagementTotal = totalReactions + totalCommentsShares + totalClicks + totalVideoViews;
 
-  const [sortBy, setSortBy] = useState<"engagement" | "fecha">("engagement");
+  const [sortBy, setSortBy] = useState<"engagement" | "fecha">("fecha");
   const [filterType, setFilterType] = useState<"all" | "feed" | "reels" | "stories">("all");
 
   function matchesType(p: { media_type: string | null }, t: typeof filterType): boolean {
