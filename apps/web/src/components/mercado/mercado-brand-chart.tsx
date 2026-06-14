@@ -48,7 +48,7 @@ export function MercadoBrandChart({
           minTickGap={long ? 36 : 12}
           tickMargin={6}
         />
-        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `${v}${suffix}`} width={42} />
+        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v: number) => `${v}${suffix}`} width={42} />
         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number, n: string) => [`${v}${suffix}`, n]} />
         {others.map((b, i) => (
           <Line
