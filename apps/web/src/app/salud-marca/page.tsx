@@ -204,24 +204,6 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
       ["evolucion", "Evolución · Salud de Marca vs Mercado"],
       ["competencia", "Competencia"],
     ];
-    // Para la vista Evolución: además de Kantar + U12, mostramos abajo el modelo de
-    // construcción de marca (solo Drean: la data de comunicación es de Drean).
-    let brandModelLavado: ReturnType<typeof buildBrandModel> | null = null;
-    if (view === "evolucion" && marca === "Drean") {
-      const [floorShare, cb, brandMix, pautaByCat] = await Promise.all([
-        safe(getFloorShareU4M(), null as Awaited<ReturnType<typeof getFloorShareU4M>> | null),
-        safe(getCbU3M(), null as Awaited<ReturnType<typeof getCbU3M>> | null),
-        safe(getOrganicPilarMix(), null),
-        safe(getPautaByCategoria(), null),
-      ]);
-      const [webByCat, influencia, canal, mercado] = await Promise.all([
-        safe(getWebByCategoria(), null),
-        safe(getInfluenciaTotals(), null),
-        safe(getCanalTotals(), null),
-        safe(getMercadoByCategoria(), null),
-      ]);
-      brandModelLavado = buildBrandModel(pautaByCat, brandMix, floorShare, cb, webByCat, influencia, canal, mercado);
-    }
     return (
       <div className="space-y-5">
         <Header tab={tab} />
@@ -242,22 +224,10 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
         {view === "competencia" ? (
           <CompetenciaView pos={await safe(getPosicionamiento("Lavado", LAVADO_BRANDS), { mesMercado: null, rows: [] })} />
         ) : (
-          <>
-            <EvolucionView
-              marca={marca}
-              serieU12={await safe(getDreanSerie("Lavado", "MAT", marca.toUpperCase()), new Map<string, DreanMesSeg>())}
-            />
-            {brandModelLavado && (
-              <BrandBuildTable
-                brandModel={brandModelLavado}
-                idx={0}
-                label="Lavado"
-                kinds={["Mental"]}
-                title="Construcción de Marca (Comunicación) — Lavado"
-                subtitle="Solo KPIs de comunicación (el mercado ya está arriba). Conexión con las dimensiones (Saliencia → Poder → Intención). Medición desde ene-26; lectura direccional."
-              />
-            )}
-          </>
+          <EvolucionView
+            marca={marca}
+            serieU12={await safe(getDreanSerie("Lavado", "MAT", marca.toUpperCase()), new Map<string, DreanMesSeg>())}
+          />
         )}
       </div>
     );
