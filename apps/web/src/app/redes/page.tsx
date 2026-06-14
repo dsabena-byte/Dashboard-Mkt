@@ -10,6 +10,7 @@ import { PaginatedPostsPanel } from "@/components/social/paginated-posts-panel";
 import { BrandSentimentSummary } from "@/components/social/brand-sentiment-summary";
 import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { IgOrganicSection } from "@/components/social/ig-organic-section";
+import { OrganicBuildupPanel } from "@/components/social/organic-buildup-panel";
 import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { InsightsPanel } from "@/components/insights/insights-panel";
 import { TopContentPanel } from "@/components/insights/top-content-panel";
@@ -25,6 +26,7 @@ import {
   computeBrandStats,
   computeContentTypeSlices,
   computeKpis,
+  computeOrganicBuildup,
   computeNetStats,
   computePilarStats,
   computeSentimentByBrand,
@@ -162,6 +164,12 @@ export default async function RedesPage({ searchParams }: PageProps) {
   for (const m of igOrganic.monthlyData) bump(m.mes, m.alcance, m.engagement);
   const combinedMonthly = [...monthlyMap.values()];
 
+  // Construcción orgánica (alcance/views/interacción por pilar y categoría) + fecha de últ. dato.
+  const organicPosts = [...igOrganic.topPosts, ...fbOrganic.topPosts];
+  const organicBuildup = computeOrganicBuildup(organicPosts);
+  const organicDates = organicPosts.map((p) => p.fecha_post).filter(Boolean) as string[];
+  const ultimaActualizacion = organicDates.length ? organicDates.reduce((a, b) => (a > b ? a : b)).slice(0, 10) : null;
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -206,6 +214,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
             <p className="text-xs text-muted-foreground">
               KPIs sumados de @dreanargentina + Page Drean en el período seleccionado.
             </p>
+            {ultimaActualizacion && (
+              <p className="text-[11px] text-muted-foreground/70">Actualizado al {ultimaActualizacion}</p>
+            )}
           </div>
         </header>
 
@@ -233,6 +244,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
           </div>
         )}
       </section>
+
+      <OrganicBuildupPanel byPilar={organicBuildup.byPilar} byCategoria={organicBuildup.byCategoria} />
 
       <IgOrganicSection data={igOrganic} />
 
