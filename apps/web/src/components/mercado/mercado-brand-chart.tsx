@@ -35,12 +35,20 @@ export function MercadoBrandChart({
     return <div className="flex h-44 items-center justify-center text-xs text-muted-foreground">Sin datos.</div>;
   }
   const others = brands.filter((b) => b !== highlight);
+  const long = data.length > 24; // serie histórica larga: eje más espaciado y sin puntos
   return (
     <ResponsiveContainer width="100%" height={240}>
       <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-        <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `${v}${suffix}`} width={42} />
+        <XAxis
+          dataKey="mes"
+          stroke="hsl(var(--muted-foreground))"
+          fontSize={11}
+          interval="preserveStartEnd"
+          minTickGap={long ? 36 : 12}
+          tickMargin={6}
+        />
+        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v: number) => `${v}${suffix}`} width={42} />
         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number, n: string) => [`${v}${suffix}`, n]} />
         {others.map((b, i) => (
           <Line
@@ -54,7 +62,7 @@ export function MercadoBrandChart({
           />
         ))}
         {brands.includes(highlight) && (
-          <Line type="linear" dataKey={highlight} stroke={colors?.[highlight] ?? HIGHLIGHT} strokeWidth={3} dot={{ r: 2.5 }} connectNulls />
+          <Line type="linear" dataKey={highlight} stroke={colors?.[highlight] ?? HIGHLIGHT} strokeWidth={3} dot={long ? false : { r: 2.5 }} connectNulls />
         )}
       </LineChart>
     </ResponsiveContainer>

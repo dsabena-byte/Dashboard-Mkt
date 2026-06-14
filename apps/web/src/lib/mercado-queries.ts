@@ -24,7 +24,7 @@ export async function getMercadoRows(agregacion: "MAT" | "mensual" = "MAT"): Pro
     .select("mes, categoria, segmento, marca, unit_share, value_share, index_price, agregacion")
     .eq("agregacion", agregacion)
     .order("mes", { ascending: true })
-    .limit(20000)
+    .limit(100000)
     .returns<MercadoRow[]>();
   if (error || !data) return [];
   return data;
