@@ -213,7 +213,13 @@ function BrandLegend({ brands, colorOf }: { brands: string[]; colorOf: Record<st
 
 export default async function MercadoPage({ searchParams }: { searchParams?: { cat?: string; agg?: string } }) {
   const agg: "MAT" | "mensual" = searchParams?.agg === "MAT" ? "MAT" : "mensual";
-  const rows = await getMercadoRows(agg);
+  const rowsAll = await getMercadoRows(agg);
+  // Análisis de Mercado = histórico: excluimos meses futuros. Las proyecciones nov-26
+  // (cargadas para la estimación de Salud de Marca, solo unas pocas marcas) no son data
+  // real y, al quedar como "último mes", distorsionaban el ranking/selección de marcas.
+  const now = new Date();
+  const cutoffMes = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  const rows = rowsAll.filter((r) => r.mes <= cutoffMes);
   const esMAT = agg === "MAT";
 
   // Categorías presentes en los datos (en orden fijo)
