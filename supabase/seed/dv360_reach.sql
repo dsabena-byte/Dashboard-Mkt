@@ -1,0 +1,48 @@
+-- Seed DV360 reach — reporte 'DV360 Reach Drean' (por mes × línea, Unique Reach).
+-- Idempotente. Reach es deduplicado por mes a nivel Line Item (no sumable entre líneas sin solapamiento).
+delete from dv360_reach where source = 'dv360_report';
+
+insert into dv360_reach (mes, canal, line_item, impresiones, revenue_usd, reach, frequency, source) values
+  ('2026-04-01','Demand Gen','Drean - Producto - Promoción - Drean Week - Demand Gen - Video',335294,1994.5181,281309,1.2400,'dv360_report'),
+  ('2026-04-01','Demand Gen','Drean - Producto - Promoción - Drean Week - Demand Gen - Display',9111,60.1593,7386,1.5100,'dv360_report'),
+  ('2026-04-01','Demand Gen','Drean - Producto - Lavado - Demand Gen',4110,4.5450,4049,1.0200,'dv360_report'),
+  ('2026-04-01','Marketplace','Drean_Marketplace_Video_CPM_1080x1920_Abril_26',447219,485.2324,262628,1.7000,'dv360_report'),
+  ('2026-04-01','Marketplace','Drean_Marketplace_Video_CPM_1080x1080_Abril_26',457079,495.9305,260647,1.7500,'dv360_report'),
+  ('2026-04-01','Marketplace','Drean_Marketplace_Video_CPM_1920x1080_Abril_26',434689,471.6374,257768,1.6900,'dv360_report'),
+  ('2026-04-01','Programmatic','Drean - Producto - Lavado - Programmatic - Video',2498743,2895.1903,685648,3.6400,'dv360_report'),
+  ('2026-04-01','Programmatic','Drean - Producto - Refrigeracion - Programmatic - Video',2066736,2390.7780,593991,3.4800,'dv360_report'),
+  ('2026-04-01','Programmatic','Drean - Producto - Coccion - Programmatic - Video',1376071,1593.6011,452363,3.0400,'dv360_report'),
+  ('2026-04-01','Programmatic','Drean - Producto - Promoción - Drean Week - Programmatic',1193053,1531.0484,258314,4.6200,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Producto - Lavado - YouTube - Bumper',3083213,2020.8237,2387465,1.2900,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Producto - Lavado - YouTube - TrueView',5389939,5089.7376,2300751,2.3400,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Producto - Promoción - Drean Week - YouTube - TrueView',3120543,3036.8477,1832300,1.7000,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Brand- Video - Youtube- TrueView- CPV - Abril - 26',1992900,2144.0628,1291105,1.5400,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Producto - Promoción - Drean Week - YouTube - Bumper',1375269,708.5898,1097892,1.2500,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Producto - Refrigeracion - YouTube - TrueView',2185462,2190.2231,1087393,2.0100,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Brand- Video - Youtube- Bumper - CPM - Abril - 26',1248123,714.7459,1084304,1.1500,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Producto - Refrigeracion - YouTube - Bumper',1208880,791.3568,998440,1.2100,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Producto - Coccion - YouTube - TrueView',1598740,1460.1108,958953,1.6700,'dv360_report'),
+  ('2026-04-01','YouTube','Drean - Producto - Coccion - YouTube - Bumper',807550,528.9292,706383,1.1400,'dv360_report'),
+  ('2026-05-01','Marketplace','Drean_Marketplace_Video_CPM_1920x1080_Abril_26',2852222,3094.6592,1240788,2.3000,'dv360_report'),
+  ('2026-05-01','Marketplace','Drean_Marketplace_Video_CPM_1080x1080_Abril_26',547608,594.1544,300245,1.8200,'dv360_report'),
+  ('2026-05-01','Programmatic','Drean - Producto - Lavado - Programmatic - Video',2903964,3150.7994,651708,4.4600,'dv360_report'),
+  ('2026-05-01','Programmatic','Drean - Producto - Refrigeracion - Programmatic - Video',1569356,1702.7505,370363,4.2400,'dv360_report'),
+  ('2026-05-01','Programmatic','Drean - Producto - Coccion - Programmatic - Video',949637,1030.3557,257936,3.6800,'dv360_report'),
+  ('2026-05-01','YouTube','Drean - Producto - Lavado - YouTube - TrueView',10557544,11704.8668,3972040,2.6600,'dv360_report'),
+  ('2026-05-01','YouTube','Drean - Producto - Lavado - YouTube - Bumper',3704981,2838.0325,2967630,1.2500,'dv360_report'),
+  ('2026-05-01','YouTube','Drean - Brand- Video - Youtube- Bumper - CPM - Abril - 26',3173868,1789.7049,2680067,1.1800,'dv360_report'),
+  ('2026-05-01','YouTube','Drean - Brand- Video - Youtube- TrueView- CPV - Abril - 26',4177737,4475.6138,2473346,1.6900,'dv360_report'),
+  ('2026-05-01','YouTube','Drean - Producto - Refrigeracion - YouTube - TrueView',4783971,5326.3414,1984704,2.4100,'dv360_report'),
+  ('2026-05-01','YouTube','Drean - Producto - Refrigeracion - YouTube - Bumper',2233236,1687.9162,1837812,1.2200,'dv360_report'),
+  ('2026-05-01','YouTube','Drean - Producto - Coccion - YouTube - TrueView',2983966,3197.1642,1649762,1.8100,'dv360_report'),
+  ('2026-05-01','YouTube','Drean - Producto - Coccion - YouTube - Bumper',1503018,1023.4001,1262118,1.1900,'dv360_report'),
+  ('2026-06-01','Programmatic','Drean - Producto - Coccion - Programmatic - Video',1,0.0011,0,0.0000,'dv360_report'),
+  ('2026-06-01','Programmatic','Drean - Producto - Lavado - Programmatic - Video',2,0.0022,0,0.0000,'dv360_report'),
+  ('2026-06-01','YouTube','Drean - Producto - Lavado - YouTube - TrueView',2110117,2255.4923,1400086,1.5100,'dv360_report'),
+  ('2026-06-01','YouTube','Drean - Producto - Refrigeracion - YouTube - TrueView',1504178,1690.2831,994774,1.5100,'dv360_report'),
+  ('2026-06-01','YouTube','Drean - Producto - Lavado - YouTube - Bumper',667497,418.0634,602284,1.1100,'dv360_report'),
+  ('2026-06-01','YouTube','Drean - Producto - Refrigeracion - YouTube - Bumper',493077,313.2236,444208,1.1100,'dv360_report'),
+  ('2026-06-01','YouTube','Drean - Producto - Coccion - YouTube - Bumper',327384,209.3412,300092,1.0900,'dv360_report')
+on conflict (mes, line_item) do update set
+  canal=excluded.canal, impresiones=excluded.impresiones, revenue_usd=excluded.revenue_usd,
+  reach=excluded.reach, frequency=excluded.frequency, source=excluded.source, updated_at=now();
