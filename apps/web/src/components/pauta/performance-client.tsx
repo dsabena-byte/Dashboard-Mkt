@@ -20,7 +20,7 @@ import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
 import { PautaInsightsPanel } from "@/components/pauta/pauta-insights-panel";
 import { computePautaInsights } from "@/lib/pauta-insights";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
-import { type Dv360Row, aggregateDv360Funnels, aggregateDv360Channels } from "@/lib/dv360-queries";
+import { type Dv360Row, aggregateDv360Funnels, aggregateDv360Channels } from "@/lib/dv360-data";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const fmtUSD = (n: number): string =>
