@@ -20,7 +20,11 @@ import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
 import { PautaInsightsPanel } from "@/components/pauta/pauta-insights-panel";
 import { computePautaInsights } from "@/lib/pauta-insights";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
+import { type Dv360VideoRow, aggregateDv360Funnels } from "@/lib/dv360-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+
+const fmtUSD = (n: number): string =>
+  `US$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function fmtNum(n: number): string {
   return formatNumber(Math.round(n));
@@ -62,7 +66,7 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
   );
 }
 
-export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360VideoRow[]; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -115,6 +119,9 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
     );
     return { ...a, count: vids.length };
   }, [metaPaid]);
+  // Embudo de visibilidad de video de DV360, separado por fuente (YouTube/TrueView
+  // vs Programmatic Video). Costo en USD (así viene del reporte de DV360).
+  const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360), [dv360]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -580,6 +587,66 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
                     })}
                   </tbody>
                 </table>
+              </div>
+            </>
+          )}
+
+          <SectionTitle>Visibilidad real de video · DV360</SectionTitle>
+          {dv360Funnels.length === 0 ? (
+            <p className="mb-3 text-[10px] text-muted-foreground">
+              Se completa con el reporte de DV360 (YouTube/TrueView + programmático). Costo en USD, sin comisión de agencia ni impuestos.
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Embudo real de DV360 separado por fuente, porque <strong>TrueView es skippable</strong> y su &quot;completion&quot; no es
+                comparable con el video programmático. <strong>CPM efectivo en USD</strong> por hito (costo de medios, sin agencia ni
+                impuestos).
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {dv360Funnels.map((f) => {
+                  const rows: Array<[string, number]> = [
+                    ["Impresiones", f.impresiones],
+                    ["Reproducciones (starts)", f.starts],
+                    ["Vieron 25%", f.q25],
+                    ["Vieron 50%", f.q50],
+                    ["Vieron 75%", f.q75],
+                    ["Vieron 100%", f.q100],
+                  ];
+                  return (
+                    <div key={f.fuente} className="overflow-x-auto rounded-lg border bg-card">
+                      <div className="border-b px-3 py-2 text-xs font-semibold">
+                        {f.fuente}
+                        <span className="ml-2 font-normal text-muted-foreground">· {fmtUSD(f.revenueUsd)}</span>
+                      </div>
+                      <table className="w-full text-xs">
+                        <thead className="border-b">
+                          <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                            <th className="px-3 py-2">Hito</th>
+                            <th className="px-3 py-2 text-right">Cantidad</th>
+                            <th className="px-3 py-2 text-right">% impr.</th>
+                            <th className="px-3 py-2 text-right">CPM ef. USD</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map(([label, n]) => {
+                            const pct = f.impresiones > 0 ? (n / f.impresiones) * 100 : 0;
+                            const cpmEf = n > 0 ? (f.revenueUsd / n) * 1000 : 0;
+                            const dim = label === "Impresiones";
+                            return (
+                              <tr key={label} className="border-b last:border-0">
+                                <td className={`px-3 py-2 ${dim ? "text-muted-foreground" : "font-medium"}`}>{label}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(n)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{n > 0 ? fmtUSD(cpmEf) : "—"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

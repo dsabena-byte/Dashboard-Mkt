@@ -1,5 +1,6 @@
 import { getPautaPerformance } from "@/lib/pauta-queries";
 import { getMetaPaidCreatives } from "@/lib/meta-paid-queries";
+import { getDv360VideoMetrics } from "@/lib/dv360-queries";
 import { getPlanningMedia } from "@/lib/planning-media-queries";
 import { PerformanceClient } from "@/components/pauta/performance-client";
 
@@ -61,10 +62,11 @@ async function getPlanningMonthly(): Promise<PlanningByMes> {
 }
 
 export default async function PerformancePautaPage() {
-  const [data, metaPaid, planningMonthly] = await Promise.all([
+  const [data, metaPaid, dv360, planningMonthly] = await Promise.all([
     getPautaPerformance(),
     safe(getMetaPaidCreatives(), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
+    safe(getDv360VideoMetrics(), [] as Awaited<ReturnType<typeof getDv360VideoMetrics>>),
     safe(getPlanningMonthly(), {} as PlanningByMes),
   ]);
-  return <PerformanceClient data={data} metaPaid={metaPaid} planningMonthly={planningMonthly} />;
+  return <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} planningMonthly={planningMonthly} />;
 }
