@@ -26,6 +26,7 @@ import {
   aggregateDv360Funnels,
   aggregateDv360Channels,
   aggregateDv360Pieces,
+  aggregateDv360By,
 } from "@/lib/dv360-data";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -129,6 +130,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const dv360Channels = useMemo(() => aggregateDv360Channels(dv360, dv360Reach), [dv360, dv360Reach]);
   const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360), [dv360]);
   const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360), [dv360]);
+  const dv360ByCategoria = useMemo(() => aggregateDv360By(dv360, "categoria"), [dv360]);
+  const dv360ByRol = useMemo(() => aggregateDv360By(dv360, "rol"), [dv360]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -654,6 +657,57 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   </tbody>
                 </table>
               </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="overflow-x-auto rounded-lg border bg-card">
+                  <div className="border-b px-3 py-2 text-xs font-semibold">Por categoría</div>
+                  <table className="w-full text-xs">
+                    <thead className="border-b">
+                      <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <th className="px-3 py-2">Categoría</th>
+                        <th className="px-3 py-2 text-right">Costo USD</th>
+                        <th className="px-3 py-2 text-right">Impr.</th>
+                        <th className="px-3 py-2 text-right">CTR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dv360ByCategoria.map((b) => (
+                        <tr key={b.nombre} className="border-b last:border-0">
+                          <td className="px-3 py-2 font-medium">{b.nombre}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(b.revenueUsd)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.impresiones)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{b.ctr.toFixed(2)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="overflow-x-auto rounded-lg border bg-card">
+                  <div className="border-b px-3 py-2 text-xs font-semibold">Por rol de comunicación</div>
+                  <table className="w-full text-xs">
+                    <thead className="border-b">
+                      <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <th className="px-3 py-2">Rol</th>
+                        <th className="px-3 py-2 text-right">Costo USD</th>
+                        <th className="px-3 py-2 text-right">Impr.</th>
+                        <th className="px-3 py-2 text-right">CTR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dv360ByRol.map((b) => (
+                        <tr key={b.nombre} className="border-b last:border-0">
+                          <td className="px-3 py-2 font-medium">{b.nombre}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(b.revenueUsd)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.impresiones)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{b.ctr.toFixed(2)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <p className="mb-3 mt-1 text-[10px] text-muted-foreground/70">
+                Categoría y rol (Awareness/Consideración) se derivan del nombre del Line Item. Incluye YouTube.
+              </p>
               {dv360Pieces.length > 0 && (
                 <>
                   <SectionTitle>Piezas pautadas · DV360 (Programmatic + Marketplace)</SectionTitle>
@@ -667,6 +721,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                         <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                           <th className="px-3 py-2">Pieza</th>
                           <th className="px-3 py-2">Canal</th>
+                          <th className="px-3 py-2">Categoría</th>
+                          <th className="px-3 py-2">Rol</th>
                           <th className="px-3 py-2 text-right">Costo USD</th>
                           <th className="px-3 py-2 text-right">Impresiones</th>
                           <th className="px-3 py-2 text-right">Clicks</th>
@@ -677,9 +733,11 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                       </thead>
                       <tbody>
                         {dv360Pieces.map((p) => (
-                          <tr key={`${p.canal}-${p.creative}`} className="border-b last:border-0">
+                          <tr key={`${p.canal}-${p.categoria}-${p.rol}-${p.creative}`} className="border-b last:border-0">
                             <td className="px-3 py-2 font-medium">{p.creative}</td>
                             <td className="px-3 py-2 text-muted-foreground">{p.canal}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{p.categoria}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{p.rol}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(p.revenueUsd)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.impresiones)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.clicks)}</td>

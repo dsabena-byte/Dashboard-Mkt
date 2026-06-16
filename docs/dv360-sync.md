@@ -96,8 +96,9 @@ function syncDv360() {
   for (var r=1;r<g.length;r++){
     var row=g[r]; if(!dv360DataRow_(row)) continue;
     var pr=String(row[iD]||'').split('/'); if(pr.length<2) continue;
-    var mes=pr[0]+'-'+pr[1]+'-01', cn=dv360Canal_(row[iLI]), name=String(row[iCr]||''), k=mes+'|'+cn+'|'+name;
-    var a=agg[k]||(agg[k]={mes:mes,canal:cn,creative:name,impresiones:0,clicks:0,starts:0,q25:0,q50:0,q75:0,q100:0,skips:0,revenue_usd:0});
+    var li=String(row[iLI]||''), mes=pr[0]+'-'+pr[1]+'-01', cn=dv360Canal_(li),
+        cat=dv360Categoria_(li), rl=dv360Rol_(li), name=String(row[iCr]||''), k=mes+'|'+cn+'|'+cat+'|'+rl+'|'+name;
+    var a=agg[k]||(agg[k]={mes:mes,canal:cn,categoria:cat,rol:rl,creative:name,impresiones:0,clicks:0,starts:0,q25:0,q50:0,q75:0,q100:0,skips:0,revenue_usd:0});
     a.impresiones+=dv360Num_(row[iImp]); a.clicks+=dv360Num_(row[iClk]); a.revenue_usd+=dv360Num_(row[iRev]);
     a.starts+=dv360Num_(row[iSt]); a.skips+=dv360Num_(row[iSk]);
     a.q25+=dv360Num_(row[iQ1]); a.q50+=dv360Num_(row[iM]); a.q75+=dv360Num_(row[iQ3]); a.q100+=dv360Num_(row[iC]);
@@ -158,6 +159,20 @@ function dv360Canal_(name){
   if (l.indexOf('marketplace')>=0) return 'Marketplace';
   if (l.indexOf('search')>=0) return 'Search';
   return 'Programmatic';
+}
+function dv360Categoria_(name){
+  var l=String(name||'').toLowerCase();
+  if (l.indexOf('lavado')>=0) return 'Lavado';
+  if (l.indexOf('refriger')>=0||l.indexOf('heladera')>=0) return 'Refrigeración';
+  if (l.indexOf('coccion')>=0||l.indexOf('cocción')>=0||l.indexOf('cocina')>=0) return 'Cocción';
+  if (l.indexOf('promoc')>=0||l.indexOf('drean week')>=0) return 'Promoción';
+  if (l.indexOf('brand')>=0) return 'Brand';
+  return 'General';
+}
+function dv360Rol_(name){
+  var l=String(name||'').toLowerCase();
+  if (l.indexOf('cpv')>=0||l.indexOf('trueview')>=0||l.indexOf('demand gen')>=0||l.indexOf('demandgen')>=0) return 'Consideración';
+  return 'Awareness';
 }
 function dv360DataRow_(row){
   if(!row||!row[0]||row.length<5) return false;

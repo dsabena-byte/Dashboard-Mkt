@@ -8,6 +8,8 @@ const num = (v: string | number | null): number =>
 interface DbCreative {
   mes: string;
   canal: string;
+  categoria: string;
+  rol: string;
   creative: string;
   impresiones: number | null;
   clicks: number | null;
@@ -24,13 +26,15 @@ export async function getDv360Creatives(): Promise<Dv360CreativeRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
     .from("dv360_creatives")
-    .select("mes, canal, creative, impresiones, clicks, starts, q25, q50, q75, q100, skips, revenue_usd")
+    .select("mes, canal, categoria, rol, creative, impresiones, clicks, starts, q25, q50, q75, q100, skips, revenue_usd")
     .order("mes", { ascending: true })
     .returns<DbCreative[]>();
   if (error) throw new Error(`dv360_creatives: ${error.message}`);
   return (data ?? []).map((r) => ({
     mes: r.mes,
     canal: r.canal,
+    categoria: r.categoria,
+    rol: r.rol,
     creative: r.creative,
     impresiones: num(r.impresiones),
     clicks: num(r.clicks),

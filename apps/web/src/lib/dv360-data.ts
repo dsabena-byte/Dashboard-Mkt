@@ -4,6 +4,8 @@
 export interface Dv360CreativeRow {
   mes: string;
   canal: string;
+  categoria: string;
+  rol: string;
   creative: string;
   impresiones: number;
   clicks: number;
@@ -115,6 +117,8 @@ export function aggregateDv360Funnels(creatives: Dv360CreativeRow[]): Dv360Funne
 export interface Dv360Piece {
   creative: string;
   canal: string;
+  categoria: string;
+  rol: string;
   impresiones: number;
   clicks: number;
   revenueUsd: number;
@@ -125,12 +129,12 @@ export interface Dv360Piece {
 
 // Top piezas por inversión, sumadas across meses. Excluye 'Unknown' (YouTube no
 // expone el creative) porque no es una pieza real.
-export function aggregateDv360Pieces(creatives: Dv360CreativeRow[], limit = 20): Dv360Piece[] {
-  const map = new Map<string, { canal: string; impresiones: number; clicks: number; revenueUsd: number; starts: number; q100: number }>();
+export function aggregateDv360Pieces(creatives: Dv360CreativeRow[], limit = 25): Dv360Piece[] {
+  const map = new Map<string, { canal: string; categoria: string; rol: string; impresiones: number; clicks: number; revenueUsd: number; starts: number; q100: number }>();
   for (const r of creatives) {
     if (r.creative === "Unknown") continue;
-    const key = `${r.canal}|${r.creative}`;
-    const p = map.get(key) ?? { canal: r.canal, impresiones: 0, clicks: 0, revenueUsd: 0, starts: 0, q100: 0 };
+    const key = `${r.canal}|${r.categoria}|${r.rol}|${r.creative}`;
+    const p = map.get(key) ?? { canal: r.canal, categoria: r.categoria, rol: r.rol, impresiones: 0, clicks: 0, revenueUsd: 0, starts: 0, q100: 0 };
     p.impresiones += r.impresiones;
     p.clicks += r.clicks;
     p.revenueUsd += r.revenue_usd;
@@ -140,8 +144,10 @@ export function aggregateDv360Pieces(creatives: Dv360CreativeRow[], limit = 20):
   }
   return [...map.entries()]
     .map(([key, p]) => ({
-      creative: key.split("|").slice(1).join("|"),
+      creative: key.split("|").slice(3).join("|"),
       canal: p.canal,
+      categoria: p.categoria,
+      rol: p.rol,
       impresiones: p.impresiones,
       clicks: p.clicks,
       revenueUsd: p.revenueUsd,
@@ -151,4 +157,36 @@ export function aggregateDv360Pieces(creatives: Dv360CreativeRow[], limit = 20):
     }))
     .sort((a, b) => b.revenueUsd - a.revenueUsd)
     .slice(0, limit);
+}
+
+// ---- Inversión por dimensión (categoría o rol) ------------------------------
+export interface Dv360Breakdown {
+  nombre: string;
+  impresiones: number;
+  clicks: number;
+  revenueUsd: number;
+  ctr: number;
+  cpm: number;
+}
+
+export function aggregateDv360By(creatives: Dv360CreativeRow[], dim: "categoria" | "rol"): Dv360Breakdown[] {
+  const map = new Map<string, { impresiones: number; clicks: number; revenueUsd: number }>();
+  for (const r of creatives) {
+    const k = dim === "categoria" ? r.categoria : r.rol;
+    const v = map.get(k) ?? { impresiones: 0, clicks: 0, revenueUsd: 0 };
+    v.impresiones += r.impresiones;
+    v.clicks += r.clicks;
+    v.revenueUsd += r.revenue_usd;
+    map.set(k, v);
+  }
+  return [...map.entries()]
+    .map(([nombre, v]) => ({
+      nombre,
+      impresiones: v.impresiones,
+      clicks: v.clicks,
+      revenueUsd: v.revenueUsd,
+      ctr: v.impresiones > 0 ? (v.clicks / v.impresiones) * 100 : 0,
+      cpm: v.impresiones > 0 ? (v.revenueUsd / v.impresiones) * 1000 : 0,
+    }))
+    .sort((a, b) => b.revenueUsd - a.revenueUsd);
 }
