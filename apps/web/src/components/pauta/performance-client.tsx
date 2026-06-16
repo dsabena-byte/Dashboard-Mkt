@@ -20,7 +20,7 @@ import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
 import { PautaInsightsPanel } from "@/components/pauta/pauta-insights-panel";
 import { computePautaInsights } from "@/lib/pauta-insights";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
-import { type Dv360VideoRow, aggregateDv360Funnels } from "@/lib/dv360-queries";
+import { type Dv360Row, aggregateDv360Funnels, aggregateDv360Channels } from "@/lib/dv360-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const fmtUSD = (n: number): string =>
@@ -66,7 +66,7 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
   );
 }
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360VideoRow[]; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360Row[]; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -119,8 +119,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], planningMon
     );
     return { ...a, count: vids.length };
   }, [metaPaid]);
-  // Embudo de visibilidad de video de DV360, separado por fuente (YouTube/TrueView
-  // vs Programmatic Video). Costo en USD (así viene del reporte de DV360).
+  // DV360: vista general de inversión/performance por canal + embudo de video.
+  // Costo en USD (así viene del reporte de DV360).
+  const dv360Channels = useMemo(() => aggregateDv360Channels(dv360), [dv360]);
   const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360), [dv360]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
@@ -537,7 +538,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], planningMon
           </div>
           <p className="mb-3 mt-2 text-[10px] text-muted-foreground/70">
             VTR ≈ views/impresiones (&quot;views&quot; según definición de cada plataforma). Para la <strong>visibilidad real por
-            cuartil</strong> de Meta, ver el panel siguiente; <strong>DV360</strong> queda pendiente de automatizar.
+            cuartil</strong>, ver los paneles de Meta y DV360 más abajo.
           </p>
 
           <SectionTitle>Visibilidad real de video · Meta</SectionTitle>
@@ -591,17 +592,68 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], planningMon
             </>
           )}
 
-          <SectionTitle>Visibilidad real de video · DV360</SectionTitle>
-          {dv360Funnels.length === 0 ? (
+          <SectionTitle>DV360 · inversión y performance por canal</SectionTitle>
+          {dv360Channels.canales.length === 0 ? (
             <p className="mb-3 text-[10px] text-muted-foreground">
-              Se completa con el reporte de DV360 (YouTube/TrueView + programmático). Costo en USD, sin comisión de agencia ni impuestos.
+              Se completa con el reporte de DV360. Costo en USD (sin comisión de agencia ni impuestos). No incluye Google Search (vive
+              en Google Ads, no en DV360).
             </p>
           ) : (
             <>
               <p className="mb-3 text-[10px] text-muted-foreground">
-                Embudo real de DV360 separado por fuente, porque <strong>TrueView es skippable</strong> y su &quot;completion&quot; no es
-                comparable con el video programmático. <strong>CPM efectivo en USD</strong> por hito (costo de medios, sin agencia ni
-                impuestos).
+                Toda la pauta de DV360 (YouTube, Programmatic, Marketplace, Demand Gen). <strong>Costo en USD</strong>; CPM/CPC/CTR
+                calculados.
+              </p>
+              <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
+                <table className="w-full text-xs">
+                  <thead className="border-b">
+                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2">Canal</th>
+                      <th className="px-3 py-2 text-right">Costo USD</th>
+                      <th className="px-3 py-2 text-right">Impresiones</th>
+                      <th className="px-3 py-2 text-right">Clicks</th>
+                      <th className="px-3 py-2 text-right">CPM</th>
+                      <th className="px-3 py-2 text-right">CPC</th>
+                      <th className="px-3 py-2 text-right">CTR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dv360Channels.canales.map((c) => (
+                      <tr key={c.canal} className="border-b last:border-0">
+                        <td className="px-3 py-2 font-medium">{c.canal}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(c.revenueUsd)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.impresiones)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.clicks)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(c.cpm)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{c.cpc > 0 ? fmtUSD(c.cpc) : "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{c.ctr.toFixed(2)}%</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 font-semibold">
+                      <td className="px-3 py-2">Total</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(dv360Channels.total.revenueUsd)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(dv360Channels.total.impresiones)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(dv360Channels.total.clicks)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(dv360Channels.total.cpm)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.cpc > 0 ? fmtUSD(dv360Channels.total.cpc) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.ctr.toFixed(2)}%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          <SectionTitle>Visibilidad real de video · DV360</SectionTitle>
+          {dv360Funnels.length === 0 ? (
+            <p className="mb-3 text-[10px] text-muted-foreground">
+              Se completa con el reporte de DV360. Costo en USD, sin comisión de agencia ni impuestos.
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Embudo real de DV360 separado por canal, porque <strong>TrueView (YouTube) es skippable</strong> y su
+                &quot;completion&quot; no es comparable con el video programmático. <strong>CPM efectivo en USD</strong> por hito.
               </p>
               <div className="grid gap-3 md:grid-cols-2">
                 {dv360Funnels.map((f) => {
@@ -614,9 +666,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], planningMon
                     ["Vieron 100%", f.q100],
                   ];
                   return (
-                    <div key={f.fuente} className="overflow-x-auto rounded-lg border bg-card">
+                    <div key={f.canal} className="overflow-x-auto rounded-lg border bg-card">
                       <div className="border-b px-3 py-2 text-xs font-semibold">
-                        {f.fuente}
+                        {f.canal}
                         <span className="ml-2 font-normal text-muted-foreground">· {fmtUSD(f.revenueUsd)}</span>
                       </div>
                       <table className="w-full text-xs">
