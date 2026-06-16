@@ -119,6 +119,13 @@ interface AdInsight {
   ctr?: string;
   cpm?: string;
   cpc?: string;
+  // Métricas de video (arrays de {action_type, value}); se suman los values.
+  video_play_actions?: Array<{ value?: string }>;
+  video_p25_watched_actions?: Array<{ value?: string }>;
+  video_p50_watched_actions?: Array<{ value?: string }>;
+  video_p75_watched_actions?: Array<{ value?: string }>;
+  video_p100_watched_actions?: Array<{ value?: string }>;
+  video_thruplay_watched_actions?: Array<{ value?: string }>;
   date_start?: string;
   date_stop?: string;
 }
@@ -151,6 +158,12 @@ function toNum(v: string | undefined): number | null {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// Suma los `value` de un array de acciones de Meta (video_pXX_watched_actions, etc.).
+function sumActions(arr: Array<{ value?: string }> | undefined): number {
+  if (!arr || arr.length === 0) return 0;
+  return arr.reduce((s, a) => s + (Number(a.value ?? 0) || 0), 0);
 }
 
 // Parsea el nombre OMD-convention "Drean - {Categoria} - {Medio} - {TipoCompra} - {SKU} [extra]"
@@ -408,7 +421,7 @@ export async function GET(req: Request) {
       "campaign{name,objective}",
       "adset{name}",
       "creative{thumbnail_url.thumbnail_width(720).thumbnail_height(720),image_url,body,effective_object_story_id,object_story_spec{link_data{picture,message,link},video_data{image_url,message}}}",
-      `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,date_start,date_stop}`,
+      `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,video_play_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,video_thruplay_watched_actions,date_start,date_stop}`,
     ].join(",");
 
     phase = "fetch_ads";
@@ -430,6 +443,12 @@ export async function GET(req: Request) {
         allAds.map(async (ad) => {
           const ins = ad.insights?.data?.[0];
           if (!ins) return null; // sin impresiones en el período -> se ignora
+          // Métricas de video (suma de los `value` de cada array de acciones).
+          const videoPlays = sumActions(ins.video_play_actions);
+          const videoP25 = sumActions(ins.video_p25_watched_actions);
+          const videoP50 = sumActions(ins.video_p50_watched_actions);
+          const videoP75 = sumActions(ins.video_p75_watched_actions);
+          const videoP100 = sumActions(ins.video_p100_watched_actions);
           const img = pickImage(ad.creative);
           // La imagen de mayor resolución es la del post original (full_picture),
           // mejor que el thumbnail/preview del creative. La buscamos vía el
@@ -477,6 +496,17 @@ export async function GET(req: Request) {
             ctr: toNum(ins.ctr),
             cpm: toNum(ins.cpm),
             cpc: toNum(ins.cpc),
+            // Video: cuartiles de visibilidad + reproducciones + ThruPlay.
+            video_plays: videoPlays || null,
+            video_p25: videoP25 || null,
+            video_p50: videoP50 || null,
+            video_p75: videoP75 || null,
+            video_p100: videoP100 || null,
+            video_thruplay: sumActions(ins.video_thruplay_watched_actions) || null,
+            // views_total/completed/vtr derivados del video (antes venían de Looker).
+            views_total: videoPlays || null,
+            views_completed: videoP100 || null,
+            vtr: videoPlays > 0 ? Number(((videoP100 / videoPlays) * 100).toFixed(4)) : null,
             raw: ad as unknown,
             fetched_at: new Date().toISOString(),
           };

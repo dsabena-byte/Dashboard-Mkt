@@ -96,6 +96,25 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
   const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
   const videoByMedio = useMemo(() => computeVideoByMedio(rows), [rows]);
+  // Embudo de visibilidad real de video (Meta Marketing API): cuántas impresiones
+  // llegan a cada % del video. Solo Meta (el cron meta-paid-sync trae los cuartiles).
+  const metaVideoFunnel = useMemo(() => {
+    const vids = metaPaid.filter((r) => r.plataforma === "meta" && (r.video_plays ?? 0) > 0);
+    const a = vids.reduce(
+      (acc, r) => ({
+        impresiones: acc.impresiones + r.impresiones,
+        plays: acc.plays + (r.video_plays ?? 0),
+        p25: acc.p25 + (r.video_p25 ?? 0),
+        p50: acc.p50 + (r.video_p50 ?? 0),
+        p75: acc.p75 + (r.video_p75 ?? 0),
+        p100: acc.p100 + (r.video_p100 ?? 0),
+        thruplay: acc.thruplay + (r.video_thruplay ?? 0),
+        spend: acc.spend + r.spend,
+      }),
+      { impresiones: 0, plays: 0, p25: 0, p50: 0, p75: 0, p100: 0, thruplay: 0, spend: 0 },
+    );
+    return { ...a, count: vids.length };
+  }, [metaPaid]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -510,10 +529,60 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
             </table>
           </div>
           <p className="mb-3 mt-2 text-[10px] text-muted-foreground/70">
-            VTR ≈ views/impresiones (&quot;views&quot; según definición de cada plataforma). Los <strong>cuartiles de visibilidad
-            reales (25/50/75/100% del video)</strong> y el VTR de completion requieren reportes de <strong>Meta Business / DV360</strong>{" "}
-            (pendiente de automatizar).
+            VTR ≈ views/impresiones (&quot;views&quot; según definición de cada plataforma). Para la <strong>visibilidad real por
+            cuartil</strong> de Meta, ver el panel siguiente; <strong>DV360</strong> queda pendiente de automatizar.
           </p>
+
+          <SectionTitle>Visibilidad real de video · Meta</SectionTitle>
+          {metaVideoFunnel.count === 0 ? (
+            <p className="mb-3 text-[10px] text-muted-foreground">
+              Se completa automáticamente con la próxima sincronización de Meta (el cron <code>meta-paid-sync</code> ahora trae los
+              cuartiles de video: 25/50/75/100% y ThruPlay desde la Marketing API).
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Datos reales de Meta (Marketing API): cuántas impresiones llegan a cada % del video y el <strong>CPM efectivo</strong>{" "}
+                (costo por mil) en cada hito. {metaVideoFunnel.count} anuncios de video. Muestra cómo cae la audiencia efectiva y por qué
+                el costo real sube a medida que se exige más completion.
+              </p>
+              <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
+                <table className="w-full text-xs">
+                  <thead className="border-b">
+                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2">Hito</th>
+                      <th className="px-3 py-2 text-right">Cantidad</th>
+                      <th className="px-3 py-2 text-right">% de impresiones</th>
+                      <th className="px-3 py-2 text-right">CPM efectivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {([
+                      ["Impresiones", metaVideoFunnel.impresiones],
+                      ["Reproducciones (plays)", metaVideoFunnel.plays],
+                      ["Vieron 25%", metaVideoFunnel.p25],
+                      ["Vieron 50%", metaVideoFunnel.p50],
+                      ["Vieron 75%", metaVideoFunnel.p75],
+                      ["Vieron 100%", metaVideoFunnel.p100],
+                      ["ThruPlay (≥15s)", metaVideoFunnel.thruplay],
+                    ] as Array<[string, number]>).map(([label, n]) => {
+                      const pct = metaVideoFunnel.impresiones > 0 ? (n / metaVideoFunnel.impresiones) * 100 : 0;
+                      const cpmEf = n > 0 ? (metaVideoFunnel.spend / n) * 1000 : 0;
+                      const dim = label === "Impresiones";
+                      return (
+                        <tr key={label} className="border-b last:border-0">
+                          <td className={`px-3 py-2 ${dim ? "text-muted-foreground" : "font-medium"}`}>{label}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtNum(n)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-semibold">{n > 0 ? fmtARS(cpmEf) : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
