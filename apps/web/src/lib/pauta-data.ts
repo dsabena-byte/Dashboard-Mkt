@@ -239,6 +239,41 @@ export function computeByMedio(rows: PautaRow[]): MedioAggregate[] {
   return arr.sort((a, b) => b.inversion - a.inversion);
 }
 
+// ===== Efectividad real de video por medio =====
+// Discrimina la pauta de video (tipo_compra CPV o con views) y expone que muchas
+// impresiones no se convierten en views: VTR (views/impresiones) y CPM EFECTIVO
+// (costo por mil sobre views reales, no sobre impresiones infladas).
+export interface VideoMedioAggregate {
+  medio: string;
+  inversion: number;
+  impresiones: number;
+  views: number;
+  vtr: number;          // views / impresiones * 100
+  cpm: number;          // costo por mil impresiones (nominal)
+  cpmEfectivo: number;  // costo por mil views reales
+  cpv: number;          // costo por view
+}
+export function computeVideoByMedio(rows: PautaRow[]): VideoMedioAggregate[] {
+  const map = new Map<string, VideoMedioAggregate>();
+  for (const r of rows) {
+    const esVideo = (r.views ?? 0) > 0 || r.tipo_compra === "CPV";
+    if (!esVideo) continue;
+    const m = map.get(r.medio) ?? { medio: r.medio, inversion: 0, impresiones: 0, views: 0, vtr: 0, cpm: 0, cpmEfectivo: 0, cpv: 0 };
+    m.inversion += r.inversion ?? 0;
+    m.impresiones += r.impresiones ?? 0;
+    m.views += r.views ?? 0;
+    map.set(r.medio, m);
+  }
+  const arr = [...map.values()];
+  for (const m of arr) {
+    m.vtr = m.impresiones > 0 ? (m.views / m.impresiones) * 100 : 0;
+    m.cpm = m.impresiones > 0 ? (m.inversion / m.impresiones) * 1000 : 0;
+    m.cpmEfectivo = m.views > 0 ? (m.inversion / m.views) * 1000 : 0;
+    m.cpv = m.views > 0 ? m.inversion / m.views : 0;
+  }
+  return arr.sort((a, b) => b.inversion - a.inversion);
+}
+
 // ===== Ranking de eficiencia (costo real vs plan) =====
 export interface EfficiencyRow {
   medio: string;

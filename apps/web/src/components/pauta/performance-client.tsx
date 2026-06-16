@@ -7,6 +7,7 @@ import {
   MEDIO_COLORS,
   computeFunnel,
   computeByMedio,
+  computeVideoByMedio,
   reachByMedio,
   investmentByCategoria,
   extractMeses,
@@ -94,6 +95,7 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
   const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
   const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
+  const videoByMedio = useMemo(() => computeVideoByMedio(rows), [rows]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -457,6 +459,62 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
             ))}
           </div>
 
+          <SectionTitle>Efectividad real de video — impresiones vs views</SectionTitle>
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            Cuando la pauta es video, muchas impresiones <strong>no se convierten en views</strong>. El <strong>VTR</strong>{" "}
+            (views/impresiones) y el <strong>CPM efectivo</strong> (costo por mil sobre views reales) muestran el costo real:
+            si el CPM efectivo es mucho mayor al CPM nominal, esas impresiones no son efectivas.
+          </p>
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <table className="w-full text-xs">
+              <thead className="border-b">
+                <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-2">Medio (video)</th>
+                  <th className="px-3 py-2 text-right">Inversión</th>
+                  <th className="px-3 py-2 text-right">Impresiones</th>
+                  <th className="px-3 py-2 text-right">Views</th>
+                  <th className="px-3 py-2 text-right">VTR</th>
+                  <th className="px-3 py-2 text-right">CPM</th>
+                  <th className="px-3 py-2 text-right">CPM efectivo</th>
+                  <th className="px-3 py-2 text-right">CPV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {videoByMedio.length === 0 ? (
+                  <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin pauta de video en la selección.</td></tr>
+                ) : (
+                  videoByMedio.map((m) => {
+                    const ratio = m.cpm > 0 ? m.cpmEfectivo / m.cpm : 0;
+                    const vtrColor = m.vtr < 20 ? "text-rose-600" : m.vtr < 50 ? "text-amber-600" : "text-emerald-600";
+                    return (
+                      <tr key={m.medio} className="border-b last:border-0">
+                        <td className="px-3 py-2 font-medium">
+                          <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[m.medio] ?? "#94a3b8" }} />
+                          {m.medio}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtARS(m.inversion)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(m.impresiones)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtNum(m.views)}</td>
+                        <td className={`px-3 py-2 text-right tabular-nums font-semibold ${vtrColor}`}>{m.vtr.toFixed(1)}%</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtARS(m.cpm)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                          {fmtARS(m.cpmEfectivo)}
+                          {ratio > 1.2 && <span className="ml-1 text-[9px] text-rose-600">{ratio.toFixed(1)}×</span>}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.cpv > 0 ? fmtARS(m.cpv) : "—"}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="mb-3 mt-2 text-[10px] text-muted-foreground/70">
+            VTR ≈ views/impresiones (&quot;views&quot; según definición de cada plataforma). Los <strong>cuartiles de visibilidad
+            reales (25/50/75/100% del video)</strong> y el VTR de completion requieren reportes de <strong>Meta Business / DV360</strong>{" "}
+            (pendiente de automatizar).
+          </p>
+
           <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
             Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Awareness/Consideración).
@@ -511,6 +569,21 @@ export function PerformanceClient({ data, metaPaid = [], planningMonthly = {} }:
             Análisis sobre las filas filtradas. Detecta medios sobre/sub-eficientes y recomienda reasignaciones para
             maximizar alcance, impresiones y clics por peso invertido.
           </p>
+          {(() => {
+            const vids = videoByMedio.filter((v) => v.views > 0 && v.impresiones > 0);
+            if (vids.length === 0) return null;
+            const worst = [...vids].sort((a, b) => a.vtr - b.vtr)[0]!;
+            const ratio = worst.cpm > 0 ? worst.cpmEfectivo / worst.cpm : 0;
+            return (
+              <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+                <strong>⚠️ Efectividad de video:</strong> el peor VTR es <strong>{worst.medio}</strong> ({worst.vtr.toFixed(1)}% de las
+                impresiones se convierten en views). Su <strong>CPM efectivo</strong> ({fmtARS(worst.cpmEfectivo)}) es{" "}
+                {ratio > 0 ? <strong>{ratio.toFixed(1)}×</strong> : "—"} el CPM nominal ({fmtARS(worst.cpm)}): muchas impresiones de
+                video no son efectivas, así que el costo real por usuario que ve el video es mucho más alto de lo que parece.
+                Para sumar los cuartiles de visibilidad (25/50/75%) hay que automatizar los reportes de Meta Business / DV360.
+              </div>
+            );
+          })()}
           {(() => {
             const { efficiency, insights, benchmarks } = computePautaInsights(rows);
             return <PautaInsightsPanel efficiency={efficiency} insights={insights} benchmarks={benchmarks} />;
