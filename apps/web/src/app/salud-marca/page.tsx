@@ -37,6 +37,7 @@ const WAVES_LAVADO = [
   { label: "nov-26", mes: "2026-11-01" }, // ola futura a estimar
 ] as const;
 const WAVES_REFRI = [
+  { label: "nov-23", mes: "2023-11-01" },
   { label: "jun-24", mes: "2024-06-01" },
   { label: "nov-24", mes: "2024-11-01" },
   { label: "jun-25", mes: "2025-06-01" },
@@ -89,40 +90,45 @@ const KANTAR_LAVADO: Record<string, Record<string, KVals>> = {
 };
 
 // Kantar Refrigeración. TOM/SOM de las barras; Intención = "Sería mi primera
-// opción"; Poder + hélice (sig/dif/sal índice base 100). LG no tiene TOM/SOM en
-// el tracking (no figura en el cuadro de barras). Sin Patrick ni Electrolux.
+// opción"; Poder + hélice (sig/dif/sal índice base 100). Sin Patrick ni Electrolux.
 const KANTAR_REFRI: Record<string, Record<string, KVals>> = {
   Drean: {
+    "nov-23": { tom: 12, som: 34, int: 13, poder: 9.3, sig: 98, dif: 97, sal: 119 },
     "jun-24": { tom: 9, som: 29, int: 14, poder: 9.2, sig: 109, dif: 94, sal: 106 },
     "nov-24": { tom: 10, som: 37, int: 20, poder: 10.4, sig: 111, dif: 112, sal: 119 },
     "jun-25": { tom: 9, som: 29, int: 19, poder: 9.2, sig: 103, dif: 94, sal: 111 },
     "nov-25": { tom: 13, som: 36, int: 25, poder: 10.4, sig: 114, dif: 94, sal: 123 },
   },
   Samsung: {
+    "nov-23": { tom: 10, som: 52, int: 36, poder: 16.5, sig: 165, dif: 177, sal: 118 },
     "jun-24": { tom: 14, som: 46, int: 36, poder: 15.6, sig: 137, dif: 171, sal: 126 },
     "nov-24": { tom: 14, som: 52, int: 41, poder: 16.4, sig: 130, dif: 194, sal: 133 },
     "jun-25": { tom: 13, som: 48, int: 41, poder: 16.3, sig: 143, dif: 189, sal: 130 },
     "nov-25": { tom: 11, som: 43, int: 37, poder: 13.3, sig: 133, dif: 167, sal: 122 },
   },
   Gafa: {
+    "nov-23": { tom: 19, som: 50, int: 22, poder: 11.8, sig: 119, dif: 87, sal: 157 },
     "jun-24": { tom: 20, som: 53, int: 25, poder: 12.0, sig: 128, dif: 89, sal: 164 },
     "nov-24": { tom: 19, som: 47, int: 22, poder: 10.8, sig: 119, dif: 75, sal: 159 },
     "jun-25": { tom: 15, som: 50, int: 27, poder: 12.2, sig: 129, dif: 91, sal: 149 },
     "nov-25": { tom: 20, som: 47, int: 35, poder: 12.7, sig: 134, dif: 93, sal: 156 },
   },
   Whirlpool: {
+    "nov-23": { tom: 15, som: 46, int: 29, poder: 12.3, sig: 124, dif: 135, sal: 132 },
     "jun-24": { tom: 16, som: 50, int: 30, poder: 14.5, sig: 132, dif: 157, sal: 146 },
     "nov-24": { tom: 13, som: 43, int: 33, poder: 13.7, sig: 134, dif: 145, sal: 125 },
     "jun-25": { tom: 16, som: 41, int: 31, poder: 14.1, sig: 126, dif: 146, sal: 135 },
     "nov-25": { tom: 12, som: 41, int: 33, poder: 12.6, sig: 124, dif: 152, sal: 127 },
   },
   LG: {
-    "jun-24": { tom: null, som: null, int: 18, poder: 10.2, sig: 103, dif: 156, sal: 71 },
-    "nov-24": { tom: null, som: null, int: 20, poder: 10.2, sig: 109, dif: 134, sal: 87 },
-    "jun-25": { tom: null, som: null, int: 17, poder: 9.4, sig: 101, dif: 146, sal: 72 },
-    "nov-25": { tom: null, som: null, int: 30, poder: 9.8, sig: 107, dif: 144, sal: 82 },
+    "nov-23": { tom: 1, som: 14, int: 11, poder: 8.6, sig: 99, dif: 136, sal: 64 },
+    "jun-24": { tom: 3, som: 20, int: 18, poder: 10.2, sig: 103, dif: 156, sal: 71 },
+    "nov-24": { tom: 4, som: 26, int: 20, poder: 10.2, sig: 109, dif: 134, sal: 87 },
+    "jun-25": { tom: 1, som: 17, int: 17, poder: 9.4, sig: 101, dif: 146, sal: 72 },
+    "nov-25": { tom: 3, som: 22, int: 30, poder: 9.8, sig: 107, dif: 144, sal: 82 },
   },
   Philco: {
+    "nov-23": { tom: 6, som: 20, int: 10, poder: 6.5, sig: 83, dif: 76, sal: 93 },
     "jun-24": { tom: 1, som: 12, int: 7, poder: 5.4, sig: 77, dif: 74, sal: 74 },
     "nov-24": { tom: 2, som: 16, int: 10, poder: 5.7, sig: 78, dif: 86, sal: 77 },
     "jun-25": { tom: 3, som: 21, int: 10, poder: 6.3, sig: 88, dif: 80, sal: 89 },
