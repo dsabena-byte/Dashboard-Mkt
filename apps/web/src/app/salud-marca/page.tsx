@@ -324,14 +324,24 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
   const brandModel = buildBrandModel(pautaByCat, brandMix, floorShare, cb, webByCat, influencia, canal, mercado);
   const esMarca = tab.key === "marca";
 
+  // Tab "Marca": Salud de Marca consolidada de Drean (las 3 categorías + ponderación).
+  const dreanSeries = esMarca
+    ? {
+        lav: await safe(getDreanSerie("Lavado", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+        ref: await safe(getDreanSerie("Refrigeración", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+        coc: await safe(getDreanSerie("Cocción", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+      }
+    : null;
+
   return (
     <div className="space-y-5">
       <Header tab={tab} />
+      {esMarca && dreanSeries && <DreanSaludConsolidada series={dreanSeries} />}
       <BrandBuildTable
         brandModel={brandModel}
         idx={tab.idx}
         label={tab.label}
-        title={esMarca ? "Marca — Drean general" : tab.label}
+        title={esMarca ? "Marca — Drean general (modelo de construcción)" : tab.label}
         subtitle={esMarca ? "ponderado por categoría (Lavado 60 / Refrigeración 30 / Cocción 10)" : undefined}
       />
     </div>
@@ -365,6 +375,168 @@ function Delta({ curr, prev }: { curr: number | null; prev: number | null }) {
   const pct = prev !== 0 ? (delta / prev) * 100 : null;
   const label = pct == null ? (delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)) : `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
   return <span className={`ml-1 text-[9px] ${color}`}>{icon}{label}</span>;
+}
+
+// ===== Tab "Marca": Salud de Marca consolidada de Drean por categoría =====
+// SM por categoría = 0,25·(TOM+SOM+Intención+Poder). Salud de Marca global =
+// Σ SM_categoría · peso_categoría (el peso es el mix de la categoría en cada ola).
+// Para nov-26: se usan los valores proyectados (mismos coeficientes que EST_* de
+// EvolucionView); donde no hay proyección de marca se ARRASTRA el último real
+// (nov-25) y se muestra en otro color (ámbar) con su aclaración.
+const SM_WEIGHTS: Record<string, { lav: number; ref: number; coc: number }> = {
+  "nov-23": { lav: 0.60, ref: 0.30, coc: 0.10 },
+  "jun-24": { lav: 0.61, ref: 0.33, coc: 0.06 },
+  "nov-24": { lav: 0.61, ref: 0.33, coc: 0.06 },
+  "jun-25": { lav: 0.62, ref: 0.35, coc: 0.03 },
+  "nov-25": { lav: 0.62, ref: 0.35, coc: 0.03 },
+  "nov-26": { lav: 0.62, ref: 0.35, coc: 0.03 },
+};
+const wPrev12 = (mes: string) => { const [y, m] = mes.split("-"); return `${Number(y) - 1}-${m}-01`; };
+const wBlend = (fn: (s?: DreanMesSeg) => number | null, serie: Map<string, DreanMesSeg>, mes: string): number | null => {
+  const a = fn(serie.get(mes)), b = fn(serie.get(wPrev12(mes)));
+  return a == null || b == null ? null : 0.5 * a + 0.5 * b;
+};
+// Estimación nov-26 de Drean por categoría/dimensión (coeficientes espejo de EST_*).
+// Devuelve el valor amortiguado, o null si no hay ecuación/serie → se arrastra nov-25.
+function dreanEstNov26(cat: "lav" | "ref" | "coc", dim: "tom" | "som" | "int" | "poder", serie: Map<string, DreanMesSeg>, anchor: number | null): number | null {
+  const mes = "2026-11-01";
+  if (cat === "lav") {
+    if (dim === "tom") { const d = wBlend((s) => (s?.vs.High == null || s?.vs.Mid == null ? null : 0.85 * s.vs.High + 0.15 * s.vs.Mid), serie, mes); return d == null ? null : 13.23 + 1.154 * d; }
+    if (dim === "som") { const d = wBlend((s) => s?.usTotal ?? null, serie, mes); return d == null ? null : 33.73 + 1.083 * d; }
+    return null; // Intención/Poder no se estiman en Lavado
+  }
+  if (cat === "coc") {
+    const dMH = (s?: DreanMesSeg) => (s?.us.Mid == null || s?.us.High == null ? null : s.us.Mid + s.us.High);
+    const coef: Partial<Record<string, [number, number]>> = { tom: [-0.05, 0.637], som: [3.74, 1.538], poder: [8.53, 0.245] };
+    const c = coef[dim]; if (!c) return null; // Intención no se estima en Cocción
+    const d = wBlend(dMH, serie, mes); if (d == null) return null;
+    const model = c[0] + c[1] * d;
+    return anchor == null ? model : 0.3 * model + 0.7 * anchor; // damp 0,3
+  }
+  return null; // Refrigeración: Drean no se estima desde mercado → arrastra nov-25
+}
+
+type SMState = "real" | "proj" | "carry";
+type SMCell = { v: number | null; s: SMState };
+type SMCatWave = { tom: SMCell; som: SMCell; int: SMCell; poder: SMCell; sm: SMCell };
+
+function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc", Map<string, DreanMesSeg>> }) {
+  const waves = WAVES_LAVADO.map((w) => w.label);
+  const cats = [
+    { key: "lav" as const, label: "Lavado", kantar: KANTAR_LAVADO },
+    { key: "ref" as const, label: "Refri", kantar: KANTAR_REFRI },
+    { key: "coc" as const, label: "Cocción", kantar: KANTAR_COCCION },
+  ];
+  const dims = [
+    { key: "tom" as const, label: "Top of Mind" },
+    { key: "som" as const, label: "Share of Mind" },
+    { key: "int" as const, label: "Intención de compra" },
+    { key: "poder" as const, label: "Poder de Marca" },
+  ];
+  // matrix[wave][cat] = SMCatWave
+  const matrix: Record<string, Record<string, SMCatWave>> = {};
+  for (const w of waves) {
+    matrix[w] = {};
+    for (const c of cats) {
+      const real = c.kantar["Drean"]?.[w];
+      const a25 = c.kantar["Drean"]?.["nov-25"];
+      const cell = (dim: "tom" | "som" | "int" | "poder"): SMCell => {
+        if (w !== "nov-26") return { v: real?.[dim] ?? null, s: "real" };
+        const anchor = a25?.[dim] ?? null;
+        const est = dreanEstNov26(c.key, dim, series[c.key], anchor);
+        return est != null ? { v: est, s: "proj" } : { v: anchor, s: "carry" };
+      };
+      const tom = cell("tom"), som = cell("som"), int = cell("int"), poder = cell("poder");
+      const all = [tom.v, som.v, int.v, poder.v];
+      const smV = all.every((v) => v != null) ? 0.25 * (all[0]! + all[1]! + all[2]! + all[3]!) : null;
+      const smS: SMState = [tom, som, int, poder].some((x) => x.s === "proj") ? "proj" : [tom, som, int, poder].some((x) => x.s === "carry") ? "carry" : "real";
+      matrix[w][c.key] = { tom, som, int, poder, sm: { v: smV, s: smS } };
+    }
+  }
+  const composite = (w: string): number | null => {
+    const wt = SM_WEIGHTS[w]; if (!wt) return null;
+    const l = matrix[w].lav.sm.v, r = matrix[w].ref.sm.v, c = matrix[w].coc.sm.v;
+    return l == null || r == null || c == null ? null : l * wt.lav + r * wt.ref + c * wt.coc;
+  };
+  const cls = (s: SMState) => s === "proj" ? "text-blue-600" : s === "carry" ? "text-amber-600" : "text-foreground";
+  const p1 = (v: number | null) => v == null ? "—" : `${v.toFixed(1)}%`;
+
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-bold tracking-tight">Salud de Marca — Drean por categoría
+          <span className="ml-2 text-[11px] font-normal text-muted-foreground">SM categoría = 0,25·(TOM+SOM+Intención+Poder) · Global = Σ SM·peso de categoría</span>
+        </h3>
+      </div>
+      <div className="overflow-x-auto p-4">
+        <table className="text-xs">
+          <thead>
+            <tr className="border-b">
+              <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase text-muted-foreground" rowSpan={2}>Dimensión</th>
+              {waves.map((w) => (
+                <th key={w} className="border-l px-2 py-1 text-center text-[11px] font-bold" colSpan={4}>{w}</th>
+              ))}
+            </tr>
+            <tr className="border-b text-[9px] font-semibold uppercase text-muted-foreground">
+              {waves.map((w) => (
+                <Fragment key={w}>
+                  <th className="border-l px-2 py-1 text-right">Lav</th>
+                  <th className="px-2 py-1 text-right">Refri</th>
+                  <th className="px-2 py-1 text-right">Cocc</th>
+                  <th className="bg-sky-50 px-2 py-1 text-right text-sky-700">SM</th>
+                </Fragment>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dims.map((d) => (
+              <tr key={d.key} className="border-t">
+                <td className="whitespace-nowrap px-2 py-1.5 text-foreground">{d.label}</td>
+                {waves.map((w) => (
+                  <Fragment key={w}>
+                    <td className={`border-l px-2 py-1.5 text-right tabular-nums ${cls(matrix[w].lav[d.key].s)}`}>{p1(matrix[w].lav[d.key].v)}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums ${cls(matrix[w].ref[d.key].s)}`}>{p1(matrix[w].ref[d.key].v)}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums ${cls(matrix[w].coc[d.key].s)}`}>{p1(matrix[w].coc[d.key].v)}</td>
+                    <td className="bg-sky-50 px-2 py-1.5"></td>
+                  </Fragment>
+                ))}
+              </tr>
+            ))}
+            <tr className="border-t-2 bg-muted/40 font-bold">
+              <td className="whitespace-nowrap px-2 py-1.5 text-foreground">Salud de Marca</td>
+              {waves.map((w) => (
+                <Fragment key={w}>
+                  <td className={`border-l px-2 py-1.5 text-right tabular-nums ${cls(matrix[w].lav.sm.s)}`}>{p1(matrix[w].lav.sm.v)}</td>
+                  <td className={`px-2 py-1.5 text-right tabular-nums ${cls(matrix[w].ref.sm.s)}`}>{p1(matrix[w].ref.sm.v)}</td>
+                  <td className={`px-2 py-1.5 text-right tabular-nums ${cls(matrix[w].coc.sm.s)}`}>{p1(matrix[w].coc.sm.v)}</td>
+                  <td className="bg-sky-100 px-2 py-1.5 text-right tabular-nums font-bold text-sky-800">{p1(composite(w))}</td>
+                </Fragment>
+              ))}
+            </tr>
+            <tr className="border-t text-[10px] text-muted-foreground">
+              <td className="px-2 py-1.5">Peso categoría</td>
+              {waves.map((w) => (
+                <Fragment key={w}>
+                  <td className="border-l px-2 py-1.5 text-right tabular-nums">{(SM_WEIGHTS[w].lav * 100).toFixed(0)}%</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{(SM_WEIGHTS[w].ref * 100).toFixed(0)}%</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{(SM_WEIGHTS[w].coc * 100).toFixed(0)}%</td>
+                  <td className="bg-sky-50 px-2 py-1.5 text-right tabular-nums">100%</td>
+                </Fragment>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+        <div className="mt-3 space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p>
+            <span className="font-semibold text-blue-600">Azul</span> = valor <strong>proyectado</strong> para nov-26 (modelo de mercado).{" "}
+            <span className="font-semibold text-amber-600">Ámbar</span> = se <strong>arrastra el valor de nov-25</strong> porque esa
+            categoría/dimensión <strong>no tiene proyección de marca</strong> (Refrigeración no se estima; Intención no acopla en ninguna
+            categoría; Poder no se estima en Lavado).
+          </p>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, tabKey }: {
