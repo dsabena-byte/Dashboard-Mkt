@@ -435,9 +435,12 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     if (!sv) return null;
     if (grp === "vs") return sv.vsTotal;
     if (grp === "us") return sv.usTotal;
-    const { High, Mid, Low } = sv.ip;
-    if (High == null || Mid == null || Low == null) return null;
-    return (High / 100) * (Mid / 100) * (Low / 100);
+    // Índice general = producto de los índices de precio disponibles (High·Mid·Low).
+    // Si falta alguno (ej. una marca no compite en ese segmento), se multiplica
+    // solo con los que hay; null únicamente si no hay ninguno.
+    const ips = [sv.ip.High, sv.ip.Mid, sv.ip.Low].filter((v): v is number => v != null);
+    if (ips.length === 0) return null;
+    return ips.reduce((acc, v) => acc * (v / 100), 1);
   };
 
   // Bloque de mercado standalone y COLAPSABLE de forma independiente (<details>).
