@@ -45,6 +45,7 @@ const WAVES_REFRI = [
   { label: "nov-26", mes: "2026-11-01" }, // ola futura a estimar
 ] as const;
 const WAVES_COCCION = [
+  { label: "nov-23", mes: "2023-11-01" },
   { label: "jun-24", mes: "2024-06-01" },
   { label: "nov-24", mes: "2024-11-01" },
   { label: "jun-25", mes: "2025-06-01" },
@@ -148,42 +149,49 @@ const KANTAR_REFRI: Record<string, Record<string, KVals>> = {
 // Poder + hélice (sig/dif/sal índice base 100). Florencia sin TOM/SOM en el cuadro de barras.
 const KANTAR_COCCION: Record<string, Record<string, KVals>> = {
   Drean: {
+    "nov-23": { tom: 2, som: 8, int: 12, poder: 8.9, sig: 111, dif: 112, sal: 78 },
     "jun-24": { tom: 2, som: 11, int: 13, poder: 9.4, sig: 105, dif: 133, sal: 83 },
     "nov-24": { tom: 4, som: 12, int: 14, poder: 9.8, sig: 101, dif: 131, sal: 86 },
     "jun-25": { tom: 3, som: 10, int: 21, poder: 10.4, sig: 117, dif: 121, sal: 78 },
     "nov-25": { tom: 5, som: 17, int: 14, poder: 10.4, sig: 99, dif: 132, sal: 105 },
   },
   Whirlpool: {
+    "nov-23": { tom: 5, som: 18, int: 26, poder: 11.3, sig: 118, dif: 155, sal: 92 },
     "jun-24": { tom: 8, som: 21, int: 26, poder: 12.3, sig: 120, dif: 165, sal: 109 },
     "nov-24": { tom: 5, som: 19, int: 27, poder: 13.9, sig: 143, dif: 159, sal: 97 },
     "jun-25": { tom: 6, som: 27, int: 36, poder: 14.3, sig: 128, dif: 166, sal: 105 },
     "nov-25": { tom: 5, som: 19, int: 29, poder: 12.8, sig: 134, dif: 169, sal: 88 },
   },
   Escorial: {
+    "nov-23": { tom: 19, som: 40, int: 26, poder: 11.7, sig: 114, dif: 99, sal: 172 },
     "jun-24": { tom: 12, som: 29, int: 22, poder: 9.8, sig: 117, dif: 76, sal: 136 },
     "nov-24": { tom: 10, som: 28, int: 25, poder: 8.5, sig: 109, dif: 82, sal: 134 },
     "jun-25": { tom: 18, som: 34, int: 24, poder: 11.5, sig: 111, dif: 91, sal: 155 },
     "nov-25": { tom: 10, som: 28, int: 24, poder: 10.2, sig: 111, dif: 77, sal: 132 },
   },
   Gafa: {
+    "nov-23": { tom: 6, som: 16, int: 14, poder: 8.8, sig: 105, dif: 108, sal: 94 },
     "jun-24": { tom: 5, som: 16, int: 24, poder: 9.9, sig: 107, dif: 117, sal: 104 },
     "nov-24": { tom: 3, som: 12, int: 23, poder: 8.9, sig: 105, dif: 104, sal: 88 },
     "jun-25": { tom: 5, som: 16, int: 20, poder: 9.7, sig: 106, dif: 102, sal: 96 },
     "nov-25": { tom: 8, som: 18, int: 19, poder: 11.0, sig: 116, dif: 98, sal: 111 },
   },
   Electrolux: {
+    "nov-23": { tom: 1, som: null, int: 18, poder: 9.1, sig: 109, dif: 123, sal: 85 },
     "jun-24": { tom: 1, som: 16, int: 22, poder: 9.1, sig: 102, dif: 118, sal: 79 },
     "nov-24": { tom: 1, som: 14, int: 17, poder: 9.5, sig: 103, dif: 120, sal: 89 },
     "jun-25": { tom: 4, som: 17, int: 14, poder: 9.9, sig: 97, dif: 133, sal: 94 },
     "nov-25": { tom: 6, som: 19, int: 19, poder: 11.4, sig: 115, dif: 133, sal: 104 },
   },
   Longvie: {
+    "nov-23": { tom: 13, som: 23, int: 18, poder: 9.9, sig: 119, dif: 93, sal: 122 },
     "jun-24": { tom: 10, som: 22, int: 22, poder: 8.8, sig: 98, dif: 101, sal: 118 },
     "nov-24": { tom: 15, som: 29, int: 18, poder: 9.7, sig: 104, dif: 100, sal: 147 },
     "jun-25": { tom: 11, som: 24, int: 20, poder: 8.8, sig: 98, dif: 87, sal: 116 },
     "nov-25": { tom: 14, som: 22, int: 21, poder: 9.4, sig: 102, dif: 96, sal: 126 },
   },
   Florencia: {
+    "nov-23": { tom: 5, som: 16, int: 11, poder: null, sig: null, dif: null, sal: null },
     "jun-24": { tom: null, som: null, int: 17, poder: 4.8, sig: 90, dif: 59, sal: 100 },
     "nov-24": { tom: null, som: null, int: 11, poder: 4.7, sig: 80, dif: 62, sal: 96 },
     "jun-25": { tom: null, som: null, int: 12, poder: 5.7, sig: 82, dif: 81, sal: 97 },
