@@ -50,6 +50,7 @@ const WAVES_COCCION = [
   { label: "nov-24", mes: "2024-11-01" },
   { label: "jun-25", mes: "2025-06-01" },
   { label: "nov-25", mes: "2025-11-01" },
+  { label: "nov-26", mes: "2026-11-01" },
 ] as const;
 
 // Marcas con tracking Kantar disponible (selector). El nombre en mayúscula es la marca en mercado_share.
@@ -414,6 +415,16 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
   };
   // Estimación desde unit share total (blend 50/50) — driver usado en Refri.
   const usTotEq = somEq; // a + b·blend(US_Total); alias semántico (no solo SOM)
+  // Driver Mid+High (unit share) — usado en Cocción: el equity se construye desde la
+  // gama media/alta (el segmento Low de entrada no construye marca). D = US_Mid + US_High.
+  const dMH = (s?: DreanMesSeg): number | null => {
+    const M = s?.us.Mid, H = s?.us.High;
+    return M == null || H == null ? null : M + H;
+  };
+  const mhEq = (a: number, b: number) => (serie: Map<string, DreanMesSeg>, mes: string): number | null => {
+    const d = blend(dMH, serie, mes);
+    return d == null ? null : a + b * d;
+  };
   type EstFn = (s: Map<string, DreanMesSeg>, m: string) => number | null;
   // damp = peso del modelo vs el último valor real (inercia de marca). 1 = modelo
   // puro; 0,5 = 50% modelo + 50% último medido (amortigua extrapolación fuera de rango).
@@ -560,9 +571,62 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       ),
     },
   };
+  // Cocción. Driver = blend(US_Mid + US_High): el equity se construye desde la gama
+  // media/alta; el segmento Low (entrada) no construye marca. Calibrado por OLS sobre
+  // las olas medidas (N=5; nov-23 sin T-12 → blend direccional).
+  const notaCoccion = (
+    <p>
+      <strong>Blend 50/50 (Kantar).</strong> Driver = 0,5·(US<sub>Mid</sub>+US<sub>High</sub>)(T) + 0,5·(…)(T-12). En cocción el equity{" "}
+      <strong>se construye desde la gama media/alta</strong>: el segmento Low (entrada) tiene mucho volumen pero{" "}
+      <strong>no construye marca</strong> (verificado: Escorial domina Low y su marca está desacoplada). <em>Inercia comercial</em>;
+      no incluye medios/tienda/comunicación. N=5 olas → estimación <strong>direccional</strong>.
+    </p>
+  );
+  const EST_COCCION: Record<string, EstCfg> = {
+    Drean: {
+      tom: mhEq(-0.05, 0.637), tomBand: 1.4,
+      som: mhEq(3.74, 1.538), somBand: 4.7,
+      poder: mhEq(8.53, 0.245), poderBand: 0.6,
+      damp: 0.3,
+      nota: (
+        <>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Drean (cocción) — se estiman TOM, SOM y Poder desde la gama media/alta</p>
+          {notaCoccion}
+          <p>
+            Drean <strong>lanzó un nuevo portfolio en may-25</strong> enfocado en Mid (y modelos High a fin de año): su presencia
+            Mid+High saltó y arrastró la <strong>notoriedad/propiedad</strong> de marca (TOM/SOM/Poder/Saliencia suben juntos; el segmento
+            High es el termómetro más fino, r≈+0,8). Ecuaciones: <strong>TOM ≈ −0,05 + 0,637·driver</strong> (R²=0,41, ±1,4) ·{" "}
+            <strong>SOM ≈ 3,74 + 1,538·driver</strong> (R²=0,36, ±4,7) · <strong>Poder ≈ 8,53 + 0,245·driver</strong> (R²=0,24, ±0,6).
+          </p>
+          <p>
+            <strong>Amortiguación fuerte 0,3</strong> (= 30%·modelo + 70%·último real): el driver nov-26 (≈17,7) extrapola{" "}
+            <strong>2,5× por encima del máximo observado</strong> (7,1) y la relación se calibra sobre una sola inflexión (nov-25) → alta
+            confianza en la <em>dirección</em>, baja en la <em>magnitud</em>. <strong>Intención y la hélice (Significancia/Diferenciación/
+            Saliencia) no se estiman</strong>: todavía no acoplan (la marca construye notoriedad antes que preferencia) → se mantienen en su
+            último valor real.
+          </p>
+        </>
+      ),
+    },
+    Escorial: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">Escorial (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            Líder de volumen del <strong>segmento de entrada</strong> (Low, anchos ≤52cm: 86%→74%) con índice de precio ~0,65 (vende ~35%
+            bajo el promedio). Su share <em>total</em> de unidades está <strong>desacoplado/invertido</strong> respecto del equity: tocó
+            máximo (44,5%, nov-24) justo cuando la marca tocó piso (TOM 10, Poder 8,5), porque el volumen lo mueve el mix de precio del canal
+            de entrada, no el pull de marca (correlaciones marca↔share total negativas; Poder vs US Total = −0,53; R²&lt;0,36). El segmento
+            Low <strong>no construye marca</strong> → se mantienen los últimos valores reales (equity range-bound con erosión suave desde el
+            pico nov-23).
+          </p>
+        </>
+      ),
+    },
+  };
   // Selección de modelo por categoría. La estimación está calibrada por marca y
   // categoría; donde no hay config, se muestra solo lo medido.
-  const EST = esLavado ? EST_LAVADO : tabKey === "refrigeracion" ? EST_REFRI : {};
+  const EST = esLavado ? EST_LAVADO : tabKey === "refrigeracion" ? EST_REFRI : tabKey === "coccion" ? EST_COCCION : {};
   const cfg: EstCfg | undefined = EST[marca];
   // Salud de Marca compuesta = 0,25·(TOM + SOM + Intención + Poder); null si falta alguno.
   const saludDe = (k: KVals): number | null => {
