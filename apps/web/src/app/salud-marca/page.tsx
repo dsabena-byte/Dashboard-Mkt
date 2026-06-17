@@ -352,7 +352,9 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
   // Estimación desde unit share total (blend 50/50) — driver usado en Refri.
   const usTotEq = somEq; // a + b·blend(US_Total); alias semántico (no solo SOM)
   type EstFn = (s: Map<string, DreanMesSeg>, m: string) => number | null;
-  type EstCfg = { tom?: EstFn; tomBand?: number; som?: EstFn; somBand?: number; poder?: EstFn; poderBand?: number; nota: ReactNode };
+  // damp = peso del modelo vs el último valor real (inercia de marca). 1 = modelo
+  // puro; 0,5 = 50% modelo + 50% último medido (amortigua extrapolación fuera de rango).
+  type EstCfg = { tom?: EstFn; tomBand?: number; som?: EstFn; somBand?: number; poder?: EstFn; poderBand?: number; damp?: number; nota: ReactNode };
   const notaModelo = (
     <p>
       <strong>1. Blend 50/50 (metodología Kantar).</strong> Driver = 0,5·U12(T) + 0,5·U12(T-12, un año antes). <strong>TOM</strong> ←
@@ -412,14 +414,19 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       tom: usTotEq(-13.97, 1.724), tomBand: 0.4,
       som: usTotEq(-15.51, 4.012), somBand: 3.0,
       poder: usTotEq(-10.36, 1.647), poderBand: 1.2,
+      damp: 0.5,
       nota: (
         <>
           <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Samsung (refri) — se estiman TOM, SOM y Poder desde el unit share total</p>
           {notaRefri}
           <p>
             Ecuaciones: <strong>TOM ≈ −13,97 + 1,724·driver</strong> (R²=0,97, ±0,4) · <strong>SOM ≈ −15,51 + 4,012·driver</strong>{" "}
-            (R²=0,73, ±3,0) · <strong>Poder ≈ −10,36 + 1,647·driver</strong> (R²=0,85, ±1,2). Driver = blend(US Total). Intención,
-            Significancia y Diferenciación <strong>no se estiman</strong> (sin señal de mercado) → se mantienen en su último valor.
+            (R²=0,73, ±3,0) · <strong>Poder ≈ −10,36 + 1,647·driver</strong> (R²=0,85, ±1,2). Driver = blend(US Total).
+          </p>
+          <p>
+            <strong>Amortiguación 50/50:</strong> como nov-26 extrapola por debajo del rango calibrado y la marca tiene inercia, la
+            estimación final = 50%·modelo + 50%·último valor medido. Intención, Significancia y Diferenciación <strong>no se
+            estiman</strong> (sin señal de mercado) → se mantienen en su último valor.
           </p>
         </>
       ),
@@ -602,7 +609,12 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
                     // Si no hay medición y la marca tiene ecuación para ese indicador, estimamos desde el mercado.
                     const estFn = r.estKey === "tom" ? cfg?.tom : r.estKey === "som" ? cfg?.som : r.estKey === "poder" ? cfg?.poder : undefined;
                     const band = r.estKey === "tom" ? cfg?.tomBand : r.estKey === "poder" ? cfg?.poderBand : cfg?.somBand;
-                    const est = actual == null && estFn ? estFn(serieU12, w.mes) : null;
+                    // Estimación: modelo de mercado, amortiguado hacia el último valor
+                    // real (inercia de marca) según cfg.damp (1 = modelo puro).
+                    const modelEst = actual == null && estFn ? estFn(serieU12, w.mes) : null;
+                    const anchor = prevs[i] ?? null;
+                    const dampW = cfg?.damp ?? 1;
+                    const est = modelEst == null ? null : dampW >= 1 || anchor == null ? modelEst : dampW * modelEst + (1 - dampW) * anchor;
                     return (
                       <td key={w.label} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
                         {actual != null ? (
