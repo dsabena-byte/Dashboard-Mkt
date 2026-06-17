@@ -212,20 +212,28 @@ function BrandLegend({ brands, colorOf }: { brands: string[]; colorOf: Record<st
 }
 
 export default async function MercadoPage({ searchParams }: { searchParams?: { cat?: string; agg?: string } }) {
-  const agg: "MAT" | "mensual" = searchParams?.agg === "MAT" ? "MAT" : "mensual";
-  const rowsAll = await getMercadoRows(agg);
+  const aggReq: "MAT" | "mensual" = searchParams?.agg === "MAT" ? "MAT" : "mensual";
+  const [matAll, menAll] = await Promise.all([getMercadoRows("MAT"), getMercadoRows("mensual")]);
   // Análisis de Mercado = histórico: excluimos meses futuros. Las proyecciones nov-26
   // (cargadas para la estimación de Salud de Marca, solo unas pocas marcas) no son data
   // real y, al quedar como "último mes", distorsionaban el ranking/selección de marcas.
   const now = new Date();
   const cutoffMes = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
-  const rows = rowsAll.filter((r) => r.mes <= cutoffMes);
-  const esMAT = agg === "MAT";
+  const fut = (rs: MercadoRow[]) => rs.filter((r) => r.mes <= cutoffMes);
+  const byAgg = { MAT: fut(matAll), mensual: fut(menAll) } as const;
 
-  // Categorías presentes en los datos (en orden fijo)
-  const present = new Set(rows.map((r) => r.categoria));
+  // Categorías presentes en cualquiera de las dos agregaciones (en orden fijo).
+  const present = new Set([...byAgg.MAT, ...byAgg.mensual].map((r) => r.categoria));
   const categorias = [...CAT_ORDER.filter((c) => present.has(c)), ...[...present].filter((c) => !CAT_ORDER.includes(c))];
   const selected = searchParams?.cat && categorias.includes(searchParams.cat) ? searchParams.cat : categorias[0];
+
+  // Agregaciones disponibles para la categoría seleccionada (ej. Refrigeración sólo
+  // tiene serie MAT). Se usa la pedida si existe; si no, se cae a la disponible.
+  const hasData = (a: "MAT" | "mensual") => byAgg[a].some((r) => r.categoria === selected && r.segmento !== "Total");
+  const aggsDisponibles = (["mensual", "MAT"] as const).filter(hasData);
+  const agg: "MAT" | "mensual" = hasData(aggReq) ? aggReq : aggsDisponibles[0] ?? aggReq;
+  const rows = byAgg[agg];
+  const esMAT = agg === "MAT";
 
   // Agrupar por categoría · segmento, solo la categoría seleccionada
   const groups = new Map<string, MercadoRow[]>();
@@ -280,7 +288,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
 
       {/* Selector de agregación: MAT (acum. 12m) vs Mensual (valor del mes) */}
       <div className="flex flex-wrap items-center gap-2">
-        {(["mensual", "MAT"] as const).map((a) => (
+        {aggsDisponibles.map((a) => (
           <Link
             key={a}
             href={`/mercado?cat=${encodeURIComponent(selected ?? "")}&agg=${a}`}
