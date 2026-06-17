@@ -167,9 +167,17 @@ refrescan si OMD ajustó algo en la planilla.
     importante porque el Excel puede tener varias filas con el mismo
     line-item pero distinto TouchPoint.
 
-11. **Upsert idempotente**: `Prefer: resolution=merge-duplicates` por la
-    unique key compuesta `(fecha, campania, rol, sistema, formato, tipo)`.
-    Las re-corridas no duplican.
+11. **Clean replace (archivo Pauta completo)**: para el archivo `Mes-Pauta.xlsx`
+    (`isPautaFile`, 12 meses), antes de insertar se **borran las filas de los
+    meses que cubre** (`DELETE planning_media?fecha=in.(...)`) y se reinsertan.
+    Así la tabla queda **idéntica al Excel vigente**, sin filas viejas
+    sobrevivientes. Tiene 2 guardas: solo borra si `isPautaFile` y si el parseo
+    dio filas (`rows.length > 0`) → un parseo fallido nunca vacía la tabla.
+    Para archivos legacy por categoría se mantiene el upsert merge-duplicates.
+
+12. **Solo el archivo más nuevo**: `syncPlanningFolder` procesa **únicamente el
+    `.xlsx/.csv` más reciente** (por `getLastUpdated`) del folder. Aunque queden
+    archivos viejos acumulados, **nunca pisan** al vigente.
 
 ## Script Properties (7 en total)
 
@@ -205,8 +213,9 @@ Opcional: `PLANNING_YEAR` (default: año actual).
 
 1. OMD te manda la planilla actualizada.
 2. Renombrar a `Mes-Pauta.xlsx` (ej. `Julio-Pauta.xlsx`).
-3. Arrastrar al folder de Drive `PLANNING_FOLDER_ID` (preferentemente borrar
-   los `Mes-Pauta.xlsx` viejos para no acumular).
+3. Arrastrar al folder de Drive `PLANNING_FOLDER_ID`. (El sync ya procesa solo
+   el archivo más nuevo, así que los viejos no rompen — igual conviene borrarlos
+   por prolijidad.)
 4. Esperar hasta 1h (trigger horario) o forzar manual: Apps Script → `syncAll`
    → Run.
 5. Verificar en `/planning` que el mes nuevo aparezca con totales correctos.
@@ -261,6 +270,20 @@ from planning_media_backup_pre_<descripcion>;
 ```
 
 ## Troubleshooting
+
+### Un mes (ej. julio) aparece incompleto y "se desconfigura" cada corrida
+
+Era el síntoma clásico de **filas viejas sobrevivientes**: el upsert era
+`merge-duplicates` (nunca borraba) y `syncPlanningFolder` procesaba **todos** los
+archivos, así un `*-Pauta.xlsx` viejo pisaba al vigente según el orden. **Resuelto**
+con las reglas #11 (clean replace por mes) y #12 (solo el archivo más nuevo). Si
+vuelve a pasar: verificá que `syncPlanning` tenga el bloque `if (isPautaFile &&
+rows.length) { ...DELETE fecha=in... }` antes del `upsertBatch`, y que
+`syncPlanningFolder` elija el `newest` por `getLastUpdated`.
+
+Para limpiar data ya corrupta una vez: `delete from planning_media where fecha
+in (...)` (principal) + `delete from sync_status where filename ilike '%Pauta%'`
+(CB) + correr `syncAll`.
 
 ### "Sync completado" en 2s sin procesar nada
 
