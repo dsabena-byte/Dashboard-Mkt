@@ -1,16 +1,5 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import {
-  getOrganicPilarMix,
-  getPautaByCategoria,
-  getWebByCategoria,
-  getInfluenciaTotals,
-  getCanalTotals,
-  getMercadoByCategoria,
-  buildBrandModel,
-} from "@/lib/brand-build-queries";
-import { getFloorShareU4M } from "@/lib/floor-share-queries";
-import { getCbU3M } from "@/lib/cb-queries";
 import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
 
 export const dynamic = "force-dynamic";
@@ -220,71 +209,6 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
-// Tabla del modelo de construcción de marca (reutilizable): conexión de KPIs de
-// comunicación/tienda/mercado con las dimensiones de marca (Saliencia → Poder → Intención).
-function BrandBuildTable({ brandModel, idx, label, title, subtitle, kinds }: {
-  brandModel: ReturnType<typeof buildBrandModel>;
-  idx: number;
-  label: string;
-  title: string;
-  subtitle?: string;
-  kinds?: Array<"Mental" | "Físico" | "Mercado">; // si se pasa, filtra filas por tipo
-}) {
-  return (
-    <section className="overflow-hidden rounded-xl border bg-card">
-      <div className="border-b px-4 py-3">
-        <h3 className="text-sm font-bold tracking-tight">
-          {title}
-          {subtitle && <span className="ml-2 text-[11px] font-normal text-muted-foreground">{subtitle}</span>}
-        </h3>
-      </div>
-      <div className="overflow-x-auto p-4">
-        <table className="w-full table-fixed text-xs">
-          <colgroup>
-            <col className="w-[72%]" />
-            <col className="w-[28%]" />
-          </colgroup>
-          <thead>
-            <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className="px-2 py-2 text-left">Dimensión / Indicador</th>
-              <th className="px-2 py-2 text-right">{label}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {brandModel.map((comp) => {
-              const rows = kinds ? comp.rows.filter((r) => kinds.includes(r.kind)) : comp.rows;
-              if (rows.length === 0) return null;
-              return (
-              <Fragment key={comp.title}>
-                <tr>
-                  <td colSpan={2} className="px-2 pb-1 pt-4">
-                    <span className="text-[13px] font-bold uppercase tracking-wide text-primary">{comp.title}</span>
-                    <span className="ml-2 text-[10px] font-normal normal-case text-muted-foreground">{comp.subtitle}</span>
-                  </td>
-                </tr>
-                {rows.map((r) => (
-                  <tr key={r.label} className="border-t">
-                    <td className="px-2 py-1.5">
-                      <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${r.kind === "Mental" ? "bg-blue-50 text-blue-700" : r.kind === "Físico" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
-                        {r.kind === "Mental" ? "Comunicación" : r.kind === "Físico" ? "Tienda" : "Mercado"}
-                      </span>
-                      <span className="text-foreground">{r.label}</span>
-                    </td>
-                    <td className="border-l px-2 py-1.5 text-right font-semibold tabular-nums text-foreground">
-                      {r.cells[idx]?.display ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 export default async function SaludMarcaPage({ searchParams }: { searchParams?: { tab?: string; view?: string; marca?: string } }) {
   const tab = TABS.find((t) => t.key === searchParams?.tab) ?? TABS[0];
 
@@ -308,42 +232,17 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
     );
   }
 
-  // ===== Resto de categorías + Marca: modelo de construcción (sin cambios) =====
-  const [floorShare, cb, brandMix, pautaByCat] = await Promise.all([
-    safe(getFloorShareU4M(), null as Awaited<ReturnType<typeof getFloorShareU4M>> | null),
-    safe(getCbU3M(), null as Awaited<ReturnType<typeof getCbU3M>> | null),
-    safe(getOrganicPilarMix(), null),
-    safe(getPautaByCategoria(), null),
-  ]);
-  const [webByCat, influencia, canal, mercado] = await Promise.all([
-    safe(getWebByCategoria(), null),
-    safe(getInfluenciaTotals(), null),
-    safe(getCanalTotals(), null),
-    safe(getMercadoByCategoria(), null),
-  ]);
-  const brandModel = buildBrandModel(pautaByCat, brandMix, floorShare, cb, webByCat, influencia, canal, mercado);
-  const esMarca = tab.key === "marca";
-
-  // Tab "Marca": Salud de Marca consolidada de Drean (las 3 categorías + ponderación).
-  const dreanSeries = esMarca
-    ? {
-        lav: await safe(getDreanSerie("Lavado", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
-        ref: await safe(getDreanSerie("Refrigeración", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
-        coc: await safe(getDreanSerie("Cocción", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
-      }
-    : null;
+  // ===== Tab "Marca": Salud de Marca consolidada de Drean (3 categorías + ponderación) =====
+  const dreanSeries = {
+    lav: await safe(getDreanSerie("Lavado", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+    ref: await safe(getDreanSerie("Refrigeración", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+    coc: await safe(getDreanSerie("Cocción", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+  };
 
   return (
     <div className="space-y-5">
       <Header tab={tab} />
-      {esMarca && dreanSeries && <DreanSaludConsolidada series={dreanSeries} />}
-      <BrandBuildTable
-        brandModel={brandModel}
-        idx={tab.idx}
-        label={tab.label}
-        title={esMarca ? "Marca — Drean general (modelo de construcción)" : tab.label}
-        subtitle={esMarca ? "ponderado por categoría (Lavado 60 / Refrigeración 30 / Cocción 10)" : undefined}
-      />
+      <DreanSaludConsolidada series={dreanSeries} />
     </div>
   );
 }
@@ -422,7 +321,8 @@ type SMCatWave = { tom: SMCell; som: SMCell; int: SMCell; poder: SMCell; sm: SMC
 
 type CatDef = { key: "lav" | "ref" | "coc"; kantar: Record<string, Record<string, KVals>> };
 function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc", Map<string, DreanMesSeg>> }) {
-  const waves = WAVES_LAVADO.map((w) => w.label);
+  // Solo las olas de noviembre: son las mediciones anuales que cuentan para el resultado del año.
+  const waves = WAVES_LAVADO.filter((w) => w.label.startsWith("nov")).map((w) => w.label);
   const CAT_LAV: CatDef = { key: "lav", kantar: KANTAR_LAVADO };
   const CAT_REF: CatDef = { key: "ref", kantar: KANTAR_REFRI };
   const CAT_COC: CatDef = { key: "coc", kantar: KANTAR_COCCION };
@@ -476,10 +376,10 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
             <tr className="border-b text-[9px] font-semibold uppercase text-muted-foreground">
               {waves.map((w) => (
                 <Fragment key={w}>
-                  <th className="border-l px-2 py-1 text-right">Lav</th>
-                  <th className="px-2 py-1 text-right">Refri</th>
-                  <th className="px-2 py-1 text-right">Cocc</th>
-                  <th className="bg-sky-50 px-2 py-1 text-right text-sky-700">SM</th>
+                  <th className="border-l px-2 py-1 text-center">Lav</th>
+                  <th className="px-2 py-1 text-center">Refri</th>
+                  <th className="px-2 py-1 text-center">Cocc</th>
+                  <th className="bg-sky-50 px-2 py-1 text-center text-sky-700">SM</th>
                 </Fragment>
               ))}
             </tr>
@@ -490,9 +390,9 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
                 <td className="whitespace-nowrap px-2 py-1.5 text-foreground">{d.label}</td>
                 {rows.map((row) => (
                   <Fragment key={row.w}>
-                    <td className={`border-l px-2 py-1.5 text-right tabular-nums ${cls(row.lav[d.key].s)}`}>{p1(row.lav[d.key].v)}</td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums ${cls(row.ref[d.key].s)}`}>{p1(row.ref[d.key].v)}</td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums ${cls(row.coc[d.key].s)}`}>{p1(row.coc[d.key].v)}</td>
+                    <td className={`border-l px-2 py-1.5 text-center tabular-nums ${cls(row.lav[d.key].s)}`}>{p1(row.lav[d.key].v)}</td>
+                    <td className={`px-2 py-1.5 text-center tabular-nums ${cls(row.ref[d.key].s)}`}>{p1(row.ref[d.key].v)}</td>
+                    <td className={`px-2 py-1.5 text-center tabular-nums ${cls(row.coc[d.key].s)}`}>{p1(row.coc[d.key].v)}</td>
                     <td className="bg-sky-50 px-2 py-1.5"></td>
                   </Fragment>
                 ))}
@@ -502,10 +402,10 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
               <td className="whitespace-nowrap px-2 py-1.5 text-foreground">Salud de Marca</td>
               {rows.map((row) => (
                 <Fragment key={row.w}>
-                  <td className={`border-l px-2 py-1.5 text-right tabular-nums ${cls(row.lav.sm.s)}`}>{p1(row.lav.sm.v)}</td>
-                  <td className={`px-2 py-1.5 text-right tabular-nums ${cls(row.ref.sm.s)}`}>{p1(row.ref.sm.v)}</td>
-                  <td className={`px-2 py-1.5 text-right tabular-nums ${cls(row.coc.sm.s)}`}>{p1(row.coc.sm.v)}</td>
-                  <td className="bg-sky-100 px-2 py-1.5 text-right tabular-nums font-bold text-sky-800">{p1(row.comp)}</td>
+                  <td className={`border-l px-2 py-1.5 text-center tabular-nums ${cls(row.lav.sm.s)}`}>{p1(row.lav.sm.v)}</td>
+                  <td className={`px-2 py-1.5 text-center tabular-nums ${cls(row.ref.sm.s)}`}>{p1(row.ref.sm.v)}</td>
+                  <td className={`px-2 py-1.5 text-center tabular-nums ${cls(row.coc.sm.s)}`}>{p1(row.coc.sm.v)}</td>
+                  <td className="bg-sky-100 px-2 py-1.5 text-center tabular-nums font-bold text-sky-800">{p1(row.comp)}</td>
                 </Fragment>
               ))}
             </tr>
@@ -513,10 +413,10 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
               <td className="px-2 py-1.5">Peso categoría</td>
               {rows.map((row) => (
                 <Fragment key={row.w}>
-                  <td className="border-l px-2 py-1.5 text-right tabular-nums">{(row.wt.lav * 100).toFixed(0)}%</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{(row.wt.ref * 100).toFixed(0)}%</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{(row.wt.coc * 100).toFixed(0)}%</td>
-                  <td className="bg-sky-50 px-2 py-1.5 text-right tabular-nums">100%</td>
+                  <td className="border-l px-2 py-1.5 text-center tabular-nums">{(row.wt.lav * 100).toFixed(0)}%</td>
+                  <td className="px-2 py-1.5 text-center tabular-nums">{(row.wt.ref * 100).toFixed(0)}%</td>
+                  <td className="px-2 py-1.5 text-center tabular-nums">{(row.wt.coc * 100).toFixed(0)}%</td>
+                  <td className="bg-sky-50 px-2 py-1.5 text-center tabular-nums">100%</td>
                 </Fragment>
               ))}
             </tr>
