@@ -12,6 +12,8 @@ import {
   type FsCatU4M,
 } from "@/lib/floor-share-queries";
 import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
+import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
+import { computeDreanConsolidado, type SMRow } from "@/lib/salud-marca-model";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -249,6 +251,27 @@ function cbToProgress(label: string, c: CbMetricU3M, info = false): ProgressMetr
   };
 }
 
+// Obj.4 Salud de Marca: arma el card desde las olas consolidadas de Drean.
+function buildSaludMarca(rows: SMRow[], target: number) {
+  const r26 = rows.find((r) => r.w === "nov-26");
+  const r25 = rows.find((r) => r.w === "nov-25");
+  const proj = r26?.comp ?? null;
+  const prev = r25?.comp ?? null;
+  const cat = (k: "lav" | "ref" | "coc", label: string) => {
+    const sm26 = r26 ? r26[k].sm.v : null;
+    const sm25 = r25 ? r25[k].sm.v : null;
+    const w = r26 ? r26.wt[k] : 0;
+    return { label, sm26, sm25, w, ap: sm26 == null ? null : sm26 * w, delta: sm26 == null || sm25 == null ? null : sm26 - sm25 };
+  };
+  const lav = cat("lav", "Lavado"), ref = cat("ref", "Refrigeración"), coc = cat("coc", "Cocción");
+  const cats = [lav, ref, coc];
+  const desvio = proj == null ? null : proj - target;
+  const desvioPct = proj == null || target === 0 ? null : ((proj - target) / target) * 100;
+  const lavDir = (lav.delta ?? 0) < -0.05 ? "baja levemente" : (lav.delta ?? 0) > 0.05 ? "sube" : "se mantiene";
+  return { target, proj, prev, cats, lav, coc, desvio, desvioPct, lavDir, meets: proj != null && proj >= target };
+}
+const f1 = (v: number | null) => (v == null ? "—" : v.toFixed(1).replace(".", ","));
+
 export default async function OverviewPage() {
   const now = new Date();
   const curYear = now.getUTCFullYear();
@@ -264,6 +287,15 @@ export default async function OverviewPage() {
   const fsError = floorShareRes.error;
   const cb = cbRes.data;
   const cbError = cbRes.error;
+
+  // ===== Obj.4 Salud de Marca: misma fuente que /salud-marca (tab Marca) =====
+  const [serLav, serRef, serCoc] = await Promise.all([
+    safe(getDreanSerie("Lavado", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+    safe(getDreanSerie("Refrigeración", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+    safe(getDreanSerie("Cocción", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+  ]);
+  const smRows = computeDreanConsolidado({ lav: serLav, ref: serRef, coc: serCoc });
+  const sm = buildSaludMarca(smRows, 34);
 
   // ===== Cálculo por cuatrimestre (todo en USD) =====
   const cuatris = CUATRIS.map((c) => {
@@ -509,7 +541,7 @@ export default async function OverviewPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">34 pts</span><span className="text-muted-foreground">objetivo</span></span>
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">{f1(sm.target)} pts</span><span className="text-muted-foreground">objetivo</span></span>
             </div>
           </div>
         </div>
@@ -519,75 +551,73 @@ export default async function OverviewPage() {
             <div className="rounded-xl border bg-card p-5">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-base font-semibold tracking-tight">Salud de Marca Drean</div>
-                <span className="rounded-md border bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground/80">Meta 34</span>
+                <span className="rounded-md border bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground/80">Meta {f1(sm.target)}</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold tabular-nums text-rose-500">32,6</span>
-                <StatusBadge kind="bad">−1,4 vs meta</StatusBadge>
+                <span className={`text-3xl font-bold tabular-nums ${sm.meets ? "text-emerald-600" : "text-rose-500"}`}>{f1(sm.proj)}</span>
+                {sm.desvio != null && (
+                  <StatusBadge kind={sm.meets ? "ok" : "bad"}>{sm.desvio >= 0 ? "+" : "−"}{f1(Math.abs(sm.desvio))} vs meta</StatusBadge>
+                )}
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">Proyección Nov-2026 (modelo de mercado)</div>
               <dl className="mt-3 space-y-1.5 border-t pt-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Objetivo</dt>
-                  <dd className="font-semibold tabular-nums">34,0</dd>
+                  <dd className="font-semibold tabular-nums">{f1(sm.target)}</dd>
                 </div>
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Último real (nov-25)</dt>
-                  <dd className="font-semibold tabular-nums">33,6</dd>
+                  <dd className="font-semibold tabular-nums">{f1(sm.prev)}</dd>
                 </div>
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Desvío vs objetivo</dt>
-                  <dd className="font-semibold tabular-nums text-rose-500">−1,4 pts (−4,2%)</dd>
+                  <dd className={`font-semibold tabular-nums ${sm.meets ? "text-emerald-600" : "text-rose-500"}`}>
+                    {sm.desvio == null ? "—" : `${sm.desvio >= 0 ? "+" : "−"}${f1(Math.abs(sm.desvio))} pts${sm.desvioPct != null ? ` (${sm.desvioPct >= 0 ? "+" : "−"}${f1(Math.abs(sm.desvioPct))}%)` : ""}`}
+                  </dd>
                 </div>
               </dl>
             </div>
 
             {/* Composición del resultado */}
             <div className="rounded-xl border bg-card p-5 lg:col-span-2">
-              <div className="mb-2 text-base font-semibold tracking-tight">De dónde viene el 32,6
+              <div className="mb-2 text-base font-semibold tracking-tight">De dónde viene el {f1(sm.proj)}
                 <span className="ml-2 text-[11px] font-normal text-muted-foreground">Salud de Marca global = Σ (SM categoría × peso)</span>
               </div>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <th className="py-1.5 text-left">Categoría</th>
+                    <th className="py-1.5 text-center">SM Nov-25</th>
                     <th className="py-1.5 text-center">SM Nov-26</th>
                     <th className="py-1.5 text-center">Peso</th>
                     <th className="py-1.5 text-center">Aporte</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-t">
-                    <td className="py-1.5">Lavado</td>
-                    <td className="py-1.5 text-center tabular-nums">40,0</td>
-                    <td className="py-1.5 text-center tabular-nums text-muted-foreground">62%</td>
-                    <td className="py-1.5 text-center font-semibold tabular-nums">24,8</td>
-                  </tr>
-                  <tr className="border-t">
-                    <td className="py-1.5">Refrigeración</td>
-                    <td className="py-1.5 text-center tabular-nums">21,1</td>
-                    <td className="py-1.5 text-center tabular-nums text-muted-foreground">35%</td>
-                    <td className="py-1.5 text-center font-semibold tabular-nums">7,4</td>
-                  </tr>
-                  <tr className="border-t">
-                    <td className="py-1.5">Cocción</td>
-                    <td className="py-1.5 text-center tabular-nums">13,3</td>
-                    <td className="py-1.5 text-center tabular-nums text-muted-foreground">3%</td>
-                    <td className="py-1.5 text-center font-semibold tabular-nums">0,4</td>
-                  </tr>
+                  {sm.cats.map((c) => (
+                    <tr key={c.label} className="border-t">
+                      <td className="py-1.5">{c.label}</td>
+                      <td className="py-1.5 text-center tabular-nums text-muted-foreground">{f1(c.sm25)}</td>
+                      <td className="py-1.5 text-center tabular-nums">{f1(c.sm26)}</td>
+                      <td className="py-1.5 text-center tabular-nums text-muted-foreground">{(c.w * 100).toFixed(0)}%</td>
+                      <td className="py-1.5 text-center font-semibold tabular-nums">{f1(c.ap)}</td>
+                    </tr>
+                  ))}
                   <tr className="border-t-2 bg-muted/40 font-bold">
                     <td className="py-1.5">Total</td>
                     <td className="py-1.5"></td>
+                    <td className="py-1.5"></td>
                     <td className="py-1.5 text-center tabular-nums">100%</td>
-                    <td className="py-1.5 text-center tabular-nums text-rose-500">32,6</td>
+                    <td className={`py-1.5 text-center tabular-nums ${sm.meets ? "text-emerald-600" : "text-rose-500"}`}>{f1(sm.proj)}</td>
                   </tr>
                 </tbody>
               </table>
               <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                <b>Por qué el desvío:</b> alcanzar 34 implica crecer sobre los 33,6 de nov-25. El modelo proyecta a <b>Lavado</b>
-                {" "}(62% del mix) levemente a la baja (41,7 → 40,0) por la suavización de su share de mercado, lo que pesa más que la
-                fuerte mejora de <b>Cocción</b> (11,6 → 13,3 por el nuevo portfolio, pero solo 3% del mix). <b>Refrigeración</b> se
-                mantiene (sin proyección de marca). Neto: 32,6 pts, −1,4 vs objetivo.
+                <b>Por qué el desvío:</b> alcanzar {f1(sm.target)} implica crecer sobre los {f1(sm.prev)} de nov-25. El resultado lo
+                domina <b>Lavado</b> ({(sm.lav.w * 100).toFixed(0)}% del mix): su proyección de marca {sm.lavDir}{" "}
+                ({f1(sm.lav.sm25)} → {f1(sm.lav.sm26)}), y eso pesa más que la mejora de <b>Cocción</b>{" "}
+                ({f1(sm.coc.sm25)} → {f1(sm.coc.sm26)}, nuevo portfolio, pero solo {(sm.coc.w * 100).toFixed(0)}% del mix).{" "}
+                <b>Refrigeración</b> se mantiene (sin proyección de marca).
               </p>
             </div>
           </div>
