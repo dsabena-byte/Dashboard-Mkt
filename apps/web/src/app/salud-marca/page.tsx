@@ -431,6 +431,71 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
         </>
       ),
     },
+    Philco: {
+      tom: usTotEq(-3.05, 1.101), tomBand: 0.5,
+      som: usTotEq(3.64, 2.706), somBand: 2.5,
+      poder: usTotEq(2.86, 0.646), poderBand: 0.3,
+      damp: 0.5,
+      nota: (
+        <>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Philco (refri) — se estiman TOM, SOM y Poder desde el unit share total</p>
+          {notaRefri}
+          <p>
+            Philco viene <strong>creciendo fuerte</strong> (US Total 4,9 → 12,9) y su marca acompaña al share (correlaciones muy altas).
+            Ecuaciones: <strong>TOM ≈ −3,05 + 1,101·driver</strong> (R²=0,98) · <strong>SOM ≈ 3,64 + 2,706·driver</strong> (R²=0,85) ·{" "}
+            <strong>Poder ≈ 2,86 + 0,646·driver</strong> (R²=0,99). Driver = blend(US Total). <strong>Amortiguación 50/50</strong> (N=4).
+            Intención/Significancia/Diferenciación no se estiman.
+          </p>
+        </>
+      ),
+    },
+    Drean: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">Drean (refri) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            Drean es <strong>nueva</strong> en refrigeración: entró por distribución/precio (ganó share rápido 2023-24) <em>antes</em> de
+            construir marca. Share e indicadores de marca están <strong>desacoplados</strong> (incluso inversos): TOM/SOM/Poder planos
+            mientras el share subió y corrigió, y la Intención sube por <em>construcción de marca</em>, no por share. Correlaciones
+            débiles/espurias → <strong>se mantienen los últimos valores reales</strong>. (Con planes de medios/comunicación sí se podría
+            modelar, pero no desde el mercado.)
+          </p>
+        </>
+      ),
+    },
+    Gafa: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">Gafa (refri) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            Incumbente fuerte: su brand equity se mantiene <strong>estable</strong> (TOM ~19, SOM ~49, Poder ~12) aunque su share cae
+            (US Total 22,8 → 13,3). Relación mercado↔marca débil/inversa (espuria) → se mantienen los últimos valores reales.
+          </p>
+        </>
+      ),
+    },
+    Whirlpool: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">Whirlpool (refri) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            Su share <strong>creció</strong> (US Total 2,6 → 10,8) pero la marca <strong>no acompañó</strong> (TOM/SOM planos o bajando).
+            Share y marca <strong>desacoplados</strong> → se mantienen los últimos valores reales.
+          </p>
+        </>
+      ),
+    },
+    LG: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">LG (refri) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            GFK <strong>no desglosa el share total de LG</strong> en refrigeración (sin driver de mercado disponible) → se mantienen los
+            últimos valores reales.
+          </p>
+        </>
+      ),
+    },
   };
   // Selección de modelo por categoría. La estimación está calibrada por marca y
   // categoría; donde no hay config, se muestra solo lo medido.
