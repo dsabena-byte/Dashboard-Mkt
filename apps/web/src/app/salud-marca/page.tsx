@@ -623,6 +623,79 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
         </>
       ),
     },
+    Electrolux: {
+      tom: usTotEq(-3.35, 3.906), tomBand: 2.1,
+      som: usTotEq(7.02, 5.597), somBand: 2.1,
+      poder: usTotEq(7.25, 1.676), poderBand: 0.8,
+      damp: 0.5,
+      nota: (
+        <>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Electrolux (cocción) — se estiman TOM, SOM y Poder desde el unit share total</p>
+          <p>
+            <strong>Blend 50/50 (Kantar).</strong> Driver = 0,5·US<sub>Total</sub>(T) + 0,5·US<sub>Total</sub>(T-12). Marca premium{" "}
+            <strong>chica y en crecimiento parejo</strong> (US Total 0,84 → 2,43): su marca <strong>construye en lockstep</strong> con el
+            share total (TOM 1→6, SOM 14→19, Poder 9,1→11,4). Acople fuerte y coherente: Poder +0,85, TOM +0,83, SOM +0,82.
+          </p>
+          <p>
+            Ecuaciones: <strong>TOM ≈ −3,35 + 3,91·driver</strong> (R²=0,68, ±2,1) · <strong>SOM ≈ 7,02 + 5,60·driver</strong> (R²=0,88, ±2,1) ·{" "}
+            <strong>Poder ≈ 7,25 + 1,68·driver</strong> (R²=0,73, ±0,8). <strong>Amortiguación 0,5</strong>: el driver nov-26 (3,57) extrapola
+            1,62× sobre el rango calibrado (extrapolación moderada). <strong>Intención y la hélice no se estiman</strong>{" "}
+            (no acoplan; Intención R²≈0) → se mantienen en su último valor real.
+          </p>
+        </>
+      ),
+    },
+    Whirlpool: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">Whirlpool (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            Marca <strong>premium pura</strong> (índice de precio 1,5-1,8) que se está <strong>retirando a una posición más chica pero más
+            premium</strong>: pierde share de volumen en gama media/alta (blend Mid+High 15,7 → 10,2) <em>mientras</em> su equity{" "}
+            <strong>se fortalece</strong> (Poder 11,3→14,3; Intención 26→36; Diferenciación 155→169, la más alta de la categoría). Es{" "}
+            <strong>premiumización por contracción</strong>: la relación marca↔share de volumen es <strong>inversa</strong> (Poder vs share
+            = −0,78) y el único driver coherente es el índice de precio (Poder vs precio = +0,80), no proyectable a nov-26. → Equity
+            resiliente, se mantienen los últimos valores reales.
+          </p>
+        </>
+      ),
+    },
+    Longvie: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">Longvie (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            Incumbente mid-tier (TOM ~13, presencia sólida en High). Su share y su SOM <strong>co-movieron en un ciclo</strong> (ambos pico
+            nov-24), pero bajo la <strong>metodología de blend 50/50 la señal se lava</strong> (SOM↔blend +0,32) porque el año móvil sigue
+            subiendo cuando el SOM ya cae. Poder/TOM/Intención no acoplan (Poder −0,24). Sin driver confiable → equity estable, se mantienen
+            los últimos valores reales.
+          </p>
+        </>
+      ),
+    },
+    Gafa: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">Gafa (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            GFK <strong>no desglosa el share total de Gafa</strong> en cocción (queda en “otros”; solo aparece en Mid hasta may-24). Sin
+            driver de mercado disponible → se mantienen los últimos valores reales.
+          </p>
+        </>
+      ),
+    },
+    Florencia: {
+      nota: (
+        <>
+          <p className="font-semibold text-foreground">Florencia (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p>
+            Jugador grande de <strong>volumen</strong> (~15% total) pero <strong>comprado por precio, no por marca</strong>: índice de precio
+            bajísimo (High 46-73, Mid 86-94) y la <strong>marca más débil</strong> de la categoría (Poder ~5, Diferenciación 57-62). Además
+            Kantar <strong>no tiene TOM/SOM</strong> de jun-24 a nov-25 (no hay con qué calibrar). → Se mantienen los últimos valores reales.
+          </p>
+        </>
+      ),
+    },
   };
   // Selección de modelo por categoría. La estimación está calibrada por marca y
   // categoría; donde no hay config, se muestra solo lo medido.
