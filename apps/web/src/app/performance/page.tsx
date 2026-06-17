@@ -1,6 +1,7 @@
 import { getPautaPerformance } from "@/lib/pauta-queries";
 import { getMetaPaidCreatives } from "@/lib/meta-paid-queries";
 import { getDv360Creatives, getDv360Reach } from "@/lib/dv360-queries";
+import { getFxRates } from "@/lib/fx-queries";
 import { getPlanningMedia } from "@/lib/planning-media-queries";
 import { PerformanceClient } from "@/components/pauta/performance-client";
 
@@ -62,12 +63,13 @@ async function getPlanningMonthly(): Promise<PlanningByMes> {
 }
 
 export default async function PerformancePautaPage() {
-  const [data, metaPaid, dv360, dv360Reach, planningMonthly] = await Promise.all([
+  const [data, metaPaid, dv360, dv360Reach, fxRates, planningMonthly] = await Promise.all([
     getPautaPerformance(),
     safe(getMetaPaidCreatives(), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
     safe(getDv360Creatives(), [] as Awaited<ReturnType<typeof getDv360Creatives>>),
     safe(getDv360Reach(), [] as Awaited<ReturnType<typeof getDv360Reach>>),
+    safe(getFxRates(), {} as Record<string, number>),
     safe(getPlanningMonthly(), {} as PlanningByMes),
   ]);
-  return <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} planningMonthly={planningMonthly} />;
+  return <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} />;
 }
