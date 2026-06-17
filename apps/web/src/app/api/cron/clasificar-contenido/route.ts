@@ -4,8 +4,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 // Taxonomía (editable). El cron clasifica el contenido orgánico de Drean
-// (meta_posts) por categoría de producto y por pilar de contenido.
-// Categorías alineadas con las de pauta (pauta_performance).
+// (meta_posts) por categoría de producto y por pilar de contenido, MIRANDO LA
+// IMAGEN (visión) además del caption. Categorías alineadas con pauta.
 const CATEGORIAS = ["Brand", "Lavado", "Refrigeración", "Cocción", "Promoción"] as const;
 const PILARES = [
   "Liderazgo marca/porfolio",
@@ -27,7 +27,13 @@ const CATEGORIA_DEFS = `
 - "Refrigeración": heladeras, freezers.
 - "Cocción": cocinas, hornos, anafes, microondas.
 - "Promoción": ofertas, descuentos, financiación/cuotas, % off o eventos comerciales (Drean Week, Hot Sale, Cyber, etc.).
-- "Brand": institucional/marca o multi-categoría sin foco en un producto ni en una promo.`;
+- "Brand": institucional/marca, o MULTI-CATEGORÍA (la imagen muestra dos o más tipos de producto distintos / portfolio completo) sin foco en un único producto ni promo.`;
+
+const REGLAS = `Reglas (mirá la IMAGEN además del caption; muchas stories no tienen caption, clasificá por la imagen):
+- Si la imagen muestra DOS O MÁS categorías de producto distintas juntas (ej. heladera + cocina + lavarropas, o un portfolio/lineup completo) → "Brand".
+- Si la imagen muestra UNA sola categoría de producto (aunque sean varias unidades de lo mismo, ej. solo cocinas, o solo heladeras) → ESA categoría, aunque el caption tenga tono de marca.
+- Si es promo/oferta/evento comercial (Drean Week, Hot Sale, cuotas, % off) → "Promoción".
+- "Brand" también para institucional puro sin producto visible.`;
 
 function env(key: string): string {
   const v = process.env[key];
@@ -70,58 +76,57 @@ interface PostRow {
   platform: string;
   post_id: string;
   message: string | null;
+  thumbnail_url: string | null;
+  media_type: string | null;
 }
 
 interface Clasif {
-  i: number;
   categoria: string;
   pilar: string;
   confianza: number;
 }
 
-async function classifyBatch(posts: PostRow[]): Promise<Map<number, Clasif>> {
+// Clasifica UN post con visión (imagen + caption). Per-post para ser robusto a
+// thumbnails caídos: un error no tira abajo el resto del batch.
+async function classifyOne(post: PostRow): Promise<Clasif | null> {
   const apiKey = env("OPENAI_API_KEY");
-  const list = posts
-    .map((p, i) => `${i + 1}. ${(p.message ?? "").replace(/\s+/g, " ").slice(0, 500)}`)
-    .join("\n");
+  const caption = (post.message ?? "").replace(/\s+/g, " ").slice(0, 600).trim();
 
-  const prompt = `Sos analista de marketing de Drean (electrodomésticos, Argentina). Clasificá cada post orgánico según su CATEGORÍA de producto y su PILAR de contenido.
+  const prompt = `Sos analista de marketing de Drean (electrodomésticos, Argentina). Clasificá este post orgánico según su CATEGORÍA de producto y su PILAR de contenido.
 
 CATEGORÍAS válidas:${CATEGORIA_DEFS}
 
 PILARES válidos:${PILAR_DEFS}
 
-Posts (caption):
-${list}
+${REGLAS}
 
-Reglas:
-- Si el post muestra o menciona un tipo de producto específico (lavarropas, heladera, cocina, etc.), usá ESA categoría aunque el tono sea de marca.
-- Si es una promo/oferta/evento comercial (Drean Week, Hot Sale, cuotas, % off), usá "Promoción".
-- Usá "Brand" solo si es institucional/multi-categoría, sin foco de producto ni promo.
+Caption del post: ${caption || "(sin caption — clasificá por la imagen)"}
 
-Devolvé SOLO un JSON: {"items":[{"i":<número>,"categoria":"<una de las categorías>","pilar":"<uno de los pilares>","confianza":<0..1>}]}. Usá EXACTAMENTE los nombres dados.`;
+Devolvé SOLO un JSON: {"categoria":"<una de las categorías>","pilar":"<uno de los pilares>","confianza":<0..1>}. Usá EXACTAMENTE los nombres dados.`;
+
+  const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
+  if (post.thumbnail_url) {
+    content.push({ type: "image_url", image_url: { url: post.thumbnail_url, detail: "low" } });
+  }
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content }],
       temperature: 0.1,
       response_format: { type: "json_object" },
-      max_tokens: 1500,
+      max_tokens: 200,
     }),
   });
-  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 120)}`);
   const data = (await res.json()) as { choices: Array<{ message: { content: string } }> };
-  const parsed = JSON.parse(data.choices[0]?.message?.content ?? "{}") as { items?: Clasif[] };
-  const map = new Map<number, Clasif>();
-  for (const it of parsed.items ?? []) {
-    const categoria = (CATEGORIAS as readonly string[]).includes(it.categoria) ? it.categoria : "Brand";
-    const pilar = (PILARES as readonly string[]).includes(it.pilar) ? it.pilar : null;
-    if (pilar) map.set(it.i, { i: it.i, categoria, pilar, confianza: Number(it.confianza) || 0 });
-  }
-  return map;
+  const it = JSON.parse(data.choices[0]?.message?.content ?? "{}") as Partial<Clasif>;
+  const categoria = (CATEGORIAS as readonly string[]).includes(it.categoria ?? "") ? it.categoria! : "Brand";
+  const pilar = (PILARES as readonly string[]).includes(it.pilar ?? "") ? it.pilar! : null;
+  if (!pilar) return null;
+  return { categoria, pilar, confianza: Number(it.confianza) || 0 };
 }
 
 export async function GET(request: Request) {
@@ -132,13 +137,16 @@ export async function GET(request: Request) {
   }
 
   const reqUrl = new URL(request.url);
-  const batchSize = Math.min(Math.max(Number(reqUrl.searchParams.get("batch") ?? 20), 1), 40);
+  const batchSize = Math.min(Math.max(Number(reqUrl.searchParams.get("batch") ?? 10), 1), 25);
+  // force=1 reclasifica también los ya clasificados (para aplicar la nueva lógica de visión).
+  const force = reqUrl.searchParams.get("force") === "1";
   const results: Record<string, unknown> = {};
 
   try {
-    // Posts orgánicos de Drean (meta_posts) con caption y sin clasificar.
+    // Posts orgánicos de Drean (meta_posts) con thumbnail. Incluye stories (sin caption).
+    const filtro = force ? "" : "&pilar_contenido=is.null";
     const posts = await supabaseQuery<PostRow[]>(
-      `meta_posts?select=platform,post_id,message&pilar_contenido=is.null&message=not.is.null&order=fecha_post.desc&limit=${batchSize}`,
+      `meta_posts?select=platform,post_id,message,thumbnail_url,media_type&thumbnail_url=not.is.null${filtro}&order=fecha_post.desc&limit=${batchSize}`,
     );
     results.toProcess = posts.length;
 
@@ -146,16 +154,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: true, message: "Sin posts pendientes de clasificar", results });
     }
 
-    const clasif = await classifyBatch(posts);
     const now = new Date().toISOString();
     let ok = 0;
     const errors: string[] = [];
 
-    for (let i = 0; i < posts.length; i++) {
-      const c = clasif.get(i + 1);
-      if (!c) continue;
+    for (const post of posts) {
       try {
-        const updated = await supabasePatch(posts[i]!.platform, posts[i]!.post_id, {
+        const c = await classifyOne(post);
+        if (!c) continue;
+        const updated = await supabasePatch(post.platform, post.post_id, {
           categoria: c.categoria,
           pilar_contenido: c.pilar,
           clasif_confianza: c.confianza,
@@ -170,7 +177,7 @@ export async function GET(request: Request) {
     if (errors.length) results.errors = errors.slice(0, 5);
 
     const pending = await supabaseQuery<Array<{ post_id: string }>>(
-      "meta_posts?select=post_id&pilar_contenido=is.null&message=not.is.null",
+      "meta_posts?select=post_id&pilar_contenido=is.null&thumbnail_url=not.is.null",
     );
     results.pendientes = Array.isArray(pending) ? pending.length : 0;
 
