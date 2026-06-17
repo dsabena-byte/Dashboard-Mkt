@@ -73,7 +73,7 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
   );
 }
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -126,12 +126,22 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     );
     return { ...a, count: vids.length };
   }, [metaPaid]);
-  // DV360: resumen por canal (+ reach), embudo de video y piezas. Costo en USD.
-  const dv360Channels = useMemo(() => aggregateDv360Channels(dv360, dv360Reach), [dv360, dv360Reach]);
-  const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360), [dv360]);
-  const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360), [dv360]);
-  const dv360ByCategoria = useMemo(() => aggregateDv360By(dv360, "categoria"), [dv360]);
-  const dv360ByRol = useMemo(() => aggregateDv360By(dv360, "rol"), [dv360]);
+  // DV360: si hay cotización (fx_rates) mostramos en pesos (BCRA prom. mensual),
+  // convirtiendo el costo USD por el rate del mes de cada fila. Si no, en USD.
+  const arsMode = Object.keys(fxRates).length > 0;
+  const fxVals = Object.values(fxRates);
+  const fxFallback = fxVals.length ? fxVals[fxVals.length - 1]! : 1;
+  const dvMoney = arsMode ? fmtARS : fmtUSD;
+  const monedaLbl = arsMode ? "ARS" : "USD";
+  const dv360Conv = useMemo(
+    () => (arsMode ? dv360.map((r) => ({ ...r, revenue_usd: r.revenue_usd * (fxRates[r.mes] ?? fxFallback) })) : dv360),
+    [dv360, fxRates, arsMode, fxFallback],
+  );
+  const dv360Channels = useMemo(() => aggregateDv360Channels(dv360Conv, dv360Reach), [dv360Conv, dv360Reach]);
+  const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360Conv), [dv360Conv]);
+  const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360Conv), [dv360Conv]);
+  const dv360ByCategoria = useMemo(() => aggregateDv360By(dv360Conv, "categoria"), [dv360Conv]);
+  const dv360ByRol = useMemo(() => aggregateDv360By(dv360Conv, "rol"), [dv360Conv]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -610,8 +620,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           ) : (
             <>
               <p className="mb-3 text-[10px] text-muted-foreground">
-                Toda la pauta de DV360 (YouTube, Programmatic, Marketplace, Demand Gen). <strong>Costo en USD</strong>; CPM/CPC/CTR
-                calculados. <strong>Alcance</strong> = usuarios únicos (Unique Reach); a nivel canal es una suma aproximada (hay
+                Toda la pauta de DV360 (YouTube, Programmatic, Marketplace, Demand Gen).{" "}
+                <strong>Costo en {arsMode ? "ARS (BCRA prom. mensual)" : "USD"}</strong>; CPM/CPC/CTR calculados.{" "}
+                <strong>Alcance</strong> = usuarios únicos (Unique Reach); a nivel canal es una suma aproximada (hay
                 solapamiento de usuarios entre líneas). <strong>Frec.</strong> = impresiones / alcance.
               </p>
               <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
@@ -619,7 +630,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   <thead className="border-b">
                     <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                       <th className="px-3 py-2">Canal</th>
-                      <th className="px-3 py-2 text-right">Costo USD</th>
+                      <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
                       <th className="px-3 py-2 text-right">Impresiones</th>
                       <th className="px-3 py-2 text-right">Alcance</th>
                       <th className="px-3 py-2 text-right">Frec.</th>
@@ -633,25 +644,25 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                     {dv360Channels.canales.map((c) => (
                       <tr key={c.canal} className="border-b last:border-0">
                         <td className="px-3 py-2 font-medium">{c.canal}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(c.revenueUsd)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{dvMoney(c.revenueUsd)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.impresiones)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{c.reach > 0 ? fmtNum(c.reach) : "—"}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{c.frequency > 0 ? c.frequency.toFixed(1) : "—"}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.clicks)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(c.cpm)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{c.cpc > 0 ? fmtUSD(c.cpc) : "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{dvMoney(c.cpm)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{c.cpc > 0 ? dvMoney(c.cpc) : "—"}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{c.ctr.toFixed(2)}%</td>
                       </tr>
                     ))}
                     <tr className="border-t-2 font-semibold">
                       <td className="px-3 py-2">Total</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(dv360Channels.total.revenueUsd)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{dvMoney(dv360Channels.total.revenueUsd)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtNum(dv360Channels.total.impresiones)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.reach > 0 ? fmtNum(dv360Channels.total.reach) : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.frequency > 0 ? dv360Channels.total.frequency.toFixed(1) : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtNum(dv360Channels.total.clicks)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(dv360Channels.total.cpm)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.cpc > 0 ? fmtUSD(dv360Channels.total.cpc) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{dvMoney(dv360Channels.total.cpm)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.cpc > 0 ? dvMoney(dv360Channels.total.cpc) : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.ctr.toFixed(2)}%</td>
                     </tr>
                   </tbody>
@@ -664,7 +675,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                     <thead className="border-b">
                       <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-2">Categoría</th>
-                        <th className="px-3 py-2 text-right">Costo USD</th>
+                        <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
                         <th className="px-3 py-2 text-right">Impr.</th>
                         <th className="px-3 py-2 text-right">CTR</th>
                       </tr>
@@ -673,7 +684,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                       {dv360ByCategoria.map((b) => (
                         <tr key={b.nombre} className="border-b last:border-0">
                           <td className="px-3 py-2 font-medium">{b.nombre}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(b.revenueUsd)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{dvMoney(b.revenueUsd)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.impresiones)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{b.ctr.toFixed(2)}%</td>
                         </tr>
@@ -687,7 +698,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                     <thead className="border-b">
                       <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-2">Rol</th>
-                        <th className="px-3 py-2 text-right">Costo USD</th>
+                        <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
                         <th className="px-3 py-2 text-right">Impr.</th>
                         <th className="px-3 py-2 text-right">CTR</th>
                       </tr>
@@ -696,7 +707,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                       {dv360ByRol.map((b) => (
                         <tr key={b.nombre} className="border-b last:border-0">
                           <td className="px-3 py-2 font-medium">{b.nombre}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(b.revenueUsd)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{dvMoney(b.revenueUsd)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.impresiones)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{b.ctr.toFixed(2)}%</td>
                         </tr>
@@ -723,7 +734,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                           <th className="px-3 py-2">Canal</th>
                           <th className="px-3 py-2">Categoría</th>
                           <th className="px-3 py-2">Rol</th>
-                          <th className="px-3 py-2 text-right">Costo USD</th>
+                          <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
                           <th className="px-3 py-2 text-right">Impresiones</th>
                           <th className="px-3 py-2 text-right">Clicks</th>
                           <th className="px-3 py-2 text-right">CTR</th>
@@ -738,11 +749,11 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                             <td className="px-3 py-2 text-muted-foreground">{p.canal}</td>
                             <td className="px-3 py-2 text-muted-foreground">{p.categoria}</td>
                             <td className="px-3 py-2 text-muted-foreground">{p.rol}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(p.revenueUsd)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{dvMoney(p.revenueUsd)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.impresiones)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.clicks)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{p.ctr.toFixed(2)}%</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{fmtUSD(p.cpm)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{dvMoney(p.cpm)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
                           </tr>
                         ))}
@@ -763,7 +774,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             <>
               <p className="mb-3 text-[10px] text-muted-foreground">
                 Embudo real de DV360 separado por canal, porque <strong>TrueView (YouTube) es skippable</strong> y su
-                &quot;completion&quot; no es comparable con el video programmático. <strong>CPM efectivo en USD</strong> por hito.
+                &quot;completion&quot; no es comparable con el video programmático. <strong>CPM efectivo en {monedaLbl}</strong> por hito.
               </p>
               <div className="grid gap-3 md:grid-cols-2">
                 {dv360Funnels.map((f) => {
@@ -779,7 +790,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                     <div key={f.canal} className="overflow-x-auto rounded-lg border bg-card">
                       <div className="border-b px-3 py-2 text-xs font-semibold">
                         {f.canal}
-                        <span className="ml-2 font-normal text-muted-foreground">· {fmtUSD(f.revenueUsd)}</span>
+                        <span className="ml-2 font-normal text-muted-foreground">· {dvMoney(f.revenueUsd)}</span>
                       </div>
                       <table className="w-full text-xs">
                         <thead className="border-b">
@@ -787,7 +798,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                             <th className="px-3 py-2">Hito</th>
                             <th className="px-3 py-2 text-right">Cantidad</th>
                             <th className="px-3 py-2 text-right">% impr.</th>
-                            <th className="px-3 py-2 text-right">CPM ef. USD</th>
+                            <th className="px-3 py-2 text-right">CPM ef. {monedaLbl}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -800,7 +811,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                                 <td className={`px-3 py-2 ${dim ? "text-muted-foreground" : "font-medium"}`}>{label}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{fmtNum(n)}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{n > 0 ? fmtUSD(cpmEf) : "—"}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{n > 0 ? dvMoney(cpmEf) : "—"}</td>
                               </tr>
                             );
                           })}
