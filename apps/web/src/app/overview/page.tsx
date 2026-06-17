@@ -496,19 +496,106 @@ export default async function OverviewPage() {
 
       {/* ===== OBJETIVO 4 ===== */}
       <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
-        <div className="px-4 py-3">
-          <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 4</span>
-            <h3 className="text-sm font-bold tracking-tight">Salud de Marca</h3>
+        <div className="border-b border-primary/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Obj. 4</span>
+                <h3 className="text-sm font-bold tracking-tight">Salud de Marca</h3>
+              </div>
+              <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">
+                Ejecutar campañas de comunicación 360 en cada categoría core del negocio (Lavado, Refrigeración y Cocción) para
+                alcanzar una <b>Salud de Marca Drean de 34 puntos</b>, medida por la investigación Kantar de fin de año.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">34 pts</span><span className="text-muted-foreground">objetivo</span></span>
+            </div>
           </div>
-          <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">
-            El resultado se mide con la investigación de fin de año. Mientras tanto seguimos los indicadores proyectivos que la construyen, mapeados a cada dimensión de marca: <b>Comunicación</b> (medios + contenido) · <b>Tienda</b> (Floor Share + CB) · <b>Mercado</b> (market share + índice de precio).
-          </p>
+        </div>
+        <div className="p-4">
+          <div className="grid gap-4 lg:grid-cols-3">
+            {/* Resultado proyectado */}
+            <div className="rounded-xl border bg-card p-5">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-base font-semibold tracking-tight">Salud de Marca Drean</div>
+                <span className="rounded-md border bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground/80">Meta 34</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold tabular-nums text-rose-500">32,6</span>
+                <StatusBadge kind="bad">−1,4 vs meta</StatusBadge>
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">Proyección Nov-2026 (modelo de mercado)</div>
+              <dl className="mt-3 space-y-1.5 border-t pt-2.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Objetivo</dt>
+                  <dd className="font-semibold tabular-nums">34,0</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Último real (nov-25)</dt>
+                  <dd className="font-semibold tabular-nums">33,6</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Desvío vs objetivo</dt>
+                  <dd className="font-semibold tabular-nums text-rose-500">−1,4 pts (−4,2%)</dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Composición del resultado */}
+            <div className="rounded-xl border bg-card p-5 lg:col-span-2">
+              <div className="mb-2 text-base font-semibold tracking-tight">De dónde viene el 32,6
+                <span className="ml-2 text-[11px] font-normal text-muted-foreground">Salud de Marca global = Σ (SM categoría × peso)</span>
+              </div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <th className="py-1.5 text-left">Categoría</th>
+                    <th className="py-1.5 text-center">SM Nov-26</th>
+                    <th className="py-1.5 text-center">Peso</th>
+                    <th className="py-1.5 text-center">Aporte</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t">
+                    <td className="py-1.5">Lavado</td>
+                    <td className="py-1.5 text-center tabular-nums">40,0</td>
+                    <td className="py-1.5 text-center tabular-nums text-muted-foreground">62%</td>
+                    <td className="py-1.5 text-center font-semibold tabular-nums">24,8</td>
+                  </tr>
+                  <tr className="border-t">
+                    <td className="py-1.5">Refrigeración</td>
+                    <td className="py-1.5 text-center tabular-nums">21,1</td>
+                    <td className="py-1.5 text-center tabular-nums text-muted-foreground">35%</td>
+                    <td className="py-1.5 text-center font-semibold tabular-nums">7,4</td>
+                  </tr>
+                  <tr className="border-t">
+                    <td className="py-1.5">Cocción</td>
+                    <td className="py-1.5 text-center tabular-nums">13,3</td>
+                    <td className="py-1.5 text-center tabular-nums text-muted-foreground">3%</td>
+                    <td className="py-1.5 text-center font-semibold tabular-nums">0,4</td>
+                  </tr>
+                  <tr className="border-t-2 bg-muted/40 font-bold">
+                    <td className="py-1.5">Total</td>
+                    <td className="py-1.5"></td>
+                    <td className="py-1.5 text-center tabular-nums">100%</td>
+                    <td className="py-1.5 text-center tabular-nums text-rose-500">32,6</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                <b>Por qué el desvío:</b> alcanzar 34 implica crecer sobre los 33,6 de nov-25. El modelo proyecta a <b>Lavado</b>
+                {" "}(62% del mix) levemente a la baja (41,7 → 40,0) por la suavización de su share de mercado, lo que pesa más que la
+                fuerte mejora de <b>Cocción</b> (11,6 → 13,3 por el nuevo portfolio, pero solo 3% del mix). <b>Refrigeración</b> se
+                mantiene (sin proyección de marca). Neto: 32,6 pts, −1,4 vs objetivo.
+              </p>
+            </div>
+          </div>
           <Link
-            href="/salud-marca"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-card px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
+            href="/salud-marca?tab=marca"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-card px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
           >
-            Ver análisis completo →
+            Ver evolución completa →
           </Link>
         </div>
       </section>
