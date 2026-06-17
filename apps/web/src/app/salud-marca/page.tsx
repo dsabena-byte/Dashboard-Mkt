@@ -42,6 +42,7 @@ const WAVES_REFRI = [
   { label: "nov-24", mes: "2024-11-01" },
   { label: "jun-25", mes: "2025-06-01" },
   { label: "nov-25", mes: "2025-11-01" },
+  { label: "nov-26", mes: "2026-11-01" }, // ola futura a estimar
 ] as const;
 
 // Marcas con tracking Kantar disponible (selector). El nombre en mayúscula es la marca en mercado_share.
@@ -348,7 +349,10 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     const d = blend((s) => s?.usTotal ?? null, serie, mes);
     return d == null ? null : a + b * d;
   };
-  type EstCfg = { tom?: (s: Map<string, DreanMesSeg>, m: string) => number | null; tomBand?: number; som?: (s: Map<string, DreanMesSeg>, m: string) => number | null; somBand?: number; nota: ReactNode };
+  // Estimación desde unit share total (blend 50/50) — driver usado en Refri.
+  const usTotEq = somEq; // a + b·blend(US_Total); alias semántico (no solo SOM)
+  type EstFn = (s: Map<string, DreanMesSeg>, m: string) => number | null;
+  type EstCfg = { tom?: EstFn; tomBand?: number; som?: EstFn; somBand?: number; poder?: EstFn; poderBand?: number; nota: ReactNode };
   const notaModelo = (
     <p>
       <strong>1. Blend 50/50 (metodología Kantar).</strong> Driver = 0,5·U12(T) + 0,5·U12(T-12, un año antes). <strong>TOM</strong> ←
@@ -356,7 +360,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       <em> inercia comercial</em> (no incluye medios/tienda/comunicación). <strong>3.</strong> Cada marca se calibra por separado.
     </p>
   );
-  const EST: Record<string, EstCfg> = {
+  const EST_LAVADO: Record<string, EstCfg> = {
     Drean: {
       tom: tomEq(13.23, 1.154), tomBand: 2.3, som: somEq(33.73, 1.083), somBand: 1.4,
       nota: (
@@ -393,19 +397,48 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       nota: <p>{marca} — <strong>no se estima</strong> TOM ni SOM: el mercado de lavado no predice su salud de marca (relación débil/espuria; marca multicategoría). Solo se muestran los valores reales.</p>,
     },
   };
-  // La estimación TOM/SOM está calibrada solo para Lavado (refri aún no tiene
-  // historia suficiente de mercado). En otras categorías se muestra solo lo medido.
-  const cfg: EstCfg | undefined = esLavado ? EST[marca] : undefined;
+  // Refrigeración. Driver = blend(US_Total) para TOM/SOM/Poder (en refri Drean casi
+  // no juega en High premium; la señal está en el share TOTAL). Calibrado por OLS
+  // sobre las olas medidas (N=4 con blend → direccional, no de precisión).
+  const notaRefri = (
+    <p>
+      <strong>Blend 50/50 (Kantar).</strong> Driver = 0,5·U12(T) + 0,5·U12(T-12). En refrigeración el predictor es el{" "}
+      <strong>unit share TOTAL</strong> (no la gama alta, donde Drean casi no compite). <em>Inercia comercial</em>; no incluye
+      medios/tienda/comunicación. N=4 olas con blend → estimación <strong>direccional</strong>.
+    </p>
+  );
+  const EST_REFRI: Record<string, EstCfg> = {
+    Samsung: {
+      tom: usTotEq(-13.97, 1.724), tomBand: 0.4,
+      som: usTotEq(-15.51, 4.012), somBand: 3.0,
+      poder: usTotEq(-10.36, 1.647), poderBand: 1.2,
+      nota: (
+        <>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Samsung (refri) — se estiman TOM, SOM y Poder desde el unit share total</p>
+          {notaRefri}
+          <p>
+            Ecuaciones: <strong>TOM ≈ −13,97 + 1,724·driver</strong> (R²=0,97, ±0,4) · <strong>SOM ≈ −15,51 + 4,012·driver</strong>{" "}
+            (R²=0,73, ±3,0) · <strong>Poder ≈ −10,36 + 1,647·driver</strong> (R²=0,85, ±1,2). Driver = blend(US Total). Intención,
+            Significancia y Diferenciación <strong>no se estiman</strong> (sin señal de mercado) → se mantienen en su último valor.
+          </p>
+        </>
+      ),
+    },
+  };
+  // Selección de modelo por categoría. La estimación está calibrada por marca y
+  // categoría; donde no hay config, se muestra solo lo medido.
+  const EST = esLavado ? EST_LAVADO : tabKey === "refrigeracion" ? EST_REFRI : {};
+  const cfg: EstCfg | undefined = EST[marca];
   // Salud de Marca compuesta = 0,25·(TOM + SOM + Intención + Poder); null si falta alguno.
   const saludDe = (k: KVals): number | null => {
     const xs = [k.tom, k.som, k.int, k.poder];
     return xs.every((v) => v != null) ? 0.25 * (xs[0]! + xs[1]! + xs[2]! + xs[3]!) : null;
   };
-  const kantar: Array<{ label: string; get: (k: KVals) => number | null; fmt: (v: number | null) => string; bold?: boolean; estKey?: "tom" | "som" }> = [
+  const kantar: Array<{ label: string; get: (k: KVals) => number | null; fmt: (v: number | null) => string; bold?: boolean; estKey?: "tom" | "som" | "poder" }> = [
     { label: "Top of Mind", get: (k) => k.tom, fmt: kPct, estKey: "tom" },
     { label: "Share of Mind", get: (k) => k.som, fmt: kPct, estKey: "som" },
     { label: "Intención de compra", get: (k) => k.int, fmt: kPct },
-    { label: "Poder de Marca", get: (k) => k.poder, fmt: kPct },
+    { label: "Poder de Marca", get: (k) => k.poder, fmt: kPct, estKey: "poder" },
     // Componentes de la hélice de Poder de Marca (índice base 100).
     { label: "· Significancia (índice)", get: (k) => k.sig, fmt: kIdx },
     { label: "· Diferenciación (índice)", get: (k) => k.dif, fmt: kIdx },
@@ -567,8 +600,8 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
                   {waves.map((w, i) => {
                     const actual = vals[i] ?? null;
                     // Si no hay medición y la marca tiene ecuación para ese indicador, estimamos desde el mercado.
-                    const estFn = r.estKey === "tom" ? cfg?.tom : r.estKey === "som" ? cfg?.som : undefined;
-                    const band = r.estKey === "tom" ? cfg?.tomBand : cfg?.somBand;
+                    const estFn = r.estKey === "tom" ? cfg?.tom : r.estKey === "som" ? cfg?.som : r.estKey === "poder" ? cfg?.poder : undefined;
+                    const band = r.estKey === "tom" ? cfg?.tomBand : r.estKey === "poder" ? cfg?.poderBand : cfg?.somBand;
                     const est = actual == null && estFn ? estFn(serieU12, w.mes) : null;
                     return (
                       <td key={w.label} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${r.bold ? "font-bold" : "text-foreground/90"}`}>
