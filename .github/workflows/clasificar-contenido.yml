@@ -4,27 +4,47 @@ on:
   schedule:
     - cron: "0 9 * * *"  # 06:00 ART
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Reclasificar TODO (force=1, recorre todos los posts con la lógica de visión)"
+        type: boolean
+        default: false
 
 jobs:
   trigger:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Trigger /api/cron/clasificar-contenido
         run: |
           set -euo pipefail
-          URL="https://dashboard-mkt-seven.vercel.app/api/cron/clasificar-contenido?batch=30"
-          echo "GET $URL"
-          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 600 \
-            -H "Authorization: Bearer ${CRON_SECRET:-}" \
-            "$URL")
-          echo "HTTP $HTTP_CODE"
-          cat response.json; echo ""
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "::error::Endpoint returned HTTP $HTTP_CODE"; exit 1
-          fi
-          if grep -q '"ok":false' response.json; then
-            echo "::error::Cron devolvió ok=false"; exit 1
+          BASE="https://dashboard-mkt-seven.vercel.app/api/cron/clasificar-contenido"
+
+          if [ "${FORCE:-false}" = "true" ]; then
+            echo "== Modo FORCE: reclasificando todo (paginado) =="
+            BATCH=20
+            OFFSET=0
+            for i in $(seq 1 30); do
+              URL="$BASE?force=1&batch=$BATCH&offset=$OFFSET"
+              echo "GET $URL"
+              HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 600 \
+                -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+              echo "HTTP $HTTP_CODE"; cat response.json; echo ""
+              if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
+              TO_PROCESS=$(grep -o '"toProcess":[0-9]*' response.json | grep -o '[0-9]*' || echo 0)
+              echo "toProcess=$TO_PROCESS"
+              if [ "${TO_PROCESS:-0}" -lt "$BATCH" ]; then echo "Fin (último batch)."; break; fi
+              OFFSET=$((OFFSET + BATCH))
+            done
+          else
+            URL="$BASE?batch=30"
+            echo "GET $URL"
+            HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 600 \
+              -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+            echo "HTTP $HTTP_CODE"; cat response.json; echo ""
+            if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
+            if grep -q '"ok":false' response.json; then echo "::error::ok=false"; exit 1; fi
           fi
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE: ${{ github.event.inputs.force }}

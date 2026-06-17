@@ -140,13 +140,15 @@ export async function GET(request: Request) {
   const batchSize = Math.min(Math.max(Number(reqUrl.searchParams.get("batch") ?? 10), 1), 25);
   // force=1 reclasifica también los ya clasificados (para aplicar la nueva lógica de visión).
   const force = reqUrl.searchParams.get("force") === "1";
-  const results: Record<string, unknown> = {};
+  // offset: para paginar en modo force (en force no hay filtro que "consuma" los ya hechos).
+  const offset = Math.max(Number(reqUrl.searchParams.get("offset") ?? 0), 0);
+  const results: Record<string, unknown> = { offset };
 
   try {
     // Posts orgánicos de Drean (meta_posts) con thumbnail. Incluye stories (sin caption).
     const filtro = force ? "" : "&pilar_contenido=is.null";
     const posts = await supabaseQuery<PostRow[]>(
-      `meta_posts?select=platform,post_id,message,thumbnail_url,media_type&thumbnail_url=not.is.null${filtro}&order=fecha_post.desc&limit=${batchSize}`,
+      `meta_posts?select=platform,post_id,message,thumbnail_url,media_type&thumbnail_url=not.is.null${filtro}&order=fecha_post.desc&limit=${batchSize}&offset=${offset}`,
     );
     results.toProcess = posts.length;
 
