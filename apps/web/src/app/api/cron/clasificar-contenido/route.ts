@@ -160,20 +160,23 @@ export async function GET(request: Request) {
     let ok = 0;
     const errors: string[] = [];
 
-    for (const post of posts) {
-      try {
+    // En paralelo: cada post hace 1 llamada de visión + 1 patch. Secuencial se
+    // pasaba de los 60s de Vercel (504). En paralelo el batch tarda ~lo de 1 post.
+    const settled = await Promise.allSettled(
+      posts.map(async (post) => {
         const c = await classifyOne(post);
-        if (!c) continue;
-        const updated = await supabasePatch(post.platform, post.post_id, {
+        if (!c) return 0;
+        return supabasePatch(post.platform, post.post_id, {
           categoria: c.categoria,
           pilar_contenido: c.pilar,
           clasif_confianza: c.confianza,
           clasif_at: now,
         });
-        ok += updated;
-      } catch (e) {
-        errors.push(e instanceof Error ? e.message.slice(0, 100) : String(e));
-      }
+      }),
+    );
+    for (const s of settled) {
+      if (s.status === "fulfilled") ok += s.value;
+      else errors.push(s.reason instanceof Error ? s.reason.message.slice(0, 100) : String(s.reason));
     }
     results.clasificados = ok;
     if (errors.length) results.errors = errors.slice(0, 5);
