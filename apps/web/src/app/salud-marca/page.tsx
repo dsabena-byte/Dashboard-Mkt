@@ -89,8 +89,7 @@ const KANTAR_LAVADO: Record<string, Record<string, KVals>> = {
 };
 
 // Kantar Refrigeración. TOM/SOM de las barras; Intención = "Sería mi primera
-// opción"; Poder + hélice (sig/dif/sal índice base 100). LG no tiene TOM/SOM en
-// el tracking (no figura en el cuadro de barras). Sin Patrick ni Electrolux.
+// opción"; Poder + hélice (sig/dif/sal índice base 100). Sin Patrick ni Electrolux.
 const KANTAR_REFRI: Record<string, Record<string, KVals>> = {
   Drean: {
     "jun-24": { tom: 9, som: 29, int: 14, poder: 9.2, sig: 109, dif: 94, sal: 106 },
@@ -117,10 +116,10 @@ const KANTAR_REFRI: Record<string, Record<string, KVals>> = {
     "nov-25": { tom: 12, som: 41, int: 33, poder: 12.6, sig: 124, dif: 152, sal: 127 },
   },
   LG: {
-    "jun-24": { tom: null, som: null, int: 18, poder: 10.2, sig: 103, dif: 156, sal: 71 },
-    "nov-24": { tom: null, som: null, int: 20, poder: 10.2, sig: 109, dif: 134, sal: 87 },
-    "jun-25": { tom: null, som: null, int: 17, poder: 9.4, sig: 101, dif: 146, sal: 72 },
-    "nov-25": { tom: null, som: null, int: 30, poder: 9.8, sig: 107, dif: 144, sal: 82 },
+    "jun-24": { tom: 3, som: 20, int: 18, poder: 10.2, sig: 103, dif: 156, sal: 71 },
+    "nov-24": { tom: 4, som: 26, int: 20, poder: 10.2, sig: 109, dif: 134, sal: 87 },
+    "jun-25": { tom: 1, som: 17, int: 17, poder: 9.4, sig: 101, dif: 146, sal: 72 },
+    "nov-25": { tom: 3, som: 22, int: 30, poder: 9.8, sig: 107, dif: 144, sal: 82 },
   },
   Philco: {
     "jun-24": { tom: 1, som: 12, int: 7, poder: 5.4, sig: 77, dif: 74, sal: 74 },
