@@ -1,6 +1,7 @@
 -- Mercado Refrigeración — segmento TOTAL (Unit + Value Share por marca, U12/MAT).
 -- Fuente: GFK Cooling Argentina Brands Timeseries (May2023-Apr2025).
-delete from mercado_share where categoria='Refrigeración' and segmento='Total' and agregacion='MAT';
+-- Solo borra el rango que este seed cubre (no toca el Total de otros meses ya cargados).
+delete from mercado_share where categoria='Refrigeración' and segmento='Total' and agregacion='MAT' and mes between '2023-04-01' and '2025-04-01';
 
 insert into mercado_share (mes,categoria,segmento,marca,unit_share,value_share,index_price,agregacion) values
   ('2023-04-01','Refrigeración','Total','BAMBI',3.89,3.09,null,'MAT'),
