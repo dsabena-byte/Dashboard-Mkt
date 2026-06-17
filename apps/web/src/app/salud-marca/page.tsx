@@ -1008,9 +1008,9 @@ function Header({ tab }: { tab: (typeof TABS)[number] }) {
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Salud de Marca</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          El resultado se mide con la investigación de fin de año. Mientras tanto seguimos los indicadores que la
-          construyen, mapeados a las dimensiones de marca a lo largo del funnel: <b>Saliencia</b> → <b>Poder de marca</b>{" "}
-          → <b>Intención de compra</b>.
+          Salud de marca medida por <b>Kantar</b> (Top of Mind, Share of Mind, Intención y Poder de marca) por categoría,
+          contrastada con la evolución de mercado. La proyección de <b>Nov-2026</b> se estima desde los drivers de mercado de
+          cada marca. El tab <b>Marca</b> consolida a Drean ponderando las categorías.
         </p>
       </header>
       <div className="flex flex-wrap gap-2">
