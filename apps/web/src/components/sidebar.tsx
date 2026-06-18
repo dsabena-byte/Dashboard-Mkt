@@ -30,6 +30,7 @@ const NAV = [
   { href: "/funnel",      label: "BGT Inversión",       icon: GitBranch },
   { href: "/planning",    label: "Planning Pauta",   icon: Target },
   { href: "/performance", label: "Performance Pauta", icon: BarChart3 },
+  { href: "/performance-conversion", label: "Performance Pauta Conversión", icon: BarChart3 },
   { href: "/influencia",  label: "Mkt de Influencia", icon: Megaphone },
   { href: "/web",         label: "Análisis Web",     icon: Globe },
   { href: "/redes",       label: "Análisis Redes",   icon: Share2 },

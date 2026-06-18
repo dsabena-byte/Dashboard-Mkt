@@ -230,7 +230,8 @@ export async function GET(request: Request) {
           { name: "sessionCampaignName" },
           { name: "eventName" },
         ],
-        metrics: [{ name: "eventCount" }],
+        // eventCount = transacciones; purchaseRevenue = Total de ingresos (≠ inversión).
+        metrics: [{ name: "eventCount" }, { name: "purchaseRevenue" }],
         dimensionFilter: {
           filter: {
             fieldName: "eventName",
@@ -251,11 +252,13 @@ export async function GET(request: Request) {
       const campaign = normUtm(r.dimensionValues[3]?.value);
       const key = `${fecha}|${source}|${medium}|${campaign}`;
       const count = Number(r.metricValues[0]?.value ?? 0);
+      const revenue = Number(r.metricValues[1]?.value ?? 0);
       const existing = purchaseMap.get(key);
       if (existing) {
         (existing.purchases as number) += count;
+        (existing.revenue as number) += revenue;
       } else {
-        purchaseMap.set(key, { fecha, utm_source: source, utm_medium: medium, utm_campaign: campaign, purchases: count });
+        purchaseMap.set(key, { fecha, utm_source: source, utm_medium: medium, utm_campaign: campaign, purchases: count, revenue });
       }
     }
 
@@ -264,6 +267,62 @@ export async function GET(request: Request) {
       [...purchaseMap.values()].filter((r) => r.fecha && String(r.fecha).length === 10),
       "fecha,utm_source,utm_medium,utm_campaign",
     );
+
+    // =====================================================
+    // REPORT 5: Inversión por campaña (→ ga4_ads_cost_daily)
+    // ----------------------------------------------------
+    // advertiserAdCost = cuánta plata se GASTÓ en cada campaña (≠ revenue).
+    // Requiere Google Ads vinculado a la propiedad GA4; si no lo está, GA4
+    // devuelve error y seguimos sin romper el resto del sync.
+    let costRows: GA4Row[] = [];
+    try {
+      costRows = await runReport(accessToken, {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [
+          { name: "date" },
+          { name: "sessionSource" },
+          { name: "sessionMedium" },
+          { name: "sessionCampaignName" },
+        ],
+        metrics: [
+          { name: "advertiserAdCost" },
+          { name: "advertiserAdClicks" },
+          { name: "advertiserAdImpressions" },
+        ],
+        limit: 100000,
+      });
+    } catch (err) {
+      results.cost_error = err instanceof Error ? err.message : "no disponible (¿Google Ads vinculado a GA4?)";
+    }
+
+    const costMap = new Map<string, Record<string, unknown>>();
+    for (const r of costRows) {
+      const fecha = fmtDate(r.dimensionValues[0]?.value ?? "");
+      const source = normUtm(r.dimensionValues[1]?.value);
+      const medium = normUtm(r.dimensionValues[2]?.value);
+      const campaign = normUtm(r.dimensionValues[3]?.value);
+      const cost = Number(r.metricValues[0]?.value ?? 0);
+      const clicks = Number(r.metricValues[1]?.value ?? 0);
+      const impressions = Number(r.metricValues[2]?.value ?? 0);
+      if (cost === 0 && clicks === 0 && impressions === 0) continue;
+      const key = `${fecha}|${source}|${medium}|${campaign}`;
+      const existing = costMap.get(key);
+      if (existing) {
+        (existing.cost as number) += cost;
+        (existing.ad_clicks as number) += clicks;
+        (existing.ad_impressions as number) += impressions;
+      } else {
+        costMap.set(key, { fecha, utm_source: source, utm_medium: medium, utm_campaign: campaign, cost, ad_clicks: clicks, ad_impressions: impressions });
+      }
+    }
+
+    if (costMap.size > 0) {
+      results.costUpsert = await supabaseUpsert(
+        "ga4_ads_cost_daily",
+        [...costMap.values()].filter((r) => r.fecha && String(r.fecha).length === 10),
+        "fecha,utm_source,utm_medium,utm_campaign",
+      );
+    }
 
     // =====================================================
     // REPORT 4: Usuarios únicos por mes (→ ga4_monthly_users)
