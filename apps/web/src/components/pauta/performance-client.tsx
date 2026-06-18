@@ -59,6 +59,17 @@ function mesSortKey(label: string): number {
   const [n, y] = label.split(" ");
   return Number(y ?? 0) * 100 + (MES_IDX[n ?? ""] ?? 0);
 }
+// "Junio 2026" → "2026-06-01" (formato del mes en DV360, para filtrar por los selectores de arriba).
+function mesLabelToISO(label: string): string {
+  const [n, y] = label.split(" ");
+  return `${y}-${String(MES_IDX[n ?? ""] ?? 0).padStart(2, "0")}-01`;
+}
+// tipo de compra (Meta/TikTok) → rol de comunicación (para responder al filtro Rol).
+function tipoCompraToRol(tc: string | null): string | null {
+  if (tc === "CPC") return "Consideración";
+  if (tc === "CPM" || tc === "CPV") return "Awareness";
+  return null;
+}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <div className="mb-3 mt-6 text-sm font-medium text-muted-foreground">{children}</div>;
@@ -147,6 +158,35 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     [data, selMeses, selMedios, selCats, selRoles, selPlats],
   );
 
+  // ===== Datos de los procesos AUTOMÁTICOS (Meta API + DV360), conectados a los
+  // filtros de arriba. DV360/Meta son digitales: si se filtra solo TV/OOH, quedan vacíos.
+  const digitalOk = selMedios.length === 0 || selMedios.includes("Digital");
+  const selMesesISO = useMemo(() => new Set(selMeses.map(mesLabelToISO)), [selMeses]);
+  const metaPaidF = useMemo(
+    () =>
+      !digitalOk ? [] : metaPaid.filter(
+        (r) =>
+          (selMeses.length === 0 || selMeses.includes(r.mes)) &&
+          (selCats.length === 0 || (r.categoria != null && selCats.includes(r.categoria))) &&
+          (selRoles.length === 0 || selRoles.includes(tipoCompraToRol(r.tipo_compra) ?? "")),
+      ),
+    [metaPaid, digitalOk, selMeses, selCats, selRoles],
+  );
+  const dv360F = useMemo(
+    () =>
+      !digitalOk ? [] : dv360.filter(
+        (r) =>
+          (selMesesISO.size === 0 || selMesesISO.has(r.mes)) &&
+          (selCats.length === 0 || selCats.includes(r.categoria)) &&
+          (selRoles.length === 0 || selRoles.includes(r.rol)),
+      ),
+    [dv360, digitalOk, selMesesISO, selCats, selRoles],
+  );
+  const dv360ReachF = useMemo(
+    () => (!digitalOk ? [] : dv360Reach.filter((r) => selMesesISO.size === 0 || selMesesISO.has(r.mes))),
+    [dv360Reach, digitalOk, selMesesISO],
+  );
+
   const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
   const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
@@ -154,7 +194,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   // Embudo de visibilidad real de video (Meta Marketing API): cuántas impresiones
   // llegan a cada % del video. Solo Meta (el cron meta-paid-sync trae los cuartiles).
   const metaVideoFunnel = useMemo(() => {
-    const vids = metaPaid.filter((r) => r.plataforma === "meta" && (r.video_plays ?? 0) > 0);
+    const vids = metaPaidF.filter((r) => r.plataforma === "meta" && (r.video_plays ?? 0) > 0);
     const a = vids.reduce(
       (acc, r) => ({
         impresiones: acc.impresiones + r.impresiones,
@@ -169,7 +209,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       { impresiones: 0, plays: 0, p25: 0, p50: 0, p75: 0, p100: 0, thruplay: 0, spend: 0 },
     );
     return { ...a, count: vids.length };
-  }, [metaPaid]);
+  }, [metaPaidF]);
   // DV360: si hay cotización (fx_rates) mostramos en pesos (BCRA prom. mensual),
   // convirtiendo el costo USD por el rate del mes de cada fila. Si no, en USD.
   const arsMode = Object.keys(fxRates).length > 0;
@@ -178,10 +218,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const dvMoney = arsMode ? fmtARS : fmtUSD;
   const monedaLbl = arsMode ? "ARS" : "USD";
   const dv360Conv = useMemo(
-    () => (arsMode ? dv360.map((r) => ({ ...r, revenue_usd: r.revenue_usd * (fxRates[r.mes] ?? fxFallback) })) : dv360),
-    [dv360, fxRates, arsMode, fxFallback],
+    () => (arsMode ? dv360F.map((r) => ({ ...r, revenue_usd: r.revenue_usd * (fxRates[r.mes] ?? fxFallback) })) : dv360F),
+    [dv360F, fxRates, arsMode, fxFallback],
   );
-  const dv360Channels = useMemo(() => aggregateDv360Channels(dv360Conv, dv360Reach), [dv360Conv, dv360Reach]);
+  const dv360Channels = useMemo(() => aggregateDv360Channels(dv360Conv, dv360ReachF), [dv360Conv, dv360ReachF]);
   const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360Conv), [dv360Conv]);
   const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360Conv), [dv360Conv]);
   const dv360VideoQ = useMemo(() => aggregateDv360VideoQuality(dv360Conv), [dv360Conv]);
@@ -209,7 +249,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   }, [dv360VideoQ, metaVideoFunnel, arsMode]);
   // Embudo de video de TikTok (desde metaPaid, solo filas de video).
   const tiktokVideoFunnel = useMemo(() => {
-    const t = metaPaid.filter((r) => r.plataforma === "tiktok" && ((r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0 || (r.views_completed ?? 0) > 0));
+    const t = metaPaidF.filter((r) => r.plataforma === "tiktok" && ((r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0 || (r.views_completed ?? 0) > 0));
     const a = t.reduce(
       (acc, r) => ({
         impresiones: acc.impresiones + r.impresiones,
@@ -222,7 +262,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       { impresiones: 0, p25: 0, p50: 0, p75: 0, p100: 0, spend: 0 },
     );
     return { ...a, count: t.length };
-  }, [metaPaid]);
+  }, [metaPaidF]);
   // Embudos de video SEPARADOS por fuente (cada canal DV360 + Meta + TikTok), no mezclados.
   const videoSources = useMemo(() => {
     const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
@@ -404,60 +444,52 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   }, [rowsNoMes, refMes, prevMes]);
 
   // ===== Modelo único de medios (fuente de verdad para TODO el dashboard) =====
-  // VTR real y CPM efectivo se calculan SIEMPRE desde los completions REALES (cuartil
-  // 100% de DV360/Meta), no desde "views" sueltos. CPM efectivo = CPM / (VTR/100),
-  // así SIEMPRE es mayor al general (hay más impresiones que views completos) y es
-  // consistente con el embudo de atención y la comparativa por plataforma.
-  const vtrRealByMedio = useMemo(() => {
-    const agg = new Map<string, { comp: number; vimpr: number }>();
-    const add = (medio: string, vimpr: number, comp: number) => {
-      if (vimpr <= 0 && comp <= 0) return;
-      const e = agg.get(medio) ?? { comp: 0, vimpr: 0 };
-      e.comp += comp; e.vimpr += vimpr; agg.set(medio, e);
-    };
-    // DV360 es autoritativo para YouTube/Programmatic/Demand Gen (embudo = solo video)
-    const DV_MAP: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen" };
-    for (const f of dv360Funnels) { const medio = DV_MAP[f.canal]; if (medio) add(medio, f.impresiones, f.q100); }
-    // Meta y TikTok autoritativos desde metaPaid (solo filas de video)
-    for (const r of metaPaid) {
-      const isVid = (r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0;
-      if (!isVid) continue;
-      const comp = (r.video_p100 ?? 0) || (r.views_completed ?? 0);
-      if (r.plataforma === "meta") add("Meta", r.impresiones, comp);
-      else if (r.plataforma === "tiktok") add("TikTok", r.impresiones, comp);
-    }
-    const out = new Map<string, number>();
-    for (const [medio, e] of agg) out.set(medio, e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0);
-    return out;
-  }, [dv360Funnels, metaPaid]);
+  // Todo desde los procesos AUTOMÁTICOS (DV360 reportes + Meta Marketing API), por
+  // medio (DV360 es la plataforma de compra; el medio es el canal). Filtrado por los
+  // selectores de arriba. Volumen + impacto real (VTR/CPM efectivo desde completions).
   const medioModel = useMemo(() => {
-    const items = byMedio
-      .filter((m) => m.impresiones > 0)
-      .map((m) => {
-        const cpm = m.cpm;
-        const vtr = vtrRealByMedio.get(m.medio) ?? 0; // % completions reales / impr de video
-        return {
-          medio: m.medio,
-          isDigital: tipoMedio(m.medio) === "Digital",
-          inversion: m.inversion,
-          impresiones: m.impresiones,
-          alcance: m.alcance,
-          clics: m.clics,
-          cpm, // GENERAL (contexto, sin semáforo)
-          ctr: m.impresiones > 0 ? (m.clics / m.impresiones) * 100 : 0, // efectivo (engagement)
-          vtr, // efectivo (visibilidad real, desde cuartil 100%)
-          cpmEf: vtr > 0 ? cpm * (100 / vtr) : 0, // efectivo = CPM / tasa de completion → siempre > CPM
-        };
-      })
+    type Acc = { inv: number; impr: number; clicks: number; comp: number; vimpr: number; reach: number };
+    const agg = new Map<string, Acc>();
+    const get = (medio: string) => { let e = agg.get(medio); if (!e) { e = { inv: 0, impr: 0, clicks: 0, comp: 0, vimpr: 0, reach: 0 }; agg.set(medio, e); } return e; };
+    const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", Marketplace: "Marketplace", "Demand Gen": "Google Demand Gen" };
+    for (const r of dv360Conv) {
+      const e = get(DVMED[r.canal] ?? r.canal);
+      e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks; e.comp += r.q100;
+      if (r.starts > 0) e.vimpr += r.impresiones;
+    }
+    for (const r of dv360ReachF) get(DVMED[r.canal] ?? r.canal).reach += r.reach;
+    for (const r of metaPaidF) {
+      const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
+      if (!medio) continue;
+      const e = get(medio);
+      const isVid = (r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0;
+      e.inv += r.spend; e.impr += r.impresiones; e.clicks += r.clicks;
+      e.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0);
+      if (isVid) e.vimpr += r.impresiones;
+      e.reach += r.alcance ?? 0;
+    }
+    const items = [...agg.entries()]
+      .map(([medio, e]) => ({
+        medio,
+        isDigital: true,
+        inversion: e.inv,
+        impresiones: e.impr,
+        alcance: e.reach,
+        clics: e.clicks,
+        cpm: e.impr > 0 ? (e.inv / e.impr) * 1000 : 0, // GENERAL
+        ctr: e.impr > 0 ? (e.clicks / e.impr) * 100 : 0, // efectivo (engagement)
+        vtr: e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0, // efectivo (% completions reales)
+        cpmEf: e.comp > 0 ? (e.inv / e.comp) * 1000 : 0, // efectivo (costo real por mil views completos)
+      }))
+      .filter((i) => i.impresiones > 0)
       .sort((a, b) => b.inversion - a.inversion);
-    const dig = items.filter((i) => i.isDigital);
     return {
       items,
-      bestCtr: maxPos(dig.map((i) => i.ctr)),
-      bestVtr: maxPos(dig.map((i) => i.vtr)),
-      bestCpmEf: minPos(dig.map((i) => i.cpmEf)),
+      bestCtr: maxPos(items.map((i) => i.ctr)),
+      bestVtr: maxPos(items.map((i) => i.vtr)),
+      bestCpmEf: minPos(items.map((i) => i.cpmEf)),
     };
-  }, [byMedio, vtrRealByMedio]);
+  }, [dv360Conv, dv360ReachF, metaPaidF]);
 
   // Alertas "qué mejorar" auto-generadas.
   const alertas = useMemo(() => {
@@ -914,10 +946,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         <div>
           <SectionTitle>Tabla maestra por medio · general + efectivo (todo junto)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            Una sola fuente de verdad, todo junto: volumen (inversión, impresiones, alcance, frecuencia) + impacto real.
-            <strong> Impresiones ↔ VTR</strong> (% que completó el video) · <strong>CPM ↔ CPM efectivo</strong> (costo por view completo).
-            El semáforo vive solo en lo efectivo (CPM efectivo, CTR, VTR vs el mejor medio digital). Un CPM barato con VTR bajo no es
-            barato de verdad.
+            <strong>Fuente: procesos automáticos de DV360 + Meta API</strong> (responde a los filtros de arriba). Solo medios digitales con
+            performance medida (DV360 = plataforma; el medio es el canal). Volumen + impacto real, todo junto:{" "}
+            <strong>Impresiones ↔ VTR</strong> (% que completó el video) · <strong>CPM ↔ CPM efectivo</strong> (costo por view completo).
+            El semáforo vive solo en lo efectivo (CPM efectivo, CTR, VTR vs el mejor medio). Un CPM barato con VTR bajo no es barato de verdad.
           </p>
           <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
             <table className="w-full text-xs">
