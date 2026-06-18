@@ -950,25 +950,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                 Viewability real (impresiones MRC ≥50% en pantalla) no está en el reporte actual; usamos completion de video como proxy de
                 visibilidad efectiva.
               </p>
-
-              {/* Mix de formato */}
-              {videoQuality.imprDisplay > 0 && (
-                <>
-                  <SectionTitle>Mix de formato (DV360)</SectionTitle>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border bg-card p-4">
-                      <div className="text-[11px] text-muted-foreground">Video</div>
-                      <div className="text-lg font-bold tabular-nums">{fmtNum(dv360VideoQ.imprVideo)} <span className="text-xs font-normal text-muted-foreground">impr.</span></div>
-                      <div className="text-[10px] text-muted-foreground/70">{arsMode ? dvMoney(dv360VideoQ.revenueVideo) : ""} · se mide por completion</div>
-                    </div>
-                    <div className="rounded-xl border bg-card p-4">
-                      <div className="text-[11px] text-muted-foreground">Display / imagen</div>
-                      <div className="text-lg font-bold tabular-nums">{fmtNum(dv360VideoQ.imprDisplay)} <span className="text-xs font-normal text-muted-foreground">impr.</span></div>
-                      <div className="text-[10px] text-muted-foreground/70">{arsMode ? dvMoney(dv360VideoQ.revenueDisplay) : ""} · se evalúa por CTR/viewability</div>
-                    </div>
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>
