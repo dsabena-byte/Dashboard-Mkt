@@ -209,6 +209,48 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   }, [dv360VideoQ, metaVideoFunnel, arsMode]);
   const dv360ByCategoria = useMemo(() => aggregateDv360By(dv360Conv, "categoria"), [dv360Conv]);
   const dv360ByRol = useMemo(() => aggregateDv360By(dv360Conv, "rol"), [dv360Conv]);
+  // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
+  const minPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
+  const maxPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
+  const dvChBest = useMemo(() => ({
+    cpm: minPos(dv360Channels.canales.map((c) => c.cpm)),
+    cpc: minPos(dv360Channels.canales.map((c) => c.cpc)),
+    ctr: maxPos(dv360Channels.canales.map((c) => c.ctr)),
+  }), [dv360Channels]);
+  const dvPieceBest = useMemo(() => ({
+    ctr: maxPos(dv360Pieces.map((p) => p.ctr)),
+    cpm: minPos(dv360Pieces.map((p) => p.cpm)),
+    vtr: maxPos(dv360Pieces.map((p) => p.vtr)),
+  }), [dv360Pieces]);
+  const dvCatBestCtr = useMemo(() => maxPos(dv360ByCategoria.map((b) => b.ctr)), [dv360ByCategoria]);
+  const dvRolBestCtr = useMemo(() => maxPos(dv360ByRol.map((b) => b.ctr)), [dv360ByRol]);
+  // Comparativa por plataforma (Meta, TikTok, Programmatic, YouTube) desde metaPaid:
+  // da análisis a TODAS las plataformas, incluida TikTok, con semáforos comparables.
+  const platformComparison = useMemo(() => {
+    const map = new Map<string, { impr: number; spend: number; clicks: number; v100: number; vplays: number }>();
+    for (const r of metaPaid) {
+      const m = map.get(r.plataforma) ?? { impr: 0, spend: 0, clicks: 0, v100: 0, vplays: 0 };
+      m.impr += r.impresiones; m.spend += r.spend; m.clicks += r.clicks;
+      m.v100 += r.video_p100 ?? 0; m.vplays += r.video_plays ?? 0;
+      map.set(r.plataforma, m);
+    }
+    const items = [...map.entries()]
+      .map(([plataforma, m]) => ({
+        plataforma,
+        impr: m.impr, spend: m.spend, clicks: m.clicks,
+        cpm: m.impr > 0 ? (m.spend / m.impr) * 1000 : 0,
+        ctr: m.impr > 0 ? (m.clicks / m.impr) * 100 : 0,
+        vtr: m.vplays > 0 ? (m.v100 / m.vplays) * 100 : 0, // % de reproducciones que completan
+      }))
+      .filter((i) => i.impr > 0)
+      .sort((a, b) => b.spend - a.spend);
+    return {
+      items,
+      bestCpm: minPos(items.map((i) => i.cpm)),
+      bestCtr: maxPos(items.map((i) => i.ctr)),
+      bestVtr: maxPos(items.map((i) => i.vtr)),
+    };
+  }, [metaPaid]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -947,9 +989,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                         <td className="px-3 py-2 text-right tabular-nums">{fmtNum(m.views)}</td>
                         <td className={`px-3 py-2 text-right tabular-nums font-semibold ${vtrColor}`}>{m.vtr.toFixed(1)}%</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtARS(m.cpm)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                        <td className={`px-3 py-2 text-right tabular-nums font-semibold ${ratio === 0 ? "" : ratio <= 1.2 ? "text-emerald-600" : ratio <= 1.5 ? "text-amber-600" : "text-rose-600"}`}>
                           {fmtARS(m.cpmEfectivo)}
-                          {ratio > 1.2 && <span className="ml-1 text-[9px] text-rose-600">{ratio.toFixed(1)}×</span>}
+                          {ratio > 1.2 && <span className="ml-1 text-[9px]">{ratio.toFixed(1)}×</span>}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.cpv > 0 ? fmtARS(m.cpv) : "—"}</td>
                       </tr>
@@ -1053,9 +1095,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                         <td className="px-3 py-2 text-right tabular-nums">{c.reach > 0 ? fmtNum(c.reach) : "—"}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{c.frequency > 0 ? c.frequency.toFixed(1) : "—"}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.clicks)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{dvMoney(c.cpm)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{c.cpc > 0 ? dvMoney(c.cpc) : "—"}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{c.ctr.toFixed(2)}%</td>
+                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(c.cpm, dvChBest.cpm, "lower")}`}>{dvMoney(c.cpm)}</td>
+                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${c.cpc > 0 ? bicColor(c.cpc, dvChBest.cpc, "lower") : ""}`}>{c.cpc > 0 ? dvMoney(c.cpc) : "—"}</td>
+                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(c.ctr, dvChBest.ctr, "higher")}`}>{c.ctr.toFixed(2)}%</td>
                       </tr>
                     ))}
                     <tr className="border-t-2 font-semibold">
@@ -1090,7 +1132,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                           <td className="px-3 py-2 font-medium">{b.nombre}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{dvMoney(b.revenueUsd)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.impresiones)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{b.ctr.toFixed(2)}%</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(b.ctr, dvCatBestCtr, "higher")}`}>{b.ctr.toFixed(2)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1113,7 +1155,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                           <td className="px-3 py-2 font-medium">{b.nombre}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{dvMoney(b.revenueUsd)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.impresiones)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{b.ctr.toFixed(2)}%</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(b.ctr, dvRolBestCtr, "higher")}`}>{b.ctr.toFixed(2)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1156,9 +1198,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                             <td className="px-3 py-2 text-right tabular-nums">{dvMoney(p.revenueUsd)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.impresiones)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.clicks)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{p.ctr.toFixed(2)}%</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{dvMoney(p.cpm)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
+                            <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(p.ctr, dvPieceBest.ctr, "higher")}`}>{p.ctr.toFixed(2)}%</td>
+                            <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(p.cpm, dvPieceBest.cpm, "lower")}`}>{dvMoney(p.cpm)}</td>
+                            <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.vtr > 0 ? bicColor(p.vtr, dvPieceBest.vtr, "higher") : ""}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1224,6 +1266,44 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                     </div>
                   );
                 })}
+              </div>
+            </>
+          )}
+
+          {/* Comparativa por plataforma (incluye TikTok) con semáforos */}
+          {platformComparison.items.length > 0 && (
+            <>
+              <SectionTitle>Comparativa por plataforma · con semáforos</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Meta, TikTok, Programmatic y YouTube comparados entre sí (datos de piezas). CPM/CTR/VTR coloreados vs la mejor
+                plataforma: <span className="font-semibold text-emerald-600">●</span> mejor · <span className="font-semibold text-amber-600">●</span> intermedio ·
+                <span className="font-semibold text-rose-600"> ●</span> a optimizar. VTR = % de reproducciones que completan el video.
+              </p>
+              <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
+                <table className="w-full text-xs">
+                  <thead className="border-b">
+                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2">Plataforma</th>
+                      <th className="px-3 py-2 text-right">Inversión</th>
+                      <th className="px-3 py-2 text-right">Impresiones</th>
+                      <th className="px-3 py-2 text-right">CPM</th>
+                      <th className="px-3 py-2 text-right">CTR</th>
+                      <th className="px-3 py-2 text-right">VTR (compl.)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {platformComparison.items.map((p) => (
+                      <tr key={p.plataforma} className="border-b last:border-0">
+                        <td className="px-3 py-2 font-medium capitalize">{p.plataforma}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{p.spend > 0 ? fmtARS(p.spend) : "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(p.impr)}</td>
+                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.cpm > 0 ? bicColor(p.cpm, platformComparison.bestCpm, "lower") : ""}`}>{p.cpm > 0 ? fmtARS(p.cpm) : "—"}</td>
+                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.ctr > 0 ? bicColor(p.ctr, platformComparison.bestCtr, "higher") : ""}`}>{p.ctr > 0 ? `${p.ctr.toFixed(2)}%` : "—"}</td>
+                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.vtr > 0 ? bicColor(p.vtr, platformComparison.bestVtr, "higher") : ""}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </>
           )}
