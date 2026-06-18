@@ -5,10 +5,8 @@ import {
   type PautaRow,
   PAUTA_INSIGHTS,
   MEDIO_COLORS,
-  computeFunnel,
   computeByMedio,
   computeVideoByMedio,
-  reachByMedio,
   investmentByCategoria,
   extractMeses,
   defaultMes,
@@ -187,8 +185,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     [dv360Reach, digitalOk, selMesesISO],
   );
 
-  const upper = useMemo(() => computeFunnel(rows, "upper"), [rows]);
-  const mid = useMemo(() => computeFunnel(rows, "mid"), [rows]);
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
   const videoByMedio = useMemo(() => computeVideoByMedio(rows), [rows]);
   // Embudo de visibilidad real de video (Meta Marketing API): cuántas impresiones
@@ -284,7 +280,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   }), [dv360Pieces]);
   const dvCatBest = useMemo(() => ({ ctr: maxPos(dv360ByCategoria.map((b) => b.ctr)), vtr: maxPos(dv360ByCategoria.map((b) => b.vtr)), cpmEf: minPos(dv360ByCategoria.map((b) => b.cpmEf)) }), [dv360ByCategoria]);
   const dvRolBest = useMemo(() => ({ ctr: maxPos(dv360ByRol.map((b) => b.ctr)), vtr: maxPos(dv360ByRol.map((b) => b.vtr)), cpmEf: minPos(dv360ByRol.map((b) => b.cpmEf)) }), [dv360ByRol]);
-  const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
   const totalInv = useMemo(() => rows.reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
@@ -301,8 +296,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return { invDigital: d, invTv: t, invDooh: dh, invOoh: o };
   }, [rows]);
   // Volumetría
-  const sumReach = upper.alcance;
-  const totalViews = useMemo(() => rows.reduce((s, r) => s + (r.views ?? 0), 0), [rows]);
 
   // Volumetría mensual (año completo 2026): NO se filtra, siempre muestra el histórico.
   // Alcance e impresiones se suman sobre filas Awareness (upper funnel), igual que la KPI.
@@ -476,6 +469,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         impresiones: e.impr,
         alcance: e.reach,
         clics: e.clicks,
+        viewsReales: e.comp, // views completos reales (cuartil 100%)
         cpm: e.impr > 0 ? (e.inv / e.impr) * 1000 : 0, // GENERAL
         ctr: e.impr > 0 ? (e.clicks / e.impr) * 100 : 0, // efectivo (engagement)
         vtr: e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0, // efectivo (% completions reales)
@@ -544,13 +538,24 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     { name: "DOOH", value: invDooh, color: "#ec4899" },
     { name: "OOH", value: invOoh, color: "#f59e0b" },
   ].filter((d) => d.value > 0);
-  const reachData = reach.map((r) => ({ name: r.medio, value: r.alcance }));
+  // Todo desde los datos AUTOMÁTICOS (Meta + DV360) vía medioModel.
+  const autoTot = medioModel.items.reduce(
+    (a, i) => ({ impr: a.impr + i.impresiones, reach: a.reach + i.alcance, clics: a.clics + i.clics, views: a.views + i.viewsReales }),
+    { impr: 0, reach: 0, clics: 0, views: 0 },
+  );
+  const reachData = medioModel.items.filter((i) => i.alcance > 0).map((i) => ({ name: i.medio, value: i.alcance })).sort((a, b) => b.value - a.value);
+  const clicksData = medioModel.items.filter((i) => i.clics > 0).map((i) => ({ name: i.medio, value: i.clics })).sort((a, b) => b.value - a.value);
+  // Impacto EFECTIVO por medio: views completos reales (cuartil 100%), desde DV360+Meta.
+  const viewsRealData = medioModel.items.filter((i) => i.viewsReales > 0).map((i) => ({ name: i.medio, value: i.viewsReales })).sort((a, b) => b.value - a.value);
 
+  // Embudo 100% automático (Meta+DV360): de impresiones a la visibilidad REAL del video
+  // (cuartiles), no el número inflado de "video views".
   const funnelStages = [
-    { label: "Impresiones", value: upper.impresiones, w: 100, bg: "#0a1849" },
-    { label: "Alcance (suma medios)", value: sumReach, w: 82, bg: "#142b6f" },
-    { label: "Video Views", value: totalViews, w: 64, bg: "#1e3a8a" },
-    { label: "Clicks", value: mid.clics, w: 46, bg: "#2b4dff" },
+    { label: "Impresiones", value: autoTot.impr, w: 100, bg: "#0a1849", real: false },
+    { label: "Alcance (usuarios únicos)", value: autoTot.reach, w: 84, bg: "#142b6f", real: false },
+    { label: "Vieron 25% del video", value: videoQuality.v25, w: 68, bg: "#15803d", real: true },
+    { label: "Vieron 100% (completo)", value: videoQuality.v100, w: 50, bg: "#15803d", real: true },
+    { label: "Clicks", value: autoTot.clics, w: 36, bg: "#2b4dff", real: false },
   ];
 
   const totalHint =
@@ -716,11 +721,16 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             <div className="flex flex-col items-center gap-1.5">
               {funnelStages.map((s) => (
                 <div key={s.label} className="flex items-center justify-between rounded-lg px-6 py-3.5 text-white" style={{ width: `${s.w}%`, backgroundColor: s.bg }}>
-                  <span className="text-[11px] font-medium uppercase tracking-wide opacity-90">{s.label}</span>
+                  <span className="text-[11px] font-medium uppercase tracking-wide opacity-90">{s.label}{s.real && <span className="ml-1.5 rounded bg-white/20 px-1 py-0.5 text-[8px]">EFECTIVO</span>}</span>
                   <span className="text-xl font-bold">{fmtNum(s.value)}</span>
                 </div>
               ))}
             </div>
+            <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
+              Los <strong>Video Views (general)</strong> cuentan reproducciones superficiales; el hito{" "}
+              <span className="font-semibold text-green-700">Views completos reales (100%)</span> es el que el consumidor realmente vio
+              hasta el final (cuartil 100% de DV360 + Meta). La caída entre ambos es video que se pagó pero no se vio.
+            </p>
           </div>
 
           <SectionTitle>Evolución mensual · Alcance vs Impresiones</SectionTitle>
@@ -730,15 +740,20 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           </div>
 
           <SectionTitle>Aporte de cada medio al funnel</SectionTitle>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-3">
             <div className="rounded-xl border bg-card p-4">
-              <h3 className="text-sm font-bold">Upper Funnel — Alcance por plataforma</h3>
-              <p className="mb-2 text-[10px] text-muted-foreground">Alcance sumado por plataforma — incluye solapamiento entre medios.</p>
-              <HBarChart data={reachData} color="#2b4dff" />
+              <h3 className="text-sm font-bold">Alcance por medio <span className="text-[10px] font-normal text-muted-foreground">(general)</span></h3>
+              <p className="mb-2 text-[10px] text-muted-foreground">Usuarios únicos — incluye solapamiento entre medios.</p>
+              <HBarChart data={reachData} color="#94a3b8" />
             </div>
             <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-bold">Mid Funnel — Clicks por plataforma</h3>
-              <HBarChart data={byMedio.filter((m) => m.clics > 0).map((m) => ({ name: m.medio, value: m.clics })).sort((a, b) => b.value - a.value)} color="#c9a227" />
+              <h3 className="text-sm font-bold">Impacto efectivo — <span className="text-green-700">views completos</span> por medio</h3>
+              <p className="mb-2 text-[10px] text-muted-foreground">Videos vistos al 100% (cuartil real, DV360+Meta). Acá Meta/TikTok se ven chicos: muchas impresiones, pocos lo vieron entero.</p>
+              {viewsRealData.length > 0 ? <HBarChart data={viewsRealData} color="#15803d" /> : <p className="text-xs text-muted-foreground">Sin datos de completion en la selección.</p>}
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-2 text-sm font-bold">Clicks por medio <span className="text-[10px] font-normal text-muted-foreground">(acción real)</span></h3>
+              <HBarChart data={clicksData} color="#c9a227" />
             </div>
           </div>
 
