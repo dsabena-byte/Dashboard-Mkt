@@ -13,7 +13,7 @@ import {
 } from "@/lib/floor-share-queries";
 import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
 import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
-import { computeDreanConsolidado, type SMRow } from "@/lib/salud-marca-model";
+import { computeDreanConsolidado, SM_DIMS, type SMRow, type SMState } from "@/lib/salud-marca-model";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -268,9 +268,10 @@ function buildSaludMarca(rows: SMRow[], target: number) {
   const desvio = proj == null ? null : proj - target;
   const desvioPct = proj == null || target === 0 ? null : ((proj - target) / target) * 100;
   const lavDir = (lav.delta ?? 0) < -0.05 ? "baja levemente" : (lav.delta ?? 0) > 0.05 ? "sube" : "se mantiene";
-  return { target, proj, prev, cats, lav, coc, desvio, desvioPct, lavDir, meets: proj != null && proj >= target };
+  return { target, proj, prev, cats, lav, coc, row26: r26 ?? null, desvio, desvioPct, lavDir, meets: proj != null && proj >= target };
 }
 const f1 = (v: number | null) => (v == null ? "—" : v.toFixed(1).replace(".", ","));
+const smCls = (s: SMState) => (s === "proj" ? "text-blue-600" : s === "carry" ? "text-amber-600" : "text-foreground");
 
 export default async function OverviewPage() {
   const now = new Date();
@@ -566,10 +567,6 @@ export default async function OverviewPage() {
                   <dd className="font-semibold tabular-nums">{f1(sm.target)}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">Último real (nov-25)</dt>
-                  <dd className="font-semibold tabular-nums">{f1(sm.prev)}</dd>
-                </div>
-                <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Desvío vs objetivo</dt>
                   <dd className={`font-semibold tabular-nums ${sm.meets ? "text-emerald-600" : "text-rose-500"}`}>
                     {sm.desvio == null ? "—" : `${sm.desvio >= 0 ? "+" : "−"}${f1(Math.abs(sm.desvio))} pts${sm.desvioPct != null ? ` (${sm.desvioPct >= 0 ? "+" : "−"}${f1(Math.abs(sm.desvioPct))}%)` : ""}`}
@@ -578,46 +575,61 @@ export default async function OverviewPage() {
               </dl>
             </div>
 
-            {/* Composición del resultado */}
+            {/* Proyección Salud de Marca — detalle Nov-2026 por dimensión + aporte */}
             <div className="rounded-xl border bg-card p-5 lg:col-span-2">
-              <div className="mb-2 text-base font-semibold tracking-tight">De dónde viene el {f1(sm.proj)}
-                <span className="ml-2 text-[11px] font-normal text-muted-foreground">Salud de Marca global = Σ (SM categoría × peso)</span>
+              <div className="mb-2 text-base font-semibold tracking-tight">Proyección Salud de Marca
+                <span className="ml-2 text-[11px] font-normal text-muted-foreground">Nov-2026 · SM = 0,25·(TOM+SOM+Int+Poder) · Global = Σ SM×peso</span>
               </div>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <th className="py-1.5 text-left">Categoría</th>
-                    <th className="py-1.5 text-center">SM Nov-25</th>
-                    <th className="py-1.5 text-center">SM Nov-26</th>
-                    <th className="py-1.5 text-center">Peso</th>
-                    <th className="py-1.5 text-center">Aporte</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sm.cats.map((c) => (
-                    <tr key={c.label} className="border-t">
-                      <td className="py-1.5">{c.label}</td>
-                      <td className="py-1.5 text-center tabular-nums text-muted-foreground">{f1(c.sm25)}</td>
-                      <td className="py-1.5 text-center tabular-nums">{f1(c.sm26)}</td>
-                      <td className="py-1.5 text-center tabular-nums text-muted-foreground">{(c.w * 100).toFixed(0)}%</td>
-                      <td className="py-1.5 text-center font-semibold tabular-nums">{f1(c.ap)}</td>
+              {sm.row26 && (
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <th className="py-1.5 text-left">Dimensión</th>
+                      <th className="py-1.5 text-center">Lav</th>
+                      <th className="py-1.5 text-center">Refri</th>
+                      <th className="py-1.5 text-center">Cocc</th>
+                      <th className="bg-sky-50 py-1.5 text-center text-sky-700">SM</th>
                     </tr>
-                  ))}
-                  <tr className="border-t-2 bg-muted/40 font-bold">
-                    <td className="py-1.5">Total</td>
-                    <td className="py-1.5"></td>
-                    <td className="py-1.5"></td>
-                    <td className="py-1.5 text-center tabular-nums">100%</td>
-                    <td className={`py-1.5 text-center tabular-nums ${sm.meets ? "text-emerald-600" : "text-rose-500"}`}>{f1(sm.proj)}</td>
-                  </tr>
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {SM_DIMS.map((d) => (
+                      <tr key={d.key} className="border-t">
+                        <td className="py-1.5">{d.label}</td>
+                        <td className={`py-1.5 text-center tabular-nums ${smCls(sm.row26!.lav[d.key].s)}`}>{f1(sm.row26!.lav[d.key].v)}</td>
+                        <td className={`py-1.5 text-center tabular-nums ${smCls(sm.row26!.ref[d.key].s)}`}>{f1(sm.row26!.ref[d.key].v)}</td>
+                        <td className={`py-1.5 text-center tabular-nums ${smCls(sm.row26!.coc[d.key].s)}`}>{f1(sm.row26!.coc[d.key].v)}</td>
+                        <td className="bg-sky-50 py-1.5"></td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 bg-muted/40 font-bold">
+                      <td className="py-1.5">Salud de Marca</td>
+                      <td className={`py-1.5 text-center tabular-nums ${smCls(sm.row26.lav.sm.s)}`}>{f1(sm.row26.lav.sm.v)}</td>
+                      <td className={`py-1.5 text-center tabular-nums ${smCls(sm.row26.ref.sm.s)}`}>{f1(sm.row26.ref.sm.v)}</td>
+                      <td className={`py-1.5 text-center tabular-nums ${smCls(sm.row26.coc.sm.s)}`}>{f1(sm.row26.coc.sm.v)}</td>
+                      <td className={`bg-sky-100 py-1.5 text-center tabular-nums font-bold ${sm.meets ? "text-emerald-700" : "text-rose-600"}`}>{f1(sm.proj)}</td>
+                    </tr>
+                    <tr className="border-t text-[11px] text-muted-foreground">
+                      <td className="py-1.5">Peso categoría</td>
+                      <td className="py-1.5 text-center tabular-nums">{(sm.lav.w * 100).toFixed(0)}%</td>
+                      <td className="py-1.5 text-center tabular-nums">{(sm.cats[1]!.w * 100).toFixed(0)}%</td>
+                      <td className="py-1.5 text-center tabular-nums">{(sm.coc.w * 100).toFixed(0)}%</td>
+                      <td className="bg-sky-50 py-1.5 text-center tabular-nums">100%</td>
+                    </tr>
+                    <tr className="border-t bg-sky-50/40 font-semibold">
+                      <td className="py-1.5">Aporte al total</td>
+                      <td className="py-1.5 text-center tabular-nums">{f1(sm.lav.ap)}</td>
+                      <td className="py-1.5 text-center tabular-nums">{f1(sm.cats[1]!.ap)}</td>
+                      <td className="py-1.5 text-center tabular-nums">{f1(sm.coc.ap)}</td>
+                      <td className={`bg-sky-100 py-1.5 text-center tabular-nums ${sm.meets ? "text-emerald-700" : "text-rose-600"}`}>{f1(sm.proj)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
               <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                <b>Por qué el desvío:</b> alcanzar {f1(sm.target)} implica crecer sobre los {f1(sm.prev)} de nov-25. El resultado lo
-                domina <b>Lavado</b> ({(sm.lav.w * 100).toFixed(0)}% del mix): su proyección de marca {sm.lavDir}{" "}
-                ({f1(sm.lav.sm25)} → {f1(sm.lav.sm26)}), y eso pesa más que la mejora de <b>Cocción</b>{" "}
-                ({f1(sm.coc.sm25)} → {f1(sm.coc.sm26)}, nuevo portfolio, pero solo {(sm.coc.w * 100).toFixed(0)}% del mix).{" "}
-                <b>Refrigeración</b> se mantiene (sin proyección de marca).
+                <span className="font-semibold text-blue-600">Azul</span> = proyectado · <span className="font-semibold text-amber-600">ámbar</span> = se
+                arrastra nov-25 (sin proyección de marca). <b>Por qué el desvío:</b> lo domina <b>Lavado</b> ({(sm.lav.w * 100).toFixed(0)}% del mix), cuya
+                proyección de marca {sm.lavDir} ({f1(sm.lav.sm25)} → {f1(sm.lav.sm26)}), y eso pesa más que la mejora de <b>Cocción</b>{" "}
+                ({f1(sm.coc.sm25)} → {f1(sm.coc.sm26)}, pero solo {(sm.coc.w * 100).toFixed(0)}% del mix). <b>Refrigeración</b> se mantiene.
               </p>
             </div>
           </div>
