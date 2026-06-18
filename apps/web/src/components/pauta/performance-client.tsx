@@ -809,7 +809,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                 </div>
                 <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
                   Cada hito muestra cuántas impresiones llegaron a ese % del video y el <strong>CPM efectivo</strong> (el costo sube a medida
-                  que exigís más atención). El salto de "impresiones" a "vieron 25%" es la <strong>caída de atención inicial</strong>: ahí se
+                  que exigís más atención). El salto de <strong>impresiones</strong> a <strong>vieron 25%</strong> es la caída de atención inicial: ahí se
                   desperdicia la mayor parte de la inversión de video.
                 </p>
               </div>
