@@ -45,6 +45,10 @@ const tipoColor = (t: string) => TIPO_COLORS[t] ?? "#94a3b8";
 // "Enero 2026" → "Ene"
 const mesCorto = (label: string) => (label.split(" ")[0] ?? label).slice(0, 3);
 
+// Acorta el nombre del producto: saca el SKU final (" - LSCDR1106I") y la marca.
+const cleanProducto = (name: string) =>
+  name.replace(/\s*-\s*[A-Z0-9]+\s*$/i, "").replace(/\bDrean\b/gi, "").replace(/\s{2,}/g, " ").trim() || name;
+
 // Color best-in-class: verde al mejor, rojo al peor, gris si no hay spread.
 function bicColor(value: number, best: number, worst: number, dir: "higher" | "lower"): string {
   if (!isFinite(value) || best === worst) return "";
@@ -171,7 +175,10 @@ export function PerformanceConversionClient({
   const ingresosDonut = porTipo
     .filter((t) => t.ingresos > 0)
     .map((t) => ({ name: t.tipo, value: t.ingresos, color: tipoColor(t.tipo) }));
-  const totalUnidades = top10.reduce((s, p) => s + p.items_purchased, 0);
+  const itemsTotals = filteredItems.reduce(
+    (a, it) => ({ u: a.u + it.items_purchased, r: a.r + it.item_revenue }),
+    { u: 0, r: 0 },
+  );
 
   const hayDatos = rows.length > 0;
 
@@ -399,7 +406,16 @@ export function PerformanceConversionClient({
       <SectionTitle>Top 10 productos por ingresos</SectionTitle>
       {top10.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full text-xs">
+          <table className="w-full table-fixed text-xs">
+            <colgroup>
+              <col className="w-[4%]" />
+              <col className="w-[40%]" />
+              <col className="w-[12%]" />
+              <col className="w-[11%]" />
+              <col className="w-[16%]" />
+              <col className="w-[8%]" />
+              <col className="w-[9%]" />
+            </colgroup>
             <thead className="border-b">
               <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th className="px-3 py-2">#</th>
@@ -407,16 +423,20 @@ export function PerformanceConversionClient({
                 <th className="px-3 py-2 text-right">Unidades</th>
                 <th className="px-3 py-2 text-right">% Unid.</th>
                 <th className="px-3 py-2 text-right">Ingresos</th>
+                <th className="px-3 py-2 text-right">% Ingr.</th>
+                <th className="px-3 py-2 text-right">Ticket</th>
               </tr>
             </thead>
             <tbody>
               {top10.map((p, i) => (
                 <tr key={p.item_name} className="border-b last:border-0 hover:bg-muted/40">
                   <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                  <td className="px-3 py-2 font-medium" title={p.item_name}>{p.item_name}</td>
+                  <td className="truncate px-3 py-2 font-medium" title={p.item_name}>{cleanProducto(p.item_name)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.items_purchased)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{totalUnidades > 0 ? `${((p.items_purchased / totalUnidades) * 100).toFixed(1)}%` : "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{itemsTotals.u > 0 ? `${((p.items_purchased / itemsTotals.u) * 100).toFixed(1)}%` : "—"}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtARS(p.item_revenue)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{itemsTotals.r > 0 ? `${((p.item_revenue / itemsTotals.r) * 100).toFixed(1)}%` : "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{p.items_purchased > 0 ? fmtARS(p.item_revenue / p.items_purchased) : "—"}</td>
                 </tr>
               ))}
             </tbody>
