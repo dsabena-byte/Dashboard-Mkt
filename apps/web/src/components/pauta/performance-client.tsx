@@ -22,9 +22,7 @@ import {
   type Dv360CreativeRow,
   type Dv360ReachRow,
   aggregateDv360Funnels,
-  aggregateDv360Channels,
   aggregateDv360Pieces,
-  aggregateDv360By,
   aggregateDv360VideoQuality,
 } from "@/lib/dv360-data";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -69,8 +67,90 @@ function tipoCompraToRol(tc: string | null): string | null {
   return null;
 }
 
+// Agrega por dimensión (categoría o rol) desde los datos AUTOMÁTICOS (DV360 + Meta/
+// TikTok), con la MISMA estructura que la tabla maestra por medio (general + efectivo).
+function buildDimModel(dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim: "categoria" | "rol") {
+  type Acc = { inv: number; impr: number; clicks: number; comp: number; vimpr: number; reach: number };
+  const agg = new Map<string, Acc>();
+  const get = (k: string) => { let e = agg.get(k); if (!e) { e = { inv: 0, impr: 0, clicks: 0, comp: 0, vimpr: 0, reach: 0 }; agg.set(k, e); } return e; };
+  for (const r of dv) {
+    const e = get((dim === "categoria" ? r.categoria : r.rol) || "—");
+    e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks; e.comp += r.q100;
+    if (r.starts > 0) e.vimpr += r.impresiones;
+  }
+  for (const r of meta) {
+    if (r.plataforma !== "meta" && r.plataforma !== "tiktok") continue;
+    const k = dim === "categoria" ? (r.categoria ?? "—") : (tipoCompraToRol(r.tipo_compra) ?? "—");
+    const e = get(k);
+    const isVid = (r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0;
+    e.inv += r.spend; e.impr += r.impresiones; e.clicks += r.clicks;
+    e.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0);
+    if (isVid) e.vimpr += r.impresiones;
+    e.reach += r.alcance ?? 0;
+  }
+  const items = [...agg.entries()]
+    .map(([nombre, e]) => ({
+      nombre, inversion: e.inv, impresiones: e.impr, alcance: e.reach, clics: e.clicks,
+      cpm: e.impr > 0 ? (e.inv / e.impr) * 1000 : 0,
+      ctr: e.impr > 0 ? (e.clicks / e.impr) * 100 : 0,
+      vtr: e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0,
+      cpmEf: e.comp > 0 ? (e.inv / e.comp) * 1000 : 0,
+    }))
+    .filter((i) => i.impresiones > 0)
+    .sort((a, b) => b.inversion - a.inversion);
+  const posMin = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
+  const posMax = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
+  return { items, bestVtr: posMax(items.map((i) => i.vtr)), bestCtr: posMax(items.map((i) => i.ctr)), bestCpmEf: posMin(items.map((i) => i.cpmEf)) };
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <div className="mb-3 mt-6 text-sm font-medium text-muted-foreground">{children}</div>;
+}
+
+// Tabla por dimensión (categoría o rol) con la MISMA estructura que la tabla maestra
+// por medio: general (gris) + efectivo (semáforo).
+function DimTable({ titulo, col1, model, money }: { titulo: string; col1: string; model: ReturnType<typeof buildDimModel>; money: (n: number) => string }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="border-b px-3 py-2 text-xs font-semibold">{titulo}</div>
+      <table className="w-full text-xs">
+        <thead className="border-b">
+          <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+            <th className="px-3 py-2">{col1}</th>
+            <th className="px-3 py-2 text-right">Inversión</th>
+            <th className="px-3 py-2 text-right font-normal">Impr. <span className="normal-case opacity-60">(gral)</span></th>
+            <th className="px-3 py-2 text-right">Alcance</th>
+            <th className="px-3 py-2 text-right">Frec.</th>
+            <th className="px-3 py-2 text-right">VTR real</th>
+            <th className="px-3 py-2 text-right font-normal">CPM <span className="normal-case opacity-60">(gral)</span></th>
+            <th className="px-3 py-2 text-right">CPM efect.</th>
+            <th className="px-3 py-2 text-right">CPC</th>
+            <th className="px-3 py-2 text-right">CTR</th>
+          </tr>
+        </thead>
+        <tbody>
+          {model.items.map((b) => {
+            const cpc = b.clics > 0 ? b.inversion / b.clics : 0;
+            const frec = b.alcance > 0 ? b.impresiones / b.alcance : 0;
+            return (
+              <tr key={b.nombre} className="border-b last:border-0">
+                <td className="px-3 py-2 font-medium">{b.nombre}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{money(b.inversion)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(b.impresiones)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{b.alcance > 0 ? fmtNum(b.alcance) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{frec > 0 ? frec.toFixed(1) : "—"}</td>
+                <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.vtr > 0 ? bicColor(b.vtr, model.bestVtr, "higher") : "text-muted-foreground"}`}>{b.vtr > 0 ? `${b.vtr.toFixed(0)}%` : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{b.cpm > 0 ? money(b.cpm) : "—"}</td>
+                <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.cpmEf > 0 ? bicColor(b.cpmEf, model.bestCpmEf, "lower") : "text-muted-foreground"}`}>{b.cpmEf > 0 ? money(b.cpmEf) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{cpc > 0 ? money(cpc) : "—"}</td>
+                <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.ctr > 0 ? bicColor(b.ctr, model.bestCtr, "higher") : "text-muted-foreground"}`}>{b.ctr.toFixed(2)}%</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 const INSIGHT_STYLES: Record<string, string> = {
@@ -217,7 +297,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     () => (arsMode ? dv360F.map((r) => ({ ...r, revenue_usd: r.revenue_usd * (fxRates[r.mes] ?? fxFallback) })) : dv360F),
     [dv360F, fxRates, arsMode, fxFallback],
   );
-  const dv360Channels = useMemo(() => aggregateDv360Channels(dv360Conv, dv360ReachF), [dv360Conv, dv360ReachF]);
   const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360Conv), [dv360Conv]);
   const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360Conv), [dv360Conv]);
   const dv360VideoQ = useMemo(() => aggregateDv360VideoQuality(dv360Conv), [dv360Conv]);
@@ -268,8 +347,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     return arr.sort((a, b) => b.impr - a.impr);
   }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, arsMode]);
-  const dv360ByCategoria = useMemo(() => aggregateDv360By(dv360Conv, "categoria"), [dv360Conv]);
-  const dv360ByRol = useMemo(() => aggregateDv360By(dv360Conv, "rol"), [dv360Conv]);
+  const catModel = useMemo(() => buildDimModel(dv360Conv, metaPaidF, "categoria"), [dv360Conv, metaPaidF]);
+  const rolModel = useMemo(() => buildDimModel(dv360Conv, metaPaidF, "rol"), [dv360Conv, metaPaidF]);
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
   const minPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const maxPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
@@ -278,8 +357,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     cpm: minPos(dv360Pieces.map((p) => p.cpm)),
     vtr: maxPos(dv360Pieces.map((p) => p.vtr)),
   }), [dv360Pieces]);
-  const dvCatBest = useMemo(() => ({ ctr: maxPos(dv360ByCategoria.map((b) => b.ctr)), vtr: maxPos(dv360ByCategoria.map((b) => b.vtr)), cpmEf: minPos(dv360ByCategoria.map((b) => b.cpmEf)) }), [dv360ByCategoria]);
-  const dvRolBest = useMemo(() => ({ ctr: maxPos(dv360ByRol.map((b) => b.ctr)), vtr: maxPos(dv360ByRol.map((b) => b.vtr)), cpmEf: minPos(dv360ByRol.map((b) => b.cpmEf)) }), [dv360ByRol]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
   const totalInv = useMemo(() => rows.reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
@@ -966,72 +1043,19 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             </table>
           </div>
 
-          <SectionTitle>Detalle por categoría y rol (DV360)</SectionTitle>
-          {dv360Channels.canales.length === 0 ? (
-            <p className="mb-3 text-[10px] text-muted-foreground">
-              Se completa con el reporte de DV360. Costo en USD (sin comisión de agencia ni impuestos). No incluye Google Search (vive
-              en Google Ads, no en DV360).
-            </p>
+          <SectionTitle>Detalle por categoría y rol</SectionTitle>
+          {catModel.items.length === 0 ? (
+            <p className="mb-3 text-[10px] text-muted-foreground">Sin datos automáticos (DV360 + Meta) en la selección.</p>
           ) : (
             <>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="overflow-x-auto rounded-lg border bg-card">
-                  <div className="border-b px-3 py-2 text-xs font-semibold">Por categoría</div>
-                  <table className="w-full text-xs">
-                    <thead className="border-b">
-                      <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                        <th className="px-3 py-2">Categoría</th>
-                        <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
-                        <th className="px-3 py-2 text-right font-normal">Impr. <span className="normal-case opacity-60">(gral)</span></th>
-                        <th className="px-3 py-2 text-right">VTR real</th>
-                        <th className="px-3 py-2 text-right">CPM efect.</th>
-                        <th className="px-3 py-2 text-right">CTR</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dv360ByCategoria.map((b) => (
-                        <tr key={b.nombre} className="border-b last:border-0">
-                          <td className="px-3 py-2 font-medium">{b.nombre}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{dvMoney(b.revenueUsd)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(b.impresiones)}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.vtr > 0 ? bicColor(b.vtr, dvCatBest.vtr, "higher") : "text-muted-foreground"}`}>{b.vtr > 0 ? `${b.vtr.toFixed(0)}%` : "—"}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.cpmEf > 0 ? bicColor(b.cpmEf, dvCatBest.cpmEf, "lower") : "text-muted-foreground"}`}>{b.cpmEf > 0 ? dvMoney(b.cpmEf) : "—"}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.ctr > 0 ? bicColor(b.ctr, dvCatBest.ctr, "higher") : "text-muted-foreground"}`}>{b.ctr.toFixed(2)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="overflow-x-auto rounded-lg border bg-card">
-                  <div className="border-b px-3 py-2 text-xs font-semibold">Por rol de comunicación</div>
-                  <table className="w-full text-xs">
-                    <thead className="border-b">
-                      <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                        <th className="px-3 py-2">Rol</th>
-                        <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
-                        <th className="px-3 py-2 text-right font-normal">Impr. <span className="normal-case opacity-60">(gral)</span></th>
-                        <th className="px-3 py-2 text-right">VTR real</th>
-                        <th className="px-3 py-2 text-right">CPM efect.</th>
-                        <th className="px-3 py-2 text-right">CTR</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dv360ByRol.map((b) => (
-                        <tr key={b.nombre} className="border-b last:border-0">
-                          <td className="px-3 py-2 font-medium">{b.nombre}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{dvMoney(b.revenueUsd)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(b.impresiones)}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.vtr > 0 ? bicColor(b.vtr, dvRolBest.vtr, "higher") : "text-muted-foreground"}`}>{b.vtr > 0 ? `${b.vtr.toFixed(0)}%` : "—"}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.cpmEf > 0 ? bicColor(b.cpmEf, dvRolBest.cpmEf, "lower") : "text-muted-foreground"}`}>{b.cpmEf > 0 ? dvMoney(b.cpmEf) : "—"}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.ctr > 0 ? bicColor(b.ctr, dvRolBest.ctr, "higher") : "text-muted-foreground"}`}>{b.ctr.toFixed(2)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="space-y-3">
+                <DimTable titulo="Por categoría" col1="Categoría" model={catModel} money={dvMoney} />
+                <DimTable titulo="Por rol de comunicación" col1="Rol" model={rolModel} money={dvMoney} />
               </div>
               <p className="mb-3 mt-1 text-[10px] text-muted-foreground/70">
-                Categoría y rol (Awareness/Consideración) se derivan del nombre del Line Item. Incluye YouTube.
+                Misma estructura que la tabla maestra (general + efectivo). Fuente: DV360 + Meta automáticos. Categoría/rol se derivan del
+                Line Item (DV360) y del tipo de compra (Meta/TikTok). Alcance es aproximado (solapamiento + reach por canal no disponible por
+                categoría en DV360).
               </p>
               {dv360Pieces.length > 0 && (
                 <>
