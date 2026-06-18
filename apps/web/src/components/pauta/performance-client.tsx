@@ -207,6 +207,13 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       hasData: imprVideo > 0,
     };
   }, [dv360VideoQ, metaVideoFunnel, arsMode]);
+  // Embudos de video SEPARADOS por fuente (cada canal DV360 + Meta), no mezclados.
+  const videoSources = useMemo(() => {
+    const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
+    for (const f of dv360Funnels) arr.push({ name: `DV360 · ${f.canal}`, impr: f.impresiones, v25: f.q25, v50: f.q50, v75: f.q75, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 });
+    if (metaVideoFunnel.count > 0) arr.push({ name: "Meta", impr: metaVideoFunnel.impresiones, v25: metaVideoFunnel.p25, v50: metaVideoFunnel.p50, v75: metaVideoFunnel.p75, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend });
+    return arr.sort((a, b) => b.impr - a.impr);
+  }, [dv360Funnels, metaVideoFunnel, arsMode]);
   const dv360ByCategoria = useMemo(() => aggregateDv360By(dv360Conv, "categoria"), [dv360Conv]);
   const dv360ByRol = useMemo(() => aggregateDv360By(dv360Conv, "rol"), [dv360Conv]);
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
@@ -428,33 +435,40 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return { ref: calc(refMes), prev: calc(prevMes) };
   }, [rowsNoMes, refMes, prevMes]);
 
-  // Best-in-class interno: cada medio DIGITAL vs el mejor comparable (CPM mín, CTR/VTR máx).
-  const bic = useMemo(() => {
-    const vtrMap = new Map(videoByMedio.map((v) => [v.medio, v.vtr]));
+  // ===== Modelo único de medios (fuente de verdad para TODO el dashboard) =====
+  // Cada medio con su KPI GENERAL (cpm) y su contraparte EFECTIVA (cpmEf, vtr, ctr).
+  // Los semáforos se calculan SIEMPRE sobre lo efectivo; el nominal es contexto.
+  // Mismo origen (OMD: computeByMedio + computeVideoByMedio) → coherente en todo el dash.
+  const medioModel = useMemo(() => {
+    const vmap = new Map(videoByMedio.map((v) => [v.medio, v]));
     const items = byMedio
-      .filter((m) => tipoMedio(m.medio) === "Digital" && m.impresiones > 0)
-      .map((m) => ({
-        medio: m.medio,
-        inversion: m.inversion,
-        cpm: m.cpm,
-        ctr: m.impresiones > 0 ? (m.clics / m.impresiones) * 100 : 0,
-        vtr: vtrMap.get(m.medio) ?? 0,
-      }));
-    const cpms = items.filter((i) => i.cpm > 0).map((i) => i.cpm);
-    const ctrs = items.filter((i) => i.ctr > 0).map((i) => i.ctr);
-    const vtrs = items.filter((i) => i.vtr > 0).map((i) => i.vtr);
+      .filter((m) => m.impresiones > 0)
+      .map((m) => {
+        const v = vmap.get(m.medio);
+        return {
+          medio: m.medio,
+          isDigital: tipoMedio(m.medio) === "Digital",
+          inversion: m.inversion,
+          impresiones: m.impresiones,
+          alcance: m.alcance,
+          clics: m.clics,
+          cpm: m.cpm, // GENERAL (contexto, sin semáforo)
+          ctr: m.impresiones > 0 ? (m.clics / m.impresiones) * 100 : 0, // efectivo (engagement)
+          views: v?.views ?? 0,
+          vtr: v?.vtr ?? 0, // efectivo (visibilidad real)
+          cpmEf: v?.cpmEfectivo ?? 0, // efectivo (costo real por mil views)
+          cpv: v?.cpv ?? 0,
+        };
+      })
+      .sort((a, b) => b.inversion - a.inversion);
+    const dig = items.filter((i) => i.isDigital);
     return {
-      items: items.sort((a, b) => b.inversion - a.inversion),
-      bestCpm: cpms.length ? Math.min(...cpms) : 0,
-      bestCtr: ctrs.length ? Math.max(...ctrs) : 0,
-      bestVtr: vtrs.length ? Math.max(...vtrs) : 0,
+      items,
+      bestCtr: maxPos(dig.map((i) => i.ctr)),
+      bestVtr: maxPos(dig.map((i) => i.vtr)),
+      bestCpmEf: minPos(dig.map((i) => i.cpmEf)),
     };
   }, [byMedio, videoByMedio]);
-  const bicMap = useMemo(() => new Map(bic.items.map((i) => [i.medio, i])), [bic]);
-  const avgCpmDig = useMemo(() => {
-    const c = bic.items.filter((i) => i.cpm > 0).map((i) => i.cpm);
-    return c.length ? c.reduce((a, b) => a + b, 0) / c.length : 0;
-  }, [bic]);
 
   // Alertas "qué mejorar" auto-generadas.
   const alertas = useMemo(() => {
@@ -469,14 +483,16 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         text: `VTR ${worst.vtr.toFixed(0)}% → su CPM efectivo (${fmtARS(worst.cpmEfectivo)}) es ${ratio.toFixed(1)}× el nominal. Revisar formato/duración/targeting de video.`,
       });
     }
-    if (bic.items.length > 1 && bic.bestCpm > 0) {
-      const costly = [...bic.items].filter((i) => i.cpm > 0).sort((a, b) => b.cpm - a.cpm)[0]!;
-      const r = costly.cpm / bic.bestCpm;
-      if (r > 1.4) out.push({
-        type: "warn",
-        title: `CPM caro · ${costly.medio}`,
-        text: `CPM ${fmtARS(costly.cpm)} = ${r.toFixed(1)}× el mejor medio digital (${fmtARS(bic.bestCpm)}). Evaluar reasignar inversión hacia el medio más eficiente.`,
-      });
+    if (medioModel.bestCpmEf > 0) {
+      const costly = medioModel.items.filter((i) => i.cpmEf > 0).sort((a, b) => b.cpmEf - a.cpmEf)[0];
+      if (costly) {
+        const r = costly.cpmEf / medioModel.bestCpmEf;
+        if (r > 1.5) out.push({
+          type: "warn",
+          title: `Costo efectivo caro · ${costly.medio}`,
+          text: `Su CPM efectivo (costo por view real) es ${fmtARS(costly.cpmEf)} = ${r.toFixed(1)}× el del mejor medio digital (${fmtARS(medioModel.bestCpmEf)}). El nominal puede parecer barato, pero pocos ven el video → reasignar hacia el más efectivo.`,
+        });
+      }
     }
     const tr = monthTotals.ref, tp = monthTotals.prev;
     if (tr && tp) {
@@ -494,7 +510,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     }
     if (out.length === 0) out.push({ type: "good", title: "Sin alertas críticas", text: "Los indicadores de la selección están dentro de rangos esperables." });
     return out.slice(0, 4);
-  }, [videoByMedio, bic, monthTotals]);
+  }, [videoByMedio, medioModel, monthTotals]);
 
   // Insights: solo si hay una sola categoría seleccionada
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
@@ -721,13 +737,14 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
 
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <div className="rounded-xl border bg-card p-4 lg:col-span-2">
-              <h3 className="mb-1 text-sm font-bold">Eficiencia por medio · best-in-class (digital)</h3>
+              <h3 className="mb-1 text-sm font-bold">Eficiencia por medio · general + efectivo</h3>
               <p className="mb-2 text-[10px] text-muted-foreground">
-                Cada métrica coloreada vs el mejor medio digital comparable: <span className="font-semibold text-emerald-600">●</span> en línea ·
-                <span className="font-semibold text-amber-600"> ●</span> a vigilar · <span className="font-semibold text-rose-600">●</span> a optimizar.
+                CPM en gris = <strong>general</strong> (no mide si se vio). Semáforo en lo <strong>efectivo</strong>: CPM efectivo
+                (costo/view real), CTR y VTR, vs el mejor medio digital. <span className="font-semibold text-emerald-600">●</span> mejor ·
+                <span className="font-semibold text-amber-600"> ●</span> intermedio · <span className="font-semibold text-rose-600">●</span> a optimizar.
               </p>
-              {bic.items.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sin medios digitales en la selección.</p>
+              {medioModel.items.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sin medios en la selección.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
@@ -735,22 +752,24 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                       <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                         <th className="py-1.5">Medio</th>
                         <th className="py-1.5 text-right">Inversión</th>
-                        <th className="py-1.5 text-right">CPM</th>
+                        <th className="py-1.5 text-right font-normal">CPM <span className="normal-case opacity-60">(gral)</span></th>
+                        <th className="py-1.5 text-right">CPM efect.</th>
                         <th className="py-1.5 text-right">CTR</th>
                         <th className="py-1.5 text-right">VTR</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {bic.items.map((m) => (
+                      {medioModel.items.map((m) => (
                         <tr key={m.medio} className="border-b last:border-0">
                           <td className="py-1.5 font-medium">
                             <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[m.medio] ?? "#94a3b8" }} />
                             {m.medio}
                           </td>
                           <td className="py-1.5 text-right tabular-nums text-muted-foreground">{fmtARS(m.inversion)}</td>
-                          <td className={`py-1.5 text-right font-semibold tabular-nums ${bicColor(m.cpm, bic.bestCpm, "lower")}`}>{m.cpm > 0 ? fmtARS(m.cpm) : "—"}</td>
-                          <td className={`py-1.5 text-right font-semibold tabular-nums ${bicColor(m.ctr, bic.bestCtr, "higher")}`}>{m.ctr > 0 ? `${m.ctr.toFixed(2)}%` : "—"}</td>
-                          <td className={`py-1.5 text-right font-semibold tabular-nums ${bicColor(m.vtr, bic.bestVtr, "higher")}`}>{m.vtr > 0 ? `${m.vtr.toFixed(0)}%` : "—"}</td>
+                          <td className="py-1.5 text-right tabular-nums text-muted-foreground">{m.cpm > 0 ? fmtARS(m.cpm) : "—"}</td>
+                          <td className={`py-1.5 text-right font-semibold tabular-nums ${m.isDigital && m.cpmEf > 0 ? bicColor(m.cpmEf, medioModel.bestCpmEf, "lower") : "text-muted-foreground"}`}>{m.cpmEf > 0 ? fmtARS(m.cpmEf) : "—"}</td>
+                          <td className={`py-1.5 text-right font-semibold tabular-nums ${m.isDigital && m.ctr > 0 ? bicColor(m.ctr, medioModel.bestCtr, "higher") : "text-muted-foreground"}`}>{m.ctr > 0 ? `${m.ctr.toFixed(2)}%` : "—"}</td>
+                          <td className={`py-1.5 text-right font-semibold tabular-nums ${m.isDigital && m.vtr > 0 ? bicColor(m.vtr, medioModel.bestVtr, "higher") : "text-muted-foreground"}`}>{m.vtr > 0 ? `${m.vtr.toFixed(0)}%` : "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -830,38 +849,46 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                 </div>
               </section>
 
-              {/* Embudo de atención unificado */}
-              <SectionTitle>Embudo de atención · impresión → completion (DV360 + Meta)</SectionTitle>
-              <div className="rounded-xl border bg-card p-5">
-                <div className="space-y-1.5">
-                  {([
-                    ["Impresiones de video", videoQuality.imprVideo],
-                    ["Vieron 25%", videoQuality.v25],
-                    ["Vieron 50%", videoQuality.v50],
-                    ["Vieron 75%", videoQuality.v75],
-                    ["Vieron 100% (completo)", videoQuality.v100],
-                  ] as Array<[string, number]>).map(([label, n], i) => {
-                    const pct = videoQuality.imprVideo > 0 ? (n / videoQuality.imprVideo) * 100 : 0;
-                    const cpmEf = videoQuality.spend > 0 && n > 0 ? (videoQuality.spend / n) * 1000 : 0;
-                    return (
-                      <div key={label} className="flex items-center gap-3">
-                        <div className="w-44 shrink-0 text-[11px] text-foreground/80">{label}</div>
-                        <div className="relative h-7 flex-1 overflow-hidden rounded bg-muted">
-                          <div className="flex h-full items-center rounded px-2 text-[10px] font-semibold text-white" style={{ width: `${Math.max(pct, 6)}%`, backgroundColor: i === 0 ? "#0a1849" : i === 4 ? "#2b4dff" : "#1e3a8a" }}>
-                            {fmtNum(n)}
-                          </div>
-                        </div>
-                        <div className="w-12 shrink-0 text-right text-[11px] font-semibold tabular-nums">{pct.toFixed(0)}%</div>
-                        <div className="w-24 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">{cpmEf > 0 ? `${dvMoney(cpmEf)} CPM ef.` : ""}</div>
+              {/* Embudo de atención SEPARADO por fuente (no mezclar lo comparable) */}
+              <SectionTitle>Embudo de atención · separado por fuente</SectionTitle>
+              <p className="mb-2 text-[10px] text-muted-foreground">
+                Cada fuente por separado para poder diagnosticarla: <strong>YouTube TrueView es skippable</strong> y no es comparable con
+                video no-skippable (programmatic/Meta). El % es la retención sobre las impresiones de video de esa fuente; el salto de
+                impresiones a <strong>vieron 25%</strong> es la caída de atención inicial (ahí se desperdicia la inversión).
+              </p>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {videoSources.map((src) => {
+                  const stages: Array<[string, number]> = [
+                    ["Impresiones", src.impr], ["Vieron 25%", src.v25], ["Vieron 50%", src.v50], ["Vieron 75%", src.v75], ["Vieron 100%", src.v100],
+                  ];
+                  const vtr = src.impr > 0 ? (src.v100 / src.impr) * 100 : 0;
+                  const cpcv = src.spend > 0 && src.v100 > 0 ? (src.spend / src.v100) * 1000 : 0;
+                  return (
+                    <div key={src.name} className="rounded-xl border bg-card p-4">
+                      <div className="mb-2 flex items-baseline justify-between">
+                        <span className="text-xs font-bold">{src.name}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          VTR <span className={`font-semibold ${vtr >= 30 ? "text-emerald-600" : vtr >= 15 ? "text-amber-600" : "text-rose-600"}`}>{vtr.toFixed(0)}%</span>
+                          {cpcv > 0 && <> · CPCV {dvMoney(cpcv)}</>}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-                <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-                  Cada hito muestra cuántas impresiones llegaron a ese % del video y el <strong>CPM efectivo</strong> (el costo sube a medida
-                  que exigís más atención). El salto de <strong>impresiones</strong> a <strong>vieron 25%</strong> es la caída de atención inicial: ahí se
-                  desperdicia la mayor parte de la inversión de video.
-                </p>
+                      <div className="space-y-1">
+                        {stages.map(([label, n], i) => {
+                          const pct = src.impr > 0 ? (n / src.impr) * 100 : 0;
+                          return (
+                            <div key={label} className="flex items-center gap-2">
+                              <div className="w-24 shrink-0 text-[10px] text-foreground/70">{label}</div>
+                              <div className="relative h-5 flex-1 overflow-hidden rounded bg-muted">
+                                <div className="flex h-full items-center rounded px-1.5 text-[9px] font-semibold text-white" style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: i === 0 ? "#0a1849" : i === 4 ? "#2b4dff" : "#1e3a8a" }}>{fmtNum(n)}</div>
+                              </div>
+                              <div className="w-9 shrink-0 text-right text-[10px] font-semibold tabular-nums">{pct.toFixed(0)}%</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Calidad por canal/fuente */}
@@ -971,17 +998,14 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             </>
           )}
 
-          <SectionTitle>Desglose por plataforma · con semáforos</SectionTitle>
+          <SectionTitle>Desglose por plataforma · general + efectivo</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            CPM/CTR/VTR coloreados vs el mejor medio digital comparable (best-in-class). El CPM muestra además el desvío vs el
-            promedio digital. Medios no comparables (TV/OOH) se muestran sin semáforo.
+            Cada KPI general (en gris) va apareado con su contraparte de impacto real: <strong>CPM ↔ CPM efectivo</strong> (costo/view),
+            <strong> Impresiones ↔ VTR</strong> (% que vio el video). El semáforo vive en lo efectivo (vs el mejor medio digital). Un CPM
+            barato con bajo VTR no es barato de verdad.
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {byMedio.map((p) => {
-              const b = bicMap.get(p.medio); // datos best-in-class si es digital
-              const ctr = p.impresiones > 0 ? (p.clics / p.impresiones) * 100 : 0;
-              const cpmDev = avgCpmDig > 0 && b ? ((p.cpm - avgCpmDig) / avgCpmDig) * 100 : null;
-              return (
+            {medioModel.items.map((p) => (
                 <div key={p.medio} className="rounded-lg border bg-card p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
@@ -989,25 +1013,26 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div><div className="text-muted-foreground">Inversión</div><div className="font-semibold">{fmtARS(p.inversion)}</div></div>
+                    <div><div className="text-muted-foreground">Impresiones <span className="opacity-60">(gral)</span></div><div className="font-semibold text-muted-foreground">{fmtNum(p.impresiones)}</div></div>
                     <div>
-                      <div className="text-muted-foreground">CPM</div>
-                      <div className={`font-semibold ${b ? bicColor(p.cpm, bic.bestCpm, "lower") : ""}`}>{fmtARS(p.cpm)}</div>
-                      {cpmDev != null && <div className={`text-[9px] tabular-nums ${cpmDev <= 0 ? "text-emerald-600" : "text-rose-500"}`}>{cpmDev > 0 ? "+" : ""}{cpmDev.toFixed(0)}% vs prom.</div>}
+                      <div className="text-muted-foreground">CPM <span className="opacity-60">(gral)</span></div>
+                      <div className="font-semibold text-muted-foreground">{fmtARS(p.cpm)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">CPM efectivo</div>
+                      <div className={`font-semibold ${p.isDigital && p.cpmEf > 0 ? bicColor(p.cpmEf, medioModel.bestCpmEf, "lower") : "text-muted-foreground"}`}>{p.cpmEf > 0 ? fmtARS(p.cpmEf) : "—"}</div>
                     </div>
                     <div>
                       <div className="text-muted-foreground">CTR</div>
-                      <div className={`font-semibold ${b ? bicColor(ctr, bic.bestCtr, "higher") : ""}`}>{ctr > 0 ? `${ctr.toFixed(2)}%` : "—"}</div>
+                      <div className={`font-semibold ${p.isDigital && p.ctr > 0 ? bicColor(p.ctr, medioModel.bestCtr, "higher") : "text-muted-foreground"}`}>{p.ctr > 0 ? `${p.ctr.toFixed(2)}%` : "—"}</div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground">VTR</div>
-                      <div className={`font-semibold ${b && b.vtr > 0 ? bicColor(b.vtr, bic.bestVtr, "higher") : ""}`}>{b && b.vtr > 0 ? `${b.vtr.toFixed(0)}%` : "—"}</div>
+                      <div className="text-muted-foreground">VTR <span className="opacity-60">(real)</span></div>
+                      <div className={`font-semibold ${p.isDigital && p.vtr > 0 ? bicColor(p.vtr, medioModel.bestVtr, "higher") : "text-muted-foreground"}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</div>
                     </div>
-                    <div><div className="text-muted-foreground">Impresiones</div><div className="font-semibold">{fmtNum(p.impresiones)}</div></div>
-                    <div><div className="text-muted-foreground">Alcance</div><div className="font-semibold">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</div></div>
                   </div>
                 </div>
-              );
-            })}
+            ))}
           </div>
 
           <SectionTitle>Efectividad real de video — impresiones vs views</SectionTitle>
@@ -1266,8 +1291,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.impresiones)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.clicks)}</td>
                             <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(p.ctr, dvPieceBest.ctr, "higher")}`}>{p.ctr.toFixed(2)}%</td>
-                            <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(p.cpm, dvPieceBest.cpm, "lower")}`}>{dvMoney(p.cpm)}</td>
-                            <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.vtr > 0 ? bicColor(p.vtr, dvPieceBest.vtr, "higher") : ""}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{dvMoney(p.cpm)}</td>
+                            <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.vtr > 0 ? bicColor(p.vtr, dvPieceBest.vtr, "higher") : "text-muted-foreground"}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
                           </tr>
                         ))}
                       </tbody>
