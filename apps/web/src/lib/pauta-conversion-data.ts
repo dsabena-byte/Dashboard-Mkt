@@ -45,24 +45,32 @@ export function cleanCampaign(name: string): string {
   return name.replace(/^inhouse[_-]?/i, "") || name;
 }
 
+// Tokeniza el nombre por sus separadores (_, -, espacio). Los nombres de
+// campaña usan "_" como delimitador y "_" cuenta como word-char en regex, así
+// que \b no sirve — hay que partir en tokens y comparar exacto.
+function tokens(name: string): string[] {
+  return name.toLowerCase().split(/[_\-\s]+/).filter(Boolean);
+}
+
 // Clasifica la campaña por TIPO de red de Google Ads a partir del nombre.
 export function campaignTipo(name: string): string {
-  const n = name.toLowerCase();
-  if (/\b(pmax|performance[_-]?max|p[_-]?max)\b/.test(n)) return "Performance Max";
-  if (/\bshop(ping)?\b/.test(n)) return "Shopping";
-  if (/\b(dem(and)?[_-]?gen|dgen|discovery)\b/.test(n)) return "Demand Gen";
-  if (/\b(video|yt|youtube)\b/.test(n)) return "Video";
-  if (/\b(display|gdn)\b/.test(n)) return "Display";
-  if (/\b(search|se|sem|brand|nonbrand|generic)\b/.test(n)) return "Search";
+  const t = tokens(name);
+  const has = (...keys: string[]) => keys.some((k) => t.includes(k));
+  if (has("pmax", "performancemax")) return "Performance Max";
+  if (has("shopping", "shop")) return "Shopping";
+  if (has("demandgen", "dgen", "discovery")) return "Demand Gen";
+  if (has("video", "yt", "youtube")) return "Video";
+  if (has("display", "gdn")) return "Display";
+  if (has("se", "sem", "search", "brand", "brandcat", "nonbrand", "generic")) return "Search";
   return "Otras";
 }
 
 // Etapa del lower funnel a partir del nombre (lower/mid/upper/top).
 export function campaignEtapa(name: string): string {
-  const n = name.toLowerCase();
-  if (/\blower\b/.test(n)) return "Lower";
-  if (/\bmid(dle)?\b/.test(n)) return "Mid";
-  if (/\b(upper|top)\b/.test(n)) return "Upper";
+  const t = tokens(name);
+  if (t.includes("lower")) return "Lower";
+  if (t.includes("mid") || t.includes("middle")) return "Mid";
+  if (t.includes("upper") || t.includes("top")) return "Upper";
   return "—";
 }
 
