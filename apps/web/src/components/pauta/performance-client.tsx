@@ -308,28 +308,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360Conv), [dv360Conv]);
   const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360Conv), [dv360Conv]);
   const dv360VideoQ = useMemo(() => aggregateDv360VideoQuality(dv360Conv), [dv360Conv]);
-  // Calidad de video unificada (DV360 cuartiles + Meta p25-100). Las cuentas
-  // (impresiones, vistas a cada %) son moneda-agnósticas; el costo (CPCV) solo se
-  // combina si DV360 ya está en ARS (arsMode), porque Meta spend es ARS.
-  const videoQuality = useMemo(() => {
-    const m = metaVideoFunnel;
-    const imprVideo = dv360VideoQ.imprVideo + m.impresiones;
-    const v25 = dv360VideoQ.q25 + m.p25;
-    const v50 = dv360VideoQ.q50 + m.p50;
-    const v75 = dv360VideoQ.q75 + m.p75;
-    const v100 = dv360VideoQ.q100 + m.p100;
-    const spend = arsMode ? dv360VideoQ.revenueVideo + m.spend : 0; // ARS solo si DV360 convertido
-    const imprTotal = imprVideo + dv360VideoQ.imprDisplay; // total con formato conocido (DV360+Meta video)
-    return {
-      imprVideo, imprDisplay: dv360VideoQ.imprDisplay, imprTotal,
-      v25, v50, v75, v100, spend,
-      pct50: imprVideo > 0 ? (v50 / imprVideo) * 100 : 0,
-      pct100: imprVideo > 0 ? (v100 / imprVideo) * 100 : 0,
-      cpcv: v100 > 0 && spend > 0 ? spend / v100 : 0,
-      pctVideoMix: imprTotal > 0 ? (imprVideo / imprTotal) * 100 : 0,
-      hasData: imprVideo > 0,
-    };
-  }, [dv360VideoQ, metaVideoFunnel, arsMode]);
   // Embudo de video de TikTok (desde metaPaid, solo filas de video).
   const tiktokVideoFunnel = useMemo(() => {
     const t = metaPaidF.filter((r) => r.plataforma === "tiktok" && ((r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0 || (r.views_completed ?? 0) > 0 || (r.vtr_p100 ?? 0) > 0));
@@ -348,6 +326,28 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     );
     return { ...a, count: t.length };
   }, [metaPaidF]);
+  // Calidad de video unificada (DV360 cuartiles + Meta p25-100). Las cuentas
+  // (impresiones, vistas a cada %) son moneda-agnósticas; el costo (CPCV) solo se
+  // combina si DV360 ya está en ARS (arsMode), porque Meta spend es ARS.
+  const videoQuality = useMemo(() => {
+    const m = metaVideoFunnel, tk = tiktokVideoFunnel;
+    const imprVideo = dv360VideoQ.imprVideo + m.impresiones + tk.impresiones;
+    const v25 = dv360VideoQ.q25 + m.p25 + tk.p25;
+    const v50 = dv360VideoQ.q50 + m.p50 + tk.p50;
+    const v75 = dv360VideoQ.q75 + m.p75 + tk.p75;
+    const v100 = dv360VideoQ.q100 + m.p100 + tk.p100;
+    const spend = arsMode ? dv360VideoQ.revenueVideo + m.spend + tk.spend : 0; // ARS solo si DV360 convertido
+    const imprTotal = imprVideo + dv360VideoQ.imprDisplay; // total con formato conocido (DV360+Meta+TikTok)
+    return {
+      imprVideo, imprDisplay: dv360VideoQ.imprDisplay, imprTotal,
+      v25, v50, v75, v100, spend,
+      pct50: imprVideo > 0 ? (v50 / imprVideo) * 100 : 0,
+      pct100: imprVideo > 0 ? (v100 / imprVideo) * 100 : 0,
+      cpcv: v100 > 0 && spend > 0 ? spend / v100 : 0,
+      pctVideoMix: imprTotal > 0 ? (imprVideo / imprTotal) * 100 : 0,
+      hasData: imprVideo > 0,
+    };
+  }, [dv360VideoQ, metaVideoFunnel, tiktokVideoFunnel, arsMode]);
   // Embudos de video SEPARADOS por fuente (cada canal DV360 + Meta + TikTok), no mezclados.
   const videoSources = useMemo(() => {
     const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
