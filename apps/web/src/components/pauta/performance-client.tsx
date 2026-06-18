@@ -73,6 +73,43 @@ function Insight({ type, title, text }: { type: "good" | "warn" | "alert" | "inf
   );
 }
 
+// ===== Resumen ejecutivo: helpers =====
+const pctDelta = (curr: number, prev: number | null): number | null =>
+  prev == null || prev === 0 ? null : ((curr - prev) / prev) * 100;
+
+// KPI con variación vs mes anterior (Δ% MoM). Color según si "más es mejor"
+// (higherBetter), peor (false) o neutral (sin juicio de valor → gris).
+function MoMStat({ label, value, delta, dir = "neutral", sub }: {
+  label: string; value: string; delta: number | null; dir?: "up-good" | "down-good" | "neutral"; sub?: string;
+}) {
+  let color = "text-muted-foreground";
+  if (delta != null && dir !== "neutral" && delta !== 0) {
+    const good = dir === "up-good" ? delta > 0 : delta < 0;
+    color = good ? "text-emerald-600" : "text-rose-500";
+  }
+  const arrow = delta == null || delta === 0 ? "▬" : delta > 0 ? "▲" : "▼";
+  return (
+    <div className="rounded-xl border bg-card p-3">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-lg font-bold tabular-nums">{value}</div>
+      <div className={`text-[11px] tabular-nums ${color}`}>
+        {delta == null ? <span className="text-muted-foreground">— sin mes previo</span> : <>{arrow} {delta > 0 ? "+" : ""}{delta.toFixed(1)}% vs mes ant.</>}
+      </div>
+      {sub && <div className="text-[10px] text-muted-foreground/70">{sub}</div>}
+    </div>
+  );
+}
+
+// Semáforo de una métrica vs el mejor medio comparable (best-in-class interno).
+// kind "lower" = menos es mejor (CPM); "higher" = más es mejor (CTR/VTR).
+function bicColor(value: number, best: number, kind: "lower" | "higher"): string {
+  if (best <= 0 || value <= 0) return "text-muted-foreground";
+  const ratio = kind === "lower" ? value / best : value / best;
+  if (kind === "lower") return ratio <= 1.1 ? "text-emerald-600" : ratio <= 1.4 ? "text-amber-600" : "text-rose-600";
+  return ratio >= 0.9 ? "text-emerald-600" : ratio >= 0.6 ? "text-amber-600" : "text-rose-600";
+}
+
+
 export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
@@ -253,6 +290,109 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     });
   }, [data, currentMonth, planningMonthly]);
 
+  // ===== Resumen ejecutivo: scorecard mes vs mes anterior (MoM) =====
+  // Mes de referencia = el seleccionado (si es uno) o el último con data.
+  // Respeta los filtros de medio/categoría/rol/plataforma, pero NO el de mes.
+  const rowsNoMes = useMemo(
+    () =>
+      data.filter(
+        (r) =>
+          (selMedios.length === 0 || selMedios.includes(tipoMedio(r.medio))) &&
+          (selCats.length === 0 || selCats.includes(r.categoria)) &&
+          (selRoles.length === 0 || selRoles.includes(r.objetivo)) &&
+          (selPlats.length === 0 || selPlats.includes(r.medio)),
+      ),
+    [data, selMedios, selCats, selRoles, selPlats],
+  );
+  const refMes = selMeses.length === 1 ? selMeses[0]! : meses.length ? meses[meses.length - 1]! : null;
+  const prevMes = useMemo(() => {
+    if (!refMes) return null;
+    const i = meses.indexOf(refMes);
+    return i > 0 ? meses[i - 1]! : null;
+  }, [meses, refMes]);
+  const monthTotals = useMemo(() => {
+    const calc = (mes: string | null) => {
+      if (!mes) return null;
+      let inv = 0, impr = 0, clic = 0, view = 0, alc = 0;
+      for (const r of rowsNoMes) {
+        if (r.mes !== mes) continue;
+        inv += r.inversion ?? 0; impr += r.impresiones ?? 0; clic += r.clics ?? 0; view += r.views ?? 0;
+        if (r.objetivo === "Awareness") alc += r.alcance ?? 0;
+      }
+      return {
+        inv, impr, clic, view, alc,
+        cpm: impr > 0 ? (inv / impr) * 1000 : 0,
+        ctr: impr > 0 ? (clic / impr) * 100 : 0,
+        frec: alc > 0 ? impr / alc : 0,
+        vtr: impr > 0 ? (view / impr) * 100 : 0,
+      };
+    };
+    return { ref: calc(refMes), prev: calc(prevMes) };
+  }, [rowsNoMes, refMes, prevMes]);
+
+  // Best-in-class interno: cada medio DIGITAL vs el mejor comparable (CPM mín, CTR/VTR máx).
+  const bic = useMemo(() => {
+    const vtrMap = new Map(videoByMedio.map((v) => [v.medio, v.vtr]));
+    const items = byMedio
+      .filter((m) => tipoMedio(m.medio) === "Digital" && m.impresiones > 0)
+      .map((m) => ({
+        medio: m.medio,
+        inversion: m.inversion,
+        cpm: m.cpm,
+        ctr: m.impresiones > 0 ? (m.clics / m.impresiones) * 100 : 0,
+        vtr: vtrMap.get(m.medio) ?? 0,
+      }));
+    const cpms = items.filter((i) => i.cpm > 0).map((i) => i.cpm);
+    const ctrs = items.filter((i) => i.ctr > 0).map((i) => i.ctr);
+    const vtrs = items.filter((i) => i.vtr > 0).map((i) => i.vtr);
+    return {
+      items: items.sort((a, b) => b.inversion - a.inversion),
+      bestCpm: cpms.length ? Math.min(...cpms) : 0,
+      bestCtr: ctrs.length ? Math.max(...ctrs) : 0,
+      bestVtr: vtrs.length ? Math.max(...vtrs) : 0,
+    };
+  }, [byMedio, videoByMedio]);
+
+  // Alertas "qué mejorar" auto-generadas.
+  const alertas = useMemo(() => {
+    const out: Array<{ type: "alert" | "warn" | "good"; title: string; text: string }> = [];
+    const vids = videoByMedio.filter((v) => v.views > 0 && v.impresiones > 0);
+    if (vids.length) {
+      const worst = [...vids].sort((a, b) => a.vtr - b.vtr)[0]!;
+      const ratio = worst.cpm > 0 ? worst.cpmEfectivo / worst.cpm : 0;
+      if (worst.vtr < 50) out.push({
+        type: worst.vtr < 25 ? "alert" : "warn",
+        title: `Video poco efectivo · ${worst.medio}`,
+        text: `VTR ${worst.vtr.toFixed(0)}% → su CPM efectivo (${fmtARS(worst.cpmEfectivo)}) es ${ratio.toFixed(1)}× el nominal. Revisar formato/duración/targeting de video.`,
+      });
+    }
+    if (bic.items.length > 1 && bic.bestCpm > 0) {
+      const costly = [...bic.items].filter((i) => i.cpm > 0).sort((a, b) => b.cpm - a.cpm)[0]!;
+      const r = costly.cpm / bic.bestCpm;
+      if (r > 1.4) out.push({
+        type: "warn",
+        title: `CPM caro · ${costly.medio}`,
+        text: `CPM ${fmtARS(costly.cpm)} = ${r.toFixed(1)}× el mejor medio digital (${fmtARS(bic.bestCpm)}). Evaluar reasignar inversión hacia el medio más eficiente.`,
+      });
+    }
+    const tr = monthTotals.ref, tp = monthTotals.prev;
+    if (tr && tp) {
+      const dCpm = pctDelta(tr.cpm, tp.cpm);
+      if (dCpm != null && dCpm > 15) out.push({
+        type: "warn",
+        title: "CPM al alza vs mes anterior",
+        text: `El CPM subió ${dCpm.toFixed(0)}% respecto del mes previo (${fmtARS(tp.cpm)} → ${fmtARS(tr.cpm)}). Verificar mix de medios y formatos.`,
+      });
+      if (tr.frec > 6) out.push({
+        type: "warn",
+        title: "Frecuencia alta (saturación)",
+        text: `Frecuencia ${tr.frec.toFixed(1)} en awareness. Por encima de ~5-6 hay riesgo de saturación y desperdicio de impresiones; conviene ampliar alcance o capear frecuencia.`,
+      });
+    }
+    if (out.length === 0) out.push({ type: "good", title: "Sin alertas críticas", text: "Los indicadores de la selección están dentro de rangos esperables." });
+    return out.slice(0, 4);
+  }, [videoByMedio, bic, monthTotals]);
+
   // Insights: solo si hay una sola categoría seleccionada
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
 
@@ -350,7 +490,77 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== OVERVIEW ===== */}
       {tab === "Overview" && (
         <div>
+          {/* ===== Resumen ejecutivo: scorecard MoM + best-in-class + alertas ===== */}
+          <SectionTitle>
+            Resumen ejecutivo {refMes ? `· ${refMes}` : ""}
+            {prevMes && <span className="ml-1 font-normal normal-case text-muted-foreground/70">(vs {prevMes})</span>}
+          </SectionTitle>
+          {monthTotals.ref ? (
+            <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <MoMStat label="Inversión" value={fmtARS(monthTotals.ref.inv)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.inv, monthTotals.prev.inv) : null} dir="neutral" />
+              <MoMStat label="Impresiones" value={fmtNum(monthTotals.ref.impr)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.impr, monthTotals.prev.impr) : null} dir="up-good" />
+              <MoMStat label="CPM" value={fmtARS(monthTotals.ref.cpm)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.cpm, monthTotals.prev.cpm) : null} dir="down-good" sub="menos es mejor" />
+              <MoMStat label="CTR" value={`${monthTotals.ref.ctr.toFixed(2)}%`} delta={monthTotals.prev ? pctDelta(monthTotals.ref.ctr, monthTotals.prev.ctr) : null} dir="up-good" />
+              <MoMStat label="VTR (video)" value={`${monthTotals.ref.vtr.toFixed(1)}%`} delta={monthTotals.prev ? pctDelta(monthTotals.ref.vtr, monthTotals.prev.vtr) : null} dir="up-good" />
+              <MoMStat label="Frecuencia" value={monthTotals.ref.frec.toFixed(1)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.frec, monthTotals.prev.frec) : null} dir="neutral" sub="awareness" />
+            </section>
+          ) : (
+            <p className="text-xs text-muted-foreground">Sin data para el mes de referencia.</p>
+          )}
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            {/* Eficiencia best-in-class (digital) */}
+            <div className="rounded-xl border bg-card p-4 lg:col-span-2">
+              <h3 className="mb-1 text-sm font-bold">Eficiencia por medio · best-in-class (digital)</h3>
+              <p className="mb-2 text-[10px] text-muted-foreground">
+                Cada métrica coloreada vs el mejor medio digital comparable: <span className="text-emerald-600 font-semibold">●</span> en línea ·
+                <span className="text-amber-600 font-semibold"> ●</span> a vigilar · <span className="text-rose-600 font-semibold">●</span> a optimizar.
+              </p>
+              {bic.items.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sin medios digitales en la selección.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="border-b">
+                      <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <th className="py-1.5">Medio</th>
+                        <th className="py-1.5 text-right">Inversión</th>
+                        <th className="py-1.5 text-right">CPM</th>
+                        <th className="py-1.5 text-right">CTR</th>
+                        <th className="py-1.5 text-right">VTR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bic.items.map((m) => (
+                        <tr key={m.medio} className="border-b last:border-0">
+                          <td className="py-1.5 font-medium">
+                            <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[m.medio] ?? "#94a3b8" }} />
+                            {m.medio}
+                          </td>
+                          <td className="py-1.5 text-right tabular-nums text-muted-foreground">{fmtARS(m.inversion)}</td>
+                          <td className={`py-1.5 text-right font-semibold tabular-nums ${bicColor(m.cpm, bic.bestCpm, "lower")}`}>{m.cpm > 0 ? fmtARS(m.cpm) : "—"}</td>
+                          <td className={`py-1.5 text-right font-semibold tabular-nums ${bicColor(m.ctr, bic.bestCtr, "higher")}`}>{m.ctr > 0 ? `${m.ctr.toFixed(2)}%` : "—"}</td>
+                          <td className={`py-1.5 text-right font-semibold tabular-nums ${bicColor(m.vtr, bic.bestVtr, "higher")}`}>{m.vtr > 0 ? `${m.vtr.toFixed(0)}%` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            {/* Alertas: qué mejorar */}
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-2 text-sm font-bold">Qué mejorar</h3>
+              <div className="space-y-2">
+                {alertas.map((a, i) => (
+                  <Insight key={i} type={a.type} title={a.title} text={a.text} />
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Inversión: total + desglose ON / OFF */}
+          <SectionTitle>Inversión del período</SectionTitle>
           <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <KpiCard title="Inversión total" value={fmtARS(totalInv)} hint={totalHint} />
             <KpiCard
