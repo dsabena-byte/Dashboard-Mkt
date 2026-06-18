@@ -258,10 +258,11 @@ export function PerformanceConversionClient({
           <thead className="border-b">
             <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-2">Tipo</th>
-              <th className="px-3 py-2 text-right">Inversión</th>
-              <th className="px-3 py-2 text-right">% Inv.</th>
+              <th className="px-3 py-2 text-right">Sesiones</th>
               <th className="px-3 py-2 text-right">Transac.</th>
+              <th className="px-3 py-2 text-right">Conv. %</th>
               <th className="px-3 py-2 text-right">Ingresos</th>
+              <th className="px-3 py-2 text-right">Inversión</th>
               <th className="px-3 py-2 text-right">CPA</th>
               <th className="px-3 py-2 text-right">ROAS</th>
             </tr>
@@ -273,16 +274,17 @@ export function PerformanceConversionClient({
                   <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ backgroundColor: tipoColor(t.tipo) }} />
                   {t.tipo}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{t.costo > 0 ? fmtARS(t.costo) : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{kpis.costo > 0 && t.costo > 0 ? `${((t.costo / kpis.costo) * 100).toFixed(1)}%` : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(t.sesiones)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{fmtNum(t.transacciones)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtPct(t.tasa_conversion != null ? t.tasa_conversion * 100 : null)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{t.ingresos > 0 ? fmtARS(t.ingresos) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{t.costo > 0 ? fmtARS(t.costo) : "—"}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{t.cpa != null ? fmtARS(t.cpa) : "—"}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{fmtRoas(t.roas)}</td>
               </tr>
             ))}
             {porTipo.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
+              <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
             )}
           </tbody>
         </table>
