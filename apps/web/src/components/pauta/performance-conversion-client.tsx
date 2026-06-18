@@ -6,7 +6,7 @@ import { KpiCard } from "@/components/kpi-card";
 import {
   InvestmentRevenueChart,
   ConversionFunnel,
-  CompactDonut,
+  LegendDonut,
   type InvRevPoint,
   type FunnelStage,
 } from "@/components/pauta/conversion-charts";
@@ -213,27 +213,32 @@ export function PerformanceConversionClient({
         <KpiCard title="ROAS" value={fmtRoas(kpis.roas)} hint="ingresos ÷ inversión" />
       </div>
 
-      {/* ===== Origen de las sesiones + inversión vs ingresos (debajo de los cards) ===== */}
-      <SectionTitle>Origen de las sesiones de la pauta y resultados</SectionTitle>
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* ===== Embudo + origen de sesiones + inversión (debajo de los cards) ===== */}
+      <SectionTitle>Embudo y origen de las sesiones de la pauta</SectionTitle>
+      <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border bg-card p-4">
-          <div className="mb-1 text-xs font-semibold">Sesiones por tipo de campaña</div>
-          <p className="mb-2 text-[11px] text-muted-foreground">
-            100% generadas por la pauta paga (campañas <strong>inhouse_*</strong>), según su origen: Performance Max o Search.
+          <div className="mb-2 text-xs font-semibold">Embudo de conversión</div>
+          <ConversionFunnel stages={funnelStages} />
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            De cada <strong>100 sesiones</strong>, {fmtPct(kpis.tasa_conversion != null ? kpis.tasa_conversion * 100 : null, 2)} terminan en transacción.
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="mb-1 text-xs font-semibold">Sesiones por tipo</div>
+          <p className="mb-1 text-[11px] text-muted-foreground">
+            100% de la pauta paga (<strong>inhouse_*</strong>): Performance Max o Search.
           </p>
           {sesionesDonut.length > 0 ? (
-            <CompactDonut data={sesionesDonut} />
+            <LegendDonut data={sesionesDonut} fmt={fmtNum} />
           ) : (
             <div className="py-10 text-center text-xs text-muted-foreground">Sin sesiones.</div>
           )}
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <div className="mb-1 text-xs font-semibold">Distribución de inversión por tipo</div>
-          <p className="mb-2 text-[11px] text-muted-foreground">
-            Cuánto se gastó en cada tipo de campaña.
-          </p>
+          <div className="mb-1 text-xs font-semibold">Inversión por tipo</div>
+          <p className="mb-1 text-[11px] text-muted-foreground">Cuánto se gastó en cada tipo.</p>
           {tipoDonut.length > 0 ? (
-            <CompactDonut data={tipoDonut} />
+            <LegendDonut data={tipoDonut} fmt={fmtARS} />
           ) : (
             <div className="py-10 text-center text-xs text-muted-foreground">Inversión pendiente (vincular Google Ads ↔ GA4).</div>
           )}
@@ -242,15 +247,6 @@ export function PerformanceConversionClient({
       <div className="mt-4 rounded-lg border bg-card p-4">
         <div className="mb-2 text-xs font-semibold">Inversión vs. ingresos por mes</div>
         <InvestmentRevenueChart data={invRevData} />
-      </div>
-
-      {/* ===== Embudo de conversión ===== */}
-      <SectionTitle>Embudo de conversión</SectionTitle>
-      <div className="rounded-lg border bg-card p-4">
-        <ConversionFunnel stages={funnelStages} />
-        <p className="mt-3 text-xs text-muted-foreground">
-          De cada <strong>100 sesiones</strong>, {fmtPct(kpis.tasa_conversion != null ? kpis.tasa_conversion * 100 : null, 2)} terminan en transacción.
-        </p>
       </div>
 
       {/* ===== Conversión por categoría ===== */}

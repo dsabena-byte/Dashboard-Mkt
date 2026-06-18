@@ -80,7 +80,49 @@ export function CompactDonut({ data }: { data: Array<{ name: string; value: numb
   );
 }
 
-// Embudo de conversión: lista de etapas con barra proporcional + % de paso.
+// Donut con leyenda de valores + % al lado (formato configurable).
+export function LegendDonut({
+  data,
+  fmt,
+}: {
+  data: Array<{ name: string; value: number; color: string }>;
+  fmt: (v: number) => string;
+}) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  return (
+    <div>
+      <ResponsiveContainer width="100%" height={170}>
+        <PieChart>
+          <Pie data={sorted} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="56%" outerRadius="90%" paddingAngle={2}>
+            {sorted.map((d, i) => (
+              <Cell key={i} fill={d.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(v: number) => [`${fmt(v)} · ${total ? ((v / total) * 100).toFixed(1) : 0}%`, ""]}
+            contentStyle={tooltipStyle}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="mt-2 space-y-1">
+        {sorted.map((d) => (
+          <div key={d.name} className="flex items-center justify-between gap-2 text-xs">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: d.color }} />
+              <span className="truncate">{d.name}</span>
+            </span>
+            <span className="shrink-0 tabular-nums text-muted-foreground">
+              {fmt(d.value)} · <span className="font-semibold text-foreground">{total ? ((d.value / total) * 100).toFixed(1) : 0}%</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Embudo de conversión compacto: etiqueta + valor arriba, barra proporcional debajo.
 export interface FunnelStage {
   label: string;
   value: number;
@@ -91,23 +133,20 @@ export interface FunnelStage {
 export function ConversionFunnel({ stages }: { stages: FunnelStage[] }) {
   const max = Math.max(...stages.map((s) => s.value), 1);
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {stages.map((s, i) => {
-        // ancho proporcional con mínimo visible (las transacciones son chicas vs sesiones)
-        const w = Math.max((s.value / max) * 100, 6);
+        const w = Math.max((s.value / max) * 100, 4);
         return (
-          <div key={s.label} className="flex items-center gap-3">
-            <div className="w-44 shrink-0 text-right text-xs text-muted-foreground">{s.label}</div>
-            <div className="relative h-9 flex-1 rounded bg-muted/40">
-              <div
-                className="flex h-9 items-center rounded px-2 text-xs font-semibold text-white"
-                style={{ width: `${w}%`, backgroundColor: s.color }}
-              >
-                {s.value.toLocaleString("es-AR")}
-              </div>
+          <div key={s.label}>
+            <div className="mb-1 flex items-baseline justify-between gap-2 text-[11px]">
+              <span className="truncate text-muted-foreground">{s.label}</span>
+              <span className="shrink-0 tabular-nums">
+                <span className="font-semibold">{s.value.toLocaleString("es-AR")}</span>
+                {i > 0 && s.pct ? <span className="ml-1 text-muted-foreground">({s.pct})</span> : null}
+              </span>
             </div>
-            <div className="w-24 shrink-0 text-xs tabular-nums text-muted-foreground">
-              {i === 0 ? "" : s.pct ? `→ ${s.pct}` : ""}
+            <div className="h-6 rounded bg-muted/40">
+              <div className="h-6 rounded" style={{ width: `${w}%`, backgroundColor: s.color }} />
             </div>
           </div>
         );
