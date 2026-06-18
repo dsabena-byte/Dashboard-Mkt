@@ -898,41 +898,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                 })}
               </div>
 
-              {/* Calidad por canal/fuente */}
-              <SectionTitle>Calidad por canal/fuente · semáforo</SectionTitle>
-              <div className="overflow-x-auto rounded-lg border bg-card">
-                <table className="w-full text-xs">
-                  <thead className="border-b">
-                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                      <th className="px-3 py-2">Fuente</th>
-                      <th className="px-3 py-2 text-right">Impr. video</th>
-                      <th className="px-3 py-2 text-right">Vieron ≥50%</th>
-                      <th className="px-3 py-2 text-right">VTR (100%)</th>
-                      <th className="px-3 py-2 text-right">CPCV</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ...dv360Funnels.map((f) => ({ fuente: `DV360 · ${f.canal}`, impr: f.impresiones, v50: f.q50, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 })),
-                      ...(metaVideoFunnel.count > 0 ? [{ fuente: "Meta", impr: metaVideoFunnel.impresiones, v50: metaVideoFunnel.p50, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend }] : []),
-                      ...(tiktokVideoFunnel.count > 0 ? [{ fuente: "TikTok", impr: tiktokVideoFunnel.impresiones, v50: tiktokVideoFunnel.p50, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend }] : []),
-                    ].map((r) => {
-                      const pct50 = r.impr > 0 ? (r.v50 / r.impr) * 100 : 0;
-                      const vtr = r.impr > 0 ? (r.v100 / r.impr) * 100 : 0;
-                      const cpcv = r.v100 > 0 && r.spend > 0 ? r.spend / r.v100 : 0;
-                      return (
-                        <tr key={r.fuente} className="border-b last:border-0">
-                          <td className="px-3 py-2 font-medium">{r.fuente}</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(r.impr)}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${pct50 >= 50 ? "text-emerald-600" : pct50 >= 30 ? "text-amber-600" : "text-rose-600"}`}>{pct50.toFixed(0)}%</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${vtr >= 30 ? "text-emerald-600" : vtr >= 15 ? "text-amber-600" : "text-rose-600"}`}>{vtr.toFixed(0)}%</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{cpcv > 0 ? dvMoney(cpcv) : "—"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
               <p className="mb-3 mt-2 text-[10px] text-muted-foreground/70">
                 YouTube TrueView es <strong>skippable</strong>: su completion no es comparable con video no-skippable (programmatic/Meta).
                 Viewability real (impresiones MRC ≥50% en pantalla) no está en el reporte actual; usamos completion de video como proxy de
@@ -1002,57 +967,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               </tbody>
             </table>
           </div>
-
-          <SectionTitle>Visibilidad real de video · Meta</SectionTitle>
-          {metaVideoFunnel.count === 0 ? (
-            <p className="mb-3 text-[10px] text-muted-foreground">
-              Se completa automáticamente con la próxima sincronización de Meta (el cron <code>meta-paid-sync</code> ahora trae los
-              cuartiles de video: 25/50/75/100% y ThruPlay desde la Marketing API).
-            </p>
-          ) : (
-            <>
-              <p className="mb-3 text-[10px] text-muted-foreground">
-                Datos reales de Meta (Marketing API): cuántas impresiones llegan a cada % del video y el <strong>CPM efectivo</strong>{" "}
-                (costo por mil) en cada hito. {metaVideoFunnel.count} anuncios de video. Muestra cómo cae la audiencia efectiva y por qué
-                el costo real sube a medida que se exige más completion.
-              </p>
-              <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
-                <table className="w-full text-xs">
-                  <thead className="border-b">
-                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                      <th className="px-3 py-2">Hito</th>
-                      <th className="px-3 py-2 text-right">Cantidad</th>
-                      <th className="px-3 py-2 text-right">% de impresiones</th>
-                      <th className="px-3 py-2 text-right">CPM efectivo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {([
-                      ["Impresiones", metaVideoFunnel.impresiones],
-                      ["Reproducciones (plays)", metaVideoFunnel.plays],
-                      ["Vieron 25%", metaVideoFunnel.p25],
-                      ["Vieron 50%", metaVideoFunnel.p50],
-                      ["Vieron 75%", metaVideoFunnel.p75],
-                      ["Vieron 100%", metaVideoFunnel.p100],
-                      ["ThruPlay (≥15s)", metaVideoFunnel.thruplay],
-                    ] as Array<[string, number]>).map(([label, n]) => {
-                      const pct = metaVideoFunnel.impresiones > 0 ? (n / metaVideoFunnel.impresiones) * 100 : 0;
-                      const cpmEf = n > 0 ? (metaVideoFunnel.spend / n) * 1000 : 0;
-                      const dim = label === "Impresiones";
-                      return (
-                        <tr key={label} className="border-b last:border-0">
-                          <td className={`px-3 py-2 ${dim ? "text-muted-foreground" : "font-medium"}`}>{label}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{fmtNum(n)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-semibold">{n > 0 ? fmtARS(cpmEf) : "—"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
 
           <SectionTitle>DV360 · inversión y performance por canal</SectionTitle>
           {dv360Channels.canales.length === 0 ? (
@@ -1213,65 +1127,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   </div>
                 </>
               )}
-            </>
-          )}
-
-          <SectionTitle>Visibilidad real de video · DV360</SectionTitle>
-          {dv360Funnels.length === 0 ? (
-            <p className="mb-3 text-[10px] text-muted-foreground">
-              Se completa con el reporte de DV360. Costo en USD, sin comisión de agencia ni impuestos.
-            </p>
-          ) : (
-            <>
-              <p className="mb-3 text-[10px] text-muted-foreground">
-                Embudo real de DV360 separado por canal, porque <strong>TrueView (YouTube) es skippable</strong> y su
-                &quot;completion&quot; no es comparable con el video programmático. <strong>CPM efectivo en {monedaLbl}</strong> por hito.
-              </p>
-              <div className="grid gap-3 md:grid-cols-2">
-                {dv360Funnels.map((f) => {
-                  const rows: Array<[string, number]> = [
-                    ["Impresiones", f.impresiones],
-                    ["Reproducciones (starts)", f.starts],
-                    ["Vieron 25%", f.q25],
-                    ["Vieron 50%", f.q50],
-                    ["Vieron 75%", f.q75],
-                    ["Vieron 100%", f.q100],
-                  ];
-                  return (
-                    <div key={f.canal} className="overflow-x-auto rounded-lg border bg-card">
-                      <div className="border-b px-3 py-2 text-xs font-semibold">
-                        {f.canal}
-                        <span className="ml-2 font-normal text-muted-foreground">· {dvMoney(f.revenueUsd)}</span>
-                      </div>
-                      <table className="w-full text-xs">
-                        <thead className="border-b">
-                          <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                            <th className="px-3 py-2">Hito</th>
-                            <th className="px-3 py-2 text-right">Cantidad</th>
-                            <th className="px-3 py-2 text-right">% impr.</th>
-                            <th className="px-3 py-2 text-right">CPM ef. {monedaLbl}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows.map(([label, n]) => {
-                            const pct = f.impresiones > 0 ? (n / f.impresiones) * 100 : 0;
-                            const cpmEf = n > 0 ? (f.revenueUsd / n) * 1000 : 0;
-                            const dim = label === "Impresiones";
-                            return (
-                              <tr key={label} className="border-b last:border-0">
-                                <td className={`px-3 py-2 ${dim ? "text-muted-foreground" : "font-medium"}`}>{label}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(n)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{pct.toFixed(1)}%</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{n > 0 ? dvMoney(cpmEf) : "—"}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })}
-              </div>
             </>
           )}
 
