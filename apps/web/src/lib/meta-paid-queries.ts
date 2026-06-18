@@ -33,6 +33,10 @@ export interface MetaPaidCreativeRow {
   video_p75: number | null;
   video_p100: number | null;
   video_thruplay: number | null;
+  vtr_p25: number | null;
+  vtr_p50: number | null;
+  vtr_p75: number | null;
+  vtr_p100: number | null;
 }
 
 interface DbRow {
@@ -67,6 +71,10 @@ interface DbRow {
   video_p75: number | null;
   video_p100: number | null;
   video_thruplay: number | null;
+  vtr_p25: string | number | null;
+  vtr_p50: string | number | null;
+  vtr_p75: string | number | null;
+  vtr_p100: string | number | null;
 }
 
 const num = (v: string | number | null): number | null =>
@@ -105,6 +113,10 @@ function mapRow(r: DbRow): MetaPaidCreativeRow {
     video_p75: r.video_p75,
     video_p100: r.video_p100,
     video_thruplay: r.video_thruplay,
+    vtr_p25: num(r.vtr_p25),
+    vtr_p50: num(r.vtr_p50),
+    vtr_p75: num(r.vtr_p75),
+    vtr_p100: num(r.vtr_p100),
   };
 }
 
@@ -113,7 +125,7 @@ export async function getMetaPaidCreatives(): Promise<MetaPaidCreativeRow[]> {
   const { data, error } = await supabase
     .from("meta_paid_creatives")
     .select(
-      "ad_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay",
+      "ad_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100",
     )
     .neq("categoria", "UGC")
     .order("spend", { ascending: false })
@@ -127,7 +139,7 @@ export async function getMetaUgcCreatives(): Promise<MetaPaidCreativeRow[]> {
   const { data, error } = await supabase
     .from("meta_paid_creatives")
     .select(
-      "ad_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay",
+      "ad_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100",
     )
     .eq("categoria", "UGC")
     .order("spend", { ascending: false })

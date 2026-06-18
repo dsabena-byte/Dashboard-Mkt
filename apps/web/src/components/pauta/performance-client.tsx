@@ -70,7 +70,8 @@ function tipoCompraToRol(tc: string | null): string | null {
 //   → base = views_total (reproducciones), completions = views_completed.
 function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
   const hasQuartiles = (r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0) > 0;
-  if (hasQuartiles) return { vbase: r.impresiones, comp: r.video_p100 ?? 0 };
+  if (hasQuartiles) return { vbase: r.impresiones, comp: r.video_p100 ?? 0 }; // Meta API (cantidades)
+  if ((r.vtr_p100 ?? 0) > 0) return { vbase: r.impresiones, comp: r.impresiones * (r.vtr_p100 ?? 0) / 100 }; // TikTok/Looker: VTR% al 100% → cantidad
   const comp = r.views_completed ?? 0;
   const total = r.views_total ?? 0;
   return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
@@ -331,14 +332,16 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   }, [dv360VideoQ, metaVideoFunnel, arsMode]);
   // Embudo de video de TikTok (desde metaPaid, solo filas de video).
   const tiktokVideoFunnel = useMemo(() => {
-    const t = metaPaidF.filter((r) => r.plataforma === "tiktok" && ((r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0 || (r.views_completed ?? 0) > 0));
+    const t = metaPaidF.filter((r) => r.plataforma === "tiktok" && ((r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0 || (r.views_completed ?? 0) > 0 || (r.vtr_p100 ?? 0) > 0));
+    // TikTok (Looker) trae VTR% por cuartil → convertir a cantidad = impresiones × %/100.
+    const qty = (r: typeof t[number], count: number | null, pct: number | null) => (count ?? 0) || (r.impresiones * (pct ?? 0)) / 100;
     const a = t.reduce(
       (acc, r) => ({
         impresiones: acc.impresiones + r.impresiones,
-        p25: acc.p25 + (r.video_p25 ?? 0),
-        p50: acc.p50 + (r.video_p50 ?? 0),
-        p75: acc.p75 + (r.video_p75 ?? 0),
-        p100: acc.p100 + ((r.video_p100 ?? 0) || (r.views_completed ?? 0)),
+        p25: acc.p25 + qty(r, r.video_p25, r.vtr_p25),
+        p50: acc.p50 + qty(r, r.video_p50, r.vtr_p50),
+        p75: acc.p75 + qty(r, r.video_p75, r.vtr_p75),
+        p100: acc.p100 + ((r.video_p100 ?? 0) || qty(r, null, r.vtr_p100) || (r.views_completed ?? 0)),
         spend: acc.spend + r.spend,
       }),
       { impresiones: 0, p25: 0, p50: 0, p75: 0, p100: 0, spend: 0 },
