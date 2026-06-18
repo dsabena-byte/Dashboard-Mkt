@@ -48,10 +48,6 @@ const MES_IDX: Record<string, number> = {
   Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6,
   Julio: 7, Agosto: 8, Septiembre: 9, Octubre: 10, Noviembre: 11, Diciembre: 12,
 };
-function mesSortKey(label: string): number {
-  const [n, y] = label.split(" ");
-  return Number(y ?? 0) * 100 + (MES_IDX[n ?? ""] ?? 0);
-}
 // "Junio 2026" → "2026-06-01" (formato del mes en DV360, para filtrar por los selectores de arriba).
 function mesLabelToISO(label: string): string {
   const [n, y] = label.split(" ");
@@ -489,25 +485,22 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       ),
     [data, selMedios, selCats, selRoles, selPlats],
   );
-  const refMes = useMemo(() => {
-    if (selMeses.length === 1) return selMeses[0]!; // si el usuario eligió un mes, lo respetamos
-    // Por defecto: último mes CERRADO (excluye el mes en curso, que es info parcial).
-    const now = new Date();
-    const nowKey = now.getUTCFullYear() * 100 + (now.getUTCMonth() + 1);
-    const cerrados = meses.filter((m) => mesSortKey(m) < nowKey);
-    return cerrados.length ? cerrados[cerrados.length - 1]! : meses.length ? meses[meses.length - 1]! : null;
-  }, [selMeses, meses]);
+  // Período de análisis = el del filtro de arriba (mismos meses que el resto de los
+  // tabs). MoM "vs mes anterior" solo cuando se elige UN mes; con varios, agrega el período.
+  const refMeses = useMemo(() => (selMeses.length > 0 ? selMeses : meses), [selMeses, meses]);
+  const refLabel = selMeses.length === 1 ? selMeses[0]! : selMeses.length > 1 ? `${selMeses.length} meses` : "todo el período";
   const prevMes = useMemo(() => {
-    if (!refMes) return null;
-    const i = meses.indexOf(refMes);
+    if (selMeses.length !== 1) return null;
+    const i = meses.indexOf(selMeses[0]!);
     return i > 0 ? meses[i - 1]! : null;
-  }, [meses, refMes]);
+  }, [selMeses, meses]);
   const monthTotals = useMemo(() => {
-    const calc = (mes: string | null) => {
-      if (!mes) return null;
+    const calc = (mesesSet: string[]) => {
+      if (mesesSet.length === 0) return null;
+      const set = new Set(mesesSet);
       let inv = 0, impr = 0, clic = 0, view = 0, alc = 0;
       for (const r of rowsNoMes) {
-        if (r.mes !== mes) continue;
+        if (!set.has(r.mes)) continue;
         inv += r.inversion ?? 0; impr += r.impresiones ?? 0; clic += r.clics ?? 0; view += r.views ?? 0;
         if (r.objetivo === "Awareness") alc += r.alcance ?? 0;
       }
@@ -520,8 +513,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         vtr: impr > 0 ? (view / impr) * 100 : 0,
       };
     };
-    return { ref: calc(refMes), prev: calc(prevMes) };
-  }, [rowsNoMes, refMes, prevMes]);
+    return { ref: calc(refMeses), prev: prevMes ? calc([prevMes]) : null };
+  }, [rowsNoMes, refMeses, prevMes]);
 
   // ===== Modelo único de medios (fuente de verdad para TODO el dashboard) =====
   // Todo desde los procesos AUTOMÁTICOS (DV360 reportes + Meta Marketing API), por
@@ -755,7 +748,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
 
           {/* ===== 2. DESEMPEÑO · volumen + impacto real ===== */}
           <SectionTitle>
-            Desempeño {refMes ? `· ${refMes}` : ""}
+            Desempeño · {refLabel}
             {prevMes && <span className="ml-1 font-normal normal-case text-muted-foreground/70">(vs {prevMes})</span>}
           </SectionTitle>
           {monthTotals.ref && (
