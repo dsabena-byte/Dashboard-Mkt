@@ -64,6 +64,18 @@ function tipoCompraToRol(tc: string | null): string | null {
   return null;
 }
 
+// Visibilidad de video de una fila de metaPaid según su fuente:
+// - Meta (API): cuartiles video_p25/50/75/100 → base = impresiones, completions = p100.
+// - TikTok/otros (Looker): views_total (Reprs Total) + views_completed (Reprs 100%)
+//   → base = views_total (reproducciones), completions = views_completed.
+function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
+  const hasQuartiles = (r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0) > 0;
+  if (hasQuartiles) return { vbase: r.impresiones, comp: r.video_p100 ?? 0 };
+  const comp = r.views_completed ?? 0;
+  const total = r.views_total ?? 0;
+  return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
+}
+
 // Agrega por dimensión (categoría o rol) desde los datos AUTOMÁTICOS (DV360 + Meta/
 // TikTok), con la MISMA estructura que la tabla maestra por medio (general + efectivo).
 function buildDimModel(dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim: "categoria" | "rol") {
@@ -79,9 +91,9 @@ function buildDimModel(dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim:
     if (r.plataforma !== "meta" && r.plataforma !== "tiktok") continue;
     const k = dim === "categoria" ? (r.categoria ?? "—") : (tipoCompraToRol(r.tipo_compra) ?? "—");
     const e = get(k);
-    const q123 = (r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0); // sin cuartiles (TikTok) → no cuenta
+    const v = metaRowVideo(r); // Meta (cuartiles) o TikTok/Looker (views_total/completed)
     e.inv += r.spend; e.impr += r.impresiones; e.clicks += r.clicks;
-    if (q123 > 0) { e.vimpr += r.impresiones; e.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0); }
+    e.vimpr += v.vbase; e.comp += v.comp;
     e.reach += r.alcance ?? 0;
   }
   const items = [...agg.entries()]
@@ -527,11 +539,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
       if (!medio) continue;
       const e = get(medio);
-      // Solo cuenta como video efectivo si HAY cuartiles reales (p25/50/75>0). TikTok
-      // hoy no los trae (hueco del sync) → no se computa VTR/CPM efectivo (queda s/d).
-      const q123 = (r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0);
+      const v = metaRowVideo(r); // Meta (cuartiles) o TikTok/Looker (views_total/completed)
       e.inv += r.spend; e.impr += r.impresiones; e.clicks += r.clicks;
-      if (q123 > 0) { e.vimpr += r.impresiones; e.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0); }
+      e.vimpr += v.vbase; e.comp += v.comp;
       e.reach += r.alcance ?? 0;
     }
     const items = [...agg.entries()]
