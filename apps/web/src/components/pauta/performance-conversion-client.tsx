@@ -59,6 +59,23 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <div className="mb-3 mt-6 text-sm font-medium text-muted-foreground">{children}</div>;
 }
 
+// Anchos fijos compartidos por las tablas de 8 columnas (label + 7 métricas) para
+// que todas queden alineadas igual entre sí.
+function Cols8() {
+  return (
+    <colgroup>
+      <col className="w-[19%]" />
+      <col className="w-[11.57%]" />
+      <col className="w-[11.57%]" />
+      <col className="w-[11.57%]" />
+      <col className="w-[11.57%]" />
+      <col className="w-[11.57%]" />
+      <col className="w-[11.57%]" />
+      <col className="w-[11.57%]" />
+    </colgroup>
+  );
+}
+
 export function PerformanceConversionClient({
   rows,
   items = [],
@@ -150,6 +167,10 @@ export function PerformanceConversionClient({
   const sesionesDonut = porTipo
     .filter((t) => t.sesiones > 0)
     .map((t) => ({ name: t.tipo, value: t.sesiones, color: tipoColor(t.tipo) }));
+  // Ingresos por tipo.
+  const ingresosDonut = porTipo
+    .filter((t) => t.ingresos > 0)
+    .map((t) => ({ name: t.tipo, value: t.ingresos, color: tipoColor(t.tipo) }));
   const totalUnidades = top10.reduce((s, p) => s + p.items_purchased, 0);
 
   const hayDatos = rows.length > 0;
@@ -219,9 +240,9 @@ export function PerformanceConversionClient({
         <InvestmentRevenueChart data={invRevData} />
       </div>
 
-      {/* ===== Embudo + origen de sesiones + inversión ===== */}
+      {/* ===== Embudo + origen de sesiones + inversión + ingresos ===== */}
       <SectionTitle>Embudo y origen de las sesiones de la pauta</SectionTitle>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border bg-card p-4">
           <div className="mb-2 text-xs font-semibold">Embudo de conversión</div>
           <ConversionFunnel stages={funnelStages} />
@@ -249,12 +270,22 @@ export function PerformanceConversionClient({
             <div className="py-10 text-center text-xs text-muted-foreground">Inversión pendiente (vincular Google Ads ↔ GA4).</div>
           )}
         </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="mb-1 text-xs font-semibold">Ingresos por tipo</div>
+          <p className="mb-1 text-[11px] text-muted-foreground">Cuánto facturó cada tipo.</p>
+          {ingresosDonut.length > 0 ? (
+            <LegendDonut data={ingresosDonut} fmt={fmtARS} />
+          ) : (
+            <div className="py-10 text-center text-xs text-muted-foreground">Sin ingresos.</div>
+          )}
+        </div>
       </div>
 
       {/* ===== Inversión y resultados por tipo (tabla; el donut está arriba) ===== */}
       <SectionTitle>Inversión y resultados por tipo de campaña</SectionTitle>
       <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full text-xs">
+        <table className="w-full table-fixed text-xs">
+          <Cols8 />
           <thead className="border-b">
             <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-2">Tipo</th>
@@ -293,7 +324,8 @@ export function PerformanceConversionClient({
       {/* ===== Evolución mensual (detalle) ===== */}
       <SectionTitle>Evolución mensual (detalle)</SectionTitle>
       <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full text-xs">
+        <table className="w-full table-fixed text-xs">
+          <Cols8 />
           <thead className="border-b">
             <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-2">Mes</th>
@@ -329,7 +361,8 @@ export function PerformanceConversionClient({
       {/* ===== Conversión por categoría ===== */}
       <SectionTitle>Conversión por categoría</SectionTitle>
       <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full text-xs">
+        <table className="w-full table-fixed text-xs">
+          <Cols8 />
           <thead className="border-b">
             <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-2">Categoría</th>
