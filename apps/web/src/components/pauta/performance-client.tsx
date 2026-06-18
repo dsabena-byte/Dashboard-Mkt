@@ -39,7 +39,7 @@ function fmtNum(n: number): string {
 }
 const fmtARS = formatCurrency;
 
-const TABS = ["Overview", "Calidad / Impacto", "Por Medio", "Insights Pauta"] as const;
+const TABS = ["Overview", "Por Medio", "Insights Pauta"] as const;
 type Tab = (typeof TABS)[number];
 
 type TipoMedio = "Digital" | "TV Cable" | "DOOH" | "OOH";
@@ -58,10 +58,6 @@ const MES_IDX: Record<string, number> = {
 function mesSortKey(label: string): number {
   const [n, y] = label.split(" ");
   return Number(y ?? 0) * 100 + (MES_IDX[n ?? ""] ?? 0);
-}
-
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return <KpiCard title={label} value={value} hint={sub} />;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -364,6 +360,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         inv, impr, clic, view, alc,
         cpm: impr > 0 ? (inv / impr) * 1000 : 0,
         ctr: impr > 0 ? (clic / impr) * 100 : 0,
+        cpc: clic > 0 ? inv / clic : 0,
         frec: alc > 0 ? impr / alc : 0,
         vtr: impr > 0 ? (view / impr) * 100 : 0,
       };
@@ -393,6 +390,11 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       bestVtr: vtrs.length ? Math.max(...vtrs) : 0,
     };
   }, [byMedio, videoByMedio]);
+  const bicMap = useMemo(() => new Map(bic.items.map((i) => [i.medio, i])), [bic]);
+  const avgCpmDig = useMemo(() => {
+    const c = bic.items.filter((i) => i.cpm > 0).map((i) => i.cpm);
+    return c.length ? c.reduce((a, b) => a + b, 0) / c.length : 0;
+  }, [bic]);
 
   // Alertas "qué mejorar" auto-generadas.
   const alertas = useMemo(() => {
@@ -531,31 +533,138 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== OVERVIEW ===== */}
       {tab === "Overview" && (
         <div>
-          {/* ===== Resumen ejecutivo: scorecard MoM + best-in-class + alertas ===== */}
+          {/* ===== 1. GENERAL · Distribución de inversión ===== */}
+          <SectionTitle>Inversión del período</SectionTitle>
+          <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            <KpiCard title="Inversión total" value={fmtARS(totalInv)} hint={totalHint} />
+            <KpiCard title="Digital (ON)" value={fmtARS(invDigital)} hint={totalInv > 0 ? `${((invDigital / totalInv) * 100).toFixed(1)}% del total` : ""} />
+            <KpiCard title="TV Cable" value={fmtARS(invTv)} hint={totalInv > 0 ? `${((invTv / totalInv) * 100).toFixed(1)}% del total` : ""} />
+            <KpiCard title="DOOH" value={fmtARS(invDooh)} hint={totalInv > 0 ? `${((invDooh / totalInv) * 100).toFixed(1)}% del total` : ""} />
+            <KpiCard title="OOH" value={fmtARS(invOoh)} hint={totalInv > 0 ? `${((invOoh / totalInv) * 100).toFixed(1)}% del total` : ""} />
+          </section>
+
+          <SectionTitle>Distribución de inversión</SectionTitle>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-2 text-sm font-bold">Mix ON / OFF</h3>
+              <InvestmentDonut data={mixData} />
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-2 text-sm font-bold">Inversión ejecutada por medio</h3>
+              <InvestmentDonut data={donutData} />
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-2 text-sm font-bold">Inversión por categoría</h3>
+              <InvestmentDonut data={catDonutData} />
+            </div>
+          </div>
+
+          <SectionTitle>Evolución mensual · Inversión ON / OFF</SectionTitle>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="mb-2 text-[10px] text-muted-foreground">
+              Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
+              Meses ejecutados usan el real de pauta_performance; meses futuros usan el plan de OMD
+              (planning_media) en tonos más suaves. El % arriba de cada barra es el peso del mes sobre el total anual.
+            </p>
+            <MonthlyInvestmentChart data={inversionMensual} />
+          </div>
+
+          {/* ===== 2. DESEMPEÑO · volumen + impacto real ===== */}
           <SectionTitle>
-            Resumen ejecutivo {refMes ? `· ${refMes}` : ""}
+            Desempeño {refMes ? `· ${refMes}` : ""}
             {prevMes && <span className="ml-1 font-normal normal-case text-muted-foreground/70">(vs {prevMes})</span>}
           </SectionTitle>
-          {monthTotals.ref ? (
-            <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              <MoMStat label="Inversión" value={fmtARS(monthTotals.ref.inv)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.inv, monthTotals.prev.inv) : null} dir="neutral" />
+          {monthTotals.ref && (
+            <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <MoMStat label="Alcance" value={fmtNum(monthTotals.ref.alc)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.alc, monthTotals.prev.alc) : null} dir="up-good" />
               <MoMStat label="Impresiones" value={fmtNum(monthTotals.ref.impr)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.impr, monthTotals.prev.impr) : null} dir="up-good" />
+              <MoMStat label="Frecuencia" value={monthTotals.ref.frec.toFixed(1)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.frec, monthTotals.prev.frec) : null} dir="neutral" sub="awareness" />
+              <MoMStat label="Clicks" value={fmtNum(monthTotals.ref.clic)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.clic, monthTotals.prev.clic) : null} dir="up-good" />
+              <MoMStat label="Video Views" value={fmtNum(monthTotals.ref.view)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.view, monthTotals.prev.view) : null} dir="up-good" />
+            </section>
+          )}
+
+          {/* Impacto real (transversal): visibilidad efectiva del video */}
+          {videoQuality.hasData && (
+            <>
+              <p className="mb-2 mt-4 text-xs font-medium text-muted-foreground">Impacto real · ¿se vio el mensaje? (video DV360 + Meta)</p>
+              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">Vieron ≥50% del video</div>
+                  <div className={`mt-0.5 text-lg font-bold tabular-nums ${videoQuality.pct50 >= 50 ? "text-emerald-600" : videoQuality.pct50 >= 30 ? "text-amber-600" : "text-rose-600"}`}>{videoQuality.pct50.toFixed(1)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">visibilidad real efectiva</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">VTR real (vieron 100%)</div>
+                  <div className={`mt-0.5 text-lg font-bold tabular-nums ${videoQuality.pct100 >= 30 ? "text-emerald-600" : videoQuality.pct100 >= 15 ? "text-amber-600" : "text-rose-600"}`}>{videoQuality.pct100.toFixed(1)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">completaron el mensaje</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">CPCV (costo/view completo)</div>
+                  <div className="mt-0.5 text-lg font-bold tabular-nums">{videoQuality.cpcv > 0 ? dvMoney(videoQuality.cpcv) : "—"}</div>
+                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.cpcv > 0 ? "costo real por mensaje visto" : "requiere fx_rates"}</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">Impresiones desperdiciadas</div>
+                  <div className="mt-0.5 text-lg font-bold tabular-nums text-rose-600">{(100 - videoQuality.pct50).toFixed(0)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">{fmtNum(videoQuality.imprVideo - videoQuality.v50)} no llegaron al 50%</div>
+                </div>
+              </section>
+              <p className="mt-1.5 text-[10px] text-muted-foreground/70">El detalle por medio/canal y el embudo de atención están en <strong>Por Medio</strong>.</p>
+            </>
+          )}
+
+          <SectionTitle>Embudo de conversión del período</SectionTitle>
+          <div className="rounded-xl border bg-card p-6">
+            <div className="flex flex-col items-center gap-1.5">
+              {funnelStages.map((s) => (
+                <div key={s.label} className="flex items-center justify-between rounded-lg px-6 py-3.5 text-white" style={{ width: `${s.w}%`, backgroundColor: s.bg }}>
+                  <span className="text-[11px] font-medium uppercase tracking-wide opacity-90">{s.label}</span>
+                  <span className="text-xl font-bold">{fmtNum(s.value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <SectionTitle>Evolución mensual · Alcance vs Impresiones</SectionTitle>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="mb-2 text-[10px] text-muted-foreground">Año completo 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.</p>
+            <ReachImpressionsChart data={volumetriaMensual} />
+          </div>
+
+          <SectionTitle>Aporte de cada medio al funnel</SectionTitle>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="text-sm font-bold">Upper Funnel — Alcance por plataforma</h3>
+              <p className="mb-2 text-[10px] text-muted-foreground">Alcance sumado por plataforma — incluye solapamiento entre medios.</p>
+              <HBarChart data={reachData} color="#2b4dff" />
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-2 text-sm font-bold">Mid Funnel — Clicks por plataforma</h3>
+              <HBarChart data={byMedio.filter((m) => m.clics > 0).map((m) => ({ name: m.medio, value: m.clics })).sort((a, b) => b.value - a.value)} color="#c9a227" />
+            </div>
+          </div>
+
+          {/* ===== 3. EFICIENCIA · costos + semáforos + alertas ===== */}
+          <SectionTitle>
+            Eficiencia {refMes ? `· ${refMes}` : ""}
+            {prevMes && <span className="ml-1 font-normal normal-case text-muted-foreground/70">(vs {prevMes})</span>}
+          </SectionTitle>
+          {monthTotals.ref && (
+            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <MoMStat label="CPM" value={fmtARS(monthTotals.ref.cpm)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.cpm, monthTotals.prev.cpm) : null} dir="down-good" sub="menos es mejor" />
               <MoMStat label="CTR" value={`${monthTotals.ref.ctr.toFixed(2)}%`} delta={monthTotals.prev ? pctDelta(monthTotals.ref.ctr, monthTotals.prev.ctr) : null} dir="up-good" />
-              <MoMStat label="VTR (video)" value={`${monthTotals.ref.vtr.toFixed(1)}%`} delta={monthTotals.prev ? pctDelta(monthTotals.ref.vtr, monthTotals.prev.vtr) : null} dir="up-good" />
-              <MoMStat label="Frecuencia" value={monthTotals.ref.frec.toFixed(1)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.frec, monthTotals.prev.frec) : null} dir="neutral" sub="awareness" />
+              <MoMStat label="CPC" value={fmtARS(monthTotals.ref.cpc)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.cpc, monthTotals.prev.cpc) : null} dir="down-good" sub="menos es mejor" />
+              <MoMStat label="CPCV (video)" value={videoQuality.cpcv > 0 ? dvMoney(videoQuality.cpcv) : "—"} delta={null} dir="down-good" sub="costo/view completo" />
             </section>
-          ) : (
-            <p className="text-xs text-muted-foreground">Sin data para el mes de referencia.</p>
           )}
 
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            {/* Eficiencia best-in-class (digital) */}
             <div className="rounded-xl border bg-card p-4 lg:col-span-2">
               <h3 className="mb-1 text-sm font-bold">Eficiencia por medio · best-in-class (digital)</h3>
               <p className="mb-2 text-[10px] text-muted-foreground">
-                Cada métrica coloreada vs el mejor medio digital comparable: <span className="text-emerald-600 font-semibold">●</span> en línea ·
-                <span className="text-amber-600 font-semibold"> ●</span> a vigilar · <span className="text-rose-600 font-semibold">●</span> a optimizar.
+                Cada métrica coloreada vs el mejor medio digital comparable: <span className="font-semibold text-emerald-600">●</span> en línea ·
+                <span className="font-semibold text-amber-600"> ●</span> a vigilar · <span className="font-semibold text-rose-600">●</span> a optimizar.
               </p>
               {bic.items.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Sin medios digitales en la selección.</p>
@@ -589,7 +698,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                 </div>
               )}
             </div>
-            {/* Alertas: qué mejorar */}
             <div className="rounded-xl border bg-card p-4">
               <h3 className="mb-2 text-sm font-bold">Qué mejorar</h3>
               <div className="space-y-2">
@@ -597,124 +705,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   <Insight key={i} type={a.type} title={a.title} text={a.text} />
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Inversión: total + desglose ON / OFF */}
-          <SectionTitle>Inversión del período</SectionTitle>
-          <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-            <KpiCard title="Inversión total" value={fmtARS(totalInv)} hint={totalHint} />
-            <KpiCard
-              title="Digital (ON)"
-              value={fmtARS(invDigital)}
-              hint={totalInv > 0 ? `${((invDigital / totalInv) * 100).toFixed(1)}% del total` : ""}
-            />
-            <KpiCard
-              title="TV Cable"
-              value={fmtARS(invTv)}
-              hint={totalInv > 0 ? `${((invTv / totalInv) * 100).toFixed(1)}% del total` : ""}
-            />
-            <KpiCard
-              title="DOOH"
-              value={fmtARS(invDooh)}
-              hint={totalInv > 0 ? `${((invDooh / totalInv) * 100).toFixed(1)}% del total` : ""}
-            />
-            <KpiCard
-              title="OOH"
-              value={fmtARS(invOoh)}
-              hint={totalInv > 0 ? `${((invOoh / totalInv) * 100).toFixed(1)}% del total` : ""}
-            />
-          </section>
-
-          {/* Distribución de inversión: Mix ON/OFF + por medio + por categoría */}
-          <SectionTitle>Distribución de inversión</SectionTitle>
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-bold">Mix ON / OFF</h3>
-              <InvestmentDonut data={mixData} />
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-bold">Inversión ejecutada por medio</h3>
-              <InvestmentDonut data={donutData} />
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-bold">Inversión por categoría</h3>
-              <InvestmentDonut data={catDonutData} />
-            </div>
-          </div>
-
-          <SectionTitle>Evolución mensual · Inversión ON / OFF</SectionTitle>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="mb-2 text-[10px] text-muted-foreground">
-              Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
-              Meses ejecutados usan el real de pauta_performance; meses futuros usan el plan de OMD
-              (tabla planning_media) y van en tonos más suaves. El % arriba de cada barra es el peso
-              del mes sobre el total anual.
-            </p>
-            <MonthlyInvestmentChart data={inversionMensual} />
-          </div>
-
-          <SectionTitle>Desempeño por etapa del funnel</SectionTitle>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#2b4dff" }}>
-              <h3 className="mb-3 text-sm font-bold">🎯 Upper Funnel — Awareness</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <Kpi label="Alcance (suma)" value={fmtNum(sumReach)} />
-                <Kpi label="Impresiones" value={fmtNum(upper.impresiones)} />
-                <Kpi label="Frecuencia" value={upper.frecuenciaPond.toFixed(2)} />
-                <Kpi label="CPM prom." value={fmtARS(upper.cpm)} />
-              </div>
-            </div>
-            <div className="rounded-xl border bg-card p-4" style={{ borderTopWidth: 4, borderTopColor: "#c9a227" }}>
-              <h3 className="mb-3 text-sm font-bold">🔥 Mid Funnel — Consideración</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <Kpi label="Clicks" value={fmtNum(mid.clics)} />
-                <Kpi label="Video Views" value={fmtNum(totalViews)} />
-                <Kpi label="CTR" value={`${mid.ctr.toFixed(2)}%`} />
-                <Kpi label="CPC" value={fmtARS(mid.cpc)} />
-              </div>
-            </div>
-          </div>
-
-          <SectionTitle>Evolución mensual · Alcance vs Impresiones</SectionTitle>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="mb-2 text-[10px] text-muted-foreground">
-              Año completo 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.
-            </p>
-            <ReachImpressionsChart data={volumetriaMensual} />
-          </div>
-
-          <SectionTitle>Embudo de conversión del período</SectionTitle>
-          <div className="rounded-xl border bg-card p-6">
-            <div className="flex flex-col items-center gap-1.5">
-              {funnelStages.map((s) => (
-                <div
-                  key={s.label}
-                  className="flex items-center justify-between rounded-lg px-6 py-3.5 text-white"
-                  style={{ width: `${s.w}%`, backgroundColor: s.bg }}
-                >
-                  <span className="text-[11px] font-medium uppercase tracking-wide opacity-90">{s.label}</span>
-                  <span className="text-xl font-bold">{fmtNum(s.value)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <SectionTitle>Aporte de cada medio al funnel</SectionTitle>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border bg-card p-4">
-              <h3 className="text-sm font-bold">Upper Funnel — Alcance por plataforma</h3>
-              <p className="mb-2 text-[10px] text-muted-foreground">
-                Alcance sumado por plataforma — incluye solapamiento entre medios (la misma persona puede estar en varios).
-              </p>
-              <HBarChart data={reachData} color="#2b4dff" />
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-bold">Mid Funnel — Clicks por plataforma</h3>
-              <HBarChart
-                data={byMedio.filter((m) => m.clics > 0).map((m) => ({ name: m.medio, value: m.clics })).sort((a, b) => b.value - a.value)}
-                color="#c9a227"
-              />
             </div>
           </div>
 
@@ -735,8 +725,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         </div>
       )}
 
-      {/* ===== CALIDAD / IMPACTO ===== */}
-      {tab === "Calidad / Impacto" && (
+      {/* ===== POR MEDIO · arranca con el marco transversal de Calidad/Impacto ===== */}
+      {tab === "Por Medio" && (
         <div>
           <SectionTitle>Calidad de video — ¿el consumidor realmente vio el mensaje?</SectionTitle>
           <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
@@ -880,22 +870,43 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== POR MEDIO ===== */}
       {tab === "Por Medio" && (
         <div>
-          <SectionTitle>Desglose por plataforma</SectionTitle>
+          <SectionTitle>Desglose por plataforma · con semáforos</SectionTitle>
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            CPM/CTR/VTR coloreados vs el mejor medio digital comparable (best-in-class). El CPM muestra además el desvío vs el
+            promedio digital. Medios no comparables (TV/OOH) se muestran sin semáforo.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {byMedio.map((p) => (
-              <div key={p.medio} className="rounded-lg border bg-card p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
-                  <span className="text-xs font-semibold">{p.medio}</span>
+            {byMedio.map((p) => {
+              const b = bicMap.get(p.medio); // datos best-in-class si es digital
+              const ctr = p.impresiones > 0 ? (p.clics / p.impresiones) * 100 : 0;
+              const cpmDev = avgCpmDig > 0 && b ? ((p.cpm - avgCpmDig) / avgCpmDig) * 100 : null;
+              return (
+                <div key={p.medio} className="rounded-lg border bg-card p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
+                    <span className="text-xs font-semibold">{p.medio}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div><div className="text-muted-foreground">Inversión</div><div className="font-semibold">{fmtARS(p.inversion)}</div></div>
+                    <div>
+                      <div className="text-muted-foreground">CPM</div>
+                      <div className={`font-semibold ${b ? bicColor(p.cpm, bic.bestCpm, "lower") : ""}`}>{fmtARS(p.cpm)}</div>
+                      {cpmDev != null && <div className={`text-[9px] tabular-nums ${cpmDev <= 0 ? "text-emerald-600" : "text-rose-500"}`}>{cpmDev > 0 ? "+" : ""}{cpmDev.toFixed(0)}% vs prom.</div>}
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">CTR</div>
+                      <div className={`font-semibold ${b ? bicColor(ctr, bic.bestCtr, "higher") : ""}`}>{ctr > 0 ? `${ctr.toFixed(2)}%` : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">VTR</div>
+                      <div className={`font-semibold ${b && b.vtr > 0 ? bicColor(b.vtr, bic.bestVtr, "higher") : ""}`}>{b && b.vtr > 0 ? `${b.vtr.toFixed(0)}%` : "—"}</div>
+                    </div>
+                    <div><div className="text-muted-foreground">Impresiones</div><div className="font-semibold">{fmtNum(p.impresiones)}</div></div>
+                    <div><div className="text-muted-foreground">Alcance</div><div className="font-semibold">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</div></div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><div className="text-muted-foreground">Inversión</div><div className="font-semibold">{fmtARS(p.inversion)}</div></div>
-                  <div><div className="text-muted-foreground">CPM</div><div className="font-semibold">{fmtARS(p.cpm)}</div></div>
-                  <div><div className="text-muted-foreground">Impresiones</div><div className="font-semibold">{fmtNum(p.impresiones)}</div></div>
-                  <div><div className="text-muted-foreground">Alcance</div><div className="font-semibold">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</div></div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <SectionTitle>Efectividad real de video — impresiones vs views</SectionTitle>
