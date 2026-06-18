@@ -253,6 +253,7 @@ export interface MonthAggregate {
   ingresos: number;
   costo: number;
   tasa_conversion: number | null;
+  cpa: number | null;
   roas: number | null;
 }
 
@@ -275,6 +276,7 @@ export function aggregateByMonth(rows: ConversionDailyRow[]): MonthAggregate[] {
         ingresos: k.ingresos,
         costo: k.costo,
         tasa_conversion: k.tasa_conversion,
+        cpa: k.cpa,
         roas: k.roas,
       };
     })

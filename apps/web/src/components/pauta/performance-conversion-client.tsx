@@ -251,6 +251,43 @@ export function PerformanceConversionClient({
         </div>
       </div>
 
+      {/* ===== Inversión y resultados por tipo (tabla; el donut está arriba) ===== */}
+      <SectionTitle>Inversión y resultados por tipo de campaña</SectionTitle>
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <table className="w-full text-xs">
+          <thead className="border-b">
+            <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-3 py-2">Tipo</th>
+              <th className="px-3 py-2 text-right">Inversión</th>
+              <th className="px-3 py-2 text-right">% Inv.</th>
+              <th className="px-3 py-2 text-right">Transac.</th>
+              <th className="px-3 py-2 text-right">Ingresos</th>
+              <th className="px-3 py-2 text-right">CPA</th>
+              <th className="px-3 py-2 text-right">ROAS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {porTipo.map((t) => (
+              <tr key={t.tipo} className="border-b last:border-0 hover:bg-muted/40">
+                <td className="px-3 py-2 font-medium">
+                  <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ backgroundColor: tipoColor(t.tipo) }} />
+                  {t.tipo}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">{t.costo > 0 ? fmtARS(t.costo) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{kpis.costo > 0 && t.costo > 0 ? `${((t.costo / kpis.costo) * 100).toFixed(1)}%` : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(t.transacciones)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{t.ingresos > 0 ? fmtARS(t.ingresos) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{t.cpa != null ? fmtARS(t.cpa) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtRoas(t.roas)}</td>
+              </tr>
+            ))}
+            {porTipo.length === 0 && (
+              <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
       {/* ===== Conversión por categoría ===== */}
       <SectionTitle>Conversión por categoría</SectionTitle>
       <div className="overflow-x-auto rounded-lg border bg-card">
@@ -281,6 +318,42 @@ export function PerformanceConversionClient({
               </tr>
             ))}
             {porCategoria.length === 0 && (
+              <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ===== Evolución mensual (detalle) ===== */}
+      <SectionTitle>Evolución mensual (detalle)</SectionTitle>
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <table className="w-full text-xs">
+          <thead className="border-b">
+            <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-3 py-2">Mes</th>
+              <th className="px-3 py-2 text-right">Sesiones</th>
+              <th className="px-3 py-2 text-right">Transac.</th>
+              <th className="px-3 py-2 text-right">Conv. %</th>
+              <th className="px-3 py-2 text-right">Ingresos</th>
+              <th className="px-3 py-2 text-right">Inversión</th>
+              <th className="px-3 py-2 text-right">CPA</th>
+              <th className="px-3 py-2 text-right">ROAS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {porMes.map((m) => (
+              <tr key={m.mesKey} className="border-b last:border-0 hover:bg-muted/40">
+                <td className="px-3 py-2 font-medium">{m.mesLabel}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(m.sesiones)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(m.transacciones)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtPct(m.tasa_conversion != null ? m.tasa_conversion * 100 : null)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{m.ingresos > 0 ? fmtARS(m.ingresos) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.costo > 0 ? fmtARS(m.costo) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{m.cpa != null ? fmtARS(m.cpa) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtRoas(m.roas)}</td>
+              </tr>
+            ))}
+            {porMes.length === 0 && (
               <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
             )}
           </tbody>
@@ -321,77 +394,6 @@ export function PerformanceConversionClient({
           migración <code>0064</code> y aparece acá.
         </div>
       )}
-
-      {/* ===== Inversión y resultados por tipo (tabla; el donut está arriba) ===== */}
-      <SectionTitle>Inversión y resultados por tipo de campaña</SectionTitle>
-      <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full text-xs">
-            <thead className="border-b">
-              <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2">Tipo</th>
-                <th className="px-3 py-2 text-right">Inversión</th>
-                <th className="px-3 py-2 text-right">% Inv.</th>
-                <th className="px-3 py-2 text-right">Transac.</th>
-                <th className="px-3 py-2 text-right">Ingresos</th>
-                <th className="px-3 py-2 text-right">CPA</th>
-                <th className="px-3 py-2 text-right">ROAS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {porTipo.map((t) => (
-                <tr key={t.tipo} className="border-b last:border-0 hover:bg-muted/40">
-                  <td className="px-3 py-2 font-medium">
-                    <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ backgroundColor: tipoColor(t.tipo) }} />
-                    {t.tipo}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{t.costo > 0 ? fmtARS(t.costo) : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{kpis.costo > 0 && t.costo > 0 ? `${((t.costo / kpis.costo) * 100).toFixed(1)}%` : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtNum(t.transacciones)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{t.ingresos > 0 ? fmtARS(t.ingresos) : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{t.cpa != null ? fmtARS(t.cpa) : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtRoas(t.roas)}</td>
-                </tr>
-              ))}
-              {porTipo.length === 0 && (
-                <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
-              )}
-            </tbody>
-          </table>
-      </div>
-
-      {/* ===== Evolución mensual (detalle) ===== */}
-      <SectionTitle>Evolución mensual (detalle)</SectionTitle>
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full text-xs">
-          <thead className="border-b">
-            <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2">Mes</th>
-              <th className="px-3 py-2 text-right">Sesiones</th>
-              <th className="px-3 py-2 text-right">Transac.</th>
-              <th className="px-3 py-2 text-right">Conv. %</th>
-              <th className="px-3 py-2 text-right">Ingresos</th>
-              <th className="px-3 py-2 text-right">Inversión</th>
-              <th className="px-3 py-2 text-right">ROAS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {porMes.map((m) => (
-              <tr key={m.mesKey} className="border-b last:border-0 hover:bg-muted/40">
-                <td className="px-3 py-2 font-medium">{m.mesLabel}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(m.sesiones)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(m.transacciones)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtPct(m.tasa_conversion != null ? m.tasa_conversion * 100 : null)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{m.ingresos > 0 ? fmtARS(m.ingresos) : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.costo > 0 ? fmtARS(m.costo) : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtRoas(m.roas)}</td>
-              </tr>
-            ))}
-            {porMes.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
 
       {/* ===== Detalle por campaña (al final, lo más granular) ===== */}
       <SectionTitle>Detalle por campaña</SectionTitle>
