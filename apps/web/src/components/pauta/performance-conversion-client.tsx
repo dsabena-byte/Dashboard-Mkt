@@ -290,42 +290,6 @@ export function PerformanceConversionClient({
         </table>
       </div>
 
-      {/* ===== Conversión por categoría ===== */}
-      <SectionTitle>Conversión por categoría</SectionTitle>
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full text-xs">
-          <thead className="border-b">
-            <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2">Categoría</th>
-              <th className="px-3 py-2 text-right">Sesiones</th>
-              <th className="px-3 py-2 text-right">Transac.</th>
-              <th className="px-3 py-2 text-right">Conv. %</th>
-              <th className="px-3 py-2 text-right">Ingresos</th>
-              <th className="px-3 py-2 text-right">Inversión</th>
-              <th className="px-3 py-2 text-right">CPA</th>
-              <th className="px-3 py-2 text-right">ROAS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {porCategoria.map((c) => (
-              <tr key={c.categoria} className="border-b last:border-0 hover:bg-muted/40">
-                <td className="px-3 py-2 font-medium">{c.categoria}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.sesiones)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.transacciones)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtPct(c.tasa_conversion != null ? c.tasa_conversion * 100 : null)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{c.ingresos > 0 ? fmtARS(c.ingresos) : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{c.costo > 0 ? fmtARS(c.costo) : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{c.cpa != null ? fmtARS(c.cpa) : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtRoas(c.roas)}</td>
-              </tr>
-            ))}
-            {porCategoria.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
       {/* ===== Evolución mensual (detalle) ===== */}
       <SectionTitle>Evolución mensual (detalle)</SectionTitle>
       <div className="overflow-x-auto rounded-lg border bg-card">
@@ -356,6 +320,42 @@ export function PerformanceConversionClient({
               </tr>
             ))}
             {porMes.length === 0 && (
+              <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ===== Conversión por categoría ===== */}
+      <SectionTitle>Conversión por categoría</SectionTitle>
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <table className="w-full text-xs">
+          <thead className="border-b">
+            <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-3 py-2">Categoría</th>
+              <th className="px-3 py-2 text-right">Sesiones</th>
+              <th className="px-3 py-2 text-right">Transac.</th>
+              <th className="px-3 py-2 text-right">Conv. %</th>
+              <th className="px-3 py-2 text-right">Ingresos</th>
+              <th className="px-3 py-2 text-right">Inversión</th>
+              <th className="px-3 py-2 text-right">CPA</th>
+              <th className="px-3 py-2 text-right">ROAS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {porCategoria.map((c) => (
+              <tr key={c.categoria} className="border-b last:border-0 hover:bg-muted/40">
+                <td className="px-3 py-2 font-medium">{c.categoria}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.sesiones)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.transacciones)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtPct(c.tasa_conversion != null ? c.tasa_conversion * 100 : null)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{c.ingresos > 0 ? fmtARS(c.ingresos) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{c.costo > 0 ? fmtARS(c.costo) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{c.cpa != null ? fmtARS(c.cpa) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtRoas(c.roas)}</td>
+              </tr>
+            ))}
+            {porCategoria.length === 0 && (
               <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin datos.</td></tr>
             )}
           </tbody>
