@@ -207,13 +207,30 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       hasData: imprVideo > 0,
     };
   }, [dv360VideoQ, metaVideoFunnel, arsMode]);
-  // Embudos de video SEPARADOS por fuente (cada canal DV360 + Meta), no mezclados.
+  // Embudo de video de TikTok (desde metaPaid, solo filas de video).
+  const tiktokVideoFunnel = useMemo(() => {
+    const t = metaPaid.filter((r) => r.plataforma === "tiktok" && ((r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0 || (r.views_completed ?? 0) > 0));
+    const a = t.reduce(
+      (acc, r) => ({
+        impresiones: acc.impresiones + r.impresiones,
+        p25: acc.p25 + (r.video_p25 ?? 0),
+        p50: acc.p50 + (r.video_p50 ?? 0),
+        p75: acc.p75 + (r.video_p75 ?? 0),
+        p100: acc.p100 + ((r.video_p100 ?? 0) || (r.views_completed ?? 0)),
+        spend: acc.spend + r.spend,
+      }),
+      { impresiones: 0, p25: 0, p50: 0, p75: 0, p100: 0, spend: 0 },
+    );
+    return { ...a, count: t.length };
+  }, [metaPaid]);
+  // Embudos de video SEPARADOS por fuente (cada canal DV360 + Meta + TikTok), no mezclados.
   const videoSources = useMemo(() => {
     const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
     for (const f of dv360Funnels) arr.push({ name: `DV360 · ${f.canal}`, impr: f.impresiones, v25: f.q25, v50: f.q50, v75: f.q75, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 });
     if (metaVideoFunnel.count > 0) arr.push({ name: "Meta", impr: metaVideoFunnel.impresiones, v25: metaVideoFunnel.p25, v50: metaVideoFunnel.p50, v75: metaVideoFunnel.p75, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend });
+    if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     return arr.sort((a, b) => b.impr - a.impr);
-  }, [dv360Funnels, metaVideoFunnel, arsMode]);
+  }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, arsMode]);
   const dv360ByCategoria = useMemo(() => aggregateDv360By(dv360Conv, "categoria"), [dv360Conv]);
   const dv360ByRol = useMemo(() => aggregateDv360By(dv360Conv, "rol"), [dv360Conv]);
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
@@ -245,37 +262,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return m;
   }, [dv360Funnels]);
   const dvChBestVtr = useMemo(() => maxPos([...dvFunnelMap.values()].map((v) => v.vtr)), [dvFunnelMap]);
-  // Comparativa por plataforma (Meta, TikTok, Programmatic, YouTube) desde metaPaid.
-  // Visión 360: métricas generales (CPM, impresiones) SE MUESTRAN pero NO llevan
-  // semáforo; el semáforo vive en la EFECTIVIDAD real (CPM efectivo = costo/view
-  // completo, VTR real = % de impresiones que completaron). Así un CPM nominal
-  // barato con baja visibilidad NO aparece "verde".
-  const platformComparison = useMemo(() => {
-    const map = new Map<string, { impr: number; spend: number; clicks: number; comp: number }>();
-    for (const r of metaPaid) {
-      const m = map.get(r.plataforma) ?? { impr: 0, spend: 0, clicks: 0, comp: 0 };
-      m.impr += r.impresiones; m.spend += r.spend; m.clicks += r.clicks;
-      m.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0); // views completos (p100 Meta / completed TikTok)
-      map.set(r.plataforma, m);
-    }
-    const items = [...map.entries()]
-      .map(([plataforma, m]) => ({
-        plataforma,
-        impr: m.impr, spend: m.spend, clicks: m.clicks, comp: m.comp,
-        cpm: m.impr > 0 ? (m.spend / m.impr) * 1000 : 0,
-        ctr: m.impr > 0 ? (m.clicks / m.impr) * 100 : 0,
-        vtrReal: m.impr > 0 ? (m.comp / m.impr) * 100 : 0, // % de impresiones que completaron el video
-        cpmEf: m.comp > 0 ? (m.spend / m.comp) * 1000 : 0, // costo real por mil views completos
-      }))
-      .filter((i) => i.impr > 0)
-      .sort((a, b) => b.spend - a.spend);
-    return {
-      items,
-      bestCtr: maxPos(items.map((i) => i.ctr)),
-      bestVtr: maxPos(items.map((i) => i.vtrReal)),
-      bestCpmEf: minPos(items.map((i) => i.cpmEf)),
-    };
-  }, [metaPaid]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -436,15 +422,38 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   }, [rowsNoMes, refMes, prevMes]);
 
   // ===== Modelo único de medios (fuente de verdad para TODO el dashboard) =====
-  // Cada medio con su KPI GENERAL (cpm) y su contraparte EFECTIVA (cpmEf, vtr, ctr).
-  // Los semáforos se calculan SIEMPRE sobre lo efectivo; el nominal es contexto.
-  // Mismo origen (OMD: computeByMedio + computeVideoByMedio) → coherente en todo el dash.
+  // VTR real y CPM efectivo se calculan SIEMPRE desde los completions REALES (cuartil
+  // 100% de DV360/Meta), no desde "views" sueltos. CPM efectivo = CPM / (VTR/100),
+  // así SIEMPRE es mayor al general (hay más impresiones que views completos) y es
+  // consistente con el embudo de atención y la comparativa por plataforma.
+  const vtrRealByMedio = useMemo(() => {
+    const agg = new Map<string, { comp: number; vimpr: number }>();
+    const add = (medio: string, vimpr: number, comp: number) => {
+      if (vimpr <= 0 && comp <= 0) return;
+      const e = agg.get(medio) ?? { comp: 0, vimpr: 0 };
+      e.comp += comp; e.vimpr += vimpr; agg.set(medio, e);
+    };
+    // DV360 es autoritativo para YouTube/Programmatic/Demand Gen (embudo = solo video)
+    const DV_MAP: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen" };
+    for (const f of dv360Funnels) { const medio = DV_MAP[f.canal]; if (medio) add(medio, f.impresiones, f.q100); }
+    // Meta y TikTok autoritativos desde metaPaid (solo filas de video)
+    for (const r of metaPaid) {
+      const isVid = (r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0;
+      if (!isVid) continue;
+      const comp = (r.video_p100 ?? 0) || (r.views_completed ?? 0);
+      if (r.plataforma === "meta") add("Meta", r.impresiones, comp);
+      else if (r.plataforma === "tiktok") add("TikTok", r.impresiones, comp);
+    }
+    const out = new Map<string, number>();
+    for (const [medio, e] of agg) out.set(medio, e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0);
+    return out;
+  }, [dv360Funnels, metaPaid]);
   const medioModel = useMemo(() => {
-    const vmap = new Map(videoByMedio.map((v) => [v.medio, v]));
     const items = byMedio
       .filter((m) => m.impresiones > 0)
       .map((m) => {
-        const v = vmap.get(m.medio);
+        const cpm = m.cpm;
+        const vtr = vtrRealByMedio.get(m.medio) ?? 0; // % completions reales / impr de video
         return {
           medio: m.medio,
           isDigital: tipoMedio(m.medio) === "Digital",
@@ -452,12 +461,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           impresiones: m.impresiones,
           alcance: m.alcance,
           clics: m.clics,
-          cpm: m.cpm, // GENERAL (contexto, sin semáforo)
+          cpm, // GENERAL (contexto, sin semáforo)
           ctr: m.impresiones > 0 ? (m.clics / m.impresiones) * 100 : 0, // efectivo (engagement)
-          views: v?.views ?? 0,
-          vtr: v?.vtr ?? 0, // efectivo (visibilidad real)
-          cpmEf: v?.cpmEfectivo ?? 0, // efectivo (costo real por mil views)
-          cpv: v?.cpv ?? 0,
+          vtr, // efectivo (visibilidad real, desde cuartil 100%)
+          cpmEf: vtr > 0 ? cpm * (100 / vtr) : 0, // efectivo = CPM / tasa de completion → siempre > CPM
         };
       })
       .sort((a, b) => b.inversion - a.inversion);
@@ -468,7 +475,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       bestVtr: maxPos(dig.map((i) => i.vtr)),
       bestCpmEf: minPos(dig.map((i) => i.cpmEf)),
     };
-  }, [byMedio, videoByMedio]);
+  }, [byMedio, vtrRealByMedio]);
 
   // Alertas "qué mejorar" auto-generadas.
   const alertas = useMemo(() => {
@@ -908,6 +915,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                     {[
                       ...dv360Funnels.map((f) => ({ fuente: `DV360 · ${f.canal}`, impr: f.impresiones, v50: f.q50, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 })),
                       ...(metaVideoFunnel.count > 0 ? [{ fuente: "Meta", impr: metaVideoFunnel.impresiones, v50: metaVideoFunnel.p50, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend }] : []),
+                      ...(tiktokVideoFunnel.count > 0 ? [{ fuente: "TikTok", impr: tiktokVideoFunnel.impresiones, v50: tiktokVideoFunnel.p50, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend }] : []),
                     ].map((r) => {
                       const pct50 = r.impr > 0 ? (r.v50 / r.impr) * 100 : 0;
                       const vtr = r.impr > 0 ? (r.v100 / r.impr) * 100 : 0;
@@ -957,138 +965,43 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== POR MEDIO ===== */}
       {tab === "Por Medio" && (
         <div>
-          {/* === Por plataforma — general 360 (lo más general primero) === */}
-          {platformComparison.items.length > 0 && (
-            <>
-              <SectionTitle>Comparativa por plataforma · visión 360 (general + efectivo)</SectionTitle>
-              <p className="mb-3 text-[10px] text-muted-foreground">
-                CPM e impresiones son <strong>generales</strong> (en gris, sin semáforo): no miden si el video se vio. El semáforo vive en
-                la <strong>efectividad real</strong>: <strong>CPM efectivo</strong> (costo por mil views completos) y <strong>VTR real</strong>{" "}
-                (% de impresiones que completaron). Un CPM nominal barato con baja visibilidad <strong>no es barato de verdad</strong>.
-                <span className="ml-1"><span className="font-semibold text-emerald-600">●</span> mejor · <span className="font-semibold text-amber-600">●</span> intermedio · <span className="font-semibold text-rose-600">●</span> a optimizar.</span>
-              </p>
-              <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
-                <table className="w-full text-xs">
-                  <thead className="border-b">
-                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                      <th className="px-3 py-2">Plataforma</th>
-                      <th className="px-3 py-2 text-right">Inversión</th>
-                      <th className="px-3 py-2 text-right font-normal">Impresiones <span className="normal-case opacity-60">(gral)</span></th>
-                      <th className="px-3 py-2 text-right font-normal">CPM <span className="normal-case opacity-60">(gral)</span></th>
-                      <th className="px-3 py-2 text-right">CPM efectivo</th>
-                      <th className="px-3 py-2 text-right">CTR</th>
-                      <th className="px-3 py-2 text-right">VTR real</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {platformComparison.items.map((p) => (
-                      <tr key={p.plataforma} className="border-b last:border-0">
-                        <td className="px-3 py-2 font-medium capitalize">{p.plataforma}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{p.spend > 0 ? fmtARS(p.spend) : "—"}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(p.impr)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{p.cpm > 0 ? fmtARS(p.cpm) : "—"}</td>
-                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.cpmEf > 0 ? bicColor(p.cpmEf, platformComparison.bestCpmEf, "lower") : "text-muted-foreground"}`}>{p.cpmEf > 0 ? fmtARS(p.cpmEf) : "—"}</td>
-                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.ctr > 0 ? bicColor(p.ctr, platformComparison.bestCtr, "higher") : "text-muted-foreground"}`}>{p.ctr > 0 ? `${p.ctr.toFixed(2)}%` : "—"}</td>
-                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.vtrReal > 0 ? bicColor(p.vtrReal, platformComparison.bestVtr, "higher") : "text-muted-foreground"}`}>{p.vtrReal > 0 ? `${p.vtrReal.toFixed(1)}%` : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          <SectionTitle>Desglose por plataforma · general + efectivo</SectionTitle>
+          <SectionTitle>Tabla maestra por medio · general + efectivo (todo junto)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            Cada KPI general (en gris) va apareado con su contraparte de impacto real: <strong>CPM ↔ CPM efectivo</strong> (costo/view),
-            <strong> Impresiones ↔ VTR</strong> (% que vio el video). El semáforo vive en lo efectivo (vs el mejor medio digital). Un CPM
-            barato con bajo VTR no es barato de verdad.
+            Una sola fuente de verdad: cada KPI general (en gris) apareado con su impacto real. <strong>Impresiones ↔ VTR</strong> (% que
+            completó el video) · <strong>CPM ↔ CPM efectivo</strong> (costo por view completo). El semáforo vive solo en lo efectivo
+            (CPM efectivo, CTR, VTR vs el mejor medio digital). Un CPM barato con VTR bajo no es barato de verdad.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {medioModel.items.map((p) => (
-                <div key={p.medio} className="rounded-lg border bg-card p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
-                    <span className="text-xs font-semibold">{p.medio}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><div className="text-muted-foreground">Inversión</div><div className="font-semibold">{fmtARS(p.inversion)}</div></div>
-                    <div><div className="text-muted-foreground">Impresiones <span className="opacity-60">(gral)</span></div><div className="font-semibold text-muted-foreground">{fmtNum(p.impresiones)}</div></div>
-                    <div>
-                      <div className="text-muted-foreground">CPM <span className="opacity-60">(gral)</span></div>
-                      <div className="font-semibold text-muted-foreground">{fmtARS(p.cpm)}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">CPM efectivo</div>
-                      <div className={`font-semibold ${p.isDigital && p.cpmEf > 0 ? bicColor(p.cpmEf, medioModel.bestCpmEf, "lower") : "text-muted-foreground"}`}>{p.cpmEf > 0 ? fmtARS(p.cpmEf) : "—"}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">CTR</div>
-                      <div className={`font-semibold ${p.isDigital && p.ctr > 0 ? bicColor(p.ctr, medioModel.bestCtr, "higher") : "text-muted-foreground"}`}>{p.ctr > 0 ? `${p.ctr.toFixed(2)}%` : "—"}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">VTR <span className="opacity-60">(real)</span></div>
-                      <div className={`font-semibold ${p.isDigital && p.vtr > 0 ? bicColor(p.vtr, medioModel.bestVtr, "higher") : "text-muted-foreground"}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</div>
-                    </div>
-                  </div>
-                </div>
-            ))}
-          </div>
-
-          <SectionTitle>Efectividad real de video — impresiones vs views</SectionTitle>
-          <p className="mb-3 text-[10px] text-muted-foreground">
-            Cuando la pauta es video, muchas impresiones <strong>no se convierten en views</strong>. El <strong>VTR</strong>{" "}
-            (views/impresiones) y el <strong>CPM efectivo</strong> (costo por mil sobre views reales) muestran el costo real:
-            si el CPM efectivo es mucho mayor al CPM nominal, esas impresiones no son efectivas.
-          </p>
-          <div className="overflow-x-auto rounded-lg border bg-card">
+          <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
             <table className="w-full text-xs">
               <thead className="border-b">
                 <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2">Medio (video)</th>
+                  <th className="px-3 py-2">Medio</th>
                   <th className="px-3 py-2 text-right">Inversión</th>
-                  <th className="px-3 py-2 text-right">Impresiones</th>
-                  <th className="px-3 py-2 text-right">Views</th>
-                  <th className="px-3 py-2 text-right">VTR</th>
-                  <th className="px-3 py-2 text-right">CPM</th>
+                  <th className="px-3 py-2 text-right font-normal">Impres. <span className="normal-case opacity-60">(gral)</span></th>
+                  <th className="px-3 py-2 text-right">VTR real</th>
+                  <th className="px-3 py-2 text-right font-normal">CPM <span className="normal-case opacity-60">(gral)</span></th>
                   <th className="px-3 py-2 text-right">CPM efectivo</th>
-                  <th className="px-3 py-2 text-right">CPV</th>
+                  <th className="px-3 py-2 text-right">CTR</th>
                 </tr>
               </thead>
               <tbody>
-                {videoByMedio.length === 0 ? (
-                  <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin pauta de video en la selección.</td></tr>
-                ) : (
-                  videoByMedio.map((m) => {
-                    const ratio = m.cpm > 0 ? m.cpmEfectivo / m.cpm : 0;
-                    const vtrColor = m.vtr < 20 ? "text-rose-600" : m.vtr < 50 ? "text-amber-600" : "text-emerald-600";
-                    return (
-                      <tr key={m.medio} className="border-b last:border-0">
-                        <td className="px-3 py-2 font-medium">
-                          <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[m.medio] ?? "#94a3b8" }} />
-                          {m.medio}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">{fmtARS(m.inversion)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(m.impresiones)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{fmtNum(m.views)}</td>
-                        <td className={`px-3 py-2 text-right tabular-nums font-semibold ${vtrColor}`}>{m.vtr.toFixed(1)}%</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtARS(m.cpm)}</td>
-                        <td className={`px-3 py-2 text-right tabular-nums font-semibold ${ratio === 0 ? "" : ratio <= 1.2 ? "text-emerald-600" : ratio <= 1.5 ? "text-amber-600" : "text-rose-600"}`}>
-                          {fmtARS(m.cpmEfectivo)}
-                          {ratio > 1.2 && <span className="ml-1 text-[9px]">{ratio.toFixed(1)}×</span>}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{m.cpv > 0 ? fmtARS(m.cpv) : "—"}</td>
-                      </tr>
-                    );
-                  })
-                )}
+                {medioModel.items.map((p) => (
+                  <tr key={p.medio} className="border-b last:border-0">
+                    <td className="px-3 py-2 font-medium">
+                      <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
+                      {p.medio}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{fmtARS(p.inversion)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(p.impresiones)}</td>
+                    <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.isDigital && p.vtr > 0 ? bicColor(p.vtr, medioModel.bestVtr, "higher") : "text-muted-foreground"}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{p.cpm > 0 ? fmtARS(p.cpm) : "—"}</td>
+                    <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.isDigital && p.cpmEf > 0 ? bicColor(p.cpmEf, medioModel.bestCpmEf, "lower") : "text-muted-foreground"}`}>{p.cpmEf > 0 ? fmtARS(p.cpmEf) : "—"}</td>
+                    <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.isDigital && p.ctr > 0 ? bicColor(p.ctr, medioModel.bestCtr, "higher") : "text-muted-foreground"}`}>{p.ctr > 0 ? `${p.ctr.toFixed(2)}%` : "—"}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-          <p className="mb-3 mt-2 text-[10px] text-muted-foreground/70">
-            VTR ≈ views/impresiones (&quot;views&quot; según definición de cada plataforma). Para la <strong>visibilidad real por
-            cuartil</strong>, ver los paneles de Meta y DV360 más abajo.
-          </p>
 
           <SectionTitle>Visibilidad real de video · Meta</SectionTitle>
           {metaVideoFunnel.count === 0 ? (
