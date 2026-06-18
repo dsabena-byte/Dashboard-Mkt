@@ -6,7 +6,6 @@ import {
   PAUTA_INSIGHTS,
   MEDIO_COLORS,
   computeByMedio,
-  computeVideoByMedio,
   investmentByCategoria,
   extractMeses,
   defaultMes,
@@ -15,8 +14,6 @@ import { InvestmentDonut, HBarChart, ReachImpressionsChart, MonthlyInvestmentCha
 import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
-import { PautaInsightsPanel } from "@/components/pauta/pauta-insights-panel";
-import { computePautaInsights } from "@/lib/pauta-insights";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import {
   type Dv360CreativeRow,
@@ -75,17 +72,16 @@ function buildDimModel(dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim:
   const get = (k: string) => { let e = agg.get(k); if (!e) { e = { inv: 0, impr: 0, clicks: 0, comp: 0, vimpr: 0, reach: 0 }; agg.set(k, e); } return e; };
   for (const r of dv) {
     const e = get((dim === "categoria" ? r.categoria : r.rol) || "—");
-    e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks; e.comp += r.q100;
-    if (r.starts > 0) e.vimpr += r.impresiones;
+    e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks;
+    if (r.starts > 0) { e.vimpr += r.impresiones; e.comp += r.q100; }
   }
   for (const r of meta) {
     if (r.plataforma !== "meta" && r.plataforma !== "tiktok") continue;
     const k = dim === "categoria" ? (r.categoria ?? "—") : (tipoCompraToRol(r.tipo_compra) ?? "—");
     const e = get(k);
-    const isVid = (r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0;
+    const q123 = (r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0); // sin cuartiles (TikTok) → no cuenta
     e.inv += r.spend; e.impr += r.impresiones; e.clicks += r.clicks;
-    e.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0);
-    if (isVid) e.vimpr += r.impresiones;
+    if (q123 > 0) { e.vimpr += r.impresiones; e.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0); }
     e.reach += r.alcance ?? 0;
   }
   const items = [...agg.entries()]
@@ -266,7 +262,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   );
 
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
-  const videoByMedio = useMemo(() => computeVideoByMedio(rows), [rows]);
   // Embudo de visibilidad real de video (Meta Marketing API): cuántas impresiones
   // llegan a cada % del video. Solo Meta (el cron meta-paid-sync trae los cuartiles).
   const metaVideoFunnel = useMemo(() => {
@@ -524,18 +519,19 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", Marketplace: "Marketplace", "Demand Gen": "Google Demand Gen" };
     for (const r of dv360Conv) {
       const e = get(DVMED[r.canal] ?? r.canal);
-      e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks; e.comp += r.q100;
-      if (r.starts > 0) e.vimpr += r.impresiones;
+      e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks;
+      if (r.starts > 0) { e.vimpr += r.impresiones; e.comp += r.q100; } // solo video con cuartiles
     }
     for (const r of dv360ReachF) get(DVMED[r.canal] ?? r.canal).reach += r.reach;
     for (const r of metaPaidF) {
       const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
       if (!medio) continue;
       const e = get(medio);
-      const isVid = (r.video_plays ?? 0) > 0 || (r.views_total ?? 0) > 0 || (r.video_p100 ?? 0) > 0;
+      // Solo cuenta como video efectivo si HAY cuartiles reales (p25/50/75>0). TikTok
+      // hoy no los trae (hueco del sync) → no se computa VTR/CPM efectivo (queda s/d).
+      const q123 = (r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0);
       e.inv += r.spend; e.impr += r.impresiones; e.clicks += r.clicks;
-      e.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0);
-      if (isVid) e.vimpr += r.impresiones;
+      if (q123 > 0) { e.vimpr += r.impresiones; e.comp += (r.video_p100 ?? 0) || (r.views_completed ?? 0); }
       e.reach += r.alcance ?? 0;
     }
     const items = [...agg.entries()]
@@ -562,47 +558,43 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     };
   }, [dv360Conv, dv360ReachF, metaPaidF]);
 
-  // Alertas "qué mejorar" auto-generadas.
-  const alertas = useMemo(() => {
-    const out: Array<{ type: "alert" | "warn" | "good"; title: string; text: string }> = [];
-    const vids = videoByMedio.filter((v) => v.views > 0 && v.impresiones > 0);
-    if (vids.length) {
-      const worst = [...vids].sort((a, b) => a.vtr - b.vtr)[0]!;
-      const ratio = worst.cpm > 0 ? worst.cpmEfectivo / worst.cpm : 0;
-      if (worst.vtr < 50) out.push({
-        type: worst.vtr < 25 ? "alert" : "warn",
-        title: `Video poco efectivo · ${worst.medio}`,
-        text: `VTR ${worst.vtr.toFixed(0)}% → su CPM efectivo (${fmtARS(worst.cpmEfectivo)}) es ${ratio.toFixed(1)}× el nominal. Revisar formato/duración/targeting de video.`,
-      });
-    }
-    if (medioModel.bestCpmEf > 0) {
-      const costly = medioModel.items.filter((i) => i.cpmEf > 0).sort((a, b) => b.cpmEf - a.cpmEf)[0];
-      if (costly) {
-        const r = costly.cpmEf / medioModel.bestCpmEf;
-        if (r > 1.5) out.push({
-          type: "warn",
-          title: `Costo efectivo caro · ${costly.medio}`,
-          text: `Su CPM efectivo (costo por view real) es ${fmtARS(costly.cpmEf)} = ${r.toFixed(1)}× el del mejor medio digital (${fmtARS(medioModel.bestCpmEf)}). El nominal puede parecer barato, pero pocos ven el video → reasignar hacia el más efectivo.`,
-        });
+  // Motor de insights desde los datos AUTOMÁTICOS + efectivos (medioModel/catModel/
+  // rolModel). Genera Fortalezas, Oportunidades y Optimizaciones accionables.
+  const pautaInsights = useMemo(() => {
+    type Ins = { kind: "fortaleza" | "oportunidad" | "optimizacion"; title: string; text: string };
+    const out: Ins[] = [];
+    const meds = medioModel.items;
+    const totalInv = meds.reduce((s, m) => s + m.inversion, 0);
+    const vid = meds.filter((m) => m.vtr > 0 && m.cpmEf > 0); // medios con video medido (cuartiles reales)
+    if (vid.length) {
+      const byEff = [...vid].sort((a, b) => a.cpmEf - b.cpmEf);
+      const best = byEff[0]!, worst = byEff[byEff.length - 1]!;
+      out.push({ kind: "fortaleza", title: `${best.medio}: el video más eficiente`, text: `VTR ${best.vtr.toFixed(0)}% y CPM efectivo ${fmtARS(best.cpmEf)} (el más bajo). Cada peso compra más views completos reales — el medio a priorizar para awareness de video.` });
+      if (worst.medio !== best.medio && worst.cpmEf > best.cpmEf * 1.5) {
+        const ratio = worst.cpmEf / best.cpmEf;
+        const pctInv = totalInv > 0 ? (worst.inversion / totalInv) * 100 : 0;
+        const mover = worst.inversion * 0.3;
+        const gain = mover / best.cpmEf * 1000 - mover / worst.cpmEf * 1000;
+        out.push({ kind: "optimizacion", title: `${worst.medio}: costo efectivo ${ratio.toFixed(1)}× el mejor`, text: `VTR ${worst.vtr.toFixed(0)}% → CPM efectivo ${fmtARS(worst.cpmEf)}, ${ratio.toFixed(1)}× el de ${best.medio}. Concentra ${pctInv.toFixed(0)}% de la inversión. Mover ~${fmtARS(mover)} (30%) hacia ${best.medio} sumaría ≈${fmtNum(gain)} views completos al mismo costo.` });
+      }
+      for (const m of vid) {
+        const pct = totalInv > 0 ? (m.inversion / totalInv) * 100 : 0;
+        if (m.vtr >= 50 && pct < 12 && m.medio !== best.medio) out.push({ kind: "oportunidad", title: `${m.medio}: eficiente y escalable`, text: `Buena visibilidad (VTR ${m.vtr.toFixed(0)}%, CPM efectivo ${fmtARS(m.cpmEf)}) pero solo ${pct.toFixed(0)}% de la inversión. Margen para escalar sin perder eficiencia.` });
       }
     }
-    const tr = monthTotals.ref, tp = monthTotals.prev;
-    if (tr && tp) {
-      const dCpm = pctDelta(tr.cpm, tp.cpm);
-      if (dCpm != null && dCpm > 15) out.push({
-        type: "warn",
-        title: "CPM al alza vs mes anterior",
-        text: `El CPM subió ${dCpm.toFixed(0)}% respecto del mes previo (${fmtARS(tp.cpm)} → ${fmtARS(tr.cpm)}). Verificar mix de medios y formatos.`,
-      });
-      if (tr.frec > 6) out.push({
-        type: "warn",
-        title: "Frecuencia alta (saturación)",
-        text: `Frecuencia ${tr.frec.toFixed(1)} en awareness. Por encima de ~5-6 hay riesgo de saturación y desperdicio de impresiones; conviene ampliar alcance o capear frecuencia.`,
-      });
+    const byCtr = meds.filter((m) => m.ctr > 0).sort((a, b) => b.ctr - a.ctr);
+    if (byCtr[0]) out.push({ kind: "fortaleza", title: `${byCtr[0].medio}: mejor CTR (${byCtr[0].ctr.toFixed(2)}%)`, text: `Es el medio que mejor genera clicks/tráfico — fuerte para objetivos de consideración.` });
+    const cats = catModel.items.filter((c) => c.cpmEf > 0);
+    if (cats.length > 1) {
+      const cB = [...cats].sort((a, b) => a.cpmEf - b.cpmEf)[0]!, cW = [...cats].sort((a, b) => b.cpmEf - a.cpmEf)[0]!;
+      if (cW.cpmEf > cB.cpmEf * 1.4) out.push({ kind: "oportunidad", title: `Categorías: ${cB.nombre} rinde, ${cW.nombre} no`, text: `${cB.nombre} tiene el mejor costo efectivo (${fmtARS(cB.cpmEf)}, VTR ${cB.vtr.toFixed(0)}%); ${cW.nombre} el peor (${fmtARS(cW.cpmEf)}). Revisar formato/targeting de ${cW.nombre}.` });
     }
-    if (out.length === 0) out.push({ type: "good", title: "Sin alertas críticas", text: "Los indicadores de la selección están dentro de rangos esperables." });
-    return out.slice(0, 4);
-  }, [videoByMedio, medioModel, monthTotals]);
+    if (videoQuality.hasData && videoQuality.pct50 < 50) out.push({ kind: "optimizacion", title: `${(100 - videoQuality.pct50).toFixed(0)}% del video se desperdicia`, text: `Solo ${videoQuality.pct50.toFixed(0)}% de las impresiones de video llega al 50%. Priorizar formatos cortos / no-skippables y los medios de mejor VTR para no pagar por impresiones que no se ven.` });
+    const tt = meds.find((m) => m.medio === "TikTok");
+    if (tt && tt.vtr === 0 && tt.impresiones > 0) out.push({ kind: "oportunidad", title: "TikTok: falta conectar la medición de video", text: `Hoy viene de OMD/Looker (sin API), así que no tenemos su visibilidad real. Conectarlo automáticamente permitiría saber si sus ${fmtNum(tt.impresiones)} impresiones realmente se ven (y compararlo bien).` });
+    if (out.length === 0) out.push({ kind: "fortaleza", title: "Sin alertas críticas", text: "Los indicadores de la selección están dentro de rangos esperables." });
+    return out;
+  }, [medioModel, catModel, rolModel, videoQuality]);
 
   // Insights: solo si hay una sola categoría seleccionada
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
@@ -834,29 +826,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             </div>
           </div>
 
-          {/* ===== 3. EFICIENCIA · costos + semáforos + alertas ===== */}
-          <SectionTitle>
-            Eficiencia {refMes ? `· ${refMes}` : ""}
-            {prevMes && <span className="ml-1 font-normal normal-case text-muted-foreground/70">(vs {prevMes})</span>}
-          </SectionTitle>
-          {monthTotals.ref && (
-            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <MoMStat label="CPM" value={fmtARS(monthTotals.ref.cpm)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.cpm, monthTotals.prev.cpm) : null} dir="down-good" sub="menos es mejor" />
-              <MoMStat label="CTR" value={`${monthTotals.ref.ctr.toFixed(2)}%`} delta={monthTotals.prev ? pctDelta(monthTotals.ref.ctr, monthTotals.prev.ctr) : null} dir="up-good" />
-              <MoMStat label="CPC" value={fmtARS(monthTotals.ref.cpc)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.cpc, monthTotals.prev.cpc) : null} dir="down-good" sub="menos es mejor" />
-              <MoMStat label="CPCV (video)" value={videoQuality.cpcv > 0 ? dvMoney(videoQuality.cpcv) : "—"} delta={null} dir="down-good" sub="costo/view completo" />
-            </section>
-          )}
-
-          <div className="mt-4 rounded-xl border bg-card p-4">
-            <h3 className="mb-2 text-sm font-bold">Qué mejorar</h3>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {alertas.map((a, i) => (
-                <Insight key={i} type={a.type} title={a.title} text={a.text} />
-              ))}
-            </div>
-            <p className="mt-2 text-[10px] text-muted-foreground/70">El detalle de eficiencia por medio (general + efectivo) está en el tab <strong>Por Medio</strong>.</p>
-          </div>
 
           {insight && (
             <>
@@ -929,6 +898,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               </p>
               <div className="grid gap-3 lg:grid-cols-2">
                 {videoSources.map((src) => {
+                  const noQ = src.v25 + src.v50 + src.v75 === 0; // sin cuartiles (ej. TikTok: hueco del sync)
                   const stages: Array<[string, number]> = [
                     ["Impresiones", src.impr], ["Vieron 25%", src.v25], ["Vieron 50%", src.v50], ["Vieron 75%", src.v75], ["Vieron 100%", src.v100],
                   ];
@@ -939,10 +909,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                       <div className="mb-2 flex items-baseline justify-between">
                         <span className="text-xs font-bold">{src.name}</span>
                         <span className="text-[10px] text-muted-foreground">
-                          VTR <span className={`font-semibold ${vtr >= 30 ? "text-emerald-600" : vtr >= 15 ? "text-amber-600" : "text-rose-600"}`}>{vtr.toFixed(0)}%</span>
-                          {cpcv > 0 && <> · CPCV {dvMoney(cpcv)}</>}
+                          {noQ ? <span className="font-semibold text-muted-foreground">s/d cuartiles</span> : <>VTR <span className={`font-semibold ${vtr >= 30 ? "text-emerald-600" : vtr >= 15 ? "text-amber-600" : "text-rose-600"}`}>{vtr.toFixed(0)}%</span>{cpcv > 0 && <> · CPCV {dvMoney(cpcv)}</>}</>}
                         </span>
                       </div>
+                      {noQ && <p className="mb-1 text-[9px] text-amber-600">Sin datos de cuartiles en el feed automático (revisar sync de la fuente). Solo impresiones.</p>}
                       <div className="space-y-1">
                         {stages.map(([label, n], i) => {
                           const pct = src.impr > 0 ? (n / src.impr) * 100 : 0;
@@ -1152,30 +1122,35 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== INSIGHTS PAUTA ===== */}
       {tab === "Insights Pauta" && (
         <div>
-          <SectionTitle>Insights Pauta — mix óptimo de inversión</SectionTitle>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Análisis sobre las filas filtradas. Detecta medios sobre/sub-eficientes y recomienda reasignaciones para
-            maximizar alcance, impresiones y clics por peso invertido.
+          <SectionTitle>Insights de pauta · qué optimizar, dónde hay oportunidad, qué funciona</SectionTitle>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Análisis automático sobre los datos de <strong>Meta + DV360</strong> (responde a los filtros). Lee el impacto{" "}
+            <strong>efectivo real</strong> (VTR, CPM efectivo, completions), no solo impresiones, para detectar dónde reasignar
+            inversión, qué escalar y qué medios/categorías funcionan.
           </p>
-          {(() => {
-            const vids = videoByMedio.filter((v) => v.views > 0 && v.impresiones > 0);
-            if (vids.length === 0) return null;
-            const worst = [...vids].sort((a, b) => a.vtr - b.vtr)[0]!;
-            const ratio = worst.cpm > 0 ? worst.cpmEfectivo / worst.cpm : 0;
+          {(["fortaleza", "oportunidad", "optimizacion"] as const).map((kind) => {
+            const items = pautaInsights.filter((i) => i.kind === kind);
+            if (items.length === 0) return null;
+            const cfg = {
+              fortaleza: { titulo: "✅ Fortalezas — qué funciona", type: "good" as const },
+              oportunidad: { titulo: "🚀 Oportunidades — dónde escalar / mejorar", type: "info" as const },
+              optimizacion: { titulo: "⚠️ Optimizaciones — qué reasignar", type: "warn" as const },
+            }[kind];
             return (
-              <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-                <strong>⚠️ Efectividad de video:</strong> el peor VTR es <strong>{worst.medio}</strong> ({worst.vtr.toFixed(1)}% de las
-                impresiones se convierten en views). Su <strong>CPM efectivo</strong> ({fmtARS(worst.cpmEfectivo)}) es{" "}
-                {ratio > 0 ? <strong>{ratio.toFixed(1)}×</strong> : "—"} el CPM nominal ({fmtARS(worst.cpm)}): muchas impresiones de
-                video no son efectivas, así que el costo real por usuario que ve el video es mucho más alto de lo que parece.
-                Para sumar los cuartiles de visibilidad (25/50/75%) hay que automatizar los reportes de Meta Business / DV360.
+              <div key={kind} className="mb-4">
+                <h3 className="mb-2 text-sm font-bold">{cfg.titulo}</h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {items.map((it, i) => (
+                    <Insight key={i} type={cfg.type} title={it.title} text={it.text} />
+                  ))}
+                </div>
               </div>
             );
-          })()}
-          {(() => {
-            const { efficiency, insights, benchmarks } = computePautaInsights(rows);
-            return <PautaInsightsPanel efficiency={efficiency} insights={insights} benchmarks={benchmarks} />;
-          })()}
+          })}
+          <p className="mt-2 text-[10px] text-muted-foreground/70">
+            Las recomendaciones de reasignación estiman el resultado a igual costo (views completos = inversión ÷ CPM efectivo).
+            TikTok queda fuera de las comparaciones de video hasta conectarlo por API (hoy viene de OMD/Looker, sin cuartiles).
+          </p>
         </div>
       )}
     </div>
