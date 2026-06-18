@@ -3,9 +3,12 @@
 import {
   Bar,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Legend,
   Line,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -53,6 +56,26 @@ export function InvestmentRevenueChart({ data }: { data: InvRevPoint[] }) {
         <Bar yAxisId="left" dataKey="ingresos" name="Ingresos" fill="#22c55e" radius={[3, 3, 0, 0]} />
         <Line yAxisId="right" dataKey="roas" name="ROAS" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} connectNulls />
       </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+// Donut compacto (solo torta) para acompañar una tabla de detalle al lado.
+export function CompactDonut({ data }: { data: Array<{ name: string; value: number; color: string }> }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <PieChart>
+        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="56%" outerRadius="92%" paddingAngle={2}>
+          {data.map((d, i) => (
+            <Cell key={i} fill={d.color} />
+          ))}
+        </Pie>
+        <Tooltip
+          formatter={(v: number) => [`${fmtMoney(v)} · ${total ? ((v / total) * 100).toFixed(1) : 0}%`, ""]}
+          contentStyle={tooltipStyle}
+        />
+      </PieChart>
     </ResponsiveContainer>
   );
 }

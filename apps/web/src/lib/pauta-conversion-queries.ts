@@ -1,6 +1,6 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
-import type { ConversionDailyRow } from "./pauta-conversion-data";
+import type { ConversionDailyRow, ConversionItemRow } from "./pauta-conversion-data";
 
 const num = (v: string | number | null | undefined): number =>
   v == null ? 0 : typeof v === "number" ? v : Number(v);
@@ -158,4 +158,41 @@ export async function getConversionDaily(): Promise<ConversionDailyRow[]> {
       ad_impresiones: e.ad_impresiones,
     };
   });
+}
+
+interface ItemRaw {
+  fecha: string;
+  utm_campaign: string | null;
+  item_name: string | null;
+  items_purchased: number | null;
+  item_revenue: string | number | null;
+}
+
+/**
+ * Productos comprados por las campañas inhouse_* (GA4 itemsPurchased/itemRevenue).
+ * La tabla puede no existir todavía (migración 0064) o estar vacía (falta correr
+ * el cron) → devuelve [] y el dashboard muestra el ranking pendiente.
+ */
+export async function getConversionItems(): Promise<ConversionItemRow[]> {
+  const supabase = getServerSupabase();
+  const res = await supabase
+    .from("ga4_items_daily")
+    .select("fecha, utm_campaign, item_name, items_purchased, item_revenue")
+    .ilike("utm_campaign", "inhouse%")
+    .gte("fecha", START_DATE)
+    .range(0, 199_999)
+    .returns<ItemRaw[]>();
+  if (res.error) {
+    if (/does not exist|relation .* does not exist/i.test(res.error.message)) return [];
+    throw new Error(`ga4_items_daily (conversion): ${res.error.message}`);
+  }
+  return (res.data ?? [])
+    .filter((r) => r.item_name)
+    .map((r) => ({
+      fecha: r.fecha,
+      campaign: r.utm_campaign ?? "",
+      item_name: r.item_name ?? "",
+      items_purchased: num(r.items_purchased),
+      item_revenue: num(r.item_revenue),
+    }));
 }

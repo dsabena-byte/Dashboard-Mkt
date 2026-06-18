@@ -65,6 +65,22 @@ export function campaignTipo(name: string): string {
   return "Otras";
 }
 
+// Categoría de producto a partir del nombre de campaña (las inhouse_* la incluyen).
+export function campaignCategoria(name: string): string {
+  const t = tokens(name);
+  const has = (...keys: string[]) => keys.some((k) => t.includes(k));
+  if (has("lavasecarropas", "lavaseca")) return "Lavasecarropas";
+  if (has("lavarropas")) return "Lavarropas";
+  if (has("secarropas")) return "Secarropas";
+  if (has("heladeras", "heladera", "refrigeracion", "refri", "freezer", "freezers")) return "Refrigeración";
+  if (has("cocinas", "cocina", "cocci", "coccion")) return "Cocinas";
+  if (has("anafes", "anafe")) return "Anafes";
+  if (has("hornos", "horno")) return "Hornos";
+  if (has("lavavajillas", "lavavajilla")) return "Lavavajillas";
+  if (has("brand", "brandcat", "generic", "nonbrand")) return "Brand / Genérico";
+  return "Otras";
+}
+
 // Etapa del lower funnel a partir del nombre (lower/mid/upper/top).
 export function campaignEtapa(name: string): string {
   const t = tokens(name);
@@ -177,6 +193,54 @@ export function aggregateByTipo(rows: ConversionDailyRow[]): TipoAggregate[] {
   return [...groups.entries()]
     .map(([tipo, rs]) => ({ tipo, ...rowsToKpis(rs) }))
     .sort((a, b) => (b.costo - a.costo) || (b.sesiones - a.sesiones));
+}
+
+// ---- Por categoría de producto ---------------------------------------------
+
+export interface CategoriaAggregate extends ConversionKpis {
+  categoria: string;
+}
+
+export function aggregateByCategoria(rows: ConversionDailyRow[]): CategoriaAggregate[] {
+  const groups = new Map<string, ConversionDailyRow[]>();
+  for (const r of rows) {
+    const categoria = campaignCategoria(r.campaign);
+    const g = groups.get(categoria);
+    if (g) g.push(r);
+    else groups.set(categoria, [r]);
+  }
+  return [...groups.entries()]
+    .map(([categoria, rs]) => ({ categoria, ...rowsToKpis(rs) }))
+    .sort((a, b) => (b.ingresos - a.ingresos) || (b.sesiones - a.sesiones));
+}
+
+// ---- Top productos (ítems de GA4) ------------------------------------------
+
+export interface ConversionItemRow {
+  fecha: string;        // YYYY-MM-DD
+  campaign: string;     // utm_campaign
+  item_name: string;
+  items_purchased: number;
+  item_revenue: number;
+}
+
+export interface TopProduct {
+  item_name: string;
+  items_purchased: number;
+  item_revenue: number;
+}
+
+export function topProducts(rows: ConversionItemRow[], limit = 10): TopProduct[] {
+  const map = new Map<string, TopProduct>();
+  for (const r of rows) {
+    const p = map.get(r.item_name) ?? { item_name: r.item_name, items_purchased: 0, item_revenue: 0 };
+    p.items_purchased += r.items_purchased;
+    p.item_revenue += r.item_revenue;
+    map.set(r.item_name, p);
+  }
+  return [...map.values()]
+    .sort((a, b) => (b.item_revenue - a.item_revenue) || (b.items_purchased - a.items_purchased))
+    .slice(0, limit);
 }
 
 // ---- Evolución mensual ------------------------------------------------------

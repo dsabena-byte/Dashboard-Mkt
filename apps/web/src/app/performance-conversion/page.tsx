@@ -1,4 +1,4 @@
-import { getConversionDaily } from "@/lib/pauta-conversion-queries";
+import { getConversionDaily, getConversionItems } from "@/lib/pauta-conversion-queries";
 import { PerformanceConversionClient } from "@/components/pauta/performance-conversion-client";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,9 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 }
 
 export default async function PerformancePautaConversionPage() {
-  const rows = await safe(getConversionDaily(), [] as Awaited<ReturnType<typeof getConversionDaily>>);
-  return <PerformanceConversionClient rows={rows} />;
+  const [rows, items] = await Promise.all([
+    safe(getConversionDaily(), [] as Awaited<ReturnType<typeof getConversionDaily>>),
+    safe(getConversionItems(), [] as Awaited<ReturnType<typeof getConversionItems>>),
+  ]);
+  return <PerformanceConversionClient rows={rows} items={items} />;
 }

@@ -325,6 +325,61 @@ export async function GET(request: Request) {
     }
 
     // =====================================================
+    // REPORT 6: Productos comprados por campaña (→ ga4_items_daily)
+    // ----------------------------------------------------
+    // itemsPurchased + itemRevenue por ítem, filtrado a campañas inhouse_*.
+    // Si GA4 rechaza la combinación item-scope + sessionCampaignName, se captura
+    // el error y el sync sigue sin romper.
+    let itemRows: GA4Row[] = [];
+    try {
+      itemRows = await runReport(accessToken, {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [
+          { name: "date" },
+          { name: "sessionCampaignName" },
+          { name: "itemName" },
+        ],
+        metrics: [{ name: "itemsPurchased" }, { name: "itemRevenue" }],
+        dimensionFilter: {
+          filter: {
+            fieldName: "sessionCampaignName",
+            stringFilter: { value: "inhouse", matchType: "BEGINS_WITH", caseSensitive: false },
+          },
+        },
+        limit: 100000,
+      });
+    } catch (err) {
+      results.items_error = err instanceof Error ? err.message : "no disponible";
+    }
+
+    const itemMap = new Map<string, Record<string, unknown>>();
+    for (const r of itemRows) {
+      const fecha = fmtDate(r.dimensionValues[0]?.value ?? "");
+      const campaign = normUtm(r.dimensionValues[1]?.value);
+      const itemName = r.dimensionValues[2]?.value ?? "";
+      if (!itemName || itemName === "(not set)") continue;
+      const purchased = Number(r.metricValues[0]?.value ?? 0);
+      const revenue = Number(r.metricValues[1]?.value ?? 0);
+      if (purchased === 0 && revenue === 0) continue;
+      const key = `${fecha}|${campaign}|${itemName}`;
+      const existing = itemMap.get(key);
+      if (existing) {
+        (existing.items_purchased as number) += purchased;
+        (existing.item_revenue as number) += revenue;
+      } else {
+        itemMap.set(key, { fecha, utm_campaign: campaign, item_name: itemName, items_purchased: purchased, item_revenue: revenue });
+      }
+    }
+
+    if (itemMap.size > 0) {
+      results.itemsUpsert = await supabaseUpsert(
+        "ga4_items_daily",
+        [...itemMap.values()].filter((r) => r.fecha && String(r.fecha).length === 10),
+        "fecha,utm_campaign,item_name",
+      );
+    }
+
+    // =====================================================
     // REPORT 4: Usuarios únicos por mes (→ ga4_monthly_users)
     // ----------------------------------------------------
     // IMPORTANTE: este reporte NO usa el `?days=` del request porque
