@@ -146,6 +146,10 @@ export function PerformanceConversionClient({
   const tipoDonut = porTipo
     .filter((t) => t.costo > 0)
     .map((t) => ({ name: t.tipo, value: t.costo, color: tipoColor(t.tipo) }));
+  // Origen de las sesiones de la pauta por tipo (PMax vs Search).
+  const sesionesDonut = porTipo
+    .filter((t) => t.sesiones > 0)
+    .map((t) => ({ name: t.tipo, value: t.sesiones, color: tipoColor(t.tipo) }));
   const totalUnidades = top10.reduce((s, p) => s + p.items_purchased, 0);
 
   const hayDatos = rows.length > 0;
@@ -207,6 +211,37 @@ export function PerformanceConversionClient({
         <KpiCard title="CPA / CAC" value={kpis.cpa != null ? fmtARS(kpis.cpa) : "—"} hint="inversión ÷ transacciones" />
         <KpiCard title="CPC" value={kpis.cpc != null ? fmtARS(kpis.cpc) : "—"} hint="inversión ÷ clics" />
         <KpiCard title="ROAS" value={fmtRoas(kpis.roas)} hint="ingresos ÷ inversión" />
+      </div>
+
+      {/* ===== Origen de las sesiones + inversión vs ingresos (debajo de los cards) ===== */}
+      <SectionTitle>Origen de las sesiones de la pauta y resultados</SectionTitle>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border bg-card p-4">
+          <div className="mb-1 text-xs font-semibold">Sesiones por tipo de campaña</div>
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            100% generadas por la pauta paga (campañas <strong>inhouse_*</strong>), según su origen: Performance Max o Search.
+          </p>
+          {sesionesDonut.length > 0 ? (
+            <CompactDonut data={sesionesDonut} />
+          ) : (
+            <div className="py-10 text-center text-xs text-muted-foreground">Sin sesiones.</div>
+          )}
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="mb-1 text-xs font-semibold">Distribución de inversión por tipo</div>
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            Cuánto se gastó en cada tipo de campaña.
+          </p>
+          {tipoDonut.length > 0 ? (
+            <CompactDonut data={tipoDonut} />
+          ) : (
+            <div className="py-10 text-center text-xs text-muted-foreground">Inversión pendiente (vincular Google Ads ↔ GA4).</div>
+          )}
+        </div>
+      </div>
+      <div className="mt-4 rounded-lg border bg-card p-4">
+        <div className="mb-2 text-xs font-semibold">Inversión vs. ingresos por mes</div>
+        <InvestmentRevenueChart data={invRevData} />
       </div>
 
       {/* ===== Embudo de conversión ===== */}
@@ -289,16 +324,9 @@ export function PerformanceConversionClient({
         </div>
       )}
 
-      {/* ===== Inversión y resultados por tipo (donut + detalle) ===== */}
+      {/* ===== Inversión y resultados por tipo (tabla; el donut está arriba) ===== */}
       <SectionTitle>Inversión y resultados por tipo de campaña</SectionTitle>
-      <div className="grid gap-4 lg:grid-cols-5">
-        {tipoDonut.length > 0 && (
-          <div className="rounded-lg border bg-card p-4 lg:col-span-2">
-            <div className="mb-2 text-xs font-semibold">Distribución de inversión</div>
-            <CompactDonut data={tipoDonut} />
-          </div>
-        )}
-        <div className={`overflow-x-auto rounded-lg border bg-card ${tipoDonut.length > 0 ? "lg:col-span-3" : "lg:col-span-5"}`}>
+      <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-xs">
             <thead className="border-b">
               <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -331,15 +359,9 @@ export function PerformanceConversionClient({
               )}
             </tbody>
           </table>
-        </div>
       </div>
 
-      {/* ===== Evolución mensual ===== */}
-      <SectionTitle>Inversión vs. ingresos por mes</SectionTitle>
-      <div className="rounded-lg border bg-card p-4">
-        <InvestmentRevenueChart data={invRevData} />
-      </div>
-
+      {/* ===== Evolución mensual (detalle) ===== */}
       <SectionTitle>Evolución mensual (detalle)</SectionTitle>
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-xs">
