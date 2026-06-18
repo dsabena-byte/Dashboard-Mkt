@@ -27,6 +27,7 @@ import {
   aggregateDv360Channels,
   aggregateDv360Pieces,
   aggregateDv360By,
+  aggregateDv360VideoQuality,
 } from "@/lib/dv360-data";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -38,7 +39,7 @@ function fmtNum(n: number): string {
 }
 const fmtARS = formatCurrency;
 
-const TABS = ["Overview", "Por Medio", "Insights Pauta"] as const;
+const TABS = ["Overview", "Calidad / Impacto", "Por Medio", "Insights Pauta"] as const;
 type Tab = (typeof TABS)[number];
 
 type TipoMedio = "Digital" | "TV Cable" | "DOOH" | "OOH";
@@ -47,6 +48,16 @@ function tipoMedio(m: string): TipoMedio {
   if (m === "DOOH") return "DOOH";
   if (m === "OOH") return "OOH";
   return "Digital";
+}
+
+// Orden cronológico de un mes "Mayo 2026" → 202605 (para detectar el último mes cerrado).
+const MES_IDX: Record<string, number> = {
+  Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6,
+  Julio: 7, Agosto: 8, Septiembre: 9, Octubre: 10, Noviembre: 11, Diciembre: 12,
+};
+function mesSortKey(label: string): number {
+  const [n, y] = label.split(" ");
+  return Number(y ?? 0) * 100 + (MES_IDX[n ?? ""] ?? 0);
 }
 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -177,6 +188,29 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const dv360Channels = useMemo(() => aggregateDv360Channels(dv360Conv, dv360Reach), [dv360Conv, dv360Reach]);
   const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360Conv), [dv360Conv]);
   const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360Conv), [dv360Conv]);
+  const dv360VideoQ = useMemo(() => aggregateDv360VideoQuality(dv360Conv), [dv360Conv]);
+  // Calidad de video unificada (DV360 cuartiles + Meta p25-100). Las cuentas
+  // (impresiones, vistas a cada %) son moneda-agnósticas; el costo (CPCV) solo se
+  // combina si DV360 ya está en ARS (arsMode), porque Meta spend es ARS.
+  const videoQuality = useMemo(() => {
+    const m = metaVideoFunnel;
+    const imprVideo = dv360VideoQ.imprVideo + m.impresiones;
+    const v25 = dv360VideoQ.q25 + m.p25;
+    const v50 = dv360VideoQ.q50 + m.p50;
+    const v75 = dv360VideoQ.q75 + m.p75;
+    const v100 = dv360VideoQ.q100 + m.p100;
+    const spend = arsMode ? dv360VideoQ.revenueVideo + m.spend : 0; // ARS solo si DV360 convertido
+    const imprTotal = imprVideo + dv360VideoQ.imprDisplay; // total con formato conocido (DV360+Meta video)
+    return {
+      imprVideo, imprDisplay: dv360VideoQ.imprDisplay, imprTotal,
+      v25, v50, v75, v100, spend,
+      pct50: imprVideo > 0 ? (v50 / imprVideo) * 100 : 0,
+      pct100: imprVideo > 0 ? (v100 / imprVideo) * 100 : 0,
+      cpcv: v100 > 0 && spend > 0 ? spend / v100 : 0,
+      pctVideoMix: imprTotal > 0 ? (imprVideo / imprTotal) * 100 : 0,
+      hasData: imprVideo > 0,
+    };
+  }, [dv360VideoQ, metaVideoFunnel, arsMode]);
   const dv360ByCategoria = useMemo(() => aggregateDv360By(dv360Conv, "categoria"), [dv360Conv]);
   const dv360ByRol = useMemo(() => aggregateDv360By(dv360Conv, "rol"), [dv360Conv]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
@@ -304,7 +338,14 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       ),
     [data, selMedios, selCats, selRoles, selPlats],
   );
-  const refMes = selMeses.length === 1 ? selMeses[0]! : meses.length ? meses[meses.length - 1]! : null;
+  const refMes = useMemo(() => {
+    if (selMeses.length === 1) return selMeses[0]!; // si el usuario eligió un mes, lo respetamos
+    // Por defecto: último mes CERRADO (excluye el mes en curso, que es info parcial).
+    const now = new Date();
+    const nowKey = now.getUTCFullYear() * 100 + (now.getUTCMonth() + 1);
+    const cerrados = meses.filter((m) => mesSortKey(m) < nowKey);
+    return cerrados.length ? cerrados[cerrados.length - 1]! : meses.length ? meses[meses.length - 1]! : null;
+  }, [selMeses, meses]);
   const prevMes = useMemo(() => {
     if (!refMes) return null;
     const i = meses.indexOf(refMes);
@@ -689,6 +730,148 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   <Insight key={`a${i}`} type="warn" title="⚠ Alerta" text={a} />
                 ))}
               </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ===== CALIDAD / IMPACTO ===== */}
+      {tab === "Calidad / Impacto" && (
+        <div>
+          <SectionTitle>Calidad de video — ¿el consumidor realmente vio el mensaje?</SectionTitle>
+          <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+            Las impresiones no dicen si el video <strong>se vio</strong>. Acá medimos <strong>visibilidad real</strong> con los cuartiles
+            (25/50/75/100%) de DV360 + Meta: cuánto de lo que pautamos se convirtió en atención efectiva, y el <strong>costo real</strong>{" "}
+            por view completo (CPCV) — no el CPM sobre impresiones infladas.
+          </p>
+
+          {!videoQuality.hasData ? (
+            <p className="text-xs text-muted-foreground">
+              Sin cuartiles de video en la selección. Se completa con la sincronización de Meta (cuartiles) y el reporte de DV360.
+            </p>
+          ) : (
+            <>
+              {/* Scorecard de calidad */}
+              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">Impresiones de video</div>
+                  <div className="mt-0.5 text-lg font-bold tabular-nums">{fmtNum(videoQuality.imprVideo)}</div>
+                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.pctVideoMix.toFixed(0)}% del total con formato conocido</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">Vieron ≥50% del video</div>
+                  <div className={`mt-0.5 text-lg font-bold tabular-nums ${videoQuality.pct50 >= 50 ? "text-emerald-600" : videoQuality.pct50 >= 30 ? "text-amber-600" : "text-rose-600"}`}>{videoQuality.pct50.toFixed(1)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">visibilidad real efectiva</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">VTR real (vieron 100%)</div>
+                  <div className={`mt-0.5 text-lg font-bold tabular-nums ${videoQuality.pct100 >= 30 ? "text-emerald-600" : videoQuality.pct100 >= 15 ? "text-amber-600" : "text-rose-600"}`}>{videoQuality.pct100.toFixed(1)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">completaron el mensaje</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">CPCV (costo/view completo)</div>
+                  <div className="mt-0.5 text-lg font-bold tabular-nums">{videoQuality.cpcv > 0 ? dvMoney(videoQuality.cpcv) : "—"}</div>
+                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.cpcv > 0 ? "costo real por mensaje visto" : "requiere fx_rates (DV360 en ARS)"}</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">Impresiones desperdiciadas</div>
+                  <div className="mt-0.5 text-lg font-bold tabular-nums text-rose-600">{(100 - videoQuality.pct50).toFixed(0)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">{fmtNum(videoQuality.imprVideo - videoQuality.v50)} no llegaron al 50%</div>
+                </div>
+              </section>
+
+              {/* Embudo de atención unificado */}
+              <SectionTitle>Embudo de atención · impresión → completion (DV360 + Meta)</SectionTitle>
+              <div className="rounded-xl border bg-card p-5">
+                <div className="space-y-1.5">
+                  {([
+                    ["Impresiones de video", videoQuality.imprVideo],
+                    ["Vieron 25%", videoQuality.v25],
+                    ["Vieron 50%", videoQuality.v50],
+                    ["Vieron 75%", videoQuality.v75],
+                    ["Vieron 100% (completo)", videoQuality.v100],
+                  ] as Array<[string, number]>).map(([label, n], i) => {
+                    const pct = videoQuality.imprVideo > 0 ? (n / videoQuality.imprVideo) * 100 : 0;
+                    const cpmEf = videoQuality.spend > 0 && n > 0 ? (videoQuality.spend / n) * 1000 : 0;
+                    return (
+                      <div key={label} className="flex items-center gap-3">
+                        <div className="w-44 shrink-0 text-[11px] text-foreground/80">{label}</div>
+                        <div className="relative h-7 flex-1 overflow-hidden rounded bg-muted">
+                          <div className="flex h-full items-center rounded px-2 text-[10px] font-semibold text-white" style={{ width: `${Math.max(pct, 6)}%`, backgroundColor: i === 0 ? "#0a1849" : i === 4 ? "#2b4dff" : "#1e3a8a" }}>
+                            {fmtNum(n)}
+                          </div>
+                        </div>
+                        <div className="w-12 shrink-0 text-right text-[11px] font-semibold tabular-nums">{pct.toFixed(0)}%</div>
+                        <div className="w-24 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">{cpmEf > 0 ? `${dvMoney(cpmEf)} CPM ef.` : ""}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
+                  Cada hito muestra cuántas impresiones llegaron a ese % del video y el <strong>CPM efectivo</strong> (el costo sube a medida
+                  que exigís más atención). El salto de "impresiones" a "vieron 25%" es la <strong>caída de atención inicial</strong>: ahí se
+                  desperdicia la mayor parte de la inversión de video.
+                </p>
+              </div>
+
+              {/* Calidad por canal/fuente */}
+              <SectionTitle>Calidad por canal/fuente · semáforo</SectionTitle>
+              <div className="overflow-x-auto rounded-lg border bg-card">
+                <table className="w-full text-xs">
+                  <thead className="border-b">
+                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2">Fuente</th>
+                      <th className="px-3 py-2 text-right">Impr. video</th>
+                      <th className="px-3 py-2 text-right">Vieron ≥50%</th>
+                      <th className="px-3 py-2 text-right">VTR (100%)</th>
+                      <th className="px-3 py-2 text-right">CPCV</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ...dv360Funnels.map((f) => ({ fuente: `DV360 · ${f.canal}`, impr: f.impresiones, v50: f.q50, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 })),
+                      ...(metaVideoFunnel.count > 0 ? [{ fuente: "Meta", impr: metaVideoFunnel.impresiones, v50: metaVideoFunnel.p50, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend }] : []),
+                    ].map((r) => {
+                      const pct50 = r.impr > 0 ? (r.v50 / r.impr) * 100 : 0;
+                      const vtr = r.impr > 0 ? (r.v100 / r.impr) * 100 : 0;
+                      const cpcv = r.v100 > 0 && r.spend > 0 ? r.spend / r.v100 : 0;
+                      return (
+                        <tr key={r.fuente} className="border-b last:border-0">
+                          <td className="px-3 py-2 font-medium">{r.fuente}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(r.impr)}</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${pct50 >= 50 ? "text-emerald-600" : pct50 >= 30 ? "text-amber-600" : "text-rose-600"}`}>{pct50.toFixed(0)}%</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${vtr >= 30 ? "text-emerald-600" : vtr >= 15 ? "text-amber-600" : "text-rose-600"}`}>{vtr.toFixed(0)}%</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{cpcv > 0 ? dvMoney(cpcv) : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mb-3 mt-2 text-[10px] text-muted-foreground/70">
+                YouTube TrueView es <strong>skippable</strong>: su completion no es comparable con video no-skippable (programmatic/Meta).
+                Viewability real (impresiones MRC ≥50% en pantalla) no está en el reporte actual; usamos completion de video como proxy de
+                visibilidad efectiva.
+              </p>
+
+              {/* Mix de formato */}
+              {videoQuality.imprDisplay > 0 && (
+                <>
+                  <SectionTitle>Mix de formato (DV360)</SectionTitle>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border bg-card p-4">
+                      <div className="text-[11px] text-muted-foreground">Video</div>
+                      <div className="text-lg font-bold tabular-nums">{fmtNum(dv360VideoQ.imprVideo)} <span className="text-xs font-normal text-muted-foreground">impr.</span></div>
+                      <div className="text-[10px] text-muted-foreground/70">{arsMode ? dvMoney(dv360VideoQ.revenueVideo) : ""} · se mide por completion</div>
+                    </div>
+                    <div className="rounded-xl border bg-card p-4">
+                      <div className="text-[11px] text-muted-foreground">Display / imagen</div>
+                      <div className="text-lg font-bold tabular-nums">{fmtNum(dv360VideoQ.imprDisplay)} <span className="text-xs font-normal text-muted-foreground">impr.</span></div>
+                      <div className="text-[10px] text-muted-foreground/70">{arsMode ? dvMoney(dv360VideoQ.revenueDisplay) : ""} · se evalúa por CTR/viewability</div>
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

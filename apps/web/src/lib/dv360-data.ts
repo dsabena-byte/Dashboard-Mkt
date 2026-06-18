@@ -190,3 +190,26 @@ export function aggregateDv360By(creatives: Dv360CreativeRow[], dim: "categoria"
     }))
     .sort((a, b) => b.revenueUsd - a.revenueUsd);
 }
+
+// ---- Calidad de video: agregado de cuartiles (DV360) ------------------------
+// "Video" = creatives con starts>0 (TrueView/programmatic). El resto es display.
+export interface Dv360VideoQuality {
+  imprVideo: number;
+  imprDisplay: number;
+  revenueVideo: number;
+  revenueDisplay: number;
+  starts: number;
+  q25: number; q50: number; q75: number; q100: number;
+}
+export function aggregateDv360VideoQuality(creatives: Dv360CreativeRow[]): Dv360VideoQuality {
+  const out: Dv360VideoQuality = { imprVideo: 0, imprDisplay: 0, revenueVideo: 0, revenueDisplay: 0, starts: 0, q25: 0, q50: 0, q75: 0, q100: 0 };
+  for (const r of creatives) {
+    if (r.starts > 0) {
+      out.imprVideo += r.impresiones; out.revenueVideo += r.revenue_usd;
+      out.starts += r.starts; out.q25 += r.q25; out.q50 += r.q50; out.q75 += r.q75; out.q100 += r.q100;
+    } else {
+      out.imprDisplay += r.impresiones; out.revenueDisplay += r.revenue_usd;
+    }
+  }
+  return out;
+}
