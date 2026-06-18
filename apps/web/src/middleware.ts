@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
 
 // Rutas públicas (no requieren login)
 const PUBLIC_PATHS = ["/login"];
@@ -55,6 +56,23 @@ export async function middleware(request: NextRequest) {
 
   if (user && isPublic(pathname)) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Control de acceso por dashboard (tabla dashboard_access). Si el usuario tiene
+  // filas, queda restringido a esos paths; si no, ve todo. No aplica a /api.
+  if (user && !pathname.startsWith("/api")) {
+    try {
+      const { data } = await supabase.from("dashboard_access").select("dashboard_path");
+      const allowed = allowedFromRows(data as { dashboard_path: string }[] | null);
+      if (allowed && !isPathAllowed(pathname, allowed)) {
+        const target = allowed[0] ?? "/login";
+        if (pathname !== target) {
+          return NextResponse.redirect(new URL(target, request.url));
+        }
+      }
+    } catch {
+      // Tabla inexistente o error de consulta → no restringir (ve todo).
+    }
   }
 
   return response;

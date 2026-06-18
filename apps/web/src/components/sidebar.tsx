@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isPathAllowed } from "@/lib/dashboard-access";
 import { LogoutButton } from "@/components/auth/logout-button";
 
 const NAV = [
@@ -39,9 +40,10 @@ const NAV = [
   { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
 ] as const;
 
-export function Sidebar() {
+export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const nav = NAV.filter((item) => isPathAllowed(item.href, allowed));
 
   // Cerrar drawer al navegar
   useEffect(() => {
@@ -70,7 +72,7 @@ export function Sidebar() {
         <p className="mt-2 text-xs text-muted-foreground">Marketing Management</p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {NAV.map((item) => {
+        {nav.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
