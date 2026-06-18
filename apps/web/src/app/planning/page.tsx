@@ -134,7 +134,7 @@ export default async function PlanningPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Pauta · Planning</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Planning Pauta Mkt</h2>
           <p className="text-sm text-muted-foreground">
             Drean · ON + OFF + Costos. {mes.length === 1 ? `Mes: ${formatMonthLabel(mes[0]!)}` : `${mes.length} meses seleccionados`}.
           </p>

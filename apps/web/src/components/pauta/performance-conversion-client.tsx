@@ -3,6 +3,13 @@
 import { useMemo, useState } from "react";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { KpiCard } from "@/components/kpi-card";
+import { InvestmentDonut } from "@/components/pauta/pauta-charts";
+import {
+  InvestmentRevenueChart,
+  ConversionFunnel,
+  type InvRevPoint,
+  type FunnelStage,
+} from "@/components/pauta/conversion-charts";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import {
   type ConversionDailyRow,
@@ -20,6 +27,20 @@ const fmtNum = (n: number) => formatNumber(Math.round(n));
 const fmtARS = formatCurrency;
 const fmtPct = (n: number | null, d = 1) => (n == null ? "—" : `${n.toFixed(d)}%`);
 const fmtRoas = (n: number | null) => (n == null ? "—" : `${n.toFixed(2)}x`);
+
+const TIPO_COLORS: Record<string, string> = {
+  Search: "#2b4dff",
+  "Performance Max": "#22c55e",
+  Shopping: "#f59e0b",
+  "Demand Gen": "#a855f7",
+  Video: "#ec4899",
+  Display: "#06b6d4",
+  Otras: "#94a3b8",
+};
+const tipoColor = (t: string) => TIPO_COLORS[t] ?? "#94a3b8";
+
+// "Enero 2026" → "Ene"
+const mesCorto = (label: string) => (label.split(" ")[0] ?? label).slice(0, 3);
 
 // Color best-in-class: verde al mejor, rojo al peor, gris si no hay spread.
 function bicColor(value: number, best: number, worst: number, dir: "higher" | "lower"): string {
@@ -78,13 +99,44 @@ export function PerformanceConversionClient({ rows }: { rows: ConversionDailyRow
   const bestRoas = roasVals.length ? Math.max(...roasVals) : 0;
   const worstRoas = roasVals.length ? Math.min(...roasVals) : 0;
 
+  // Embudo de conversión: Sesiones → Sesiones con interacción → Transacciones.
+  const interaccion = kpis.bounce_rate != null ? kpis.sesiones * (1 - kpis.bounce_rate) : kpis.sesiones;
+  const funnelStages: FunnelStage[] = [
+    { label: "Sesiones", value: Math.round(kpis.sesiones), color: "#2b4dff" },
+    {
+      label: "Sesiones con interacción",
+      value: Math.round(interaccion),
+      pct: kpis.sesiones > 0 ? `${((interaccion / kpis.sesiones) * 100).toFixed(1)}%` : null,
+      color: "#06b6d4",
+    },
+    {
+      label: "Transacciones",
+      value: Math.round(kpis.transacciones),
+      pct: interaccion > 0 ? `${((kpis.transacciones / interaccion) * 100).toFixed(2)}%` : null,
+      color: "#22c55e",
+    },
+  ];
+
+  // Inversión vs Ingresos por mes (+ ROAS).
+  const invRevData: InvRevPoint[] = porMes.map((m) => ({
+    mes: mesCorto(m.mesLabel),
+    inversion: m.costo,
+    ingresos: m.ingresos,
+    roas: m.roas,
+  }));
+
+  // Distribución de inversión por tipo (donut), solo si hay costo.
+  const tipoDonut = porTipo
+    .filter((t) => t.costo > 0)
+    .map((t) => ({ name: t.tipo, value: t.costo, color: tipoColor(t.tipo) }));
+
   const hayDatos = rows.length > 0;
 
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Performance Pauta Conversión</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Pauta Ecommerce</h2>
           <p className="text-sm text-muted-foreground">
             Parte baja del funnel · Campañas <strong>inhouse_*</strong> (100% Google Ads) · Fuente: GA4 · {periodo}
           </p>
@@ -138,6 +190,15 @@ export function PerformanceConversionClient({ rows }: { rows: ConversionDailyRow
         <KpiCard title="CPA / CAC" value={kpis.cpa != null ? fmtARS(kpis.cpa) : "—"} hint="inversión ÷ transacciones" />
         <KpiCard title="CPC" value={kpis.cpc != null ? fmtARS(kpis.cpc) : "—"} hint="inversión ÷ clics" />
         <KpiCard title="ROAS" value={fmtRoas(kpis.roas)} hint="ingresos ÷ inversión" />
+      </div>
+
+      {/* ===== Embudo de conversión ===== */}
+      <SectionTitle>Embudo de conversión</SectionTitle>
+      <div className="rounded-lg border bg-card p-4">
+        <ConversionFunnel stages={funnelStages} />
+        <p className="mt-3 text-xs text-muted-foreground">
+          De cada <strong>100 sesiones</strong>, {fmtPct(kpis.tasa_conversion != null ? kpis.tasa_conversion * 100 : null, 2)} terminan en transacción.
+        </p>
       </div>
 
       {/* ===== Por campaña ===== */}
@@ -198,6 +259,16 @@ export function PerformanceConversionClient({ rows }: { rows: ConversionDailyRow
         </table>
       </div>
 
+      {/* ===== Distribución de inversión por tipo ===== */}
+      {tipoDonut.length > 0 && (
+        <>
+          <SectionTitle>Distribución de inversión por tipo</SectionTitle>
+          <div className="rounded-lg border bg-card p-4">
+            <InvestmentDonut data={tipoDonut} />
+          </div>
+        </>
+      )}
+
       {/* ===== Por tipo de campaña ===== */}
       <SectionTitle>Resumen por tipo de campaña</SectionTitle>
       <div className="overflow-x-auto rounded-lg border bg-card">
@@ -235,7 +306,12 @@ export function PerformanceConversionClient({ rows }: { rows: ConversionDailyRow
       </div>
 
       {/* ===== Evolución mensual ===== */}
-      <SectionTitle>Evolución mensual</SectionTitle>
+      <SectionTitle>Inversión vs. ingresos por mes</SectionTitle>
+      <div className="rounded-lg border bg-card p-4">
+        <InvestmentRevenueChart data={invRevData} />
+      </div>
+
+      <SectionTitle>Evolución mensual (detalle)</SectionTitle>
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-xs">
           <thead className="border-b">

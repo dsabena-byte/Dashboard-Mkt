@@ -5,6 +5,11 @@ import type { ConversionDailyRow } from "./pauta-conversion-data";
 const num = (v: string | number | null | undefined): number =>
   v == null ? 0 : typeof v === "number" ? v : Number(v);
 
+// Solo mostramos data con período completo (revenue + inversión). El backfill
+// arrancó en 2026; nov/dic 2025 quedaron sin esas columnas, así que los dejamos
+// afuera del dashboard de conversión.
+const START_DATE = "2026-01-01";
+
 interface TrafficRaw {
   fecha: string;
   utm_campaign: string | null;
@@ -49,6 +54,7 @@ export async function getConversionDaily(): Promise<ConversionDailyRow[]> {
     .from("web_traffic")
     .select("fecha, utm_campaign, sesiones, usuarios, usuarios_nuevos, bounce_rate, pageviews")
     .ilike("utm_campaign", "inhouse%")
+    .gte("fecha", START_DATE)
     .range(0, 199_999)
     .returns<TrafficRaw[]>();
   if (trafficRes.error) throw new Error(`web_traffic (conversion): ${trafficRes.error.message}`);
@@ -57,6 +63,7 @@ export async function getConversionDaily(): Promise<ConversionDailyRow[]> {
     .from("ga4_purchases_daily")
     .select("fecha, utm_campaign, purchases, revenue")
     .ilike("utm_campaign", "inhouse%")
+    .gte("fecha", START_DATE)
     .range(0, 199_999)
     .returns<PurchaseRaw[]>();
   // revenue puede no existir aún (migración 0063 sin aplicar) → reintentar sin esa col
@@ -67,6 +74,7 @@ export async function getConversionDaily(): Promise<ConversionDailyRow[]> {
         .from("ga4_purchases_daily")
         .select("fecha, utm_campaign, purchases")
         .ilike("utm_campaign", "inhouse%")
+        .gte("fecha", START_DATE)
         .range(0, 199_999)
         .returns<PurchaseRaw[]>();
       if (!retry.error) purchases = retry.data ?? [];
@@ -83,6 +91,7 @@ export async function getConversionDaily(): Promise<ConversionDailyRow[]> {
     .from("ga4_ads_cost_daily")
     .select("fecha, utm_campaign, cost, ad_clicks, ad_impressions")
     .ilike("utm_campaign", "inhouse%")
+    .gte("fecha", START_DATE)
     .range(0, 199_999)
     .returns<CostRaw[]>();
   if (costRes.error) {
