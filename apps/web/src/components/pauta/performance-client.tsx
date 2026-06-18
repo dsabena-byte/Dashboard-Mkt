@@ -226,7 +226,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   // Embudos de video SEPARADOS por fuente (cada canal DV360 + Meta + TikTok), no mezclados.
   const videoSources = useMemo(() => {
     const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
-    for (const f of dv360Funnels) arr.push({ name: `DV360 · ${f.canal}`, impr: f.impresiones, v25: f.q25, v50: f.q50, v75: f.q75, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 });
+    const MED: Record<string, string> = { "Demand Gen": "Google Demand Gen" }; // DV360 = plataforma; el medio es el canal
+    for (const f of dv360Funnels) arr.push({ name: MED[f.canal] ?? f.canal, impr: f.impresiones, v25: f.q25, v50: f.q50, v75: f.q75, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 });
     if (metaVideoFunnel.count > 0) arr.push({ name: "Meta", impr: metaVideoFunnel.impresiones, v25: metaVideoFunnel.p25, v50: metaVideoFunnel.p50, v75: metaVideoFunnel.p75, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend });
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     return arr.sort((a, b) => b.impr - a.impr);
@@ -236,11 +237,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
   const minPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const maxPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
-  const dvChBest = useMemo(() => ({
-    cpm: minPos(dv360Channels.canales.map((c) => c.cpm)),
-    cpc: minPos(dv360Channels.canales.map((c) => c.cpc)),
-    ctr: maxPos(dv360Channels.canales.map((c) => c.ctr)),
-  }), [dv360Channels]);
   const dvPieceBest = useMemo(() => ({
     ctr: maxPos(dv360Pieces.map((p) => p.ctr)),
     cpm: minPos(dv360Pieces.map((p) => p.cpm)),
@@ -248,20 +244,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   }), [dv360Pieces]);
   const dvCatBestCtr = useMemo(() => maxPos(dv360ByCategoria.map((b) => b.ctr)), [dv360ByCategoria]);
   const dvRolBestCtr = useMemo(() => maxPos(dv360ByRol.map((b) => b.ctr)), [dv360ByRol]);
-  // Efectividad real por canal (desde el embudo de video): VTR = % impresiones que
-  // completan, CPM efectivo = costo por mil views completos. Para apareciar el CPM
-  // nominal con su contraparte de impacto real.
-  const dvFunnelMap = useMemo(() => {
-    const m = new Map<string, { vtr: number; cpmEf: number }>();
-    for (const f of dv360Funnels) {
-      m.set(f.canal, {
-        vtr: f.impresiones > 0 ? (f.q100 / f.impresiones) * 100 : 0,
-        cpmEf: f.q100 > 0 ? (f.revenueUsd / f.q100) * 1000 : 0,
-      });
-    }
-    return m;
-  }, [dv360Funnels]);
-  const dvChBestVtr = useMemo(() => maxPos([...dvFunnelMap.values()].map((v) => v.vtr)), [dvFunnelMap]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -932,9 +914,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         <div>
           <SectionTitle>Tabla maestra por medio · general + efectivo (todo junto)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            Una sola fuente de verdad: cada KPI general (en gris) apareado con su impacto real. <strong>Impresiones ↔ VTR</strong> (% que
-            completó el video) · <strong>CPM ↔ CPM efectivo</strong> (costo por view completo). El semáforo vive solo en lo efectivo
-            (CPM efectivo, CTR, VTR vs el mejor medio digital). Un CPM barato con VTR bajo no es barato de verdad.
+            Una sola fuente de verdad, todo junto: volumen (inversión, impresiones, alcance, frecuencia) + impacto real.
+            <strong> Impresiones ↔ VTR</strong> (% que completó el video) · <strong>CPM ↔ CPM efectivo</strong> (costo por view completo).
+            El semáforo vive solo en lo efectivo (CPM efectivo, CTR, VTR vs el mejor medio digital). Un CPM barato con VTR bajo no es
+            barato de verdad.
           </p>
           <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
             <table className="w-full text-xs">
@@ -943,14 +926,20 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   <th className="px-3 py-2">Medio</th>
                   <th className="px-3 py-2 text-right">Inversión</th>
                   <th className="px-3 py-2 text-right font-normal">Impres. <span className="normal-case opacity-60">(gral)</span></th>
+                  <th className="px-3 py-2 text-right">Alcance</th>
+                  <th className="px-3 py-2 text-right">Frec.</th>
                   <th className="px-3 py-2 text-right">VTR real</th>
                   <th className="px-3 py-2 text-right font-normal">CPM <span className="normal-case opacity-60">(gral)</span></th>
                   <th className="px-3 py-2 text-right">CPM efectivo</th>
+                  <th className="px-3 py-2 text-right">CPC</th>
                   <th className="px-3 py-2 text-right">CTR</th>
                 </tr>
               </thead>
               <tbody>
-                {medioModel.items.map((p) => (
+                {medioModel.items.map((p) => {
+                  const cpc = p.clics > 0 ? p.inversion / p.clics : 0;
+                  const frec = p.alcance > 0 ? p.impresiones / p.alcance : 0;
+                  return (
                   <tr key={p.medio} className="border-b last:border-0">
                     <td className="px-3 py-2 font-medium">
                       <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
@@ -958,17 +947,21 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{fmtARS(p.inversion)}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(p.impresiones)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{frec > 0 ? frec.toFixed(1) : "—"}</td>
                     <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.isDigital && p.vtr > 0 ? bicColor(p.vtr, medioModel.bestVtr, "higher") : "text-muted-foreground"}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{p.cpm > 0 ? fmtARS(p.cpm) : "—"}</td>
                     <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.isDigital && p.cpmEf > 0 ? bicColor(p.cpmEf, medioModel.bestCpmEf, "lower") : "text-muted-foreground"}`}>{p.cpmEf > 0 ? fmtARS(p.cpmEf) : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{cpc > 0 ? fmtARS(cpc) : "—"}</td>
                     <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.isDigital && p.ctr > 0 ? bicColor(p.ctr, medioModel.bestCtr, "higher") : "text-muted-foreground"}`}>{p.ctr > 0 ? `${p.ctr.toFixed(2)}%` : "—"}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          <SectionTitle>DV360 · inversión y performance por canal</SectionTitle>
+          <SectionTitle>Detalle por categoría y rol (DV360)</SectionTitle>
           {dv360Channels.canales.length === 0 ? (
             <p className="mb-3 text-[10px] text-muted-foreground">
               Se completa con el reporte de DV360. Costo en USD (sin comisión de agencia ni impuestos). No incluye Google Search (vive
@@ -976,63 +969,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             </p>
           ) : (
             <>
-              <p className="mb-3 text-[10px] text-muted-foreground">
-                Toda la pauta de DV360 (YouTube, Programmatic, Marketplace, Demand Gen).{" "}
-                <strong>Costo en {arsMode ? "ARS (BCRA prom. mensual)" : "USD"}</strong>; CPM/CPC/CTR calculados.{" "}
-                <strong>Alcance</strong> = usuarios únicos (Unique Reach); a nivel canal es una suma aproximada (hay
-                solapamiento de usuarios entre líneas). <strong>Frec.</strong> = impresiones / alcance.
-              </p>
-              <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
-                <table className="w-full text-xs">
-                  <thead className="border-b">
-                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                      <th className="px-3 py-2">Canal</th>
-                      <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
-                      <th className="px-3 py-2 text-right font-normal">Impr. <span className="normal-case opacity-60">(gral)</span></th>
-                      <th className="px-3 py-2 text-right">Alcance</th>
-                      <th className="px-3 py-2 text-right">Frec.</th>
-                      <th className="px-3 py-2 text-right">Clicks</th>
-                      <th className="px-3 py-2 text-right font-normal">CPM <span className="normal-case opacity-60">(gral)</span></th>
-                      <th className="px-3 py-2 text-right">CPC</th>
-                      <th className="px-3 py-2 text-right">CTR</th>
-                      <th className="px-3 py-2 text-right">VTR real</th>
-                      <th className="px-3 py-2 text-right">CPM efect.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dv360Channels.canales.map((c) => (
-                      <tr key={c.canal} className="border-b last:border-0">
-                        <td className="px-3 py-2 font-medium">{c.canal}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{dvMoney(c.revenueUsd)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.impresiones)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{c.reach > 0 ? fmtNum(c.reach) : "—"}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{c.frequency > 0 ? c.frequency.toFixed(1) : "—"}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.clicks)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{dvMoney(c.cpm)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{c.cpc > 0 ? dvMoney(c.cpc) : "—"}</td>
-                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(c.ctr, dvChBest.ctr, "higher")}`}>{c.ctr.toFixed(2)}%</td>
-                        {(() => { const fv = dvFunnelMap.get(c.canal); return (<>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${fv && fv.vtr > 0 ? bicColor(fv.vtr, dvChBestVtr, "higher") : "text-muted-foreground"}`}>{fv && fv.vtr > 0 ? `${fv.vtr.toFixed(0)}%` : "—"}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${fv && fv.cpmEf > 0 ? "" : "text-muted-foreground"}`}>{fv && fv.cpmEf > 0 ? dvMoney(fv.cpmEf) : "—"}</td>
-                        </>); })()}
-                      </tr>
-                    ))}
-                    <tr className="border-t-2 font-semibold">
-                      <td className="px-3 py-2">Total</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{dvMoney(dv360Channels.total.revenueUsd)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(dv360Channels.total.impresiones)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.reach > 0 ? fmtNum(dv360Channels.total.reach) : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.frequency > 0 ? dv360Channels.total.frequency.toFixed(1) : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(dv360Channels.total.clicks)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{dvMoney(dv360Channels.total.cpm)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{dv360Channels.total.cpc > 0 ? dvMoney(dv360Channels.total.cpc) : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{dv360Channels.total.ctr.toFixed(2)}%</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{dv360VideoQ.imprVideo > 0 ? `${((dv360VideoQ.q100 / dv360VideoQ.imprVideo) * 100).toFixed(0)}%` : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{dv360VideoQ.q100 > 0 ? dvMoney((dv360VideoQ.revenueVideo / dv360VideoQ.q100) * 1000) : "—"}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="overflow-x-auto rounded-lg border bg-card">
                   <div className="border-b px-3 py-2 text-xs font-semibold">Por categoría</div>
@@ -1086,7 +1022,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               </p>
               {dv360Pieces.length > 0 && (
                 <>
-                  <SectionTitle>Piezas pautadas · DV360 (Programmatic + Marketplace)</SectionTitle>
+                  <SectionTitle>Piezas pautadas · Programmatic + Marketplace</SectionTitle>
                   <p className="mb-3 text-[10px] text-muted-foreground">
                     Top piezas por inversión. <strong>YouTube no se incluye</strong>: DV360 no expone el creative (figura como
                     &quot;Unknown&quot;). Sin imagen porque el reporte de métricas no trae el archivo del creative.
