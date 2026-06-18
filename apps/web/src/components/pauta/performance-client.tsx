@@ -771,56 +771,14 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             </section>
           )}
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border bg-card p-4 lg:col-span-2">
-              <h3 className="mb-1 text-sm font-bold">Eficiencia por medio · general + efectivo</h3>
-              <p className="mb-2 text-[10px] text-muted-foreground">
-                CPM en gris = <strong>general</strong> (no mide si se vio). Semáforo en lo <strong>efectivo</strong>: CPM efectivo
-                (costo/view real), CTR y VTR, vs el mejor medio digital. <span className="font-semibold text-emerald-600">●</span> mejor ·
-                <span className="font-semibold text-amber-600"> ●</span> intermedio · <span className="font-semibold text-rose-600">●</span> a optimizar.
-              </p>
-              {medioModel.items.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sin medios en la selección.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead className="border-b">
-                      <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                        <th className="py-1.5">Medio</th>
-                        <th className="py-1.5 text-right">Inversión</th>
-                        <th className="py-1.5 text-right font-normal">CPM <span className="normal-case opacity-60">(gral)</span></th>
-                        <th className="py-1.5 text-right">CPM efect.</th>
-                        <th className="py-1.5 text-right">CTR</th>
-                        <th className="py-1.5 text-right">VTR</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {medioModel.items.map((m) => (
-                        <tr key={m.medio} className="border-b last:border-0">
-                          <td className="py-1.5 font-medium">
-                            <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[m.medio] ?? "#94a3b8" }} />
-                            {m.medio}
-                          </td>
-                          <td className="py-1.5 text-right tabular-nums text-muted-foreground">{fmtARS(m.inversion)}</td>
-                          <td className="py-1.5 text-right tabular-nums text-muted-foreground">{m.cpm > 0 ? fmtARS(m.cpm) : "—"}</td>
-                          <td className={`py-1.5 text-right font-semibold tabular-nums ${m.isDigital && m.cpmEf > 0 ? bicColor(m.cpmEf, medioModel.bestCpmEf, "lower") : "text-muted-foreground"}`}>{m.cpmEf > 0 ? fmtARS(m.cpmEf) : "—"}</td>
-                          <td className={`py-1.5 text-right font-semibold tabular-nums ${m.isDigital && m.ctr > 0 ? bicColor(m.ctr, medioModel.bestCtr, "higher") : "text-muted-foreground"}`}>{m.ctr > 0 ? `${m.ctr.toFixed(2)}%` : "—"}</td>
-                          <td className={`py-1.5 text-right font-semibold tabular-nums ${m.isDigital && m.vtr > 0 ? bicColor(m.vtr, medioModel.bestVtr, "higher") : "text-muted-foreground"}`}>{m.vtr > 0 ? `${m.vtr.toFixed(0)}%` : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+          <div className="mt-4 rounded-xl border bg-card p-4">
+            <h3 className="mb-2 text-sm font-bold">Qué mejorar</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {alertas.map((a, i) => (
+                <Insight key={i} type={a.type} title={a.title} text={a.text} />
+              ))}
             </div>
-            <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-bold">Qué mejorar</h3>
-              <div className="space-y-2">
-                {alertas.map((a, i) => (
-                  <Insight key={i} type={a.type} title={a.title} text={a.text} />
-                ))}
-              </div>
-            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground/70">El detalle de eficiencia por medio (general + efectivo) está en el tab <strong>Por Medio</strong>.</p>
           </div>
 
           {insight && (
