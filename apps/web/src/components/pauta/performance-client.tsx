@@ -95,7 +95,7 @@ function buildDimModel(dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim:
   }
   const items = [...agg.entries()]
     .map(([nombre, e]) => ({
-      nombre, inversion: e.inv, impresiones: e.impr, alcance: e.reach, clics: e.clicks,
+      nombre, inversion: e.inv, impresiones: e.impr, alcance: e.reach, clics: e.clicks, comp: e.comp, vimpr: e.vimpr,
       cpm: e.impr > 0 ? (e.inv / e.impr) * 1000 : 0,
       ctr: e.impr > 0 ? (e.clicks / e.impr) * 100 : 0,
       vtr: e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0,
@@ -105,7 +105,8 @@ function buildDimModel(dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim:
     .sort((a, b) => b.inversion - a.inversion);
   const posMin = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const posMax = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
-  return { items, bestVtr: posMax(items.map((i) => i.vtr)), bestCtr: posMax(items.map((i) => i.ctr)), bestCpmEf: posMin(items.map((i) => i.cpmEf)) };
+  const total = items.reduce((t, i) => ({ inv: t.inv + i.inversion, impr: t.impr + i.impresiones, reach: t.reach + i.alcance, clics: t.clics + i.clics, comp: t.comp + i.comp, vimpr: t.vimpr + i.vimpr }), { inv: 0, impr: 0, reach: 0, clics: 0, comp: 0, vimpr: 0 });
+  return { items, total, bestVtr: posMax(items.map((i) => i.vtr)), bestCtr: posMax(items.map((i) => i.ctr)), bestCpmEf: posMin(items.map((i) => i.cpmEf)) };
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -152,6 +153,29 @@ function DimTable({ titulo, col1, model, money }: { titulo: string; col1: string
               </tr>
             );
           })}
+          {(() => {
+            const t = model.total;
+            const cpm = t.impr > 0 ? (t.inv / t.impr) * 1000 : 0;
+            const ctr = t.impr > 0 ? (t.clics / t.impr) * 100 : 0;
+            const cpc = t.clics > 0 ? t.inv / t.clics : 0;
+            const frec = t.reach > 0 ? t.impr / t.reach : 0;
+            const vtr = t.vimpr > 0 ? (t.comp / t.vimpr) * 100 : 0;
+            const cpmEf = t.comp > 0 ? (t.inv / t.comp) * 1000 : 0;
+            return (
+              <tr className="border-t-2 bg-muted/40 font-semibold">
+                <td className="px-3 py-2">Total</td>
+                <td className="px-3 py-2 text-right tabular-nums">{money(t.inv)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(t.impr)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{t.reach > 0 ? fmtNum(t.reach) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{frec > 0 ? frec.toFixed(1) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{vtr > 0 ? `${vtr.toFixed(0)}%` : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{cpm > 0 ? money(cpm) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{cpmEf > 0 ? money(cpmEf) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{cpc > 0 ? money(cpc) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{ctr.toFixed(2)}%</td>
+              </tr>
+            );
+          })()}
         </tbody>
       </table>
     </div>
@@ -549,6 +573,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         alcance: e.reach,
         clics: e.clicks,
         viewsReales: e.comp, // views completos reales (cuartil 100%)
+        vimpr: e.vimpr,      // impresiones de video con cuartil medido (base del VTR)
         cpm: e.impr > 0 ? (e.inv / e.impr) * 1000 : 0, // GENERAL
         ctr: e.impr > 0 ? (e.clicks / e.impr) * 100 : 0, // efectivo (engagement)
         vtr: e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0, // efectivo (% completions reales)
@@ -556,8 +581,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       }))
       .filter((i) => i.impresiones > 0)
       .sort((a, b) => b.inversion - a.inversion);
+    const total = items.reduce((t, i) => ({ inv: t.inv + i.inversion, impr: t.impr + i.impresiones, reach: t.reach + i.alcance, clics: t.clics + i.clics, comp: t.comp + i.viewsReales, vimpr: t.vimpr + i.vimpr }), { inv: 0, impr: 0, reach: 0, clics: 0, comp: 0, vimpr: 0 });
     return {
       items,
+      total,
       bestCtr: maxPos(items.map((i) => i.ctr)),
       bestVtr: maxPos(items.map((i) => i.vtr)),
       bestCpmEf: minPos(items.map((i) => i.cpmEf)),
@@ -996,6 +1023,29 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   </tr>
                   );
                 })}
+                {(() => {
+                  const t = medioModel.total;
+                  const cpm = t.impr > 0 ? (t.inv / t.impr) * 1000 : 0;
+                  const ctr = t.impr > 0 ? (t.clics / t.impr) * 100 : 0;
+                  const cpc = t.clics > 0 ? t.inv / t.clics : 0;
+                  const frec = t.reach > 0 ? t.impr / t.reach : 0;
+                  const vtr = t.vimpr > 0 ? (t.comp / t.vimpr) * 100 : 0;
+                  const cpmEf = t.comp > 0 ? (t.inv / t.comp) * 1000 : 0;
+                  return (
+                    <tr className="border-t-2 bg-muted/40 font-semibold">
+                      <td className="px-3 py-2">Total</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtARS(t.inv)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(t.impr)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{t.reach > 0 ? fmtNum(t.reach) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{frec > 0 ? frec.toFixed(1) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{vtr > 0 ? `${vtr.toFixed(0)}%` : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cpm > 0 ? fmtARS(cpm) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cpmEf > 0 ? fmtARS(cpmEf) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{cpc > 0 ? fmtARS(cpc) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{ctr.toFixed(2)}%</td>
+                    </tr>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
