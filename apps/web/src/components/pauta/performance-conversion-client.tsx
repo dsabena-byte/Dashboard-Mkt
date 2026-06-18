@@ -213,7 +213,13 @@ export function PerformanceConversionClient({
         <KpiCard title="ROAS" value={fmtRoas(kpis.roas)} hint="ingresos ÷ inversión" />
       </div>
 
-      {/* ===== Embudo + origen de sesiones + inversión (debajo de los cards) ===== */}
+      {/* ===== Inversión vs ingresos por mes (debajo de los cards) ===== */}
+      <SectionTitle>Inversión vs. ingresos por mes</SectionTitle>
+      <div className="rounded-lg border bg-card p-4">
+        <InvestmentRevenueChart data={invRevData} />
+      </div>
+
+      {/* ===== Embudo + origen de sesiones + inversión ===== */}
       <SectionTitle>Embudo y origen de las sesiones de la pauta</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border bg-card p-4">
@@ -243,10 +249,6 @@ export function PerformanceConversionClient({
             <div className="py-10 text-center text-xs text-muted-foreground">Inversión pendiente (vincular Google Ads ↔ GA4).</div>
           )}
         </div>
-      </div>
-      <div className="mt-4 rounded-lg border bg-card p-4">
-        <div className="mb-2 text-xs font-semibold">Inversión vs. ingresos por mes</div>
-        <InvestmentRevenueChart data={invRevData} />
       </div>
 
       {/* ===== Conversión por categoría ===== */}
