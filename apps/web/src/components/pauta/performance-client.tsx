@@ -73,25 +73,28 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
   return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
 }
 
-// Agrega por dimensión (categoría o rol) desde los datos AUTOMÁTICOS (DV360 + Meta/
-// TikTok), con la MISMA estructura que la tabla maestra por medio (general + efectivo).
-function buildDimModel(dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim: "categoria" | "rol") {
+// Agrega por dimensión (categoría o rol) con la MISMA estructura/fuentes que la tabla
+// maestra: VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD; EFECTIVO
+// (VTR, completions) desde DV360 + Meta/TikTok automáticos.
+function buildDimModel(omd: PautaRow[], dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim: "categoria" | "rol") {
   type Acc = { inv: number; impr: number; clicks: number; comp: number; vimpr: number; reach: number };
   const agg = new Map<string, Acc>();
   const get = (k: string) => { let e = agg.get(k); if (!e) { e = { inv: 0, impr: 0, clicks: 0, comp: 0, vimpr: 0, reach: 0 }; agg.set(k, e); } return e; };
-  for (const r of dv) {
-    const e = get((dim === "categoria" ? r.categoria : r.rol) || "—");
-    e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks;
-    if (r.starts > 0) { e.vimpr += r.impresiones; e.comp += r.q100; }
+  for (const r of omd) { // volumen oficial OMD
+    const e = get((dim === "categoria" ? r.categoria : r.objetivo) || "—");
+    e.inv += r.inversion ?? 0; e.impr += r.impresiones ?? 0; e.clicks += r.clics ?? 0; e.reach += r.alcance ?? 0;
   }
-  for (const r of meta) {
+  for (const r of dv) { // efectivo de video DV360
+    if (r.starts <= 0) continue;
+    const e = get((dim === "categoria" ? r.categoria : r.rol) || "—");
+    e.vimpr += r.impresiones; e.comp += r.q100;
+  }
+  for (const r of meta) { // efectivo de video Meta/TikTok
     if (r.plataforma !== "meta" && r.plataforma !== "tiktok") continue;
     const k = dim === "categoria" ? (r.categoria ?? "—") : (tipoCompraToRol(r.tipo_compra) ?? "—");
     const e = get(k);
-    const v = metaRowVideo(r); // Meta (cuartiles) o TikTok/Looker (views_total/completed)
-    e.inv += r.spend; e.impr += r.impresiones; e.clicks += r.clicks;
+    const v = metaRowVideo(r);
     e.vimpr += v.vbase; e.comp += v.comp;
-    e.reach += r.alcance ?? 0;
   }
   const items = [...agg.entries()]
     .map(([nombre, e]) => ({
@@ -235,7 +238,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {}, planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -288,10 +291,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           (selRoles.length === 0 || selRoles.includes(r.rol)),
       ),
     [dv360, digitalOk, selMesesISO, selCats, selRoles],
-  );
-  const dv360ReachF = useMemo(
-    () => (!digitalOk ? [] : dv360Reach.filter((r) => selMesesISO.size === 0 || selMesesISO.has(r.mes))),
-    [dv360Reach, digitalOk, selMesesISO],
   );
 
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
@@ -377,8 +376,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     return arr.sort((a, b) => b.impr - a.impr);
   }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, arsMode]);
-  const catModel = useMemo(() => buildDimModel(dv360Conv, metaPaidF, "categoria"), [dv360Conv, metaPaidF]);
-  const rolModel = useMemo(() => buildDimModel(dv360Conv, metaPaidF, "rol"), [dv360Conv, metaPaidF]);
+  // Categoría/rol: solo medios digitales (los que tienen efectivo de video), volumen OMD.
+  const digitalRows = useMemo(() => rows.filter((r) => tipoMedio(r.medio) === "Digital"), [rows]);
+  const catModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, "categoria"), [digitalRows, dv360Conv, metaPaidF]);
+  const rolModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, "rol"), [digitalRows, dv360Conv, metaPaidF]);
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
   const minPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const maxPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
@@ -540,56 +541,58 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return { ref: calc(refMeses), prev: prevMes ? calc([prevMes]) : null };
   }, [rowsNoMes, refMeses, prevMes]);
 
-  // ===== Modelo único de medios (fuente de verdad para TODO el dashboard) =====
-  // Todo desde los procesos AUTOMÁTICOS (DV360 reportes + Meta Marketing API), por
-  // medio (DV360 es la plataforma de compra; el medio es el canal). Filtrado por los
-  // selectores de arriba. Volumen + impacto real (VTR/CPM efectivo desde completions).
-  const medioModel = useMemo(() => {
-    type Acc = { inv: number; impr: number; clicks: number; comp: number; vimpr: number; reach: number };
-    const agg = new Map<string, Acc>();
-    const get = (medio: string) => { let e = agg.get(medio); if (!e) { e = { inv: 0, impr: 0, clicks: 0, comp: 0, vimpr: 0, reach: 0 }; agg.set(medio, e); } return e; };
-    const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", Marketplace: "Marketplace", "Demand Gen": "Google Demand Gen" };
-    for (const r of dv360Conv) {
-      const e = get(DVMED[r.canal] ?? r.canal);
-      e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks;
-      if (r.starts > 0) { e.vimpr += r.impresiones; e.comp += r.q100; } // solo video con cuartiles
-    }
-    for (const r of dv360ReachF) get(DVMED[r.canal] ?? r.canal).reach += r.reach;
+  // ===== Modelo de medios =====
+  // VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD = la fuente oficial
+  // del plan, misma que el Overview → todo cuadra. EFECTIVO (VTR, completions, CPM
+  // efectivo) desde Meta+DV360 automáticos, mapeado al medio de OMD.
+  const vtrByMedio = useMemo(() => {
+    const agg = new Map<string, { comp: number; vimpr: number }>();
+    const add = (medio: string, vimpr: number, comp: number) => {
+      if (vimpr <= 0 && comp <= 0) return;
+      const e = agg.get(medio) ?? { comp: 0, vimpr: 0 };
+      e.comp += comp; e.vimpr += vimpr; agg.set(medio, e);
+    };
+    const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
+    for (const r of dv360Conv) { if (r.starts > 0) add(DVMED[r.canal] ?? r.canal, r.impresiones, r.q100); }
     for (const r of metaPaidF) {
       const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
       if (!medio) continue;
-      const e = get(medio);
-      const v = metaRowVideo(r); // Meta (cuartiles) o TikTok/Looker (views_total/completed)
-      e.inv += r.spend; e.impr += r.impresiones; e.clicks += r.clicks;
-      e.vimpr += v.vbase; e.comp += v.comp;
-      e.reach += r.alcance ?? 0;
+      const v = metaRowVideo(r);
+      add(medio, v.vbase, v.comp);
     }
-    const items = [...agg.entries()]
-      .map(([medio, e]) => ({
-        medio,
-        isDigital: true,
-        inversion: e.inv,
-        impresiones: e.impr,
-        alcance: e.reach,
-        clics: e.clicks,
-        viewsReales: e.comp, // views completos reales (cuartil 100%)
-        vimpr: e.vimpr,      // impresiones de video con cuartil medido (base del VTR)
-        cpm: e.impr > 0 ? (e.inv / e.impr) * 1000 : 0, // GENERAL
-        ctr: e.impr > 0 ? (e.clicks / e.impr) * 100 : 0, // efectivo (engagement)
-        vtr: e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0, // efectivo (% completions reales)
-        cpmEf: e.comp > 0 ? (e.inv / e.comp) * 1000 : 0, // efectivo (costo real por mil views completos)
-      }))
-      .filter((i) => i.impresiones > 0)
-      .sort((a, b) => b.inversion - a.inversion);
-    const total = items.reduce((t, i) => ({ inv: t.inv + i.inversion, impr: t.impr + i.impresiones, reach: t.reach + i.alcance, clics: t.clics + i.clics, comp: t.comp + i.viewsReales, vimpr: t.vimpr + i.vimpr }), { inv: 0, impr: 0, reach: 0, clics: 0, comp: 0, vimpr: 0 });
-    return {
-      items,
-      total,
-      bestCtr: maxPos(items.map((i) => i.ctr)),
-      bestVtr: maxPos(items.map((i) => i.vtr)),
-      bestCpmEf: minPos(items.map((i) => i.cpmEf)),
+    return agg;
+  }, [dv360Conv, metaPaidF]);
+  const medioModel = useMemo(() => {
+    const mk = (m: typeof byMedio[number]) => {
+      const v = vtrByMedio.get(m.medio);
+      const comp = v?.comp ?? 0, vimpr = v?.vimpr ?? 0;
+      return {
+        medio: m.medio,
+        isDigital: tipoMedio(m.medio) === "Digital",
+        inversion: m.inversion,
+        impresiones: m.impresiones,
+        alcance: m.alcance,
+        clics: m.clics,
+        viewsReales: comp,
+        vimpr,
+        cpm: m.cpm, // GENERAL
+        ctr: m.impresiones > 0 ? (m.clics / m.impresiones) * 100 : 0,
+        vtr: vimpr > 0 ? (comp / vimpr) * 100 : 0, // efectivo (% completions reales)
+        cpmEf: comp > 0 ? (m.inversion / comp) * 1000 : 0, // costo real por mil views completos (inversión OMD)
+      };
     };
-  }, [dv360Conv, dv360ReachF, metaPaidF]);
+    const all = byMedio.filter((m) => m.impresiones > 0).map(mk).sort((a, b) => b.inversion - a.inversion);
+    const digital = all.filter((i) => i.isDigital);
+    const offline = all.filter((i) => !i.isDigital);
+    const totalize = (arr: typeof all) => arr.reduce((t, i) => ({ inv: t.inv + i.inversion, impr: t.impr + i.impresiones, reach: t.reach + i.alcance, clics: t.clics + i.clics, comp: t.comp + i.viewsReales, vimpr: t.vimpr + i.vimpr }), { inv: 0, impr: 0, reach: 0, clics: 0, comp: 0, vimpr: 0 });
+    return {
+      items: all, digital, offline,
+      total: totalize(all), totalDigital: totalize(digital), totalOffline: totalize(offline),
+      bestCtr: maxPos(digital.map((i) => i.ctr)),
+      bestVtr: maxPos(digital.map((i) => i.vtr)),
+      bestCpmEf: minPos(digital.map((i) => i.cpmEf)),
+    };
+  }, [byMedio, vtrByMedio]);
 
   // Motor de insights desde los datos AUTOMÁTICOS + efectivos (medioModel/catModel/
   // rolModel). Genera Fortalezas, Oportunidades y Optimizaciones accionables.
@@ -978,7 +981,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== POR MEDIO ===== */}
       {tab === "Por Medio" && (
         <div>
-          <SectionTitle>Tabla maestra por medio · general + efectivo (todo junto)</SectionTitle>
+          <SectionTitle>Tabla maestra · medios digitales · general + efectivo</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
             <strong>Fuente: procesos automáticos de DV360 + Meta API</strong> (responde a los filtros de arriba). Solo medios digitales con
             performance medida (DV360 = plataforma; el medio es el canal). Volumen + impacto real, todo junto:{" "}
@@ -1002,7 +1005,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                 </tr>
               </thead>
               <tbody>
-                {medioModel.items.map((p) => {
+                {medioModel.digital.map((p) => {
                   const cpc = p.clics > 0 ? p.inversion / p.clics : 0;
                   const frec = p.alcance > 0 ? p.impresiones / p.alcance : 0;
                   return (
@@ -1024,7 +1027,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   );
                 })}
                 {(() => {
-                  const t = medioModel.total;
+                  const t = medioModel.totalDigital;
                   const cpm = t.impr > 0 ? (t.inv / t.impr) * 1000 : 0;
                   const ctr = t.impr > 0 ? (t.clics / t.impr) * 100 : 0;
                   const cpc = t.clics > 0 ? t.inv / t.clics : 0;
@@ -1049,6 +1052,63 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               </tbody>
             </table>
           </div>
+
+          {medioModel.offline.length > 0 && (
+            <>
+              <SectionTitle>Medios offline · TV Cable / DOOH / OOH</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Fuente: <strong>OMD</strong> (no tienen medición de visibilidad de video como el digital). Se evalúan por inversión,
+                impresiones y alcance.
+              </p>
+              <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
+                <table className="w-full text-xs">
+                  <thead className="border-b">
+                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2">Medio</th>
+                      <th className="px-3 py-2 text-right">Inversión</th>
+                      <th className="px-3 py-2 text-right">Impresiones</th>
+                      <th className="px-3 py-2 text-right">Alcance</th>
+                      <th className="px-3 py-2 text-right">Frec.</th>
+                      <th className="px-3 py-2 text-right">CPM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {medioModel.offline.map((p) => {
+                      const frec = p.alcance > 0 ? p.impresiones / p.alcance : 0;
+                      return (
+                        <tr key={p.medio} className="border-b last:border-0">
+                          <td className="px-3 py-2 font-medium">
+                            <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: MEDIO_COLORS[p.medio] ?? "#94a3b8" }} />
+                            {p.medio}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtARS(p.inversion)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.impresiones)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{p.alcance > 0 ? fmtNum(p.alcance) : "—"}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{frec > 0 ? frec.toFixed(1) : "—"}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{p.cpm > 0 ? fmtARS(p.cpm) : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                    {(() => {
+                      const t = medioModel.totalOffline;
+                      const cpm = t.impr > 0 ? (t.inv / t.impr) * 1000 : 0;
+                      const frec = t.reach > 0 ? t.impr / t.reach : 0;
+                      return (
+                        <tr className="border-t-2 bg-muted/40 font-semibold">
+                          <td className="px-3 py-2">Total</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtARS(t.inv)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtNum(t.impr)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{t.reach > 0 ? fmtNum(t.reach) : "—"}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{frec > 0 ? frec.toFixed(1) : "—"}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{cpm > 0 ? fmtARS(cpm) : "—"}</td>
+                        </tr>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <SectionTitle>Detalle por categoría y rol</SectionTitle>
           {catModel.items.length === 0 ? (
