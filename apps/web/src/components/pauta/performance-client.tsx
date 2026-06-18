@@ -282,8 +282,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     cpm: minPos(dv360Pieces.map((p) => p.cpm)),
     vtr: maxPos(dv360Pieces.map((p) => p.vtr)),
   }), [dv360Pieces]);
-  const dvCatBestCtr = useMemo(() => maxPos(dv360ByCategoria.map((b) => b.ctr)), [dv360ByCategoria]);
-  const dvRolBestCtr = useMemo(() => maxPos(dv360ByRol.map((b) => b.ctr)), [dv360ByRol]);
+  const dvCatBest = useMemo(() => ({ ctr: maxPos(dv360ByCategoria.map((b) => b.ctr)), vtr: maxPos(dv360ByCategoria.map((b) => b.vtr)), cpmEf: minPos(dv360ByCategoria.map((b) => b.cpmEf)) }), [dv360ByCategoria]);
+  const dvRolBest = useMemo(() => ({ ctr: maxPos(dv360ByRol.map((b) => b.ctr)), vtr: maxPos(dv360ByRol.map((b) => b.vtr)), cpmEf: minPos(dv360ByRol.map((b) => b.cpmEf)) }), [dv360ByRol]);
   const reach = useMemo(() => reachByMedio(rows), [rows]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
@@ -1009,7 +1009,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                       <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-2">Categoría</th>
                         <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
-                        <th className="px-3 py-2 text-right">Impr.</th>
+                        <th className="px-3 py-2 text-right font-normal">Impr. <span className="normal-case opacity-60">(gral)</span></th>
+                        <th className="px-3 py-2 text-right">VTR real</th>
+                        <th className="px-3 py-2 text-right">CPM efect.</th>
                         <th className="px-3 py-2 text-right">CTR</th>
                       </tr>
                     </thead>
@@ -1018,8 +1020,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                         <tr key={b.nombre} className="border-b last:border-0">
                           <td className="px-3 py-2 font-medium">{b.nombre}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{dvMoney(b.revenueUsd)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.impresiones)}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(b.ctr, dvCatBestCtr, "higher")}`}>{b.ctr.toFixed(2)}%</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(b.impresiones)}</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.vtr > 0 ? bicColor(b.vtr, dvCatBest.vtr, "higher") : "text-muted-foreground"}`}>{b.vtr > 0 ? `${b.vtr.toFixed(0)}%` : "—"}</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.cpmEf > 0 ? bicColor(b.cpmEf, dvCatBest.cpmEf, "lower") : "text-muted-foreground"}`}>{b.cpmEf > 0 ? dvMoney(b.cpmEf) : "—"}</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.ctr > 0 ? bicColor(b.ctr, dvCatBest.ctr, "higher") : "text-muted-foreground"}`}>{b.ctr.toFixed(2)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1032,7 +1036,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                       <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-2">Rol</th>
                         <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
-                        <th className="px-3 py-2 text-right">Impr.</th>
+                        <th className="px-3 py-2 text-right font-normal">Impr. <span className="normal-case opacity-60">(gral)</span></th>
+                        <th className="px-3 py-2 text-right">VTR real</th>
+                        <th className="px-3 py-2 text-right">CPM efect.</th>
                         <th className="px-3 py-2 text-right">CTR</th>
                       </tr>
                     </thead>
@@ -1041,8 +1047,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                         <tr key={b.nombre} className="border-b last:border-0">
                           <td className="px-3 py-2 font-medium">{b.nombre}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{dvMoney(b.revenueUsd)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{fmtNum(b.impresiones)}</td>
-                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(b.ctr, dvRolBestCtr, "higher")}`}>{b.ctr.toFixed(2)}%</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(b.impresiones)}</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.vtr > 0 ? bicColor(b.vtr, dvRolBest.vtr, "higher") : "text-muted-foreground"}`}>{b.vtr > 0 ? `${b.vtr.toFixed(0)}%` : "—"}</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.cpmEf > 0 ? bicColor(b.cpmEf, dvRolBest.cpmEf, "lower") : "text-muted-foreground"}`}>{b.cpmEf > 0 ? dvMoney(b.cpmEf) : "—"}</td>
+                          <td className={`px-3 py-2 text-right font-semibold tabular-nums ${b.ctr > 0 ? bicColor(b.ctr, dvRolBest.ctr, "higher") : "text-muted-foreground"}`}>{b.ctr.toFixed(2)}%</td>
                         </tr>
                       ))}
                     </tbody>

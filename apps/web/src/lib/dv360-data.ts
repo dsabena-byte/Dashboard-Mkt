@@ -167,16 +167,20 @@ export interface Dv360Breakdown {
   revenueUsd: number;
   ctr: number;
   cpm: number;
+  vtr: number;   // efectivo: % completions reales / impresiones de video
+  cpmEf: number; // efectivo: costo por mil views completos
 }
 
 export function aggregateDv360By(creatives: Dv360CreativeRow[], dim: "categoria" | "rol"): Dv360Breakdown[] {
-  const map = new Map<string, { impresiones: number; clicks: number; revenueUsd: number }>();
+  const map = new Map<string, { impresiones: number; clicks: number; revenueUsd: number; comp: number; vimpr: number }>();
   for (const r of creatives) {
     const k = dim === "categoria" ? r.categoria : r.rol;
-    const v = map.get(k) ?? { impresiones: 0, clicks: 0, revenueUsd: 0 };
+    const v = map.get(k) ?? { impresiones: 0, clicks: 0, revenueUsd: 0, comp: 0, vimpr: 0 };
     v.impresiones += r.impresiones;
     v.clicks += r.clicks;
     v.revenueUsd += r.revenue_usd;
+    v.comp += r.q100;
+    if (r.starts > 0) v.vimpr += r.impresiones;
     map.set(k, v);
   }
   return [...map.entries()]
@@ -187,6 +191,8 @@ export function aggregateDv360By(creatives: Dv360CreativeRow[], dim: "categoria"
       revenueUsd: v.revenueUsd,
       ctr: v.impresiones > 0 ? (v.clicks / v.impresiones) * 100 : 0,
       cpm: v.impresiones > 0 ? (v.revenueUsd / v.impresiones) * 1000 : 0,
+      vtr: v.vimpr > 0 ? (v.comp / v.vimpr) * 100 : 0,
+      cpmEf: v.comp > 0 ? (v.revenueUsd / v.comp) * 1000 : 0,
     }))
     .sort((a, b) => b.revenueUsd - a.revenueUsd);
 }
