@@ -485,59 +485,87 @@ las otras 3 entran por **carga manual** (`source = 'looker_export'`).
 | **YouTube** | Google Ads API (YouTube vive ahí, no en GA4). Proyecto aparte: OAuth + Developer Token de Google Ads + autorización del MCC que opera la cuenta. | Manual. Limitación conocida: el export de Looker **no trae inversión por anuncio** en YouTube. |
 | **Programmatic** | DSP que pautó (DV360 / The Trade Desk / etc.). Cada DSP tiene su API. Decidir cuál primero según volumen. | Manual. |
 
-### Thumbnails de las piezas — diagnóstico y plan de acción
+### Thumbnails de las piezas — cómo funciona y límites (cerrado 2026-06-19)
 
-> Diagnóstico cerrado el 2026-06-19. El grid de "Piezas pautadas" ya renderiza
-> `image_url ?? thumbnail_url` de `meta_paid_creatives`, así que **no hace falta
-> tocar el front**: el problema es 100% de **origen de la imagen** en cada plataforma.
+El grid de "Piezas pautadas" (`/performance` → Por Medio) renderiza
+`image_url ?? thumbnail_url` de `meta_paid_creatives`. **No hay nada que tocar en
+el front**: todo es **origen de la imagen** en cada plataforma.
 
-#### Meta (IG + FB) — pixelado
+#### Meta (IG + FB) — resolución de imagen en alta
 
-**Causa:** para piezas de **video**, el ad solo expone un `thumbnail_url` de
-**64×64**. La versión en alta vive en el post / video, no en el ad. Si esa
-imagen en alta no se obtiene, el mirror guarda el 64×64 y se ve pixelado.
+Para piezas de **video**, el ad solo expone un `thumbnail_url` de **64×64**; la
+imagen en alta vive en el video/post. `/api/cron/meta-paid-sync` resuelve en
+cascada (todo con el **token del system user** `META_SYSTEM_USER_TOKEN`, que
+administra la Página Drean — el override de usuario NO sirve para esto):
 
-**Resuelto en código** (`/api/cron/meta-paid-sync`), resolución de imagen en
-cascada, todo leído con el **token del system user** (`META_SYSTEM_USER_TOKEN`,
-que administra la Página Drean — el override de usuario NO sirve para esto):
-1. `effective_object_story_id → full_picture` (imagen del post en alta).
-2. Si no hay post, `{video_id}/thumbnails` → se elige `is_preferred` o el de
-   mayor `width` (thumbnail del video en alta).
-3. Fallback final: `image_url` / cover / thumbnail 64×64.
+1. **`video_id`** del creative, buscado en orden: inline (`video_id`,
+   `object_story_spec.video_data.video_id`), `asset_feed_spec.videos` (creatives
+   **dinámicos / Advantage+** — la mayoría de Drean), attachments del post
+   (`effective_object_story_id`), y por último un **fetch directo del creative**
+   (`/{creative_id}?fields=...`, que devuelve el `object_story_spec`/`asset_feed_spec`
+   completo cuando la llamada masiva los trae incompletos).
+2. Con el `video_id` → **`/{video_id}/thumbnails`** → se elige el de **mayor `width`**
+   (el cover full-size, típicamente 1080).
+3. Si no hay video: **`full_picture`** del post.
+4. Fallback final: `image_url` / cover / thumbnail 64×64 (se ve pixelado).
 
-El mirror saltea la descarga si la key ya existe, así que **cada vez que mejora
-la fuente se bumpea el sufijo de la key** (`-hd3` → `-hd4`). Por eso, después de
-deployar, **hay que re-correr `meta-paid-sync`** de los meses que se quieran:
-recién ahí se re-espejan las imágenes en alta. Si seguís viendo pixelado, casi
-siempre es porque **no se re-corrió el sync después del deploy**, o porque el
-`META_SYSTEM_USER_TOKEN` perdió el rol en la Página (error #10 → cae al 64×64).
+**Mirror al bucket `meta-thumbs` (key `paid/{ad_id}-hdN.jpg`):** el helper
+`mirrorMetaImage` **saltea la descarga si la key ya existe**, así que **cuando se
+mejora la fuente hay que bumpear el sufijo** (`-hd6` → `-hd7` …) para forzar el
+re-espejado. Key actual: **`-hd7`**. Después de deployar un cambio de resolución,
+**re-correr `meta-paid-sync`** para que re-espeje.
 
-#### DV360 (Programmatic · YouTube · Marketplace · Demand Gen) — "Sin imagen"
+**Diagnóstico (en la respuesta del cron):**
+- `img_stats`: `{video_thumb, full_picture, fallback, max_thumb_w}` — cuántas
+  piezas resolvieron por cada vía y el ancho máx. de thumbnail (1080 = OK).
+- `fallback_sample`: lista las piezas que caen en fallback con qué tienen
+  (`has_image_url`, `has_thumbnail`, `has_story`, `afs_videos`, `afs_images`, `src`).
 
-**Hallazgo determinante (investigado):** los reportes programados de DV360
-(offline / instant reporting) **no pueden traer la imagen del creative**. Las
-únicas dimensiones de creative disponibles son metadata: `Creative`, `Creative
-ID`, `Creative Source`, `Creative Type`, `Creative Size`, `Creative Status`,
-`Creative Width`. **Ninguna devuelve una URL de imagen/preview.** Por lo tanto la
-idea de "agregar una columna con la imagen al reporte y tomarla del email" **no
-es viable** con el reporte de DV360 — no existe ese campo.
+**Modo repair (`?repair=1`, o input `repair` del workflow):** re-procesa por
+**`creative_id` directo** las piezas Meta con imagen vieja (ads **eliminados** que
+`/ads` ya no devuelve). En batches, en loop hasta `restantes=0`.
 
-Las 4 secciones de DV360 entran hoy por carga manual (`source='looker_export'`)
-a `meta_paid_creatives`, que **ya tiene** columna `image_url`: con poner ahí una
-URL pública, la pieza se ve sin tocar nada del front. Falta sólo la **fuente**
-de esas URLs. Opciones reales, de mayor a menor automatización:
+**Page size `limit=8`** en la llamada a `/ads`: la request (insights + creative +
+`asset_feed_spec`) es pesada y pega contra el límite de datos de Meta. Páginas
+chicas = respuestas completas y confiables.
 
-| # | Opción | Cómo | Esfuerzo | Cubre |
-|---|--------|------|----------|-------|
-| 1 | **YouTube gratis** | El creative de YouTube/Demand Gen es un video de YouTube → thumbnail directo `https://i.ytimg.com/vi/{VIDEO_ID}/hqdefault.jpg`. Falta capturar el `video_id` (el reporte actual trae el creative de YouTube como "Unknown"; habría que agregar dimensión de creative/ID en la línea de YouTube). | Bajo si se consigue el `video_id` | YouTube, Demand Gen (video) |
-| 2 | **DV360 API** (`advertisers.creatives.list`) | Trae los assets de cada creative (incluye media de display y referencia de video). Requiere proyecto OAuth + acceso a la API (igual que el pendiente de YouTube/Google Ads). | Alto (integración nueva) | Todos |
-| 3 | **Mirror de carpeta de Drive** (recomendado) | La agencia ya produce las piezas. Carpeta de Drive con los assets nombrados igual que el `creative` → se reusa el Apps Script **"Sync Drive Tablero CB"** (ya corre 1x/hora) para espejarlos al bucket `meta-thumbs` y matchear por nombre → `image_url`. | Medio, sin APIs nuevas | Todos |
-| 4 | **Mapeo manual** | Tabla chica `creative → image_url` cargada a mano (son pocos creatives distintos). | Bajo, pero manual y se desactualiza | Todos |
+> ⚠️ **Rate-limiting de Meta — NO correr el sync muchas veces seguidas.** Tras
+> ~20 runs en una hora, Meta empieza a **degradar las respuestas**: devuelve
+> `asset_feed_spec` sin `video_id` o tira `500 "reduce the amount of data"`, y
+> **todo cae a fallback**. Si pasa: **no bumpees la key** (sobrescribirías las
+> buenas con thumbnails chicos), dejá la key como está y **esperá ~1h**; el mirror
+> reusa las imágenes en alta que **siguen en el bucket** bajo la key vigente.
 
-**Recomendación:** Opción 3 para Programmatic/Marketplace/Demand Gen (reusa
-infra existente, sin APIs nuevas) + Opción 1 para YouTube cuando se capture el
-`video_id`. La Opción 2 sólo si más adelante se hace la integración full de la
-API de DV360.
+**Limpieza hecha:** había **65 filas duplicadas** `source='looker_export'` con
+`ad_id`/`creative_id` tipo `looker_xxx` (no existen en la API) que se veían
+pixeladas (copias viejas de piezas que la API ya trae nítidas). Se borraron:
+```sql
+delete from meta_paid_creatives
+where plataforma = 'meta' and source = 'looker_export' and ad_id like 'looker%';
+```
 
-> ⚠️ Lo que **no** se puede: cargar la imagen vía el reporte de DV360 por email.
-> Ese camino está descartado por diseño de DV360 (no hay dimensión de imagen).
+**Límite real conocido:** quedan **~9 piezas CPC de video por mes** que **no
+exponen el `video_id` por ninguna API** (probado: inline, post, `asset_feed_spec`,
+fetch directo del creative). Su única fuente nítida es el **archivo original de la
+agencia**. No es un bug — es el techo de la Graph API para esos creatives.
+
+#### DV360 (Programmatic · YouTube · Marketplace) + TikTok — "Sin imagen"
+
+Estas plataformas **no se cargan por la API de Meta** (TikTok es carga manual;
+DV360 viene de sus reportes). Sus piezas no tienen `image_url`. Y **el reporte de
+DV360 NO puede traer la imagen**: sus dimensiones de creative son solo metadata
+(`Creative`, `Creative ID`, `Creative Source/Type/Size/Status/Width`) — **ninguna
+es una URL de imagen**. O sea, cargar la imagen vía el reporte de DV360 por email
+**está descartado por diseño**.
+
+**Solución elegida: planilla de la agencia.** El grid ya muestra `image_url`, así
+que solo falta la **fuente** de esos links. Se le pidió a la agencia una **planilla
+de Google** (`Creativo · Plataforma · Link`) con el link por pieza:
+- **YouTube / Demand Gen** → link del video de YouTube (thumbnail vía API/`i.ytimg.com`).
+- **TikTok** → link del video de TikTok (thumbnail vía oEmbed).
+- **Programmatic / Marketplace** → link público al archivo del creativo.
+
+Pendiente: cuando llegue la planilla, sincronizarla a Supabase + cron que baje las
+miniaturas al bucket `meta-thumbs` y complete `image_url`. La `YOUTUBE_API_KEY` ya
+está cargada como secret para la parte de YouTube. (Las mismas ~9 CPC de Meta sin
+`video_id` también se resolverían por esta vía si la agencia las incluye.)
