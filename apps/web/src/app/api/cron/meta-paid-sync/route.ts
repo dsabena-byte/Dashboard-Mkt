@@ -592,7 +592,7 @@ export async function GET(req: Request) {
       ]),
     );
     let nextUrl: string | undefined =
-      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&effective_status=${effectiveStatus}&limit=20&access_token=${token}`;
+      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&effective_status=${effectiveStatus}&limit=8&access_token=${token}`;
 
     const allAds: MetaAd[] = [];
     let pages = 0;
