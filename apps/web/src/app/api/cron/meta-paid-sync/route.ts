@@ -455,42 +455,43 @@ export async function GET(req: Request) {
           const videoP100 = sumActions(ins.video_p100_watched_actions);
           const img = pickImage(ad.creative);
           // Resolución de la imagen, de mayor a menor calidad:
-          //  1. full_picture del post original (leído con el token de la Página).
-          //  2. thumbnail del video en alta (/{video_id}/thumbnails) — para piezas
-          //     de video Meta solo da un thumbnail_url de 64×64 en el ad; el real
-          //     en alta vive en el video, propiedad de la Página.
+          //  1. Para VIDEO: el thumbnail del video en su máxima resolución
+          //     (/{video_id}/thumbnails). Es lo más nítido. El full_picture del
+          //     post, para un video, suele ser un preview chico → por eso el video
+          //     va PRIMERO (antes estaba al revés y quedaba pixelado).
+          //  2. full_picture del post (piezas de imagen/link, o video sin thumbs).
           //  3. img.best (image_url / cover / thumbnail 64×64).
+          // Todo leído con el token de la Página (system user): videos y posts son
+          // propiedad de la Página Drean.
           let bestImg = img.best;
           let gotHd = false;
-          if (img.storyId) {
-            const post = await graphGet<{ full_picture?: string }>(
-              `${GRAPH_API}/${img.storyId}?fields=full_picture&access_token=${pageToken}`,
-            ).catch(() => ({} as { full_picture?: string }));
-            if (post.full_picture) {
-              bestImg = post.full_picture;
-              gotHd = true;
-            }
-          }
-          // Si no conseguimos el full_picture (dark post / sin story id) y la pieza
-          // es video, traemos el thumbnail del video en su mayor resolución.
-          if (!gotHd && img.videoId) {
+          if (img.videoId) {
             const vt = await graphGet<{
               thumbnails?: { data?: Array<{ uri?: string; width?: number; is_preferred?: boolean }> };
             }>(
               `${GRAPH_API}/${img.videoId}?fields=thumbnails{uri,width,height,is_preferred}&access_token=${pageToken}`,
             ).catch(() => ({} as { thumbnails?: { data?: Array<{ uri?: string; width?: number; is_preferred?: boolean }> } }));
             const thumbs = vt.thumbnails?.data ?? [];
-            const chosen =
-              thumbs.find((t) => t.is_preferred) ??
-              [...thumbs].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0];
-            if (chosen?.uri) bestImg = chosen.uri;
+            // El de mayor ancho = máxima resolución (el cover suele venir full-size).
+            const chosen = [...thumbs].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0];
+            if (chosen?.uri) {
+              bestImg = chosen.uri;
+              gotHd = true;
+            }
+          }
+          // Fallback: full_picture del post (imagen/link, o video sin thumbnails).
+          if (!gotHd && img.storyId) {
+            const post = await graphGet<{ full_picture?: string }>(
+              `${GRAPH_API}/${img.storyId}?fields=full_picture&access_token=${pageToken}`,
+            ).catch(() => ({} as { full_picture?: string }));
+            if (post.full_picture) bestImg = post.full_picture;
           }
           // Espejamos al bucket de Supabase (URL eterna). Bumpear el sufijo de la
-          // key ('-hd3' -> '-hd4' …) cada vez que mejora la resolución de origen:
+          // key ('-hd4' -> '-hd5' …) cada vez que mejora la resolución de origen:
           // el helper saltea la descarga si la key ya existe, así que sin key nueva
           // las piezas viejas se quedarían con el espejado anterior de menor calidad.
-          // '-hd4' = full_picture / thumbnail de video en alta (antes 64×64 pixelado).
-          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd4.jpg`);
+          // '-hd5' = thumbnail del video en alta priorizado sobre full_picture.
+          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd5.jpg`);
           // Link a la pieza: si es de Instagram, el permalink de IG es el que
           // resuelve; si no, el post de Facebook detrás del ad (story_id). Para
           // "dark posts" sin post público no hay link válido -> null.
