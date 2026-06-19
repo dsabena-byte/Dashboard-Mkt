@@ -249,6 +249,16 @@ Si en algún momento la data deja de actualizarse, empezá por el bloque
 - **Header inesperado** → faltan columnas (ver config de cada reporte).
 - Reach con **"-"** en filas chicas → DV360 no pudo calcular (poco volumen/cookies). Se computa como 0.
 
+## Thumbnails de los creatives de DV360
+
+DV360 **no expone la imagen del creative en sus reportes** (las dimensiones de
+creative son sólo metadata: ID, type, size, source, status, width — ninguna es
+una URL de imagen). Por eso las piezas de Programmatic/YouTube/Marketplace/Demand
+Gen salen "Sin imagen" en el grid. **No se puede traer la imagen por el reporte
+de email.** El plan de acción (YouTube gratis por `video_id`, mirror de carpeta
+de Drive, o API de DV360) está documentado en el README, sección
+**"Thumbnails de las piezas — diagnóstico y plan de acción"**.
+
 ## Referencias
 
 - Migraciones: `supabase/migrations/0058_dv360_creatives_reach.sql`, `supabase/migrations/0059_dv360_creatives_cat_rol.sql`

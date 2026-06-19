@@ -100,12 +100,13 @@ async function discoverActId(token: string): Promise<{ act_id: string; name: str
 
 interface CreativeStorySpec {
   link_data?: { picture?: string; message?: string; link?: string };
-  video_data?: { image_url?: string; message?: string };
+  video_data?: { image_url?: string; message?: string; video_id?: string };
 }
 interface AdCreative {
   id?: string;
   thumbnail_url?: string;
   image_url?: string;
+  video_id?: string;
   body?: string;
   effective_object_story_id?: string;
   instagram_permalink_url?: string;
@@ -142,16 +143,18 @@ interface MetaAd {
 }
 interface AdsResp { data: MetaAd[]; paging?: { next?: string }; }
 
-function pickImage(c?: AdCreative): { best?: string; copy?: string; storyId?: string } {
+function pickImage(c?: AdCreative): { best?: string; copy?: string; storyId?: string; videoId?: string } {
   if (!c) return {};
   const storyLink = c.object_story_spec?.link_data;
   const storyVid = c.object_story_spec?.video_data;
   return {
     // Mejor imagen disponible: image_url full > cover de video > thumbnail
-    // (que pedimos en 720px) > picture del link.
+    // (64×64 para video) > picture del link. Para video, lo mejor es el
+    // thumbnail del video en alta (ver fetch de /{video_id}/thumbnails abajo).
     best: c.image_url ?? storyVid?.image_url ?? c.thumbnail_url ?? storyLink?.picture,
     copy: c.body ?? storyLink?.message ?? storyVid?.message,
     storyId: c.effective_object_story_id,
+    videoId: c.video_id ?? storyVid?.video_id,
   };
 }
 
@@ -421,7 +424,7 @@ export async function GET(req: Request) {
       "adset_id",
       "campaign{name,objective}",
       "adset{name}",
-      "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,body,effective_object_story_id,instagram_permalink_url,object_story_spec{link_data{picture,message,link},video_data{image_url,message}}}",
+      "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,body,effective_object_story_id,instagram_permalink_url,object_story_spec{link_data{picture,message,link},video_data{image_url,message,video_id}}}",
       `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,video_play_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,video_thruplay_watched_actions,date_start,date_stop}`,
     ].join(",");
 
@@ -451,22 +454,43 @@ export async function GET(req: Request) {
           const videoP75 = sumActions(ins.video_p75_watched_actions);
           const videoP100 = sumActions(ins.video_p100_watched_actions);
           const img = pickImage(ad.creative);
-          // La imagen de mayor resolución es la del post original (full_picture),
-          // mejor que el thumbnail/preview del creative. La buscamos vía el
-          // story id; si no se puede (dark post o sin permiso), usamos img.best.
+          // Resolución de la imagen, de mayor a menor calidad:
+          //  1. full_picture del post original (leído con el token de la Página).
+          //  2. thumbnail del video en alta (/{video_id}/thumbnails) — para piezas
+          //     de video Meta solo da un thumbnail_url de 64×64 en el ad; el real
+          //     en alta vive en el video, propiedad de la Página.
+          //  3. img.best (image_url / cover / thumbnail 64×64).
           let bestImg = img.best;
+          let gotHd = false;
           if (img.storyId) {
             const post = await graphGet<{ full_picture?: string }>(
               `${GRAPH_API}/${img.storyId}?fields=full_picture&access_token=${pageToken}`,
             ).catch(() => ({} as { full_picture?: string }));
-            if (post.full_picture) bestImg = post.full_picture;
+            if (post.full_picture) {
+              bestImg = post.full_picture;
+              gotHd = true;
+            }
+          }
+          // Si no conseguimos el full_picture (dark post / sin story id) y la pieza
+          // es video, traemos el thumbnail del video en su mayor resolución.
+          if (!gotHd && img.videoId) {
+            const vt = await graphGet<{
+              thumbnails?: { data?: Array<{ uri?: string; width?: number; is_preferred?: boolean }> };
+            }>(
+              `${GRAPH_API}/${img.videoId}?fields=thumbnails{uri,width,height,is_preferred}&access_token=${pageToken}`,
+            ).catch(() => ({} as { thumbnails?: { data?: Array<{ uri?: string; width?: number; is_preferred?: boolean }> } }));
+            const thumbs = vt.thumbnails?.data ?? [];
+            const chosen =
+              thumbs.find((t) => t.is_preferred) ??
+              [...thumbs].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0];
+            if (chosen?.uri) bestImg = chosen.uri;
           }
           // Espejamos al bucket de Supabase (URL eterna). Bumpear el sufijo de la
-          // key ('-hd2' -> '-hd3' …) cada vez que mejora la resolución de origen:
+          // key ('-hd3' -> '-hd4' …) cada vez que mejora la resolución de origen:
           // el helper saltea la descarga si la key ya existe, así que sin key nueva
           // las piezas viejas se quedarían con el espejado anterior de menor calidad.
-          // '-hd3' = thumbnail 1080 (antes '-hd2' bajaba 720 y quedaba pixelado).
-          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd3.jpg`);
+          // '-hd4' = full_picture / thumbnail de video en alta (antes 64×64 pixelado).
+          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd4.jpg`);
           // Link a la pieza: si es de Instagram, el permalink de IG es el que
           // resuelve; si no, el post de Facebook detrás del ad (story_id). Para
           // "dark posts" sin post público no hay link válido -> null.
