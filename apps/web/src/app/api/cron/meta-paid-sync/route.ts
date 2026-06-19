@@ -108,6 +108,7 @@ interface AdCreative {
   image_url?: string;
   body?: string;
   effective_object_story_id?: string;
+  instagram_permalink_url?: string;
   object_story_spec?: CreativeStorySpec;
 }
 interface AdInsight {
@@ -420,7 +421,7 @@ export async function GET(req: Request) {
       "adset_id",
       "campaign{name,objective}",
       "adset{name}",
-      "creative{thumbnail_url.thumbnail_width(720).thumbnail_height(720),image_url,body,effective_object_story_id,object_story_spec{link_data{picture,message,link},video_data{image_url,message}}}",
+      "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,body,effective_object_story_id,instagram_permalink_url,object_story_spec{link_data{picture,message,link},video_data{image_url,message}}}",
       `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,video_play_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,video_thruplay_watched_actions,date_start,date_stop}`,
     ].join(",");
 
@@ -464,12 +465,15 @@ export async function GET(req: Request) {
           // chocar con el espejado anterior de menor resolución (el helper
           // saltea la descarga si la key ya existe).
           const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd2.jpg`);
-          // Link a la pieza = el post real detrás del ad. Para "dark posts"
-          // (anuncios que no son post público) no hay link válido -> null.
-          const permalink = img.storyId ? `https://www.facebook.com/${img.storyId}` : null;
+          // Link a la pieza: si es de Instagram, el permalink de IG es el que
+          // resuelve; si no, el post de Facebook detrás del ad (story_id). Para
+          // "dark posts" sin post público no hay link válido -> null.
+          const igPermalink = ad.creative?.instagram_permalink_url ?? null;
+          const permalink = igPermalink ?? (img.storyId ? `https://www.facebook.com/${img.storyId}` : null);
           const classified = parseAdName(ad.name);
           return {
             ad_id: ad.id,
+            creative_id: ad.creative?.id ?? null,
             mes: mesLabel,
             fecha_desde: ins.date_start ?? since,
             fecha_hasta: ins.date_stop ?? until,
@@ -488,6 +492,7 @@ export async function GET(req: Request) {
             image_url: mirrored,
             body: img.copy ?? null,
             permalink_url: permalink,
+            instagram_permalink_url: igPermalink,
             impresiones: Math.round(toNum(ins.impressions) ?? 0),
             alcance: Math.round(toNum(ins.reach) ?? 0),
             frecuencia: toNum(ins.frequency),

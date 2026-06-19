@@ -75,16 +75,17 @@ export function MetaPaidGrid({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {shown.map((c) => {
           const img = c.image_url ?? c.thumbnail_url ?? null;
+          const link = c.permalink_url ?? c.instagram_permalink_url ?? null;
           const hasVideo = (c.views_total ?? 0) > 0;
           const catColor = CAT_COLORS[c.categoria ?? ""] ?? "#64748b";
           return (
             <a
               key={`${c.ad_id}-${c.mes}`}
-              href={c.permalink_url ?? "#"}
-              target={c.permalink_url ? "_blank" : undefined}
+              href={link ?? "#"}
+              target={link ? "_blank" : undefined}
               rel="noopener"
               className="group flex flex-col overflow-hidden rounded-lg border bg-card transition-colors hover:bg-muted/50"
-              aria-disabled={!c.permalink_url}
+              aria-disabled={!link}
             >
               <div className="relative aspect-square w-full overflow-hidden bg-muted">
                 {(c.categoria || c.tipo_compra) && (
