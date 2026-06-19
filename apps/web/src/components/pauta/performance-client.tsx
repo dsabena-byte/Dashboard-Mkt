@@ -238,7 +238,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {}, planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -565,13 +565,20 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
     };
     const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
     for (const r of dv360Conv) add(DVMED[r.canal] ?? r.canal, r.revenue_usd, r.impresiones, r.clicks, 0);
+    // Reach de DV360 desde dv360_reach (aproximado: suma por canal). Solo se suma a
+    // medios que ya tienen volumen (no crea medios fantasma desde reach).
+    for (const r of dv360Reach) {
+      if (selMesesISO.size > 0 && !selMesesISO.has(r.mes)) continue;
+      const e = m.get(DVMED[r.canal] ?? r.canal);
+      if (e) e.alcance += r.reach ?? 0;
+    }
     for (const r of metaPaidF) {
       const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
       if (!medio) continue;
       add(medio, r.spend ?? 0, r.impresiones ?? 0, r.clicks ?? 0, r.alcance ?? 0);
     }
     return m;
-  }, [dv360Conv, metaPaidF]);
+  }, [dv360Conv, dv360Reach, selMesesISO, metaPaidF]);
   const medioModel = useMemo(() => {
     const mk = (m: typeof byMedio[number]) => {
       const v = vtrByMedio.get(m.medio);
