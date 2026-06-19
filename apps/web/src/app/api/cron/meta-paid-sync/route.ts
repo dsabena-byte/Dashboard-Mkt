@@ -434,13 +434,13 @@ export async function GET(req: Request) {
       "adset_id",
       "campaign{name,objective}",
       "adset{name}",
-      "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,body,effective_object_story_id,instagram_permalink_url,object_story_spec{link_data{picture,message,link},video_data{image_url,message,video_id}},asset_feed_spec{videos{video_id,thumbnail_url},images{hash,url}}}",
+      "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,body,effective_object_story_id,instagram_permalink_url,object_story_spec{link_data{picture,message,link},video_data{image_url,message,video_id}},asset_feed_spec{videos{video_id},images{url}}}",
       `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,video_play_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,video_thruplay_watched_actions,date_start,date_stop}`,
     ].join(",");
 
     phase = "fetch_ads";
     let nextUrl: string | undefined =
-      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
+      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&limit=20&access_token=${token}`;
 
     const allAds: MetaAd[] = [];
     let pages = 0;
