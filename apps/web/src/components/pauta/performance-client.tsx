@@ -390,19 +390,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
   }), [dv360Pieces]);
 
   // Inversión: total y desglose por tipo de medio (sin doble conteo)
-  const totalInv = useMemo(() => rows.reduce((s, r) => s + (r.inversion ?? 0), 0), [rows]);
-  const { invDigital, invTv, invDooh, invOoh } = useMemo(() => {
-    let d = 0, t = 0, dh = 0, o = 0;
-    for (const r of rows) {
-      const v = r.inversion ?? 0;
-      const k = tipoMedio(r.medio);
-      if (k === "TV Cable") t += v;
-      else if (k === "DOOH") dh += v;
-      else if (k === "OOH") o += v;
-      else d += v;
-    }
-    return { invDigital: d, invTv: t, invDooh: dh, invOoh: o };
-  }, [rows]);
+  // totalInv / invDigital / invTv / invDooh / invOoh se derivan de medioModel
+  // (gap-filleado con la ejecución real) más abajo, para que el Overview cuadre
+  // con la tabla maestra de Por Medio.
   // Volumetría
 
   // Volumetría mensual (año completo 2026): NO se filtra, siempre muestra el histórico.
@@ -639,6 +629,21 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
     };
   }, [byMedio, vtrByMedio, autoVolByMedio]);
 
+  // Inversión del Overview, derivada de medioModel (OMD + ejecución real) para que
+  // cuadre con la tabla maestra de Por Medio.
+  const totalInv = medioModel.total.inv;
+  const { invDigital, invTv, invDooh, invOoh } = useMemo(() => {
+    let d = 0, t = 0, dh = 0, o = 0;
+    for (const m of medioModel.items) {
+      const k = tipoMedio(m.medio);
+      if (k === "TV Cable") t += m.inversion;
+      else if (k === "DOOH") dh += m.inversion;
+      else if (k === "OOH") o += m.inversion;
+      else d += m.inversion;
+    }
+    return { invDigital: d, invTv: t, invDooh: dh, invOoh: o };
+  }, [medioModel]);
+
   // Motor de insights desde los datos AUTOMÁTICOS + efectivos (medioModel/catModel/
   // rolModel). Genera Fortalezas, Oportunidades y Optimizaciones accionables.
   const pautaInsights = useMemo(() => {
@@ -680,7 +685,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
   // Insights: solo si hay una sola categoría seleccionada
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
 
-  const donutData = byMedio.map((m) => ({ name: m.medio, value: m.inversion, color: MEDIO_COLORS[m.medio] ?? "#94a3b8" }));
+  const donutData = medioModel.items.map((m) => ({ name: m.medio, value: m.inversion, color: MEDIO_COLORS[m.medio] ?? "#94a3b8" }));
   const catDonutData = useMemo(() => investmentByCategoria(rows), [rows]);
   const mixData = [
     { name: "Digital", value: invDigital, color: "#2b4dff" },
