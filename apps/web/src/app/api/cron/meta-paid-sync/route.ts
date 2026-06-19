@@ -378,7 +378,7 @@ async function resolveBestImageUrl(
     bestImg = fullPic;
     via = "full_picture";
   }
-  const mirrored = await mirrorMetaImage(bestImg, `paid/${adId}-hd8.jpg`);
+  const mirrored = await mirrorMetaImage(bestImg, `paid/${adId}-hd7.jpg`);
   return { mirrored, via, thumbW };
 }
 
@@ -399,7 +399,7 @@ async function repairImages(batch: number): Promise<unknown> {
   // Mapa ad_id -> creative_id de las piezas con imagen vieja.
   const staleMap = new Map<string, string | null>();
   for (const r of allRows) {
-    if (!r.image_url || !r.image_url.includes("-hd8.jpg")) {
+    if (!r.image_url || !r.image_url.includes("-hd7.jpg")) {
       if (!staleMap.has(r.ad_id)) staleMap.set(r.ad_id, r.creative_id);
     }
   }
@@ -706,7 +706,7 @@ export async function GET(req: Request) {
           // key ('-hd5' -> '-hd6' …) cada vez que mejora la resolución de origen:
           // el helper saltea la descarga si la key ya existe.
           // '-hd7' = video_id también desde asset_feed_spec (creatives dinámicos).
-          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd8.jpg`);
+          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd7.jpg`);
           // Link a la pieza: si es de Instagram, el permalink de IG es el que
           // resuelve; si no, el post de Facebook detrás del ad (story_id). Para
           // "dark posts" sin post público no hay link válido -> null.
