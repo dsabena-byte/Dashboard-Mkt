@@ -40,6 +40,8 @@ Reusa las properties `PLANNING_SUPABASE_*`. Sin API keys ni service accounts.
 - Dimensiones: `Date`, `Creative`, `Creative Type`, `Insertion Order`, `Line Item`.
 - Métricas: `Impressions`, `Clicks`, `Revenue (USD)`, `Starts (Video)`,
   `Skips (Video)`, `First-Quartile / Midpoint / Third-Quartile / Complete Views (Video)`.
+- `canal`, `categoria` y `rol` **no son columnas del reporte**: se derivan del nombre
+  del `Line Item` en la sync (`dv360Canal_`, `dv360Categoria_`, `dv360Rol_`).
 
 **Reporte 2 "DV360 Reach Drean" (reach):**
 - Dimensiones: `Month`, `Insertion Order`, `Line Item` (⚠️ **sin Creative**, si no
@@ -61,17 +63,37 @@ dsabena@gmail.com. Filtro Gmail (asunto contiene "DV360") → etiqueta `dv360`.
 | `search`                      | **Search** (no aparece) |
 | resto                         | **Programmatic**|
 
-## Estado al 2026-06-16 (handoff)
+## Estado al 2026-06-19 (verificado — TODO operativo ✅)
 
 | Paso | Estado |
 |------|--------|
-| Migración 0058 (`dv360_creatives` + `dv360_reach`, reemplaza `dv360_performance`) | ⏳ correr en Supabase |
-| Seeds `dv360_creatives.sql` + `dv360_reach.sql` | ⏳ correr en Supabase |
+| Migración 0058 (`dv360_creatives` + `dv360_reach`, reemplaza `dv360_performance`) | ✅ corrida |
+| Migración 0059 (agrega `categoria` + `rol` a `dv360_creatives`, PK `mes·canal·categoria·rol·creative`) | ✅ corrida |
+| Seeds `dv360_creatives.sql` + `dv360_reach.sql` (data abril 2026) | ✅ corridos |
 | Panels (canal+reach, piezas, embudo) | ✅ en main |
-| Reporte 1 programado + filtro Gmail | ✅ |
-| Reporte 2 (reach) programado | ⏳ guardar como "DV360 Reach Drean" + Schedule |
-| `syncDv360` + `syncDv360Reach` en Apps Script | ⏳ **pegar/reemplazar** |
-| Triggers diarios | ⏳ pendiente |
+| Reporte 1 "DV360 Video Drean" programado + filtro Gmail | ✅ |
+| Reporte 2 "DV360 Reach Drean" programado | ✅ (emails llegando) |
+| `syncDv360` + `syncDv360Reach` en Apps Script | ✅ pegados |
+| Triggers diarios | ✅ |
+
+**Data en Supabase (2026-06-19):** `dv360_creatives` 170 filas y `dv360_reach`
+40 filas, ambas con meses **2026-04 → 2026-06**. El sync corre solo; no hay nada
+pendiente. Esta tabla refleja el estado real, no un plan.
+
+### Cómo verificar el estado (SQL Editor de Supabase)
+
+```sql
+-- Esquema: confirma que existen las tablas y que dv360_creatives tiene categoria/rol (0058 + 0059)
+select table_name, column_name
+from information_schema.columns
+where table_name in ('dv360_creatives','dv360_reach')
+order by table_name, ordinal_position;
+
+-- Data: filas y rango de meses (debe llegar hasta el mes en curso si el sync corre)
+select 'creatives' as tabla, count(*) filas, min(mes) desde, max(mes) hasta from dv360_creatives
+union all
+select 'reach', count(*), min(mes), max(mes) from dv360_reach;
+```
 
 ## Código — pegar/reemplazar en Apps Script
 
@@ -205,24 +227,31 @@ function dv360Upsert_(table, recs, meses, threads){
 }
 ```
 
-## Pasos para terminar
+## Mantenimiento (todo lo de abajo ya está hecho)
 
-1. Correr en Supabase: **migración 0058** + seeds `dv360_creatives.sql` y `dv360_reach.sql`.
+La integración está cerrada y corriendo sola. Esta lista queda como referencia
+de cómo se montó / cómo reproducirlo si hay que reinstalar:
+
+1. Correr en Supabase: **migraciones 0058 + 0059** + seeds `dv360_creatives.sql` y `dv360_reach.sql`.
 2. **Reporte 2** en DV360: guardar como "DV360 Reach Drean" + Schedule (Daily/CSV/Attachment/email).
 3. Pegar en Apps Script: `syncDv360`, `syncDv360Reach` y los 4 helpers `dv360*_`.
 4. Correr ambas a mano una vez (Log `HTTP 201`/`204`).
 5. Triggers diarios para `syncDv360` y `syncDv360Reach`.
 
+Si en algún momento la data deja de actualizarse, empezá por el bloque
+**Troubleshooting** y por las queries de **Cómo verificar el estado**.
+
 ## Troubleshooting
 
-- **HTTP 404** → falta correr la migración 0058.
+- **HTTP 404** → falta correr las migraciones 0058 / 0059 (la tabla no existe).
+- **Error de columna `categoria`/`rol`** → corriste la 0058 pero falta la **0059**.
 - **"No se encontró CSV"** → el email no llegó / filtro no aplicó la etiqueta / el subject no matchea (`subject:"DV360 Video Drean"` / `"DV360 Reach Drean"`).
 - **Header inesperado** → faltan columnas (ver config de cada reporte).
 - Reach con **"-"** en filas chicas → DV360 no pudo calcular (poco volumen/cookies). Se computa como 0.
 
 ## Referencias
 
-- Migración: `supabase/migrations/0058_dv360_creatives_reach.sql`
+- Migraciones: `supabase/migrations/0058_dv360_creatives_reach.sql`, `supabase/migrations/0059_dv360_creatives_cat_rol.sql`
 - Seeds: `supabase/seed/dv360_creatives.sql`, `supabase/seed/dv360_reach.sql`
 - Lógica: `apps/web/src/lib/dv360-data.ts`, `apps/web/src/lib/dv360-queries.ts`
 - Panel: `apps/web/src/components/pauta/performance-client.tsx`
