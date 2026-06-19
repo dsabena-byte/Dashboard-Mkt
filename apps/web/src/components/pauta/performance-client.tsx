@@ -883,104 +883,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
       {/* ===== POR MEDIO · arranca con el marco transversal de Calidad/Impacto ===== */}
       {tab === "Por Medio" && (
         <div>
-          <SectionTitle>Calidad de video — ¿el consumidor realmente vio el mensaje?</SectionTitle>
-          <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
-            Las impresiones no dicen si el video <strong>se vio</strong>. Acá medimos <strong>visibilidad real</strong> con los cuartiles
-            (25/50/75/100%) de DV360 + Meta: cuánto de lo que pautamos se convirtió en atención efectiva, y el <strong>costo real</strong>{" "}
-            por view completo (CPCV) — no el CPM sobre impresiones infladas.
-          </p>
-
-          {!videoQuality.hasData ? (
-            <p className="text-xs text-muted-foreground">
-              Sin cuartiles de video en la selección. Se completa con la sincronización de Meta (cuartiles) y el reporte de DV360.
-            </p>
-          ) : (
-            <>
-              {/* Scorecard de calidad */}
-              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <div className="rounded-xl border bg-card p-3">
-                  <div className="text-[11px] text-muted-foreground">Impresiones de video</div>
-                  <div className="mt-0.5 text-lg font-bold tabular-nums">{fmtNum(videoQuality.imprVideo)}</div>
-                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.pctVideoMix.toFixed(0)}% del total con formato conocido</div>
-                </div>
-                <div className="rounded-xl border bg-card p-3">
-                  <div className="text-[11px] text-muted-foreground">Vieron ≥50% del video</div>
-                  <div className={`mt-0.5 text-lg font-bold tabular-nums ${videoQuality.pct50 >= 50 ? "text-emerald-600" : videoQuality.pct50 >= 30 ? "text-amber-600" : "text-rose-600"}`}>{videoQuality.pct50.toFixed(1)}%</div>
-                  <div className="text-[10px] text-muted-foreground/70">visibilidad real efectiva</div>
-                </div>
-                <div className="rounded-xl border bg-card p-3">
-                  <div className="text-[11px] text-muted-foreground">VTR real (vieron 100%)</div>
-                  <div className={`mt-0.5 text-lg font-bold tabular-nums ${videoQuality.pct100 >= 30 ? "text-emerald-600" : videoQuality.pct100 >= 15 ? "text-amber-600" : "text-rose-600"}`}>{videoQuality.pct100.toFixed(1)}%</div>
-                  <div className="text-[10px] text-muted-foreground/70">completaron el mensaje</div>
-                </div>
-                <div className="rounded-xl border bg-card p-3">
-                  <div className="text-[11px] text-muted-foreground">CPCV (costo/view completo)</div>
-                  <div className="mt-0.5 text-lg font-bold tabular-nums">{videoQuality.cpcv > 0 ? dvMoney(videoQuality.cpcv) : "—"}</div>
-                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.cpcv > 0 ? "costo real por mensaje visto" : "requiere fx_rates (DV360 en ARS)"}</div>
-                </div>
-                <div className="rounded-xl border bg-card p-3">
-                  <div className="text-[11px] text-muted-foreground">Impresiones desperdiciadas</div>
-                  <div className="mt-0.5 text-lg font-bold tabular-nums text-rose-600">{(100 - videoQuality.pct50).toFixed(0)}%</div>
-                  <div className="text-[10px] text-muted-foreground/70">{fmtNum(videoQuality.imprVideo - videoQuality.v50)} no llegaron al 50%</div>
-                </div>
-              </section>
-
-              {/* Embudo de atención SEPARADO por fuente (no mezclar lo comparable) */}
-              <SectionTitle>Embudo de atención · separado por fuente</SectionTitle>
-              <p className="mb-2 text-[10px] text-muted-foreground">
-                Cada fuente por separado para poder diagnosticarla: <strong>YouTube TrueView es skippable</strong> y no es comparable con
-                video no-skippable (programmatic/Meta). El % es la retención sobre las impresiones de video de esa fuente; el salto de
-                impresiones a <strong>vieron 25%</strong> es la caída de atención inicial (ahí se desperdicia la inversión).
-              </p>
-              <div className="grid gap-3 lg:grid-cols-2">
-                {videoSources.map((src) => {
-                  const noQ = src.v25 + src.v50 + src.v75 === 0; // sin cuartiles (ej. TikTok: hueco del sync)
-                  const stages: Array<[string, number]> = [
-                    ["Impresiones", src.impr], ["Vieron 25%", src.v25], ["Vieron 50%", src.v50], ["Vieron 75%", src.v75], ["Vieron 100%", src.v100],
-                  ];
-                  const vtr = src.impr > 0 ? (src.v100 / src.impr) * 100 : 0;
-                  const cpcv = src.spend > 0 && src.v100 > 0 ? (src.spend / src.v100) * 1000 : 0;
-                  return (
-                    <div key={src.name} className="rounded-xl border bg-card p-4">
-                      <div className="mb-2 flex items-baseline justify-between">
-                        <span className="text-xs font-bold">{src.name}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {noQ ? <span className="font-semibold text-muted-foreground">s/d cuartiles</span> : <>VTR <span className={`font-semibold ${vtr >= 30 ? "text-emerald-600" : vtr >= 15 ? "text-amber-600" : "text-rose-600"}`}>{vtr.toFixed(0)}%</span>{cpcv > 0 && <> · CPCV {dvMoney(cpcv)}</>}</>}
-                        </span>
-                      </div>
-                      {noQ && <p className="mb-1 text-[9px] text-amber-600">Sin datos de cuartiles en el feed automático (revisar sync de la fuente). Solo impresiones.</p>}
-                      <div className="space-y-1">
-                        {stages.map(([label, n], i) => {
-                          const pct = src.impr > 0 ? (n / src.impr) * 100 : 0;
-                          return (
-                            <div key={label} className="flex items-center gap-2">
-                              <div className="w-24 shrink-0 text-[10px] text-foreground/70">{label}</div>
-                              <div className="relative h-5 flex-1 overflow-hidden rounded bg-muted">
-                                <div className="flex h-full items-center rounded px-1.5 text-[9px] font-semibold text-white" style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: i === 0 ? "#0a1849" : i === 4 ? "#2b4dff" : "#1e3a8a" }}>{fmtNum(n)}</div>
-                              </div>
-                              <div className="w-9 shrink-0 text-right text-[10px] font-semibold tabular-nums">{pct.toFixed(0)}%</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <p className="mb-3 mt-2 text-[10px] text-muted-foreground/70">
-                YouTube TrueView es <strong>skippable</strong>: su completion no es comparable con video no-skippable (programmatic/Meta).
-                Viewability real (impresiones MRC ≥50% en pantalla) no está en el reporte actual; usamos completion de video como proxy de
-                visibilidad efectiva.
-              </p>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ===== POR MEDIO ===== */}
-      {tab === "Por Medio" && (
-        <div>
           <SectionTitle>Tabla maestra · medios digitales · general + efectivo</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
             <strong>Fuente: procesos automáticos de DV360 + Meta API</strong> (responde a los filtros de arriba). Solo medios digitales con
@@ -1170,6 +1072,104 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
             </>
           )}
 
+          <SectionTitle>Calidad de video — ¿el consumidor realmente vio el mensaje?</SectionTitle>
+          <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+            Las impresiones no dicen si el video <strong>se vio</strong>. Acá medimos <strong>visibilidad real</strong> con los cuartiles
+            (25/50/75/100%) de DV360 + Meta: cuánto de lo que pautamos se convirtió en atención efectiva, y el <strong>costo real</strong>{" "}
+            por view completo (CPCV) — no el CPM sobre impresiones infladas.
+          </p>
+
+          {!videoQuality.hasData ? (
+            <p className="text-xs text-muted-foreground">
+              Sin cuartiles de video en la selección. Se completa con la sincronización de Meta (cuartiles) y el reporte de DV360.
+            </p>
+          ) : (
+            <>
+              {/* Scorecard de calidad */}
+              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">Impresiones de video</div>
+                  <div className="mt-0.5 text-lg font-bold tabular-nums">{fmtNum(videoQuality.imprVideo)}</div>
+                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.pctVideoMix.toFixed(0)}% del total con formato conocido</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">Vieron ≥50% del video</div>
+                  <div className={`mt-0.5 text-lg font-bold tabular-nums ${videoQuality.pct50 >= 50 ? "text-emerald-600" : videoQuality.pct50 >= 30 ? "text-amber-600" : "text-rose-600"}`}>{videoQuality.pct50.toFixed(1)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">visibilidad real efectiva</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">VTR real (vieron 100%)</div>
+                  <div className={`mt-0.5 text-lg font-bold tabular-nums ${videoQuality.pct100 >= 30 ? "text-emerald-600" : videoQuality.pct100 >= 15 ? "text-amber-600" : "text-rose-600"}`}>{videoQuality.pct100.toFixed(1)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">completaron el mensaje</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">CPCV (costo/view completo)</div>
+                  <div className="mt-0.5 text-lg font-bold tabular-nums">{videoQuality.cpcv > 0 ? dvMoney(videoQuality.cpcv) : "—"}</div>
+                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.cpcv > 0 ? "costo real por mensaje visto" : "requiere fx_rates (DV360 en ARS)"}</div>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <div className="text-[11px] text-muted-foreground">Impresiones desperdiciadas</div>
+                  <div className="mt-0.5 text-lg font-bold tabular-nums text-rose-600">{(100 - videoQuality.pct50).toFixed(0)}%</div>
+                  <div className="text-[10px] text-muted-foreground/70">{fmtNum(videoQuality.imprVideo - videoQuality.v50)} no llegaron al 50%</div>
+                </div>
+              </section>
+
+              {/* Embudo de atención SEPARADO por fuente (no mezclar lo comparable) */}
+              <SectionTitle>Embudo de atención · separado por fuente</SectionTitle>
+              <p className="mb-2 text-[10px] text-muted-foreground">
+                Cada fuente por separado para poder diagnosticarla: <strong>YouTube TrueView es skippable</strong> y no es comparable con
+                video no-skippable (programmatic/Meta). El % es la retención sobre las impresiones de video de esa fuente; el salto de
+                impresiones a <strong>vieron 25%</strong> es la caída de atención inicial (ahí se desperdicia la inversión).
+              </p>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {videoSources.map((src) => {
+                  const noQ = src.v25 + src.v50 + src.v75 === 0; // sin cuartiles (ej. TikTok: hueco del sync)
+                  const stages: Array<[string, number]> = [
+                    ["Impresiones", src.impr], ["Vieron 25%", src.v25], ["Vieron 50%", src.v50], ["Vieron 75%", src.v75], ["Vieron 100%", src.v100],
+                  ];
+                  const vtr = src.impr > 0 ? (src.v100 / src.impr) * 100 : 0;
+                  const cpcv = src.spend > 0 && src.v100 > 0 ? (src.spend / src.v100) * 1000 : 0;
+                  return (
+                    <div key={src.name} className="rounded-xl border bg-card p-4">
+                      <div className="mb-2 flex items-baseline justify-between">
+                        <span className="text-xs font-bold">{src.name}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {noQ ? <span className="font-semibold text-muted-foreground">s/d cuartiles</span> : <>VTR <span className={`font-semibold ${vtr >= 30 ? "text-emerald-600" : vtr >= 15 ? "text-amber-600" : "text-rose-600"}`}>{vtr.toFixed(0)}%</span>{cpcv > 0 && <> · CPCV {dvMoney(cpcv)}</>}</>}
+                        </span>
+                      </div>
+                      {noQ && <p className="mb-1 text-[9px] text-amber-600">Sin datos de cuartiles en el feed automático (revisar sync de la fuente). Solo impresiones.</p>}
+                      <div className="space-y-1">
+                        {stages.map(([label, n], i) => {
+                          const pct = src.impr > 0 ? (n / src.impr) * 100 : 0;
+                          return (
+                            <div key={label} className="flex items-center gap-2">
+                              <div className="w-24 shrink-0 text-[10px] text-foreground/70">{label}</div>
+                              <div className="relative h-5 flex-1 overflow-hidden rounded bg-muted">
+                                <div className="flex h-full items-center rounded px-1.5 text-[9px] font-semibold text-white" style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: i === 0 ? "#0a1849" : i === 4 ? "#2b4dff" : "#1e3a8a" }}>{fmtNum(n)}</div>
+                              </div>
+                              <div className="w-9 shrink-0 text-right text-[10px] font-semibold tabular-nums">{pct.toFixed(0)}%</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="mb-3 mt-2 text-[10px] text-muted-foreground/70">
+                YouTube TrueView es <strong>skippable</strong>: su completion no es comparable con video no-skippable (programmatic/Meta).
+                Viewability real (impresiones MRC ≥50% en pantalla) no está en el reporte actual; usamos completion de video como proxy de
+                visibilidad efectiva.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ===== POR MEDIO ===== */}
+      {tab === "Por Medio" && (
+        <div>
           <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
             Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Awareness/Consideración).
