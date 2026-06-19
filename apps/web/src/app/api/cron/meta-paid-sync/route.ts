@@ -466,6 +466,9 @@ export async function GET(req: Request) {
     // el ancho máximo de thumbnail de video visto (para saber si Meta da alta o
     // baja resolución). Se devuelve en la respuesta.
     const imgStats = { video_thumb: 0, full_picture: 0, fallback: 0, max_thumb_w: 0 };
+    // Muestra de las piezas que caen en fallback (sin video_id ni story) para
+    // diagnosticar qué fuente de imagen tienen y poder rematarlas.
+    const fallbackSample: Array<Record<string, unknown>> = [];
     const rows = (
       await Promise.all(
         allAds.map(async (ad) => {
@@ -534,6 +537,19 @@ export async function GET(req: Request) {
               imgStats.full_picture++;
             } else {
               imgStats.fallback++;
+              if (fallbackSample.length < 12) {
+                fallbackSample.push({
+                  ad_id: ad.id,
+                  ad_name: ad.name,
+                  creative_id: ad.creative?.id ?? null,
+                  has_image_url: !!ad.creative?.image_url,
+                  has_thumbnail: !!ad.creative?.thumbnail_url,
+                  has_story: !!img.storyId,
+                  afs_videos: ad.creative?.asset_feed_spec?.videos?.length ?? 0,
+                  afs_images: ad.creative?.asset_feed_spec?.images?.length ?? 0,
+                  src: (bestImg ?? "").slice(0, 70),
+                });
+              }
             }
           }
           // Espejamos al bucket de Supabase (URL eterna). Bumpear el sufijo de la
@@ -613,6 +629,7 @@ export async function GET(req: Request) {
       ads_total: allAds.length,
       ads_con_insights: rows.length,
       img_stats: imgStats,
+      fallback_sample: fallbackSample,
       upsert: upsertResult,
       aggregate: aggregateResult,
     });
