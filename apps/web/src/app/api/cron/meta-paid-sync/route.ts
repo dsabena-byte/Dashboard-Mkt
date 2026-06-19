@@ -102,6 +102,10 @@ interface CreativeStorySpec {
   link_data?: { picture?: string; message?: string; link?: string };
   video_data?: { image_url?: string; message?: string; video_id?: string };
 }
+interface AssetFeedSpec {
+  videos?: Array<{ video_id?: string; thumbnail_url?: string }>;
+  images?: Array<{ hash?: string; url?: string }>;
+}
 interface AdCreative {
   id?: string;
   thumbnail_url?: string;
@@ -111,6 +115,7 @@ interface AdCreative {
   effective_object_story_id?: string;
   instagram_permalink_url?: string;
   object_story_spec?: CreativeStorySpec;
+  asset_feed_spec?: AssetFeedSpec;
 }
 interface AdInsight {
   impressions?: string;
@@ -147,14 +152,19 @@ function pickImage(c?: AdCreative): { best?: string; copy?: string; storyId?: st
   if (!c) return {};
   const storyLink = c.object_story_spec?.link_data;
   const storyVid = c.object_story_spec?.video_data;
+  // Creatives dinámicos / Advantage+ guardan sus assets en asset_feed_spec
+  // (no en object_story_spec). De ahí salen el video_id y la imagen full.
+  const afs = c.asset_feed_spec;
+  const afsVideoId = afs?.videos?.find((v) => v.video_id)?.video_id;
+  const afsImage = afs?.images?.find((i) => i.url)?.url;
   return {
-    // Mejor imagen disponible: image_url full > cover de video > thumbnail
-    // (64×64 para video) > picture del link. Para video, lo mejor es el
-    // thumbnail del video en alta (ver fetch de /{video_id}/thumbnails abajo).
-    best: c.image_url ?? storyVid?.image_url ?? c.thumbnail_url ?? storyLink?.picture,
+    // Mejor imagen disponible: image_url full > imagen del asset_feed_spec >
+    // cover de video > thumbnail (64×64 para video) > picture del link. Para
+    // video, lo mejor es el thumbnail del video en alta (fetch /{video_id}/thumbnails).
+    best: c.image_url ?? afsImage ?? storyVid?.image_url ?? c.thumbnail_url ?? storyLink?.picture,
     copy: c.body ?? storyLink?.message ?? storyVid?.message,
     storyId: c.effective_object_story_id,
-    videoId: c.video_id ?? storyVid?.video_id,
+    videoId: c.video_id ?? storyVid?.video_id ?? afsVideoId,
   };
 }
 
@@ -424,7 +434,7 @@ export async function GET(req: Request) {
       "adset_id",
       "campaign{name,objective}",
       "adset{name}",
-      "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,body,effective_object_story_id,instagram_permalink_url,object_story_spec{link_data{picture,message,link},video_data{image_url,message,video_id}}}",
+      "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,body,effective_object_story_id,instagram_permalink_url,object_story_spec{link_data{picture,message,link},video_data{image_url,message,video_id}},asset_feed_spec{videos{video_id,thumbnail_url},images{hash,url}}}",
       `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,video_play_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,video_thruplay_watched_actions,date_start,date_stop}`,
     ].join(",");
 
@@ -519,8 +529,8 @@ export async function GET(req: Request) {
           // Espejamos al bucket de Supabase (URL eterna). Bumpear el sufijo de la
           // key ('-hd5' -> '-hd6' …) cada vez que mejora la resolución de origen:
           // el helper saltea la descarga si la key ya existe.
-          // '-hd6' = video_id sacado también del post (no solo inline).
-          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd6.jpg`);
+          // '-hd7' = video_id también desde asset_feed_spec (creatives dinámicos).
+          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd7.jpg`);
           // Link a la pieza: si es de Instagram, el permalink de IG es el que
           // resuelve; si no, el post de Facebook detrás del ad (story_id). Para
           // "dark posts" sin post público no hay link válido -> null.
