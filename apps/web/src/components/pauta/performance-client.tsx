@@ -562,6 +562,26 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
     }
     return agg;
   }, [dv360Conv, metaPaidF]);
+  // VOLUMEN REAL ejecutado (no el plan), desde los procesos automáticos. Sirve
+  // para los medios que todavía NO tienen plan de OMD cargado en el período
+  // (ej. el mes en curso): así se ve la pauta en tiempo real, no solo Meta.
+  const autoVolByMedio = useMemo(() => {
+    const m = new Map<string, { inversion: number; impresiones: number; clics: number; alcance: number }>();
+    const add = (medio: string, inv: number, impr: number, clic: number, reach: number) => {
+      if (impr <= 0 && inv <= 0) return;
+      const e = m.get(medio) ?? { inversion: 0, impresiones: 0, clics: 0, alcance: 0 };
+      e.inversion += inv; e.impresiones += impr; e.clics += clic; e.alcance += reach;
+      m.set(medio, e);
+    };
+    const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
+    for (const r of dv360Conv) add(DVMED[r.canal] ?? r.canal, r.revenue_usd, r.impresiones, r.clicks, 0);
+    for (const r of metaPaidF) {
+      const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
+      if (!medio) continue;
+      add(medio, r.spend ?? 0, r.impresiones ?? 0, r.clicks ?? 0, r.alcance ?? 0);
+    }
+    return m;
+  }, [dv360Conv, metaPaidF]);
   const medioModel = useMemo(() => {
     const mk = (m: typeof byMedio[number]) => {
       const v = vtrByMedio.get(m.medio);
@@ -581,7 +601,32 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
         cpmEf: comp > 0 ? (m.inversion / comp) * 1000 : 0, // costo real por mil views completos (inversión OMD)
       };
     };
-    const all = byMedio.filter((m) => m.impresiones > 0).map(mk).sort((a, b) => b.inversion - a.inversion);
+    const fromOmd = byMedio.filter((m) => m.impresiones > 0).map(mk);
+    // Gap-fill: medios que se están ejecutando (data automática) pero NO tienen
+    // plan de OMD en el período → se agregan con el volumen real. No duplica:
+    // si el medio ya vino por OMD, se respeta el plan.
+    const present = new Set(fromOmd.map((i) => i.medio));
+    const autoItems = [...autoVolByMedio.entries()]
+      .filter(([medio, vol]) => !present.has(medio) && vol.impresiones > 0)
+      .map(([medio, vol]) => {
+        const v = vtrByMedio.get(medio);
+        const comp = v?.comp ?? 0, vimpr = v?.vimpr ?? 0;
+        return {
+          medio,
+          isDigital: tipoMedio(medio) === "Digital",
+          inversion: vol.inversion,
+          impresiones: vol.impresiones,
+          alcance: vol.alcance,
+          clics: vol.clics,
+          viewsReales: comp,
+          vimpr,
+          cpm: vol.impresiones > 0 ? (vol.inversion / vol.impresiones) * 1000 : 0,
+          ctr: vol.impresiones > 0 ? (vol.clics / vol.impresiones) * 100 : 0,
+          vtr: vimpr > 0 ? (comp / vimpr) * 100 : 0,
+          cpmEf: comp > 0 ? (vol.inversion / comp) * 1000 : 0,
+        };
+      });
+    const all = [...fromOmd, ...autoItems].sort((a, b) => b.inversion - a.inversion);
     const digital = all.filter((i) => i.isDigital);
     const offline = all.filter((i) => !i.isDigital);
     const totalize = (arr: typeof all) => arr.reduce((t, i) => ({ inv: t.inv + i.inversion, impr: t.impr + i.impresiones, reach: t.reach + i.alcance, clics: t.clics + i.clics, comp: t.comp + i.viewsReales, vimpr: t.vimpr + i.vimpr }), { inv: 0, impr: 0, reach: 0, clics: 0, comp: 0, vimpr: 0 });
@@ -592,7 +637,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], fxRates = {
       bestVtr: maxPos(digital.map((i) => i.vtr)),
       bestCpmEf: minPos(digital.map((i) => i.cpmEf)),
     };
-  }, [byMedio, vtrByMedio]);
+  }, [byMedio, vtrByMedio, autoVolByMedio]);
 
   // Motor de insights desde los datos AUTOMÁTICOS + efectivos (medioModel/catModel/
   // rolModel). Genera Fortalezas, Oportunidades y Optimizaciones accionables.
