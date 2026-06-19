@@ -439,12 +439,22 @@ export async function GET(req: Request) {
     ].join(",");
 
     phase = "fetch_ads";
+    // Por defecto /ads NO devuelve ads archivados/eliminados, así que las piezas
+    // de campañas ya terminadas nunca se re-procesan (quedan con la imagen vieja).
+    // Pedimos explícitamente todos los estados (menos DELETED) para re-mirrorearlas.
+    const effectiveStatus = encodeURIComponent(
+      JSON.stringify([
+        "ACTIVE", "PAUSED", "ADSET_PAUSED", "CAMPAIGN_PAUSED", "ARCHIVED",
+        "IN_PROCESS", "WITH_ISSUES", "PENDING_REVIEW", "DISAPPROVED",
+        "PREAPPROVED", "PENDING_BILLING_INFO",
+      ]),
+    );
     let nextUrl: string | undefined =
-      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&limit=20&access_token=${token}`;
+      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&effective_status=${effectiveStatus}&limit=20&access_token=${token}`;
 
     const allAds: MetaAd[] = [];
     let pages = 0;
-    while (nextUrl && pages < 20) {
+    while (nextUrl && pages < 40) {
       const page: AdsResp = await graphGet<AdsResp>(nextUrl);
       allAds.push(...(page.data ?? []));
       nextUrl = page.paging?.next;
