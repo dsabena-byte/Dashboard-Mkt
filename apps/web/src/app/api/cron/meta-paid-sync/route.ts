@@ -442,6 +442,10 @@ export async function GET(req: Request) {
     }
 
     phase = "upsert";
+    // Diagnóstico de origen de imagen: cuántas piezas resolvieron por cada vía y
+    // el ancho máximo de thumbnail de video visto (para saber si Meta da alta o
+    // baja resolución). Se devuelve en la respuesta.
+    const imgStats = { video_thumb: 0, full_picture: 0, fallback: 0, max_thumb_w: 0 };
     const rows = (
       await Promise.all(
         allAds.map(async (ad) => {
@@ -454,44 +458,69 @@ export async function GET(req: Request) {
           const videoP75 = sumActions(ins.video_p75_watched_actions);
           const videoP100 = sumActions(ins.video_p100_watched_actions);
           const img = pickImage(ad.creative);
-          // Resolución de la imagen, de mayor a menor calidad:
-          //  1. Para VIDEO: el thumbnail del video en su máxima resolución
-          //     (/{video_id}/thumbnails). Es lo más nítido. El full_picture del
-          //     post, para un video, suele ser un preview chico → por eso el video
-          //     va PRIMERO (antes estaba al revés y quedaba pixelado).
-          //  2. full_picture del post (piezas de imagen/link, o video sin thumbs).
-          //  3. img.best (image_url / cover / thumbnail 64×64).
-          // Todo leído con el token de la Página (system user): videos y posts son
-          // propiedad de la Página Drean.
+          // Resolución de imagen, de mayor a menor calidad. Para VIDEO lo nítido es
+          // el thumbnail del video (/{video_id}/thumbnails). El video_id puede venir
+          // inline (object_story_spec) o —caso típico cuando el creative se arma
+          // desde un post de la Página— hay que sacarlo del POST (attachments).
+          // full_picture es solo un preview chico → último recurso. Todo con el
+          // token de la Página (system user): videos y posts son de la Página Drean.
           let bestImg = img.best;
           let gotHd = false;
-          if (img.videoId) {
+          let videoId: string | null = img.videoId ?? null;
+          let fullPic: string | undefined;
+          if (img.storyId) {
+            const post = await graphGet<{
+              full_picture?: string;
+              attachments?: {
+                data?: Array<{
+                  type?: string;
+                  target?: { id?: string };
+                  subattachments?: { data?: Array<{ type?: string; target?: { id?: string } }> };
+                }>;
+              };
+            }>(
+              `${GRAPH_API}/${img.storyId}?fields=full_picture,attachments{type,target,subattachments}&access_token=${pageToken}`,
+            ).catch(() => ({} as { full_picture?: string; attachments?: { data?: Array<{ type?: string; target?: { id?: string }; subattachments?: { data?: Array<{ type?: string; target?: { id?: string } }> } }> } }));
+            fullPic = post.full_picture;
+            if (!videoId) {
+              const att = post.attachments?.data?.[0];
+              if (att?.type?.includes("video")) {
+                videoId = att.target?.id ?? att.subattachments?.data?.[0]?.target?.id ?? null;
+              } else {
+                const sub = att?.subattachments?.data?.find((s) => s.type?.includes("video"));
+                if (sub) videoId = sub.target?.id ?? null;
+              }
+            }
+          }
+          if (videoId) {
             const vt = await graphGet<{
               thumbnails?: { data?: Array<{ uri?: string; width?: number; is_preferred?: boolean }> };
             }>(
-              `${GRAPH_API}/${img.videoId}?fields=thumbnails{uri,width,height,is_preferred}&access_token=${pageToken}`,
+              `${GRAPH_API}/${videoId}?fields=thumbnails{uri,width,height,is_preferred}&access_token=${pageToken}`,
             ).catch(() => ({} as { thumbnails?: { data?: Array<{ uri?: string; width?: number; is_preferred?: boolean }> } }));
             const thumbs = vt.thumbnails?.data ?? [];
-            // El de mayor ancho = máxima resolución (el cover suele venir full-size).
+            // El de mayor ancho = máxima resolución.
             const chosen = [...thumbs].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0];
             if (chosen?.uri) {
               bestImg = chosen.uri;
               gotHd = true;
+              imgStats.video_thumb++;
+              if ((chosen.width ?? 0) > imgStats.max_thumb_w) imgStats.max_thumb_w = chosen.width ?? 0;
             }
           }
-          // Fallback: full_picture del post (imagen/link, o video sin thumbnails).
-          if (!gotHd && img.storyId) {
-            const post = await graphGet<{ full_picture?: string }>(
-              `${GRAPH_API}/${img.storyId}?fields=full_picture&access_token=${pageToken}`,
-            ).catch(() => ({} as { full_picture?: string }));
-            if (post.full_picture) bestImg = post.full_picture;
+          if (!gotHd) {
+            if (fullPic) {
+              bestImg = fullPic;
+              imgStats.full_picture++;
+            } else {
+              imgStats.fallback++;
+            }
           }
           // Espejamos al bucket de Supabase (URL eterna). Bumpear el sufijo de la
-          // key ('-hd4' -> '-hd5' …) cada vez que mejora la resolución de origen:
-          // el helper saltea la descarga si la key ya existe, así que sin key nueva
-          // las piezas viejas se quedarían con el espejado anterior de menor calidad.
-          // '-hd5' = thumbnail del video en alta priorizado sobre full_picture.
-          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd5.jpg`);
+          // key ('-hd5' -> '-hd6' …) cada vez que mejora la resolución de origen:
+          // el helper saltea la descarga si la key ya existe.
+          // '-hd6' = video_id sacado también del post (no solo inline).
+          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd6.jpg`);
           // Link a la pieza: si es de Instagram, el permalink de IG es el que
           // resuelve; si no, el post de Facebook detrás del ad (story_id). Para
           // "dark posts" sin post público no hay link válido -> null.
@@ -563,6 +592,7 @@ export async function GET(req: Request) {
       pages_fetched: pages,
       ads_total: allAds.length,
       ads_con_insights: rows.length,
+      img_stats: imgStats,
       upsert: upsertResult,
       aggregate: aggregateResult,
     });
