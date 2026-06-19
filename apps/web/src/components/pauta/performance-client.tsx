@@ -76,23 +76,31 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
 // Agrega por dimensión (categoría o rol) con la MISMA estructura/fuentes que la tabla
 // maestra: VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD; EFECTIVO
 // (VTR, completions) desde DV360 + Meta/TikTok automáticos.
-function buildDimModel(omd: PautaRow[], dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim: "categoria" | "rol") {
+function buildDimModel(omd: PautaRow[], dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim: "categoria" | "rol", gapMedios: Set<string>) {
   type Acc = { inv: number; impr: number; clicks: number; comp: number; vimpr: number; reach: number };
   const agg = new Map<string, Acc>();
   const get = (k: string) => { let e = agg.get(k); if (!e) { e = { inv: 0, impr: 0, clicks: 0, comp: 0, vimpr: 0, reach: 0 }; agg.set(k, e); } return e; };
+  const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
   for (const r of omd) { // volumen oficial OMD
     const e = get((dim === "categoria" ? r.categoria : r.objetivo) || "—");
     e.inv += r.inversion ?? 0; e.impr += r.impresiones ?? 0; e.clicks += r.clics ?? 0; e.reach += r.alcance ?? 0;
   }
-  for (const r of dv) { // efectivo de video DV360
-    if (r.starts <= 0) continue;
+  for (const r of dv) {
     const e = get((dim === "categoria" ? r.categoria : r.rol) || "—");
-    e.vimpr += r.impresiones; e.comp += r.q100;
+    // Volumen real: solo para medios DV360 SIN plan OMD en el período (gap-fill,
+    // igual que la tabla maestra) → así los totales del detalle cuadran con la maestra.
+    if (gapMedios.has(DVMED[r.canal] ?? r.canal)) {
+      e.inv += r.revenue_usd; e.impr += r.impresiones; e.clicks += r.clicks;
+    }
+    if (r.starts > 0) { e.vimpr += r.impresiones; e.comp += r.q100; } // efectivo de video
   }
-  for (const r of meta) { // efectivo de video Meta/TikTok
+  for (const r of meta) {
     if (r.plataforma !== "meta" && r.plataforma !== "tiktok") continue;
     const k = dim === "categoria" ? (r.categoria ?? "—") : (tipoCompraToRol(r.tipo_compra) ?? "—");
     const e = get(k);
+    if (gapMedios.has(r.plataforma === "meta" ? "Meta" : "TikTok")) {
+      e.inv += r.spend ?? 0; e.impr += r.impresiones ?? 0; e.clicks += r.clicks ?? 0; e.reach += r.alcance ?? 0;
+    }
     const v = metaRowVideo(r);
     e.vimpr += v.vbase; e.comp += v.comp;
   }
@@ -376,10 +384,21 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     return arr.sort((a, b) => b.impr - a.impr);
   }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, arsMode]);
-  // Categoría/rol: solo medios digitales (los que tienen efectivo de video), volumen OMD.
+  // Categoría/rol: solo medios digitales. Volumen OMD + gap-fill de ejecución real
+  // (mismos medios que la tabla maestra) para que los totales cuadren.
   const digitalRows = useMemo(() => rows.filter((r) => tipoMedio(r.medio) === "Digital"), [rows]);
-  const catModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, "categoria"), [digitalRows, dv360Conv, metaPaidF]);
-  const rolModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, "rol"), [digitalRows, dv360Conv, metaPaidF]);
+  // Medios que se ejecutan pero NO tienen plan OMD en el período → su volumen real
+  // se suma (igual que el gap-fill de la tabla maestra).
+  const dvGapMedios = useMemo(() => {
+    const omdMedios = new Set(byMedio.map((m) => m.medio));
+    const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
+    const s = new Set<string>();
+    for (const r of dv360Conv) { const m = DVMED[r.canal] ?? r.canal; if (!omdMedios.has(m)) s.add(m); }
+    for (const r of metaPaidF) { const m = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null; if (m && !omdMedios.has(m)) s.add(m); }
+    return s;
+  }, [byMedio, dv360Conv, metaPaidF]);
+  const catModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, "categoria", dvGapMedios), [digitalRows, dv360Conv, metaPaidF, dvGapMedios]);
+  const rolModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, "rol", dvGapMedios), [digitalRows, dv360Conv, metaPaidF, dvGapMedios]);
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
   const minPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const maxPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
