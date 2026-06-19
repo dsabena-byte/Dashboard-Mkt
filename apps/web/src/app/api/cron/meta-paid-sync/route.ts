@@ -392,25 +392,42 @@ async function repairImages(batch: number): Promise<unknown> {
   const token = process.env.META_PAID_TOKEN_OVERRIDE || env("META_SYSTEM_USER_TOKEN");
   const pageToken = env("META_SYSTEM_USER_TOKEN");
   const staleRes = await fetch(
-    `${sb}/rest/v1/meta_paid_creatives?select=ad_id,image_url&plataforma=eq.meta`,
+    `${sb}/rest/v1/meta_paid_creatives?select=ad_id,creative_id,image_url&plataforma=eq.meta`,
     { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } },
   );
-  const allRows = (await staleRes.json()) as Array<{ ad_id: string; image_url: string | null }>;
-  const staleIds = Array.from(
-    new Set(allRows.filter((r) => !r.image_url || !r.image_url.includes("-hd7.jpg")).map((r) => r.ad_id)),
-  );
+  const allRows = (await staleRes.json()) as Array<{ ad_id: string; creative_id: string | null; image_url: string | null }>;
+  // Mapa ad_id -> creative_id de las piezas con imagen vieja.
+  const staleMap = new Map<string, string | null>();
+  for (const r of allRows) {
+    if (!r.image_url || !r.image_url.includes("-hd7.jpg")) {
+      if (!staleMap.has(r.ad_id)) staleMap.set(r.ad_id, r.creative_id);
+    }
+  }
+  const staleIds = [...staleMap.keys()];
   const toProcess = staleIds.slice(0, batch);
-  const CREATIVE =
-    "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,effective_object_story_id,object_story_spec{link_data{picture},video_data{image_url,video_id}},asset_feed_spec{videos{video_id,thumbnail_url},images{hash,url}}}";
+  // Campos del creative (sin el wrapper creative{}, para fetch directo por creative_id).
+  const CREATIVE_FIELDS =
+    "id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,effective_object_story_id,object_story_spec{link_data{picture},video_data{image_url,video_id}},asset_feed_spec{videos{video_id,thumbnail_url},images{hash,url}}";
   const stats = { video_thumb: 0, full_picture: 0, fallback: 0 };
+  const errors: string[] = [];
   let fixed = 0;
   let failed = 0;
   for (const adId of toProcess) {
     try {
-      const adRes = await graphGet<{ creative?: AdCreative }>(
-        `${GRAPH_API}/${adId}?fields=${encodeURIComponent(CREATIVE)}&access_token=${token}`,
-      );
-      const { mirrored, via } = await resolveBestImageUrl(adRes.creative, adId, pageToken);
+      const creativeId = staleMap.get(adId);
+      let creative: AdCreative | undefined;
+      if (creativeId) {
+        // El creative sobrevive al ad aunque el ad esté eliminado.
+        creative = await graphGet<AdCreative>(
+          `${GRAPH_API}/${creativeId}?fields=${encodeURIComponent(CREATIVE_FIELDS)}&access_token=${token}`,
+        );
+      } else {
+        const adRes = await graphGet<{ creative?: AdCreative }>(
+          `${GRAPH_API}/${adId}?fields=${encodeURIComponent(`creative{${CREATIVE_FIELDS}}`)}&access_token=${token}`,
+        );
+        creative = adRes.creative;
+      }
+      const { mirrored, via } = await resolveBestImageUrl(creative, adId, pageToken);
       stats[via]++;
       const patch = await fetch(
         `${sb}/rest/v1/meta_paid_creatives?ad_id=eq.${adId}&plataforma=eq.meta`,
@@ -422,8 +439,9 @@ async function repairImages(batch: number): Promise<unknown> {
       );
       if (patch.ok) fixed++;
       else failed++;
-    } catch {
+    } catch (e) {
       failed++;
+      if (errors.length < 3) errors.push((e instanceof Error ? e.message : String(e)).slice(0, 220));
     }
   }
   return {
@@ -435,6 +453,7 @@ async function repairImages(batch: number): Promise<unknown> {
     failed,
     restantes: staleIds.length - toProcess.length,
     repair_stats: stats,
+    errors,
   };
 }
 

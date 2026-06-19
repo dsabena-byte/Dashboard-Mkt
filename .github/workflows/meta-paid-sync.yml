@@ -50,8 +50,10 @@ jobs:
               echo "Iteración $i → HTTP $HTTP"
               cat out.json; echo ""
               REST=$(grep -o '"restantes":[0-9]*' out.json | grep -o '[0-9]*' || echo "")
+              FIXEDN=$(grep -o '"fixed":[0-9]*' out.json | grep -o '[0-9]*' || echo "0")
               if [ "$HTTP" -ge 400 ]; then echo "Repair falló"; exit 1; fi
               if [ "${REST:-0}" = "0" ]; then echo "Repair completo"; break; fi
+              if [ "${FIXEDN:-0}" = "0" ]; then echo "Sin progreso (fixed=0) — corto para no loopear"; break; fi
             done
             exit 0
           fi
