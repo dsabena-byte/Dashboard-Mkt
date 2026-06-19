@@ -24,6 +24,10 @@ on:
         description: "Mes específico YYYY-MM (ej. 2026-05). Vacío = sincroniza mes actual + 2 anteriores."
         required: false
         default: ""
+      repair:
+        description: "Repair de imágenes: re-mirror de piezas con imagen vieja (ads eliminados). No sincroniza métricas."
+        type: boolean
+        default: false
 
 jobs:
   trigger:
@@ -34,6 +38,23 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://dashboard-mkt-seven.vercel.app/api/cron/meta-paid-sync"
+
+          AUTH=()
+          if [ -n "${CRON_SECRET:-}" ]; then AUTH=(-H "Authorization: Bearer ${CRON_SECRET}"); fi
+
+          # Modo repair: re-mirror de piezas con imagen vieja, en loop hasta terminar.
+          if [ "${REPAIR:-false}" = "true" ]; then
+            echo "===== REPAIR de imágenes ====="
+            for i in $(seq 1 30); do
+              HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 120 "${BASE}?repair=1" "${AUTH[@]}")
+              echo "Iteración $i → HTTP $HTTP"
+              cat out.json; echo ""
+              REST=$(grep -o '"restantes":[0-9]*' out.json | grep -o '[0-9]*' || echo "")
+              if [ "$HTTP" -ge 400 ]; then echo "Repair falló"; exit 1; fi
+              if [ "${REST:-0}" = "0" ]; then echo "Repair completo"; break; fi
+            done
+            exit 0
+          fi
 
           # Build common query suffix (debug + act_id)
           COMMON_QS=""
@@ -86,3 +107,4 @@ jobs:
           DEBUG: ${{ inputs.debug }}
           ACT_ID: ${{ inputs.act_id }}
           MES: ${{ inputs.mes }}
+          REPAIR: ${{ inputs.repair }}

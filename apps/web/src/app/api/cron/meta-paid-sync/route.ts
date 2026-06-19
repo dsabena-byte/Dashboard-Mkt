@@ -327,6 +327,117 @@ async function supabaseUpsert(rows: unknown[]): Promise<string> {
   return `${rows.length} filas upserteadas`;
 }
 
+// Resuelve la mejor imagen de un creative y la espeja al bucket (key -hd7).
+// Para video prioriza el thumbnail del video en alta; el video_id puede venir
+// inline, del post (attachments) o de asset_feed_spec. Devuelve la URL espejada
+// + por qué vía se resolvió. Lo usa el modo "repair" (fetch por ad_id directo).
+async function resolveBestImageUrl(
+  creative: AdCreative | undefined,
+  adId: string,
+  pageToken: string,
+): Promise<{ mirrored: string | null; via: "video_thumb" | "full_picture" | "fallback"; thumbW: number }> {
+  const img = pickImage(creative);
+  let bestImg = img.best;
+  let gotHd = false;
+  let videoId: string | null = img.videoId ?? null;
+  let fullPic: string | undefined;
+  let thumbW = 0;
+  if (img.storyId) {
+    const post = await graphGet<{
+      full_picture?: string;
+      attachments?: { data?: Array<{ type?: string; target?: { id?: string }; subattachments?: { data?: Array<{ type?: string; target?: { id?: string } }> } }> };
+    }>(
+      `${GRAPH_API}/${img.storyId}?fields=full_picture,attachments{type,target,subattachments}&access_token=${pageToken}`,
+    ).catch(() => ({} as { full_picture?: string; attachments?: { data?: Array<{ type?: string; target?: { id?: string }; subattachments?: { data?: Array<{ type?: string; target?: { id?: string } }> } }> } }));
+    fullPic = post.full_picture;
+    if (!videoId) {
+      const att = post.attachments?.data?.[0];
+      if (att?.type?.includes("video")) {
+        videoId = att.target?.id ?? att.subattachments?.data?.[0]?.target?.id ?? null;
+      } else {
+        const sub = att?.subattachments?.data?.find((s) => s.type?.includes("video"));
+        if (sub) videoId = sub.target?.id ?? null;
+      }
+    }
+  }
+  if (videoId) {
+    const vt = await graphGet<{ thumbnails?: { data?: Array<{ uri?: string; width?: number }> } }>(
+      `${GRAPH_API}/${videoId}?fields=thumbnails{uri,width,height,is_preferred}&access_token=${pageToken}`,
+    ).catch(() => ({} as { thumbnails?: { data?: Array<{ uri?: string; width?: number }> } }));
+    const thumbs = vt.thumbnails?.data ?? [];
+    const chosen = [...thumbs].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0];
+    if (chosen?.uri) {
+      bestImg = chosen.uri;
+      gotHd = true;
+      thumbW = chosen.width ?? 0;
+    }
+  }
+  let via: "video_thumb" | "full_picture" | "fallback" = "fallback";
+  if (gotHd) via = "video_thumb";
+  else if (fullPic) {
+    bestImg = fullPic;
+    via = "full_picture";
+  }
+  const mirrored = await mirrorMetaImage(bestImg, `paid/${adId}-hd7.jpg`);
+  return { mirrored, via, thumbW };
+}
+
+// Modo repair: re-procesa por ad_id directo las piezas Meta cuya imagen quedó
+// vieja (no -hd7) — típicamente ads ELIMINADOS que /ads ya no devuelve, o piezas
+// que en la llamada masiva no encontraron el video (asset_feed_spec recortado por
+// el límite de datos). Pidiendo el ad de a uno se trae el creative completo.
+async function repairImages(batch: number): Promise<unknown> {
+  const sb = env("NEXT_PUBLIC_SUPABASE_URL");
+  const sbKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const token = process.env.META_PAID_TOKEN_OVERRIDE || env("META_SYSTEM_USER_TOKEN");
+  const pageToken = env("META_SYSTEM_USER_TOKEN");
+  const staleRes = await fetch(
+    `${sb}/rest/v1/meta_paid_creatives?select=ad_id,image_url&plataforma=eq.meta`,
+    { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } },
+  );
+  const allRows = (await staleRes.json()) as Array<{ ad_id: string; image_url: string | null }>;
+  const staleIds = Array.from(
+    new Set(allRows.filter((r) => !r.image_url || !r.image_url.includes("-hd7.jpg")).map((r) => r.ad_id)),
+  );
+  const toProcess = staleIds.slice(0, batch);
+  const CREATIVE =
+    "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,effective_object_story_id,object_story_spec{link_data{picture},video_data{image_url,video_id}},asset_feed_spec{videos{video_id,thumbnail_url},images{hash,url}}}";
+  const stats = { video_thumb: 0, full_picture: 0, fallback: 0 };
+  let fixed = 0;
+  let failed = 0;
+  for (const adId of toProcess) {
+    try {
+      const adRes = await graphGet<{ creative?: AdCreative }>(
+        `${GRAPH_API}/${adId}?fields=${encodeURIComponent(CREATIVE)}&access_token=${token}`,
+      );
+      const { mirrored, via } = await resolveBestImageUrl(adRes.creative, adId, pageToken);
+      stats[via]++;
+      const patch = await fetch(
+        `${sb}/rest/v1/meta_paid_creatives?ad_id=eq.${adId}&plataforma=eq.meta`,
+        {
+          method: "PATCH",
+          headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ image_url: mirrored, thumbnail_url: mirrored }),
+        },
+      );
+      if (patch.ok) fixed++;
+      else failed++;
+    } catch {
+      failed++;
+    }
+  }
+  return {
+    ok: true,
+    mode: "repair",
+    stale_total: staleIds.length,
+    procesados: toProcess.length,
+    fixed,
+    failed,
+    restantes: staleIds.length - toProcess.length,
+    repair_stats: stats,
+  };
+}
+
 export async function GET(req: Request) {
   // Gate: Vercel Cron envía Authorization: Bearer CRON_SECRET.
   const authHeader = req.headers.get("authorization");
@@ -336,6 +447,18 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
+
+  // ?repair=1 → re-mirror de piezas Meta con imagen vieja (ads eliminados, etc.)
+  if (url.searchParams.get("repair")) {
+    const batch = Math.min(Math.max(parseInt(url.searchParams.get("batch") ?? "20", 10) || 20, 1), 50);
+    try {
+      return NextResponse.json(await repairImages(batch));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return NextResponse.json({ ok: false, mode: "repair", error: msg }, { status: 500 });
+    }
+  }
+
   const today = new Date();
   const mesParam = url.searchParams.get("mes") ?? `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
   const actOverride = url.searchParams.get("act_id");
