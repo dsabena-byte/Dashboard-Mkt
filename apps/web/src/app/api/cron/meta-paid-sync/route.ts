@@ -461,10 +461,12 @@ export async function GET(req: Request) {
             ).catch(() => ({} as { full_picture?: string }));
             if (post.full_picture) bestImg = post.full_picture;
           }
-          // Espejamos al bucket de Supabase (URL eterna). Key '-hd' para no
-          // chocar con el espejado anterior de menor resolución (el helper
-          // saltea la descarga si la key ya existe).
-          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd2.jpg`);
+          // Espejamos al bucket de Supabase (URL eterna). Bumpear el sufijo de la
+          // key ('-hd2' -> '-hd3' …) cada vez que mejora la resolución de origen:
+          // el helper saltea la descarga si la key ya existe, así que sin key nueva
+          // las piezas viejas se quedarían con el espejado anterior de menor calidad.
+          // '-hd3' = thumbnail 1080 (antes '-hd2' bajaba 720 y quedaba pixelado).
+          const mirrored = await mirrorMetaImage(bestImg, `paid/${ad.id}-hd3.jpg`);
           // Link a la pieza: si es de Instagram, el permalink de IG es el que
           // resuelve; si no, el post de Facebook detrás del ad (story_id). Para
           // "dark posts" sin post público no hay link válido -> null.
