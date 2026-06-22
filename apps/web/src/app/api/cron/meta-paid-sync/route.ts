@@ -191,19 +191,29 @@ function parseAdName(adName: string | null | undefined): {
   // Separadores tolerantes (algunos ads tienen "Lavado- Meta" sin espacio).
   const parts = adName.split(/\s*-\s*/).map((p) => p.trim());
   // Esperado: ["Drean", "{Categoria}", "{Medio}", "{TipoCompra}", "{SKU}", ...]
-  if (parts.length < 4) return { categoria: null, tipo_compra: null, rol: null };
-  const rawCat = (parts[1] ?? "").toLowerCase();
-  const rawTipo = (parts[3] ?? "").toUpperCase();
-  const categoria = (() => {
-    if (rawCat.startsWith("lavado")) return "Lavado";
-    if (rawCat.startsWith("refriger") || rawCat.startsWith("heladera")) return "Refrigeración";
-    if (rawCat.startsWith("cocci") || rawCat.startsWith("cocina")) return "Cocción";
-    if (rawCat.startsWith("brand")) return "Brand";
-    if (rawCat.startsWith("promo")) return "Promoción";
-    if (rawCat.startsWith("ugc")) return "UGC";
-    return null;
-  })();
-  const tipo_compra = /^(CPC|CPM|CPV)$/.test(rawTipo) ? rawTipo : null;
+  let categoria: string | null = null;
+  let tipo_compra: string | null = null;
+  if (parts.length >= 4) {
+    const rawCat = (parts[1] ?? "").toLowerCase();
+    const rawTipo = (parts[3] ?? "").toUpperCase();
+    categoria =
+      rawCat.startsWith("lavado") ? "Lavado"
+      : rawCat.startsWith("refriger") || rawCat.startsWith("heladera") ? "Refrigeración"
+      : rawCat.startsWith("cocci") || rawCat.startsWith("cocina") ? "Cocción"
+      : rawCat.startsWith("brand") ? "Brand"
+      : rawCat.startsWith("promo") ? "Promoción"
+      : rawCat.startsWith("ugc") ? "UGC"
+      : null;
+    if (/^(CPC|CPM|CPV)$/.test(rawTipo)) tipo_compra = rawTipo;
+  }
+  // Fallback para nomenclatura alternativa (ej. UGC con underscores:
+  // "META_Drean_UGC_IG_Video..._CPM_2026"): detecta UGC y el tipo de compra en
+  // cualquier parte del nombre, no solo en el patrón de guiones.
+  if (!categoria && /(^|[^a-z])ugc([^a-z]|$)/i.test(adName)) categoria = "UGC";
+  if (!tipo_compra) {
+    const m = adName.toUpperCase().match(/(?:^|[^A-Z])(CPC|CPM|CPV)(?:[^A-Z]|$)/);
+    if (m) tipo_compra = m[1] ?? null;
+  }
   const rol = tipo_compra === "CPC" ? "Consideración"
             : tipo_compra === "CPM" || tipo_compra === "CPV" ? "Awareness"
             : null;
