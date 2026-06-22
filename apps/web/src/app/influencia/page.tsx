@@ -67,25 +67,6 @@ export default async function InfluenciaPage() {
             </section>
           )}
 
-          {ugcCreatives.length > 0 && (
-            <section className="space-y-3">
-              <div className="mt-2 flex items-end justify-between">
-                <div>
-                  <h3 className="text-sm font-medium">Piezas pautadas · UGC (Meta IG + FB)</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Ordenadas por inversión. {ugcCreatives.length} piezas en total.
-                  </p>
-                </div>
-              </div>
-              <MetaPaidGrid
-                data={ugcCreatives}
-                selMeses={[]}
-                selCats={[]}
-                selRoles={[]}
-              />
-            </section>
-          )}
-
           <div className="mt-2 mb-3 text-sm font-medium text-muted-foreground">Detalle por línea</div>
           <div className="rounded-xl border bg-card">
             <div className="overflow-x-auto">
@@ -131,6 +112,25 @@ export default async function InfluenciaPage() {
               </table>
             </div>
           </div>
+
+          {ugcCreatives.length > 0 && (
+            <section className="space-y-3">
+              <div className="mt-2 flex items-end justify-between">
+                <div>
+                  <h3 className="text-sm font-medium">Piezas pautadas · UGC (Meta IG + FB)</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Ordenadas por inversión. {ugcCreatives.length} piezas en total.
+                  </p>
+                </div>
+              </div>
+              <MetaPaidGrid
+                data={ugcCreatives}
+                selMeses={[]}
+                selCats={[]}
+                selRoles={[]}
+              />
+            </section>
+          )}
         </>
       )}
     </div>
