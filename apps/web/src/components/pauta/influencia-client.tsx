@@ -136,18 +136,18 @@ export function InfluenciaClient({ rows, ugcCreatives }: { rows: PautaRow[]; ugc
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Mkt de Influencia</h2>
-          <p className="text-sm text-muted-foreground">Campañas UGC e influencer marketing · Fuente: OMD</p>
+      <header>
+        <h2 className="text-2xl font-semibold tracking-tight">Mkt de Influencia</h2>
+        <p className="text-sm text-muted-foreground">Campañas UGC e influencer marketing · Fuente: OMD</p>
+        <div className="mt-3">
+          <MultiDropdown
+            label="Mes"
+            placeholder="Todos los meses"
+            selected={selMeses}
+            options={meses.map((m) => ({ value: m, label: m }))}
+            onChange={setSelMeses}
+          />
         </div>
-        <MultiDropdown
-          label="Mes"
-          placeholder="Todos los meses"
-          selected={selMeses}
-          options={meses.map((m) => ({ value: m, label: m }))}
-          onChange={setSelMeses}
-        />
       </header>
 
       {rows.length === 0 ? (

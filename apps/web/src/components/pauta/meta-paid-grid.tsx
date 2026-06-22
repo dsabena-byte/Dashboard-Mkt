@@ -45,6 +45,7 @@ export function MetaPaidGrid({
   const filtered = useMemo(() => {
     return data.filter(
       (r) =>
+        (r.impresiones ?? 0) > 0 &&
         (selMeses.length === 0 || selMeses.includes(r.mes)) &&
         (selCats.length === 0 || (r.categoria != null && selCats.includes(r.categoria))) &&
         (selRoles.length === 0 || selRoles.includes(tipoCompraToRol(r.tipo_compra) ?? "")),
