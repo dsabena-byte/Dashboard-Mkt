@@ -133,6 +133,8 @@ interface AdInsight {
   video_p75_watched_actions?: Array<{ value?: string }>;
   video_p100_watched_actions?: Array<{ value?: string }>;
   video_thruplay_watched_actions?: Array<{ value?: string }>;
+  // Interacciones del post (breakdown por action_type).
+  actions?: Array<{ action_type?: string; value?: string }>;
   date_start?: string;
   date_stop?: string;
 }
@@ -172,6 +174,12 @@ function toNum(v: string | undefined): number | null {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// Extrae el valor de un action_type específico del array `actions` (interacciones).
+function actionVal(arr: Array<{ action_type?: string; value?: string }> | undefined, type: string): number {
+  const a = arr?.find((x) => x.action_type === type);
+  return a ? Math.round(Number(a.value ?? 0) || 0) : 0;
 }
 
 // Suma los `value` de un array de acciones de Meta (video_pXX_watched_actions, etc.).
@@ -587,7 +595,7 @@ export async function GET(req: Request) {
       "campaign{name,objective}",
       "adset{name}",
       "creative{id,thumbnail_url.thumbnail_width(1080).thumbnail_height(1080),image_url,video_id,body,effective_object_story_id,instagram_permalink_url,object_story_spec{link_data{picture,message,link},video_data{image_url,message,video_id}},asset_feed_spec{videos{video_id},images{url}}}",
-      `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,video_play_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,video_thruplay_watched_actions,date_start,date_stop}`,
+      `insights.time_range({'since':'${since}','until':'${until}'}){impressions,reach,frequency,clicks,spend,ctr,cpm,cpc,video_play_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,video_thruplay_watched_actions,actions,date_start,date_stop}`,
     ].join(",");
 
     phase = "fetch_ads";
@@ -764,6 +772,12 @@ export async function GET(req: Request) {
             views_total: videoPlays || null,
             views_completed: videoP100 || null,
             vtr: videoPlays > 0 ? Number(((videoP100 / videoPlays) * 100).toFixed(4)) : null,
+            // Interacciones del post (engagement) desde insights.actions.
+            reactions: actionVal(ins.actions, "post_reaction"),
+            comments: actionVal(ins.actions, "comment"),
+            shares: actionVal(ins.actions, "post"),
+            saves: actionVal(ins.actions, "onsite_conversion.post_save"),
+            post_engagement: actionVal(ins.actions, "post_engagement"),
             raw: ad as unknown,
             fetched_at: new Date().toISOString(),
           };

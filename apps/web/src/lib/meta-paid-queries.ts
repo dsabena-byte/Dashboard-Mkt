@@ -39,6 +39,11 @@ export interface MetaPaidCreativeRow {
   vtr_p50: number | null;
   vtr_p75: number | null;
   vtr_p100: number | null;
+  reactions: number | null;
+  comments: number | null;
+  shares: number | null;
+  saves: number | null;
+  post_engagement: number | null;
 }
 
 interface DbRow {
@@ -79,6 +84,11 @@ interface DbRow {
   vtr_p50: string | number | null;
   vtr_p75: string | number | null;
   vtr_p100: string | number | null;
+  reactions: number | null;
+  comments: number | null;
+  shares: number | null;
+  saves: number | null;
+  post_engagement: number | null;
 }
 
 const num = (v: string | number | null): number | null =>
@@ -123,6 +133,11 @@ function mapRow(r: DbRow): MetaPaidCreativeRow {
     vtr_p50: num(r.vtr_p50),
     vtr_p75: num(r.vtr_p75),
     vtr_p100: num(r.vtr_p100),
+    reactions: r.reactions,
+    comments: r.comments,
+    shares: r.shares,
+    saves: r.saves,
+    post_engagement: r.post_engagement,
   };
 }
 
@@ -131,7 +146,7 @@ export async function getMetaPaidCreatives(): Promise<MetaPaidCreativeRow[]> {
   const { data, error } = await supabase
     .from("meta_paid_creatives")
     .select(
-      "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100",
+      "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100, reactions, comments, shares, saves, post_engagement",
     )
     .neq("categoria", "UGC")
     .order("spend", { ascending: false })
@@ -145,7 +160,7 @@ export async function getMetaUgcCreatives(): Promise<MetaPaidCreativeRow[]> {
   const { data, error } = await supabase
     .from("meta_paid_creatives")
     .select(
-      "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100",
+      "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100, reactions, comments, shares, saves, post_engagement",
     )
     .eq("categoria", "UGC")
     .order("spend", { ascending: false })

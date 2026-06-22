@@ -155,6 +155,14 @@ export function MetaPaidGrid({
                     </>
                   )}
                 </div>
+                {(c.post_engagement ?? 0) > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t pt-1.5 text-[10px] text-muted-foreground">
+                    {(c.reactions ?? 0) > 0 && <span title="Reacciones">❤️ {fmtNum(c.reactions ?? 0)}</span>}
+                    {(c.comments ?? 0) > 0 && <span title="Comentarios">💬 {fmtNum(c.comments ?? 0)}</span>}
+                    {(c.shares ?? 0) > 0 && <span title="Compartidos">🔁 {fmtNum(c.shares ?? 0)}</span>}
+                    {(c.saves ?? 0) > 0 && <span title="Guardados">🔖 {fmtNum(c.saves ?? 0)}</span>}
+                  </div>
+                )}
               </div>
             </a>
           );
