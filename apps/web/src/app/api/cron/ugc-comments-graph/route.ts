@@ -58,7 +58,7 @@ export async function GET(req: Request) {
     for (const p of pieces) if (p.instagram_permalink_url && !byLink.has(p.instagram_permalink_url)) byLink.set(p.instagram_permalink_url, p.ad_id);
     const entries = [...byLink.entries()].slice(0, batch);
 
-    const processed: Array<{ permalink: string; via: string; comments: number; error?: string }> = [];
+    const processed: Array<{ permalink: string; via: string; comments: number; media_id?: string; owner?: string; media_type?: string; error?: string }> = [];
 
     for (const [permalink, adId] of entries) {
       let comments: Array<{ text: string; author: string | null; likes: number; date: string | null }> = [];
@@ -72,6 +72,19 @@ export async function GET(req: Request) {
       const igMediaId = adRes.body?.creative?.effective_instagram_media_id;
       const storyId = adRes.body?.creative?.effective_object_story_id;
       if (!adRes.ok) lastError = adRes.error;
+
+      // Diagnóstico: de qué cuenta es la media y su tipo.
+      let owner: string | undefined;
+      let mediaType: string | undefined;
+      if (igMediaId) {
+        const m = await graphGet<{ username?: string; media_type?: string; owner?: { username?: string } }>(
+          `${GRAPH_API}/${igMediaId}?fields=username,media_type,owner{username}&access_token=${token}`,
+        );
+        if (m.ok) {
+          owner = m.body.owner?.username ?? m.body.username;
+          mediaType = m.body.media_type;
+        } else if (!lastError) lastError = m.error;
+      }
 
       // 2) IG media comments.
       if (igMediaId) {
@@ -107,7 +120,7 @@ export async function GET(req: Request) {
         lastError = e instanceof Error ? e.message : String(e);
       }
 
-      processed.push({ permalink, via, comments: comments.length, ...(lastError && comments.length === 0 ? { error: lastError } : {}) });
+      processed.push({ permalink, via, comments: comments.length, media_id: igMediaId, owner, media_type: mediaType, ...(lastError && comments.length === 0 ? { error: lastError } : {}) });
     }
 
     return NextResponse.json({ ok: true, piezas: byLink.size, procesados: entries.length, processed });
