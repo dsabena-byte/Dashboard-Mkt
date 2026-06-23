@@ -1,0 +1,37 @@
+name: UGC comments sync (Apify)
+
+# Scrapea los comentarios del post de IG de cada pieza UGC (Apify) y los guarda en
+# ugc_comments. Manual: corre en loop por batches hasta que no queden permalinks.
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Reprocesar también los que ya tienen comentarios"
+        type: boolean
+        default: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Trigger /api/cron/ugc-comments-sync
+        run: |
+          set -euo pipefail
+          BASE="https://dashboard-mkt-seven.vercel.app/api/cron/ugc-comments-sync"
+          QS="batch=5"
+          if [ "${FORCE:-false}" = "true" ]; then QS="${QS}&force=1"; fi
+          AUTH=()
+          if [ -n "${CRON_SECRET:-}" ]; then AUTH=(-H "Authorization: Bearer ${CRON_SECRET}"); fi
+          for i in $(seq 1 40); do
+            HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 300 "${BASE}?${QS}" "${AUTH[@]}")
+            echo "Iteración $i → HTTP $HTTP"
+            cat out.json; echo ""
+            if [ "$HTTP" -ge 400 ]; then echo "::error::HTTP $HTTP"; exit 1; fi
+            REST=$(grep -o '"restantes":[0-9]*' out.json | grep -o '[0-9]*' || echo "0")
+            if [ "${REST:-0}" = "0" ]; then echo "Completo"; break; fi
+          done
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE: ${{ inputs.force }}
