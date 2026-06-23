@@ -15,6 +15,61 @@ piezas pautadas y embudo de video.
 >
 > **Google Search NO está en DV360** (vive en Google Ads) → no se incluye.
 
+## ⚠️ Actualización 2026-06-23 (leer antes de tocar nada)
+
+Diagnóstico completo de "Programmatic figura $0 en junio" — **resuelto**, con un paso
+de automatización **PENDIENTE** (el usuario tuvo que retirarse antes de crear el trigger).
+
+**Causa raíz (validada de punta a punta, sin asumir):**
+1. Programmatic Video **sí entrega** en junio (~459.756 impresiones). Las líneas
+   originales están **pausadas** y la entrega va por **insertion orders duplicadas**
+   ("...Programmatic - CPM - Video **Duplicado**" / "**#2**", IDs nuevos 1028940281,
+   1029372139, etc.). Comparten el **mismo Line Item** que las originales, así que el
+   sync las suma bien.
+2. El **reporte de DV360 está OK**: filtra por **Partner = Mabe Argentina**, así que
+   incluye las duplicadas. Corriendo el reporte en vivo aparecen con sus impresiones.
+3. El email del reporte **llega a diario** (asunto `... "DV360 Video Drean" ...`, con
+   adjunto, etiqueta `dv360`).
+4. **EL CORTE ESTABA EN EL SYNC:** DV360 entrega el reporte de **Video comprimido en
+   `.zip`** (el de Reach es chico y viene `.csv` plano). El helper `dv360FindCsv_` solo
+   leía adjuntos con `.csv` en el nombre → salteaba el `.zip` → loguea **"No se encontró
+   CSV de piezas"** → `dv360_creatives` nunca se actualizaba → dashboard mostraba
+   Programmatic en $0.
+
+**Fix aplicado (ya está en el Apps Script en vivo):** `dv360FindCsv_` ahora descomprime
+el `.zip` con `Utilities.unzip` y lee el `.csv` de adentro (ver el código actualizado más
+abajo). Después del fix se re-sincronizó a mano: `dv360_creatives: 203 filas → HTTP 201`
+y `dv360_reach: 42 filas → HTTP 201`. Junio quedó correcto:
+`Programmatic = 459.756 impr / ~$998` (coincide con "Total: Video" de la UI de DV360).
+
+**Segundo hallazgo (validado en las Ejecuciones del Apps Script):** `syncDv360` y
+`syncDv360Reach` **NO corrían solos** — el único trigger es `syncAll` cada 10 min, que
+**no los llama**, y no tenían trigger propio. Por eso la data se quedaba vieja: solo se
+actualizaba cuando alguien los corría a mano. (La afirmación "Triggers diarios ✅" más
+abajo en este doc era incorrecta.)
+
+**PENDIENTE — crear el trigger diario (esto NO se hizo todavía):** pegar en `Código.gs`
+y ejecutar `setupDv360Trigger` una vez:
+
+```javascript
+function syncDv360Daily(){
+  try { syncDv360(); }      catch(e){ Logger.log('syncDv360 error: '+e); }
+  try { syncDv360Reach(); } catch(e){ Logger.log('syncDv360Reach error: '+e); }
+}
+
+function setupDv360Trigger(){
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    if (t.getHandlerFunction()==='syncDv360Daily') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('syncDv360Daily').timeBased().everyDays(1).atHour(9).create();
+  Logger.log('Trigger diario de DV360 creado (9am)');
+}
+```
+
+Verificar en **Activadores** que aparezca `syncDv360Daily` / diario. Con eso DV360 queda
+100% automático. (Alternativa por UI: reloj → Añadir activador → `syncDv360Daily`, Según
+tiempo, Temporizador diario, 8–9am.)
+
 ## Arquitectura
 
 ```
@@ -203,11 +258,30 @@ function dv360DataRow_(row){
   for (var i=0;i<skip.length;i++) if(c0.indexOf(skip[i])===0) return false;
   return true;
 }
+// Busca por ASUNTO (sin label:), porque el Video tiene etiqueta `dv360` y el Reach otra
+// ("DV360 Reach Drean"). DV360 entrega el reporte de Video comprimido en .zip (es grande)
+// y el de Reach en .csv plano → este helper maneja los dos: si es .zip, lo descomprime
+// con Utilities.unzip y lee el .csv de adentro. (Fix 2026-06-23.)
 function dv360FindCsv_(subject){
-  var csv=null, when=0, threads=GmailApp.search('label:dv360 subject:"'+subject+'" has:attachment newer_than:7d', 0, 10);
-  threads.forEach(function(t){ t.getMessages().forEach(function(m){ m.getAttachments().forEach(function(a){
-    if (a.getName().toLowerCase().indexOf('.csv')>=0 && m.getDate().getTime()>when){ csv=a.getDataAsString(); when=m.getDate().getTime(); }
-  }); }); });
+  var csv=null, when=0;
+  var threads=GmailApp.search('subject:"'+subject+'" has:attachment newer_than:7d', 0, 10);
+  threads.forEach(function(t){ t.getMessages().forEach(function(m){
+    var dt=m.getDate().getTime();
+    m.getAttachments().forEach(function(a){
+      var name=a.getName().toLowerCase(), text=null;
+      if (name.indexOf('.zip')>=0){
+        try {
+          var files=Utilities.unzip(a.copyBlob().setContentType('application/zip'));
+          for (var i=0;i<files.length;i++){
+            if (files[i].getName().toLowerCase().indexOf('.csv')>=0){ text=files[i].getDataAsString(); break; }
+          }
+        } catch(e){ Logger.log('Error al descomprimir '+a.getName()+': '+e); }
+      } else if (name.indexOf('.csv')>=0){
+        text=a.getDataAsString();
+      }
+      if (text && dt>when){ csv=text; when=dt; }   // se queda con el del mail más nuevo
+    });
+  }); });
   return { csv: csv, threads: threads };
 }
 function dv360Upsert_(table, recs, meses, threads){
@@ -245,7 +319,11 @@ Si en algún momento la data deja de actualizarse, empezá por el bloque
 
 - **HTTP 404** → falta correr las migraciones 0058 / 0059 (la tabla no existe).
 - **Error de columna `categoria`/`rol`** → corriste la 0058 pero falta la **0059**.
-- **"No se encontró CSV"** → el email no llegó / filtro no aplicó la etiqueta / el subject no matchea (`subject:"DV360 Video Drean"` / `"DV360 Reach Drean"`).
+- **"No se encontró CSV"** → el email no llegó / el subject no matchea (`subject:"DV360
+  Video Drean"` / `"DV360 Reach Drean"`) / **el adjunto vino comprimido en `.zip` y el
+  helper no lo descomprimía** (fix 2026-06-23: `dv360FindCsv_` ahora hace `Utilities.unzip`).
+  Validar abriendo el mail y mirando la extensión del adjunto: si es `.zip`, el helper
+  tiene que tener el bloque de unzip.
 - **Header inesperado** → faltan columnas (ver config de cada reporte).
 - Reach con **"-"** en filas chicas → DV360 no pudo calcular (poco volumen/cookies). Se computa como 0.
 
