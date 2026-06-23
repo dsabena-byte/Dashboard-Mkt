@@ -4,6 +4,10 @@ name: UGC comments analysis (LLM)
 # de compra / percepción de marca / mejoras en ugc_piece_analysis. Loop por batches.
 
 on:
+  # Corre automáticamente apenas termina el sync de comentarios (Graph API).
+  workflow_run:
+    workflows: ["UGC comments (Graph API)"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       force:
@@ -15,6 +19,8 @@ jobs:
   trigger:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # En el encadenamiento, solo si el sync de comentarios terminó OK.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Trigger /api/cron/ugc-comments-analysis
         run: |
