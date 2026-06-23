@@ -281,16 +281,26 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [] }: { row
             </>
           )}
 
-          {/* Piezas pautadas (al final). */}
-          {piecesF.length > 0 && (
-            <section className="space-y-3">
-              <div className="mt-2">
-                <h3 className="text-sm font-medium">Piezas pautadas · UGC (Meta IG + FB)</h3>
-                <p className="text-xs text-muted-foreground">Ordenadas por inversión. {piecesF.length} piezas en total.</p>
-              </div>
-              <MetaPaidGrid data={piecesF} selMeses={selMeses} selCats={[]} selRoles={[]} />
-            </section>
-          )}
+          {/* Piezas pautadas (al final), separadas por plataforma. */}
+          {piecesF.length > 0 && (() => {
+            const metaPieces = piecesF.filter((r) => r.plataforma === "meta");
+            const tiktokPieces = piecesF.filter((r) => r.plataforma === "tiktok");
+            const otherPieces = piecesF.filter((r) => r.plataforma !== "meta" && r.plataforma !== "tiktok");
+            const blocks: Array<{ title: string; data: MetaPaidCreativeRow[] }> = [
+              { title: "Piezas pautadas · UGC (Meta IG + FB)", data: metaPieces },
+              { title: "Piezas pautadas · UGC (TikTok)", data: tiktokPieces },
+              { title: "Piezas pautadas · UGC (otras plataformas)", data: otherPieces },
+            ].filter((b) => b.data.length > 0);
+            return blocks.map((b) => (
+              <section key={b.title} className="space-y-3">
+                <div className="mt-2">
+                  <h3 className="text-sm font-medium">{b.title}</h3>
+                  <p className="text-xs text-muted-foreground">Ordenadas por inversión. {b.data.length} piezas en total.</p>
+                </div>
+                <MetaPaidGrid data={b.data} selMeses={selMeses} selCats={[]} selRoles={[]} />
+              </section>
+            ));
+          })()}
 
           {ugcAnalysis.some((p) => p.comments.length > 0 || p.analysis) && (
             <section className="space-y-3">
