@@ -6,10 +6,20 @@ import { KpiCard } from "@/components/kpi-card";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
 import { MEDIO_COLORS, extractMeses, type PautaRow } from "@/lib/pauta-data";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
+import type { UgcPieceAnalysis } from "@/lib/ugc-analysis-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const fmtNum = (n: number) => formatNumber(Math.round(n));
 const fmtARS = formatCurrency;
+
+// Color del nivel del análisis (alta/positiva = verde, media/neutra = ámbar, baja/negativa = rojo).
+function nivelColor(nivel?: string): string {
+  const n = (nivel ?? "").toLowerCase();
+  if (/alta|positiv/.test(n)) return "text-emerald-600";
+  if (/media|neutr/.test(n)) return "text-amber-600";
+  if (/baja|negativ/.test(n)) return "text-rose-600";
+  return "text-muted-foreground";
+}
 
 // Semáforo best-in-class (igual que Pauta Mkt).
 function bicColor(value: number, best: number, kind: "lower" | "higher"): string {
@@ -29,7 +39,7 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
   return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
 }
 
-export function InfluenciaClient({ rows, ugcCreatives }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[] }) {
+export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [] }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[] }) {
   const meses = useMemo(() => extractMeses(rows), [rows]);
   const [selMeses, setSelMeses] = useState<string[]>([]);
 
@@ -279,6 +289,81 @@ export function InfluenciaClient({ rows, ugcCreatives }: { rows: PautaRow[]; ugc
                 <p className="text-xs text-muted-foreground">Ordenadas por inversión. {piecesF.length} piezas en total.</p>
               </div>
               <MetaPaidGrid data={piecesF} selMeses={selMeses} selCats={[]} selRoles={[]} />
+            </section>
+          )}
+
+          {ugcAnalysis.some((p) => p.comments.length > 0 || p.analysis) && (
+            <section className="space-y-3">
+              <div className="mt-2">
+                <h3 className="text-sm font-medium">Análisis de comentarios por pieza</h3>
+                <p className="text-xs text-muted-foreground">
+                  Validación del contenido (credibilidad · intención de compra · percepción de marca) + mejoras de guión, desde los comentarios reales.
+                </p>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {ugcAnalysis.filter((p) => p.comments.length > 0 || p.analysis).map((p) => {
+                  const a = p.analysis;
+                  const dims: Array<[string, { nivel?: string; detalle?: string } | undefined]> = [
+                    ["Credibilidad", a?.credibilidad], ["Intención compra", a?.intencion_compra], ["Percep. marca", a?.percepcion_marca],
+                  ];
+                  return (
+                    <div key={p.permalink} className="rounded-xl border bg-card p-4">
+                      <div className="flex items-center gap-3">
+                        {p.image_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.image_url} alt={p.ad_name ?? ""} className="h-12 w-12 shrink-0 rounded object-cover" loading="lazy" />
+                        )}
+                        <div className="min-w-0">
+                          <a href={p.permalink} target="_blank" rel="noopener" className="block truncate text-xs font-semibold hover:underline">{p.ad_name ?? p.permalink}</a>
+                          <p className="text-[10px] text-muted-foreground">{p.comments.length} comentarios</p>
+                        </div>
+                      </div>
+                      {a ? (
+                        <div className="mt-3 space-y-2 text-[11px]">
+                          {a.resumen && <p className="text-muted-foreground">{a.resumen}</p>}
+                          <div className="grid grid-cols-3 gap-2">
+                            {dims.map(([label, v]) => (
+                              <div key={label} className="rounded border bg-muted/30 p-1.5 text-center">
+                                <div className="text-[9px] uppercase text-muted-foreground">{label}</div>
+                                <div className={`text-[11px] font-semibold capitalize ${nivelColor(v?.nivel)}`}>{v?.nivel ?? "—"}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <ul className="space-y-0.5 text-[10px] text-muted-foreground">
+                            {a.credibilidad?.detalle && <li><strong>Credibilidad:</strong> {a.credibilidad.detalle}</li>}
+                            {a.intencion_compra?.detalle && <li><strong>Intención:</strong> {a.intencion_compra.detalle}</li>}
+                            {a.percepcion_marca?.detalle && <li><strong>Marca:</strong> {a.percepcion_marca.detalle}</li>}
+                          </ul>
+                          {a.mejoras && a.mejoras.length > 0 && (
+                            <div>
+                              <div className="text-[11px] font-medium">Mejoras de contenido/guión</div>
+                              <ul className="list-disc pl-4 text-[10px] text-muted-foreground">
+                                {a.mejoras.map((m, i) => <li key={i}>{m}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-[10px] text-muted-foreground">Análisis pendiente — corré el cron <code>ugc-comments-analysis</code>.</p>
+                      )}
+                      {p.comments.length > 0 && (
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-[11px] font-medium">Ver comentarios ({p.comments.length})</summary>
+                          <div className="mt-2 max-h-60 space-y-1.5 overflow-y-auto">
+                            {p.comments.map((c, i) => (
+                              <div key={i} className="rounded bg-muted/40 p-2 text-[11px]">
+                                {c.author && <span className="font-semibold">@{c.author} </span>}
+                                {c.text}
+                                {c.likes > 0 && <span className="ml-1 text-muted-foreground">· ❤️ {fmtNum(c.likes)}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </section>
           )}
         </>
