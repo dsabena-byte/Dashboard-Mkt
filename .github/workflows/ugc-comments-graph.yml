@@ -1,0 +1,24 @@
+name: UGC comments (Graph API)
+
+# Trae los comentarios de las piezas UGC vía Graph API (IG media + post FB), no solo
+# el post público que ve Apify. Reporta qué vía funcionó.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger /api/cron/ugc-comments-graph
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/ugc-comments-graph?batch=20"
+          AUTH=()
+          if [ -n "${CRON_SECRET:-}" ]; then AUTH=(-H "Authorization: Bearer ${CRON_SECRET}"); fi
+          HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 300 "$URL" "${AUTH[@]}")
+          echo "HTTP $HTTP"; cat out.json; echo ""
+          if [ "$HTTP" -ge 400 ]; then echo "::error::HTTP $HTTP"; exit 1; fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
