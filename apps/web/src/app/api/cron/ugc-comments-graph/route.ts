@@ -49,6 +49,18 @@ export async function GET(req: Request) {
 
   try {
     const token = env("META_SYSTEM_USER_TOKEN");
+    // El endpoint de comentarios de IG requiere el token de la PÁGINA conectada al
+    // IG business account (no el del system user). Lo derivamos de /me/accounts.
+    let pageToken = token;
+    try {
+      const pages = await graphGet<{ data?: Array<{ access_token?: string; instagram_business_account?: { id?: string } }> }>(
+        `${GRAPH_API}/me/accounts?fields=access_token,instagram_business_account&access_token=${token}`,
+      );
+      const pageWithIg = pages.body?.data?.find((p) => p.instagram_business_account?.id) ?? pages.body?.data?.[0];
+      if (pageWithIg?.access_token) pageToken = pageWithIg.access_token;
+    } catch {
+      // si falla, seguimos con el token del system user
+    }
     // Piezas UGC (una por ad_id, con su permalink).
     const pieces = await sb<Array<{ ad_id: string; instagram_permalink_url: string | null }>>(
       "meta_paid_creatives?select=ad_id,instagram_permalink_url&categoria=eq.UGC&instagram_permalink_url=not.is.null",
@@ -89,7 +101,7 @@ export async function GET(req: Request) {
       // 2) IG media comments.
       if (igMediaId) {
         const r = await graphGet<{ data?: IgComment[]; error?: unknown }>(
-          `${GRAPH_API}/${igMediaId}/comments?fields=text,username,timestamp,like_count&limit=100&access_token=${token}`,
+          `${GRAPH_API}/${igMediaId}/comments?fields=text,username,timestamp,like_count&limit=100&access_token=${pageToken}`,
         );
         if (r.ok && r.body.data) {
           comments = r.body.data.filter((c) => (c.text ?? "").trim()).map((c) => ({ text: (c.text ?? "").slice(0, 2000), author: c.username ?? null, likes: Math.round(Number(c.like_count ?? 0) || 0), date: c.timestamp ?? null }));
@@ -99,7 +111,7 @@ export async function GET(req: Request) {
       // 3) Fallback: FB post comments.
       if (comments.length === 0 && storyId) {
         const r = await graphGet<{ data?: FbComment[]; error?: unknown }>(
-          `${GRAPH_API}/${storyId}/comments?fields=message,from,created_time,like_count&limit=100&access_token=${token}`,
+          `${GRAPH_API}/${storyId}/comments?fields=message,from,created_time,like_count&limit=100&access_token=${pageToken}`,
         );
         if (r.ok && r.body.data) {
           comments = r.body.data.filter((c) => (c.message ?? "").trim()).map((c) => ({ text: (c.message ?? "").slice(0, 2000), author: c.from?.name ?? null, likes: Math.round(Number(c.like_count ?? 0) || 0), date: c.created_time ?? null }));
