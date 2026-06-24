@@ -162,10 +162,10 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
         </h3>
       </div>
       <div className="overflow-x-auto p-4">
-        <table className="text-xs">
+        <table className="min-w-[600px] text-xs">
           <thead>
             <tr className="border-b">
-              <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase text-muted-foreground" rowSpan={2}>Dimensión</th>
+              <th className="sticky left-0 z-20 bg-card px-2 py-1.5 text-left text-[10px] font-semibold uppercase text-muted-foreground" rowSpan={2}>Dimensión</th>
               {waves.map((w) => (
                 <th key={w} className="border-l px-2 py-1 text-center text-[11px] font-bold" colSpan={4}>{w}</th>
               ))}
@@ -184,7 +184,7 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
           <tbody>
             {dims.map((d) => (
               <tr key={d.key} className="border-t">
-                <td className="whitespace-nowrap px-2 py-1.5 text-foreground">{d.label}</td>
+                <td className="sticky left-0 z-10 whitespace-nowrap bg-card px-2 py-1.5 text-foreground">{d.label}</td>
                 {rows.map((row) => (
                   <Fragment key={row.w}>
                     <td className={`border-l px-2 py-1.5 text-center tabular-nums ${cls(row.lav[d.key].s)}`}>{p1(row.lav[d.key].v)}</td>
@@ -196,7 +196,7 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
               </tr>
             ))}
             <tr className="border-t-2 bg-muted/40 font-bold">
-              <td className="whitespace-nowrap px-2 py-1.5 text-foreground">Salud de Marca</td>
+              <td className="sticky left-0 z-10 whitespace-nowrap bg-muted px-2 py-1.5 text-foreground">Salud de Marca</td>
               {rows.map((row) => (
                 <Fragment key={row.w}>
                   <td className={`border-l px-2 py-1.5 text-center tabular-nums ${cls(row.lav.sm.s)}`}>{p1(row.lav.sm.v)}</td>
@@ -207,7 +207,7 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
               ))}
             </tr>
             <tr className="border-t text-[10px] text-muted-foreground">
-              <td className="px-2 py-1.5">Peso categoría</td>
+              <td className="sticky left-0 z-10 whitespace-nowrap bg-card px-2 py-1.5">Peso categoría</td>
               {rows.map((row) => (
                 <Fragment key={row.w}>
                   <td className="border-l px-2 py-1.5 text-center tabular-nums">{(row.wt.lav * 100).toFixed(0)}%</td>
@@ -622,7 +622,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
         <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">{subtitle}</span>
       </summary>
       <div className="overflow-x-auto border-t p-4">
-        <table className="w-full table-fixed text-xs">
+        <table className="w-full min-w-[600px] table-fixed text-xs">
           <colgroup>
             <col className="w-[22%]" />
             {waves.map((w) => (
@@ -631,7 +631,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
           </colgroup>
           <thead>
             <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className="px-2 py-2 text-left">Indicador</th>
+              <th className="sticky left-0 z-20 bg-card px-2 py-2 text-left">Indicador</th>
               {waves.map((w) => (
                 <th key={w.label} className="px-2 py-2 text-right">{w.label}</th>
               ))}
@@ -657,7 +657,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
                     </tr>
                   )}
                   <tr className="border-t">
-                    <td className="whitespace-nowrap px-2 py-1.5 pl-4 text-foreground">{r.label}</td>
+                    <td className="sticky left-0 z-10 whitespace-nowrap bg-card px-2 py-1.5 pl-4 text-foreground">{r.label}</td>
                     {waves.map((w, i) => (
                       <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground/90">
                         {r.fmt(vals[i] ?? null)}
@@ -667,7 +667,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
                   </tr>
                   {lastOfGroup && (
                     <tr className="border-t bg-muted/40 font-semibold">
-                      <td className="whitespace-nowrap px-2 py-1.5 pl-4 text-foreground">{summaryLabel[grp]}</td>
+                      <td className="sticky left-0 z-10 whitespace-nowrap bg-muted px-2 py-1.5 pl-4 text-foreground">{summaryLabel[grp]}</td>
                       {waves.map((w, i) => (
                         <td key={w.label} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-foreground">
                           {genFmt(genVals[i] ?? null)}
@@ -712,7 +712,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
         </div>
       </div>
       <div className="overflow-x-auto p-4">
-        <table className="w-full table-fixed text-xs">
+        <table className="w-full min-w-[600px] table-fixed text-xs">
           <colgroup>
             <col className="w-[22%]" />
             {waves.map((w) => (
@@ -721,7 +721,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
           </colgroup>
           <thead>
             <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className="px-2 py-2 text-left">Indicador</th>
+              <th className="sticky left-0 z-20 bg-card px-2 py-2 text-left">Indicador</th>
               {waves.map((w) => (
                 <th key={w.label} className="px-2 py-2 text-right">{w.label}</th>
               ))}
@@ -733,7 +733,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
               const prevs = prevAvail(vals);
               return (
                 <tr key={r.label} className="border-t">
-                  <td className={`whitespace-nowrap px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
+                  <td className={`sticky left-0 z-10 whitespace-nowrap bg-card px-2 py-1.5 ${r.bold ? "font-bold text-foreground" : r.label.startsWith("·") ? "pl-5 text-foreground/80" : "text-foreground"}`}>{r.label}</td>
                   {waves.map((w, i) => {
                     const actual = vals[i] ?? null;
                     // Si no hay medición y la marca tiene ecuación para ese indicador, estimamos desde el mercado.
