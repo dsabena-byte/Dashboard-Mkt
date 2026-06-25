@@ -384,6 +384,50 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     return arr.sort((a, b) => b.impr - a.impr);
   }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, arsMode]);
+  // Embudo desglosado por FORMATO dentro de cada fuente: YouTube → TrueView
+  // (Consideración) / Bumper (Awareness); Meta → 6s/10s/15s/Video (del ad_name);
+  // el resto de DV360 (Programmatic, etc.) queda con su único formato.
+  const [embudoFmt, setEmbudoFmt] = useState(false); // false = general por fuente; true = por formato
+  const videoSourcesByFormat = useMemo(() => {
+    const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
+    const MED: Record<string, string> = { "Demand Gen": "Google Demand Gen" };
+    // DV360: por canal + rol (rol mapea el formato del line item).
+    const dvMap = new Map<string, { canal: string; rol: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }>();
+    for (const r of dv360Conv) {
+      if ((r.starts ?? 0) <= 0) continue; // solo video
+      const key = `${r.canal}|${r.rol}`;
+      const e = dvMap.get(key) ?? { canal: r.canal, rol: r.rol, impr: 0, v25: 0, v50: 0, v75: 0, v100: 0, spend: 0 };
+      e.impr += r.impresiones; e.v25 += r.q25; e.v50 += r.q50; e.v75 += r.q75; e.v100 += r.q100;
+      e.spend += arsMode ? r.revenue_usd : 0;
+      dvMap.set(key, e);
+    }
+    for (const e of dvMap.values()) {
+      const label = e.canal === "YouTube"
+        ? `YouTube · ${e.rol === "Consideración" ? "TrueView" : "Bumper"}`
+        : (MED[e.canal] ?? e.canal);
+      arr.push({ name: label, impr: e.impr, v25: e.v25, v50: e.v50, v75: e.v75, v100: e.v100, spend: e.spend });
+    }
+    // Meta: por formato del ad_name (duración del video).
+    const metaFmt = (name: string | null): string => {
+      const n = (name ?? "").toLowerCase();
+      if (/(^|[^0-9])6s/.test(n)) return "6s";
+      if (/(^|[^0-9])10s/.test(n)) return "10s";
+      if (/(^|[^0-9])15s/.test(n)) return "15s";
+      return "Video";
+    };
+    const metaMap = new Map<string, { impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }>();
+    for (const r of metaPaidF) {
+      if (r.plataforma !== "meta" || (r.video_plays ?? 0) <= 0) continue;
+      const f = metaFmt(r.ad_name);
+      const e = metaMap.get(f) ?? { impr: 0, v25: 0, v50: 0, v75: 0, v100: 0, spend: 0 };
+      e.impr += r.impresiones; e.v25 += r.video_p25 ?? 0; e.v50 += r.video_p50 ?? 0; e.v75 += r.video_p75 ?? 0; e.v100 += r.video_p100 ?? 0; e.spend += r.spend;
+      metaMap.set(f, e);
+    }
+    for (const [f, e] of metaMap) arr.push({ name: `Meta · ${f}`, ...e });
+    // TikTok: un solo formato (reutiliza el embudo ya calculado).
+    if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
+    return arr.sort((a, b) => b.impr - a.impr);
+  }, [dv360Conv, metaPaidF, tiktokVideoFunnel, arsMode]);
   // Categoría/rol: solo medios digitales. Volumen OMD + gap-fill de ejecución real
   // (mismos medios que la tabla maestra) para que los totales cuadren.
   const digitalRows = useMemo(() => rows.filter((r) => tipoMedio(r.medio) === "Digital"), [rows]);
@@ -1154,8 +1198,20 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                 video no-skippable (programmatic/Meta). El % es la retención sobre las impresiones de video de esa fuente; el salto de
                 impresiones a <strong>vieron 25%</strong> es la caída de atención inicial (ahí se desperdicia la inversión).
               </p>
+              <div className="mb-2 flex gap-1">
+                {[{ k: false, label: "General · por fuente" }, { k: true, label: "Desglosado por formato" }].map((o) => (
+                  <button
+                    key={String(o.k)}
+                    type="button"
+                    onClick={() => setEmbudoFmt(o.k)}
+                    className={`rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${embudoFmt === o.k ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
               <div className="grid gap-3 lg:grid-cols-2">
-                {videoSources.map((src) => {
+                {(embudoFmt ? videoSourcesByFormat : videoSources).map((src) => {
                   const noQ = src.v25 + src.v50 + src.v75 === 0; // sin cuartiles (ej. TikTok: hueco del sync)
                   const stages: Array<[string, number]> = [
                     ["Impresiones", src.impr], ["Vieron 25%", src.v25], ["Vieron 50%", src.v50], ["Vieron 75%", src.v75], ["Vieron 100%", src.v100],
