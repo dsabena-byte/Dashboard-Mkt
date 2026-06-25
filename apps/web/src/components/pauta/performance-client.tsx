@@ -481,20 +481,46 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return last;
   }, [data]);
 
-  const volumetriaMensual = useMemo(
-    () =>
-      HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
-        const mes = `${full} 2026`;
-        const monthRows = data.filter((r) => r.mes === mes && r.objetivo === "Awareness");
-        const future = i + 1 > lastMonthWithData;
-        return {
-          mes: short,
-          alcance: future ? null : monthRows.reduce((s, r) => s + (r.alcance ?? 0), 0),
-          impresiones: future ? null : monthRows.reduce((s, r) => s + (r.impresiones ?? 0), 0),
-        };
-      }),
-    [data, lastMonthWithData],
-  );
+  const volumetriaMensual = useMemo(() => {
+    // Mismo modelo que el Embudo de conversión (medioModel): OMD de TODOS los
+    // objetivos/medios + gap-fill de la ejecución real (Meta+DV360) para los medios
+    // que NO tienen plan OMD ese mes. Así el gráfico cuadra con el embudo al filtrar
+    // un mes. No responde al resto de los filtros: siempre muestra el año completo.
+    const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
+    return HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
+      if (i + 1 > lastMonthWithData) return { mes: short, alcance: null, impresiones: null };
+      const mesLabel = `${full} 2026`;
+      const iso = `2026-${String(i + 1).padStart(2, "0")}-01`;
+      // OMD del mes (todos los objetivos, todos los medios).
+      const omd = new Map<string, { impr: number; alc: number }>();
+      for (const r of data) {
+        if (r.mes !== mesLabel) continue;
+        const e = omd.get(r.medio) ?? { impr: 0, alc: 0 };
+        e.impr += r.impresiones ?? 0; e.alc += r.alcance ?? 0;
+        omd.set(r.medio, e);
+      }
+      let impr = 0, alc = 0;
+      for (const e of omd.values()) { impr += e.impr; alc += e.alc; }
+      const present = new Set([...omd].filter(([, e]) => e.impr > 0).map(([medio]) => medio));
+      // Ejecución real (Meta + DV360) del mes, por medio.
+      const auto = new Map<string, { impr: number; alc: number }>();
+      const addAuto = (medio: string, im: number, al: number) => {
+        const e = auto.get(medio) ?? { impr: 0, alc: 0 };
+        e.impr += im; e.alc += al; auto.set(medio, e);
+      };
+      for (const r of dv360) { if (r.mes === iso) addAuto(DVMED[r.canal] ?? r.canal, r.impresiones, 0); }
+      for (const r of dv360Reach) { if (r.mes === iso) { const e = auto.get(DVMED[r.canal] ?? r.canal); if (e) e.alc += r.reach ?? 0; } }
+      for (const r of metaPaid) {
+        if (r.mes !== mesLabel) continue;
+        const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
+        if (!medio) continue;
+        addAuto(medio, r.impresiones ?? 0, r.alcance ?? 0);
+      }
+      // Gap-fill: solo medios que NO están en OMD ese mes (no duplica).
+      for (const [medio, e] of auto) { if (!present.has(medio) && e.impr > 0) { impr += e.impr; alc += e.alc; } }
+      return { mes: short, alcance: alc, impresiones: impr };
+    });
+  }, [data, metaPaid, dv360, dv360Reach, lastMonthWithData]);
 
   // Mes corriente (1..12) para 2026: el mes en curso y los futuros se muestran
   // como PLANIFICADO (el ejecutado del mes en curso queda muy bajo a mitad de
@@ -960,7 +986,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
 
           <SectionTitle>Evolución mensual · Alcance vs Impresiones</SectionTitle>
           <div className="rounded-xl border bg-card p-4">
-            <p className="mb-2 text-[10px] text-muted-foreground">Año completo 2026 (no responde a los filtros). Doble eje porque las escalas difieren mucho.</p>
+            <p className="mb-2 text-[10px] text-muted-foreground">Año completo 2026 (no responde a los filtros). Mismo criterio que el Embudo: todos los medios + ejecución real (cuadra al filtrar un mes). Doble eje porque las escalas difieren mucho.</p>
             <ReachImpressionsChart data={volumetriaMensual} />
           </div>
 
