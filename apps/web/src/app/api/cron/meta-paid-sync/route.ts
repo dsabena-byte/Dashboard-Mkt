@@ -190,7 +190,7 @@ function sumActions(arr: Array<{ value?: string }> | undefined): number {
 
 // Parsea el nombre OMD-convention "Drean - {Categoria} - {Medio} - {TipoCompra} - {SKU} [extra]"
 // Devuelve la clasificación inferida o nulls si no matchea el patrón.
-function parseAdName(adName: string | null | undefined): {
+function parseAdName(adName: string | null | undefined, objective?: string | null): {
   categoria: string | null;
   tipo_compra: string | null;
   rol: string | null;
@@ -218,9 +218,20 @@ function parseAdName(adName: string | null | undefined): {
   // "META_Drean_UGC_IG_Video..._CPM_2026"): detecta UGC y el tipo de compra en
   // cualquier parte del nombre, no solo en el patrón de guiones.
   if (!categoria && /(^|[^a-z])ugc([^a-z]|$)/i.test(adName)) categoria = "UGC";
+  // Brand: piezas institucionales sin categoría de producto — videos "MASTER" de
+  // marca (ej. "Drean_Video_MASTER ... DREAN VIDEO AD TOKIO 15s") o que mencionan
+  // "brand" en cualquier parte del nombre.
+  if (!categoria && (/video[ _]?master/i.test(adName) || /(^|[^a-z])brand([^a-z]|$)/i.test(adName))) categoria = "Brand";
   if (!tipo_compra) {
     const m = adName.toUpperCase().match(/(?:^|[^A-Z])(CPC|CPM|CPV)(?:[^A-Z]|$)/);
     if (m) tipo_compra = m[1] ?? null;
+  }
+  // Si el nombre no trae el tipo de compra (ej. los videos MASTER de marca), lo
+  // derivamos del objetivo de la campaña: awareness/reach → CPM; tráfico/clicks → CPC.
+  if (!tipo_compra && objective) {
+    const o = objective.toUpperCase();
+    if (/AWARENESS|REACH|VIDEO_VIEWS|THRUPLAY/.test(o)) tipo_compra = "CPM";
+    else if (/TRAFFIC|LINK_CLICKS|CLICKS/.test(o)) tipo_compra = "CPC";
   }
   const rol = tipo_compra === "CPC" ? "Consideración"
             : tipo_compra === "CPM" || tipo_compra === "CPV" ? "Awareness"
@@ -730,7 +741,7 @@ export async function GET(req: Request) {
           // "dark posts" sin post público no hay link válido -> null.
           const igPermalink = ad.creative?.instagram_permalink_url ?? null;
           const permalink = igPermalink ?? (img.storyId ? `https://www.facebook.com/${img.storyId}` : null);
-          const classified = parseAdName(ad.name);
+          const classified = parseAdName(ad.name, ad.campaign?.objective ?? null);
           return {
             ad_id: ad.id,
             creative_id: ad.creative?.id ?? null,
