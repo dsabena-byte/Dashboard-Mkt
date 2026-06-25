@@ -599,15 +599,53 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return i > 0 ? meses[i - 1]! : null;
   }, [selMeses, meses]);
   const monthTotals = useMemo(() => {
+    // Mismo modelo que el Embudo de conversión (medioModel): OMD de TODOS los
+    // objetivos + gap-fill de la ejecución real (Meta+DV360) para los medios sin
+    // plan OMD. Alcance = todos los objetivos (no solo Awareness); Video Views =
+    // reproducciones reales de ejecución (no el planificado de OMD). Así los cards
+    // cuadran con el embudo.
+    const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
     const calc = (mesesSet: string[]) => {
       if (mesesSet.length === 0) return null;
       const set = new Set(mesesSet);
-      let inv = 0, impr = 0, clic = 0, view = 0, alc = 0;
+      const setISO = new Set(mesesSet.map(mesLabelToISO));
+      // OMD (todos los objetivos), por medio.
+      const omd = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
       for (const r of rowsNoMes) {
         if (!set.has(r.mes)) continue;
-        inv += r.inversion ?? 0; impr += r.impresiones ?? 0; clic += r.clics ?? 0; view += r.views ?? 0;
-        if (r.objetivo === "Awareness") alc += r.alcance ?? 0;
+        const e = omd.get(r.medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
+        e.impr += r.impresiones ?? 0; e.alc += r.alcance ?? 0; e.clic += r.clics ?? 0; e.inv += r.inversion ?? 0;
+        omd.set(r.medio, e);
       }
+      let inv = 0, impr = 0, clic = 0, alc = 0, view = 0;
+      for (const e of omd.values()) { inv += e.inv; impr += e.impr; clic += e.clic; alc += e.alc; }
+      const present = new Set([...omd].filter(([, e]) => e.impr > 0).map(([m]) => m));
+      // Ejecución real (Meta + DV360): gap-fill por medio + video views reales.
+      const auto = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
+      const addAuto = (medio: string, im: number, al: number, cl: number, iv: number) => {
+        const e = auto.get(medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
+        e.impr += im; e.alc += al; e.clic += cl; e.inv += iv; auto.set(medio, e);
+      };
+      if (digitalOk) {
+        for (const r of dv360) {
+          if (!setISO.has(r.mes)) continue;
+          if (!(selCats.length === 0 || selCats.includes(r.categoria))) continue;
+          if (!(selRoles.length === 0 || selRoles.includes(r.rol))) continue;
+          addAuto(DVMED[r.canal] ?? r.canal, r.impresiones, 0, r.clicks, r.revenue_usd);
+          view += r.starts ?? 0;
+        }
+        for (const r of dv360Reach) { if (setISO.has(r.mes)) { const e = auto.get(DVMED[r.canal] ?? r.canal); if (e) e.alc += r.reach ?? 0; } }
+        for (const r of metaPaid) {
+          if (!set.has(r.mes)) continue;
+          const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
+          if (!medio) continue;
+          if (!(selCats.length === 0 || (r.categoria != null && selCats.includes(r.categoria)))) continue;
+          if (!(selRoles.length === 0 || selRoles.includes(tipoCompraToRol(r.tipo_compra) ?? ""))) continue;
+          addAuto(medio, r.impresiones ?? 0, r.alcance ?? 0, r.clicks ?? 0, r.spend ?? 0);
+          view += r.video_plays ?? 0;
+        }
+      }
+      for (const [medio, e] of auto) { if (!present.has(medio) && e.impr > 0) { impr += e.impr; alc += e.alc; clic += e.clic; inv += e.inv; } }
       return {
         inv, impr, clic, view, alc,
         cpm: impr > 0 ? (inv / impr) * 1000 : 0,
@@ -618,7 +656,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       };
     };
     return { ref: calc(refMeses), prev: prevMes ? calc([prevMes]) : null };
-  }, [rowsNoMes, refMeses, prevMes]);
+  }, [rowsNoMes, refMeses, prevMes, metaPaid, dv360, dv360Reach, selCats, selRoles, digitalOk]);
 
   // ===== Modelo de medios =====
   // VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD = la fuente oficial
@@ -931,7 +969,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <MoMStat label="Alcance" value={fmtNum(monthTotals.ref.alc)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.alc, monthTotals.prev.alc) : null} dir="up-good" />
               <MoMStat label="Impresiones" value={fmtNum(monthTotals.ref.impr)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.impr, monthTotals.prev.impr) : null} dir="up-good" />
-              <MoMStat label="Frecuencia" value={monthTotals.ref.frec.toFixed(1)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.frec, monthTotals.prev.frec) : null} dir="neutral" sub="awareness" />
+              <MoMStat label="Frecuencia" value={monthTotals.ref.frec.toFixed(1)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.frec, monthTotals.prev.frec) : null} dir="neutral" sub="impr / alcance" />
               <MoMStat label="Clicks" value={fmtNum(monthTotals.ref.clic)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.clic, monthTotals.prev.clic) : null} dir="up-good" />
               <MoMStat label="Video Views" value={fmtNum(monthTotals.ref.view)} delta={monthTotals.prev ? pctDelta(monthTotals.ref.view, monthTotals.prev.view) : null} dir="up-good" />
             </section>
