@@ -343,13 +343,14 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     const a = t.reduce(
       (acc, r) => ({
         impresiones: acc.impresiones + r.impresiones,
+        plays: acc.plays + (r.video_plays ?? 0),
         p25: acc.p25 + qty(r, r.video_p25, r.vtr_p25),
         p50: acc.p50 + qty(r, r.video_p50, r.vtr_p50),
         p75: acc.p75 + qty(r, r.video_p75, r.vtr_p75),
         p100: acc.p100 + ((r.video_p100 ?? 0) || qty(r, null, r.vtr_p100) || (r.views_completed ?? 0)),
         spend: acc.spend + r.spend,
       }),
-      { impresiones: 0, p25: 0, p50: 0, p75: 0, p100: 0, spend: 0 },
+      { impresiones: 0, plays: 0, p25: 0, p50: 0, p75: 0, p100: 0, spend: 0 },
     );
     return { ...a, count: t.length };
   }, [metaPaidF]);
@@ -363,11 +364,12 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     const v50 = dv360VideoQ.q50 + m.p50 + tk.p50;
     const v75 = dv360VideoQ.q75 + m.p75 + tk.p75;
     const v100 = dv360VideoQ.q100 + m.p100 + tk.p100;
+    const plays = dv360VideoQ.starts + m.plays + tk.plays; // reproducciones reales (arranque del video)
     const spend = arsMode ? dv360VideoQ.revenueVideo + m.spend + tk.spend : 0; // ARS solo si DV360 convertido
     const imprTotal = imprVideo + dv360VideoQ.imprDisplay; // total con formato conocido (DV360+Meta+TikTok)
     return {
       imprVideo, imprDisplay: dv360VideoQ.imprDisplay, imprTotal,
-      v25, v50, v75, v100, spend,
+      v25, v50, v75, v100, plays, spend,
       pct50: imprVideo > 0 ? (v50 / imprVideo) * 100 : 0,
       pct100: imprVideo > 0 ? (v100 / imprVideo) * 100 : 0,
       cpcv: v100 > 0 && spend > 0 ? spend / v100 : 0,
@@ -841,9 +843,11 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   // (cuartiles), no el número inflado de "video views".
   const funnelStages = [
     { label: "Impresiones", value: autoTot.impr, w: 100, bg: "#0a1849", real: false },
-    { label: "Alcance (usuarios únicos)", value: autoTot.reach, w: 84, bg: "#142b6f", real: false },
-    { label: "Vieron 25% del video", value: videoQuality.v25, w: 68, bg: "#15803d", real: true },
-    { label: "Vieron 100% (completo)", value: videoQuality.v100, w: 50, bg: "#15803d", real: true },
+    { label: "Alcance (usuarios únicos)", value: autoTot.reach, w: 88, bg: "#142b6f", real: false },
+    { label: "Video Views (reproducciones)", value: videoQuality.plays, w: 76, bg: "#1e3a8a", real: false },
+    { label: "Vieron 25% del video", value: videoQuality.v25, w: 66, bg: "#15803d", real: true },
+    { label: "Vieron 50% del video", value: videoQuality.v50, w: 56, bg: "#15803d", real: true },
+    { label: "Vieron 100% (completo)", value: videoQuality.v100, w: 46, bg: "#15803d", real: true },
     { label: "Clicks", value: autoTot.clics, w: 36, bg: "#2b4dff", real: false },
   ];
 
