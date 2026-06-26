@@ -365,6 +365,17 @@ export async function GET(request: Request) {
           }
         }
         results.posts_with_insights = postInsightsMap.size;
+        // Diagnóstico: respuesta CRUDA del primer post (para ver la estructura real del
+        // valor de la métrica nueva) + valores capturados de los primeros posts.
+        if (postsData[0]) {
+          const rawDiag = await graphGetRaw(
+            `${GRAPH_API}/${postsData[0].id}/insights?metric=post_total_media_view_unique&access_token=${pt}`,
+          );
+          results.sample_post_raw = rawDiag.body;
+        }
+        results.sample_post_insights = Object.fromEntries(
+          [...postInsightsMap.entries()].slice(0, 5),
+        );
       }
     }
 
