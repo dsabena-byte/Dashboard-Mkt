@@ -111,6 +111,24 @@ lifetime en el tiempo**.
 Si en ~5 días los posts del **2-13 jun** (ya maduros) **crecieron** → acumulación real.
 Si quedaron **iguales** → junio genuinamente más bajo (contenido/algoritmo), no acumulación.
 
+## FB vs IG: el "junio bajo" era volumen de Stories, no un bug (resuelto)
+
+Sospecha: FB junio (17 posts / 12K reach) << IG junio (59 posts / 43K), con el mismo
+posteo. Validado con el desglose por `media_type` (junio 2026):
+
+| Formato | FB | IG |
+|---|---|---|
+| Feed (album/photo/FEED) | 13 | 12 |
+| Video / Reels | 4 | 4 |
+| **Stories** | **0** | **43** |
+| Total | 17 | 59 |
+
+**FB e IG postean lo mismo de feed+reels.** Toda la diferencia son las **43 Stories de IG**,
+que **Meta NO expone para Páginas de FB** por API (el endpoint de FB Page Stories no devuelve
+`id` — ya estaba deshabilitado). No es un bug ni faltan Reels: FB no puede capturar sus
+Stories. Por eso el total de FB se ve más bajo que IG (IG suma Stories, FB no). El dashboard
+lo aclara en la nota del gráfico de FB.
+
 ## Archivos tocados
 - `apps/web/src/app/api/cron/meta-fb-sync/route.ts` — sondeo de métricas, upsert no
   destructivo, mapeo self-healing.
