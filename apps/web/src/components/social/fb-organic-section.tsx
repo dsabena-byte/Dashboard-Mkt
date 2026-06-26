@@ -158,10 +158,13 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                 Evolución mensual &mdash; Engagement (Alcance histórico)
               </h4>
               <p className="mb-3 text-[10px] leading-relaxed text-amber-700">
-                ⚠️ Meta <strong>discontinuó el alcance orgánico de Facebook el 15-jun-2026</strong> (ya no existe la métrica de
-                reach/impresiones/views en la API, ninguna versión). El alcance hasta esa fecha es real; desde junio el gráfico
-                muestra solo <strong>Engagement</strong> (métrica que sigue disponible). El alcance histórico se conserva. Se
-                reconectará si Meta publica la nueva métrica de alcance (Page Viewer Metric).
+                ⚠️ <strong>Reach en transición (deprecación de Meta).</strong> Meta retiró las métricas viejas de alcance de
+                Facebook el <strong>15-jun-2026</strong> (85 métricas, mayoría de reach) y prende el reemplazo (Page Viewer
+                Metric / Media Viewers) <strong>a fin de junio</strong>. En el medio, la API no expone reach (sí sigue en Meta
+                Business Suite). El alcance hasta el 15-jun es real y se conserva; mientras tanto el gráfico usa{" "}
+                <strong>Engagement</strong> como métrica principal (barras) y el reach queda como línea histórica. El sync
+                <strong> detecta y reconecta la métrica nueva automáticamente</strong> apenas Meta la active. Detalle:{" "}
+                <code>docs/meta-fb-reach-deprecation.md</code>.
               </p>
               <FbMonthlyChart data={data.monthlyData} />
             </div>
