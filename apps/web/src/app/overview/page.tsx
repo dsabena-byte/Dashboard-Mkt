@@ -414,6 +414,10 @@ export default async function OverviewPage() {
                     <dt className="text-muted-foreground">Real ejecutado{c.partial ? " (a la fecha)" : ""}</dt>
                     <dd className="font-semibold tabular-nums">{fmtUSD(c.realVal)}</dd>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Facturación{c.partial ? " (a la fecha)" : ""}</dt>
+                    <dd className="font-semibold tabular-nums">{c.fact != null ? fmtUSD(c.fact) : "—"}</dd>
+                  </div>
                 </dl>
 
                 {/* KPI 1 — Desvío vs BGT */}
