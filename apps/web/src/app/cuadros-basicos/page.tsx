@@ -189,7 +189,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
                 {totals.cb_pct.toFixed(1)}%
               </div>
               <div className="mt-2 text-[11px] opacity-80">
-                {totalTiendasRelevadas} tiendas relevadas · {totals.cb_ok.toLocaleString()} cumplidos / {totals.cb_target.toLocaleString()} target
+                {totals.tiendas} tiendas relevadas · {totals.cb_ok.toLocaleString()} cumplidos / {totals.cb_target.toLocaleString()} target
               </div>
             </div>
             <CbMetricCard label="Infaltables" pct={totals.infalt_pct} ok={totals.infalt_ok} target={totals.infalt_target} obj={OBJ_PCT} />
