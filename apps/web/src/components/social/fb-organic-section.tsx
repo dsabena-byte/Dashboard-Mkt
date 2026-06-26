@@ -110,7 +110,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <KpiCard
               title="Alcance (personas únicas)"
               value={fmtK(data.totals.impressions_unique)}
-              hint={`${posts.length} posts analizados`}
+              hint={`hasta 15-jun · Meta discontinuó el reach`}
             />
             <KpiCard
               title="Fans (followers)"
@@ -154,9 +154,15 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
           {/* Gráfico mensual */}
           {data.monthlyData.length > 0 && (
             <div className="rounded-lg border bg-background p-4">
-              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Evolución mensual &mdash; Alcance vs Engagement
               </h4>
+              <p className="mb-3 text-[10px] leading-relaxed text-amber-700">
+                ⚠️ Meta <strong>discontinuó el alcance orgánico de Facebook el 15-jun-2026</strong> (ya no existe la métrica de
+                reach/impresiones/views en la API, ninguna versión). El alcance hasta esa fecha es real; desde junio el gráfico
+                muestra solo <strong>Engagement</strong> (métrica que sigue disponible). El alcance histórico se conserva. Se
+                reconectará si Meta publica la nueva métrica de alcance (Page Viewer Metric).
+              </p>
               <FbMonthlyChart data={data.monthlyData} />
             </div>
           )}
