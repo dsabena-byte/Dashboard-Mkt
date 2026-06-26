@@ -12,8 +12,14 @@ quedó **auto-reparable** para capturar la métrica nueva apenas se active, sin 
 - Meta deprecó **85 métricas** (post / video / página), la **mayoría de Reach**, el
   **2026-06-15**, en **todas las versiones** de la Graph API. La API responde
   `(#100) The value must be a valid insights metric`.
-- El reemplazo — **Page Viewer Metric** (reach) y **Media Views / Media Viewers / Unique
-  Views** — Meta lo lanza **a fin de junio 2026**. Al 26-jun **todavía no está activo**.
+- El reemplazo — **Total Unique Media Views** (post y página) — Meta lo lanza **a fin de
+  junio 2026**. Al 26-jun **todavía no está activo** en esta cuenta. Nombres de campo
+  (a validar contra la API cuando se prendan):
+  - **Page Reach** `page_impressions_unique` → **`page_total_media_view_unique`** (Page Unique Media Views / Page Viewers).
+  - **Post Reach** `post_impressions_unique` → **`post_total_media_views_unique`** (Post Unique Media Views / Media Viewers).
+- 🔑 **Backfill**: Meta **rellena el reach desde el 1-ene-2026** con la métrica nueva. O sea,
+  apenas se active, se recupera **todo 2026 — incluido el hueco de junio**. No se pierde nada.
+  → Al activarse, correr el sync con rango amplio (`?days=180`) para traer el backfill.
 - El reach **sigue disponible en Meta Business Suite** (la UI). El dato existe; falta que
   abran la métrica nueva en la API.
 - **Instagram NO se rompió**: usa nombres unificados (`reach`, `views`, `total_interactions`)
