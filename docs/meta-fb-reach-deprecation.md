@@ -1,8 +1,20 @@
 # Facebook — deprecación del Reach orgánico (Meta, jun-2026)
 
-Estado: **reach en transición** (rollover de Meta). No está eliminado: Meta retiró las
-métricas viejas el **15-jun-2026** y prende el reemplazo **a fin de junio 2026**. El sync
-quedó **auto-reparable** para capturar la métrica nueva apenas se active, sin recodear.
+Estado: **RESUELTO — reach reconectado** (2026-06-26). Meta retiró las métricas viejas el
+**15-jun-2026** y activó el reemplazo. Validado contra la API de la cuenta: la métrica nueva
+funciona y el sync ya la captura.
+
+| Métrica vieja | Métrica NUEVA (activa, validada) | Sample |
+|---|---|---|
+| `post_impressions_unique` (Post Reach) | **`post_total_media_view_unique`** (singular) | 121 ✅ |
+| `page_impressions_unique` (Page Reach) | **`page_total_media_view_unique`** (singular) → `reach_organic` | OK ✅ |
+
+⚠️ **OJO con el nombre: es SINGULAR** (`..._media_view_unique`), no plural. El plural
+(`post_total_media_views_unique`) da 400.
+
+**Pendiente operativo:** correr el sync con rango amplio (`?days=200`) **una vez** para
+traer el **backfill de todo 2026** (Meta lo rellena desde el 1-ene-2026) y que los meses
+del hueco (junio) queden completos con la métrica nueva.
 
 ## Qué pasó (validado contra la API, no asumido)
 
