@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "0 */12 * * *"  # 00:00 y 12:00 UTC
   workflow_dispatch:
+    inputs:
+      days:
+        description: "Días hacia atrás a sincronizar (200 = backfill de todo 2026)"
+        type: string
+        default: "3"
 
 jobs:
   trigger:
@@ -13,7 +18,8 @@ jobs:
       - name: Trigger /api/cron/meta-fb-sync
         run: |
           set -euo pipefail
-          URL="https://dashboard-mkt-seven.vercel.app/api/cron/meta-fb-sync?days=3"
+          DAYS="${DAYS_INPUT:-3}"
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/meta-fb-sync?days=${DAYS}"
           echo "GET $URL"
           if [ -n "${CRON_SECRET:-}" ]; then
             curl -fsS --max-time 600 "$URL" \
@@ -27,3 +33,4 @@ jobs:
           fi
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DAYS_INPUT: ${{ inputs.days }}
