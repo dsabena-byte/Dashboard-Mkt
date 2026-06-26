@@ -94,6 +94,23 @@ unificado), en ninguna versión. El control confirma que token/cuenta/versión f
 4. (Opcional) volver el reach a métrica principal del gráfico en `fb-monthly-chart.tsx`
    (hoy Engagement = barras, reach = línea histórica).
 
+## Pregunta abierta: ¿junio es bajo por acumulación o genuino? (sin resolver)
+
+Junio rinde ~714 reach/post vs ~1.954 de mayo. **No está validado** si es porque la
+métrica lifetime todavía acumula (junio recién termina) o porque junio genuinamente
+alcanzó menos. La serie `period=day` **no sirve** para verlo: la métrica nueva devuelve
+`day=0` siempre (solo expone `lifetime`). La ÚNICA forma de saberlo es **comparar el
+lifetime en el tiempo**.
+
+**Baseline al 2026-06-26 (re-comparar en ~5 días):**
+```
+06-02:1121  06-04:1088  06-08:881  06-09:878  06-10:1196  06-11:794  06-12:1019
+06-13:807   06-15:679   06-17:583  06-18:502  06-19:480   06-20:503  06-22:572
+06-23:737   06-24:174   06-25:122
+```
+Si en ~5 días los posts del **2-13 jun** (ya maduros) **crecieron** → acumulación real.
+Si quedaron **iguales** → junio genuinamente más bajo (contenido/algoritmo), no acumulación.
+
 ## Archivos tocados
 - `apps/web/src/app/api/cron/meta-fb-sync/route.ts` — sondeo de métricas, upsert no
   destructivo, mapeo self-healing.
