@@ -224,6 +224,23 @@ export async function GET(request: Request) {
     }
     results.page_metric_probe = pageMetricDiag;
 
+    // Última variable: la VERSIÓN de la API. Usamos v22.0 (vieja); el reemplazo
+    // 'views' puede existir solo en versiones nuevas. Probamos views (y un control
+    // que ya anda) en v23/v25 para saber si conviene subir de versión.
+    const versionProbe: Record<string, unknown> = {};
+    for (const ver of ["v23.0", "v25.0"]) {
+      for (const m of ["views", "page_views_total"]) {
+        const raw = await graphGetRaw(
+          `https://graph.facebook.com/${ver}/${PAGE_ID}/insights?metric=${m}&period=day&date_preset=last_7d&access_token=${pt}`,
+        );
+        const body = raw.body as { data?: InsightMetric[]; error?: { message?: string } };
+        versionProbe[`${ver}/${m}`] = raw.status === 200
+          ? { works: true, sample: body.data?.[0]?.values?.[0]?.value ?? null }
+          : { works: false, status: raw.status, error: body.error?.message ?? body.error };
+      }
+    }
+    results.version_probe = versionProbe;
+
     results.working_metrics = workingMetrics;
     results.metric_diagnostics = metricDiag;
     results.daily_rows = dailyMap.size;
