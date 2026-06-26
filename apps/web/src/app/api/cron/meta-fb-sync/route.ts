@@ -238,27 +238,41 @@ export async function GET(request: Request) {
 
     // 4. Fetch post-level insights (impressions, reach, video_views) per post
     const postInsightsMap = new Map<string, Record<string, number>>();
+    // Candidatos a sondear. Meta deprecó el reach de posts (post_impressions_unique)
+    // el 2026-06-15 y reemplaza 'impressions' por 'views'. NO asumimos cuál anda: se
+    // prueba cada uno contra un post real y se reporta status + valor de muestra / error.
     const postMetricTests = [
       "post_impressions",
       "post_impressions_unique",
+      "post_impressions_organic",
+      "post_impressions_organic_unique",
+      "post_impressions_paid",
       "post_clicks",
       "post_video_views",
       "post_engaged_users",
+      "post_reactions_by_type_total",
+      "post_activity_by_action_type",
     ];
 
     if (postsData.length > 0) {
-      // Test which post metrics work on the first post
+      // Probar qué métricas acepta la cuenta (status 200) + valor de muestra / error.
       const testPostId = postsData[0]!.id;
       const workingPostMetrics: string[] = [];
+      const postMetricDiag: Record<string, unknown> = {};
       for (const m of postMetricTests) {
         const raw = await graphGetRaw(
           `${GRAPH_API}/${testPostId}/insights?metric=${m}&access_token=${pt}`,
         );
+        const body = raw.body as { data?: InsightMetric[]; error?: { message?: string } };
         if (raw.status === 200) {
           workingPostMetrics.push(m);
+          postMetricDiag[m] = { ok: true, sample: body.data?.[0]?.values?.[0]?.value ?? null };
+        } else {
+          postMetricDiag[m] = { ok: false, status: raw.status, error: body.error?.message ?? body.error };
         }
       }
       results.working_post_metrics = workingPostMetrics;
+      results.post_metric_diagnostics = postMetricDiag;
 
       if (workingPostMetrics.length > 0) {
         const metricsStr = workingPostMetrics.join(",");
@@ -280,9 +294,27 @@ export async function GET(request: Request) {
       }
     }
 
+    // No perder data: traer los valores ya guardados para no pisarlos con 0 cuando
+    // Meta deprecó la métrica (reach de posts deprecado el 2026-06-15).
+    const existing = new Map<string, { reach: number; impressions: number; video_views: number; clicks: number }>();
+    if (postsData.length > 0) {
+      const sbUrl = env("NEXT_PUBLIC_SUPABASE_URL");
+      const sbKey = env("SUPABASE_SERVICE_ROLE_KEY");
+      const inList = `(${postsData.map((p) => `"${p.id}"`).join(",")})`;
+      const exRes = await fetch(
+        `${sbUrl}/rest/v1/meta_posts?platform=eq.facebook&post_id=in.${encodeURIComponent(inList)}&select=post_id,reach,impressions,video_views,clicks`,
+        { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } },
+      );
+      if (exRes.ok) {
+        const exRows = (await exRes.json()) as Array<{ post_id: string; reach: number | null; impressions: number | null; video_views: number | null; clicks: number | null }>;
+        for (const r of exRows) existing.set(r.post_id, { reach: r.reach ?? 0, impressions: r.impressions ?? 0, video_views: r.video_views ?? 0, clicks: r.clicks ?? 0 });
+      }
+    }
+
     const postRows: Array<Record<string, unknown>> = [];
     for (const p of postsData) {
       const ins = postInsightsMap.get(p.id) ?? {};
+      const ex = existing.get(p.id);
       const rawThumb = p.attachments?.data?.[0]?.media?.image?.src ?? null;
       const mirroredThumb = await mirrorMetaImage(rawThumb, `facebook/${p.id}.jpg`);
       postRows.push({
@@ -294,12 +326,13 @@ export async function GET(request: Request) {
         message: p.message ?? null,
         media_type: p.attachments?.data?.[0]?.media_type ?? null,
         thumbnail_url: mirroredThumb,
-        impressions: ins.post_impressions ?? 0,
-        reach: ins.post_impressions_unique ?? 0,
+        // No destructivo: si la métrica vino 0/deprecada, conservamos el valor histórico.
+        impressions: (ins.post_impressions ?? 0) || (ex?.impressions ?? 0),
+        reach: (ins.post_impressions_unique ?? 0) || (ex?.reach ?? 0),
         engagement: (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
         reactions: p.reactions?.summary?.total_count ?? 0,
-        video_views: ins.post_video_views ?? 0,
-        clicks: ins.post_clicks ?? 0,
+        video_views: (ins.post_video_views ?? 0) || (ex?.video_views ?? 0),
+        clicks: (ins.post_clicks ?? 0) || (ex?.clicks ?? 0),
       });
     }
 
