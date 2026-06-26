@@ -45,6 +45,7 @@ async function supabaseUpsert(
 
 interface InsightMetric {
   name: string;
+  period?: string;
   values: Array<{ end_time?: string; value: unknown }>;
 }
 
@@ -359,7 +360,11 @@ export async function GET(request: Request) {
             const vals: Record<string, number> = {};
             for (const d of body.data ?? []) {
               const v = d.values?.[0]?.value;
-              if (typeof v === "number") vals[d.name] = v;
+              if (typeof v !== "number") continue;
+              // La métrica nueva (post_total_media_view_unique) trae 'lifetime' (acumulado)
+              // Y 'day' (suele 0) con el mismo name. Priorizamos lifetime para no pisar
+              // el total con 0; si no hay period, tomamos el primero.
+              if (d.period === "lifetime" || vals[d.name] === undefined) vals[d.name] = v;
             }
             postInsightsMap.set(p.id, vals);
           }
