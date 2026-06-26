@@ -196,12 +196,12 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
             <CbMetricCard label="Estratégico" pct={totals.estrat_pct} ok={totals.estrat_ok} target={totals.estrat_target} obj={OBJ_PCT} />
             <div className="rounded-xl border bg-card p-5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tiendas relevadas</div>
-              <div className="mt-1 text-3xl font-bold text-rose-500">{totalTiendasRelevadas}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">Universo histórico</div>
+              <div className="mt-1 text-3xl font-bold text-rose-500">{totals.tiendas}</div>
+              <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">Según filtros aplicados</div>
               <div className="mt-3 border-t pt-2 text-[11px] flex items-center justify-between">
-                <span className="text-muted-foreground">Con data filtrada</span>
+                <span className="text-muted-foreground">Universo histórico</span>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold tabular-nums text-slate-700">
-                  {totals.tiendas}
+                  {totalTiendasRelevadas}
                 </span>
               </div>
             </div>
