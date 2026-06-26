@@ -292,20 +292,6 @@ export async function GET(request: Request) {
       }
     }
 
-    // Diagnóstico: published_posts NO trae Reels. Si posteamos lo mismo que IG pero FB
-    // tiene menos posts, faltan (probablemente Reels). Contamos qué devuelven otros edges.
-    const edgeProbe: Record<string, unknown> = {};
-    for (const e of ["video_reels", "reels", "videos"]) {
-      const raw = await graphGetRaw(
-        `${GRAPH_API}/${PAGE_ID}/${e}?fields=id,created_time&since=${sinceUnix}&until=${untilUnix}&limit=100&access_token=${pt}`,
-      );
-      const body = raw.body as { data?: unknown[]; error?: { message?: string } };
-      edgeProbe[e] = raw.status === 200
-        ? { count: body.data?.length ?? 0 }
-        : { error: body.error?.message ?? raw.status };
-    }
-    results.edge_probe = edgeProbe;
-
     // 4. Fetch post-level insights (impressions, reach, video_views) per post
     const postInsightsMap = new Map<string, Record<string, number>>();
     // Candidatos a sondear. Meta deprecó el reach de posts (post_impressions_unique)
