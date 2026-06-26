@@ -196,6 +196,34 @@ export async function GET(request: Request) {
       }
     }
 
+    // Sondeo del reemplazo de reach/impresiones a nivel PÁGINA. Meta deprecó el page
+    // reach el 2026-06-15 y reemplaza 'impressions' por 'views'. Diagnóstico (no almacena):
+    // reporta qué métrica acepta la cuenta + valor de muestra, sin asumir el nombre.
+    const pageMetricProbe = [
+      "views",
+      "page_views",
+      "page_impressions",
+      "page_impressions_unique",
+      "page_impressions_organic_v2",
+      "page_impressions_organic_unique_v2",
+      "page_posts_impressions",
+      "page_posts_impressions_unique",
+      "page_content_activity",
+    ];
+    const pageMetricDiag: Record<string, unknown> = {};
+    for (const m of pageMetricProbe) {
+      const raw = await graphGetRaw(
+        `${GRAPH_API}/${PAGE_ID}/insights?metric=${m}&period=day&date_preset=last_7d&access_token=${pt}`,
+      );
+      const body = raw.body as { data?: InsightMetric[]; error?: { message?: string } };
+      if (raw.status === 200) {
+        pageMetricDiag[m] = { works: true, sample: body.data?.[0]?.values?.[0]?.value ?? null };
+      } else {
+        pageMetricDiag[m] = { works: false, status: raw.status, error: body.error?.message ?? body.error };
+      }
+    }
+    results.page_metric_probe = pageMetricDiag;
+
     results.working_metrics = workingMetrics;
     results.metric_diagnostics = metricDiag;
     results.daily_rows = dailyMap.size;
@@ -266,9 +294,9 @@ export async function GET(request: Request) {
         const body = raw.body as { data?: InsightMetric[]; error?: { message?: string } };
         if (raw.status === 200) {
           workingPostMetrics.push(m);
-          postMetricDiag[m] = { ok: true, sample: body.data?.[0]?.values?.[0]?.value ?? null };
+          postMetricDiag[m] = { works: true, sample: body.data?.[0]?.values?.[0]?.value ?? null };
         } else {
-          postMetricDiag[m] = { ok: false, status: raw.status, error: body.error?.message ?? body.error };
+          postMetricDiag[m] = { works: false, status: raw.status, error: body.error?.message ?? body.error };
         }
       }
       results.working_post_metrics = workingPostMetrics;
