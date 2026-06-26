@@ -305,6 +305,13 @@ export async function GET(request: Request) {
       "comments",
       "content_views",
       "profile_activity",
+      // Reemplazos que nombra la doc de Meta (rollout fin jun-2026): Media Views /
+      // Media Viewers / Unique Views. Probamos sus nombres probables para auto-detectarlos.
+      "media_views",
+      "media_viewers",
+      "unique_views",
+      "post_reach",
+      "post_unique_views",
       // Viejos (deprecados 2026-06-15) — para confirmar el corte.
       "post_impressions",
       "post_impressions_unique",
@@ -391,8 +398,8 @@ export async function GET(request: Request) {
         // Views/Viewers, fin jun-2026), el sondeo la mete en workingPostMetrics y acá
         // la leemos SIN recodear. Fallback a los nombres viejos, y si todo viene 0/
         // deprecado, conservamos el valor histórico (no destructivo).
-        impressions: (ins.views ?? ins.post_impressions ?? 0) || (ex?.impressions ?? 0),
-        reach: (ins.reach ?? ins.post_impressions_unique ?? 0) || (ex?.reach ?? 0),
+        impressions: (ins.views ?? ins.media_views ?? ins.post_impressions ?? 0) || (ex?.impressions ?? 0),
+        reach: (ins.reach ?? ins.media_viewers ?? ins.unique_views ?? ins.post_reach ?? ins.post_unique_views ?? ins.post_impressions_unique ?? 0) || (ex?.reach ?? 0),
         engagement: (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
         reactions: p.reactions?.summary?.total_count ?? 0,
         video_views: (ins.post_video_views ?? 0) || (ex?.video_views ?? 0),
