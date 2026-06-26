@@ -159,9 +159,9 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
               </h4>
               <p className="mb-3 text-[10px] leading-relaxed text-muted-foreground">
                 ℹ️ Meta deprecó el reach viejo el <strong>15-jun-2026</strong> y lo reemplazó por <strong>Total Unique Media
-                Views</strong> (<code>post_total_media_view_unique</code>), reconectado acá. Es una métrica <strong>lifetime que
-                acumula con el tiempo</strong>: el <strong>mes en curso siempre arranca bajo</strong> (sus posts son recientes) y
-                sube en los días siguientes — no es una caída de performance. No es 1:1 con el reach anterior. Detalle:{" "}
+                Views</strong> (<code>post_total_media_view_unique</code>, lifetime), reconectado acá. No es 1:1 con el reach
+                anterior (Meta cambió la definición). Los posts de los <strong>últimos días pueden estar incompletos</strong>
+                (recién publicados); el valor se actualiza en cada corrida del sync. Detalle:{" "}
                 <code>docs/meta-fb-reach-deprecation.md</code>.
               </p>
               <FbMonthlyChart data={data.monthlyData} />
