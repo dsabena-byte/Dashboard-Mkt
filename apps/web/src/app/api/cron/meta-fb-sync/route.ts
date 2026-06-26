@@ -387,9 +387,12 @@ export async function GET(request: Request) {
         message: p.message ?? null,
         media_type: p.attachments?.data?.[0]?.media_type ?? null,
         thumbnail_url: mirroredThumb,
-        // No destructivo: si la métrica vino 0/deprecada, conservamos el valor histórico.
-        impressions: (ins.post_impressions ?? 0) || (ex?.impressions ?? 0),
-        reach: (ins.post_impressions_unique ?? 0) || (ex?.reach ?? 0),
+        // Self-healing: cuando Meta active la métrica nueva (reach / views = Media
+        // Views/Viewers, fin jun-2026), el sondeo la mete en workingPostMetrics y acá
+        // la leemos SIN recodear. Fallback a los nombres viejos, y si todo viene 0/
+        // deprecado, conservamos el valor histórico (no destructivo).
+        impressions: (ins.views ?? ins.post_impressions ?? 0) || (ex?.impressions ?? 0),
+        reach: (ins.reach ?? ins.post_impressions_unique ?? 0) || (ex?.reach ?? 0),
         engagement: (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
         reactions: p.reactions?.summary?.total_count ?? 0,
         video_views: (ins.post_video_views ?? 0) || (ex?.video_views ?? 0),
