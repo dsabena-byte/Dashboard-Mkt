@@ -118,6 +118,10 @@ export async function GET(request: Request) {
       { metric: "page_follows", col: "fans_total" },
       { metric: "page_views_total", col: "page_views" },
       { metric: "page_daily_follows", col: "fan_adds" },
+      // Reemplazo oficial del Page Reach (rollout fin jun-2026). Si la cuenta ya lo
+      // expone, se guarda solo en reach_organic; si no, el loop lo saltea (400).
+      { metric: "page_total_media_view_unique", col: "reach_organic" },
+      { metric: "page_total_media_views_unique", col: "reach_organic" },
     ];
 
     const metricDiag: Record<string, unknown> = {};
@@ -305,8 +309,10 @@ export async function GET(request: Request) {
       "comments",
       "content_views",
       "profile_activity",
-      // Reemplazos que nombra la doc de Meta (rollout fin jun-2026): Media Views /
-      // Media Viewers / Unique Views. Probamos sus nombres probables para auto-detectarlos.
+      // Reemplazos oficiales de Meta (rollout fin jun-2026): Post Unique Media Views.
+      "post_total_media_views_unique",
+      "post_total_media_view_unique",
+      // Otros nombres posibles del mismo concepto (por las dudas).
       "media_views",
       "media_viewers",
       "unique_views",
@@ -399,7 +405,7 @@ export async function GET(request: Request) {
         // la leemos SIN recodear. Fallback a los nombres viejos, y si todo viene 0/
         // deprecado, conservamos el valor histórico (no destructivo).
         impressions: (ins.views ?? ins.media_views ?? ins.post_impressions ?? 0) || (ex?.impressions ?? 0),
-        reach: (ins.reach ?? ins.media_viewers ?? ins.unique_views ?? ins.post_reach ?? ins.post_unique_views ?? ins.post_impressions_unique ?? 0) || (ex?.reach ?? 0),
+        reach: (ins.post_total_media_views_unique ?? ins.post_total_media_view_unique ?? ins.reach ?? ins.media_viewers ?? ins.unique_views ?? ins.post_reach ?? ins.post_unique_views ?? ins.post_impressions_unique ?? 0) || (ex?.reach ?? 0),
         engagement: (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0),
         reactions: p.reactions?.summary?.total_count ?? 0,
         video_views: (ins.post_video_views ?? 0) || (ex?.video_views ?? 0),
