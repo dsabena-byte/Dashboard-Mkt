@@ -155,7 +155,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
           {data.monthlyData.length > 0 && (
             <div className="rounded-lg border bg-background p-4">
               <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Evolución mensual &mdash; Alcance vs Engagement
+                Evolución mensual &mdash; Engagement (Alcance histórico)
               </h4>
               <p className="mb-3 text-[10px] leading-relaxed text-amber-700">
                 ⚠️ Meta <strong>discontinuó el alcance orgánico de Facebook el 15-jun-2026</strong> (ya no existe la métrica de
