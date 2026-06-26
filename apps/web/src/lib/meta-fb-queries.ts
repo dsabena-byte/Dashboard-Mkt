@@ -306,16 +306,15 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   // para que recharts no dibuje barras/líneas en cero).
   const years = [...monthlyMap.keys()].map((k) => k.slice(0, 4));
   const targetYear = years.length > 0 ? years.sort()[years.length - 1]! : String(new Date().getFullYear());
-  // Meta deprecó el alcance/impresiones orgánico de FB el 2026-06-15 (validado contra la
-  // API: la métrica ya no existe en ninguna versión). Desde ese mes NO graficamos reach
-  // (sería parcial/engañoso); el dato histórico queda intacto en la DB. Engagement sigue.
-  const REACH_DISCONTINUED_MONTH = "2026-06";
+  // Reach reconectado vía la métrica nueva de Meta (post_total_media_view_unique =
+  // "Total Unique Media Views"), con backfill desde 2026-01. Mostramos reach donde haya
+  // dato (>0); meses todavía sin backfill quedan en null (sin barra engañosa en 0).
   const monthlyData: FbMonthlyDatum[] = Array.from({ length: 12 }, (_, i) => {
     const key = `${targetYear}-${String(i + 1).padStart(2, "0")}`;
     const v = monthlyMap.get(key);
     return {
       mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
-      alcance: key >= REACH_DISCONTINUED_MONTH ? null : v ? v.alcance : null,
+      alcance: v && v.alcance > 0 ? v.alcance : null,
       engagement: v ? v.engagement : null,
     };
   });

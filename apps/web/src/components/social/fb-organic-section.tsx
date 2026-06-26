@@ -110,7 +110,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             <KpiCard
               title="Alcance (personas únicas)"
               value={fmtK(data.totals.impressions_unique)}
-              hint={`hasta 15-jun · Meta discontinuó el reach`}
+              hint={`${posts.length} posts · Total Unique Media Views`}
             />
             <KpiCard
               title="Fans (followers)"
@@ -155,15 +155,12 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
           {data.monthlyData.length > 0 && (
             <div className="rounded-lg border bg-background p-4">
               <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Evolución mensual &mdash; Engagement (Alcance histórico)
+                Evolución mensual &mdash; Alcance vs Engagement
               </h4>
-              <p className="mb-3 text-[10px] leading-relaxed text-amber-700">
-                ⚠️ <strong>Reach en transición (deprecación de Meta).</strong> Meta retiró las métricas viejas de alcance de
-                Facebook el <strong>15-jun-2026</strong> (85 métricas, mayoría de reach) y prende el reemplazo (Page Viewer
-                Metric / Media Viewers) <strong>a fin de junio</strong>. En el medio, la API no expone reach (sí sigue en Meta
-                Business Suite). El alcance hasta el 15-jun es real y se conserva; mientras tanto el gráfico usa{" "}
-                <strong>Engagement</strong> como métrica principal (barras) y el reach queda como línea histórica. El sync
-                <strong> detecta y reconecta la métrica nueva automáticamente</strong> apenas Meta la active. Detalle:{" "}
+              <p className="mb-3 text-[10px] leading-relaxed text-muted-foreground">
+                ℹ️ Meta deprecó el reach viejo el <strong>15-jun-2026</strong> y lo reemplazó por <strong>Total Unique Media
+                Views</strong> (<code>post_total_media_view_unique</code>), reconectado acá. El reach de 2026 se rellena por
+                backfill de Meta. No es 1:1 con el reach anterior (Meta cambió la definición). Detalle:{" "}
                 <code>docs/meta-fb-reach-deprecation.md</code>.
               </p>
               <FbMonthlyChart data={data.monthlyData} />

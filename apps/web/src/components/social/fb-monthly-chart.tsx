@@ -48,18 +48,18 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} />
         <YAxis
           yAxisId="left"
-          stroke="#2b4dff"
+          stroke="#dc2626"
           fontSize={11}
           tickFormatter={formatTick}
-          label={{ value: "Engagement", angle: -90, position: "insideLeft", fontSize: 10, fill: "#2b4dff" }}
+          label={{ value: "Engagement", angle: -90, position: "insideLeft", fontSize: 10, fill: "#dc2626" }}
         />
         <YAxis
           yAxisId="right"
           orientation="right"
-          stroke="#94a3b8"
+          stroke="#2b4dff"
           fontSize={11}
           tickFormatter={formatTick}
-          label={{ value: "Alcance (hist.)", angle: 90, position: "insideRight", fontSize: 10, fill: "#94a3b8" }}
+          label={{ value: "Alcance", angle: 90, position: "insideRight", fontSize: 10, fill: "#2b4dff" }}
         />
         <Tooltip
           formatter={(v: number, name: string) => [formatTooltip(v), name]}
@@ -71,20 +71,17 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {/* Engagement = métrica principal (sigue viva todos los meses). */}
-        <Bar yAxisId="left" dataKey="engagement" fill="#2b4dff" name="Engagement" />
-        {/* Alcance = histórico (Meta lo discontinuó el 15-jun-2026); línea punteada que corta solo (connectNulls=false). */}
+        {/* Alcance = Total Unique Media Views (métrica nueva de Meta, reconectada). */}
+        <Bar yAxisId="right" dataKey="alcance" fill="#2b4dff" name="Alcance (personas)" />
         <Line
-          yAxisId="right"
+          yAxisId="left"
           type="monotone"
-          dataKey="alcance"
-          stroke="#94a3b8"
-          strokeWidth={2}
-          strokeDasharray="4 3"
-          dot={{ r: 3 }}
-          activeDot={{ r: 5 }}
-          name="Alcance (histórico · hasta 15-jun)"
-          connectNulls={false}
+          dataKey="engagement"
+          stroke="#dc2626"
+          strokeWidth={2.5}
+          dot={{ r: 4 }}
+          activeDot={{ r: 6 }}
+          name="Engagement"
         />
       </ComposedChart>
     </ResponsiveContainer>
