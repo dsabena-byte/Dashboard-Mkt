@@ -370,6 +370,23 @@ export async function GET(request: Request) {
           }
         }
         results.posts_with_insights = postInsightsMap.size;
+        // Diagnóstico temporal: ¿la métrica todavía ACUMULA? Serie DIARIA de los 3 posts
+        // más viejos del batch (días con media-views > 0). Si hay entradas en los días
+        // recientes → sigue sumando (acumulación real). Si se cortan a los pocos días de
+        // publicado → ya se estabilizó (junio sería genuinamente más bajo, no acumulación).
+        const reachDaily: Record<string, unknown> = {};
+        for (const op of postsData.slice(-3)) {
+          const raw = await graphGetRaw(
+            `${GRAPH_API}/${op.id}/insights?metric=post_total_media_view_unique&period=day&date_preset=last_30d&access_token=${pt}`,
+          );
+          const body = raw.body as { data?: InsightMetric[] };
+          const dayEntry = body.data?.find((d) => d.period === "day");
+          reachDaily[op.created_time ?? op.id] =
+            dayEntry?.values
+              ?.filter((v) => typeof v.value === "number" && (v.value as number) > 0)
+              .map((v) => `${v.end_time?.slice(0, 10)}:${v.value}`) ?? "sin serie diaria";
+        }
+        results.reach_daily_series = reachDaily;
       }
     }
 
