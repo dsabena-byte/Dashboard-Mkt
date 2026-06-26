@@ -200,6 +200,12 @@ export async function GET(request: Request) {
     // reach el 2026-06-15 y reemplaza 'impressions' por 'views'. Diagnóstico (no almacena):
     // reporta qué métrica acepta la cuenta + valor de muestra, sin asumir el nombre.
     const pageMetricProbe = [
+      // Unificados (estilo IG) por si el reach de página migró a estos nombres.
+      "reach",
+      "content_views",
+      "total_interactions",
+      "accounts_engaged",
+      // Nombres clásicos de página.
       "views",
       "page_views",
       "page_impressions",
@@ -287,11 +293,21 @@ export async function GET(request: Request) {
     // el 2026-06-15 y reemplaza 'impressions' por 'views'. NO asumimos cuál anda: se
     // prueba cada uno contra un post real y se reporta status + valor de muestra / error.
     const postMetricTests = [
+      // Nombres UNIFICADOS (los que usa Instagram y sí funcionan en v22): Meta unificó
+      // métricas cross-platform; probamos si los posts de FB ya los adoptaron.
+      "reach",
+      "impressions",
+      "views",
+      "total_interactions",
+      "saved",
+      "shares",
+      "likes",
+      "comments",
+      "content_views",
+      "profile_activity",
+      // Viejos (deprecados 2026-06-15) — para confirmar el corte.
       "post_impressions",
       "post_impressions_unique",
-      "post_impressions_organic",
-      "post_impressions_organic_unique",
-      "post_impressions_paid",
       "post_clicks",
       "post_video_views",
       "post_engaged_users",
