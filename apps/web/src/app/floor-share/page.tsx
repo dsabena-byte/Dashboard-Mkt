@@ -1,5 +1,7 @@
 import { FloorShareFilters } from "@/components/floor-share/floor-share-filters";
 import { FloorShareBrandRanking, FloorShareWeeklyChart } from "@/components/floor-share/floor-share-charts";
+import { LastUpdated } from "@/components/last-updated";
+import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { colorForBrand } from "@/lib/floor-share-colors";
 import {
   computeOverall,
@@ -168,6 +170,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const cats = uniq(rows.map((r) => normalizeCategoria(r.categoria))).sort();
 
   const hasData = rows.length > 0;
+  const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
 
   return (
     <div className="space-y-4">
@@ -176,6 +179,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         <p className="text-sm text-muted-foreground">
           Share de góndola por categoría · Ranking de marcas · Evolución mensual.
         </p>
+        <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
 
       <FloorShareFilters current={filter} options={options} />

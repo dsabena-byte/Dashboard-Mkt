@@ -1,4 +1,6 @@
 import { KpiCard } from "@/components/kpi-card";
+import { LastUpdated } from "@/components/last-updated";
+import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { PlanningFilters } from "@/components/planning/planning-filters";
 import { DonutChart } from "@/components/planning/donut-chart";
 import { StackedBarChart } from "@/components/planning/stacked-bar-chart";
@@ -37,6 +39,7 @@ function pickArray(v: string | string[] | undefined): string[] {
 export default async function PlanningPage({ searchParams }: PageProps) {
   const options = await getPlanningFilterOptions();
   const defaultMonth = await getDefaultMonth();
+  const lastUpdated = await maxUpdatedAt("planning_media").catch(() => null);
 
   const mesArr = pickArray(searchParams.mes);
   const mes = mesArr.length > 0 ? mesArr : [defaultMonth];
@@ -138,6 +141,7 @@ export default async function PlanningPage({ searchParams }: PageProps) {
           <p className="text-sm text-muted-foreground">
             Drean · ON + OFF + Costos. {mes.length === 1 ? `Mes: ${formatMonthLabel(mes[0]!)}` : `${mes.length} meses seleccionados`}.
           </p>
+          <LastUpdated date={lastUpdated} className="mt-1" />
         </div>
         <div className="text-xs text-muted-foreground">
           {hasData ? `${rows.length} líneas · ${formatCurrency(totals.total)}` : "Sin datos"}

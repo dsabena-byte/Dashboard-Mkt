@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { LastUpdated } from "@/components/last-updated";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { KpiCard } from "@/components/kpi-card";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
@@ -39,7 +40,7 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
   return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
 }
 
-export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [] }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[] }) {
+export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpdated = null }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[]; lastUpdated?: string | null }) {
   const meses = useMemo(() => extractMeses(rows), [rows]);
   const [selMeses, setSelMeses] = useState<string[]>([]);
 
@@ -149,6 +150,7 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [] }: { row
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Mkt de Influencia</h2>
         <p className="text-sm text-muted-foreground">Campañas UGC e influencer marketing · Fuente: OMD</p>
+        <LastUpdated date={lastUpdated} className="mt-1" />
         <div className="mt-3">
           <MultiDropdown
             label="Mes"
