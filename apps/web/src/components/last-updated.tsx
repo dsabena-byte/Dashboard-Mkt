@@ -18,6 +18,7 @@ export function LastUpdated({
   }
   const d = new Date(date);
   const fmt = d.toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
