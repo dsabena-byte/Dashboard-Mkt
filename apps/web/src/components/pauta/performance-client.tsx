@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { LastUpdated } from "@/components/last-updated";
 import {
   type PautaRow,
   PAUTA_INSIGHTS,
@@ -246,7 +247,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }> }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, lastUpdated = null }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; lastUpdated?: string | null }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -866,6 +867,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           <p className="text-sm text-muted-foreground">
             Resultados ejecutados (Digital ON + TV + OOH) · Fuente: OMD
           </p>
+          <LastUpdated date={lastUpdated} className="mt-1" />
         </div>
       </header>
 

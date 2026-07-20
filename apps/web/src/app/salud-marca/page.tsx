@@ -1,6 +1,8 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
+import { maxUpdatedAt } from "@/lib/freshness-queries";
+import { LastUpdated } from "@/components/last-updated";
 import {
   type KVals, NK,
   KANTAR_LAVADO, KANTAR_REFRI, KANTAR_COCCION,
@@ -75,6 +77,7 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 
 export default async function SaludMarcaPage({ searchParams }: { searchParams?: { tab?: string; view?: string; marca?: string } }) {
   const tab = TABS.find((t) => t.key === searchParams?.tab) ?? TABS[0];
+  const lastUpdated = await maxUpdatedAt("mercado_share").catch(() => null);
 
   // ===== Lavado / Refrigeración: Evolución (Salud de Marca vs Mercado) =====
   const smCfg = SM_CAT[tab.key];
@@ -82,7 +85,7 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
     const marca = (smCfg.brands as readonly string[]).includes(searchParams?.marca ?? "") ? searchParams!.marca! : "Drean";
     return (
       <div className="space-y-5">
-        <Header tab={tab} />
+        <Header tab={tab} lastUpdated={lastUpdated} />
         <EvolucionView
           marca={marca}
           serieU12={await safe(getDreanSerie(smCfg.categoria, "MAT", marca.toUpperCase()), new Map<string, DreanMesSeg>())}
@@ -105,7 +108,7 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
 
   return (
     <div className="space-y-5">
-      <Header tab={tab} />
+      <Header tab={tab} lastUpdated={lastUpdated} />
       <DreanSaludConsolidada series={dreanSeries} />
     </div>
   );
@@ -799,11 +802,14 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
   );
 }
 
-function Header({ tab }: { tab: (typeof TABS)[number] }) {
+function Header({ tab, lastUpdated }: { tab: (typeof TABS)[number]; lastUpdated?: string | null }) {
   return (
     <>
       <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Salud de Marca</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight">Salud de Marca</h2>
+          <LastUpdated date={lastUpdated ?? null} />
+        </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Salud de marca medida por <b>Kantar</b> (Top of Mind, Share of Mind, Intención y Poder de marca) por categoría,
           contrastada con la evolución de mercado. La proyección de <b>Nov-2026</b> se estima desde los drivers de mercado de

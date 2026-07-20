@@ -1,4 +1,6 @@
 import { getMercadoRows, mesLabel, type MercadoRow } from "@/lib/mercado-queries";
+import { maxUpdatedAt } from "@/lib/freshness-queries";
+import { LastUpdated } from "@/components/last-updated";
 import { MercadoBrandChart, type BrandChartPoint } from "@/components/mercado/mercado-brand-chart";
 import { MercadoStackedBars, type StackedPoint } from "@/components/mercado/mercado-stacked-bars";
 import Link from "next/link";
@@ -213,7 +215,7 @@ function BrandLegend({ brands, colorOf }: { brands: string[]; colorOf: Record<st
 
 export default async function MercadoPage({ searchParams }: { searchParams?: { cat?: string; agg?: string } }) {
   const aggReq: "MAT" | "mensual" = searchParams?.agg === "MAT" ? "MAT" : "mensual";
-  const [matAll, menAll] = await Promise.all([getMercadoRows("MAT"), getMercadoRows("mensual")]);
+  const [matAll, menAll, lastUpdated] = await Promise.all([getMercadoRows("MAT"), getMercadoRows("mensual"), maxUpdatedAt("mercado_share").catch(() => null)]);
   // Análisis de Mercado = histórico: excluimos meses futuros. Las proyecciones nov-26
   // (cargadas para la estimación de Salud de Marca, solo unas pocas marcas) no son data
   // real y, al quedar como "último mes", distorsionaban el ranking/selección de marcas.
@@ -250,7 +252,10 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
   return (
     <div className="space-y-5">
       <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Análisis de Mercado</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight">Análisis de Mercado</h2>
+          <LastUpdated date={lastUpdated} />
+        </div>
         <p className="text-sm text-muted-foreground">
           Value share, Unit share e Índice de precio en el tiempo — Drean vs competencia, por categoría y segmento. Al
           costado de cada serie, las marcas con mayor variación en los últimos 4 / 8 / 12 meses. Fuente: GFK (
