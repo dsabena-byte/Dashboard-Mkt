@@ -17,6 +17,7 @@ import {
   PieChart,
   TrendingUp,
   HeartPulse,
+  Activity,
   Menu,
   X,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const NAV = [
   { href: "/mkt-canal",   label: "Mkt de Canal",     icon: Store },
   { href: "/cuadros-basicos", label: "Cuadros Básicos", icon: LayoutGrid },
   { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
+  { href: "/monitoreo",       label: "Monitoreo",       icon: Activity },
 ] as const;
 
 export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
