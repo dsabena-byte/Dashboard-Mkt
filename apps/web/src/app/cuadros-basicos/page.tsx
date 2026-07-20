@@ -1,4 +1,6 @@
 import { CbFiltersBar } from "@/components/cb/cb-filters";
+import { LastUpdated } from "@/components/last-updated";
+import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
 import { CbCategoryChart } from "@/components/cb/cb-category-chart";
 import { CbTabsNav } from "@/components/cb/cb-tabs-nav";
@@ -154,6 +156,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const byTienda = computeByTienda(rows);
 
   const hasData = rows.length > 0;
+  const lastUpdated = await maxUpdatedAt("cuadro_basico_semanal", "cb").catch(() => null);
 
   return (
     <div className="space-y-4">
@@ -162,6 +165,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         <p className="text-sm text-muted-foreground">
           Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
         </p>
+        <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
 
       <CbTabsNav />

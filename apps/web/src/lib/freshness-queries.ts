@@ -23,3 +23,12 @@ export async function maxUpdatedAt(
   const v = data[0]?.[col];
   return typeof v === "string" ? v : null;
 }
+
+// Para dashboards que combinan varias fuentes: devuelve la fecha más reciente.
+export async function maxUpdatedAtMany(
+  sources: Array<{ table: string; db?: "principal" | "cb"; col?: string }>,
+): Promise<string | null> {
+  const dates = await Promise.all(sources.map((s) => maxUpdatedAt(s.table, s.db ?? "principal", s.col ?? "updated_at").catch(() => null)));
+  const valid = dates.filter((d): d is string => !!d).sort();
+  return valid.length ? valid[valid.length - 1]! : null;
+}
