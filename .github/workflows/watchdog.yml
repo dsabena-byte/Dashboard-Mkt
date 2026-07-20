@@ -1,0 +1,63 @@
+name: Watchdog — monitor de syncs
+
+on:
+  schedule:
+    - cron: "20 */6 * * *"  # cada 6h, desfasado de los syncs para verlos ya corridos
+  workflow_dispatch:
+
+permissions:
+  actions: write   # re-ejecutar workflows fallidos
+  issues: write    # abrir/cerrar issue de alerta
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      HEALTH_URL: https://dashboard-mkt-seven.vercel.app/api/cron/health
+    steps:
+      - name: Vigilar Actions + frescura de datos
+        run: |
+          set -uo pipefail
+
+          # --- 1) Estado de los GitHub Actions de sync (auto-reintento si fallan) ---
+          WFS="ga4-sync.yml bgt-sync.yml meta-paid-sync.yml organic-insights.yml clasificar-contenido.yml meta-fb-sync.yml ig-sync-6h.yml ig-sentiment-sync.yml ugc-comments-graph.yml ugc-comments-sync.yml ugc-comments-analysis.yml"
+          PROBLEMS=""
+          for wf in $WFS; do
+            concl=$(gh run list --workflow "$wf" --limit 1 --json conclusion --jq '.[0].conclusion // "none"' 2>/dev/null || echo "none")
+            id=$(gh run list --workflow "$wf" --limit 1 --json databaseId --jq '.[0].databaseId // ""' 2>/dev/null || echo "")
+            echo "· $wf -> $concl"
+            if [ "$concl" = "failure" ] || [ "$concl" = "cancelled" ] || [ "$concl" = "timed_out" ]; then
+              PROBLEMS="${PROBLEMS}- ❌ Action **$wf**: último run \`$concl\` — reintentado automáticamente.\n"
+              [ -n "$id" ] && gh run rerun "$id" --failed 2>/dev/null || true
+            fi
+          done
+
+          # --- 2) Frescura de datos (incluye Apps Script: DV360, Planning, CB, Floor) ---
+          HEALTH=$(curl -s --max-time 120 -H "Authorization: Bearer ${CRON_SECRET:-}" "$HEALTH_URL" || echo '{}')
+          echo "health: $HEALTH"
+          DESV=$(echo "$HEALTH" | jq -r '(.desvios // []) | .[] | "- 🔴 Datos **\(.proceso)** (\(.conexion)): sin actualizar hace \(.ageH)h (esperado cada \(.cadenciaH)h)."' 2>/dev/null || true)
+          [ -n "$DESV" ] && PROBLEMS="${PROBLEMS}${DESV}\n"
+
+          # --- 3) Alerta como GitHub Issue (se cierra sola al recuperarse) ---
+          TITLE="🔴 Watchdog: procesos de datos con desvío"
+          EXIST=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""' 2>/dev/null || echo "")
+          NOW=$(date -u '+%Y-%m-%d %H:%M UTC')
+          if [ -n "$PROBLEMS" ]; then
+            BODY=$(printf "Detectado por el watchdog el %s.\n\n%b\n_Los Actions se reintentan solos; los de Apps Script (DV360/Planning/CB/Floor) requieren activar el trigger del lado de Google._" "$NOW" "$PROBLEMS")
+            if [ -n "$EXIST" ]; then
+              gh issue comment "$EXIST" --body "$BODY"
+            else
+              gh issue create --title "$TITLE" --body "$BODY" 2>/dev/null || true
+            fi
+            echo "::warning::Watchdog encontró desvíos"
+          else
+            if [ -n "$EXIST" ]; then
+              gh issue comment "$EXIST" --body "✅ Todo recuperado ($NOW). Cerrando alerta."
+              gh issue close "$EXIST"
+            fi
+            echo "Todo OK — sin desvíos"
+          fi
