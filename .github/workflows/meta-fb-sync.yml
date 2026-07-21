@@ -18,7 +18,9 @@ jobs:
       - name: Trigger /api/cron/meta-fb-sync
         run: |
           set -euo pipefail
-          DAYS="${DAYS_INPUT:-3}"
+          # Tomamos solo los dígitos del input (tolera "?days=200", "200 días", etc.).
+          DAYS="$(printf '%s' "${DAYS_INPUT:-3}" | grep -oE '[0-9]+' | head -1)"
+          DAYS="${DAYS:-3}"
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/meta-fb-sync?days=${DAYS}"
           echo "GET $URL"
           if [ -n "${CRON_SECRET:-}" ]; then
