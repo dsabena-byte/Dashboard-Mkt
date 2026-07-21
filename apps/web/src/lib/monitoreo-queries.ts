@@ -14,7 +14,7 @@ export interface HealthRow {
 export async function getHealth(): Promise<HealthRow[]> {
   const now = Date.now();
   const dates = await Promise.all(
-    PROCS.map((p) => maxUpdatedAt(p.tabla, p.db ?? "principal", p.col ?? "updated_at").catch(() => null)),
+    PROCS.map((p) => maxUpdatedAt(p.tabla, p.db ?? "principal", p.col ?? "updated_at", p.filter).catch(() => null)),
   );
   return PROCS.map((p, i) => {
     const date = dates[i] ?? null;
