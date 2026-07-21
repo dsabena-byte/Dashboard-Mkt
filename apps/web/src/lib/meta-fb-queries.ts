@@ -326,9 +326,11 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   const monthlyData: FbMonthlyDatum[] = Array.from({ length: 12 }, (_, i) => {
     const key = `${targetYear}-${String(i + 1).padStart(2, "0")}`;
     const v = monthlyMap.get(key);
-    // Alcance = page-level mensual (period=month) cuando lo hay; si no, suma de posts.
-    const pageReach = monthlyReach.get(key);
-    const alcance = pageReach != null && pageReach > 0 ? pageReach : v && v.alcance > 0 ? v.alcance : null;
+    // TODO: reconectar el alcance mensual de la Página cuando validemos la métrica
+    // correcta (page_total_media_view_unique devuelve media VIEWS en millones, no
+    // reach único). Por ahora, alcance = suma de posts (método que funcionaba).
+    void monthlyReach;
+    const alcance = v && v.alcance > 0 ? v.alcance : null;
     return {
       mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
       alcance,
