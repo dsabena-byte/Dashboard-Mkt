@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { mirrorMetaImage } from "@/lib/meta-image-mirror";
 
-// El mirroring (descarga de Meta + subida al bucket) de varias piezas puede
-// tardar unos segundos; ampliamos el límite de ejecución de la función.
-export const maxDuration = 60;
+// El mirroring (descarga de Meta + subida al bucket) + los insights de muchos
+// ads pueden pasar de 60s en meses con más pauta (junio daba 504
+// FUNCTION_INVOCATION_TIMEOUT). Subimos a 300s como meta-fb-sync / ig-sync.
+export const maxDuration = 300;
 
 // Sincroniza piezas pautadas (ads) de Meta + sus insights del mes elegido a
 // la tabla meta_paid_creatives. Por defecto: mes actual.
