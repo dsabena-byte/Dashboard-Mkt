@@ -158,11 +158,12 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                 Evolución mensual &mdash; Alcance vs Engagement
               </h4>
               <p className="mb-3 text-[10px] leading-relaxed text-muted-foreground">
-                ℹ️ <strong>Alcance = alcance mensual de la Página</strong> (Graph API <code>period=month</code>, mes calendario
-                completo), no la suma del reach de posts. Evita el sesgo de la métrica nueva de posts (que es
-                <em>lifetime</em> y hace caer los meses recientes hasta que maduran). Donde todavía no hay dato mensual de la
-                Página, se cae a la suma de posts. <strong>No incluye Stories</strong>: Meta no expone las Stories de Páginas de
-                FB por API (IG sí), así que IG suma sus Stories y FB no. Detalle: <code>docs/meta-fb-reach-deprecation.md</code>.
+                ℹ️ Meta deprecó el reach viejo el <strong>15-jun-2026</strong> y lo reemplazó por <strong>Total Unique Media
+                Views</strong> (<code>post_total_media_view_unique</code>, lifetime), reconectado acá. No es 1:1 con el reach
+                anterior (Meta cambió la definición). Los posts de los <strong>últimos días pueden estar incompletos</strong>
+                (recién publicados). <strong>No incluye Stories</strong>: Meta no expone las Stories de Páginas de FB por API (IG
+                sí), así que para comparar volumen/alcance con IG, tené en cuenta que IG suma sus Stories y FB no. Detalle:{" "}
+                <code>docs/meta-fb-reach-deprecation.md</code>.
               </p>
               <FbMonthlyChart data={data.monthlyData} />
             </div>
