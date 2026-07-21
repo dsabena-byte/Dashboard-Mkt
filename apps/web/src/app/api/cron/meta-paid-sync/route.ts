@@ -657,15 +657,21 @@ export async function GET(req: Request) {
     // siguientes heredan el limit reducido para no volver a chocar.
     while (nextUrl && pages < 200) {
       let page: AdsResp | null = null;
+      let attempts = 0;
       for (;;) {
         try {
           page = await graphGet<AdsResp>(nextUrl);
           break;
         } catch (e) {
           const msg = String(e instanceof Error ? e.message : e);
-          if (/reduce the amount of data/i.test(msg) && curLimit > 1) {
-            curLimit = Math.max(1, Math.floor(curLimit / 2));
-            nextUrl = setLimit(nextUrl, curLimit);
+          attempts++;
+          const tooMuch = /reduce the amount of data/i.test(msg);
+          // Errores transitorios de Meta (code 2 / "temporarily unavailable" /
+          // "unexpected error" / subcode 1504044): esperar y reintentar.
+          const transient = /temporarily unavailable|unexpected error|error inesperado|"code":\s*2|1504044|is_transient":\s*true/i.test(msg);
+          if ((tooMuch || transient) && attempts <= 6) {
+            if (curLimit > 1) { curLimit = Math.max(1, Math.floor(curLimit / 2)); nextUrl = setLimit(nextUrl!, curLimit); }
+            await new Promise((r) => setTimeout(r, 1500 * attempts)); // backoff creciente
             continue;
           }
           throw e;
