@@ -262,6 +262,47 @@ export async function GET(request: Request) {
       "fecha,page_id",
     );
 
+    // 2b. Alcance MENSUAL de la Página (period=month, mes calendario completo) →
+    // meta_fb_monthly_reach. Solo alimenta el gráfico de evolución de alcance de
+    // FB. Defensivo: si Meta rechaza la métrica/período, no rompe el resto.
+    try {
+      const nowIso = new Date().toISOString();
+      const nowY = new Date().getUTCFullYear();
+      const nowMs = Date.now();
+      const monthlyReachRows: Array<{ mes: string; reach: number; updated_at: string }> = [];
+      const monthlyDiag: Record<string, unknown> = {};
+      for (let mi = 0; mi < 12; mi++) {
+        const startMs = Date.UTC(nowY, mi, 1);
+        if (startMs > nowMs) break;
+        const since = Math.floor(startMs / 1000);
+        const until = Math.floor(Date.UTC(nowY, mi + 1, 1) / 1000);
+        const mesKey = `${nowY}-${String(mi + 1).padStart(2, "0")}-01`;
+        let reach: number | null = null;
+        // La métrica nueva puede venir en singular o plural; probamos ambas.
+        for (const metric of ["page_total_media_view_unique", "page_total_media_views_unique"]) {
+          const raw = await graphGetRaw(
+            `${GRAPH_API}/${PAGE_ID}/insights?metric=${metric}&period=month&since=${since}&until=${until}&access_token=${pt}`,
+          );
+          if (raw.status === 200) {
+            const body = raw.body as { data?: InsightMetric[] };
+            const vals = body.data?.[0]?.values ?? [];
+            for (const v of vals) if (typeof v.value === "number") reach = v.value;
+            if (reach != null) break;
+          } else if (metric === "page_total_media_views_unique") {
+            monthlyDiag[mesKey] = { status: raw.status, error: (raw.body as { error?: unknown })?.error };
+          }
+        }
+        if (reach != null) {
+          monthlyReachRows.push({ mes: mesKey, reach, updated_at: nowIso });
+          monthlyDiag[mesKey] = reach;
+        }
+      }
+      results.monthly_reach_diag = monthlyDiag;
+      results.monthly_reach = await supabaseUpsert("meta_fb_monthly_reach", monthlyReachRows, "mes");
+    } catch (e) {
+      results.monthly_reach_error = e instanceof Error ? e.message : String(e);
+    }
+
     // 3. Posts - fetch WITHOUT insights subquery, paginate for large ranges
     let postsData: FbPost[] = [];
     const postFields = "id,created_time,message,permalink_url,shares,attachments{media_type,media{image{src}}},reactions.summary(true),comments.summary(true)";
