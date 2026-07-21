@@ -204,6 +204,20 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   const posts = postsRes.data ?? [];
   const demo = demoRes.data ?? [];
 
+  // Alcance MENSUAL de la Página (period=month) para el gráfico de evolución.
+  // Reemplaza la suma del reach de posts (que con la métrica "lifetime" hace
+  // caer los meses recientes). Defensivo: si la tabla no existe todavía, se
+  // cae al método anterior sin romper nada.
+  const monthlyReach = new Map<string, number>(); // "YYYY-MM" -> reach
+  try {
+    const mrRes = await supabase.from("meta_fb_monthly_reach").select("mes, reach");
+    for (const r of (mrRes.data ?? []) as Array<{ mes: string; reach: number | null }>) {
+      if (r.reach != null) monthlyReach.set(String(r.mes).slice(0, 7), Number(r.reach));
+    }
+  } catch {
+    /* tabla aún no creada → fallback a suma de posts */
+  }
+
   const totals: FbKpiTotals = { ...EMPTY_TOTALS, diasConData: daily.length };
   let lastFans: number | null = null;
   let lastFansDate = "";
@@ -312,9 +326,12 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   const monthlyData: FbMonthlyDatum[] = Array.from({ length: 12 }, (_, i) => {
     const key = `${targetYear}-${String(i + 1).padStart(2, "0")}`;
     const v = monthlyMap.get(key);
+    // Alcance = page-level mensual (period=month) cuando lo hay; si no, suma de posts.
+    const pageReach = monthlyReach.get(key);
+    const alcance = pageReach != null && pageReach > 0 ? pageReach : v && v.alcance > 0 ? v.alcance : null;
     return {
       mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
-      alcance: v && v.alcance > 0 ? v.alcance : null,
+      alcance,
       engagement: v ? v.engagement : null,
     };
   });
