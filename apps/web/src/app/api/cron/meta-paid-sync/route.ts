@@ -665,13 +665,17 @@ export async function GET(req: Request) {
         } catch (e) {
           const msg = String(e instanceof Error ? e.message : e);
           attempts++;
+          // Rate limit de la cuenta (code 80004 / "too many calls"): NO reintentar
+          // — reintentar lo empeora. Cortamos limpio.
+          if (/too many calls|(^|[^0-9])80004([^0-9]|$)|user request limit reached/i.test(msg)) throw e;
           const tooMuch = /reduce the amount of data/i.test(msg);
           // Errores transitorios de Meta (code 2 / "temporarily unavailable" /
-          // "unexpected error" / subcode 1504044): esperar y reintentar.
+          // "unexpected error" / subcode 1504044): esperar y reintentar (pocas veces
+          // para no gatillar rate limit).
           const transient = /temporarily unavailable|unexpected error|error inesperado|"code":\s*2|1504044|is_transient":\s*true/i.test(msg);
-          if ((tooMuch || transient) && attempts <= 6) {
+          if ((tooMuch || transient) && attempts <= 3) {
             if (curLimit > 1) { curLimit = Math.max(1, Math.floor(curLimit / 2)); nextUrl = setLimit(nextUrl!, curLimit); }
-            await new Promise((r) => setTimeout(r, 1500 * attempts)); // backoff creciente
+            await new Promise((r) => setTimeout(r, 2000 * attempts)); // backoff creciente
             continue;
           }
           throw e;
