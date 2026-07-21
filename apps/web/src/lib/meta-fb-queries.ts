@@ -323,14 +323,18 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   // Reach reconectado vía la métrica nueva de Meta (post_total_media_view_unique =
   // "Total Unique Media Views"), con backfill desde 2026-01. Mostramos reach donde haya
   // dato (>0); meses todavía sin backfill quedan en null (sin barra engañosa en 0).
+  // Tope de cordura: el reach mensual real de la Página está en el orden de miles
+  // (audiencia de Drean). Si la métrica devolviera un valor fuera de escala (>2M,
+  // p.ej. media views / lifetime), lo ignoramos y usamos la suma de posts.
+  const REACH_SANE_MAX = 2_000_000;
   const monthlyData: FbMonthlyDatum[] = Array.from({ length: 12 }, (_, i) => {
     const key = `${targetYear}-${String(i + 1).padStart(2, "0")}`;
     const v = monthlyMap.get(key);
-    // TODO: reconectar el alcance mensual de la Página cuando validemos la métrica
-    // correcta (page_total_media_view_unique devuelve media VIEWS en millones, no
-    // reach único). Por ahora, alcance = suma de posts (método que funcionaba).
-    void monthlyReach;
-    const alcance = v && v.alcance > 0 ? v.alcance : null;
+    // Alcance = alcance de la Página (28 días, = el "reach" de Meta Business Suite)
+    // cuando el valor es de escala reach; si no, suma de posts (fallback).
+    const pageReach = monthlyReach.get(key);
+    const usePage = pageReach != null && pageReach > 0 && pageReach < REACH_SANE_MAX;
+    const alcance = usePage ? pageReach : v && v.alcance > 0 ? v.alcance : null;
     return {
       mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
       alcance,

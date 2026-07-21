@@ -262,15 +262,35 @@ export async function GET(request: Request) {
       "fecha,page_id",
     );
 
-    // 2b. Alcance MENSUAL de la Página (period=month, mes calendario completo) →
-    // meta_fb_monthly_reach. Solo alimenta el gráfico de evolución de alcance de
-    // FB. Defensivo: si Meta rechaza la métrica/período, no rompe el resto.
+    // 2b. Alcance MENSUAL de la Página → meta_fb_monthly_reach. Solo alimenta el
+    // gráfico de evolución de alcance de FB. El reach de FB se dedupea por
+    // día/semana/28d/lifetime (no hay "mes calendario"); el "reach mensual" que
+    // muestra Meta Business Suite es la ventana de 28 días → usamos period=days_28,
+    // tomando el valor al cierre de cada mes. Defensivo: si Meta lo rechaza, no
+    // rompe el resto. Además dejamos un sondeo de escalas por período para debug.
     try {
       const nowIso = new Date().toISOString();
       const nowY = new Date().getUTCFullYear();
       const nowMs = Date.now();
       const monthlyReachRows: Array<{ mes: string; reach: number; updated_at: string }> = [];
       const monthlyDiag: Record<string, unknown> = {};
+
+      // Sondeo: qué escala devuelve cada período para el último mes cerrado (debug).
+      try {
+        const probeMonth = new Date(nowMs); probeMonth.setUTCDate(0); // fin del mes anterior
+        const pSince = Math.floor(Date.UTC(probeMonth.getUTCFullYear(), probeMonth.getUTCMonth(), 1) / 1000);
+        const pUntil = Math.floor(Date.UTC(probeMonth.getUTCFullYear(), probeMonth.getUTCMonth() + 1, 1) / 1000);
+        const probe: Record<string, unknown> = {};
+        for (const per of ["day", "week", "days_28", "month"]) {
+          const raw = await graphGetRaw(
+            `${GRAPH_API}/${PAGE_ID}/insights?metric=page_total_media_view_unique&period=${per}&since=${pSince}&until=${pUntil}&access_token=${pt}`,
+          );
+          const vals = (raw.body as { data?: InsightMetric[] })?.data?.[0]?.values ?? [];
+          probe[per] = raw.status === 200 ? vals.map((v) => v.value) : { status: raw.status };
+        }
+        results.reach_period_probe = probe;
+      } catch { /* debug best-effort */ }
+
       for (let mi = 0; mi < 12; mi++) {
         const startMs = Date.UTC(nowY, mi, 1);
         if (startMs > nowMs) break;
@@ -278,15 +298,14 @@ export async function GET(request: Request) {
         const until = Math.floor(Date.UTC(nowY, mi + 1, 1) / 1000);
         const mesKey = `${nowY}-${String(mi + 1).padStart(2, "0")}-01`;
         let reach: number | null = null;
-        // La métrica nueva puede venir en singular o plural; probamos ambas.
         for (const metric of ["page_total_media_view_unique", "page_total_media_views_unique"]) {
           const raw = await graphGetRaw(
-            `${GRAPH_API}/${PAGE_ID}/insights?metric=${metric}&period=month&since=${since}&until=${until}&access_token=${pt}`,
+            `${GRAPH_API}/${PAGE_ID}/insights?metric=${metric}&period=days_28&since=${since}&until=${until}&access_token=${pt}`,
           );
           if (raw.status === 200) {
             const body = raw.body as { data?: InsightMetric[] };
             const vals = body.data?.[0]?.values ?? [];
-            for (const v of vals) if (typeof v.value === "number") reach = v.value;
+            for (const v of vals) if (typeof v.value === "number") reach = v.value; // último = cierre de mes (28d)
             if (reach != null) break;
           } else if (metric === "page_total_media_views_unique") {
             monthlyDiag[mesKey] = { status: raw.status, error: (raw.body as { error?: unknown })?.error };
