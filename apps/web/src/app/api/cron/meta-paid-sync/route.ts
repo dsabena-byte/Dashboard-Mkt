@@ -641,15 +641,38 @@ export async function GET(req: Request) {
         "PREAPPROVED", "PENDING_BILLING_INFO",
       ]),
     );
+    // Reescribe (o agrega) el ?limit= de una URL de Graph.
+    const setLimit = (u: string, n: number) =>
+      /([?&])limit=\d+/.test(u) ? u.replace(/([?&])limit=\d+/, `$1limit=${n}`) : `${u}${u.includes("?") ? "&" : "?"}limit=${n}`;
+
+    let curLimit = 8;
     let nextUrl: string | undefined =
-      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&effective_status=${effectiveStatus}&limit=8&access_token=${token}`;
+      `${GRAPH_API}/${act_id}/ads?fields=${encodeURIComponent(fields)}&effective_status=${effectiveStatus}&limit=${curLimit}&access_token=${token}`;
 
     const allAds: MetaAd[] = [];
     let pages = 0;
-    while (nextUrl && pages < 40) {
-      const page: AdsResp = await graphGet<AdsResp>(nextUrl);
+    // Con más ads por mes (ej. junio) Meta puede tirar 500 "Please reduce the
+    // amount of data you're asking for" por el peso de los campos (creative +
+    // insights). Reintentamos la MISMA página bajando el limit (8→4→2→1); las
+    // siguientes heredan el limit reducido para no volver a chocar.
+    while (nextUrl && pages < 200) {
+      let page: AdsResp | null = null;
+      for (;;) {
+        try {
+          page = await graphGet<AdsResp>(nextUrl);
+          break;
+        } catch (e) {
+          const msg = String(e instanceof Error ? e.message : e);
+          if (/reduce the amount of data/i.test(msg) && curLimit > 1) {
+            curLimit = Math.max(1, Math.floor(curLimit / 2));
+            nextUrl = setLimit(nextUrl, curLimit);
+            continue;
+          }
+          throw e;
+        }
+      }
       allAds.push(...(page.data ?? []));
-      nextUrl = page.paging?.next;
+      nextUrl = page.paging?.next ? setLimit(page.paging.next, curLimit) : undefined;
       pages++;
     }
 
