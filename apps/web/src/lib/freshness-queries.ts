@@ -9,18 +9,20 @@ export async function maxUpdatedAt(
   table: string,
   db: "principal" | "cb" = "principal",
   col = "updated_at",
+  filter?: { col: string; val: string },
 ): Promise<string | null> {
   // Cliente tipado con string dinámico → relajamos el tipo del builder.
-  const supabase = (db === "cb" ? getCbSupabase() : getServerSupabase()) as unknown as {
-    from: (t: string) => {
-      select: (c: string) => {
-        order: (c: string, o: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: Record<string, unknown>[] | null; error: unknown }> };
-      };
-    };
+  type LooseB = {
+    select: (c: string) => LooseB;
+    eq: (c: string, v: string) => LooseB;
+    order: (c: string, o: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: Record<string, unknown>[] | null; error: unknown }> };
   };
-  const { data, error } = await supabase.from(table).select(col).order(col, { ascending: false }).limit(1);
+  const client = (db === "cb" ? getCbSupabase() : getServerSupabase()) as unknown as { from: (t: string) => LooseB };
+  let q = client.from(table).select(col);
+  if (filter) q = q.eq(filter.col, filter.val);
+  const { data, error } = await q.order(col, { ascending: false }).limit(1);
   if (error || !data || data.length === 0) return null;
-  const v = data[0]?.[col];
+  const v = (data[0] as Record<string, unknown>)?.[col];
   return typeof v === "string" ? v : null;
 }
 
