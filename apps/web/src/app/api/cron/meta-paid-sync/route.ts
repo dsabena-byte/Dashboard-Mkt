@@ -190,12 +190,13 @@ function sumActions(arr: Array<{ value?: string }> | undefined): number {
 
 // Parsea el nombre OMD-convention "Drean - {Categoria} - {Medio} - {TipoCompra} - {SKU} [extra]"
 // Devuelve la clasificación inferida o nulls si no matchea el patrón.
-function parseAdName(adName: string | null | undefined, objective?: string | null): {
+function parseAdName(adName: string | null | undefined, objective?: string | null, campaignName?: string | null): {
   categoria: string | null;
   tipo_compra: string | null;
   rol: string | null;
 } {
-  if (!adName) return { categoria: null, tipo_compra: null, rol: null };
+  if (!adName && !campaignName) return { categoria: null, tipo_compra: null, rol: null };
+  adName = adName ?? "";
   // Separadores tolerantes (algunos ads tienen "Lavado- Meta" sin espacio).
   const parts = adName.split(/\s*-\s*/).map((p) => p.trim());
   // Esperado: ["Drean", "{Categoria}", "{Medio}", "{TipoCompra}", "{SKU}", ...]
@@ -222,9 +223,28 @@ function parseAdName(adName: string | null | undefined, objective?: string | nul
   // marca (ej. "Drean_Video_MASTER ... DREAN VIDEO AD TOKIO 15s") o que mencionan
   // "brand" en cualquier parte del nombre.
   if (!categoria && (/video[ _]?master/i.test(adName) || /(^|[^a-z])brand([^a-z]|$)/i.test(adName))) categoria = "Brand";
+  // Fallback por nombre de CAMPAÑA (ej. "MABE_Drean_Reach_UGC_Julio_26"): si el ad
+  // no encodea la categoría en su nombre, la derivamos de la campaña. UGC primero
+  // (campañas de creadores). Los separadores son "_", que cuentan como no-letra.
+  if (!categoria && campaignName) {
+    const c = campaignName.toLowerCase();
+    categoria =
+      /(^|[^a-z])ugc([^a-z]|$)/.test(c) ? "UGC"
+      : /lavado/.test(c) ? "Lavado"
+      : /refriger|heladera/.test(c) ? "Refrigeración"
+      : /cocci|cocina/.test(c) ? "Cocción"
+      : /promo/.test(c) ? "Promoción"
+      : (/(^|[^a-z])brand([^a-z]|$)/.test(c) || /video[ _]?master/.test(c)) ? "Brand"
+      : null;
+  }
   if (!tipo_compra) {
-    const m = adName.toUpperCase().match(/(?:^|[^A-Z])(CPC|CPM|CPV)(?:[^A-Z]|$)/);
+    const m = `${adName} ${campaignName ?? ""}`.toUpperCase().match(/(?:^|[^A-Z])(CPC|CPM|CPV)(?:[^A-Z]|$)/);
     if (m) tipo_compra = m[1] ?? null;
+  }
+  // Tipo de compra por convención de campaña (Reach → CPM, Tráfico → CPC).
+  if (!tipo_compra && campaignName) {
+    if (/reach/i.test(campaignName)) tipo_compra = "CPM";
+    else if (/tr[aá]fico|traffic/i.test(campaignName)) tipo_compra = "CPC";
   }
   // Si el nombre no trae el tipo de compra (ej. los videos MASTER de marca), lo
   // derivamos del objetivo de la campaña: awareness/reach → CPM; tráfico/clicks → CPC.
@@ -741,7 +761,7 @@ export async function GET(req: Request) {
           // "dark posts" sin post público no hay link válido -> null.
           const igPermalink = ad.creative?.instagram_permalink_url ?? null;
           const permalink = igPermalink ?? (img.storyId ? `https://www.facebook.com/${img.storyId}` : null);
-          const classified = parseAdName(ad.name, ad.campaign?.objective ?? null);
+          const classified = parseAdName(ad.name, ad.campaign?.objective ?? null, ad.campaign?.name ?? null);
           return {
             ad_id: ad.id,
             creative_id: ad.creative?.id ?? null,
