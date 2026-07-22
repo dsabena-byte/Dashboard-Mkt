@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { CATEGORIAS, ESTILOS } from "@/lib/contenido-shared";
+import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
 
 const PILARES = [
@@ -37,7 +37,8 @@ interface RefCandidato {
   thumbnail_url: string;
   message: string | null;
   media_type: string | null;
-  engagement: number;
+  pilar: string | null;
+  fecha: string | null;
 }
 interface Resultado {
   ok: boolean;
@@ -192,7 +193,6 @@ export default function ContenidoPage() {
   const [pilar, setPilar] = useState<string>(PILARES[0]!);
   const [categoria, setCategoria] = useState("porfolio");
   const [modelo, setModelo] = useState<string>("");
-  const [estilo, setEstilo] = useState(ESTILOS[0]!.v);
   const [personas, setPersonas] = useState(false);
   const [formato, setFormato] = useState("imagen");
   const [aspecto, setAspecto] = useState("vertical");
@@ -201,19 +201,18 @@ export default function ContenidoPage() {
   const [res, setRes] = useState<Resultado | null>(null);
 
   const modelos = useMemo(() => getModelos(categoria), [categoria]);
-  const estiloSel = useMemo(() => ESTILOS.find((e) => e.v === estilo) ?? ESTILOS[0]!, [estilo]);
 
-  // Referencias de estilo: se muestran los TOP posts reales del pilar/categoría
-  // (thumbnails con URL válida del bucket) y el usuario marca hasta 3. No random:
-  // es el ranking por performance, y la selección la controla el usuario.
+  // Referencias: posteos MÁS RECIENTES (con su pilar). El usuario marca hasta 3
+  // para definir el estilo de la pieza. Filtro por pilar en el cliente.
   const [candidatos, setCandidatos] = useState<RefCandidato[]>([]);
   const [refsSel, setRefsSel] = useState<string[]>([]);
   const [loadingRefs, setLoadingRefs] = useState(false);
+  const [filtroPilarRef, setFiltroPilarRef] = useState<string>("todos");
 
   const cargarRefs = useCallback(async () => {
     setLoadingRefs(true);
     try {
-      const r = await fetch(`/api/contenido/referencias?pilar=${encodeURIComponent(pilar)}&categoria=${encodeURIComponent(categoria)}`);
+      const r = await fetch(`/api/contenido/referencias`);
       const j = (await r.json()) as { candidatos?: RefCandidato[] };
       setCandidatos(j.candidatos ?? []);
     } catch {
@@ -221,15 +220,19 @@ export default function ContenidoPage() {
     } finally {
       setLoadingRefs(false);
     }
-  }, [pilar, categoria]);
+  }, []);
 
   useEffect(() => { void cargarRefs(); }, [cargarRefs]);
 
-  function onEstilo(v: string) {
-    setEstilo(v);
-    const e = ESTILOS.find((x) => x.v === v);
-    if (e) setPersonas(e.personasDefault); // default de personas según el estilo
-  }
+  const pilaresRef = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of candidatos) if (c.pilar) s.add(c.pilar);
+    return ["todos", ...Array.from(s)];
+  }, [candidatos]);
+  const candidatosFiltrados = useMemo(
+    () => (filtroPilarRef === "todos" ? candidatos : candidatos.filter((c) => c.pilar === filtroPilarRef)),
+    [candidatos, filtroPilarRef],
+  );
 
   function toggleRef(url: string) {
     setRefsSel((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : prev.length >= 3 ? prev : [...prev, url]));
@@ -242,7 +245,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, estilo, personas, formato, aspecto, cantidad, ref_urls: refsSel }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, personas, formato, aspecto, cantidad, ref_urls: refsSel }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -257,8 +260,8 @@ export default function ContenidoPage() {
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Generador de contenido</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Generá piezas orgánicas por pilar con un <strong>estilo definido</strong> (no random). Si elegís un modelo y el
-          estilo trata el producto como protagonista, usa el <strong>packshot real</strong>. El mensaje clave va como
+          Generá piezas orgánicas por pilar. El <strong>estilo lo definís eligiendo posteos de referencia</strong> (abajo,
+          los más recientes por pilar). Si elegís un modelo, usa el <strong>packshot real</strong>. El mensaje clave va como
           placa editable sobre la imagen. Video en la próxima etapa (Kling / Veo).
         </p>
       </header>
@@ -268,12 +271,6 @@ export default function ContenidoPage() {
           <span className="font-medium text-muted-foreground">Pilar</span>
           <select value={pilar} onChange={(e) => setPilar(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
             {PILARES.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-medium text-muted-foreground">Estilo</span>
-          <select value={estilo} onChange={(e) => onEstilo(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
-            {ESTILOS.map((e) => <option key={e.v} value={e.v}>{e.label}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
@@ -307,35 +304,47 @@ export default function ContenidoPage() {
             {CANTIDADES.map((n) => <option key={n} value={n}>{n} pieza{n > 1 ? "s" : ""}</option>)}
           </select>
         </label>
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={personas} onChange={(e) => setPersonas(e.target.checked)} className="h-4 w-4" />
+          <span className="font-medium text-muted-foreground">Con personas</span>
+        </label>
         <button type="button" onClick={generar} disabled={loading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50">
           {loading ? "Generando…" : "Generar"}
         </button>
       </section>
 
-      <p className="text-xs text-muted-foreground">
-        <strong>{estiloSel.label}</strong> — {estiloSel.producto === "hero" ? "producto protagonista (usa packshot real si elegís modelo)." : "el producto aparece en la escena; el foco es el contexto/las personas."}
-      </p>
-
-      {/* Referencias de estilo (opcional): top posts reales del pilar/categoría, marcables */}
+      {/* Referencias de estilo: posteos más recientes, filtrables por pilar, marcables */}
       <section className="rounded-xl border bg-card p-4">
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Referencias de estilo (opcional) — marcá hasta 3 posteos ({refsSel.length}/3)
+            Elegí posteos de referencia (definen el estilo) — hasta 3 ({refsSel.length}/3)
           </div>
           <button type="button" onClick={() => void cargarRefs()} className="text-xs text-blue-600 hover:underline">Recargar</button>
         </div>
+        {/* Filtro por pilar */}
+        {pilaresRef.length > 1 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {pilaresRef.map((p) => (
+              <button key={p} type="button" onClick={() => setFiltroPilarRef(p)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] transition ${filtroPilarRef === p ? "border-blue-600 bg-blue-600 text-white" : "hover:bg-secondary"}`}>
+                {p === "todos" ? "Todos" : p}
+              </button>
+            ))}
+          </div>
+        )}
         {loadingRefs ? (
           <p className="text-xs text-muted-foreground">Cargando posteos…</p>
-        ) : candidatos.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No hay posteos con imagen para este pilar/categoría.</p>
+        ) : candidatosFiltrados.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No hay posteos recientes con imagen.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {candidatos.map((c) => {
+            {candidatosFiltrados.map((c) => {
               const sel = refsSel.includes(c.thumbnail_url);
               return (
-                <button key={c.post_id} type="button" onClick={() => toggleRef(c.thumbnail_url)} title={c.message ?? ""} className={`relative h-20 w-20 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-80 hover:opacity-100"}`}>
+                <button key={c.post_id} type="button" onClick={() => toggleRef(c.thumbnail_url)} title={c.message ?? ""} className={`relative h-24 w-24 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-85 hover:opacity-100"}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={c.thumbnail_url} alt="ref" className="h-full w-full object-cover" />
+                  {c.pilar && <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1 py-0.5 text-[8px] leading-tight text-white">{c.pilar}</span>}
                   {sel && <span className="absolute right-0.5 top-0.5 rounded bg-blue-600 px-1 text-[9px] text-white">✓</span>}
                 </button>
               );
@@ -359,7 +368,7 @@ export default function ContenidoPage() {
               <img src={res.producto_ref} alt="packshot" className="h-16 w-16 rounded border object-contain" />
               <div className="text-xs text-muted-foreground">
                 Packshot real usado {res.producto ? <strong>· {res.producto}</strong> : null}
-                <div className="text-[11px]">estilo: {res.estilo} · engine: {res.engine}</div>
+                <div className="text-[11px]">engine: {res.engine}</div>
               </div>
             </div>
           )}
