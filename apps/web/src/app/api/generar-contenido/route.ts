@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTopByPilar, PILARES, CATEGORIAS, categoriaBrief, filtrarPorCategoria } from "@/lib/contenido-queries";
-import { placementGuide, getEstilo, type Estilo } from "@/lib/contenido-shared";
+import { placementGuide, getEstilo, BRAND_LOOK, type Estilo } from "@/lib/contenido-shared";
 import { getModelo, driveImageUrl } from "@/lib/producto-catalog";
 import { falImage, FAL_SIZES, type FalSizeKey } from "@/lib/fal-client";
 
@@ -96,7 +96,7 @@ Devolvé JSON con:
 // Prompt final de imagen = sujeto (escena) + tratamiento fijo del estilo +
 // personas + colocación (si el producto es hero) + no-text.
 function buildImagePrompt(escena: string, estilo: Estilo, categoria: string, personas: boolean): string {
-  const parts = [escena.trim(), estilo.treatment];
+  const parts = [escena.trim(), estilo.treatment, BRAND_LOOK];
   if (personas) parts.push(PERSONAS_ON);
   if (estilo.producto === "hero") parts.push(placementGuide(categoria));
   parts.push(NO_TEXT);
@@ -110,7 +110,7 @@ function buildEmptyScenePrompt(estilo: Estilo, categoria: string): string {
     estilo.producto === "hero" && estilo.v === "porfolio_superior"
       ? "An empty premium studio set with a clearly defined empty space / podium where a single appliance will be placed. NO appliance present."
       : `An empty ${categoria} home setting with a clearly defined empty space where the appliance will be placed (visible floor, flush gap between cabinets/counters at the right height). NO appliance present.`;
-  return [hueco, estilo.treatment, NO_TEXT].join(" ");
+  return [hueco, estilo.treatment, BRAND_LOOK, NO_TEXT].join(" ");
 }
 
 interface Pieza {
@@ -149,7 +149,11 @@ export async function POST(request: Request) {
 
     const topsAll = (await getTopByPilar())[pilar] ?? [];
     const tops = filtrarPorCategoria(topsAll, categoria);
-    const styleRefs = (body.ref_urls ?? []).filter((u): u is string => !!u).slice(0, 3);
+    // Referencias de estilo fijas: las del estilo (posts reales de la marca) si
+    // existen, o un override manual — nunca random.
+    const styleRefs = (body.ref_urls?.length ? body.ref_urls : estilo.refImages ?? [])
+      .filter((u): u is string => !!u)
+      .slice(0, 3);
 
     // El producto real se usa (packshot vía Bria) sólo si el estilo lo trata
     // como HERO. En estilos contextuales (Experiencia de uso) se genera en escena.
