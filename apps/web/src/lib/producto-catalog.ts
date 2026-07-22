@@ -25,10 +25,11 @@ export function driveImageUrl(fileId: string): string {
 // Semilla inicial: un modelo hero por categoría (packshot real del Drive).
 // Se amplía con los SKUs que se prioricen — misma estructura.
 export const PRODUCTO_CATALOG: Record<CategoriaProducto, ModeloProducto[]> = {
-  // heladeras: los flagships (DSP472/DSP480/DSP610/DTP469) no tienen carpeta
-  // "Alta" con packshot limpio (sus 1000x1000 son interiores/detalle). Pendiente
-  // de que se indique el packshot limpio de cada uno.
-  heladeras: [],
+  heladeras: [
+    // DTP469LKRSS0 (12).jpg: front limpio sobre blanco (French Door). En el
+    // 1000x1000 de NO FROST. (DSP610/DSP480 no tienen front limpio disponible.)
+    { sku: "DTP469LKRSS0", nombre: "Heladera No Frost DTP469 French Door Inox", tipo: "No Frost", driveFileId: "1TuXh7NCGdPaQyohu90qaA6wqNm9PfjCv" },
+  ],
   cocinas: [
     // Packshots limpios (front sobre blanco) — Alta / 1000x1000.
     { sku: "CD7609EI", nombre: "Cocina CD7609 76cm Inox", tipo: "Multigás", driveFileId: "1JLrqq0lQe0pUQdLMWXy_4op8fmduOKIJ" },
