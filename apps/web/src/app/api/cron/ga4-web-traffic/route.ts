@@ -328,15 +328,28 @@ export async function GET(request: Request) {
     // REPORT 5B: Inversión Google Ads por campaña REAL (→ ga4_google_ads_daily)
     // ----------------------------------------------------
     // Usa las dimensiones NATIVAS de Google Ads que expone la GA4 Data API
-    // (googleAdsCampaignId/Name/Type) — no la atribución por UTM de sesión del
-    // Report 5. Trae la identidad real de la campaña (Search/PMax/Demand Gen/…)
-    // con costo/clicks/impresiones/CPC. Requiere el link GA4↔Google Ads.
+    // (googleAdsAccountName/CustomerId/CampaignId/Name/Type). Requiere el link
+    // GA4↔Google Ads.
+    //
+    // ⚠️ El property tiene vinculada una cuenta MANAGER (MCC) de la agencia de
+    // ecommerce con MUCHAS marcas (Nike, BK, Farmaonline, etc.), así que este
+    // reporte ve TODAS. Por eso SÓLO guardamos las cuentas de Drean (allowlist
+    // por Customer ID). Con la allowlist vacía no se guarda nada, pero el sync
+    // devuelve el inventario de cuentas vinculadas en `results.gads_accounts`
+    // para poder identificar la de Drean/OMD y cargar su Customer ID acá.
+    const DREAN_ADS_CUSTOMER_IDS: string[] = [
+      // "1234567890", // ecommerce (inhouse) — completar con el CID real
+      // "9876543210", // OMD Marketing — completar con el CID real
+    ];
+
     let gadsRows: GA4Row[] = [];
     try {
       gadsRows = await runReport(accessToken, {
         dateRanges: [{ startDate, endDate }],
         dimensions: [
           { name: "date" },
+          { name: "googleAdsAccountName" },
+          { name: "googleAdsCustomerId" },
           { name: "googleAdsCampaignId" },
           { name: "googleAdsCampaignName" },
           { name: "googleAdsCampaignType" },
@@ -353,19 +366,35 @@ export async function GET(request: Request) {
       results.gads_error = err instanceof Error ? err.message : "no disponible (¿Google Ads vinculado a GA4?)";
     }
 
+    // Inventario de cuentas vinculadas (diagnóstico para validar el link y
+    // encontrar el Customer ID de Drean/OMD).
+    const acctAgg = new Map<string, { account: string; customer_id: string; campaigns: Set<string>; cost: number; drean: boolean }>();
     const gadsMap = new Map<string, Record<string, unknown>>();
     for (const r of gadsRows) {
       const fecha = fmtDate(r.dimensionValues[0]?.value ?? "");
-      const campaignId = r.dimensionValues[1]?.value ?? "";
-      const campaignName = r.dimensionValues[2]?.value ?? "";
-      const campaignType = r.dimensionValues[3]?.value ?? null;
-      // GA4 usa "(not set)" cuando no hay campaña de Ads asociada (tráfico no-Ads).
+      const account = r.dimensionValues[1]?.value ?? "";
+      const customerId = (r.dimensionValues[2]?.value ?? "").replace(/-/g, "");
+      const campaignId = r.dimensionValues[3]?.value ?? "";
+      const campaignName = r.dimensionValues[4]?.value ?? "";
+      const campaignType = r.dimensionValues[5]?.value ?? null;
       if (!campaignId || campaignId === "(not set)") continue;
       const cost = Number(r.metricValues[0]?.value ?? 0);
       const clicks = Number(r.metricValues[1]?.value ?? 0);
       const impressions = Number(r.metricValues[2]?.value ?? 0);
       const cpc = Number(r.metricValues[3]?.value ?? 0);
       if (cost === 0 && clicks === 0 && impressions === 0) continue;
+
+      // Diagnóstico de cuentas.
+      const acct = acctAgg.get(customerId) ?? { account, customer_id: customerId, campaigns: new Set<string>(), cost: 0, drean: false };
+      acct.campaigns.add(campaignName);
+      acct.cost += cost;
+      // Señal de Drean: nombre de cuenta o campaña que la delata.
+      const sig = `${account} ${campaignName}`.toLowerCase();
+      if (/drean|mabe|ardr|inhouse.*(lavarrop|heladera|cocina|refriger)/.test(sig)) acct.drean = true;
+      acctAgg.set(customerId, acct);
+
+      // Sólo acumulamos filas de cuentas de Drean (allowlist).
+      if (!DREAN_ADS_CUSTOMER_IDS.includes(customerId)) continue;
       const key = `${fecha}|${campaignId}`;
       const existing = gadsMap.get(key);
       if (existing) {
@@ -375,6 +404,8 @@ export async function GET(request: Request) {
       } else {
         gadsMap.set(key, {
           fecha,
+          customer_id: customerId,
+          account_name: account === "(not set)" ? "" : account,
           campaign_id: campaignId,
           campaign_name: campaignName === "(not set)" ? "" : campaignName,
           campaign_type: campaignType === "(not set)" ? null : campaignType,
@@ -390,13 +421,27 @@ export async function GET(request: Request) {
       const c = v.clicks as number;
       v.cpc = c > 0 ? Math.round(((v.cost as number) / c) * 100) / 100 : (v.cpc as number);
     }
+
+    // Cuentas de Drean detectadas (lo importante para validar el link y sacar el CID).
+    results.gads_drean_accounts = [...acctAgg.values()]
+      .filter((a) => a.drean)
+      .sort((a, b) => b.cost - a.cost)
+      .map((a) => ({ account: a.account, customer_id: a.customer_id, campañas: a.campaigns.size, costo: Math.round(a.cost) }));
+    // Inventario general (top por gasto) por si hay que revisar a mano.
+    results.gads_accounts = [...acctAgg.values()]
+      .sort((a, b) => b.cost - a.cost)
+      .slice(0, 40)
+      .map((a) => ({ account: a.account, customer_id: a.customer_id, campañas: a.campaigns.size, costo: Math.round(a.cost) }));
     results.gadsRows = gadsRows.length;
+    results.gads_allowlist = DREAN_ADS_CUSTOMER_IDS.length;
     if (gadsMap.size > 0) {
       results.gadsUpsert = await supabaseUpsert(
         "ga4_google_ads_daily",
         [...gadsMap.values()].filter((r) => r.fecha && String(r.fecha).length === 10),
         "fecha,campaign_id",
       );
+    } else {
+      results.gadsUpsert = "0 (allowlist vacía o sin cuentas de Drean; ver gads_accounts)";
     }
 
     // =====================================================
