@@ -1,13 +1,41 @@
 # Generador de Contenido Orgánico (`/contenido`)
 
 Herramienta para generar **piezas orgánicas para redes** (imagen + copy) por
-pilar de contenido, inspiradas en los posteos que **mejor performaron** de cada
-pilar, manteniendo la identidad de marca Drean y —opcionalmente— usando el
-**packshot real** del producto.
+pilar de contenido, con la **estética premium fija de Drean**.
 
 > Estado: operativo para **imágenes**. Video (Kling/Veo) queda para una próxima
-> etapa. Este doc es la fuente de verdad para continuar sin re-iterar cosas ya
-> probadas.
+> etapa.
+
+## ⚠️ Actualización (estado actual — leer esto primero)
+
+El flujo se simplificó mucho respecto de lo que describe el resto de este doc
+(que quedó como historial de lo probado):
+
+- **Todo se genera con fal.ai → Ideogram v3.** Es el único modelo de imagen.
+  Ideogram respeta la estética premium; **Bria (`product-shot`) se descartó**
+  porque generaba escenas claras/genéricas y no aplicaba el look de marca.
+- **No se usa el packshot real pixel-exacto.** Si se elige un modelo del
+  catálogo, se **describe ese electrodoméstico** en el prompt para que se parezca
+  (en la estética), pero la imagen la genera Ideogram. (Se probó Bria con el
+  packshot real: no respeta tonos/luz → descartado.)
+- **Estética FIJA (sin selector de estilos ni referencias):** vive en
+  `BRAND_LOOK` (en `contenido-shared.ts`) — cálida, oscura, low-key,
+  cinematográfica, maderas de nogal + mármol, minimalista, un solo producto.
+  Se sacaron: el selector de estilos (los 4 ESTILOS), y el selector de posteos
+  de referencia (Ideogram `image_urls`) — el usuario pidió un estilo único bien
+  definido, no elegir referencias.
+- **Proporción por categoría** (`PROPORCION` en la route): heladera = alta;
+  cocina/lavarropas = altura mesada (al ras). + medidas reales del catálogo.
+- **Copy/brief:** OpenAI `gpt-4o-mini` (prompt de imagen, caption, hashtags,
+  **mensaje clave = título + bajada**). La placa se compone sobre la imagen en el
+  front (editable + descarga PNG). La IA NO dibuja texto (`NO_TEXT`).
+- **Personas:** obligatorias cuando el pilar es *Experiencia uso*.
+- **Catálogo de producto** (`producto-catalog.ts`): cocinas CD7609/CD5617,
+  heladera DTP469, lavaseca LSCDR1208. Packshots limpios de la carpeta "Alta"
+  del Drive (los `1000x1000` son fichas/lifestyle, no packshots).
+
+Lo de abajo (Bria, pipeline 2 etapas, referencias, estilos, mirror) es
+**historial** de lo que se probó y descartó — útil para no repetir.
 
 ---
 
