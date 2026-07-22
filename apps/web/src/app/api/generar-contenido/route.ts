@@ -32,7 +32,8 @@ interface Brief {
   escena: string; // descripción EN del sujeto/momento (sin adjetivos de estilo)
   caption_es: string;
   hashtags: string[];
-  mensaje_clave: string; // frase corta ES para la placa
+  mensaje_clave: string; // título de la placa (frase corta ES)
+  bajada: string; // subtítulo/bajada de la placa (una línea)
   slides?: Array<{ titulo: string; texto: string }>;
 }
 
@@ -71,7 +72,8 @@ ${ref || "(sin data — usá tu criterio)"}
 Devolvé JSON con:
 {
   "escena": "descripción CORTA en INGLÉS SOLO del sujeto/acción/momento de la escena (qué pasa, ${personas ? "quiénes son las personas y qué hacen, " : ""}props relevantes${productoNombre ? "" : `, el electrodoméstico Drean de ${categoriaTxt}`}). NO describas estilo/luz/colores (ya los define el estilo elegido). NO incluyas texto en la imagen.",
-  "mensaje_clave": "frase corta y potente en español para la placa de la pieza (máx 6 palabras, tono de marca)",
+  "mensaje_clave": "TÍTULO de la placa: frase corta y potente en español (máx 5 palabras, tono de marca)",
+  "bajada": "BAJADA de la placa: una línea corta en español que complementa el título (máx 8 palabras)",
   "caption_es": "caption en español: hook en la 1ra línea + cuerpo breve + CTA",
   "hashtags": ["#...", "#..."],
   ${formato === "carrusel" ? `"slides": [{"titulo":"...","texto":"..."}] (4 a 6 slides)` : `"slides": []`}
@@ -118,6 +120,7 @@ interface Pieza {
   caption: string;
   hashtags: string[];
   mensaje_clave: string;
+  bajada: string;
   slides: Array<{ titulo: string; texto: string }>;
   image_prompt: string;
   error?: string;
@@ -202,11 +205,12 @@ export async function POST(request: Request) {
             caption: brief.caption_es,
             hashtags: brief.hashtags ?? [],
             mensaje_clave: mensajeOverride || brief.mensaje_clave || "",
+            bajada: brief.bajada || "",
             slides: brief.slides ?? [],
             image_prompt: promptMostrar,
           };
         } catch (e) {
-          return { imagen: null, caption: "", hashtags: [], mensaje_clave: "", slides: [], image_prompt: "", error: e instanceof Error ? e.message : String(e) };
+          return { imagen: null, caption: "", hashtags: [], mensaje_clave: "", bajada: "", slides: [], image_prompt: "", error: e instanceof Error ? e.message : String(e) };
         }
       }),
     );

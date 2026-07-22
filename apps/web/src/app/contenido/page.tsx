@@ -27,6 +27,7 @@ interface Pieza {
   caption: string;
   hashtags: string[];
   mensaje_clave: string;
+  bajada: string;
   slides: Array<{ titulo: string; texto: string }>;
   image_prompt: string;
   error?: string;
@@ -43,9 +44,24 @@ interface Resultado {
   producto_ref?: string | null;
 }
 
-// Placa de mensaje clave sobre la imagen + descarga con el texto grabado.
+// Envuelve el texto según el ancho disponible (canvas).
+function wrapCanvas(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const words = text.trim().split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+// Placa (título + bajada) DENTRO de la imagen + descarga con el texto grabado.
 function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
-  const [msg, setMsg] = useState(pieza.mensaje_clave ?? "");
+  const [titulo, setTitulo] = useState(pieza.mensaje_clave ?? "");
+  const [bajada, setBajada] = useState(pieza.bajada ?? "");
   const [bajando, setBajando] = useState(false);
 
   async function descargar() {
@@ -60,35 +76,45 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
         img.src = pieza.imagen as string;
       });
       const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      const W = (canvas.width = img.naturalWidth);
+      const H = (canvas.height = img.naturalHeight);
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("ctx");
       ctx.drawImage(img, 0, 0);
-      if (msg.trim()) {
-        const W = canvas.width;
-        const pad = Math.round(W * 0.06);
-        const fs = Math.round(W * 0.055);
-        ctx.font = `700 ${fs}px Arial, sans-serif`;
+
+      if (titulo.trim() || bajada.trim()) {
+        // Scrim inferior para legibilidad.
+        const gradH = H * 0.4;
+        const grad = ctx.createLinearGradient(0, H - gradH, 0, H);
+        grad.addColorStop(0, "rgba(0,0,0,0)");
+        grad.addColorStop(1, "rgba(0,0,0,0.72)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, H - gradH, W, gradH);
+
+        const pad = Math.round(W * 0.055);
         ctx.fillStyle = "#ffffff";
         ctx.textBaseline = "alphabetic";
-        ctx.shadowColor = "rgba(0,0,0,0.55)";
-        ctx.shadowBlur = fs * 0.35;
-        ctx.shadowOffsetY = 2;
-        // wrap
-        const maxW = W - pad * 2;
-        const words = msg.trim().split(/\s+/);
-        const lines: string[] = [];
-        let line = "";
-        for (const w of words) {
-          const test = line ? `${line} ${w}` : w;
-          if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
-          else line = test;
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
+        ctx.shadowBlur = W * 0.02;
+        let yBottom = H - pad;
+
+        if (bajada.trim()) {
+          const fsB = Math.round(W * 0.036);
+          ctx.font = `600 ${fsB}px Arial, sans-serif`;
+          const bl = wrapCanvas(ctx, bajada, W - pad * 2);
+          let y = yBottom - (bl.length - 1) * fsB * 1.25;
+          for (const l of bl) { ctx.fillText(l, pad, y); y += fsB * 1.25; }
+          yBottom -= bl.length * fsB * 1.25 + fsB * 0.4;
         }
-        if (line) lines.push(line);
-        let y = canvas.height - pad - (lines.length - 1) * fs * 1.15;
-        for (const l of lines) { ctx.fillText(l, pad, y); y += fs * 1.15; }
+        if (titulo.trim()) {
+          const fsT = Math.round(W * 0.065);
+          ctx.font = `800 ${fsT}px Arial, sans-serif`;
+          const tl = wrapCanvas(ctx, titulo, W - pad * 2);
+          let y = yBottom - (tl.length - 1) * fsT * 1.12;
+          for (const l of tl) { ctx.fillText(l, pad, y); y += fsT * 1.12; }
+        }
       }
+
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
       if (!blob) throw new Error("toBlob");
       const url = URL.createObjectURL(blob);
@@ -98,9 +124,8 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      // CORS u otro: bajamos la imagen limpia y avisamos.
       window.open(pieza.imagen, "_blank");
-      alert("No se pudo grabar la placa en la imagen (restricción del proveedor). Se abrió la imagen limpia; el mensaje está en el campo para copiarlo.");
+      alert("No se pudo grabar la placa en la imagen (restricción del proveedor). Se abrió la imagen limpia.");
     } finally {
       setBajando(false);
     }
@@ -112,25 +137,31 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
-      <div className="relative bg-neutral-100">
+      <div className="flex justify-center bg-neutral-900">
         {pieza.imagen ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={pieza.imagen} alt={`pieza ${idx + 1}`} className="mx-auto max-h-72 w-full object-contain" />
-        ) : (
-          <div className="flex h-64 items-center justify-center text-xs text-muted-foreground">Sin imagen.</div>
-        )}
-        {/* Placa de mensaje clave (preview) */}
-        {msg.trim() && pieza.imagen && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3">
-            <span className="text-lg font-bold leading-tight text-white [text-shadow:_0_2px_6px_rgb(0_0_0_/_60%)]">{msg}</span>
+          <div className="relative inline-block max-w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={pieza.imagen} alt={`pieza ${idx + 1}`} className="block max-h-[26rem] w-auto max-w-full" />
+            {/* Placa DENTRO de la imagen: scrim + título + bajada */}
+            {(titulo.trim() || bajada.trim()) && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent px-4 pb-4 pt-10">
+                {titulo.trim() && <div className="text-xl font-extrabold leading-tight text-white [text-shadow:_0_2px_8px_rgb(0_0_0_/_55%)]">{titulo}</div>}
+                {bajada.trim() && <div className="mt-1 text-sm font-medium leading-snug text-white/90 [text-shadow:_0_2px_8px_rgb(0_0_0_/_55%)]">{bajada}</div>}
+              </div>
+            )}
           </div>
+        ) : (
+          <div className="flex h-64 w-full items-center justify-center text-xs text-muted-foreground">Sin imagen.</div>
         )}
       </div>
       <div className="space-y-2 p-4">
-        <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mensaje clave (placa)</label>
-        <div className="flex gap-2">
-          <input value={msg} onChange={(e) => setMsg(e.target.value)} className="flex-1 rounded border px-2 py-1.5 text-sm" placeholder="Mensaje sobre la imagen" />
-          <button type="button" onClick={descargar} disabled={bajando || !pieza.imagen} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+        <div className="flex items-end gap-2">
+          <div className="flex-1 space-y-1">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Título de la placa</label>
+            <input value={titulo} onChange={(e) => setTitulo(e.target.value)} className="w-full rounded border px-2 py-1.5 text-sm" placeholder="Título" />
+            <input value={bajada} onChange={(e) => setBajada(e.target.value)} className="w-full rounded border px-2 py-1.5 text-xs" placeholder="Bajada (subtítulo)" />
+          </div>
+          <button type="button" onClick={descargar} disabled={bajando || !pieza.imagen} className="rounded border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50">
             {bajando ? "…" : "Descargar"}
           </button>
         </div>
@@ -165,10 +196,30 @@ export default function ContenidoPage() {
   const modelos = useMemo(() => getModelos(categoria), [categoria]);
   const estiloSel = useMemo(() => ESTILOS.find((e) => e.v === estilo) ?? ESTILOS[0]!, [estilo]);
 
+  // Referencias de estilo: pool PRE-SELECCIONADO por estilo (no random). El
+  // usuario marca cuáles usar; puede sumar una URL a mano.
+  const [refsSel, setRefsSel] = useState<string[]>(ESTILOS[0]!.refImages ?? []);
+  const [refInput, setRefInput] = useState("");
+  const poolRefs = estiloSel.refImages ?? [];
+  const refsManuales = refsSel.filter((u) => !poolRefs.includes(u));
+
   function onEstilo(v: string) {
     setEstilo(v);
     const e = ESTILOS.find((x) => x.v === v);
-    if (e) setPersonas(e.personasDefault); // default de personas según el estilo
+    if (e) {
+      setPersonas(e.personasDefault); // default de personas según el estilo
+      setRefsSel(e.refImages ?? []); // por defecto, todas las referencias del estilo marcadas
+    }
+  }
+
+  function toggleRef(url: string) {
+    setRefsSel((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : prev.length >= 3 ? prev : [...prev, url]));
+  }
+  function addRefUrl() {
+    const u = refInput.trim();
+    if (!/^https?:\/\//i.test(u)) return;
+    setRefsSel((prev) => (prev.includes(u) || prev.length >= 3 ? prev : [...prev, u]));
+    setRefInput("");
   }
 
   async function generar() {
@@ -178,7 +229,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, estilo, personas, formato, aspecto, cantidad }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, estilo, personas, formato, aspecto, cantidad, ref_urls: refsSel }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -243,10 +294,6 @@ export default function ContenidoPage() {
             {CANTIDADES.map((n) => <option key={n} value={n}>{n} pieza{n > 1 ? "s" : ""}</option>)}
           </select>
         </label>
-        <label className="flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={personas} onChange={(e) => setPersonas(e.target.checked)} className="h-4 w-4" />
-          <span className="font-medium text-muted-foreground">Con personas</span>
-        </label>
         <button type="button" onClick={generar} disabled={loading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50">
           {loading ? "Generando…" : "Generar"}
         </button>
@@ -255,6 +302,41 @@ export default function ContenidoPage() {
       <p className="text-xs text-muted-foreground">
         <strong>{estiloSel.label}</strong> — {estiloSel.producto === "hero" ? "producto protagonista (usa packshot real si elegís modelo)." : "el producto aparece en la escena; el foco es el contexto/las personas."}
       </p>
+
+      {/* Referencias de estilo: pool preseleccionado del estilo (no random) + URL manual */}
+      <section className="rounded-xl border bg-card p-4">
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Referencias de estilo de “{estiloSel.label}” — marcá hasta 3 ({refsSel.length}/3)
+        </div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <input
+            type="url"
+            value={refInput}
+            onChange={(e) => setRefInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRefUrl(); } }}
+            placeholder="Pegar URL de una imagen de referencia"
+            disabled={refsSel.length >= 3}
+            className="min-w-[18rem] flex-1 rounded border px-2 py-1.5 text-sm disabled:opacity-50"
+          />
+          <button type="button" onClick={addRefUrl} disabled={refsSel.length >= 3} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">Agregar</button>
+        </div>
+        {poolRefs.length === 0 && refsManuales.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Este estilo todavía no tiene posteos de referencia cargados. Pegá una URL arriba, o pasanos 2-3 imágenes para dejarlas preseleccionadas.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {[...poolRefs, ...refsManuales].map((u) => {
+              const sel = refsSel.includes(u);
+              return (
+                <button key={u} type="button" onClick={() => toggleRef(u)} className={`relative h-20 w-20 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-80 hover:opacity-100"}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={u} alt="ref" className="h-full w-full object-cover" />
+                  {sel && <span className="absolute right-0.5 top-0.5 rounded bg-blue-600 px-1 text-[9px] text-white">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {res && !res.ok && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-900">
