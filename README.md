@@ -195,7 +195,38 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 - [`docs/n8n-scraper-drean-setup.md`](docs/n8n-scraper-drean-setup.md) — setup del scraper adaptado de Tombaio para RRSS de Drean
 - [`docs/n8n-competitor-web-setup.md`](docs/n8n-competitor-web-setup.md) — setup del scraper de tráfico web de competidores (Apify SimilarWeb)
 - [`docs/planning-media-sync.md`](docs/planning-media-sync.md) — sync de Planning de Pauta (Drive CSV → planning_media) vía Apps Script
+- [`docs/generador-contenido.md`](docs/generador-contenido.md) — **Generador de contenido orgánico** (`/contenido`): herramientas (fal.ai + OpenAI), flujo de 2 etapas, catálogo de producto y aprendizajes
 - [`docs/next-phases.md`](docs/next-phases.md) — roadmap fases 2/3/4
+
+---
+
+## Generador de contenido orgánico (`/contenido`)
+
+Genera **piezas orgánicas para redes** (imagen + copy) por pilar, inspiradas en
+los posteos que mejor performaron, con opción de usar el **packshot real** del
+producto. Detalle completo en [`docs/generador-contenido.md`](docs/generador-contenido.md).
+
+**Conexiones:**
+
+- **OpenAI** `gpt-4o-mini` → brief creativo (prompt de imagen EN, caption ES, hashtags, guión de carrusel). `OPENAI_API_KEY`.
+- **fal.ai** → generación de imagen. `FAL_KEY` (crear en fal.ai/dashboard/keys, prepago).
+  - `fal-ai/ideogram/v3` — escena on-brand; usa `image_urls` como **referencias de estilo** (imágenes reales de posts).
+  - `fal-ai/bria/product-shot` — mete el **packshot real** en la escena (`ref_image_url`).
+- **Supabase `meta_posts`** → top posts por pilar (score = interacciones + views·0.05) + `thumbnail_url` (imagen real espejada al bucket `meta-thumbs`).
+- **Google Drive (agencia)** → packshots oficiales por modelo. Archivos públicos → URL directa `lh3.googleusercontent.com/d/<id>` (sin espejar). Catálogo en `producto-catalog.ts`.
+
+**Flujo:**
+
+1. UI (`/contenido`) → `/api/generar-contenido` con pilar/categoría/modelo/formato/aspecto/cantidad + referencias elegidas.
+2. Top posts del pilar → OpenAI arma el brief.
+3. **Sin producto:** Ideogram v3 genera la escena (electrodoméstico generado por IA) con las refs de estilo.
+4. **Con producto (2 etapas):** ① Ideogram genera la escena on-brand vacía con las refs → ② Bria compone el packshot real usando esa escena como fondo. Estética + producto fiel.
+5. Devuelve N piezas (1–4) en paralelo, cada una con imagen + caption + hashtags.
+
+> **Aprendizajes clave** (ver doc): `product-photography` no sirve (devolvía el
+> packshot); Bria sí. `portrait_4_5` es inválido en fal. Ideogram inventa
+> texto/logos → regla anti-texto. El modo producto integra flojo al mueble
+> (techo de Bria); el modo sin producto integra mejor. Video (Kling/Veo) pendiente.
 
 ---
 
@@ -223,6 +254,7 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 - [x] Sync **Meta orgánico** (Page Drean FB + @dreanargentina IG) + sentiment IG
 - [x] Endpoint de **paid creatives** Meta (`/api/cron/meta-paid-sync`) — operativo, a la espera de acceso a la Ad Account (ver Operación)
 - [x] Convenciones UTM documentadas
+- [x] **Generador de contenido orgánico** (`/contenido`) — imágenes vía fal.ai (Ideogram v3 + Bria product-shot) + copy con OpenAI, tomando top posts reales de `meta_posts` y packshots del Drive. Ver [`docs/generador-contenido.md`](docs/generador-contenido.md). Requiere `FAL_KEY` en Vercel.
 
 **Lo que falta (fase 2+):**
 

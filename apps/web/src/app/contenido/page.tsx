@@ -136,6 +136,36 @@ export default function ContenidoPage() {
         </p>
       </header>
 
+      <details className="rounded-xl border bg-card p-4 text-sm">
+        <summary className="cursor-pointer font-medium">¿Qué herramientas usa y cómo genera el contenido?</summary>
+        <div className="mt-3 space-y-3 text-muted-foreground">
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Herramientas</div>
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong>OpenAI (gpt-4o-mini)</strong> — diseña el brief: prompt de imagen, caption, hashtags y guión de carrusel.</li>
+              <li><strong>fal.ai · Ideogram v3</strong> — genera la escena on-brand; toma como <em>referencia de estilo</em> las imágenes reales de tus posts.</li>
+              <li><strong>fal.ai · Bria product-shot</strong> — cuando elegís un modelo, mete el <em>packshot real</em> del producto en la escena.</li>
+              <li><strong>Supabase (meta_posts)</strong> — de acá salen los top posts por pilar y las imágenes de referencia.</li>
+              <li><strong>Google Drive (agencia)</strong> — packshots oficiales del producto por modelo.</li>
+            </ul>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Proceso</div>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>Elegís pilar, categoría, formato, aspecto y cantidad de piezas. Opcional: modelo de producto real.</li>
+              <li>Elegís hasta 3 <strong>referencias de estilo</strong> (miniaturas de posts) o pegás la URL de una imagen.</li>
+              <li><strong>Sin modelo:</strong> Ideogram genera la escena completa (electrodoméstico generado por IA) con tu estética.</li>
+              <li><strong>Con modelo (2 etapas):</strong> ① Ideogram arma la escena on-brand vacía con tus referencias → ② Bria coloca el packshot real en esa escena.</li>
+              <li>Se generan las piezas en paralelo (1–4). Revisás imagen + copy y usás la que más te guste.</li>
+            </ol>
+          </div>
+          <p className="text-xs">
+            Nota: con producto real, el modelo compone el packshot como recorte, así que la alineación con los muebles puede no ser exacta.
+            La placa/logo se agregan en diseño (la IA no genera texto en la imagen a propósito).
+          </p>
+        </div>
+      </details>
+
       <section className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-medium text-muted-foreground">Pilar</span>
