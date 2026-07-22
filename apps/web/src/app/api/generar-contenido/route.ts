@@ -60,6 +60,7 @@ async function disenarBrief(
   productoNombre: string | null,
   tops: TopRef[],
   variante: number,
+  escenaVacia = false,
 ): Promise<Brief> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY no configurada.");
@@ -78,7 +79,14 @@ async function disenarBrief(
   // inventar texto y logos falsos ("DREAM KITCHEN", logo mal escrito). La placa
   // y el logo se agregan después en diseño, no los genera la IA.
   const noText = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
-  const promptGuide = productoNombre
+  // 3 modos:
+  // - escenaVacia: etapa 1 del pipeline de producto real → escena on-brand con
+  //   un HUECO vacío donde luego se compone el packshot (sin electrodoméstico).
+  // - productoNombre (sin escenaVacia): describe la escena/fondo para el producto.
+  // - genérico: escena completa con un electrodoméstico Drean generado.
+  const promptGuide = escenaVacia
+    ? `prompt DETALLADO en INGLÉS de una escena de hogar on-brand para ${categoriaTxt}, con un ESPACIO VACÍO claramente definido donde luego se colocará el electrodoméstico (piso visible, hueco al ras entre muebles/mesadas a la altura correcta). IMPORTANTE: NO incluyas ningún electrodoméstico en la imagen — la escena está vacía en ese lugar. Describí ambiente, muebles, superficies, iluminación natural, props del hogar, estilo fotográfico y mood de marca Drean. ${noText}`
+    : productoNombre
     ? `prompt DETALLADO en INGLÉS para generar la ESCENA/FONDO donde se coloca el producto real "${productoNombre}" (${categoriaTxt}). NO describas el electrodoméstico en sí (ya lo aporta la foto real): describí el ambiente, encuadre, superficie, iluminación, props del hogar, estilo fotográfico y mood de marca Drean. OBLIGATORIO respetar la colocación del producto: ${placement} ${noText}`
     : `prompt DETALLADO en INGLÉS para un generador de imágenes: describí escena, encuadre, iluminación, estilo fotográfico, el electrodoméstico Drean de ${categoriaTxt} y su contexto, mood de marca. OBLIGATORIO respetar la colocación del producto: ${placement} ${noText}`;
 
@@ -155,27 +163,51 @@ export async function POST(request: Request) {
     const piezas: Pieza[] = await Promise.all(
       Array.from({ length: cantidad }, (_, i) => i + 1).map(async (variante): Promise<Pieza> => {
         try {
-          const brief = await disenarBrief(pilar, formato, categoria, categoriaBrief(categoria), producto?.nombre ?? null, tops, variante);
-          const falInput: Record<string, unknown> = producto
-            ? {
-                image_url: driveImageUrl(producto.driveFileId),
-                scene_description: sanitizeScene(brief.image_prompt),
-                placement_type: "original",
-                num_results: 1,
-              }
-            : {
-                prompt: brief.image_prompt,
-                image_size: FAL_SIZES[aspecto],
-                num_images: 1,
-                ...(styleRefs.length > 0 ? { image_urls: styleRefs } : {}),
-              };
-          const img = await falImage(engine, falInput);
+          let imagenUrl: string | null;
+          let promptMostrar: string;
+          let brief: Brief;
+
+          if (producto) {
+            // PIPELINE 2 ETAPAS:
+            // 1) Ideogram genera la escena on-brand (con las referencias de
+            //    estilo elegidas) con un hueco vacío donde va el producto.
+            // 2) Bria compone el packshot REAL usando esa escena como fondo
+            //    (ref_image_url) → estética linda + producto fiel.
+            brief = await disenarBrief(pilar, formato, categoria, categoriaBrief(categoria), producto.nombre, tops, variante, /*escenaVacia*/ true);
+            const escena = await falImage(MODEL_IDEOGRAM, {
+              prompt: brief.image_prompt,
+              image_size: FAL_SIZES[aspecto],
+              num_images: 1,
+              ...(styleRefs.length > 0 ? { image_urls: styleRefs } : {}),
+            });
+            const escenaUrl = escena.images[0]?.url ?? null;
+            const briaInput: Record<string, unknown> = {
+              image_url: driveImageUrl(producto.driveFileId),
+              placement_type: "original",
+              num_results: 1,
+              ...(escenaUrl ? { ref_image_url: escenaUrl } : { scene_description: sanitizeScene(brief.image_prompt) }),
+            };
+            const prod = await falImage(MODEL_PRODUCT, briaInput);
+            imagenUrl = prod.images[0]?.url ?? escenaUrl;
+            promptMostrar = brief.image_prompt;
+          } else {
+            brief = await disenarBrief(pilar, formato, categoria, categoriaBrief(categoria), null, tops, variante);
+            const img = await falImage(MODEL_IDEOGRAM, {
+              prompt: brief.image_prompt,
+              image_size: FAL_SIZES[aspecto],
+              num_images: 1,
+              ...(styleRefs.length > 0 ? { image_urls: styleRefs } : {}),
+            });
+            imagenUrl = img.images[0]?.url ?? null;
+            promptMostrar = brief.image_prompt;
+          }
+
           return {
-            imagen: img.images[0]?.url ?? null,
+            imagen: imagenUrl,
             caption: brief.caption_es,
             hashtags: brief.hashtags ?? [],
             slides: brief.slides ?? [],
-            image_prompt: brief.image_prompt,
+            image_prompt: promptMostrar,
           };
         } catch (e) {
           return {
