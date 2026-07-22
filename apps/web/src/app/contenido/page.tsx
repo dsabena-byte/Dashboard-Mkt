@@ -216,10 +216,38 @@ export default function ContenidoPage() {
         <h2 className="text-2xl font-semibold tracking-tight">Generador de contenido</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Generá piezas orgánicas por pilar con la <strong>estética premium de Drean</strong> (cálida, oscura, minimalista,
-          maderas y mármol). Si elegís un modelo, usa el <strong>packshot real</strong>. El mensaje clave va como placa
-          editable sobre la imagen. Video en la próxima etapa (Kling / Veo).
+          maderas y mármol). Si elegís un modelo, la pieza <strong>recrea ese electrodoméstico</strong> en la estética (no es
+          el packshot exacto). El mensaje clave va como placa editable sobre la imagen. Video en la próxima etapa (Kling / Veo).
         </p>
       </header>
+
+      <details className="rounded-xl border bg-card p-4 text-sm">
+        <summary className="cursor-pointer font-medium">¿Cómo se generan las imágenes? (plataforma, estilo, proceso)</summary>
+        <div className="mt-3 space-y-3 text-muted-foreground">
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Plataforma / herramientas</div>
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong>Imagen:</strong> fal.ai — modelo <strong>Ideogram v3</strong> (respeta la estética premium; genera la escena y el electrodoméstico).</li>
+              <li><strong>Copy y brief:</strong> OpenAI <strong>gpt-4o-mini</strong> — arma el prompt de imagen, el caption, hashtags y el mensaje clave (título + bajada).</li>
+              <li><strong>Datos:</strong> Supabase (top posts por pilar como insumo del brief) + catálogo de modelos (Drive).</li>
+            </ul>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Estilo (fijo)</div>
+            <p>Estética Drean premium aplicada siempre: <strong>cálida, oscura, low-key y cinematográfica</strong> — maderas de nogal, mármol/piedra, negro mate, acero; luz dramática cálida; minimalista, un solo producto, sin cargar. (Evita lo claro/aireado/stock.)</p>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Proceso</div>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>Elegís pilar, categoría, modelo (opcional), formato, aspecto y cantidad.</li>
+              <li>OpenAI diseña el brief (escena + mensaje clave + copy) según el pilar y lo que mejor performó.</li>
+              <li>Ideogram genera la imagen en la estética premium (proporción por categoría: heladera alta, cocina/lavarropas altura mesada).</li>
+              <li>Editás el título/bajada de la placa y descargás la pieza (imagen + texto).</li>
+            </ol>
+          </div>
+          <p className="text-xs">Notas: con un modelo elegido se <strong>recrea</strong> ese electrodoméstico en la estética (no es el packshot pixel-exacto). En pilar <strong>Experiencia uso</strong> la escena incluye personas usando el producto.</p>
+        </div>
+      </details>
 
       <section className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
         <label className="flex flex-col gap-1 text-xs">
