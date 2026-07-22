@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { getTopByPilar, PILARES, CATEGORIAS, categoriaBrief, filtrarPorCategoria } from "@/lib/contenido-queries";
-import { placementGuide } from "@/lib/contenido-shared";
+import { placementGuide, getEstilo, type Estilo } from "@/lib/contenido-shared";
 import { getModelo, driveImageUrl } from "@/lib/producto-catalog";
 import { falImage, FAL_SIZES, type FalSizeKey } from "@/lib/fal-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Definiciones de pilar (guía creativa) — resumen de las del clasificador.
 const PILAR_DEF: Record<string, string> = {
   "Liderazgo marca/porfolio": "Liderazgo, portfolio único, superioridad/premium tangible, tecnología propia.",
   "Calidad superior": "Calidad como evidencia; durabilidad y calidad que se siente (‘toda tu vida’).",
@@ -16,32 +15,24 @@ const PILAR_DEF: Record<string, string> = {
   "Experiencia uso": "La vida cotidiana con el producto; usos reales, beneficios en el día a día.",
 };
 
-// Modelos fal.
-// - ideogram/v3: texto→imagen, acepta image_urls como REFERENCIAS DE ESTILO
-//   (clona paleta/luz/estética de los posts reales). Es el engine por defecto.
-// - bria/product-shot: toma el packshot REAL (image_url), lo segmenta y lo
-//   coloca en una escena nueva descrita por scene_description (lifestyle).
-//   Es el modelo hecho para "producto real en escena generada".
 const MODEL_IDEOGRAM = "fal-ai/ideogram/v3";
 const MODEL_PRODUCT = "fal-ai/bria/product-shot";
-
 const MAX_PIEZAS = 4;
 
-// Bria solo acepta inglés y sin caracteres especiales en scene_description.
+// Regla dura: la IA NO dibuja texto (el mensaje clave se agrega como placa
+// editable en el front). Evita "DREAM KITCHEN" y logos falsos.
+const NO_TEXT = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
+const PERSONAS_ON = "Include real people (an individual or a family) naturally in the scene, candid and authentic, genuinely enjoying the moment; natural skin, natural expressions, realistic.";
+
 function sanitizeScene(s: string): string {
-  return s
-    .normalize("NFKD")
-    .replace(/[^\x20-\x7E]/g, " ") // fuera no-ASCII (tildes, emojis)
-    .replace(/["'`]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 1000);
+  return s.normalize("NFKD").replace(/[^\x20-\x7E]/g, " ").replace(/["'`]/g, "").replace(/\s+/g, " ").trim().slice(0, 1000);
 }
 
 interface Brief {
-  image_prompt: string;
+  escena: string; // descripción EN del sujeto/momento (sin adjetivos de estilo)
   caption_es: string;
   hashtags: string[];
+  mensaje_clave: string; // frase corta ES para la placa
   slides?: Array<{ titulo: string; texto: string }>;
 }
 
@@ -55,54 +46,35 @@ interface TopRef {
 async function disenarBrief(
   pilar: string,
   formato: string,
-  categoria: string,
   categoriaTxt: string,
   productoNombre: string | null,
+  estilo: Estilo,
+  personas: boolean,
   tops: TopRef[],
   variante: number,
-  escenaVacia = false,
 ): Promise<Brief> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY no configurada.");
   const ref = tops
     .slice(0, 6)
-    .map((t, i) => `${i + 1}. [${t.media_type ?? "?"}] interacciones=${t.engagement} views=${t.video_views} — "${(t.message ?? "").slice(0, 180)}"`)
+    .map((t, i) => `${i + 1}. [${t.media_type ?? "?"}] interacciones=${t.engagement} views=${t.video_views} — "${(t.message ?? "").slice(0, 160)}"`)
     .join("\n");
 
-  const placement = placementGuide(categoria);
-
-  // Si hay un producto real elegido, el prompt de imagen describe la ESCENA /
-  // fondo donde va ese producto (Bria mantiene el producto). Si no, describe la
-  // escena completa incluyendo un electrodoméstico Drean. En ambos casos se
-  // aplican los LINEAMIENTOS de colocación del producto en el espacio.
-  // Regla dura anti-texto/logos: los modelos (sobre todo Ideogram) tienden a
-  // inventar texto y logos falsos ("DREAM KITCHEN", logo mal escrito). La placa
-  // y el logo se agregan después en diseño, no los genera la IA.
-  const noText = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
-  // 3 modos:
-  // - escenaVacia: etapa 1 del pipeline de producto real → escena on-brand con
-  //   un HUECO vacío donde luego se compone el packshot (sin electrodoméstico).
-  // - productoNombre (sin escenaVacia): describe la escena/fondo para el producto.
-  // - genérico: escena completa con un electrodoméstico Drean generado.
-  const promptGuide = escenaVacia
-    ? `prompt DETALLADO en INGLÉS de una escena de hogar on-brand para ${categoriaTxt}, con un ESPACIO VACÍO claramente definido donde luego se colocará el electrodoméstico (piso visible, hueco al ras entre muebles/mesadas a la altura correcta). IMPORTANTE: NO incluyas ningún electrodoméstico en la imagen — la escena está vacía en ese lugar. Describí ambiente, muebles, superficies, iluminación natural, props del hogar, estilo fotográfico y mood de marca Drean. ${noText}`
-    : productoNombre
-    ? `prompt DETALLADO en INGLÉS para generar la ESCENA/FONDO donde se coloca el producto real "${productoNombre}" (${categoriaTxt}). NO describas el electrodoméstico en sí (ya lo aporta la foto real): describí el ambiente, encuadre, superficie, iluminación, props del hogar, estilo fotográfico y mood de marca Drean. OBLIGATORIO respetar la colocación del producto: ${placement} ${noText}`
-    : `prompt DETALLADO en INGLÉS para un generador de imágenes: describí escena, encuadre, iluminación, estilo fotográfico, el electrodoméstico Drean de ${categoriaTxt} y su contexto, mood de marca. OBLIGATORIO respetar la colocación del producto: ${placement} ${noText}`;
-
-  const sys = `Sos director creativo de Drean (marca argentina de electrodomésticos: lavado, refrigeración, cocción). Diseñás contenido orgánico para redes (IG/FB) que replica lo que mejor performó, manteniendo identidad de marca (cercana, confiable, argentina, sin estridencias). Respondé SOLO JSON.`;
+  const sys = `Sos director creativo de Drean (marca argentina de electrodomésticos: lavado, refrigeración, cocción). Diseñás contenido orgánico para redes manteniendo identidad de marca (cercana, confiable, argentina, sin estridencias). Respondé SOLO JSON.`;
   const user = `PILAR: "${pilar}" — ${PILAR_DEF[pilar] ?? ""}
-CATEGORÍA / PRODUCTO: ${categoriaTxt}${productoNombre ? ` — producto protagonista: ${productoNombre}` : ""}
-FORMATO pedido: ${formato}
-${variante > 1 ? `VARIANTE #${variante}: buscá un ángulo/tema/escena DISTINTO a las otras variantes (otro ambiente, otro momento del día, otro beneficio).\n` : ""}PIEZAS QUE MEJOR PERFORMARON en este pilar (referencia de qué funcionó):
-${ref || "(sin data suficiente — usá tu criterio para el pilar)"}
+CATEGORÍA: ${categoriaTxt}${productoNombre ? ` — producto: ${productoNombre}` : ""}
+ESTILO VISUAL (ya definido, NO lo describas vos): ${estilo.label}
+${personas ? "La escena INCLUYE personas/familia.\n" : ""}FORMATO: ${formato}
+${variante > 1 ? `VARIANTE #${variante}: buscá un ángulo/momento DISTINTO a las otras.\n` : ""}PIEZAS QUE MEJOR PERFORMARON en este pilar (referencia de qué funcionó):
+${ref || "(sin data — usá tu criterio)"}
 
-Generá una pieza NUEVA para este pilar/categoría/formato, inspirada en los patrones ganadores (tema, hook, tono), sin copiar. Devolvé JSON con:
+Devolvé JSON con:
 {
-  "image_prompt": "${promptGuide}",
-  "caption_es": "caption en español: hook potente en la 1ra línea + cuerpo breve + CTA claro",
+  "escena": "descripción CORTA en INGLÉS SOLO del sujeto/acción/momento de la escena (qué pasa, ${personas ? "quiénes son las personas y qué hacen, " : ""}props relevantes${productoNombre ? "" : `, el electrodoméstico Drean de ${categoriaTxt}`}). NO describas estilo/luz/colores (ya los define el estilo elegido). NO incluyas texto en la imagen.",
+  "mensaje_clave": "frase corta y potente en español para la placa de la pieza (máx 6 palabras, tono de marca)",
+  "caption_es": "caption en español: hook en la 1ra línea + cuerpo breve + CTA",
   "hashtags": ["#...", "#..."],
-  ${formato === "carrusel" ? `"slides": [{"titulo":"...","texto":"..."}] (4 a 6 slides con el guión del carrusel)` : `"slides": []`}
+  ${formato === "carrusel" ? `"slides": [{"titulo":"...","texto":"..."}] (4 a 6 slides)` : `"slides": []`}
 }`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -121,10 +93,31 @@ Generá una pieza NUEVA para este pilar/categoría/formato, inspirada en los pat
   return JSON.parse(j.choices?.[0]?.message?.content ?? "{}") as Brief;
 }
 
+// Prompt final de imagen = sujeto (escena) + tratamiento fijo del estilo +
+// personas + colocación (si el producto es hero) + no-text.
+function buildImagePrompt(escena: string, estilo: Estilo, categoria: string, personas: boolean): string {
+  const parts = [escena.trim(), estilo.treatment];
+  if (personas) parts.push(PERSONAS_ON);
+  if (estilo.producto === "hero") parts.push(placementGuide(categoria));
+  parts.push(NO_TEXT);
+  return parts.filter(Boolean).join(" ");
+}
+
+// Escena VACÍA on-brand (etapa 1 del pipeline de producto real): mismo estilo,
+// con un hueco donde luego se compone el packshot.
+function buildEmptyScenePrompt(estilo: Estilo, categoria: string): string {
+  const hueco =
+    estilo.producto === "hero" && estilo.v === "porfolio_superior"
+      ? "An empty premium studio set with a clearly defined empty space / podium where a single appliance will be placed. NO appliance present."
+      : `An empty ${categoria} home setting with a clearly defined empty space where the appliance will be placed (visible floor, flush gap between cabinets/counters at the right height). NO appliance present.`;
+  return [hueco, estilo.treatment, NO_TEXT].join(" ");
+}
+
 interface Pieza {
   imagen: string | null;
   caption: string;
   hashtags: string[];
+  mensaje_clave: string;
   slides: Array<{ titulo: string; texto: string }>;
   image_prompt: string;
   error?: string;
@@ -135,94 +128,85 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       pilar?: string;
       categoria?: string;
-      modelo?: string; // sku del catálogo (opcional)
+      modelo?: string;
+      estilo?: string;
+      personas?: boolean;
+      mensaje?: string; // override manual del mensaje clave (opcional)
       formato?: string;
       aspecto?: FalSizeKey;
       cantidad?: number;
-      ref_urls?: string[]; // referencias de estilo elegidas manualmente (opcional)
+      ref_urls?: string[];
     };
     const pilar = body.pilar && (PILARES as readonly string[]).includes(body.pilar) ? body.pilar : PILARES[0];
     const categoria = body.categoria && CATEGORIAS.some((c) => c.v === body.categoria) ? body.categoria : "porfolio";
-    const formato = body.formato ?? "imagen"; // imagen | carrusel
+    const formato = body.formato ?? "imagen";
     const aspecto: FalSizeKey = body.aspecto ?? "vertical";
     const producto = getModelo(body.modelo);
+    const estilo = getEstilo(body.estilo);
+    const personas = body.personas ?? estilo.personasDefault;
     const cantidad = Math.min(MAX_PIEZAS, Math.max(1, Math.floor(body.cantidad ?? 1)));
+    const mensajeOverride = (body.mensaje ?? "").trim();
 
-    // Top posts del pilar, priorizando la categoría.
     const topsAll = (await getTopByPilar())[pilar] ?? [];
     const tops = filtrarPorCategoria(topsAll, categoria);
-    // Referencias de estilo: las elegidas manualmente, si no las top automáticas.
-    const styleRefs =
-      body.ref_urls && body.ref_urls.length > 0
-        ? body.ref_urls.slice(0, 3)
-        : tops.map((t) => t.thumbnail_url).filter((u): u is string => !!u).slice(0, 3);
+    const styleRefs = (body.ref_urls ?? []).filter((u): u is string => !!u).slice(0, 3);
 
-    const engine = producto ? MODEL_PRODUCT : MODEL_IDEOGRAM;
+    // El producto real se usa (packshot vía Bria) sólo si el estilo lo trata
+    // como HERO. En estilos contextuales (Experiencia de uso) se genera en escena.
+    const usarPackshot = !!producto && estilo.producto === "hero";
+    const engine = usarPackshot ? MODEL_PRODUCT : MODEL_IDEOGRAM;
 
-    // Generar N piezas en paralelo (cada una con su propio brief para variedad).
     const piezas: Pieza[] = await Promise.all(
       Array.from({ length: cantidad }, (_, i) => i + 1).map(async (variante): Promise<Pieza> => {
         try {
+          const brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), producto?.nombre ?? null, estilo, personas, tops, variante);
           let imagenUrl: string | null;
           let promptMostrar: string;
-          let brief: Brief;
 
-          if (producto) {
-            // PIPELINE 2 ETAPAS:
-            // 1) Ideogram genera la escena on-brand (con las referencias de
-            //    estilo elegidas) con un hueco vacío donde va el producto.
-            // 2) Bria compone el packshot REAL usando esa escena como fondo
-            //    (ref_image_url) → estética linda + producto fiel.
-            brief = await disenarBrief(pilar, formato, categoria, categoriaBrief(categoria), producto.nombre, tops, variante, /*escenaVacia*/ true);
+          if (usarPackshot && producto) {
+            // 2 etapas: escena on-brand vacía (estilo) → Bria compone el packshot real.
+            const escenaPrompt = buildEmptyScenePrompt(estilo, categoria);
             const escena = await falImage(MODEL_IDEOGRAM, {
-              prompt: brief.image_prompt,
+              prompt: escenaPrompt,
               image_size: FAL_SIZES[aspecto],
               num_images: 1,
               ...(styleRefs.length > 0 ? { image_urls: styleRefs } : {}),
             });
             const escenaUrl = escena.images[0]?.url ?? null;
-            const briaInput: Record<string, unknown> = {
+            const prod = await falImage(MODEL_PRODUCT, {
               image_url: driveImageUrl(producto.driveFileId),
               placement_type: "original",
               num_results: 1,
-              ...(escenaUrl ? { ref_image_url: escenaUrl } : { scene_description: sanitizeScene(brief.image_prompt) }),
-            };
-            const prod = await falImage(MODEL_PRODUCT, briaInput);
+              ...(escenaUrl ? { ref_image_url: escenaUrl } : { scene_description: sanitizeScene(escenaPrompt) }),
+            });
             imagenUrl = prod.images[0]?.url ?? escenaUrl;
-            promptMostrar = brief.image_prompt;
+            promptMostrar = escenaPrompt;
           } else {
-            brief = await disenarBrief(pilar, formato, categoria, categoriaBrief(categoria), null, tops, variante);
+            const prompt = buildImagePrompt(brief.escena ?? "", estilo, categoria, personas);
             const img = await falImage(MODEL_IDEOGRAM, {
-              prompt: brief.image_prompt,
+              prompt,
               image_size: FAL_SIZES[aspecto],
               num_images: 1,
               ...(styleRefs.length > 0 ? { image_urls: styleRefs } : {}),
             });
             imagenUrl = img.images[0]?.url ?? null;
-            promptMostrar = brief.image_prompt;
+            promptMostrar = prompt;
           }
 
           return {
             imagen: imagenUrl,
             caption: brief.caption_es,
             hashtags: brief.hashtags ?? [],
+            mensaje_clave: mensajeOverride || brief.mensaje_clave || "",
             slides: brief.slides ?? [],
             image_prompt: promptMostrar,
           };
         } catch (e) {
-          return {
-            imagen: null,
-            caption: "",
-            hashtags: [],
-            slides: [],
-            image_prompt: "",
-            error: e instanceof Error ? e.message : String(e),
-          };
+          return { imagen: null, caption: "", hashtags: [], mensaje_clave: "", slides: [], image_prompt: "", error: e instanceof Error ? e.message : String(e) };
         }
       }),
     );
 
-    // Si TODAS fallaron, devolver error para que la UI lo muestre.
     if (piezas.every((p) => p.error)) {
       return NextResponse.json({ ok: false, error: piezas[0]?.error ?? "Falló la generación." }, { status: 500 });
     }
@@ -231,14 +215,15 @@ export async function POST(request: Request) {
       ok: true,
       pilar,
       categoria,
+      estilo: estilo.label,
+      personas,
       formato,
       modelo: producto?.sku ?? null,
       producto: producto?.nombre ?? null,
+      usa_packshot: usarPackshot,
       engine,
       piezas,
-      style_refs: styleRefs,
       producto_ref: producto ? driveImageUrl(producto.driveFileId) : null,
-      referencias: tops.slice(0, 6).map((t) => ({ permalink: t.permalink, message: t.message, media_type: t.media_type, engagement: t.engagement, video_views: t.video_views })),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

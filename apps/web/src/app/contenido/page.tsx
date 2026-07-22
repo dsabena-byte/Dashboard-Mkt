@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { CATEGORIAS } from "@/lib/contenido-shared";
+import { useState, useMemo } from "react";
+import { CATEGORIAS, ESTILOS } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
 
 const PILARES = [
@@ -26,6 +26,7 @@ interface Pieza {
   imagen: string | null;
   caption: string;
   hashtags: string[];
+  mensaje_clave: string;
   slides: Array<{ titulo: string; texto: string }>;
   image_prompt: string;
   error?: string;
@@ -33,79 +34,141 @@ interface Pieza {
 interface Resultado {
   ok: boolean;
   error?: string;
+  estilo?: string;
+  personas?: boolean;
   producto?: string | null;
+  usa_packshot?: boolean;
   engine?: string;
   piezas?: Pieza[];
-  style_refs?: string[];
   producto_ref?: string | null;
 }
-interface RefCandidato {
-  post_id: string;
-  thumbnail_url: string;
-  message: string | null;
-  media_type: string | null;
-  engagement: number;
+
+// Placa de mensaje clave sobre la imagen + descarga con el texto grabado.
+function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
+  const [msg, setMsg] = useState(pieza.mensaje_clave ?? "");
+  const [bajando, setBajando] = useState(false);
+
+  async function descargar() {
+    if (!pieza.imagen) return;
+    setBajando(true);
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("load"));
+        img.src = pieza.imagen as string;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("ctx");
+      ctx.drawImage(img, 0, 0);
+      if (msg.trim()) {
+        const W = canvas.width;
+        const pad = Math.round(W * 0.06);
+        const fs = Math.round(W * 0.055);
+        ctx.font = `700 ${fs}px Arial, sans-serif`;
+        ctx.fillStyle = "#ffffff";
+        ctx.textBaseline = "alphabetic";
+        ctx.shadowColor = "rgba(0,0,0,0.55)";
+        ctx.shadowBlur = fs * 0.35;
+        ctx.shadowOffsetY = 2;
+        // wrap
+        const maxW = W - pad * 2;
+        const words = msg.trim().split(/\s+/);
+        const lines: string[] = [];
+        let line = "";
+        for (const w of words) {
+          const test = line ? `${line} ${w}` : w;
+          if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+          else line = test;
+        }
+        if (line) lines.push(line);
+        let y = canvas.height - pad - (lines.length - 1) * fs * 1.15;
+        for (const l of lines) { ctx.fillText(l, pad, y); y += fs * 1.15; }
+      }
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+      if (!blob) throw new Error("toBlob");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pieza-${idx + 1}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // CORS u otro: bajamos la imagen limpia y avisamos.
+      window.open(pieza.imagen, "_blank");
+      alert("No se pudo grabar la placa en la imagen (restricción del proveedor). Se abrió la imagen limpia; el mensaje está en el campo para copiarlo.");
+    } finally {
+      setBajando(false);
+    }
+  }
+
+  if (pieza.error) {
+    return <div className="rounded-xl border bg-card p-4 text-xs text-red-700">Pieza {idx + 1} falló: {pieza.error}</div>;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="relative bg-neutral-100">
+        {pieza.imagen ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={pieza.imagen} alt={`pieza ${idx + 1}`} className="mx-auto max-h-72 w-full object-contain" />
+        ) : (
+          <div className="flex h-64 items-center justify-center text-xs text-muted-foreground">Sin imagen.</div>
+        )}
+        {/* Placa de mensaje clave (preview) */}
+        {msg.trim() && pieza.imagen && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3">
+            <span className="text-lg font-bold leading-tight text-white [text-shadow:_0_2px_6px_rgb(0_0_0_/_60%)]">{msg}</span>
+          </div>
+        )}
+      </div>
+      <div className="space-y-2 p-4">
+        <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mensaje clave (placa)</label>
+        <div className="flex gap-2">
+          <input value={msg} onChange={(e) => setMsg(e.target.value)} className="flex-1 rounded border px-2 py-1.5 text-sm" placeholder="Mensaje sobre la imagen" />
+          <button type="button" onClick={descargar} disabled={bajando || !pieza.imagen} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+            {bajando ? "…" : "Descargar"}
+          </button>
+        </div>
+        <p className="whitespace-pre-wrap pt-1 text-sm">{pieza.caption}</p>
+        {pieza.hashtags.length > 0 && <p className="text-xs text-blue-600">{pieza.hashtags.join(" ")}</p>}
+        {pieza.slides.length > 0 && (
+          <ol className="mt-1 space-y-1 border-t pt-2 text-xs">
+            {pieza.slides.map((s, i) => (<li key={i}><strong>{i + 1}. {s.titulo}:</strong> {s.texto}</li>))}
+          </ol>
+        )}
+        <details className="text-[11px]">
+          <summary className="cursor-pointer text-muted-foreground">Prompt de imagen</summary>
+          <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{pieza.image_prompt}</p>
+        </details>
+      </div>
+    </div>
+  );
 }
 
 export default function ContenidoPage() {
   const [pilar, setPilar] = useState<string>(PILARES[0]!);
   const [categoria, setCategoria] = useState("porfolio");
   const [modelo, setModelo] = useState<string>("");
+  const [estilo, setEstilo] = useState(ESTILOS[0]!.v);
+  const [personas, setPersonas] = useState(false);
   const [formato, setFormato] = useState("imagen");
   const [aspecto, setAspecto] = useState("vertical");
   const [cantidad, setCantidad] = useState(1);
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState<Resultado | null>(null);
 
-  // Referencias de estilo (selector)
-  const [candidatos, setCandidatos] = useState<RefCandidato[]>([]);
-  const [refsElegidas, setRefsElegidas] = useState<string[]>([]);
-  const [loadingRefs, setLoadingRefs] = useState(false);
-  const [refUrlInput, setRefUrlInput] = useState("");
-
   const modelos = useMemo(() => getModelos(categoria), [categoria]);
+  const estiloSel = useMemo(() => ESTILOS.find((e) => e.v === estilo) ?? ESTILOS[0]!, [estilo]);
 
-  const cargarRefs = useCallback(async () => {
-    setLoadingRefs(true);
-    try {
-      const r = await fetch(`/api/contenido/referencias?pilar=${encodeURIComponent(pilar)}&categoria=${encodeURIComponent(categoria)}`);
-      const j = (await r.json()) as { candidatos?: RefCandidato[] };
-      const cands = j.candidatos ?? [];
-      setCandidatos(cands);
-      setRefsElegidas(cands.slice(0, 3).map((c) => c.thumbnail_url)); // default: top 3
-    } catch {
-      setCandidatos([]);
-      setRefsElegidas([]);
-    } finally {
-      setLoadingRefs(false);
-    }
-  }, [pilar, categoria]);
-
-  useEffect(() => {
-    void cargarRefs();
-  }, [cargarRefs]);
-
-  function toggleRef(url: string) {
-    setRefsElegidas((prev) => {
-      if (prev.includes(url)) return prev.filter((u) => u !== url);
-      if (prev.length >= 3) return prev; // máx 3 (límite de fal)
-      return [...prev, url];
-    });
-  }
-
-  function addRefUrl() {
-    const u = refUrlInput.trim();
-    if (!/^https?:\/\//i.test(u)) return;
-    setRefsElegidas((prev) => (prev.includes(u) || prev.length >= 3 ? prev : [...prev, u]));
-    setRefUrlInput("");
-  }
-
-  // URLs elegidas que no están en los candidatos (agregadas a mano).
-  const refsManuales = refsElegidas.filter((u) => !candidatos.some((c) => c.thumbnail_url === u));
-
-  function onCategoria(v: string) {
-    setCategoria(v);
-    setModelo("");
+  function onEstilo(v: string) {
+    setEstilo(v);
+    const e = ESTILOS.find((x) => x.v === v);
+    if (e) setPersonas(e.personasDefault); // default de personas según el estilo
   }
 
   async function generar() {
@@ -115,7 +178,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, formato, aspecto, cantidad, ref_urls: refsElegidas }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, estilo, personas, formato, aspecto, cantidad }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -130,41 +193,11 @@ export default function ContenidoPage() {
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Generador de contenido</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Genera piezas orgánicas por pilar, inspiradas en lo que mejor performó (Insight Drean). Si elegís un modelo, usa
-          el <strong>packshot real</strong> del producto (Drive de la agencia); si no, genera con Ideogram tomando como
-          referencia de estilo las imágenes de los posts que elijas abajo. El video se suma en la próxima etapa (Kling / Veo).
+          Generá piezas orgánicas por pilar con un <strong>estilo definido</strong> (no random). Si elegís un modelo y el
+          estilo trata el producto como protagonista, usa el <strong>packshot real</strong>. El mensaje clave va como
+          placa editable sobre la imagen. Video en la próxima etapa (Kling / Veo).
         </p>
       </header>
-
-      <details className="rounded-xl border bg-card p-4 text-sm">
-        <summary className="cursor-pointer font-medium">¿Qué herramientas usa y cómo genera el contenido?</summary>
-        <div className="mt-3 space-y-3 text-muted-foreground">
-          <div>
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Herramientas</div>
-            <ul className="list-disc space-y-1 pl-5">
-              <li><strong>OpenAI (gpt-4o-mini)</strong> — diseña el brief: prompt de imagen, caption, hashtags y guión de carrusel.</li>
-              <li><strong>fal.ai · Ideogram v3</strong> — genera la escena on-brand; toma como <em>referencia de estilo</em> las imágenes reales de tus posts.</li>
-              <li><strong>fal.ai · Bria product-shot</strong> — cuando elegís un modelo, mete el <em>packshot real</em> del producto en la escena.</li>
-              <li><strong>Supabase (meta_posts)</strong> — de acá salen los top posts por pilar y las imágenes de referencia.</li>
-              <li><strong>Google Drive (agencia)</strong> — packshots oficiales del producto por modelo.</li>
-            </ul>
-          </div>
-          <div>
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Proceso</div>
-            <ol className="list-decimal space-y-1 pl-5">
-              <li>Elegís pilar, categoría, formato, aspecto y cantidad de piezas. Opcional: modelo de producto real.</li>
-              <li>Elegís hasta 3 <strong>referencias de estilo</strong> (miniaturas de posts) o pegás la URL de una imagen.</li>
-              <li><strong>Sin modelo:</strong> Ideogram genera la escena completa (electrodoméstico generado por IA) con tu estética.</li>
-              <li><strong>Con modelo (2 etapas):</strong> ① Ideogram arma la escena on-brand vacía con tus referencias → ② Bria coloca el packshot real en esa escena.</li>
-              <li>Se generan las piezas en paralelo (1–4). Revisás imagen + copy y usás la que más te guste.</li>
-            </ol>
-          </div>
-          <p className="text-xs">
-            Nota: con producto real, el modelo compone el packshot como recorte, así que la alineación con los muebles puede no ser exacta.
-            La placa/logo se agregan en diseño (la IA no genera texto en la imagen a propósito).
-          </p>
-        </div>
-      </details>
 
       <section className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
         <label className="flex flex-col gap-1 text-xs">
@@ -174,8 +207,14 @@ export default function ContenidoPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
+          <span className="font-medium text-muted-foreground">Estilo</span>
+          <select value={estilo} onChange={(e) => onEstilo(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
+            {ESTILOS.map((e) => <option key={e.v} value={e.v}>{e.label}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
           <span className="font-medium text-muted-foreground">Categoría</span>
-          <select value={categoria} onChange={(e) => onCategoria(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
+          <select value={categoria} onChange={(e) => { setCategoria(e.target.value); setModelo(""); }} className="rounded border px-2 py-1.5 text-sm">
             {CATEGORIAS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
           </select>
         </label>
@@ -204,75 +243,18 @@ export default function ContenidoPage() {
             {CANTIDADES.map((n) => <option key={n} value={n}>{n} pieza{n > 1 ? "s" : ""}</option>)}
           </select>
         </label>
-        <button
-          type="button"
-          onClick={generar}
-          disabled={loading}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
-        >
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={personas} onChange={(e) => setPersonas(e.target.checked)} className="h-4 w-4" />
+          <span className="font-medium text-muted-foreground">Con personas</span>
+        </label>
+        <button type="button" onClick={generar} disabled={loading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50">
           {loading ? "Generando…" : "Generar"}
         </button>
       </section>
 
-      {/* Selector de referencias de estilo */}
-      <section className="rounded-xl border bg-card p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Referencias de estilo — elegí hasta 3 ({refsElegidas.length}/3)
-          </div>
-          <button type="button" onClick={() => void cargarRefs()} className="text-xs text-blue-600 hover:underline">Recargar</button>
-        </div>
-        {/* Agregar referencia por URL (indicar un posteo puntual) */}
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <input
-            type="url"
-            value={refUrlInput}
-            onChange={(e) => setRefUrlInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRefUrl(); } }}
-            placeholder="Pegar URL de una imagen de referencia (opcional)"
-            disabled={refsElegidas.length >= 3}
-            className="min-w-[18rem] flex-1 rounded border px-2 py-1.5 text-sm disabled:opacity-50"
-          />
-          <button type="button" onClick={addRefUrl} disabled={refsElegidas.length >= 3} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">Agregar</button>
-        </div>
-
-        {refsManuales.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {refsManuales.map((u) => (
-              <div key={u} className="relative h-20 w-20 overflow-hidden rounded border-2 border-blue-600 ring-2 ring-blue-200">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={u} alt="ref manual" className="h-full w-full object-cover" />
-                <button type="button" onClick={() => toggleRef(u)} className="absolute right-0.5 top-0.5 rounded bg-red-600 px-1 text-[9px] text-white">✕</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {loadingRefs ? (
-          <p className="text-xs text-muted-foreground">Cargando referencias…</p>
-        ) : candidatos.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No hay posts con imagen para este pilar/categoría. Podés pegar una URL arriba.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {candidatos.map((c) => {
-              const sel = refsElegidas.includes(c.thumbnail_url);
-              return (
-                <button
-                  key={c.post_id}
-                  type="button"
-                  onClick={() => toggleRef(c.thumbnail_url)}
-                  title={c.message ?? ""}
-                  className={`relative h-20 w-20 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-80 hover:opacity-100"}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={c.thumbnail_url} alt="ref" className="h-full w-full object-cover" />
-                  {sel && <span className="absolute right-0.5 top-0.5 rounded bg-blue-600 px-1 text-[9px] text-white">✓</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <p className="text-xs text-muted-foreground">
+        <strong>{estiloSel.label}</strong> — {estiloSel.producto === "hero" ? "producto protagonista (usa packshot real si elegís modelo)." : "el producto aparece en la escena; el foco es el contexto/las personas."}
+      </p>
 
       {res && !res.ok && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-900">
@@ -283,50 +265,18 @@ export default function ContenidoPage() {
 
       {res?.ok && res.piezas && (
         <section className="space-y-3">
-          {res.producto_ref && (
+          {res.producto_ref && res.usa_packshot && (
             <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={res.producto_ref} alt="packshot" className="h-16 w-16 rounded border object-contain" />
               <div className="text-xs text-muted-foreground">
                 Packshot real usado {res.producto ? <strong>· {res.producto}</strong> : null}
-                <div className="text-[11px]">engine: {res.engine}</div>
+                <div className="text-[11px]">estilo: {res.estilo} · engine: {res.engine}</div>
               </div>
             </div>
           )}
           <div className="grid gap-4 md:grid-cols-2">
-            {res.piezas.map((p, idx) => (
-              <div key={idx} className="overflow-hidden rounded-xl border bg-card">
-                {p.error ? (
-                  <div className="p-4 text-xs text-red-700">Pieza {idx + 1} falló: {p.error}</div>
-                ) : (
-                  <>
-                    {p.imagen ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <a href={p.imagen} target="_blank" rel="noreferrer" title="Abrir en tamaño completo">
-                        <img src={p.imagen} alt={`pieza ${idx + 1}`} className="mx-auto max-h-64 w-full bg-neutral-100 object-contain" />
-                      </a>
-                    ) : (
-                      <div className="flex h-64 items-center justify-center text-xs text-muted-foreground">Sin imagen.</div>
-                    )}
-                    <div className="space-y-2 p-4">
-                      <p className="whitespace-pre-wrap text-sm">{p.caption}</p>
-                      {p.hashtags.length > 0 && <p className="text-xs text-blue-600">{p.hashtags.join(" ")}</p>}
-                      {p.slides.length > 0 && (
-                        <ol className="mt-1 space-y-1 border-t pt-2 text-xs">
-                          {p.slides.map((s, i) => (
-                            <li key={i}><strong>{i + 1}. {s.titulo}:</strong> {s.texto}</li>
-                          ))}
-                        </ol>
-                      )}
-                      <details className="text-[11px]">
-                        <summary className="cursor-pointer text-muted-foreground">Prompt de imagen</summary>
-                        <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{p.image_prompt}</p>
-                      </details>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+            {res.piezas.map((p, idx) => <PiezaCard key={idx} pieza={p} idx={idx} />)}
           </div>
         </section>
       )}
