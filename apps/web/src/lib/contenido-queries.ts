@@ -1,6 +1,5 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
-import { filtrarPorCategoria as _filtrarPorCategoria } from "./contenido-shared";
 
 // Los 5 pilares de contenido (mismos que el clasificador y el tab Insight Drean).
 export const PILARES = [
@@ -70,28 +69,33 @@ export interface RefCandidato {
   thumbnail_url: string;
   message: string | null;
   media_type: string | null;
-  engagement: number;
+  pilar: string | null;
+  fecha: string | null;
 }
 
-// Candidatos de referencia de estilo para el selector: top posts del pilar que
-// tengan imagen (thumbnail). La categoría NO filtra (sólo ordena: primero los
-// que matchean el rubro) para que siempre haya muchos para elegir.
-export async function getReferenciaCandidatos(pilar: string, categoria: string, n = 30): Promise<RefCandidato[]> {
-  const tops = (await getTopByPilar(365, 120))[pilar] ?? [];
-  const conImagen = tops.filter((t): t is TopPost & { thumbnail_url: string } => !!t.thumbnail_url);
-  const delRubro = new Set(_filtrarPorCategoria(conImagen, categoria).map((t) => t.post_id));
-  // dedup por thumbnail (algunos posts comparten imagen), rubro primero
+// Candidatos de referencia para el selector: los posteos MÁS RECIENTES con
+// imagen, con su pilar (tal como están tipificados). El usuario elige cuáles
+// usar como referencia de estilo. Sin filtro de performance — recencia.
+export async function getReferenciaCandidatos(n = 48): Promise<RefCandidato[]> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("meta_posts")
+    .select("post_id, thumbnail_url, message, media_type, pilar_contenido, fecha_post")
+    .not("thumbnail_url", "is", null)
+    .order("fecha_post", { ascending: false })
+    .limit(300);
+  if (error) {
+    console.error("[contenido-queries] getReferenciaCandidatos:", error.message);
+    return [];
+  }
+  type Row = { post_id: string; thumbnail_url: string | null; message: string | null; media_type: string | null; pilar_contenido: string | null; fecha_post: string | null };
+  const rows = (data ?? []) as unknown as Row[];
   const seen = new Set<string>();
-  const ordenados = [...conImagen].sort((a, b) => {
-    const ra = delRubro.has(a.post_id) ? 0 : 1;
-    const rb = delRubro.has(b.post_id) ? 0 : 1;
-    return ra - rb || b.score - a.score;
-  });
   const out: RefCandidato[] = [];
-  for (const t of ordenados) {
-    if (seen.has(t.thumbnail_url)) continue;
-    seen.add(t.thumbnail_url);
-    out.push({ post_id: t.post_id, thumbnail_url: t.thumbnail_url, message: t.message, media_type: t.media_type, engagement: t.engagement });
+  for (const r of rows) {
+    if (!r.thumbnail_url || seen.has(r.thumbnail_url)) continue;
+    seen.add(r.thumbnail_url);
+    out.push({ post_id: r.post_id, thumbnail_url: r.thumbnail_url, message: r.message, media_type: r.media_type, pilar: r.pilar_contenido, fecha: r.fecha_post });
     if (out.length >= n) break;
   }
   return out;
