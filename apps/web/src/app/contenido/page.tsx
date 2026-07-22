@@ -207,6 +207,7 @@ export default function ContenidoPage() {
   const [candidatos, setCandidatos] = useState<RefCandidato[]>([]);
   const [refsSel, setRefsSel] = useState<string[]>([]);
   const [loadingRefs, setLoadingRefs] = useState(false);
+  const [refPilar, setRefPilar] = useState<string>("todos"); // filtro propio de las referencias
 
   const cargarRefs = useCallback(async () => {
     setLoadingRefs(true);
@@ -223,11 +224,15 @@ export default function ContenidoPage() {
 
   useEffect(() => { void cargarRefs(); }, [cargarRefs]);
 
-  // Los posteos de referencia se filtran SOLO por Pilar (si también se filtra por
-  // categoría quedan casi ninguno).
+  // Filtro propio de las referencias por pilar (arranca en "Todos"). Muestra 30.
+  const pilaresRef = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of candidatos) if (c.pilar) s.add(c.pilar);
+    return ["todos", ...Array.from(s)];
+  }, [candidatos]);
   const candidatosFiltrados = useMemo(
-    () => candidatos.filter((c) => c.pilar === pilar),
-    [candidatos, pilar],
+    () => (refPilar === "todos" ? candidatos : candidatos.filter((c) => c.pilar === refPilar)).slice(0, 30),
+    [candidatos, refPilar],
   );
 
   function toggleRef(url: string) {
@@ -305,7 +310,7 @@ export default function ContenidoPage() {
         </button>
       </section>
 
-      {/* Referencias: posteos IG recientes del Pilar + Categoría elegidos arriba */}
+      {/* Referencias: posteos recientes; filtro propio por pilar (arranca en Todos) */}
       <section className="rounded-xl border bg-card p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -313,10 +318,20 @@ export default function ContenidoPage() {
           </div>
           <button type="button" onClick={() => void cargarRefs()} className="text-xs text-blue-600 hover:underline">Recargar</button>
         </div>
+        {pilaresRef.length > 1 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {pilaresRef.map((p) => (
+              <button key={p} type="button" onClick={() => setRefPilar(p)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] transition ${refPilar === p ? "border-blue-600 bg-blue-600 text-white" : "hover:bg-secondary"}`}>
+                {p === "todos" ? "Todos" : p}
+              </button>
+            ))}
+          </div>
+        )}
         {loadingRefs ? (
           <p className="text-xs text-muted-foreground">Cargando posteos…</p>
         ) : candidatosFiltrados.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No hay posteos de Instagram para este pilar/categoría.</p>
+          <p className="text-xs text-muted-foreground">No hay posteos recientes con imagen.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {candidatosFiltrados.map((c) => {
