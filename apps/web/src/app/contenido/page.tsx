@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { CATEGORIAS } from "@/lib/contenido-shared";
+import { CATEGORIAS, filtrarPorCategoria } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
 
 const PILARES = [
@@ -39,6 +39,7 @@ interface RefCandidato {
   media_type: string | null;
   pilar: string | null;
   fecha: string | null;
+  platform: string | null;
 }
 interface Resultado {
   ok: boolean;
@@ -193,7 +194,6 @@ export default function ContenidoPage() {
   const [pilar, setPilar] = useState<string>(PILARES[0]!);
   const [categoria, setCategoria] = useState("porfolio");
   const [modelo, setModelo] = useState<string>("");
-  const [personas, setPersonas] = useState(false);
   const [formato, setFormato] = useState("imagen");
   const [aspecto, setAspecto] = useState("vertical");
   const [cantidad, setCantidad] = useState(1);
@@ -207,7 +207,6 @@ export default function ContenidoPage() {
   const [candidatos, setCandidatos] = useState<RefCandidato[]>([]);
   const [refsSel, setRefsSel] = useState<string[]>([]);
   const [loadingRefs, setLoadingRefs] = useState(false);
-  const [filtroPilarRef, setFiltroPilarRef] = useState<string>("todos");
 
   const cargarRefs = useCallback(async () => {
     setLoadingRefs(true);
@@ -224,15 +223,12 @@ export default function ContenidoPage() {
 
   useEffect(() => { void cargarRefs(); }, [cargarRefs]);
 
-  const pilaresRef = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of candidatos) if (c.pilar) s.add(c.pilar);
-    return ["todos", ...Array.from(s)];
-  }, [candidatos]);
-  const candidatosFiltrados = useMemo(
-    () => (filtroPilarRef === "todos" ? candidatos : candidatos.filter((c) => c.pilar === filtroPilarRef)),
-    [candidatos, filtroPilarRef],
-  );
+  // Los posteos de referencia se filtran por los MISMOS selectores de arriba
+  // (Pilar + Categoría). Un solo filtro, no dos.
+  const candidatosFiltrados = useMemo(() => {
+    const porPilar = candidatos.filter((c) => c.pilar === pilar);
+    return filtrarPorCategoria(porPilar, categoria);
+  }, [candidatos, pilar, categoria]);
 
   function toggleRef(url: string) {
     setRefsSel((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : prev.length >= 3 ? prev : [...prev, url]));
@@ -245,7 +241,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, personas, formato, aspecto, cantidad, ref_urls: refsSel }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, formato, aspecto, cantidad, ref_urls: refsSel }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -304,16 +300,12 @@ export default function ContenidoPage() {
             {CANTIDADES.map((n) => <option key={n} value={n}>{n} pieza{n > 1 ? "s" : ""}</option>)}
           </select>
         </label>
-        <label className="flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={personas} onChange={(e) => setPersonas(e.target.checked)} className="h-4 w-4" />
-          <span className="font-medium text-muted-foreground">Con personas</span>
-        </label>
         <button type="button" onClick={generar} disabled={loading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50">
           {loading ? "Generando…" : "Generar"}
         </button>
       </section>
 
-      {/* Referencias de estilo: posteos más recientes, filtrables por pilar, marcables */}
+      {/* Referencias: posteos IG recientes del Pilar + Categoría elegidos arriba */}
       <section className="rounded-xl border bg-card p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -321,21 +313,10 @@ export default function ContenidoPage() {
           </div>
           <button type="button" onClick={() => void cargarRefs()} className="text-xs text-blue-600 hover:underline">Recargar</button>
         </div>
-        {/* Filtro por pilar */}
-        {pilaresRef.length > 1 && (
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {pilaresRef.map((p) => (
-              <button key={p} type="button" onClick={() => setFiltroPilarRef(p)}
-                className={`rounded-full border px-2.5 py-1 text-[11px] transition ${filtroPilarRef === p ? "border-blue-600 bg-blue-600 text-white" : "hover:bg-secondary"}`}>
-                {p === "todos" ? "Todos" : p}
-              </button>
-            ))}
-          </div>
-        )}
         {loadingRefs ? (
           <p className="text-xs text-muted-foreground">Cargando posteos…</p>
         ) : candidatosFiltrados.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No hay posteos recientes con imagen.</p>
+          <p className="text-xs text-muted-foreground">No hay posteos de Instagram para este pilar/categoría.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {candidatosFiltrados.map((c) => {
