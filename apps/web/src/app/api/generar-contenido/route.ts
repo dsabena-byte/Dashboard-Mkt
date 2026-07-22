@@ -18,10 +18,22 @@ const PILAR_DEF: Record<string, string> = {
 // Modelos fal.
 // - ideogram/v3: texto→imagen, acepta image_urls como REFERENCIAS DE ESTILO
 //   (clona paleta/luz/estética de los posts reales). Es el engine por defecto.
-// - product-photography: toma el packshot REAL (product_image_url) y le genera
-//   una escena on-brand detrás, manteniendo el producto exacto.
+// - bria/product-shot: toma el packshot REAL (image_url), lo segmenta y lo
+//   coloca en una escena nueva descrita por scene_description (lifestyle).
+//   Es el modelo hecho para "producto real en escena generada".
 const MODEL_IDEOGRAM = "fal-ai/ideogram/v3";
-const MODEL_PRODUCT = "fal-ai/image-apps-v2/product-photography";
+const MODEL_PRODUCT = "fal-ai/bria/product-shot";
+
+// Bria solo acepta inglés y sin caracteres especiales en scene_description.
+function sanitizeScene(s: string): string {
+  return s
+    .normalize("NFKD")
+    .replace(/[^\x20-\x7E]/g, " ") // fuera no-ASCII (tildes, emojis)
+    .replace(/["'`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 900);
+}
 
 interface Brief {
   image_prompt: string;
@@ -122,8 +134,10 @@ export async function POST(request: Request) {
     if (producto) {
       engine = MODEL_PRODUCT;
       falInput = {
-        product_image_url: driveImageUrl(producto.driveFileId),
-        prompt: brief.image_prompt,
+        image_url: driveImageUrl(producto.driveFileId),
+        scene_description: sanitizeScene(brief.image_prompt),
+        placement_type: "original", // mantiene posición/tamaño del producto, solo cambia el fondo
+        num_results: 1,
       };
     } else {
       engine = MODEL_IDEOGRAM;
