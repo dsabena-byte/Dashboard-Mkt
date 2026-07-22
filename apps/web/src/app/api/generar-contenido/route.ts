@@ -117,7 +117,24 @@ const PROPS: Record<string, string> = {
 const MINIMAL =
   "MINIMALIST and premium: a clean, uncluttered scene with generous negative space. There is ONLY ONE appliance in the entire image — the product itself. ABSOLUTELY NO other appliances (no second refrigerator, oven, microwave, range, dishwasher or washing machine) and no extra products. Very few props, only elements that complement the message. Do NOT overcrowd the scene.";
 
-function buildProductScene(categoria: string): string {
+// Proporción correcta por categoría (una cocina/lavarropas es altura mesada;
+// una heladera es alta, más que la mesada).
+const PROPORCION: Record<string, string> = {
+  cocinas:
+    "PROPORTIONS: the range is a COUNTER-HEIGHT appliance — its top edge is level and FLUSH with a continuous countertop that runs along both sides at the SAME height. Not taller than the counter.",
+  lavarropas:
+    "PROPORTIONS: the front-load washing machine is a COUNTER-HEIGHT appliance — its top edge is level and FLUSH with a continuous countertop that runs along both sides at the SAME height. Not taller than the counter.",
+  heladeras:
+    "PROPORTIONS: the refrigerator is a TALL floor-standing appliance, clearly TALLER than the surrounding countertops; it is built into a TALL cabinet column and flanked on both sides by tall cabinetry of the SAME height as the fridge, forming one seamless built-in column. It is NOT counter-height — it must be a large, prominent, tall appliance at realistic human scale.",
+  porfolio:
+    "PROPORTIONS: the appliance is integrated built-in at its correct real-world height, prominent and realistically scaled.",
+};
+
+// El entorno debe compartir el mismo ángulo/perspectiva/punto focal del producto.
+const PERSPECTIVE =
+  "PERSPECTIVE MATCH (critical): the kitchen environment must share the EXACT same camera angle, perspective and vanishing point as the product image. If the product faces front, the cabinets face front; if the product is at a slight angle, the surrounding cabinetry and counters follow the SAME angle and focal point. The product must look naturally integrated, never pasted at a mismatched angle.";
+
+function buildProductScene(categoria: string, medidas?: string): string {
   const AMB: Record<string, string> = {
     cocinas: "a minimalist modern kitchen",
     lavarropas: "a minimalist modern laundry area",
@@ -126,9 +143,11 @@ function buildProductScene(categoria: string): string {
   };
   const amb = AMB[categoria] ?? AMB.porfolio;
   const prop = PROPS[categoria] ?? PROPS.porfolio;
-  const proporciones =
-    "CRITICAL PROPORTIONS: the countertop and cabinets are exactly the SAME HEIGHT as the TOP of the appliance — the appliance is NOT taller than the countertop; its top edge is level and flush with a continuous countertop that runs along BOTH sides at that same height. Base cabinets flank the appliance on both sides forming one seamless built-in line; a plain wall or backsplash directly behind; the appliance rests on the floor with its feet visible. Realistic human scale, integrated as built-in, NOT oversized and NOT standing in front of the furniture.";
-  return `Place this real Drean appliance built-in and flush within ${amb}. ${proporciones} ${MINIMAL} Complementary props: ${prop}. ${BRAND_LOOK} ${NO_TEXT}`;
+  const proporcion = PROPORCION[categoria] ?? PROPORCION.porfolio;
+  const dims = medidas ? `REAL SIZE: the appliance measures ${medidas}; scale the surrounding cabinetry accordingly so proportions are realistic.` : "";
+  const base =
+    "resting on the floor with its base/feet visible, cabinetry flanking it on both sides forming one seamless built-in line, a plain wall or backsplash directly behind. It is integrated built-in, NOT standing in front of a wall of furniture.";
+  return `Place this real Drean appliance built-in within ${amb}, ${base} ${proporcion} ${dims} ${PERSPECTIVE} ${MINIMAL} Complementary props: ${prop}. ${BRAND_LOOK} ${NO_TEXT}`;
 }
 
 interface Pieza {
@@ -185,7 +204,7 @@ export async function POST(request: Request) {
           if (usarPackshot && producto) {
             // Bria construye la escena ALREDEDOR del packshot real (scene_description),
             // para poder alinear la escala (mesada a la altura del producto).
-            const scenePrompt = buildProductScene(categoria);
+            const scenePrompt = buildProductScene(categoria, producto.medidas);
             const prod = await falImage(MODEL_PRODUCT, {
               image_url: driveImageUrl(producto.driveFileId),
               scene_description: sanitizeScene(scenePrompt),
