@@ -35,10 +35,12 @@ export async function falImage(model: string, input: Record<string, unknown>): P
   return { images: data.images ?? [], seed: data.seed, raw: data };
 }
 
-// Tamaños típicos para social (fal usa presets o {width,height}).
+// Tamaños para social. fal expone un enum acotado de presets:
+// square_hd | square | portrait_4_3 | portrait_16_9 | landscape_4_3 | landscape_16_9.
+// (portrait_4_5 NO existe → devolvía 422.)
 export const FAL_SIZES = {
   feed: "square_hd", // 1:1 feed
-  vertical: "portrait_4_5", // 4:5 feed vertical
+  vertical: "portrait_4_3", // feed vertical (3:4, lo más cercano a 4:5)
   story: "portrait_16_9", // 9:16 stories/reels (portrait)
 } as const;
 export type FalSizeKey = keyof typeof FAL_SIZES;
