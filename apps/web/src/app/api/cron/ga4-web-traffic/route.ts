@@ -325,6 +325,81 @@ export async function GET(request: Request) {
     }
 
     // =====================================================
+    // REPORT 5B: Inversión Google Ads por campaña REAL (→ ga4_google_ads_daily)
+    // ----------------------------------------------------
+    // Usa las dimensiones NATIVAS de Google Ads que expone la GA4 Data API
+    // (googleAdsCampaignId/Name/Type) — no la atribución por UTM de sesión del
+    // Report 5. Trae la identidad real de la campaña (Search/PMax/Demand Gen/…)
+    // con costo/clicks/impresiones/CPC. Requiere el link GA4↔Google Ads.
+    let gadsRows: GA4Row[] = [];
+    try {
+      gadsRows = await runReport(accessToken, {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [
+          { name: "date" },
+          { name: "googleAdsCampaignId" },
+          { name: "googleAdsCampaignName" },
+          { name: "googleAdsCampaignType" },
+        ],
+        metrics: [
+          { name: "advertiserAdCost" },
+          { name: "advertiserAdClicks" },
+          { name: "advertiserAdImpressions" },
+          { name: "advertiserAdCostPerClick" },
+        ],
+        limit: 100000,
+      });
+    } catch (err) {
+      results.gads_error = err instanceof Error ? err.message : "no disponible (¿Google Ads vinculado a GA4?)";
+    }
+
+    const gadsMap = new Map<string, Record<string, unknown>>();
+    for (const r of gadsRows) {
+      const fecha = fmtDate(r.dimensionValues[0]?.value ?? "");
+      const campaignId = r.dimensionValues[1]?.value ?? "";
+      const campaignName = r.dimensionValues[2]?.value ?? "";
+      const campaignType = r.dimensionValues[3]?.value ?? null;
+      // GA4 usa "(not set)" cuando no hay campaña de Ads asociada (tráfico no-Ads).
+      if (!campaignId || campaignId === "(not set)") continue;
+      const cost = Number(r.metricValues[0]?.value ?? 0);
+      const clicks = Number(r.metricValues[1]?.value ?? 0);
+      const impressions = Number(r.metricValues[2]?.value ?? 0);
+      const cpc = Number(r.metricValues[3]?.value ?? 0);
+      if (cost === 0 && clicks === 0 && impressions === 0) continue;
+      const key = `${fecha}|${campaignId}`;
+      const existing = gadsMap.get(key);
+      if (existing) {
+        (existing.cost as number) += cost;
+        (existing.clicks as number) += clicks;
+        (existing.impressions as number) += impressions;
+      } else {
+        gadsMap.set(key, {
+          fecha,
+          campaign_id: campaignId,
+          campaign_name: campaignName === "(not set)" ? "" : campaignName,
+          campaign_type: campaignType === "(not set)" ? null : campaignType,
+          cost,
+          clicks,
+          impressions,
+          cpc,
+        });
+      }
+    }
+    // Recalcular CPC agregado (costo/clicks) para filas fusionadas.
+    for (const v of gadsMap.values()) {
+      const c = v.clicks as number;
+      v.cpc = c > 0 ? Math.round(((v.cost as number) / c) * 100) / 100 : (v.cpc as number);
+    }
+    results.gadsRows = gadsRows.length;
+    if (gadsMap.size > 0) {
+      results.gadsUpsert = await supabaseUpsert(
+        "ga4_google_ads_daily",
+        [...gadsMap.values()].filter((r) => r.fecha && String(r.fecha).length === 10),
+        "fecha,campaign_id",
+      );
+    }
+
+    // =====================================================
     // REPORT 6: Productos comprados por campaña (→ ga4_items_daily)
     // ----------------------------------------------------
     // itemsPurchased + itemRevenue por ítem, filtrado a campañas inhouse_*.
