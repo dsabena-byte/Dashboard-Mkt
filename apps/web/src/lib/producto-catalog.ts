@@ -25,15 +25,19 @@ export function driveImageUrl(fileId: string): string {
 // Semilla inicial: un modelo hero por categoría (packshot real del Drive).
 // Se amplía con los SKUs que se prioricen — misma estructura.
 export const PRODUCTO_CATALOG: Record<CategoriaProducto, ModeloProducto[]> = {
-  // heladeras: el folder 1000x1000 de la DSP610 no tiene un packshot exterior
-  // limpio (todo interiores/detalle). Se agrega cuando se curen modelos con
-  // front limpio a partir de los SKUs priorizados.
+  // heladeras: los flagships (DSP472/DSP480/DSP610/DTP469) no tienen carpeta
+  // "Alta" con packshot limpio (sus 1000x1000 son interiores/detalle). Pendiente
+  // de que se indique el packshot limpio de cada uno.
   heladeras: [],
   cocinas: [
-    // CD7609EI-2.jpg: front limpio sobre fondo blanco (ideal para product-shot).
+    // Packshots limpios (front sobre blanco) — Alta / 1000x1000.
     { sku: "CD7609EI", nombre: "Cocina CD7609 76cm Inox", tipo: "Multigás", driveFileId: "1JLrqq0lQe0pUQdLMWXy_4op8fmduOKIJ" },
+    { sku: "CD5617AI0", nombre: "Cocina CD5617 56cm Inox", tipo: "Multigás", driveFileId: "1wekEuk7dqoIuTRMjqNI3LOEkYu8zfQbP" },
   ],
-  lavarropas: [],
+  lavarropas: [
+    // Lavasecarropas (carga frontal) — packshot limpio de la carpeta Alta.
+    { sku: "LSCDR1208SG0", nombre: "Lavasecarropas LSCDR1208 12/8kg Grafito", tipo: "Lavaseca carga frontal", driveFileId: "1vQmkSwPx-I9HIoQJCBJbz68BoNKlB2xi" },
+  ],
 };
 
 export function getModelos(categoria: string): ModeloProducto[] {
