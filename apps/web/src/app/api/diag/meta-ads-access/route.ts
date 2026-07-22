@@ -13,6 +13,9 @@ import { NextResponse } from "next/server";
 //   - insights_test: para cada Ad Account, intenta traer spend/impressions
 //     de los últimos 7 días. Si trae > 0 → tenés todo lo necesario.
 
+// Nunca prerenderear en build: llama a Graph API en runtime.
+export const dynamic = "force-dynamic";
+
 const GRAPH = "https://graph.facebook.com/v22.0";
 
 function env(key: string): string {

@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 // Diagnóstico de tablas de Cuadros Básicos / Floor Share en Supabase.
 // Lista candidatas + 1 fila de ejemplo + columnas para cada una.
 
+// Nunca prerenderear en build: consulta Supabase en runtime (si no, el build
+// intenta generarla estáticamente y se cae por timeout de 60s).
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const rawUrl = process.env.CB_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
