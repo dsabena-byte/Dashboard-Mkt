@@ -19,7 +19,7 @@ const MODEL_IDEOGRAM = "fal-ai/ideogram/v3";
 const MAX_PIEZAS = 4;
 
 const NO_TEXT = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
-const PERSONAS_ON = "REQUIRED: include real people (an individual or a family) ACTIVELY USING and interacting with the Drean appliance — e.g. loading/using the washing machine, cooking on the range, taking food from the fridge — candid and authentic, natural skin and expressions, realistic. People are clearly present and engaged with the product.";
+const PERSONAS_ON = "REQUIRED — this is a LIFESTYLE scene with PEOPLE, not an empty product shot: real people (a person or a family) are PROMINENTLY visible in the foreground as the MAIN SUBJECT, large in frame, actively USING and interacting with the Drean appliance (loading the washing machine, cooking on the range, taking food from the fridge). Candid, authentic, natural skin and expressions. The people MUST be clearly present and central.";
 
 interface Brief {
   escena: string;
@@ -62,7 +62,7 @@ ${ref || "(sin data — usá tu criterio)"}
 
 Devolvé JSON con:
 {
-  "escena": "descripción CORTA en INGLÉS del sujeto/momento, incluyendo SIEMPRE el electrodoméstico Drean como protagonista: ${productoNombre ? `a Drean ${productoNombre}` : `a Drean ${categoriaTxt} appliance`}${personas ? ", with people actively using it," : ""}. Sumá props relevantes al mensaje. NO describas estilo/luz/colores (ya están definidos). NO incluyas texto en la imagen.",
+  "escena": "descripción CORTA en INGLÉS del sujeto/momento. ${personas ? `El SUJETO PRINCIPAL son personas reales (una persona o una familia) bien visibles en primer plano, usando activamente un ${productoNombre ? `Drean ${productoNombre}` : `electrodoméstico Drean de ${categoriaTxt}`} (cargándolo, cocinando, sacando comida, etc.); el electrodoméstico presente y en uso.` : `El electrodoméstico Drean es el protagonista de la escena: ${productoNombre ? `a Drean ${productoNombre}` : `a Drean ${categoriaTxt} appliance`}.`} Sumá props relevantes al mensaje. NO describas estilo/luz/colores (ya están definidos). NO incluyas texto en la imagen.",
   "mensaje_clave": "TÍTULO de la placa: frase corta y potente en español (máx 5 palabras, tono de marca)",
   "bajada": "BAJADA de la placa: una línea corta en español que complementa el título (máx 8 palabras)",
   "caption_es": "caption en español: hook en la 1ra línea + cuerpo breve + CTA",
@@ -90,9 +90,15 @@ Devolvé JSON con:
 // categoría (+ medidas reales) + personas + no-text. Todo lo genera Ideogram,
 // que sí respeta el look premium (Bria salía claro/genérico).
 function buildImagePrompt(escena: string, categoria: string, personas: boolean, medidas?: string): string {
-  const parts = [escena.trim(), BRAND_LOOK, MINIMAL, PROPORCION[categoria] ?? PROPORCION.porfolio];
-  if (medidas) parts.push(`REAL SIZE reference: the appliance measures ${medidas}; keep realistic proportions.`);
-  if (personas) parts.push(PERSONAS_ON);
+  const parts = [escena.trim(), BRAND_LOOK];
+  if (personas) {
+    // Escena lifestyle: el foco son las personas; el producto es contextual.
+    parts.push(PERSONAS_ON);
+  } else {
+    // Escena producto-hero: minimalista + proporción correcta del electrodoméstico.
+    parts.push(MINIMAL, PROPORCION[categoria] ?? PROPORCION.porfolio ?? "");
+    if (medidas) parts.push(`REAL SIZE reference: the appliance measures ${medidas}; keep realistic proportions.`);
+  }
   parts.push(NO_TEXT);
   return parts.filter(Boolean).join(" ");
 }
@@ -157,7 +163,10 @@ export async function POST(request: Request) {
     const piezas: Pieza[] = await Promise.all(
       Array.from({ length: cantidad }, (_, i) => i + 1).map(async (variante): Promise<Pieza> => {
         try {
-          const brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), producto?.nombre ?? null, personas, tops, variante);
+          // Descripción rica del modelo (nombre + rasgos visuales) para que
+          // Ideogram recree un electrodoméstico lo más parecido posible al elegido.
+          const productoDesc = producto ? `${producto.nombre}${producto.descripcion ? ` — ${producto.descripcion}` : ""}` : null;
+          const brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante);
           const prompt = buildImagePrompt(brief.escena ?? "", categoria, personas, producto?.medidas);
           const img = await falImage(MODEL_IDEOGRAM, {
             prompt,
