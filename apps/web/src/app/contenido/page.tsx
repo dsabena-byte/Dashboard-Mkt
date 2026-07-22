@@ -125,8 +125,6 @@ export default function ContenidoPage() {
     }
   }
 
-  const usaProducto = !!modelo;
-
   return (
     <div className="space-y-5">
       <header>
@@ -166,7 +164,7 @@ export default function ContenidoPage() {
         </label>
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-medium text-muted-foreground">Formato de imagen</span>
-          <select value={aspecto} onChange={(e) => setAspecto(e.target.value)} className="rounded border px-2 py-1.5 text-sm" disabled={usaProducto} title={usaProducto ? "El producto usa el encuadre del packshot" : ""}>
+          <select value={aspecto} onChange={(e) => setAspecto(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
             {ASPECTOS.map((a) => <option key={a.v} value={a.v}>{a.l}</option>)}
           </select>
         </label>
@@ -190,7 +188,7 @@ export default function ContenidoPage() {
       <section className="rounded-xl border bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Referencias de estilo {usaProducto ? "(se ignoran con producto real)" : `— elegí hasta 3 (${refsElegidas.length}/3)`}
+            Referencias de estilo — elegí hasta 3 ({refsElegidas.length}/3)
           </div>
           <button type="button" onClick={() => void cargarRefs()} className="text-xs text-blue-600 hover:underline">Recargar</button>
         </div>
@@ -202,10 +200,10 @@ export default function ContenidoPage() {
             onChange={(e) => setRefUrlInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRefUrl(); } }}
             placeholder="Pegar URL de una imagen de referencia (opcional)"
-            disabled={usaProducto || refsElegidas.length >= 3}
+            disabled={refsElegidas.length >= 3}
             className="min-w-[18rem] flex-1 rounded border px-2 py-1.5 text-sm disabled:opacity-50"
           />
-          <button type="button" onClick={addRefUrl} disabled={usaProducto || refsElegidas.length >= 3} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">Agregar</button>
+          <button type="button" onClick={addRefUrl} disabled={refsElegidas.length >= 3} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">Agregar</button>
         </div>
 
         {refsManuales.length > 0 && (
@@ -233,9 +231,8 @@ export default function ContenidoPage() {
                   key={c.post_id}
                   type="button"
                   onClick={() => toggleRef(c.thumbnail_url)}
-                  disabled={usaProducto}
                   title={c.message ?? ""}
-                  className={`relative h-20 w-20 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-80 hover:opacity-100"} ${usaProducto ? "cursor-not-allowed opacity-40" : ""}`}
+                  className={`relative h-20 w-20 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-80 hover:opacity-100"}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={c.thumbnail_url} alt="ref" className="h-full w-full object-cover" />
