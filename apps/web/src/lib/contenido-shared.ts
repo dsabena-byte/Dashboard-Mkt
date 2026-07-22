@@ -48,7 +48,13 @@ export interface Estilo {
   producto: "hero" | "contextual";
   personasDefault: boolean;
   treatment: string; // en inglés, va al prompt de imagen
+  refImages?: string[]; // URLs de posts reales de la marca (referencia de estilo fija)
 }
+
+// Código visual TRANSVERSAL de Drean (va en TODOS los estilos). La marca es
+// OSCURA, CÁLIDA, low-key y cinematográfica — NO clara/aireada/stock.
+export const BRAND_LOOK =
+  "DREAN BRAND LOOK (mandatory): dark, low-key and moody, warm and cinematic, premium and editorial. Deep walnut and dark wood tones, rich blacks and warm shadows. Dramatic warm directional lighting where the subject is well lit and the surroundings fall into deep shadow. High contrast, refined, sophisticated. Warm color temperature (amber/tungsten), NOT cold. STRICTLY AVOID: bright, airy, washed-out, overexposed or flat even lighting; pale beige, pastel, white or light backgrounds; cold white daylight; generic stock-photo look. The overall image must feel dark, warm and premium.";
 
 export const ESTILOS: Estilo[] = [
   {
@@ -57,7 +63,7 @@ export const ESTILOS: Estilo[] = [
     producto: "hero",
     personasDefault: false,
     treatment:
-      "Warm premium modern kitchen with the appliance as the hero. Materials: rich natural walnut/oak wood (vertical wood-slat paneling and cabinetry) with veined marble/stone backsplash and warm wood countertops; stainless steel with dark glass. Palette: warm walnut browns, muted earthy tones, stainless grey — low-key, slightly moody. Lighting: soft warm directional light, the appliance is the well-lit hero while surroundings fall into gentle shadow, subtle window light, editorial premium mood. Composition: appliance built-in and flush with the cabinetry, eye level, front or slight 3/4 view, prominent within the kitchen. Sophisticated, aspirational, calm, homey.",
+      "Dark, moody, warm premium modern kitchen with the appliance as the hero. Deep walnut/dark oak wood — vertical wood-slat paneling and cabinetry — with veined dark marble/stone backsplash; stainless steel with dark glass. The kitchen is dimly and warmly lit, the appliance is the lit hero while the rest of the kitchen falls into rich shadow. Dramatic warm directional light, cinematic and low-key, high contrast. Composition: appliance built-in and flush with the cabinetry, eye level, front or slight 3/4 view, prominent. Sophisticated, aspirational, intimate.",
   },
   {
     v: "experiencia_uso",
@@ -65,7 +71,7 @@ export const ESTILOS: Estilo[] = [
     producto: "contextual",
     personasDefault: true,
     treatment:
-      "Warm candid lifestyle scene in a cozy modern home, focused on PEOPLE and emotion — families, friends or individuals genuinely enjoying everyday home life (relaxing, celebrating, together). The Drean appliance appears naturally in the environment, contextual rather than hero. Cozy modern home with warm wood accents/paneling, soft sofas and textiles, warm lamps, large windows with soft natural daylight (sometimes a city view). Palette: warm beiges, soft browns, cozy neutrals, golden warm light. Soft natural warm window light, homey and inviting. Candid medium/wide shot capturing the human moment, authentic and relatable, not stiff. Mood: happiness, comfort, belonging, family warmth.",
+      "Candid lifestyle scene in a DARK, warm, cozy modern home, focused on PEOPLE and emotion — a family, friends or an individual genuinely enjoying home life (relaxing, celebrating, together). The Drean appliance appears naturally in the environment, contextual rather than hero. Deep walnut wood paneling and warm dark interiors, warm lamplight and pools of warm light, rich shadows. The people are warmly lit against darker surroundings. Low-key, cinematic, intimate, high contrast — NOT bright daylight. Candid medium/wide shot capturing a real human moment, warm and emotional. Mood: warmth, comfort, belonging.",
   },
   {
     v: "porfolio_superior",
@@ -73,7 +79,7 @@ export const ESTILOS: Estilo[] = [
     producto: "hero",
     personasDefault: false,
     treatment:
-      "Premium studio product showcase on an abstract, non-home background. Dark gradient studio backdrop (graphite/charcoal, subtle cool blue tint), glossy reflective floor, sometimes a circular podium/pedestal — no home context. Clean studio lighting with soft key and crisp rim/edge highlights on the stainless steel, subtle floor reflections, dramatic yet clean. Palette: dark premium graphite and silver/steel, cool neutral with subtle blue accents, high contrast. Composition: appliance centered and hero, orderly and symmetrical, front or slight 3/4, clean negative space for a headline. Mood: premium, technological, authoritative, flagship/portfolio.",
+      "Premium studio product showcase on an abstract, non-home background. Very dark gradient studio backdrop (near-black graphite/charcoal with warm undertone), glossy dark reflective floor, sometimes a circular pedestal — no home context. Dramatic low-key studio lighting with crisp warm rim/edge highlights on the stainless steel, deep shadows, high contrast, cinematic. Composition: appliance centered and hero, orderly and symmetrical, front or slight 3/4, clean dark negative space for a headline. Mood: premium, technological, authoritative, flagship.",
   },
   {
     v: "funciones_especiales",
@@ -81,7 +87,7 @@ export const ESTILOS: Estilo[] = [
     producto: "contextual", // macro/detalle: se genera la escena, no el packshot completo
     personasDefault: false,
     treatment:
-      "Feature spotlight: a macro / tight product-detail shot highlighting ONE specific function of the appliance — an extreme close-up of a control panel or digital display with LED indicators, a technology detail, or the RESULT of the feature (e.g., an ice-cold condensation-covered drink showing cooling power, or perfectly cooked food inside the oven). Composition: tight macro crop on the detail with shallow depth of field, the feature is the clear subject. Realistic crisp product photography with focused lighting that highlights the detail; accurate materials (stainless steel, glass display, LEDs). Clean technological demonstrative mood, with clean negative space for a small explanatory callout/label.",
+      "Feature spotlight: a macro / tight product-detail shot highlighting ONE specific function of the appliance — an extreme close-up of a control panel or digital display with glowing LED indicators, a technology detail, or the RESULT of the feature (e.g., an ice-cold condensation-covered drink, or perfectly cooked food inside a dark oven). Dark, dramatic, low-key macro product photography with a single focused warm light on the detail and deep shadows around it, shallow depth of field. Accurate materials (stainless steel, glass display, glowing LEDs). Cinematic, premium, technological, with clean dark negative space for a small callout.",
   },
 ];
 
