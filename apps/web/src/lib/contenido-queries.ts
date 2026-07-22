@@ -73,18 +73,26 @@ export interface RefCandidato {
   engagement: number;
 }
 
-// Candidatos de referencia de estilo para el selector: top posts del pilar,
-// priorizando la categoría, que tengan imagen (thumbnail). Devuelve más que el
-// generador (para poder elegir) — por defecto 12.
-export async function getReferenciaCandidatos(pilar: string, categoria: string, n = 12): Promise<RefCandidato[]> {
-  const tops = (await getTopByPilar(180, 40))[pilar] ?? [];
+// Candidatos de referencia de estilo para el selector: top posts del pilar que
+// tengan imagen (thumbnail). La categoría NO filtra (sólo ordena: primero los
+// que matchean el rubro) para que siempre haya muchos para elegir.
+export async function getReferenciaCandidatos(pilar: string, categoria: string, n = 30): Promise<RefCandidato[]> {
+  const tops = (await getTopByPilar(365, 120))[pilar] ?? [];
   const conImagen = tops.filter((t): t is TopPost & { thumbnail_url: string } => !!t.thumbnail_url);
-  const filtrados = _filtrarPorCategoria(conImagen, categoria);
-  return filtrados.slice(0, n).map((t) => ({
-    post_id: t.post_id,
-    thumbnail_url: t.thumbnail_url,
-    message: t.message,
-    media_type: t.media_type,
-    engagement: t.engagement,
-  }));
+  const delRubro = new Set(_filtrarPorCategoria(conImagen, categoria).map((t) => t.post_id));
+  // dedup por thumbnail (algunos posts comparten imagen), rubro primero
+  const seen = new Set<string>();
+  const ordenados = [...conImagen].sort((a, b) => {
+    const ra = delRubro.has(a.post_id) ? 0 : 1;
+    const rb = delRubro.has(b.post_id) ? 0 : 1;
+    return ra - rb || b.score - a.score;
+  });
+  const out: RefCandidato[] = [];
+  for (const t of ordenados) {
+    if (seen.has(t.thumbnail_url)) continue;
+    seen.add(t.thumbnail_url);
+    out.push({ post_id: t.post_id, thumbnail_url: t.thumbnail_url, message: t.message, media_type: t.media_type, engagement: t.engagement });
+    if (out.length >= n) break;
+  }
+  return out;
 }

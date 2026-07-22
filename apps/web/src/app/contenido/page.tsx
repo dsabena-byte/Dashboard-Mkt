@@ -61,6 +61,7 @@ export default function ContenidoPage() {
   const [candidatos, setCandidatos] = useState<RefCandidato[]>([]);
   const [refsElegidas, setRefsElegidas] = useState<string[]>([]);
   const [loadingRefs, setLoadingRefs] = useState(false);
+  const [refUrlInput, setRefUrlInput] = useState("");
 
   const modelos = useMemo(() => getModelos(categoria), [categoria]);
 
@@ -91,6 +92,16 @@ export default function ContenidoPage() {
       return [...prev, url];
     });
   }
+
+  function addRefUrl() {
+    const u = refUrlInput.trim();
+    if (!/^https?:\/\//i.test(u)) return;
+    setRefsElegidas((prev) => (prev.includes(u) || prev.length >= 3 ? prev : [...prev, u]));
+    setRefUrlInput("");
+  }
+
+  // URLs elegidas que no están en los candidatos (agregadas a mano).
+  const refsManuales = refsElegidas.filter((u) => !candidatos.some((c) => c.thumbnail_url === u));
 
   function onCategoria(v: string) {
     setCategoria(v);
@@ -183,10 +194,36 @@ export default function ContenidoPage() {
           </div>
           <button type="button" onClick={() => void cargarRefs()} className="text-xs text-blue-600 hover:underline">Recargar</button>
         </div>
+        {/* Agregar referencia por URL (indicar un posteo puntual) */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <input
+            type="url"
+            value={refUrlInput}
+            onChange={(e) => setRefUrlInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRefUrl(); } }}
+            placeholder="Pegar URL de una imagen de referencia (opcional)"
+            disabled={usaProducto || refsElegidas.length >= 3}
+            className="min-w-[18rem] flex-1 rounded border px-2 py-1.5 text-sm disabled:opacity-50"
+          />
+          <button type="button" onClick={addRefUrl} disabled={usaProducto || refsElegidas.length >= 3} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">Agregar</button>
+        </div>
+
+        {refsManuales.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {refsManuales.map((u) => (
+              <div key={u} className="relative h-20 w-20 overflow-hidden rounded border-2 border-blue-600 ring-2 ring-blue-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={u} alt="ref manual" className="h-full w-full object-cover" />
+                <button type="button" onClick={() => toggleRef(u)} className="absolute right-0.5 top-0.5 rounded bg-red-600 px-1 text-[9px] text-white">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {loadingRefs ? (
           <p className="text-xs text-muted-foreground">Cargando referencias…</p>
         ) : candidatos.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No hay posts con imagen para este pilar/categoría.</p>
+          <p className="text-xs text-muted-foreground">No hay posts con imagen para este pilar/categoría. Podés pegar una URL arriba.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {candidatos.map((c) => {
@@ -238,7 +275,9 @@ export default function ContenidoPage() {
                   <>
                     {p.imagen ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imagen} alt={`pieza ${idx + 1}`} className="w-full" />
+                      <a href={p.imagen} target="_blank" rel="noreferrer" title="Abrir en tamaño completo">
+                        <img src={p.imagen} alt={`pieza ${idx + 1}`} className="mx-auto max-h-64 w-full bg-neutral-100 object-contain" />
+                      </a>
                     ) : (
                       <div className="flex h-64 items-center justify-center text-xs text-muted-foreground">Sin imagen.</div>
                     )}

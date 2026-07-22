@@ -74,9 +74,13 @@ async function disenarBrief(
   // fondo donde va ese producto (Bria mantiene el producto). Si no, describe la
   // escena completa incluyendo un electrodoméstico Drean. En ambos casos se
   // aplican los LINEAMIENTOS de colocación del producto en el espacio.
+  // Regla dura anti-texto/logos: los modelos (sobre todo Ideogram) tienden a
+  // inventar texto y logos falsos ("DREAM KITCHEN", logo mal escrito). La placa
+  // y el logo se agregan después en diseño, no los genera la IA.
+  const noText = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
   const promptGuide = productoNombre
-    ? `prompt DETALLADO en INGLÉS para generar la ESCENA/FONDO donde se coloca el producto real "${productoNombre}" (${categoriaTxt}). NO describas el electrodoméstico en sí (ya lo aporta la foto real): describí el ambiente, encuadre, superficie, iluminación, props del hogar, estilo fotográfico y mood de marca Drean. OBLIGATORIO respetar la colocación del producto: ${placement}`
-    : `prompt DETALLADO en INGLÉS para un generador de imágenes: describí escena, encuadre, iluminación, estilo fotográfico, el electrodoméstico Drean de ${categoriaTxt} y su contexto, mood de marca. OBLIGATORIO respetar la colocación del producto: ${placement} NO incluyas texto en la imagen salvo que el formato lo pida.`;
+    ? `prompt DETALLADO en INGLÉS para generar la ESCENA/FONDO donde se coloca el producto real "${productoNombre}" (${categoriaTxt}). NO describas el electrodoméstico en sí (ya lo aporta la foto real): describí el ambiente, encuadre, superficie, iluminación, props del hogar, estilo fotográfico y mood de marca Drean. OBLIGATORIO respetar la colocación del producto: ${placement} ${noText}`
+    : `prompt DETALLADO en INGLÉS para un generador de imágenes: describí escena, encuadre, iluminación, estilo fotográfico, el electrodoméstico Drean de ${categoriaTxt} y su contexto, mood de marca. OBLIGATORIO respetar la colocación del producto: ${placement} ${noText}`;
 
   const sys = `Sos director creativo de Drean (marca argentina de electrodomésticos: lavado, refrigeración, cocción). Diseñás contenido orgánico para redes (IG/FB) que replica lo que mejor performó, manteniendo identidad de marca (cercana, confiable, argentina, sin estridencias). Respondé SOLO JSON.`;
   const user = `PILAR: "${pilar}" — ${PILAR_DEF[pilar] ?? ""}
