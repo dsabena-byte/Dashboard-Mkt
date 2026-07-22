@@ -18,6 +18,7 @@ import {
   TrendingUp,
   HeartPulse,
   Activity,
+  Sparkles,
   Menu,
   X,
 } from "lucide-react";
@@ -36,6 +37,7 @@ const NAV = [
   { href: "/influencia",  label: "Mkt de Influencia", icon: Megaphone },
   { href: "/web",         label: "Análisis Web",     icon: Globe },
   { href: "/redes",       label: "Análisis Redes",   icon: Share2 },
+  { href: "/contenido",   label: "Generador Contenido", icon: Sparkles },
   { href: "/mkt-canal",   label: "Mkt de Canal",     icon: Store },
   { href: "/cuadros-basicos", label: "Cuadros Básicos", icon: LayoutGrid },
   { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
