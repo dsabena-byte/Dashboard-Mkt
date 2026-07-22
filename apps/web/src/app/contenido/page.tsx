@@ -14,7 +14,7 @@ const FORMATOS = [
   { v: "carrusel", l: "Carrusel" },
 ];
 const ASPECTOS = [
-  { v: "vertical", l: "Feed 4:5" },
+  { v: "vertical", l: "Feed vertical 3:4" },
   { v: "feed", l: "Cuadrado 1:1" },
   { v: "story", l: "Story/Reel 9:16" },
 ];
