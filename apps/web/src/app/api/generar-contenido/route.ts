@@ -95,7 +95,7 @@ Devolvé JSON con:
 // (si el producto es protagonista) + no-text. La estética fina la aportan las
 // referencias (posteos elegidos) vía image_urls.
 function buildImagePrompt(escena: string, categoria: string, personas: boolean, esHero: boolean): string {
-  const parts = [escena.trim(), BRAND_LOOK];
+  const parts = [escena.trim(), BRAND_LOOK, MINIMAL];
   if (personas) parts.push(PERSONAS_ON);
   if (esHero) parts.push(placementGuide(categoria));
   parts.push(NO_TEXT);
@@ -105,17 +105,30 @@ function buildImagePrompt(escena: string, categoria: string, personas: boolean, 
 // Escena para Bria construida ALREDEDOR del producto (scene_description). Bria
 // controla producto + fondo, así que puede alinear la escala: mesada/muebles a
 // la MISMA altura que el tope del producto (no más bajos).
+// Props mínimos por categoría (que complementan el mensaje, sin cargar la escena).
+const PROPS: Record<string, string> = {
+  cocinas: "at most a single beautifully plated dish or one pot on the cooktop",
+  lavarropas: "at most a few impeccable neatly folded garments in a simple basket",
+  heladeras: "at most a couple of fresh fruits or two chilled glass bottles nearby to suggest storage",
+  porfolio: "at most one or two subtle complementary props",
+};
+
+// Minimalismo transversal: un solo electrodoméstico, escena limpia y premium.
+const MINIMAL =
+  "MINIMALIST and premium: a clean, uncluttered scene with generous negative space. There is ONLY ONE appliance in the entire image — the product itself. ABSOLUTELY NO other appliances (no second refrigerator, oven, microwave, range, dishwasher or washing machine) and no extra products. Very few props, only elements that complement the message. Do NOT overcrowd the scene.";
+
 function buildProductScene(categoria: string): string {
   const AMB: Record<string, string> = {
-    cocinas: "a modern kitchen",
-    lavarropas: "a modern laundry area within a kitchen",
-    heladeras: "a modern kitchen",
-    porfolio: "a modern home kitchen",
+    cocinas: "a minimalist modern kitchen",
+    lavarropas: "a minimalist modern laundry area",
+    heladeras: "a minimalist modern kitchen",
+    porfolio: "a minimalist modern home kitchen",
   };
   const amb = AMB[categoria] ?? AMB.porfolio;
+  const prop = PROPS[categoria] ?? PROPS.porfolio;
   const proporciones =
-    "CRITICAL PROPORTIONS: the countertop and cabinets are exactly the SAME HEIGHT as the TOP of the appliance — the appliance is NOT taller than the countertop; its top edge is level and flush with a continuous countertop that runs along BOTH sides at that same height. Base cabinets flank the appliance on both sides forming one seamless built-in line; a plain wall or backsplash directly behind; the appliance rests on the floor with its feet visible. Realistic human scale, the appliance integrated as a built-in part of the kitchen, NOT oversized and NOT standing in front of the furniture.";
-  return `Place this real Drean appliance built-in and flush within ${amb}. ${proporciones} ${BRAND_LOOK} ${NO_TEXT}`;
+    "CRITICAL PROPORTIONS: the countertop and cabinets are exactly the SAME HEIGHT as the TOP of the appliance — the appliance is NOT taller than the countertop; its top edge is level and flush with a continuous countertop that runs along BOTH sides at that same height. Base cabinets flank the appliance on both sides forming one seamless built-in line; a plain wall or backsplash directly behind; the appliance rests on the floor with its feet visible. Realistic human scale, integrated as built-in, NOT oversized and NOT standing in front of the furniture.";
+  return `Place this real Drean appliance built-in and flush within ${amb}. ${proporciones} ${MINIMAL} Complementary props: ${prop}. ${BRAND_LOOK} ${NO_TEXT}`;
 }
 
 interface Pieza {
