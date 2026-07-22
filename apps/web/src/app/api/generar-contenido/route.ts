@@ -103,8 +103,20 @@ function buildImagePrompt(escena: string, categoria: string, personas: boolean, 
 }
 
 function buildEmptyScenePrompt(categoria: string): string {
-  const hueco = `An empty ${categoria} home setting with a clearly defined empty space where the appliance will be placed (visible floor, flush gap between cabinets/counters at the right height). NO appliance present.`;
-  return [hueco, BRAND_LOOK, NO_TEXT].join(" ");
+  const NICHOS: Record<string, string> = {
+    cocinas:
+      "An empty modern kitchen with a clearly defined empty NICHE at floor level, sized for a freestanding range. Base cabinets and a continuous countertop flank the empty niche on BOTH sides at the same height, forming one seamless flush cabinetry line. Directly behind the niche is a plain wall or backsplash (NOT a wall of cabinets or drawers). The floor is visible at the base of the niche.",
+    lavarropas:
+      "An empty modern laundry/kitchen area with a clearly defined empty NICHE at floor level, sized for a front-load washing machine, set flush within a run of cabinetry. Base cabinets and a continuous countertop flank the niche on BOTH sides at the same height (seamless flush line). A plain wall directly behind the niche (NOT a wall of drawers). Floor visible at the base.",
+    heladeras:
+      "An empty modern kitchen with a clearly defined tall empty NICHE from floor level, sized for a refrigerator, set flush within the cabinetry. Tall cabinets flank the niche on BOTH sides, aligned flush with where the fridge front will be. A plain wall directly behind the niche. Floor visible at the base.",
+    porfolio:
+      "An empty modern home setting with a clearly defined empty niche at floor level for the appliance, flanked by furniture at the same height forming a flush line, a plain wall directly behind, floor visible at the base.",
+  };
+  const nicho = NICHOS[categoria] ?? NICHOS.porfolio;
+  const integ =
+    "The appliance will sit INSIDE this niche, flush and perfectly in-line with the cabinetry, so cabinets/counters continue on both sides at the same plane. It must read as BUILT-IN, NOT standing in front of a wall of furniture. NO appliance present in this image.";
+  return [nicho, integ, BRAND_LOOK, NO_TEXT].join(" ");
 }
 
 interface Pieza {
