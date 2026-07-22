@@ -11,6 +11,12 @@ export const PILARES = [
 ] as const;
 export type Pilar = (typeof PILARES)[number];
 
+// Categorías de producto + helpers viven en contenido-shared (sin "server-only")
+// para poder usarse también en la página (client component). Se re-exportan
+// acá por conveniencia para el resto del server code.
+export { CATEGORIAS, categoriaBrief, filtrarPorCategoria } from "./contenido-shared";
+export type { CategoriaKey } from "./contenido-shared";
+
 export interface TopPost {
   post_id: string;
   platform: string;
