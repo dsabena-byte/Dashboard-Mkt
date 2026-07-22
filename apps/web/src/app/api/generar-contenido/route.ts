@@ -168,7 +168,10 @@ export async function POST(request: Request) {
             const escenaUrl = escena.images[0]?.url ?? null;
             const prod = await falImage(MODEL_PRODUCT, {
               image_url: driveImageUrl(producto.driveFileId),
-              placement_type: "original",
+              // "automatic": Bria ubica el producto a ESCALA NATURAL en la escena
+              // (con "original" quedaba gigante, piso a techo, porque el packshot
+              // llena su frame). Mantiene la fidelidad del producto.
+              placement_type: "automatic",
               num_results: 1,
               ...(escenaUrl ? { ref_image_url: escenaUrl } : { scene_description: sanitizeScene(escenaPrompt) }),
             });

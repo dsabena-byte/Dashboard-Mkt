@@ -71,31 +71,38 @@ export interface RefCandidato {
   media_type: string | null;
   pilar: string | null;
   fecha: string | null;
+  platform: string | null;
 }
 
 // Candidatos de referencia para el selector: los posteos MÁS RECIENTES con
 // imagen, con su pilar (tal como están tipificados). El usuario elige cuáles
 // usar como referencia de estilo. Sin filtro de performance — recencia.
-export async function getReferenciaCandidatos(n = 48): Promise<RefCandidato[]> {
+export async function getReferenciaCandidatos(n = 150): Promise<RefCandidato[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
     .from("meta_posts")
-    .select("post_id, thumbnail_url, message, media_type, pilar_contenido, fecha_post")
+    .select("post_id, platform, thumbnail_url, message, media_type, pilar_contenido, fecha_post")
+    .eq("platform", "instagram")
     .not("thumbnail_url", "is", null)
     .order("fecha_post", { ascending: false })
-    .limit(300);
+    .limit(600);
   if (error) {
     console.error("[contenido-queries] getReferenciaCandidatos:", error.message);
     return [];
   }
-  type Row = { post_id: string; thumbnail_url: string | null; message: string | null; media_type: string | null; pilar_contenido: string | null; fecha_post: string | null };
+  type Row = { post_id: string; platform: string | null; thumbnail_url: string | null; message: string | null; media_type: string | null; pilar_contenido: string | null; fecha_post: string | null };
   const rows = (data ?? []) as unknown as Row[];
-  const seen = new Set<string>();
+  // dedup por thumbnail y por mensaje normalizado (evita repetidos/variantes).
+  const seenThumb = new Set<string>();
+  const seenMsg = new Set<string>();
   const out: RefCandidato[] = [];
   for (const r of rows) {
-    if (!r.thumbnail_url || seen.has(r.thumbnail_url)) continue;
-    seen.add(r.thumbnail_url);
-    out.push({ post_id: r.post_id, thumbnail_url: r.thumbnail_url, message: r.message, media_type: r.media_type, pilar: r.pilar_contenido, fecha: r.fecha_post });
+    if (!r.thumbnail_url || seenThumb.has(r.thumbnail_url)) continue;
+    const msgKey = (r.message ?? "").trim().toLowerCase().slice(0, 80);
+    if (msgKey && seenMsg.has(msgKey)) continue;
+    seenThumb.add(r.thumbnail_url);
+    if (msgKey) seenMsg.add(msgKey);
+    out.push({ post_id: r.post_id, thumbnail_url: r.thumbnail_url, message: r.message, media_type: r.media_type, pilar: r.pilar_contenido, fecha: r.fecha_post, platform: r.platform });
     if (out.length >= n) break;
   }
   return out;
