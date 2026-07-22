@@ -1,5 +1,6 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
+import { filtrarPorCategoria as _filtrarPorCategoria } from "./contenido-shared";
 
 // Los 5 pilares de contenido (mismos que el clasificador y el tab Insight Drean).
 export const PILARES = [
@@ -62,4 +63,28 @@ export async function getTopByPilar(days = 120, perPilar = 6): Promise<Record<st
   }
   for (const p of PILARES) out[p] = out[p]!.sort((a, b) => b.score - a.score).slice(0, perPilar);
   return out;
+}
+
+export interface RefCandidato {
+  post_id: string;
+  thumbnail_url: string;
+  message: string | null;
+  media_type: string | null;
+  engagement: number;
+}
+
+// Candidatos de referencia de estilo para el selector: top posts del pilar,
+// priorizando la categoría, que tengan imagen (thumbnail). Devuelve más que el
+// generador (para poder elegir) — por defecto 12.
+export async function getReferenciaCandidatos(pilar: string, categoria: string, n = 12): Promise<RefCandidato[]> {
+  const tops = (await getTopByPilar(180, 40))[pilar] ?? [];
+  const conImagen = tops.filter((t): t is TopPost & { thumbnail_url: string } => !!t.thumbnail_url);
+  const filtrados = _filtrarPorCategoria(conImagen, categoria);
+  return filtrados.slice(0, n).map((t) => ({
+    post_id: t.post_id,
+    thumbnail_url: t.thumbnail_url,
+    message: t.message,
+    media_type: t.media_type,
+    engagement: t.engagement,
+  }));
 }
