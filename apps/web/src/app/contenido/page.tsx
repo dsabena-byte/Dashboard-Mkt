@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { CATEGORIAS, filtrarPorCategoria } from "@/lib/contenido-shared";
+import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
 
 const PILARES = [
@@ -223,12 +223,12 @@ export default function ContenidoPage() {
 
   useEffect(() => { void cargarRefs(); }, [cargarRefs]);
 
-  // Los posteos de referencia se filtran por los MISMOS selectores de arriba
-  // (Pilar + Categoría). Un solo filtro, no dos.
-  const candidatosFiltrados = useMemo(() => {
-    const porPilar = candidatos.filter((c) => c.pilar === pilar);
-    return filtrarPorCategoria(porPilar, categoria);
-  }, [candidatos, pilar, categoria]);
+  // Los posteos de referencia se filtran SOLO por Pilar (si también se filtra por
+  // categoría quedan casi ninguno).
+  const candidatosFiltrados = useMemo(
+    () => candidatos.filter((c) => c.pilar === pilar),
+    [candidatos, pilar],
+  );
 
   function toggleRef(url: string) {
     setRefsSel((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : prev.length >= 3 ? prev : [...prev, url]));

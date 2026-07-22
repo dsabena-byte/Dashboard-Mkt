@@ -20,7 +20,7 @@ const MODEL_PRODUCT = "fal-ai/bria/product-shot";
 const MAX_PIEZAS = 4;
 
 const NO_TEXT = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
-const PERSONAS_ON = "Include real people (an individual or a family) naturally in the scene, candid and authentic, genuinely enjoying the moment; natural skin, natural expressions, realistic.";
+const PERSONAS_ON = "REQUIRED: include real people (an individual or a family) ACTIVELY USING and interacting with the Drean appliance — e.g. loading/using the washing machine, cooking on the range, taking food from the fridge — candid and authentic, natural skin and expressions, realistic. People are clearly present and engaged with the product.";
 
 function sanitizeScene(s: string): string {
   return s.normalize("NFKD").replace(/[^\x20-\x7E]/g, " ").replace(/["'`]/g, "").replace(/\s+/g, " ").trim().slice(0, 1000);
@@ -102,21 +102,20 @@ function buildImagePrompt(escena: string, categoria: string, personas: boolean, 
   return parts.filter(Boolean).join(" ");
 }
 
-function buildEmptyScenePrompt(categoria: string): string {
-  const NICHOS: Record<string, string> = {
-    cocinas:
-      "An empty modern kitchen with a clearly defined empty NICHE at floor level, sized for a freestanding range. Base cabinets and a continuous countertop flank the empty niche on BOTH sides at the same height, forming one seamless flush cabinetry line. Directly behind the niche is a plain wall or backsplash (NOT a wall of cabinets or drawers). The floor is visible at the base of the niche.",
-    lavarropas:
-      "An empty modern laundry/kitchen area with a clearly defined empty NICHE at floor level, sized for a front-load washing machine, set flush within a run of cabinetry. Base cabinets and a continuous countertop flank the niche on BOTH sides at the same height (seamless flush line). A plain wall directly behind the niche (NOT a wall of drawers). Floor visible at the base.",
-    heladeras:
-      "An empty modern kitchen with a clearly defined tall empty NICHE from floor level, sized for a refrigerator, set flush within the cabinetry. Tall cabinets flank the niche on BOTH sides, aligned flush with where the fridge front will be. A plain wall directly behind the niche. Floor visible at the base.",
-    porfolio:
-      "An empty modern home setting with a clearly defined empty niche at floor level for the appliance, flanked by furniture at the same height forming a flush line, a plain wall directly behind, floor visible at the base.",
+// Escena para Bria construida ALREDEDOR del producto (scene_description). Bria
+// controla producto + fondo, así que puede alinear la escala: mesada/muebles a
+// la MISMA altura que el tope del producto (no más bajos).
+function buildProductScene(categoria: string): string {
+  const AMB: Record<string, string> = {
+    cocinas: "a modern kitchen",
+    lavarropas: "a modern laundry area within a kitchen",
+    heladeras: "a modern kitchen",
+    porfolio: "a modern home kitchen",
   };
-  const nicho = NICHOS[categoria] ?? NICHOS.porfolio;
-  const integ =
-    "The appliance will sit INSIDE this niche, flush and perfectly in-line with the cabinetry, so cabinets/counters continue on both sides at the same plane. It must read as BUILT-IN, NOT standing in front of a wall of furniture. NO appliance present in this image.";
-  return [nicho, integ, BRAND_LOOK, NO_TEXT].join(" ");
+  const amb = AMB[categoria] ?? AMB.porfolio;
+  const proporciones =
+    "CRITICAL PROPORTIONS: the countertop and cabinets are exactly the SAME HEIGHT as the TOP of the appliance — the appliance is NOT taller than the countertop; its top edge is level and flush with a continuous countertop that runs along BOTH sides at that same height. Base cabinets flank the appliance on both sides forming one seamless built-in line; a plain wall or backsplash directly behind; the appliance rests on the floor with its feet visible. Realistic human scale, the appliance integrated as a built-in part of the kitchen, NOT oversized and NOT standing in front of the furniture.";
+  return `Place this real Drean appliance built-in and flush within ${amb}. ${proporciones} ${BRAND_LOOK} ${NO_TEXT}`;
 }
 
 interface Pieza {
@@ -148,7 +147,8 @@ export async function POST(request: Request) {
     const formato = body.formato ?? "imagen";
     const aspecto: FalSizeKey = body.aspecto ?? "vertical";
     const producto = getModelo(body.modelo);
-    const personas = body.personas ?? false;
+    // Personas: obligatorias en "Experiencia uso" (gente usando el producto).
+    const personas = body.personas ?? pilar === "Experiencia uso";
     const cantidad = Math.min(MAX_PIEZAS, Math.max(1, Math.floor(body.cantidad ?? 1)));
     const mensajeOverride = (body.mensaje ?? "").trim();
 
@@ -157,8 +157,9 @@ export async function POST(request: Request) {
     // Referencias de estilo: los posteos elegidos por el usuario.
     const styleRefs = (body.ref_urls ?? []).filter((u): u is string => !!u).slice(0, 3);
 
-    // Con un modelo elegido, el producto real es protagonista (packshot vía Bria).
-    const usarPackshot = !!producto;
+    // El packshot real (Bria) sólo cuando hay modelo Y no se piden personas
+    // (Bria no agrega gente usando el producto → esos van por escena generada).
+    const usarPackshot = !!producto && !personas;
     const engine = usarPackshot ? MODEL_PRODUCT : MODEL_IDEOGRAM;
 
     const piezas: Pieza[] = await Promise.all(
@@ -169,26 +170,17 @@ export async function POST(request: Request) {
           let promptMostrar: string;
 
           if (usarPackshot && producto) {
-            // 2 etapas: escena on-brand vacía (con refs) → Bria compone el packshot real.
-            const escenaPrompt = buildEmptyScenePrompt(categoria);
-            const escena = await falImage(MODEL_IDEOGRAM, {
-              prompt: escenaPrompt,
-              image_size: FAL_SIZES[aspecto],
-              num_images: 1,
-              ...(styleRefs.length > 0 ? { image_urls: styleRefs } : {}),
-            });
-            const escenaUrl = escena.images[0]?.url ?? null;
+            // Bria construye la escena ALREDEDOR del packshot real (scene_description),
+            // para poder alinear la escala (mesada a la altura del producto).
+            const scenePrompt = buildProductScene(categoria);
             const prod = await falImage(MODEL_PRODUCT, {
               image_url: driveImageUrl(producto.driveFileId),
-              // "automatic": Bria ubica el producto a ESCALA NATURAL en la escena
-              // (con "original" quedaba gigante, piso a techo, porque el packshot
-              // llena su frame). Mantiene la fidelidad del producto.
+              scene_description: sanitizeScene(scenePrompt),
               placement_type: "automatic",
               num_results: 1,
-              ...(escenaUrl ? { ref_image_url: escenaUrl } : { scene_description: sanitizeScene(escenaPrompt) }),
             });
-            imagenUrl = prod.images[0]?.url ?? escenaUrl;
-            promptMostrar = escenaPrompt;
+            imagenUrl = prod.images[0]?.url ?? null;
+            promptMostrar = scenePrompt;
           } else {
             const prompt = buildImagePrompt(brief.escena ?? "", categoria, personas, false);
             const img = await falImage(MODEL_IDEOGRAM, {
