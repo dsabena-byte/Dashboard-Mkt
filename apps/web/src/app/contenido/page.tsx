@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { CATEGORIAS, ESTILOS } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
 
@@ -31,6 +31,13 @@ interface Pieza {
   slides: Array<{ titulo: string; texto: string }>;
   image_prompt: string;
   error?: string;
+}
+interface RefCandidato {
+  post_id: string;
+  thumbnail_url: string;
+  message: string | null;
+  media_type: string | null;
+  engagement: number;
 }
 interface Resultado {
   ok: boolean;
@@ -196,30 +203,36 @@ export default function ContenidoPage() {
   const modelos = useMemo(() => getModelos(categoria), [categoria]);
   const estiloSel = useMemo(() => ESTILOS.find((e) => e.v === estilo) ?? ESTILOS[0]!, [estilo]);
 
-  // Referencias de estilo: pool PRE-SELECCIONADO por estilo (no random). El
-  // usuario marca cuáles usar; puede sumar una URL a mano.
-  const [refsSel, setRefsSel] = useState<string[]>(ESTILOS[0]!.refImages ?? []);
-  const [refInput, setRefInput] = useState("");
-  const poolRefs = estiloSel.refImages ?? [];
-  const refsManuales = refsSel.filter((u) => !poolRefs.includes(u));
+  // Referencias de estilo: se muestran los TOP posts reales del pilar/categoría
+  // (thumbnails con URL válida del bucket) y el usuario marca hasta 3. No random:
+  // es el ranking por performance, y la selección la controla el usuario.
+  const [candidatos, setCandidatos] = useState<RefCandidato[]>([]);
+  const [refsSel, setRefsSel] = useState<string[]>([]);
+  const [loadingRefs, setLoadingRefs] = useState(false);
+
+  const cargarRefs = useCallback(async () => {
+    setLoadingRefs(true);
+    try {
+      const r = await fetch(`/api/contenido/referencias?pilar=${encodeURIComponent(pilar)}&categoria=${encodeURIComponent(categoria)}`);
+      const j = (await r.json()) as { candidatos?: RefCandidato[] };
+      setCandidatos(j.candidatos ?? []);
+    } catch {
+      setCandidatos([]);
+    } finally {
+      setLoadingRefs(false);
+    }
+  }, [pilar, categoria]);
+
+  useEffect(() => { void cargarRefs(); }, [cargarRefs]);
 
   function onEstilo(v: string) {
     setEstilo(v);
     const e = ESTILOS.find((x) => x.v === v);
-    if (e) {
-      setPersonas(e.personasDefault); // default de personas según el estilo
-      setRefsSel(e.refImages ?? []); // por defecto, todas las referencias del estilo marcadas
-    }
+    if (e) setPersonas(e.personasDefault); // default de personas según el estilo
   }
 
   function toggleRef(url: string) {
     setRefsSel((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : prev.length >= 3 ? prev : [...prev, url]));
-  }
-  function addRefUrl() {
-    const u = refInput.trim();
-    if (!/^https?:\/\//i.test(u)) return;
-    setRefsSel((prev) => (prev.includes(u) || prev.length >= 3 ? prev : [...prev, u]));
-    setRefInput("");
   }
 
   async function generar() {
@@ -303,33 +316,26 @@ export default function ContenidoPage() {
         <strong>{estiloSel.label}</strong> — {estiloSel.producto === "hero" ? "producto protagonista (usa packshot real si elegís modelo)." : "el producto aparece en la escena; el foco es el contexto/las personas."}
       </p>
 
-      {/* Referencias de estilo: pool preseleccionado del estilo (no random) + URL manual */}
+      {/* Referencias de estilo (opcional): top posts reales del pilar/categoría, marcables */}
       <section className="rounded-xl border bg-card p-4">
-        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Referencias de estilo de “{estiloSel.label}” — marcá hasta 3 ({refsSel.length}/3)
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Referencias de estilo (opcional) — marcá hasta 3 posteos ({refsSel.length}/3)
+          </div>
+          <button type="button" onClick={() => void cargarRefs()} className="text-xs text-blue-600 hover:underline">Recargar</button>
         </div>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <input
-            type="url"
-            value={refInput}
-            onChange={(e) => setRefInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRefUrl(); } }}
-            placeholder="Pegar URL de una imagen de referencia"
-            disabled={refsSel.length >= 3}
-            className="min-w-[18rem] flex-1 rounded border px-2 py-1.5 text-sm disabled:opacity-50"
-          />
-          <button type="button" onClick={addRefUrl} disabled={refsSel.length >= 3} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">Agregar</button>
-        </div>
-        {poolRefs.length === 0 && refsManuales.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Este estilo todavía no tiene posteos de referencia cargados. Pegá una URL arriba, o pasanos 2-3 imágenes para dejarlas preseleccionadas.</p>
+        {loadingRefs ? (
+          <p className="text-xs text-muted-foreground">Cargando posteos…</p>
+        ) : candidatos.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No hay posteos con imagen para este pilar/categoría.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {[...poolRefs, ...refsManuales].map((u) => {
-              const sel = refsSel.includes(u);
+            {candidatos.map((c) => {
+              const sel = refsSel.includes(c.thumbnail_url);
               return (
-                <button key={u} type="button" onClick={() => toggleRef(u)} className={`relative h-20 w-20 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-80 hover:opacity-100"}`}>
+                <button key={c.post_id} type="button" onClick={() => toggleRef(c.thumbnail_url)} title={c.message ?? ""} className={`relative h-20 w-20 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-80 hover:opacity-100"}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={u} alt="ref" className="h-full w-full object-cover" />
+                  <img src={c.thumbnail_url} alt="ref" className="h-full w-full object-cover" />
                   {sel && <span className="absolute right-0.5 top-0.5 rounded bg-blue-600 px-1 text-[9px] text-white">✓</span>}
                 </button>
               );

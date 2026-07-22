@@ -54,7 +54,7 @@ export interface Estilo {
 // Código visual TRANSVERSAL de Drean (va en TODOS los estilos). La marca es
 // OSCURA, CÁLIDA, low-key y cinematográfica — NO clara/aireada/stock.
 export const BRAND_LOOK =
-  "DREAN BRAND LOOK (mandatory): dark, low-key and moody, warm and cinematic, premium and editorial. Deep walnut and dark wood tones, rich blacks and warm shadows. Dramatic warm directional lighting where the subject is well lit and the surroundings fall into deep shadow. High contrast, refined, sophisticated. Warm color temperature (amber/tungsten), NOT cold. STRICTLY AVOID: bright, airy, washed-out, overexposed or flat even lighting; pale beige, pastel, white or light backgrounds; cold white daylight; generic stock-photo look. The overall image must feel dark, warm and premium.";
+  "DREAN BRAND LOOK (mandatory): warm, moody and cinematic, premium and editorial, medium-low key (moody but NOT underexposed). Deep walnut and dark wood tones with warm shadows. Dramatic warm directional lighting where the main SUBJECT/PRODUCT is clearly and brightly lit, well exposed and fully visible with good detail, while the surroundings fall into gentle shadow. Rich contrast, refined, sophisticated. Warm color temperature (amber/tungsten), NOT cold. STRICTLY AVOID: bright, airy, washed-out, overexposed or flat even lighting; pale beige, pastel, white or light backgrounds; cold white daylight; generic stock-photo look; and ALSO avoid crushed, underexposed or too-dark images where the product loses detail. The overall image feels warm, premium and cinematic with the product clearly lit.";
 
 export const ESTILOS: Estilo[] = [
   {
