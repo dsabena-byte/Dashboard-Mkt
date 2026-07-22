@@ -53,8 +53,15 @@ export interface Estilo {
 
 // Código visual TRANSVERSAL de Drean (va en TODOS los estilos). La marca es
 // OSCURA, CÁLIDA, low-key y cinematográfica — NO clara/aireada/stock.
+// Estética Drean FIJA (se aplica en todas las piezas, sin referencias externas).
 export const BRAND_LOOK =
-  "DREAN BRAND LOOK (mandatory): warm, moody and cinematic, premium and editorial, medium-low key (moody but NOT underexposed). Deep walnut and dark wood tones with warm shadows. Dramatic warm directional lighting where the main SUBJECT/PRODUCT is clearly and brightly lit, well exposed and fully visible with good detail, while the surroundings fall into gentle shadow. Rich contrast, refined, sophisticated. Warm color temperature (amber/tungsten), NOT cold. STRICTLY AVOID: bright, airy, washed-out, overexposed or flat even lighting; pale beige, pastel, white or light backgrounds; cold white daylight; generic stock-photo look; and ALSO avoid crushed, underexposed or too-dark images where the product loses detail. The overall image feels warm, premium and cinematic with the product clearly lit.";
+  "DREAN PREMIUM AESTHETIC (mandatory, consistent in EVERY image): a sophisticated, minimalist, warm and moody editorial look. " +
+  "ENVIRONMENTS: clean, uncluttered minimalist modern kitchens and homes with generous negative space. " +
+  "MATERIALS & FURNITURE: rich dark walnut and oak wood cabinetry (often vertical wood-slat panels), veined dark marble or natural stone countertops and backsplash, matte black details, brushed stainless steel. Handleless, high-end, seamless cabinetry. " +
+  "TONES: warm dark browns, walnut, graphite and muted earthy tones, high contrast. " +
+  "LIGHT: dramatic, warm, low-key directional lighting — the product is clearly and warmly lit as the hero (well exposed, full detail) while the surroundings fall into gentle warm shadow; amber/tungsten temperature, cinematic and premium. " +
+  "STRICTLY AVOID: bright, airy, washed-out, overexposed, flat or cold white daylight; pale, pastel or white flat scenes; cluttered or generic stock-photo looks; and also crushed/underexposed too-dark images where the product loses detail. " +
+  "Every image must feel warm, dark, premium, minimalist and cinematic.";
 
 export const ESTILOS: Estilo[] = [
   {

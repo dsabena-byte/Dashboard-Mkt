@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
 
@@ -31,15 +31,6 @@ interface Pieza {
   slides: Array<{ titulo: string; texto: string }>;
   image_prompt: string;
   error?: string;
-}
-interface RefCandidato {
-  post_id: string;
-  thumbnail_url: string;
-  message: string | null;
-  media_type: string | null;
-  pilar: string | null;
-  fecha: string | null;
-  platform: string | null;
 }
 interface Resultado {
   ok: boolean;
@@ -202,43 +193,6 @@ export default function ContenidoPage() {
 
   const modelos = useMemo(() => getModelos(categoria), [categoria]);
 
-  // Referencias: posteos MÁS RECIENTES (con su pilar). El usuario marca hasta 3
-  // para definir el estilo de la pieza. Filtro por pilar en el cliente.
-  const [candidatos, setCandidatos] = useState<RefCandidato[]>([]);
-  const [refsSel, setRefsSel] = useState<string[]>([]);
-  const [loadingRefs, setLoadingRefs] = useState(false);
-  const [refPilar, setRefPilar] = useState<string>("todos"); // filtro propio de las referencias
-
-  const cargarRefs = useCallback(async () => {
-    setLoadingRefs(true);
-    try {
-      const r = await fetch(`/api/contenido/referencias`);
-      const j = (await r.json()) as { candidatos?: RefCandidato[] };
-      setCandidatos(j.candidatos ?? []);
-    } catch {
-      setCandidatos([]);
-    } finally {
-      setLoadingRefs(false);
-    }
-  }, []);
-
-  useEffect(() => { void cargarRefs(); }, [cargarRefs]);
-
-  // Filtro propio de las referencias por pilar (arranca en "Todos"). Muestra 30.
-  const pilaresRef = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of candidatos) if (c.pilar) s.add(c.pilar);
-    return ["todos", ...Array.from(s)];
-  }, [candidatos]);
-  const candidatosFiltrados = useMemo(
-    () => (refPilar === "todos" ? candidatos : candidatos.filter((c) => c.pilar === refPilar)).slice(0, 30),
-    [candidatos, refPilar],
-  );
-
-  function toggleRef(url: string) {
-    setRefsSel((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : prev.length >= 3 ? prev : [...prev, url]));
-  }
-
   async function generar() {
     setLoading(true);
     setRes(null);
@@ -246,7 +200,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, formato, aspecto, cantidad, ref_urls: refsSel }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, formato, aspecto, cantidad }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -261,9 +215,9 @@ export default function ContenidoPage() {
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Generador de contenido</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Generá piezas orgánicas por pilar. El <strong>estilo lo definís eligiendo posteos de referencia</strong> (abajo,
-          los más recientes por pilar). Si elegís un modelo, usa el <strong>packshot real</strong>. El mensaje clave va como
-          placa editable sobre la imagen. Video en la próxima etapa (Kling / Veo).
+          Generá piezas orgánicas por pilar con la <strong>estética premium de Drean</strong> (cálida, oscura, minimalista,
+          maderas y mármol). Si elegís un modelo, usa el <strong>packshot real</strong>. El mensaje clave va como placa
+          editable sobre la imagen. Video en la próxima etapa (Kling / Veo).
         </p>
       </header>
 
@@ -308,45 +262,6 @@ export default function ContenidoPage() {
         <button type="button" onClick={generar} disabled={loading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50">
           {loading ? "Generando…" : "Generar"}
         </button>
-      </section>
-
-      {/* Referencias: posteos recientes; filtro propio por pilar (arranca en Todos) */}
-      <section className="rounded-xl border bg-card p-4">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Elegí posteos de referencia (definen el estilo) — hasta 3 ({refsSel.length}/3)
-          </div>
-          <button type="button" onClick={() => void cargarRefs()} className="text-xs text-blue-600 hover:underline">Recargar</button>
-        </div>
-        {pilaresRef.length > 1 && (
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {pilaresRef.map((p) => (
-              <button key={p} type="button" onClick={() => setRefPilar(p)}
-                className={`rounded-full border px-2.5 py-1 text-[11px] transition ${refPilar === p ? "border-blue-600 bg-blue-600 text-white" : "hover:bg-secondary"}`}>
-                {p === "todos" ? "Todos" : p}
-              </button>
-            ))}
-          </div>
-        )}
-        {loadingRefs ? (
-          <p className="text-xs text-muted-foreground">Cargando posteos…</p>
-        ) : candidatosFiltrados.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No hay posteos recientes con imagen.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {candidatosFiltrados.map((c) => {
-              const sel = refsSel.includes(c.thumbnail_url);
-              return (
-                <button key={c.post_id} type="button" onClick={() => toggleRef(c.thumbnail_url)} title={c.message ?? ""} className={`relative h-24 w-24 overflow-hidden rounded border-2 transition ${sel ? "border-blue-600 ring-2 ring-blue-200" : "border-transparent opacity-85 hover:opacity-100"}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={c.thumbnail_url} alt="ref" className="h-full w-full object-cover" />
-                  {c.pilar && <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1 py-0.5 text-[8px] leading-tight text-white">{c.pilar}</span>}
-                  {sel && <span className="absolute right-0.5 top-0.5 rounded bg-blue-600 px-1 text-[9px] text-white">✓</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </section>
 
       {res && !res.ok && (
