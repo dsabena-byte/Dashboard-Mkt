@@ -115,7 +115,9 @@ function buildEditPrompt(escena: string, categoria: string, nombre: string, pers
   const parts = [
     `Using the Drean ${nombre} shown in the provided product photo as the exact hero product, create a premium social-media image.`,
     `Scene: ${escena.trim()}.`,
-    "CRITICAL: keep the appliance IDENTICAL to the reference photo — same model, shape, proportions, colors, finish, doors, knobs and details. Do NOT redesign, replace, duplicate or restyle the product; there is only ONE appliance (the reference one). Only build the environment around it and relight it naturally to match the scene.",
+    "CRITICAL: keep the appliance IDENTICAL to the reference photo — same model, shape, proportions, colors, finish, doors, knobs and details. Do NOT redesign, replace, duplicate or restyle the product; there is only ONE appliance (the reference one). Build the environment around it.",
+    // El relight a la escena oscura subexpone el producto → luz clave explícita.
+    "PRODUCT LIGHTING (very important): put a soft, warm KEY LIGHT on the appliance itself so its finish, glass door, controls, chrome and details are clearly visible and correctly exposed. The product must read bright and crisp as the hero — it must NOT be underexposed, crushed to black, muddy or lost in shadow. The surrounding environment stays dark, warm and moody, but the appliance is well-lit and clearly stands out from the background.",
     BRAND_LOOK,
   ];
   if (personas) parts.push(PERSONAS_ON);
