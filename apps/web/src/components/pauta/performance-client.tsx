@@ -1221,8 +1221,19 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                 Fuente: <strong>OMD</strong> (no tienen medición de visibilidad de video como el digital). Se evalúan por inversión,
                 impresiones y alcance.
               </p>
-              <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
-                <table className="w-full text-xs">
+              {/* Ancho 64% del contenedor = las primeras 6 columnas de la tabla digital
+                  (Medio 19% + 5×9%). Con table-fixed + este colgroup, Inversión /
+                  Impresiones / Alcance / Frec. quedan alineadas con las de arriba. */}
+              <div className="mb-3 overflow-x-auto rounded-lg border bg-card" style={{ width: "64%", minWidth: "560px" }}>
+                <table className="w-full table-fixed text-xs">
+                  <colgroup>
+                    <col style={{ width: "29.7%" }} />
+                    <col style={{ width: "14.06%" }} />
+                    <col style={{ width: "14.06%" }} />
+                    <col style={{ width: "14.06%" }} />
+                    <col style={{ width: "14.06%" }} />
+                    <col style={{ width: "14.06%" }} />
+                  </colgroup>
                   <thead className="border-b">
                     <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                       <th className="px-3 py-2">Medio</th>
