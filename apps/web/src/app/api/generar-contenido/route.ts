@@ -118,7 +118,7 @@ function buildEditPrompt(escena: string, categoria: string, nombre: string, pers
     `Scene: ${escena.trim()}.`,
     "CRITICAL: keep the appliance IDENTICAL to the reference photo — same model, shape, proportions, colors, finish, doors, knobs and details. Do NOT redesign, replace, duplicate or restyle the product; there is only ONE appliance (the reference one). Build the environment around it.",
     // El relight a la escena oscura subexpone el producto → luz clave explícita.
-    "PRODUCT LIGHTING (very important): put a soft, warm KEY LIGHT on the appliance itself so its finish, glass door, controls, chrome and details are clearly visible and correctly exposed. The product must read bright and crisp as the hero — it must NOT be underexposed, crushed to black, muddy or lost in shadow. The surrounding environment stays dark, warm and moody, but the appliance is well-lit and clearly stands out from the background.",
+    "PRODUCT LIGHTING (very important): put a STRONG, soft, warm KEY LIGHT on the appliance itself so its finish, glass door, controls, chrome and details are bright, crisp and fully exposed. The product must be the BRIGHTEST element and read clearly as the hero — distinctly brighter than the surroundings; it must NOT be underexposed, crushed to black, muddy or lost in shadow. Metallic and chrome surfaces show bright specular highlights. The surrounding environment stays warm and moody but still clearly visible (not black), and the appliance stands out from the background.",
     BRAND_LOOK,
   ];
   if (personas) parts.push(PERSONAS_ON);
@@ -150,7 +150,9 @@ const PROPORCION: Record<string, string> = {
 // reflejante (pedido de la marca; la chapa mate/apagada no vende).
 const ACABADO: Record<string, string> = {
   heladeras:
-    "FINISH: the refrigerator's stainless steel is BRIGHT, polished and reflective, with clean specular highlights and a crisp metallic sheen — not dull, matte, grey or muddy.",
+    "FINISH: the refrigerator's stainless steel must be BRIGHT, polished and highly reflective, with strong clean specular highlights and a luminous, mirror-like metallic sheen catching the warm light across the whole door — never dull, matte, grey, dark or muddy. The steel clearly reflects the warm lighting.",
+  lavarropas:
+    "FINISH: the washer's graphite/dark-grey body must read CLEARLY and be well-lit — never black, murky or lost in shadow; its chrome door rim and round glass door catch bright specular highlights, and the control panel is clearly visible and legible.",
 };
 
 interface Pieza {

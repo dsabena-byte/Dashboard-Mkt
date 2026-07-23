@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Manrope (variable) — tipografía de marca para el texto/grafismo de las piezas
+   (placa del generador de contenido). Self-hosted para que el nombre "Manrope"
+   esté disponible también en el canvas de descarga. */
+@font-face {
+  font-family: "Manrope";
+  src: url("/fonts/Manrope-Variable.ttf") format("truetype");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

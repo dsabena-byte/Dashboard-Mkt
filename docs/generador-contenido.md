@@ -28,18 +28,21 @@ flowchart TD
   luz dramática cálida; **minimalista, un solo producto, sin cargar**. Evita
   explícitamente lo claro/aireado/lavado/pastel/stock. **Es el único lugar para
   calibrar el look.**
-- **Modelo de producto (opcional) — dos modos:**
-  - **Recreada (Ideogram, default):** se **describe** el electrodoméstico en el
-    prompt (nombre + `descripcion`) para que Ideogram lo recree lo más parecido
-    posible. ⚠️ NO es pixel-exacto (ver §3).
-  - **Foto real (Nano Banana, toggle "Foto real"):** se le pasa el **packshot
-    real** (`driveImageUrl(driveFileId)`) como referencia a **Nano Banana**
-    (`fal-ai/nano-banana/edit`, Gemini 2.5 Flash Image edit) y se le pide armar
-    la escena premium **alrededor del producto sin alterarlo**. Preserva el
-    producto exacto + respeta el `BRAND_LOOK`. Requiere un modelo elegido.
-    Estado: **implementado, pendiente de validar calidad en la app** (no se pudo
-    validar desde el entorno de dev; ver §4). La proporción/aspecto salen de la
-    foto real, no del prompt (control de aspecto limitado en este modo).
+- **Modelo de producto → motor automático (sin toggle):**
+  - **Con un modelo elegido → Foto real (Nano Banana):** se le pasa el **packshot
+    real** (`driveImageUrl(driveFileId)`) a **Nano Banana** (`fal-ai/nano-banana/edit`,
+    Gemini 2.5 Flash Image edit) y arma la escena premium **alrededor del producto
+    sin alterarlo**. Preserva el producto exacto + respeta el `BRAND_LOOK`. Es el
+    modo por defecto con producto (Nano Banana quedó mejor que Ideogram — decisión
+    del usuario). Aspecto: lo define la foto real (~1:1), no el preset.
+  - **Sin modelo → Ideogram:** recrea una escena genérica del porfolio desde texto.
+- **Brillo/acabado (`ACABADO` por categoría):** heladeras = chapa de acero MUY
+  brillante y reflejante; lavarropas = cuerpo grafito bien iluminado (no negro) con
+  cromados/vidrio con brillo. + `PRODUCT LIGHTING` fuerte en el prompt de edición
+  (el producto es lo más iluminado). Sin esto Nano Banana subexponía el producto.
+- **Tipografía de placa: Manrope** (self-hosted en `public/fonts/Manrope-Variable.ttf`,
+  `@font-face` en `globals.css`). Se aplica a la placa (vista previa + descarga
+  canvas). El canvas espera `document.fonts.load(...Manrope)` antes de grabar.
 - **Proporción por categoría** (`PROPORCION`): heladera = alta; cocina/lavarropas
   = altura mesada (al ras); + medidas reales del catálogo. Sólo se aplica en modo
   producto-hero (sin personas).
