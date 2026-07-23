@@ -104,6 +104,7 @@ function buildImagePrompt(escena: string, categoria: string, personas: boolean, 
     parts.push(MINIMAL, PROPORCION[categoria] ?? PROPORCION.porfolio ?? "");
     if (medidas) parts.push(`REAL SIZE reference: the appliance measures ${medidas}; keep realistic proportions.`);
   }
+  if (ACABADO[categoria]) parts.push(ACABADO[categoria]!);
   parts.push(NO_TEXT);
   return parts.filter(Boolean).join(" ");
 }
@@ -122,6 +123,7 @@ function buildEditPrompt(escena: string, categoria: string, nombre: string, pers
   ];
   if (personas) parts.push(PERSONAS_ON);
   else parts.push(MINIMAL, PROPORCION[categoria] ?? PROPORCION.porfolio ?? "");
+  if (ACABADO[categoria]) parts.push(ACABADO[categoria]!);
   if (vertical) parts.push("Vertical portrait composition, taller than wide.");
   parts.push(NO_TEXT);
   return parts.filter(Boolean).join(" ");
@@ -142,6 +144,13 @@ const PROPORCION: Record<string, string> = {
     "PROPORTIONS: the refrigerator is a TALL floor-standing appliance, clearly TALLER than the surrounding countertops; it is built into a TALL cabinet column and flanked on both sides by tall cabinetry of the SAME height as the fridge, forming one seamless built-in column. It is NOT counter-height — it must be a large, prominent, tall appliance at realistic human scale.",
   porfolio:
     "PROPORTIONS: the appliance is integrated built-in at its correct real-world height, prominent and realistically scaled.",
+};
+
+// Acabado/brillo por categoría. Heladeras: chapa de acero bien brillante y
+// reflejante (pedido de la marca; la chapa mate/apagada no vende).
+const ACABADO: Record<string, string> = {
+  heladeras:
+    "FINISH: the refrigerator's stainless steel is BRIGHT, polished and reflective, with clean specular highlights and a crisp metallic sheen — not dull, matte, grey or muddy.",
 };
 
 interface Pieza {
