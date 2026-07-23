@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTopByPilar, PILARES, CATEGORIAS, categoriaBrief, filtrarPorCategoria } from "@/lib/contenido-queries";
 import { BRAND_LOOK } from "@/lib/contenido-shared";
-import { getModelo, driveImageUrl } from "@/lib/producto-catalog";
+import { getModelo, getModelos, driveImageUrl } from "@/lib/producto-catalog";
 import { falImage, FAL_SIZES, type FalSizeKey } from "@/lib/fal-client";
 
 export const dynamic = "force-dynamic";
@@ -133,6 +133,22 @@ function buildEditPrompt(escena: string, categoria: string, nombre: string, pers
   return parts.filter(Boolean).join(" ");
 }
 
+// Prompt de "todo el porfolio" para Nano Banana con VARIAS fotos reales (una por
+// categoría): arma el lineup Drean con NUESTROS productos, sin alterarlos.
+function buildPorfolioPrompt(escena: string, vertical: boolean): string {
+  const parts = [
+    "Create a premium brand social-media image showing ALL the Drean appliances from the provided product photos arranged TOGETHER in one cohesive premium home (a modern kitchen/laundry).",
+    `Context: ${escena.trim()}.`,
+    "CRITICAL: use the EXACT products from the reference photos — keep each appliance IDENTICAL (same models, shapes, proportions, finishes, doors, controls); do NOT redesign, replace or invent appliances. Show all of them together, arranged tastefully and built-in as a coordinated lineup.",
+    ACABADO.porfolio ?? "",
+    BRAND_LOOK,
+    "PRODUCT LIGHTING: every appliance is brightly and clearly lit, glossy with strong specular highlights, standing out as the heroes; the scene is warm, premium and clearly exposed (not dark).",
+  ];
+  if (vertical) parts.push("Vertical portrait composition, taller than wide.");
+  parts.push(NO_TEXT);
+  return parts.filter(Boolean).join(" ");
+}
+
 // Minimalismo transversal: un solo electrodoméstico, escena limpia y premium.
 const MINIMAL =
   "MINIMALIST and premium: a clean, uncluttered scene with generous negative space. There is ONLY ONE appliance in the entire image — the product itself. ABSOLUTELY NO other appliances (no second refrigerator, oven, microwave, range, dishwasher or washing machine) and no extra products. Very few props, only elements that complement the message. Do NOT overcrowd the scene.";
@@ -201,6 +217,14 @@ export async function POST(request: Request) {
     // Modo "producto real": sólo si hay un modelo elegido (necesitamos el packshot).
     const productoReal = body.productoReal === true && producto != null;
     const packshotUrl = productoReal && producto ? driveImageUrl(producto.driveFileId) : null;
+    // "Todo el porfolio": lineup con packshots reales (uno por categoría) vía Nano Banana.
+    const esPorfolio = categoria === "porfolio";
+    const porfolioUrls = esPorfolio
+      ? (["heladeras", "cocinas", "lavarropas"] as const)
+          .map((c) => getModelos(c)[0])
+          .filter((m): m is NonNullable<typeof m> => m != null)
+          .map((m) => driveImageUrl(m.driveFileId))
+      : [];
     // Personas: obligatorias en "Experiencia uso" (gente usando el producto).
     const personas = body.personas ?? pilar === "Experiencia uso";
     const cantidad = Math.min(MAX_PIEZAS, Math.max(1, Math.floor(body.cantidad ?? 1)));
@@ -228,6 +252,16 @@ export async function POST(request: Request) {
             const img = await falImage(MODEL_EDIT, {
               prompt: editPrompt,
               image_urls: [packshotUrl],
+              num_images: 1,
+            });
+            imagenUrl = img.images[0]?.url ?? null;
+            promptMostrar = editPrompt;
+          } else if (esPorfolio && porfolioUrls.length > 0) {
+            // Nano Banana con varias fotos reales → lineup con NUESTROS productos.
+            const editPrompt = buildPorfolioPrompt(brief.escena ?? "", aspecto !== "feed");
+            const img = await falImage(MODEL_EDIT, {
+              prompt: editPrompt,
+              image_urls: porfolioUrls,
               num_images: 1,
             });
             imagenUrl = img.images[0]?.url ?? null;
@@ -270,11 +304,11 @@ export async function POST(request: Request) {
       personas,
       formato,
       modelo: producto?.sku ?? null,
-      producto: producto?.nombre ?? null,
-      usa_packshot: productoReal,
-      engine: productoReal ? MODEL_EDIT : MODEL_IDEOGRAM,
+      producto: producto?.nombre ?? (esPorfolio && porfolioUrls.length > 0 ? "Lineup Drean (porfolio)" : null),
+      usa_packshot: productoReal || (esPorfolio && porfolioUrls.length > 0),
+      engine: productoReal || (esPorfolio && porfolioUrls.length > 0) ? MODEL_EDIT : MODEL_IDEOGRAM,
       piezas,
-      producto_ref: packshotUrl,
+      producto_ref: packshotUrl ?? (porfolioUrls.length > 0 ? porfolioUrls.join(" · ") : null),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
