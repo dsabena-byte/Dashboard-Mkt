@@ -59,7 +59,7 @@ export const BRAND_LOOK =
   "ENVIRONMENTS: clean, uncluttered minimalist modern kitchens and homes with generous negative space. " +
   "MATERIALS & FURNITURE: rich dark walnut and oak wood cabinetry (often vertical wood-slat panels), veined dark marble or natural stone countertops and backsplash, matte black details, brushed stainless steel. Handleless, high-end, seamless cabinetry. " +
   "TONES: warm dark browns, walnut, graphite and muted earthy tones, high contrast. " +
-  "LIGHT: dramatic, warm directional lighting WITH a soft warm AMBIENT/FILL so the whole scene is comfortably lit — the product is the brightest, clearly and warmly lit hero (well exposed, full detail), and the environment and background stay clearly VISIBLE and readable in warm light. Moody but NOT dark: never black, murky or crushed. Amber/tungsten temperature, cinematic and premium. " +
+  "LIGHT: warm, inviting lighting with a GENEROUS soft ambient/fill — the OVERALL image is clearly and comfortably exposed and BRIGHT enough to read at a glance (raise the overall exposure a notch). Warm and premium with gentle moody accents, but NOT dark, dim, gloomy, murky, black or crushed. The product is the brightest hero, clearly lit with full detail; the environment stays clearly visible and readable in warm light. Amber/tungsten temperature, cinematic and premium. " +
   "STRICTLY AVOID: bright, airy, washed-out, overexposed, flat or cold white daylight; pale, pastel or white flat scenes; cluttered or generic stock-photo looks; and also crushed/underexposed too-dark images where the product loses detail. " +
   "Every image must feel warm, dark, premium, minimalist and cinematic.";
 
