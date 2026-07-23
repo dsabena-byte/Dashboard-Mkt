@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTopByPilar, PILARES, CATEGORIAS, categoriaBrief, filtrarPorCategoria } from "@/lib/contenido-queries";
 import { BRAND_LOOK } from "@/lib/contenido-shared";
-import { getModelo } from "@/lib/producto-catalog";
+import { getModelo, driveImageUrl } from "@/lib/producto-catalog";
 import { falImage, FAL_SIZES, type FalSizeKey } from "@/lib/fal-client";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,11 @@ const PILAR_DEF: Record<string, string> = {
 };
 
 const MODEL_IDEOGRAM = "fal-ai/ideogram/v3";
+// Modo "producto real": edición por referencia con el packshot real. Nano Banana
+// (Gemini 2.5 Flash Image edit) preserva el producto exacto y arma la escena
+// premium alrededor. Si fal cambiara el id, la alternativa es
+// "fal-ai/gemini-25-flash-image/edit".
+const MODEL_EDIT = "fal-ai/nano-banana/edit";
 const MAX_PIEZAS = 4;
 
 const NO_TEXT = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
@@ -103,6 +108,23 @@ function buildImagePrompt(escena: string, categoria: string, personas: boolean, 
   return parts.filter(Boolean).join(" ");
 }
 
+// Prompt para el modo "producto real" (Nano Banana edit). Le damos el packshot
+// real como referencia y le pedimos que arme la escena premium alrededor SIN
+// alterar el producto. La proporción sale de la foto real (no del prompt).
+function buildEditPrompt(escena: string, categoria: string, nombre: string, personas: boolean, vertical: boolean): string {
+  const parts = [
+    `Using the Drean ${nombre} shown in the provided product photo as the exact hero product, create a premium social-media image.`,
+    `Scene: ${escena.trim()}.`,
+    "CRITICAL: keep the appliance IDENTICAL to the reference photo — same model, shape, proportions, colors, finish, doors, knobs and details. Do NOT redesign, replace, duplicate or restyle the product; there is only ONE appliance (the reference one). Only build the environment around it and relight it naturally to match the scene.",
+    BRAND_LOOK,
+  ];
+  if (personas) parts.push(PERSONAS_ON);
+  else parts.push(MINIMAL, PROPORCION[categoria] ?? PROPORCION.porfolio ?? "");
+  if (vertical) parts.push("Vertical portrait composition, taller than wide.");
+  parts.push(NO_TEXT);
+  return parts.filter(Boolean).join(" ");
+}
+
 // Minimalismo transversal: un solo electrodoméstico, escena limpia y premium.
 const MINIMAL =
   "MINIMALIST and premium: a clean, uncluttered scene with generous negative space. There is ONLY ONE appliance in the entire image — the product itself. ABSOLUTELY NO other appliances (no second refrigerator, oven, microwave, range, dishwasher or washing machine) and no extra products. Very few props, only elements that complement the message. Do NOT overcrowd the scene.";
@@ -142,6 +164,7 @@ export async function POST(request: Request) {
       formato?: string;
       aspecto?: FalSizeKey;
       cantidad?: number;
+      productoReal?: boolean; // usar el packshot real (Nano Banana edit) en vez de recrear con Ideogram
       ref_urls?: string[]; // posteos de referencia elegidos (definen el estilo)
     };
     const pilar = body.pilar && (PILARES as readonly string[]).includes(body.pilar) ? body.pilar : PILARES[0];
@@ -149,6 +172,9 @@ export async function POST(request: Request) {
     const formato = body.formato ?? "imagen";
     const aspecto: FalSizeKey = body.aspecto ?? "vertical";
     const producto = getModelo(body.modelo);
+    // Modo "producto real": sólo si hay un modelo elegido (necesitamos el packshot).
+    const productoReal = body.productoReal === true && producto != null;
+    const packshotUrl = productoReal && producto ? driveImageUrl(producto.driveFileId) : null;
     // Personas: obligatorias en "Experiencia uso" (gente usando el producto).
     const personas = body.personas ?? pilar === "Experiencia uso";
     const cantidad = Math.min(MAX_PIEZAS, Math.max(1, Math.floor(body.cantidad ?? 1)));
@@ -167,14 +193,30 @@ export async function POST(request: Request) {
           // Ideogram recree un electrodoméstico lo más parecido posible al elegido.
           const productoDesc = producto ? `${producto.nombre}${producto.descripcion ? ` — ${producto.descripcion}` : ""}` : null;
           const brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante);
-          const prompt = buildImagePrompt(brief.escena ?? "", categoria, personas, producto?.medidas);
-          const img = await falImage(MODEL_IDEOGRAM, {
-            prompt,
-            image_size: FAL_SIZES[aspecto],
-            num_images: 1,
-          });
-          const imagenUrl = img.images[0]?.url ?? null;
-          const promptMostrar = prompt;
+
+          let imagenUrl: string | null;
+          let promptMostrar: string;
+          if (productoReal && producto && packshotUrl) {
+            // Nano Banana edit: packshot real como referencia + escena premium alrededor.
+            const editPrompt = buildEditPrompt(brief.escena ?? "", categoria, producto.nombre, personas, aspecto !== "feed");
+            const img = await falImage(MODEL_EDIT, {
+              prompt: editPrompt,
+              image_urls: [packshotUrl],
+              num_images: 1,
+            });
+            imagenUrl = img.images[0]?.url ?? null;
+            promptMostrar = editPrompt;
+          } else {
+            // Ideogram: recrea el electrodoméstico a partir de la descripción.
+            const prompt = buildImagePrompt(brief.escena ?? "", categoria, personas, producto?.medidas);
+            const img = await falImage(MODEL_IDEOGRAM, {
+              prompt,
+              image_size: FAL_SIZES[aspecto],
+              num_images: 1,
+            });
+            imagenUrl = img.images[0]?.url ?? null;
+            promptMostrar = prompt;
+          }
 
           return {
             imagen: imagenUrl,
@@ -203,10 +245,10 @@ export async function POST(request: Request) {
       formato,
       modelo: producto?.sku ?? null,
       producto: producto?.nombre ?? null,
-      usa_packshot: false,
-      engine: MODEL_IDEOGRAM,
+      usa_packshot: productoReal,
+      engine: productoReal ? MODEL_EDIT : MODEL_IDEOGRAM,
       piezas,
-      producto_ref: null,
+      producto_ref: packshotUrl,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
