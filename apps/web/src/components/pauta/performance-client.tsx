@@ -15,6 +15,7 @@ import { InvestmentDonut, HBarChart, ReachImpressionsChart, MonthlyInvestmentCha
 import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
+import { PiezaGrid, type PiezaCard } from "@/components/pauta/pieza-grid";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import {
   type Dv360CreativeRow,
@@ -371,6 +372,25 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   );
   const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360Conv), [dv360Conv]);
   const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360Conv), [dv360Conv]);
+  // Piezas DV360 como tarjetas (mismo formato que Meta, sin thumbnail: DV360 no
+  // expone el creative). Alcance/frecuencia/engagement no vienen por pieza.
+  const dv360PieceCards = useMemo<PiezaCard[]>(
+    () =>
+      dv360Pieces.map((p) => ({
+        id: `${p.canal}-${p.categoria}-${p.rol}-${p.creative}`,
+        titulo: p.creative,
+        categoria: p.categoria,
+        badges: [p.canal, p.rol].filter(Boolean),
+        img: null,
+        inv: p.revenueUsd,
+        impr: p.impresiones,
+        clicks: p.clicks,
+        ctr: p.ctr,
+        cpm: p.cpm,
+        vtr: p.vtr > 0 ? p.vtr : null,
+      })),
+    [dv360Pieces],
+  );
   const dv360VideoQ = useMemo(() => aggregateDv360VideoQuality(dv360Conv), [dv360Conv]);
   // Embudo de video de TikTok (desde metaPaid, solo filas de video).
   const tiktokVideoFunnel = useMemo(() => {
@@ -1383,42 +1403,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   <SectionTitle>Piezas pautadas · Programmatic + Marketplace</SectionTitle>
                   <p className="mb-3 text-[10px] text-muted-foreground">
                     Top piezas por inversión. <strong>YouTube no se incluye</strong>: DV360 no expone el creative (figura como
-                    &quot;Unknown&quot;). Sin imagen porque el reporte de métricas no trae el archivo del creative.
+                    &quot;Unknown&quot;). <strong>Sin thumbnail</strong>: el reporte de métricas de DV360 no trae el archivo del
+                    creative. DV360 tampoco da alcance/frecuencia ni interacciones por pieza. El detalle en tabla está al final.
                   </p>
-                  <div className="mb-3 max-h-[520px] overflow-auto rounded-lg border bg-card">
-                    <table className="w-full text-xs">
-                      <thead className="sticky top-0 z-10 border-b bg-card">
-                        <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                          <th className="px-3 py-2">Pieza</th>
-                          <th className="px-3 py-2">Canal</th>
-                          <th className="px-3 py-2">Categoría</th>
-                          <th className="px-3 py-2">Rol</th>
-                          <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
-                          <th className="px-3 py-2 text-right">Impresiones</th>
-                          <th className="px-3 py-2 text-right">Clicks</th>
-                          <th className="px-3 py-2 text-right">CTR</th>
-                          <th className="px-3 py-2 text-right">CPM</th>
-                          <th className="px-3 py-2 text-right">VTR</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dv360Pieces.map((p) => (
-                          <tr key={`${p.canal}-${p.categoria}-${p.rol}-${p.creative}`} className="border-b last:border-0">
-                            <td className="px-3 py-2 font-medium">{p.creative}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{p.canal}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{p.categoria}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{p.rol}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{dvMoney(p.revenueUsd)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.impresiones)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.clicks)}</td>
-                            <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(p.ctr, dvPieceBest.ctr, "higher")}`}>{p.ctr.toFixed(2)}%</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{dvMoney(p.cpm)}</td>
-                            <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.vtr > 0 ? bicColor(p.vtr, dvPieceBest.vtr, "higher") : "text-muted-foreground"}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <PiezaGrid pieces={dv360PieceCards} money={dvMoney} />
                 </>
               )}
           <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
@@ -1464,6 +1452,49 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             selCats={selCats}
             selRoles={selRoles}
           />
+
+          {dv360Pieces.length > 0 && (
+            <>
+              <SectionTitle>Detalle de piezas · Programmatic + Marketplace (tabla)</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Mismo dato que las tarjetas de arriba, en tabla ordenable por inversión. Semáforo en CTR/VTR vs la mejor pieza.
+              </p>
+              <div className="mb-3 max-h-[520px] overflow-auto rounded-lg border bg-card">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 z-10 border-b bg-card">
+                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2">Pieza</th>
+                      <th className="px-3 py-2">Canal</th>
+                      <th className="px-3 py-2">Categoría</th>
+                      <th className="px-3 py-2">Rol</th>
+                      <th className="px-3 py-2 text-right">Costo {monedaLbl}</th>
+                      <th className="px-3 py-2 text-right">Impresiones</th>
+                      <th className="px-3 py-2 text-right">Clicks</th>
+                      <th className="px-3 py-2 text-right">CTR</th>
+                      <th className="px-3 py-2 text-right">CPM</th>
+                      <th className="px-3 py-2 text-right">VTR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dv360Pieces.map((p) => (
+                      <tr key={`${p.canal}-${p.categoria}-${p.rol}-${p.creative}`} className="border-b last:border-0">
+                        <td className="px-3 py-2 font-medium">{p.creative}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{p.canal}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{p.categoria}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{p.rol}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{dvMoney(p.revenueUsd)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.impresiones)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.clicks)}</td>
+                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${bicColor(p.ctr, dvPieceBest.ctr, "higher")}`}>{p.ctr.toFixed(2)}%</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{dvMoney(p.cpm)}</td>
+                        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${p.vtr > 0 ? bicColor(p.vtr, dvPieceBest.vtr, "higher") : "text-muted-foreground"}`}>{p.vtr > 0 ? `${p.vtr.toFixed(0)}%` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
 
