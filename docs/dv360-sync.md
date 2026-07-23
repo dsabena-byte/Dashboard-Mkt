@@ -17,8 +17,9 @@ piezas pautadas y embudo de video.
 
 ## ⚠️ Actualización 2026-06-23 (leer antes de tocar nada)
 
-Diagnóstico completo de "Programmatic figura $0 en junio" — **resuelto**, con un paso
-de automatización **PENDIENTE** (el usuario tuvo que retirarse antes de crear el trigger).
+Diagnóstico completo de "Programmatic figura $0 en junio" — **resuelto**, y la
+automatización diaria **también resuelta** (triggers creados y corriendo — ver el
+estado validado más abajo).
 
 **Causa raíz (validada de punta a punta, sin asumir):**
 1. Programmatic Video **sí entrega** en junio (~459.756 impresiones). Las líneas
@@ -42,14 +43,20 @@ abajo). Después del fix se re-sincronizó a mano: `dv360_creatives: 203 filas �
 y `dv360_reach: 42 filas → HTTP 201`. Junio quedó correcto:
 `Programmatic = 459.756 impr / ~$998` (coincide con "Total: Video" de la UI de DV360).
 
-**Segundo hallazgo (validado en las Ejecuciones del Apps Script):** `syncDv360` y
-`syncDv360Reach` **NO corrían solos** — el único trigger es `syncAll` cada 10 min, que
-**no los llama**, y no tenían trigger propio. Por eso la data se quedaba vieja: solo se
-actualizaba cuando alguien los corría a mano. (La afirmación "Triggers diarios ✅" más
-abajo en este doc era incorrecta.)
+**Segundo hallazgo (validado en las Ejecuciones del Apps Script):** en su momento
+`syncDv360` y `syncDv360Reach` **NO corrían solos** — el único trigger era `syncAll`
+cada 10 min, que **no los llama**, y no tenían trigger propio. Por eso la data se
+quedaba vieja. **Esto ya se resolvió** (ver estado validado abajo).
 
-**PENDIENTE — crear el trigger diario (esto NO se hizo todavía):** pegar en `Código.gs`
-y ejecutar `setupDv360Trigger` una vez:
+**✅ HECHO — triggers diarios creados y corriendo. Validado el 23-jul-2026** en el
+panel de **Activadores** del Apps Script "Sync Drive Tablero CB": hay dos triggers
+**"Basado en tiempo"** sobre `syncDv360` y `syncDv360Reach` (ambos con última
+ejecución ese día — 7:40 y 7:14 — y **0% de errores**). Quedaron como triggers
+directos sobre cada función, no vía el wrapper `syncDv360Daily` (que era sólo una
+alternativa). **DV360 se actualiza solo a diario.**
+
+Referencia (forma alternativa con wrapper, por si hay que recrearlos): pegar en
+`Código.gs` y ejecutar `setupDv360Trigger` una vez:
 
 ```javascript
 function syncDv360Daily(){

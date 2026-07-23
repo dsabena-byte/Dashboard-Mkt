@@ -1385,9 +1385,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                     Top piezas por inversión. <strong>YouTube no se incluye</strong>: DV360 no expone el creative (figura como
                     &quot;Unknown&quot;). Sin imagen porque el reporte de métricas no trae el archivo del creative.
                   </p>
-                  <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
+                  <div className="mb-3 max-h-[520px] overflow-auto rounded-lg border bg-card">
                     <table className="w-full text-xs">
-                      <thead className="border-b">
+                      <thead className="sticky top-0 z-10 border-b bg-card">
                         <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                           <th className="px-3 py-2">Pieza</th>
                           <th className="px-3 py-2">Canal</th>
