@@ -23,10 +23,24 @@ import {
   aggregateDv360Pieces,
   aggregateDv360VideoQuality,
 } from "@/lib/dv360-data";
+import type { GoogleAdsOmdRow } from "@/lib/google-ads-omd-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const fmtUSD = (n: number): string =>
   `US$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Agrega la inversión de Google Ads de OMD por dimensión (canal/categoría) o total.
+interface GadsAgg { k: string; costo: number; impresiones: number; clicks: number }
+function aggGads(rows: GoogleAdsOmdRow[], dim: "canal" | "categoria" | null): GadsAgg[] {
+  const map = new Map<string, GadsAgg>();
+  for (const r of rows) {
+    const k = dim ? r[dim] : "Total";
+    const a = map.get(k) ?? { k, costo: 0, impresiones: 0, clicks: 0 };
+    a.costo += r.costo; a.impresiones += r.impresiones; a.clicks += r.clicks;
+    map.set(k, a);
+  }
+  return [...map.values()].sort((a, b) => b.costo - a.costo);
+}
 
 function fmtNum(n: number): string {
   return formatNumber(Math.round(n));
@@ -247,7 +261,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, freshness }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; freshness?: { dv360: string | null; meta: string | null; omd: string | null } }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], freshness }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null } }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -303,6 +317,21 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   );
 
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
+
+  // Google Ads de OMD Marketing (Demand Gen + Search) desde GA4 — respeta el
+  // filtro de mes/categoría, y solo si el filtro de medio incluye Digital.
+  const gadsOmdF = useMemo(
+    () =>
+      !digitalOk ? [] : googleAdsOmd.filter(
+        (r) =>
+          (selMeses.length === 0 || selMeses.includes(r.mes)) &&
+          (selCats.length === 0 || selCats.includes(r.categoria)),
+      ),
+    [googleAdsOmd, digitalOk, selMeses, selCats],
+  );
+  const gadsByCanal = useMemo(() => aggGads(gadsOmdF, "canal"), [gadsOmdF]);
+  const gadsByCat = useMemo(() => aggGads(gadsOmdF, "categoria"), [gadsOmdF]);
+  const gadsTotal = useMemo(() => aggGads(gadsOmdF, null)[0], [gadsOmdF]);
   // Embudo de visibilidad real de video (Meta Marketing API): cuántas impresiones
   // llegan a cada % del video. Solo Meta (el cron meta-paid-sync trae los cuartiles).
   const metaVideoFunnel = useMemo(() => {
@@ -872,6 +901,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               <LastUpdated date={freshness.dv360} prefix="DV360 al" />
               <LastUpdated date={freshness.meta} prefix="Meta al" />
               <LastUpdated date={freshness.omd} prefix="Plan/OMD al" />
+              {freshness.gads && <LastUpdated date={freshness.gads} prefix="Google Ads al" />}
             </div>
           )}
         </div>
@@ -1329,6 +1359,69 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               </p>
             </>
           )}
+        </div>
+      )}
+
+      {/* ===== GOOGLE ADS · OMD MARKETING (Demand Gen + Search) ===== */}
+      {tab === "Por Medio" && gadsByCanal.length > 0 && (
+        <div className="mt-8">
+          <SectionTitle>Google Ads · OMD Marketing (Demand Gen + Search)</SectionTitle>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Fuente: <strong>Google Ads de OMD</strong> vía la GA4 Data API (automático). Excluye el ecommerce (campañas <code>inhouse_*</code>,
+            que están en Pauta Ecommerce). Costo en ARS. Responde a los filtros de mes/categoría de arriba.
+          </p>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {([
+              { titulo: "Por canal", rows: gadsByCanal, col: "Canal" },
+              { titulo: "Por categoría", rows: gadsByCat, col: "Categoría" },
+            ] as const).map(({ titulo, rows: grows, col }) => (
+              <div key={titulo} className="overflow-x-auto rounded-lg border">
+                <div className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold">{titulo}</div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">{col}</th>
+                      <th className="px-3 py-2 text-right font-medium">Inversión</th>
+                      <th className="px-3 py-2 text-right font-medium">Impres.</th>
+                      <th className="px-3 py-2 text-right font-medium">Clicks</th>
+                      <th className="px-3 py-2 text-right font-medium">CPM</th>
+                      <th className="px-3 py-2 text-right font-medium">CPC</th>
+                      <th className="px-3 py-2 text-right font-medium">CTR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grows.map((r) => {
+                      const cpm = r.impresiones > 0 ? (r.costo / r.impresiones) * 1000 : 0;
+                      const cpc = r.clicks > 0 ? r.costo / r.clicks : 0;
+                      const ctr = r.impresiones > 0 ? (r.clicks / r.impresiones) * 100 : 0;
+                      return (
+                        <tr key={r.k} className="border-b last:border-0">
+                          <td className="px-3 py-2 font-medium">{r.k}</td>
+                          <td className="px-3 py-2 text-right">{formatCurrency(r.costo)}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">{fmtNum(r.impresiones)}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">{fmtNum(r.clicks)}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(cpm)}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(cpc)}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">{ctr.toFixed(2)}%</td>
+                        </tr>
+                      );
+                    })}
+                    {gadsTotal && (
+                      <tr className="bg-muted/20 font-semibold">
+                        <td className="px-3 py-2">Total</td>
+                        <td className="px-3 py-2 text-right">{formatCurrency(gadsTotal.costo)}</td>
+                        <td className="px-3 py-2 text-right">{fmtNum(gadsTotal.impresiones)}</td>
+                        <td className="px-3 py-2 text-right">{fmtNum(gadsTotal.clicks)}</td>
+                        <td className="px-3 py-2 text-right">{formatCurrency(gadsTotal.impresiones > 0 ? (gadsTotal.costo / gadsTotal.impresiones) * 1000 : 0)}</td>
+                        <td className="px-3 py-2 text-right">{formatCurrency(gadsTotal.clicks > 0 ? gadsTotal.costo / gadsTotal.clicks : 0)}</td>
+                        <td className="px-3 py-2 text-right">{(gadsTotal.impresiones > 0 ? (gadsTotal.clicks / gadsTotal.impresiones) * 100 : 0).toFixed(2)}%</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
