@@ -338,7 +338,12 @@ export async function GET(request: Request) {
     // devuelve el inventario de cuentas vinculadas en `results.gads_accounts`
     // para poder identificar la de Drean/OMD y cargar su Customer ID acá.
     const DREAN_ADS_CUSTOMER_IDS: string[] = [
-      "2066637786", // "Drean Argentina" (subcuenta de Drean en el MCC de OMD): ecommerce inhouse_* + marketing OMD
+      "2066637786", // "Drean Argentina" — ecommerce/performance (MCC Brandlive), campañas inhouse_*
+      // Marketing de OMD (MCC Mabe Argentina), cuentas por categoría:
+      "2703756419", // "Refrigeración"
+      "1597165780", // "Lavado"
+      "5791135678", // "Cocción"
+      "1257010507", // "Search"
     ];
 
     let gadsRows: GA4Row[] = [];
