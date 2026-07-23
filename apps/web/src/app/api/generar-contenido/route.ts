@@ -50,6 +50,7 @@ async function disenarBrief(
   personas: boolean,
   tops: TopRef[],
   variante: number,
+  esPorfolio: boolean,
 ): Promise<Brief> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY no configurada.");
@@ -67,7 +68,7 @@ ${ref || "(sin data — usá tu criterio)"}
 
 Devolvé JSON con:
 {
-  "escena": "descripción CORTA en INGLÉS del sujeto/momento. ${personas ? `El SUJETO PRINCIPAL son personas reales (una persona o una familia) bien visibles en primer plano, usando activamente un ${productoNombre ? `Drean ${productoNombre}` : `electrodoméstico Drean de ${categoriaTxt}`} (cargándolo, cocinando, sacando comida, etc.); el electrodoméstico presente y en uso.` : `El electrodoméstico Drean es el protagonista de la escena: ${productoNombre ? `a Drean ${productoNombre}` : `a Drean ${categoriaTxt} appliance`}.`} Sumá props relevantes al mensaje. NO describas estilo/luz/colores (ya están definidos). NO incluyas texto en la imagen.",
+  "escena": "descripción CORTA en INGLÉS del sujeto/momento. ${personas ? `El SUJETO PRINCIPAL son personas reales (una persona o una familia) bien visibles en primer plano, usando activamente un ${productoNombre ? `Drean ${productoNombre}` : `electrodoméstico Drean de ${categoriaTxt}`} (cargándolo, cocinando, sacando comida, etc.); el electrodoméstico presente y en uso.` : esPorfolio ? `The scene shows the DREAN APPLIANCE LINEUP together in one premium home — a refrigerator, a kitchen range and a washing machine, coordinated (this is a brand/portfolio piece, NOT a single product).` : `El electrodoméstico Drean es el protagonista de la escena: ${productoNombre ? `a Drean ${productoNombre}` : `a Drean ${categoriaTxt} appliance`}.`} Sumá props relevantes al mensaje. NO describas estilo/luz/colores (ya están definidos). NO incluyas texto en la imagen.",
   "mensaje_clave": "TÍTULO de la placa: frase corta y potente en español (máx 5 palabras, tono de marca)",
   "bajada": "BAJADA de la placa: una línea corta en español que complementa el título (máx 8 palabras)",
   "caption_es": "caption en español: hook en la 1ra línea + cuerpo breve + CTA",
@@ -99,6 +100,9 @@ function buildImagePrompt(escena: string, categoria: string, personas: boolean, 
   if (personas) {
     // Escena lifestyle: el foco son las personas; el producto es contextual.
     parts.push(PERSONAS_ON);
+  } else if (categoria === "porfolio") {
+    // Pieza de marca: mostrar el lineup Drean, no un solo producto.
+    parts.push(PORFOLIO_SCENE);
   } else {
     // Escena producto-hero: minimalista + proporción correcta del electrodoméstico.
     parts.push(MINIMAL, PROPORCION[categoria] ?? PROPORCION.porfolio ?? "");
@@ -118,7 +122,7 @@ function buildEditPrompt(escena: string, categoria: string, nombre: string, pers
     `Scene: ${escena.trim()}.`,
     "CRITICAL: keep the appliance IDENTICAL to the reference photo — same model, shape, proportions, colors, finish, doors, knobs and details. Do NOT redesign, replace, duplicate or restyle the product; there is only ONE appliance (the reference one). Build the environment around it.",
     // El relight a la escena oscura subexpone el producto → luz clave explícita.
-    "PRODUCT LIGHTING (very important): put a STRONG, soft, warm KEY LIGHT on the appliance itself so its finish, glass door, controls, chrome and details are bright, crisp and fully exposed. The product must be the BRIGHTEST element and read clearly as the hero — distinctly brighter than the surroundings; it must NOT be underexposed, crushed to black, muddy or lost in shadow. Metallic and chrome surfaces show bright specular highlights. The surrounding environment stays warm and moody but still clearly visible (not black), and the appliance stands out from the background.",
+    "PRODUCT LIGHTING (very important): the appliance is BRILLIANTLY and evenly lit as the hero — bright, glossy, crisp and fully exposed, with strong clean specular highlights on its finish, glass, chrome and controls. It is the BRIGHTEST, clearest, most eye-catching element, clearly standing out and distinctly brighter than the surroundings. NEVER underexposed, dark, dim, matte, muddy or lost in shadow. The surrounding environment stays warm and premium but still clearly visible (not black).",
     BRAND_LOOK,
   ];
   if (personas) parts.push(PERSONAS_ON);
@@ -132,6 +136,11 @@ function buildEditPrompt(escena: string, categoria: string, nombre: string, pers
 // Minimalismo transversal: un solo electrodoméstico, escena limpia y premium.
 const MINIMAL =
   "MINIMALIST and premium: a clean, uncluttered scene with generous negative space. There is ONLY ONE appliance in the entire image — the product itself. ABSOLUTELY NO other appliances (no second refrigerator, oven, microwave, range, dishwasher or washing machine) and no extra products. Very few props, only elements that complement the message. Do NOT overcrowd the scene.";
+
+// Escena de "todo el porfolio": pieza de MARCA que muestra el lineup Drean
+// (no un solo producto). Reemplaza a MINIMAL sólo en categoría porfolio.
+const PORFOLIO_SCENE =
+  "DREAN LINEUP SHOWCASE: this is a BRAND / portfolio piece, NOT a single-product shot. Feature SEVERAL Drean appliances together in one cohesive premium home — a tall stainless refrigerator, a kitchen range/cooktop and a front-load washing machine — arranged tastefully, built-in and coordinated. Show the range of products together (do NOT show only one appliance). Clean, premium, uncluttered composition.";
 
 // Proporción correcta por categoría (una cocina/lavarropas es altura mesada;
 // una heladera es alta, más que la mesada).
@@ -150,9 +159,13 @@ const PROPORCION: Record<string, string> = {
 // reflejante (pedido de la marca; la chapa mate/apagada no vende).
 const ACABADO: Record<string, string> = {
   heladeras:
-    "FINISH: the refrigerator's stainless steel must be BRIGHT, polished and highly reflective, with strong clean specular highlights and a luminous, mirror-like metallic sheen catching the warm light across the whole door — never dull, matte, grey, dark or muddy. The steel clearly reflects the warm lighting.",
+    "FINISH: the refrigerator's stainless steel is MIRROR-POLISHED and highly reflective — glossy, luminous metal with bright specular highlights and clear streaks/glints of warm light gliding across the whole door, a lively metallic shine that visibly reflects the light. NEVER opaque, matte, flat, grey, dark or muddy.",
+  cocinas:
+    "FINISH: the stainless-steel range is BRIGHT and glossy — clean specular highlights on the steel front, oven door and control panel, the metal shines and clearly reflects the warm light, well-lit and legible. Not dark, matte or flat.",
   lavarropas:
-    "FINISH: the washer's graphite/dark-grey body must read CLEARLY and be well-lit — never black, murky or lost in shadow; its chrome door rim and round glass door catch bright specular highlights, and the control panel is clearly visible and legible.",
+    "FINISH: the graphite/dark-grey washer is clearly LIFTED OUT OF SHADOW and well-lit — bright enough to read easily, with a clear warm rim/edge light on its body and STRONG glossy specular highlights on the chrome door ring and round glass door; the control panel is legible. Never black, flat, matte or lost in shadow.",
+  porfolio:
+    "FINISH: the Drean appliances are BRIGHT and glossy, their stainless steel and glass catching clean specular highlights and clearly reflecting the warm light — never dull, matte, dark or muddy.",
 };
 
 interface Pieza {
@@ -205,7 +218,7 @@ export async function POST(request: Request) {
           // Descripción rica del modelo (nombre + rasgos visuales) para que
           // Ideogram recree un electrodoméstico lo más parecido posible al elegido.
           const productoDesc = producto ? `${producto.nombre}${producto.descripcion ? ` — ${producto.descripcion}` : ""}` : null;
-          const brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante);
+          const brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante, categoria === "porfolio");
 
           let imagenUrl: string | null;
           let promptMostrar: string;

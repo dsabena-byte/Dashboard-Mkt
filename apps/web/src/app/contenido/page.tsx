@@ -241,15 +241,15 @@ export default function ContenidoPage() {
           </div>
           <div>
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Estilo (fijo)</div>
-            <p>Estética Drean premium aplicada siempre: <strong>cálida, oscura, low-key y cinematográfica</strong> — maderas de nogal, mármol/piedra, negro mate, acero; luz dramática cálida; minimalista, un solo producto, sin cargar. (Evita lo claro/aireado/stock.)</p>
+            <p>Estética Drean premium aplicada siempre: <strong>cálida, cinematográfica y bien iluminada</strong> (premium, no oscura ni apagada) — maderas de nogal, mármol/piedra, negro mate, acero; el <strong>producto bien iluminado y brillante</strong>, destacado como héroe. Minimalista (un solo producto) salvo en <strong>“Todo el porfolio”</strong>, que muestra el lineup. (Evita lo claro/aireado/stock.)</p>
           </div>
           <div>
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Proceso</div>
             <ol className="list-decimal space-y-1 pl-5">
               <li>Elegís pilar, categoría, modelo (opcional), formato, aspecto y cantidad.</li>
               <li>OpenAI diseña el brief (escena + mensaje clave + copy) según el pilar y lo que mejor performó.</li>
-              <li>Ideogram genera la imagen en la estética premium (proporción por categoría: heladera alta, cocina/lavarropas altura mesada).</li>
-              <li>Editás el título/bajada de la placa y descargás la pieza (imagen + texto).</li>
+              <li>Se genera la imagen en la estética premium: con un modelo, <strong>Nano Banana</strong> coloca el packshot real y arma la escena; sin modelo, <strong>Ideogram</strong> genera la escena (o el lineup en “Todo el porfolio”).</li>
+              <li>Editás el título/bajada de la placa (tipografía <strong>Manrope</strong>) y descargás la pieza (imagen + texto grabado).</li>
             </ol>
           </div>
           <p className="text-xs">Notas: con un modelo elegido se usa el <strong>packshot real</strong> (Nano Banana arma la escena alrededor); sin modelo, Ideogram genera una escena genérica. En pilar <strong>Experiencia uso</strong> la escena incluye personas usando el producto.</p>

@@ -35,7 +35,10 @@ flowchart TD
     sin alterarlo**. Preserva el producto exacto + respeta el `BRAND_LOOK`. Es el
     modo por defecto con producto (Nano Banana quedó mejor que Ideogram — decisión
     del usuario). Aspecto: lo define la foto real (~1:1), no el preset.
-  - **Sin modelo → Ideogram:** recrea una escena genérica del porfolio desde texto.
+  - **Sin modelo → Ideogram:** genera la escena desde texto. En categoría
+    **"Todo el porfolio"** usa `PORFOLIO_SCENE` (muestra el **lineup** Drean —
+    heladera + cocina + lavarropas juntos, pieza de marca — en vez de un solo
+    producto) y el brief de OpenAI recibe `esPorfolio` para describir el lineup.
 - **Brillo/acabado (`ACABADO` por categoría):** heladeras = chapa de acero MUY
   brillante y reflejante; lavarropas = cuerpo grafito bien iluminado (no negro) con
   cromados/vidrio con brillo. + `PRODUCT LIGHTING` fuerte en el prompt de edición
