@@ -98,9 +98,15 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
         ctx.shadowBlur = W * 0.02;
         let yBottom = H - pad;
 
+        // Asegurar que Manrope (self-hosted) esté cargada antes de grabar el texto.
+        try {
+          await document.fonts.load(`800 ${Math.round(W * 0.065)}px Manrope`);
+          await document.fonts.load(`600 ${Math.round(W * 0.036)}px Manrope`);
+        } catch { /* fallback a Arial */ }
+
         if (bajada.trim()) {
           const fsB = Math.round(W * 0.036);
-          ctx.font = `600 ${fsB}px Arial, sans-serif`;
+          ctx.font = `600 ${fsB}px "Manrope", Arial, sans-serif`;
           const bl = wrapCanvas(ctx, bajada, W - pad * 2);
           let y = yBottom - (bl.length - 1) * fsB * 1.25;
           for (const l of bl) { ctx.fillText(l, pad, y); y += fsB * 1.25; }
@@ -108,7 +114,7 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
         }
         if (titulo.trim()) {
           const fsT = Math.round(W * 0.065);
-          ctx.font = `800 ${fsT}px Arial, sans-serif`;
+          ctx.font = `800 ${fsT}px "Manrope", Arial, sans-serif`;
           const tl = wrapCanvas(ctx, titulo, W - pad * 2);
           let y = yBottom - (tl.length - 1) * fsT * 1.12;
           for (const l of tl) { ctx.fillText(l, pad, y); y += fsT * 1.12; }
@@ -144,7 +150,7 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
             <img src={pieza.imagen} alt={`pieza ${idx + 1}`} className="block max-h-[26rem] w-auto max-w-full" />
             {/* Placa DENTRO de la imagen: scrim + título + bajada */}
             {(titulo.trim() || bajada.trim()) && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent px-4 pb-4 pt-10">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent px-4 pb-4 pt-10" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
                 {titulo.trim() && <div className="text-xl font-extrabold leading-tight text-white [text-shadow:_0_2px_8px_rgb(0_0_0_/_55%)]">{titulo}</div>}
                 {bajada.trim() && <div className="mt-1 text-sm font-medium leading-snug text-white/90 [text-shadow:_0_2px_8px_rgb(0_0_0_/_55%)]">{bajada}</div>}
               </div>
@@ -188,7 +194,6 @@ export default function ContenidoPage() {
   const [formato, setFormato] = useState("imagen");
   const [aspecto, setAspecto] = useState("vertical");
   const [cantidad, setCantidad] = useState(1);
-  const [productoReal, setProductoReal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState<Resultado | null>(null);
 
@@ -201,7 +206,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, productoReal: modelo ? productoReal : false, formato, aspecto, cantidad }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, productoReal: !!modelo, formato, aspecto, cantidad }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -217,8 +222,8 @@ export default function ContenidoPage() {
         <h2 className="text-2xl font-semibold tracking-tight">Generador de contenido</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Generá piezas orgánicas por pilar con la <strong>estética premium de Drean</strong> (cálida, oscura, minimalista,
-          maderas y mármol). Si elegís un modelo podés usar la <strong>foto real del producto</strong> (tildando “Foto real”) o
-          dejar que Ideogram lo <strong>recree</strong> en la estética. El mensaje clave va como placa editable sobre la imagen.
+          maderas y mármol). Si elegís un modelo, la pieza usa la <strong>foto real del producto</strong> (Nano Banana); sin
+          modelo, genera una escena genérica con Ideogram. El mensaje clave va como placa editable sobre la imagen.
           Video en la próxima etapa (Kling / Veo).
         </p>
       </header>
@@ -229,7 +234,7 @@ export default function ContenidoPage() {
           <div>
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Plataforma / herramientas</div>
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong>Imagen:</strong> fal.ai — <strong>Ideogram v3</strong> (recrea el electrodoméstico en la estética premium) o, con “Foto real” tildado, <strong>Nano Banana</strong> (Gemini 2.5 Flash Image: usa el packshot real y arma la escena alrededor).</li>
+              <li><strong>Imagen:</strong> fal.ai — con un modelo elegido, <strong>Nano Banana</strong> (Gemini 2.5 Flash Image) usa el <strong>packshot real</strong> y arma la escena premium alrededor; sin modelo, <strong>Ideogram v3</strong> genera la escena genérica.</li>
               <li><strong>Copy y brief:</strong> OpenAI <strong>gpt-4o-mini</strong> — arma el prompt de imagen, el caption, hashtags y el mensaje clave (título + bajada).</li>
               <li><strong>Datos:</strong> Supabase (top posts por pilar como insumo del brief) + catálogo de modelos (Drive).</li>
             </ul>
@@ -247,7 +252,7 @@ export default function ContenidoPage() {
               <li>Editás el título/bajada de la placa y descargás la pieza (imagen + texto).</li>
             </ol>
           </div>
-          <p className="text-xs">Notas: con un modelo elegido, <strong>“Foto real”</strong> usa el packshot exacto (Nano Banana arma la escena alrededor); sin tildar, Ideogram <strong>recrea</strong> el electrodoméstico (no es pixel-exacto). En pilar <strong>Experiencia uso</strong> la escena incluye personas usando el producto.</p>
+          <p className="text-xs">Notas: con un modelo elegido se usa el <strong>packshot real</strong> (Nano Banana arma la escena alrededor); sin modelo, Ideogram genera una escena genérica. En pilar <strong>Experiencia uso</strong> la escena incluye personas usando el producto.</p>
         </div>
       </details>
 
@@ -270,13 +275,6 @@ export default function ContenidoPage() {
             <option value="">{modelos.length === 0 ? "— sin modelos cargados —" : "— sin producto (genérico) —"}</option>
             {modelos.map((m) => <option key={m.sku} value={m.sku}>{m.nombre}</option>)}
           </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-medium text-muted-foreground">Imagen del producto</span>
-          <label className={`flex items-center gap-1.5 rounded border px-2 py-1.5 text-sm ${!modelo ? "opacity-50" : "cursor-pointer"}`} title={!modelo ? "Elegí un modelo para usar la foto real" : "Foto real del packshot vs. recreación de Ideogram"}>
-            <input type="checkbox" checked={modelo ? productoReal : false} disabled={!modelo} onChange={(e) => setProductoReal(e.target.checked)} />
-            <span>{productoReal && modelo ? "Foto real (Nano Banana)" : "Recreada (Ideogram)"}</span>
-          </label>
         </label>
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-medium text-muted-foreground">Formato</span>
