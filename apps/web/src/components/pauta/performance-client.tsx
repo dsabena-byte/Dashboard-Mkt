@@ -134,13 +134,28 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <div className="mb-3 mt-6 text-sm font-medium text-muted-foreground">{children}</div>;
 }
 
+// Anchos de columna compartidos entre la tabla maestra por medio y las tablas
+// por dimensión (categoría / rol), para que TODAS las columnas queden alineadas
+// verticalmente (misma grilla de 10 columnas + table-fixed).
+function ColGroup10() {
+  return (
+    <colgroup>
+      <col style={{ width: "19%" }} />
+      {Array.from({ length: 9 }).map((_, i) => (
+        <col key={i} style={{ width: "9%" }} />
+      ))}
+    </colgroup>
+  );
+}
+
 // Tabla por dimensión (categoría o rol) con la MISMA estructura que la tabla maestra
 // por medio: general (gris) + efectivo (semáforo).
 function DimTable({ titulo, col1, model, money }: { titulo: string; col1: string; model: ReturnType<typeof buildDimModel>; money: (n: number) => string }) {
   return (
     <div className="overflow-x-auto rounded-lg border bg-card">
       <div className="border-b px-3 py-2 text-xs font-semibold">{titulo}</div>
-      <table className="w-full text-xs">
+      <table className="w-full table-fixed text-xs">
+        <ColGroup10 />
         <thead className="border-b">
           <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
             <th className="px-3 py-2">{col1}</th>
@@ -1114,7 +1129,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             El semáforo vive solo en lo efectivo (CPM efectivo, CTR, VTR vs el mejor medio). Un CPM barato con VTR bajo no es barato de verdad.
           </p>
           <div className="mb-3 overflow-x-auto rounded-lg border bg-card">
-            <table className="w-full text-xs">
+            <table className="w-full table-fixed text-xs">
+              <ColGroup10 />
               <thead className="border-b">
                 <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                   <th className="px-3 py-2">Medio</th>
