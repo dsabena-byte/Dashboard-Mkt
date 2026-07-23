@@ -29,18 +29,6 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 const fmtUSD = (n: number): string =>
   `US$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// Agrega la inversión de Google Ads de OMD por dimensión (canal/categoría) o total.
-interface GadsAgg { k: string; costo: number; impresiones: number; clicks: number }
-function aggGads(rows: GoogleAdsOmdRow[], dim: "canal" | "categoria" | null): GadsAgg[] {
-  const map = new Map<string, GadsAgg>();
-  for (const r of rows) {
-    const k = dim ? r[dim] : "Total";
-    const a = map.get(k) ?? { k, costo: 0, impresiones: 0, clicks: 0 };
-    a.costo += r.costo; a.impresiones += r.impresiones; a.clicks += r.clicks;
-    map.set(k, a);
-  }
-  return [...map.values()].sort((a, b) => b.costo - a.costo);
-}
 
 function fmtNum(n: number): string {
   return formatNumber(Math.round(n));
@@ -91,7 +79,7 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
 // Agrega por dimensión (categoría o rol) con la MISMA estructura/fuentes que la tabla
 // maestra: VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD; EFECTIVO
 // (VTR, completions) desde DV360 + Meta/TikTok automáticos.
-function buildDimModel(omd: PautaRow[], dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], dim: "categoria" | "rol", gapMedios: Set<string>) {
+function buildDimModel(omd: PautaRow[], dv: Dv360CreativeRow[], meta: MetaPaidCreativeRow[], gads: GoogleAdsOmdRow[], dim: "categoria" | "rol", gapMedios: Set<string>) {
   type Acc = { inv: number; impr: number; clicks: number; comp: number; vimpr: number; reach: number };
   const agg = new Map<string, Acc>();
   const get = (k: string) => { let e = agg.get(k); if (!e) { e = { inv: 0, impr: 0, clicks: 0, comp: 0, vimpr: 0, reach: 0 }; agg.set(k, e); } return e; };
@@ -118,6 +106,13 @@ function buildDimModel(omd: PautaRow[], dv: Dv360CreativeRow[], meta: MetaPaidCr
     }
     const v = metaRowVideo(r);
     e.vimpr += v.vbase; e.comp += v.comp;
+  }
+  // Google Ads de OMD (Demand Gen + Search) desde GA4 — gap-fill (solo canales sin
+  // plan OMD; Demand Gen/Search son Consideración/mid funnel).
+  for (const r of gads) {
+    if (!gapMedios.has(r.canal)) continue;
+    const e = get((dim === "categoria" ? r.categoria : "Consideración") || "—");
+    e.inv += r.costo; e.impr += r.impresiones; e.clicks += r.clicks;
   }
   const items = [...agg.entries()]
     .map(([nombre, e]) => ({
@@ -329,9 +324,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       ),
     [googleAdsOmd, digitalOk, selMeses, selCats],
   );
-  const gadsByCanal = useMemo(() => aggGads(gadsOmdF, "canal"), [gadsOmdF]);
-  const gadsByCat = useMemo(() => aggGads(gadsOmdF, "categoria"), [gadsOmdF]);
-  const gadsTotal = useMemo(() => aggGads(gadsOmdF, null)[0], [gadsOmdF]);
   // Embudo de visibilidad real de video (Meta Marketing API): cuántas impresiones
   // llegan a cada % del video. Solo Meta (el cron meta-paid-sync trae los cuartiles).
   const metaVideoFunnel = useMemo(() => {
@@ -471,10 +463,12 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     const s = new Set<string>();
     for (const r of dv360Conv) { const m = DVMED[r.canal] ?? r.canal; if (!omdMedios.has(m)) s.add(m); }
     for (const r of metaPaidF) { const m = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null; if (m && !omdMedios.has(m)) s.add(m); }
+    // Google Ads de OMD (Demand Gen / Search) desde GA4 — gap-fill si no están en el plan OMD del período.
+    for (const r of gadsOmdF) { if (!omdMedios.has(r.canal)) s.add(r.canal); }
     return s;
-  }, [byMedio, dv360Conv, metaPaidF]);
-  const catModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, "categoria", dvGapMedios), [digitalRows, dv360Conv, metaPaidF, dvGapMedios]);
-  const rolModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, "rol", dvGapMedios), [digitalRows, dv360Conv, metaPaidF, dvGapMedios]);
+  }, [byMedio, dv360Conv, metaPaidF, gadsOmdF]);
+  const catModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, gadsOmdF, "categoria", dvGapMedios), [digitalRows, dv360Conv, metaPaidF, gadsOmdF, dvGapMedios]);
+  const rolModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, gadsOmdF, "rol", dvGapMedios), [digitalRows, dv360Conv, metaPaidF, gadsOmdF, dvGapMedios]);
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
   const minPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const maxPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
@@ -736,8 +730,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       if (!medio) continue;
       add(medio, r.spend ?? 0, r.impresiones ?? 0, r.clicks ?? 0, r.alcance ?? 0);
     }
+    // Google Ads de OMD (Demand Gen + Search) desde GA4 — el medio es el canal.
+    for (const r of gadsOmdF) add(r.canal, r.costo, r.impresiones, r.clicks, 0);
     return m;
-  }, [dv360Conv, dv360Reach, selMesesISO, metaPaidF]);
+  }, [dv360Conv, dv360Reach, selMesesISO, metaPaidF, gadsOmdF]);
   const medioModel = useMemo(() => {
     const mk = (m: typeof byMedio[number]) => {
       const v = vtrByMedio.get(m.medio);
@@ -1111,8 +1107,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         <div>
           <SectionTitle>Tabla maestra · medios digitales · general + efectivo</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            <strong>Fuente: procesos automáticos de DV360 + Meta API</strong> (responde a los filtros de arriba). Solo medios digitales con
-            performance medida (DV360 = plataforma; el medio es el canal). Volumen + impacto real, todo junto:{" "}
+            <strong>Fuente: procesos automáticos de DV360 + Meta API + Google Ads (OMD, vía GA4)</strong> (responde a los filtros de arriba).
+            Incluye <strong>Google Demand Gen</strong> y <strong>Google Search</strong> de OMD (Google Ads sin reach/VTR → esas columnas van en “—”).
+            Volumen + impacto real, todo junto:{" "}
             <strong>Impresiones ↔ VTR</strong> (% que completó el video) · <strong>CPM ↔ CPM efectivo</strong> (costo por view completo).
             El semáforo vive solo en lo efectivo (CPM efectivo, CTR, VTR vs el mejor medio). Un CPM barato con VTR bajo no es barato de verdad.
           </p>
@@ -1359,69 +1356,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               </p>
             </>
           )}
-        </div>
-      )}
-
-      {/* ===== GOOGLE ADS · OMD MARKETING (Demand Gen + Search) ===== */}
-      {tab === "Por Medio" && gadsByCanal.length > 0 && (
-        <div className="mt-8">
-          <SectionTitle>Google Ads · OMD Marketing (Demand Gen + Search)</SectionTitle>
-          <p className="mb-3 text-[11px] text-muted-foreground">
-            Fuente: <strong>Google Ads de OMD</strong> vía la GA4 Data API (automático). Excluye el ecommerce (campañas <code>inhouse_*</code>,
-            que están en Pauta Ecommerce). Costo en ARS. Responde a los filtros de mes/categoría de arriba.
-          </p>
-          <div className="grid gap-6 lg:grid-cols-2">
-            {([
-              { titulo: "Por canal", rows: gadsByCanal, col: "Canal" },
-              { titulo: "Por categoría", rows: gadsByCat, col: "Categoría" },
-            ] as const).map(({ titulo, rows: grows, col }) => (
-              <div key={titulo} className="overflow-x-auto rounded-lg border">
-                <div className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold">{titulo}</div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-[11px] uppercase tracking-wide text-muted-foreground">
-                      <th className="px-3 py-2 text-left font-medium">{col}</th>
-                      <th className="px-3 py-2 text-right font-medium">Inversión</th>
-                      <th className="px-3 py-2 text-right font-medium">Impres.</th>
-                      <th className="px-3 py-2 text-right font-medium">Clicks</th>
-                      <th className="px-3 py-2 text-right font-medium">CPM</th>
-                      <th className="px-3 py-2 text-right font-medium">CPC</th>
-                      <th className="px-3 py-2 text-right font-medium">CTR</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {grows.map((r) => {
-                      const cpm = r.impresiones > 0 ? (r.costo / r.impresiones) * 1000 : 0;
-                      const cpc = r.clicks > 0 ? r.costo / r.clicks : 0;
-                      const ctr = r.impresiones > 0 ? (r.clicks / r.impresiones) * 100 : 0;
-                      return (
-                        <tr key={r.k} className="border-b last:border-0">
-                          <td className="px-3 py-2 font-medium">{r.k}</td>
-                          <td className="px-3 py-2 text-right">{formatCurrency(r.costo)}</td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">{fmtNum(r.impresiones)}</td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">{fmtNum(r.clicks)}</td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(cpm)}</td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">{formatCurrency(cpc)}</td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">{ctr.toFixed(2)}%</td>
-                        </tr>
-                      );
-                    })}
-                    {gadsTotal && (
-                      <tr className="bg-muted/20 font-semibold">
-                        <td className="px-3 py-2">Total</td>
-                        <td className="px-3 py-2 text-right">{formatCurrency(gadsTotal.costo)}</td>
-                        <td className="px-3 py-2 text-right">{fmtNum(gadsTotal.impresiones)}</td>
-                        <td className="px-3 py-2 text-right">{fmtNum(gadsTotal.clicks)}</td>
-                        <td className="px-3 py-2 text-right">{formatCurrency(gadsTotal.impresiones > 0 ? (gadsTotal.costo / gadsTotal.impresiones) * 1000 : 0)}</td>
-                        <td className="px-3 py-2 text-right">{formatCurrency(gadsTotal.clicks > 0 ? gadsTotal.costo / gadsTotal.clicks : 0)}</td>
-                        <td className="px-3 py-2 text-right">{(gadsTotal.impresiones > 0 ? (gadsTotal.clicks / gadsTotal.impresiones) * 100 : 0).toFixed(2)}%</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
