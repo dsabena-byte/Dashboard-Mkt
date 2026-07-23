@@ -1,0 +1,46 @@
+name: TikTok sync (Ads · nivel creativo)
+
+on:
+  schedule:
+    - cron: "50 5 * * *"  # 05:50 UTC diario
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Días de backfill (1-365). Default 30."
+        required: false
+        default: "30"
+      dry:
+        description: "1 = dry-run (no escribe, sólo valida). Vacío = ingest."
+        required: false
+        default: ""
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger /api/cron/tiktok-sync
+        run: |
+          set -euo pipefail
+          DAYS="${{ github.event.inputs.days || '30' }}"
+          DRY="${{ github.event.inputs.dry || '' }}"
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/tiktok-sync?days=${DAYS}"
+          if [ -n "$DRY" ]; then URL="${URL}&dry=1"; fi
+          echo "GET $URL"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 600 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" \
+            "$URL")
+          echo "HTTP $HTTP_CODE"
+          echo "Response body:"
+          cat response.json
+          echo ""
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Endpoint returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+          if grep -q '"error"' response.json; then
+            echo "::error::Cron devolvió error"
+            exit 1
+          fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
