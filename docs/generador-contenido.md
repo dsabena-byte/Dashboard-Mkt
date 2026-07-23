@@ -28,11 +28,18 @@ flowchart TD
   luz dramática cálida; **minimalista, un solo producto, sin cargar**. Evita
   explícitamente lo claro/aireado/lavado/pastel/stock. **Es el único lugar para
   calibrar el look.**
-- **Modelo de producto (opcional):** si se elige un modelo del catálogo, se
-  **describe** ese electrodoméstico en el prompt (nombre + `descripcion` con
-  config de puertas/terminación) para que Ideogram lo **recree lo más parecido
-  posible**. ⚠️ **NO es el packshot pixel-exacto** — es una recreación fiel en
-  forma/tipo, no la foto real (ver §3).
+- **Modelo de producto (opcional) — dos modos:**
+  - **Recreada (Ideogram, default):** se **describe** el electrodoméstico en el
+    prompt (nombre + `descripcion`) para que Ideogram lo recree lo más parecido
+    posible. ⚠️ NO es pixel-exacto (ver §3).
+  - **Foto real (Nano Banana, toggle "Foto real"):** se le pasa el **packshot
+    real** (`driveImageUrl(driveFileId)`) como referencia a **Nano Banana**
+    (`fal-ai/nano-banana/edit`, Gemini 2.5 Flash Image edit) y se le pide armar
+    la escena premium **alrededor del producto sin alterarlo**. Preserva el
+    producto exacto + respeta el `BRAND_LOOK`. Requiere un modelo elegido.
+    Estado: **implementado, pendiente de validar calidad en la app** (no se pudo
+    validar desde el entorno de dev; ver §4). La proporción/aspecto salen de la
+    foto real, no del prompt (control de aspecto limitado en este modo).
 - **Proporción por categoría** (`PROPORCION`): heladera = alta; cocina/lavarropas
   = altura mesada (al ras); + medidas reales del catálogo. Sólo se aplica en modo
   producto-hero (sin personas).
@@ -118,23 +125,29 @@ una pieza hermosa y on-brand pesa más que el producto pixel-exacto.
 
 ---
 
-## 4. Próximo paso (cuando retomemos)
+## 4. Producto real — estado actual (Nano Banana)
 
-**Objetivo:** meter el **producto real (packshot)** dentro de la escena de
-Ideogram —que quedó muy buena— **bien colocado**, para tener estética premium +
-producto exacto + buena integración.
+**Implementado:** modo **"Foto real"** con **Nano Banana** (`fal-ai/nano-banana/edit`,
+Gemini 2.5 Flash Image edit). Toma el packshot real como referencia y arma la
+escena premium alrededor sin alterar el producto — el enfoque de "product in
+scene" que en §3 quedaba pendiente. Es el modelo de edición por referencia que
+**no existía** cuando se probó Bria; por eso ahora sí es viable "producto real +
+estética premium".
 
-Ideas a probar (herramienta de compositing/inpainting mejor que Bria):
-- **Inpainting con máscara:** generar la escena con Ideogram con un **hueco/máscara**
-  donde va el producto → inpaint del packshot real en esa región
-  (ej. FLUX inpaint / fal). Requiere generar/definir la máscara.
-- **Relight/harmonization:** componer el packshot en la escena y **re-iluminarlo**
-  para que matchee la luz cálida (modelos de relighting).
-- **Modelos de "product in scene"** más nuevos de fal que respeten iluminación y
-  perspectiva (evaluar los que salgan; Bria quedó descartado por el look claro).
-- Evaluar controlar **escala y perspectiva** con placement manual + máscara.
+**⚠️ Pendiente: validar calidad en la app deployada.** No se pudo validar desde
+el entorno de dev (sin `FAL_KEY` local + egress limitado). Hay que generar con el
+toggle "Foto real" y evaluar: preservación del producto, integración/relight,
+respeto del `BRAND_LOOK`.
 
-Hasta lograrlo, el modo producto **recrea** el electrodoméstico (no exacto).
+**Si Nano Banana no convence, alternativas (1 línea, cambiar `MODEL_EDIT`):**
+- `fal-ai/gemini-25-flash-image/edit` (mismo modelo, id alternativo).
+- **Flux Kontext** (`fal-ai/flux-pro/kontext`) — usa `image_url` (singular) en vez
+  de `image_urls`; más control fotográfico.
+- **Seedream v4 edit** (`fal-ai/bytedance/seedream/v4/edit`).
+
+**Limitación conocida:** en modo Foto real el **aspecto** lo define la foto de
+referencia (packshot ~1:1), no el preset — el control de vertical/story es un
+"hint" en el prompt, no garantizado.
 
 ### Otros pendientes
 - **Video corto** (Kling 3.0 / Veo 3.1) vía la cola async de fal.

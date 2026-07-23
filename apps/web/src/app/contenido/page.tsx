@@ -188,6 +188,7 @@ export default function ContenidoPage() {
   const [formato, setFormato] = useState("imagen");
   const [aspecto, setAspecto] = useState("vertical");
   const [cantidad, setCantidad] = useState(1);
+  const [productoReal, setProductoReal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState<Resultado | null>(null);
 
@@ -200,7 +201,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, formato, aspecto, cantidad }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, productoReal: modelo ? productoReal : false, formato, aspecto, cantidad }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -216,8 +217,9 @@ export default function ContenidoPage() {
         <h2 className="text-2xl font-semibold tracking-tight">Generador de contenido</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Generá piezas orgánicas por pilar con la <strong>estética premium de Drean</strong> (cálida, oscura, minimalista,
-          maderas y mármol). Si elegís un modelo, la pieza <strong>recrea ese electrodoméstico</strong> en la estética (no es
-          el packshot exacto). El mensaje clave va como placa editable sobre la imagen. Video en la próxima etapa (Kling / Veo).
+          maderas y mármol). Si elegís un modelo podés usar la <strong>foto real del producto</strong> (tildando “Foto real”) o
+          dejar que Ideogram lo <strong>recree</strong> en la estética. El mensaje clave va como placa editable sobre la imagen.
+          Video en la próxima etapa (Kling / Veo).
         </p>
       </header>
 
@@ -227,7 +229,7 @@ export default function ContenidoPage() {
           <div>
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Plataforma / herramientas</div>
             <ul className="list-disc space-y-1 pl-5">
-              <li><strong>Imagen:</strong> fal.ai — modelo <strong>Ideogram v3</strong> (respeta la estética premium; genera la escena y el electrodoméstico).</li>
+              <li><strong>Imagen:</strong> fal.ai — <strong>Ideogram v3</strong> (recrea el electrodoméstico en la estética premium) o, con “Foto real” tildado, <strong>Nano Banana</strong> (Gemini 2.5 Flash Image: usa el packshot real y arma la escena alrededor).</li>
               <li><strong>Copy y brief:</strong> OpenAI <strong>gpt-4o-mini</strong> — arma el prompt de imagen, el caption, hashtags y el mensaje clave (título + bajada).</li>
               <li><strong>Datos:</strong> Supabase (top posts por pilar como insumo del brief) + catálogo de modelos (Drive).</li>
             </ul>
@@ -245,7 +247,7 @@ export default function ContenidoPage() {
               <li>Editás el título/bajada de la placa y descargás la pieza (imagen + texto).</li>
             </ol>
           </div>
-          <p className="text-xs">Notas: con un modelo elegido se <strong>recrea</strong> ese electrodoméstico en la estética (no es el packshot pixel-exacto). En pilar <strong>Experiencia uso</strong> la escena incluye personas usando el producto.</p>
+          <p className="text-xs">Notas: con un modelo elegido, <strong>“Foto real”</strong> usa el packshot exacto (Nano Banana arma la escena alrededor); sin tildar, Ideogram <strong>recrea</strong> el electrodoméstico (no es pixel-exacto). En pilar <strong>Experiencia uso</strong> la escena incluye personas usando el producto.</p>
         </div>
       </details>
 
@@ -268,6 +270,13 @@ export default function ContenidoPage() {
             <option value="">{modelos.length === 0 ? "— sin modelos cargados —" : "— sin producto (genérico) —"}</option>
             {modelos.map((m) => <option key={m.sku} value={m.sku}>{m.nombre}</option>)}
           </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="font-medium text-muted-foreground">Imagen del producto</span>
+          <label className={`flex items-center gap-1.5 rounded border px-2 py-1.5 text-sm ${!modelo ? "opacity-50" : "cursor-pointer"}`} title={!modelo ? "Elegí un modelo para usar la foto real" : "Foto real del packshot vs. recreación de Ideogram"}>
+            <input type="checkbox" checked={modelo ? productoReal : false} disabled={!modelo} onChange={(e) => setProductoReal(e.target.checked)} />
+            <span>{productoReal && modelo ? "Foto real (Nano Banana)" : "Recreada (Ideogram)"}</span>
+          </label>
         </label>
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-medium text-muted-foreground">Formato</span>
