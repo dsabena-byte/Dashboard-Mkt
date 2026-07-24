@@ -95,8 +95,10 @@ Devolvé JSON con:
 // Prompt final = sujeto + estética Drean fija + minimalismo + proporción por
 // categoría (+ medidas reales) + personas + no-text. Todo lo genera Ideogram,
 // que sí respeta el look premium (Bria salía claro/genérico).
-function buildImagePrompt(escena: string, categoria: string, personas: boolean, medidas?: string): string {
-  const parts = [escena.trim(), BRAND_LOOK];
+function buildImagePrompt(escena: string, categoria: string, personas: boolean, medidas?: string, detalles?: string): string {
+  const parts = [escena.trim()];
+  if (detalles) parts.push(`USER DETAILS (very important, follow these EXACTLY): ${detalles}.`);
+  parts.push(BRAND_LOOK);
   if (personas) {
     // Escena lifestyle: el foco son las personas; el producto es contextual.
     parts.push(PERSONAS_ON);
@@ -116,15 +118,18 @@ function buildImagePrompt(escena: string, categoria: string, personas: boolean, 
 // Prompt para el modo "producto real" (Nano Banana edit). Le damos el packshot
 // real como referencia y le pedimos que arme la escena premium alrededor SIN
 // alterar el producto. La proporción sale de la foto real (no del prompt).
-function buildEditPrompt(escena: string, categoria: string, nombre: string, personas: boolean, vertical: boolean): string {
+function buildEditPrompt(escena: string, categoria: string, nombre: string, personas: boolean, vertical: boolean, detalles?: string): string {
   const parts = [
     `Using the Drean ${nombre} shown in the provided product photo as the exact hero product, create a premium social-media image.`,
     `Scene: ${escena.trim()}.`,
+  ];
+  if (detalles) parts.push(`USER DETAILS (very important, follow these EXACTLY): ${detalles}.`);
+  parts.push(
     "CRITICAL: keep the appliance IDENTICAL to the reference photo — same model, shape, proportions, colors, finish, doors, knobs and details. Do NOT redesign, replace, duplicate or restyle the product; there is only ONE appliance (the reference one). Build the environment around it.",
     // El relight a la escena oscura subexpone el producto → luz clave explícita.
     "PRODUCT LIGHTING (very important): the appliance is BRILLIANTLY and evenly lit as the hero — bright, glossy, crisp and fully exposed, with strong clean specular highlights on its finish, glass, chrome and controls. It is the BRIGHTEST, clearest, most eye-catching element, clearly standing out and distinctly brighter than the surroundings. NEVER underexposed, dark, dim, matte, muddy or lost in shadow. The surrounding environment stays warm and premium but still clearly visible (not black).",
     BRAND_LOOK,
-  ];
+  );
   if (personas) parts.push(PERSONAS_ON);
   else parts.push(MINIMAL, PROPORCION[categoria] ?? PROPORCION.porfolio ?? "");
   if (ACABADO[categoria]) parts.push(ACABADO[categoria]!);
@@ -135,10 +140,11 @@ function buildEditPrompt(escena: string, categoria: string, nombre: string, pers
 
 // Prompt de "todo el porfolio" para Nano Banana con VARIAS fotos reales (una por
 // categoría): arma el lineup Drean con NUESTROS productos, sin alterarlos.
-function buildPorfolioPrompt(escena: string, vertical: boolean): string {
+function buildPorfolioPrompt(escena: string, vertical: boolean, detalles?: string): string {
   const parts = [
     "Create a premium brand social-media image showing ALL the Drean appliances from the provided product photos arranged TOGETHER in one cohesive premium home (a modern kitchen/laundry).",
     `Context: ${escena.trim()}.`,
+    detalles ? `USER DETAILS (very important, follow these EXACTLY): ${detalles}.` : "",
     "CRITICAL: use the EXACT products from the reference photos — keep each appliance IDENTICAL (same models, shapes, proportions, finishes, doors, controls); do NOT redesign, replace or invent appliances. Show all of them together, arranged tastefully and built-in as a coordinated lineup.",
     ACABADO.porfolio ?? "",
     BRAND_LOOK,
@@ -207,6 +213,7 @@ export async function POST(request: Request) {
       aspecto?: FalSizeKey;
       cantidad?: number;
       productoReal?: boolean; // usar el packshot real (Nano Banana edit) en vez de recrear con Ideogram
+      detalles?: string; // texto libre: instrucciones extra del usuario para el prompt
       ref_urls?: string[]; // posteos de referencia elegidos (definen el estilo)
     };
     const pilar = body.pilar && (PILARES as readonly string[]).includes(body.pilar) ? body.pilar : PILARES[0];
@@ -229,6 +236,7 @@ export async function POST(request: Request) {
     const personas = body.personas ?? pilar === "Experiencia uso";
     const cantidad = Math.min(MAX_PIEZAS, Math.max(1, Math.floor(body.cantidad ?? 1)));
     const mensajeOverride = (body.mensaje ?? "").trim();
+    const detalles = (body.detalles ?? "").trim();
 
     const topsAll = (await getTopByPilar())[pilar] ?? [];
     const tops = filtrarPorCategoria(topsAll, categoria);
@@ -248,7 +256,7 @@ export async function POST(request: Request) {
           let promptMostrar: string;
           if (productoReal && producto && packshotUrl) {
             // Nano Banana edit: packshot real como referencia + escena premium alrededor.
-            const editPrompt = buildEditPrompt(brief.escena ?? "", categoria, producto.nombre, personas, aspecto !== "feed");
+            const editPrompt = buildEditPrompt(brief.escena ?? "", categoria, producto.nombre, personas, aspecto !== "feed", detalles);
             const img = await falImage(MODEL_EDIT, {
               prompt: editPrompt,
               image_urls: [packshotUrl],
@@ -258,7 +266,7 @@ export async function POST(request: Request) {
             promptMostrar = editPrompt;
           } else if (esPorfolio && porfolioUrls.length > 0) {
             // Nano Banana con varias fotos reales → lineup con NUESTROS productos.
-            const editPrompt = buildPorfolioPrompt(brief.escena ?? "", aspecto !== "feed");
+            const editPrompt = buildPorfolioPrompt(brief.escena ?? "", aspecto !== "feed", detalles);
             const img = await falImage(MODEL_EDIT, {
               prompt: editPrompt,
               image_urls: porfolioUrls,
@@ -268,7 +276,7 @@ export async function POST(request: Request) {
             promptMostrar = editPrompt;
           } else {
             // Ideogram: recrea el electrodoméstico a partir de la descripción.
-            const prompt = buildImagePrompt(brief.escena ?? "", categoria, personas, producto?.medidas);
+            const prompt = buildImagePrompt(brief.escena ?? "", categoria, personas, producto?.medidas, detalles);
             const img = await falImage(MODEL_IDEOGRAM, {
               prompt,
               image_size: FAL_SIZES[aspecto],
