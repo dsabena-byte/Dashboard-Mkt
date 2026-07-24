@@ -210,6 +210,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoErr, setVideoErr] = useState<string | null>(null);
   const modelos = useMemo(() => getModelos(e.categoria ?? "porfolio"), [e.categoria]);
+  const esCreativo = (e.tipo_contenido ?? "producto") === "creativo";
 
   useEffect(() => { setE(entry); }, [entry]);
 
@@ -281,24 +282,27 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
           <option value="producto">Producto</option>
           <option value="creativo">Creativo/editorial</option>
         </select>
-        {(e.tipo_contenido ?? "producto") === "creativo" && (
+        {esCreativo ? (
           <select value={e.subtipo ?? "beneficio"} onChange={(ev) => { const s = ev.target.value; setE({ ...e, subtipo: s }); save({ subtipo: s }); }} className={field}>
             <option value="efemeride">Efeméride</option>
             <option value="trending">Trending</option>
             <option value="beneficio">Beneficio</option>
             <option value="disruptivo">Disruptivo</option>
           </select>
+        ) : (
+          <>
+            <select value={e.pilar ?? ""} onChange={(ev) => setE({ ...e, pilar: ev.target.value })} onBlur={() => save({ pilar: e.pilar })} className={field}>
+              {PILARES.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select value={e.categoria ?? "porfolio"} onChange={(ev) => { const c = ev.target.value; setE({ ...e, categoria: c, modelo: null }); save({ categoria: c, modelo: null }); }} className={field}>
+              {CATEGORIAS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
+            </select>
+            <select value={e.modelo ?? ""} onChange={(ev) => setE({ ...e, modelo: ev.target.value || null })} onBlur={() => save({ modelo: e.modelo })} className={field} disabled={modelos.length === 0}>
+              <option value="">{modelos.length === 0 ? "— sin modelo —" : "— genérico —"}</option>
+              {modelos.map((mm) => <option key={mm.sku} value={mm.sku}>{mm.nombreCorto ?? mm.nombre}</option>)}
+            </select>
+          </>
         )}
-        <select value={e.pilar ?? ""} onChange={(ev) => setE({ ...e, pilar: ev.target.value })} onBlur={() => save({ pilar: e.pilar })} className={field}>
-          {PILARES.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
-        <select value={e.categoria ?? "porfolio"} onChange={(ev) => { const c = ev.target.value; setE({ ...e, categoria: c, modelo: null }); save({ categoria: c, modelo: null }); }} className={field}>
-          {CATEGORIAS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
-        </select>
-        <select value={e.modelo ?? ""} onChange={(ev) => setE({ ...e, modelo: ev.target.value || null })} onBlur={() => save({ modelo: e.modelo })} className={field} disabled={modelos.length === 0}>
-          <option value="">{modelos.length === 0 ? "— sin modelo —" : "— genérico —"}</option>
-          {modelos.map((mm) => <option key={mm.sku} value={mm.sku}>{mm.nombreCorto ?? mm.nombre}</option>)}
-        </select>
         <select value={e.aspecto ?? "vertical"} onChange={(ev) => setE({ ...e, aspecto: ev.target.value })} onBlur={() => save({ aspecto: e.aspecto })} className={field}>
           {ASPECTOS.map((a) => <option key={a.v} value={a.v}>{a.l}</option>)}
         </select>

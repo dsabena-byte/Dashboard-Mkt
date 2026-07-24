@@ -349,25 +349,29 @@ export default function ContenidoPage() {
             </select>
           </label>
         )}
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-medium text-muted-foreground">Pilar</span>
-          <select value={pilar} onChange={(e) => setPilar(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
-            {PILARES.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-medium text-muted-foreground">Categoría</span>
-          <select value={categoria} onChange={(e) => { setCategoria(e.target.value); setModelo(""); }} className="rounded border px-2 py-1.5 text-sm">
-            {CATEGORIAS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="font-medium text-muted-foreground">Modelo (producto real)</span>
-          <select value={modelo} onChange={(e) => setModelo(e.target.value)} className="rounded border px-2 py-1.5 text-sm" disabled={modelos.length === 0}>
-            <option value="">{modelos.length === 0 ? "— sin modelos cargados —" : "— sin producto (genérico) —"}</option>
-            {modelos.map((m) => <option key={m.sku} value={m.sku}>{m.nombreCorto ?? m.nombre}</option>)}
-          </select>
-        </label>
+        {!creativo && (
+          <>
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="font-medium text-muted-foreground">Pilar</span>
+              <select value={pilar} onChange={(e) => setPilar(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
+                {PILARES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="font-medium text-muted-foreground">Categoría</span>
+              <select value={categoria} onChange={(e) => { setCategoria(e.target.value); setModelo(""); }} className="rounded border px-2 py-1.5 text-sm">
+                {CATEGORIAS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="font-medium text-muted-foreground">Modelo (producto real)</span>
+              <select value={modelo} onChange={(e) => setModelo(e.target.value)} className="rounded border px-2 py-1.5 text-sm" disabled={modelos.length === 0}>
+                <option value="">{modelos.length === 0 ? "— sin modelos cargados —" : "— sin producto (genérico) —"}</option>
+                {modelos.map((m) => <option key={m.sku} value={m.sku}>{m.nombreCorto ?? m.nombre}</option>)}
+              </select>
+            </label>
+          </>
+        )}
         <label className="flex flex-col gap-1 text-xs">
           <span className="font-medium text-muted-foreground">Formato</span>
           <select value={formato} onChange={(e) => setFormato(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
