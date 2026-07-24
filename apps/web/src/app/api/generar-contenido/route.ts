@@ -24,7 +24,7 @@ const MODEL_EDIT = "fal-ai/nano-banana/edit";
 const MAX_PIEZAS = 4;
 
 const NO_TEXT = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
-const PERSONAS_ON = "REQUIRED — this is a LIFESTYLE scene with PEOPLE, not an empty product shot: real people (a person or a family) are PROMINENTLY visible in the foreground as the MAIN SUBJECT, large in frame, actively USING and interacting with the Drean appliance (loading the washing machine, cooking on the range, taking food from the fridge). Candid, authentic, natural skin and expressions. The people MUST be clearly present and central.";
+const PERSONAS_ON = "REQUIRED — this is a LIFESTYLE scene with PEOPLE, not an empty product shot: real people (a person or a family) are PROMINENTLY visible in the foreground as the MAIN SUBJECT, large in frame, actively USING and interacting with the Drean appliance (loading the washing machine, cooking on the range, taking food from the fridge). Candid, authentic, natural skin and expressions. The people MUST be clearly present and central. The whole scene is warmly but CLEARLY and BRIGHTLY lit (not dark, dim or gloomy), and the Drean appliance is well-lit, bright and clearly visible — never lost in shadow.";
 
 interface Brief {
   escena: string;
