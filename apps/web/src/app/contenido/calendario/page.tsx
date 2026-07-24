@@ -209,6 +209,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [videoPrompt, setVideoPrompt] = useState("");
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoErr, setVideoErr] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const modelos = useMemo(() => getModelos(e.categoria ?? "porfolio"), [e.categoria]);
   const esCreativo = (e.tipo_contenido ?? "producto") === "creativo";
 
@@ -244,6 +245,25 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     setBusy("del");
     await fetch(`/api/contenido/calendario?id=${e.id}`, { method: "DELETE" });
     onChange();
+  }
+
+  async function subir(kind: "imagen" | "video", file: File | null) {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("id", e.id);
+      fd.append("kind", kind);
+      const r = await fetch("/api/contenido/calendario/upload", { method: "POST", body: fd });
+      const j = (await r.json()) as { ok?: boolean; item?: Cal; error?: string };
+      if (j.ok && j.item) { setE(j.item); onChange(); }
+      else alert(`Error al subir: ${j.error ?? "?"}`);
+    } catch (err) {
+      alert(`Error al subir: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function generarVideo() {
@@ -319,6 +339,15 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
         <button onClick={generar} disabled={busy === "gen" || busy === "del"} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
           {busy === "gen" ? "Generando… (~1 min)" : e.imagen_url ? "Regenerar" : "Generar"}
         </button>
+        <span className="text-[11px] text-muted-foreground">o subí contenido propio:</span>
+        <label className={`cursor-pointer rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary ${uploading ? "opacity-50" : ""}`}>
+          {uploading ? "Subiendo…" : "⬆ Imagen"}
+          <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(ev) => { subir("imagen", ev.target.files?.[0] ?? null); ev.target.value = ""; }} />
+        </label>
+        <label className={`cursor-pointer rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary ${uploading ? "opacity-50" : ""}`}>
+          {uploading ? "Subiendo…" : "⬆ Video"}
+          <input type="file" accept="video/*" className="hidden" disabled={uploading} onChange={(ev) => { subir("video", ev.target.files?.[0] ?? null); ev.target.value = ""; }} />
+        </label>
       </div>
 
       {/* Contenido generado */}

@@ -180,6 +180,11 @@ publicado).
   Escriben con service-role (`lib/supabase-admin.ts`).
 - **Flujo:** agregás piezas a un día → "Generar" (imagen + copy) → editás
   título/bajada/caption → **Aprobar** ✓.
+- **Contenido externo:** cada pieza permite **subir imagen/video propio**
+  (desarrollado por fuera) → se guarda en el bucket `contenido-uploads` de
+  Supabase Storage (público) y se setea `imagen_url`/`video_url`. Endpoint
+  `/api/contenido/calendario/upload` (migración 0078 crea el bucket). Así el
+  calendario mezcla contenido IA + contenido propio.
 - **Fase 2 (pendiente):** publicación automática en IG/FB. Necesita permisos de
   publicación de Meta (`instagram_content_publish`, `pages_manage_posts`), espejar
   la imagen a un bucket permanente (las URLs de fal caducan) y un cron scheduler.
