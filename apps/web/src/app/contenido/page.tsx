@@ -64,7 +64,7 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
   const [bajada, setBajada] = useState(pieza.bajada ?? "");
   const [bajando, setBajando] = useState(false);
 
-  async function descargar() {
+  async function descargar(conTexto: boolean) {
     if (!pieza.imagen) return;
     setBajando(true);
     try {
@@ -82,7 +82,7 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
       if (!ctx) throw new Error("ctx");
       ctx.drawImage(img, 0, 0);
 
-      if (titulo.trim() || bajada.trim()) {
+      if (conTexto && (titulo.trim() || bajada.trim())) {
         // Scrim inferior para legibilidad.
         const gradH = H * 0.4;
         const grad = ctx.createLinearGradient(0, H - gradH, 0, H);
@@ -126,7 +126,7 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `pieza-${idx + 1}.png`;
+      a.download = `pieza-${idx + 1}${conTexto ? "" : "-limpia"}.png`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -167,9 +167,14 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
             <input value={titulo} onChange={(e) => setTitulo(e.target.value)} className="w-full rounded border px-2 py-1.5 text-sm" placeholder="Título" />
             <input value={bajada} onChange={(e) => setBajada(e.target.value)} className="w-full rounded border px-2 py-1.5 text-xs" placeholder="Bajada (subtítulo)" />
           </div>
-          <button type="button" onClick={descargar} disabled={bajando || !pieza.imagen} className="rounded border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50">
-            {bajando ? "…" : "Descargar"}
-          </button>
+          <div className="flex flex-col gap-1">
+            <button type="button" onClick={() => descargar(true)} disabled={bajando || !pieza.imagen} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+              {bajando ? "…" : "Descargar con texto"}
+            </button>
+            <button type="button" onClick={() => descargar(false)} disabled={bajando || !pieza.imagen} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+              {bajando ? "…" : "Sin texto (foto limpia)"}
+            </button>
+          </div>
         </div>
         <p className="whitespace-pre-wrap pt-1 text-sm">{pieza.caption}</p>
         {pieza.hashtags.length > 0 && <p className="text-xs text-blue-600">{pieza.hashtags.join(" ")}</p>}
@@ -194,6 +199,7 @@ export default function ContenidoPage() {
   const [formato, setFormato] = useState("imagen");
   const [aspecto, setAspecto] = useState("vertical");
   const [cantidad, setCantidad] = useState(1);
+  const [detalles, setDetalles] = useState("");
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState<Resultado | null>(null);
 
@@ -206,7 +212,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, productoReal: !!modelo, formato, aspecto, cantidad }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, productoReal: !!modelo, detalles: detalles.trim() || undefined, formato, aspecto, cantidad }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -293,6 +299,15 @@ export default function ContenidoPage() {
           <select value={cantidad} onChange={(e) => setCantidad(Number(e.target.value))} className="rounded border px-2 py-1.5 text-sm">
             {CANTIDADES.map((n) => <option key={n} value={n}>{n} pieza{n > 1 ? "s" : ""}</option>)}
           </select>
+        </label>
+        <label className="flex w-full flex-col gap-1 text-xs">
+          <span className="font-medium text-muted-foreground">Detalles (opcional) — instrucciones extra para la imagen</span>
+          <input
+            value={detalles}
+            onChange={(e) => setDetalles(e.target.value)}
+            className="w-full rounded border px-2 py-1.5 text-sm"
+            placeholder="ej: puertas cerradas · vista frontal · sin comida adentro · más limpio"
+          />
         </label>
         <button type="button" onClick={generar} disabled={loading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50">
           {loading ? "Generando…" : "Generar"}

@@ -58,6 +58,11 @@ flowchart TD
   KITCHEN" y logos falsos). El título + bajada se componen **sobre la imagen en
   el front** (editables) y la **descarga PNG** graba el texto con canvas.
 - **Cantidad:** 1–4 piezas en paralelo, cada una con su propio brief.
+- **Detalles (texto libre):** campo opcional; se inyecta en los 3 prompts como
+  `USER DETAILS (follow exactly): …` (ej. "puertas cerradas", "vista frontal",
+  "sin comida adentro"). Sirve para forzar detalles puntuales que el modelo varía.
+- **Descarga con / sin texto:** dos botones — "Con texto" graba la placa en el PNG
+  (canvas), "Sin texto" baja la foto limpia (para editar el copy aparte).
 
 ### Variables de entorno (Vercel)
 - `FAL_KEY` — fal.ai (prepago). `OPENAI_API_KEY` — ya estaba.
