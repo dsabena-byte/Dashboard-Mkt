@@ -32,6 +32,7 @@ export const PRODUCTO_CATALOG: Record<CategoriaProducto, ModeloProducto[]> = {
     // 1000x1000 de NO FROST. (DSP610/DSP480 no tienen front limpio disponible.)
     // Medidas aprox (a confirmar con ficha): heladera ALTA, ~183cm alto.
     { sku: "DTP469LKRSS0", nombre: "Heladera No Frost DTP469 French Door Inox", tipo: "No Frost", driveFileId: "1TuXh7NCGdPaQyohu90qaA6wqNm9PfjCv", medidas: "approx 183 cm tall × 83 cm wide (a TALL floor-standing refrigerator)", descripcion: "a stainless-steel French-door refrigerator: TWO upper doors side by side plus a bottom freezer drawer (4 doors total), tall, with a small external control panel" },
+    { sku: "DSP610IORSS0", nombre: "Heladera No Frost DSP610 Side by Side 625L Inox", tipo: "No Frost Side-by-Side", driveFileId: "1tcTel13ZZikbhPAZ4_KT6aAH0JrFZvf_", medidas: "approx 178 cm tall × 91 cm wide (a TALL floor-standing refrigerator)", descripcion: "a stainless-steel SIDE-BY-SIDE refrigerator: two tall full-height vertical doors next to each other, with a water/ice dispenser on the left door and a small external control panel" },
   ],
   cocinas: [
     // Packshots limpios (front sobre blanco) — Alta / 1000x1000.
@@ -41,6 +42,8 @@ export const PRODUCTO_CATALOG: Record<CategoriaProducto, ModeloProducto[]> = {
   lavarropas: [
     // Lavasecarropas (carga frontal) — packshot limpio de la carpeta Alta.
     { sku: "LSCDR1208SG0", nombre: "Lavasecarropas LSCDR1208 12/8kg Grafito", tipo: "Lavaseca carga frontal", driveFileId: "1vQmkSwPx-I9HIoQJCBJbz68BoNKlB2xi", medidas: "approx 85 cm tall × 60 cm wide (counter-height front-load washer)", descripcion: "a graphite/dark-grey front-load washer-dryer with a large round chrome-rimmed glass door and a top control panel with a small display" },
+    { sku: "LFDR1114ISG0", nombre: "Lavarropas Carga Frontal LFDR1114 11,5kg Inverter", tipo: "Carga frontal Inverter", driveFileId: "1MHnTXiGRRbrgXltrCqAv0rOMPneIE90N", medidas: "approx 85 cm tall × 60 cm wide (counter-height front-load washer)", descripcion: "a graphite/dark-grey front-load washing machine with a large round chrome-rimmed glass door and a top control panel with a display" },
+    { sku: "LPDR1165LG", nombre: "Lavarropas Carga Superior LPDR1165 11kg Inverter", tipo: "Carga superior Inverter", driveFileId: "18A6kLptzgEkCr9os89HIMfTdIRBnm2_5", medidas: "approx 98 cm tall × 55 cm wide (a TOP-LOAD washer, opens from the top)", descripcion: "a dark-grey TOP-LOAD washing machine with a lid on top and a control panel at the top-front; taller than a front-loader, loaded from above (no round front door)" },
   ],
 };
 
