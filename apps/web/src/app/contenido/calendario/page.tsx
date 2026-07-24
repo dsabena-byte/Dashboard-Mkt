@@ -120,6 +120,41 @@ export default function CalendarioPage() {
         <Link href="/contenido/generar" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Generar pieza suelta →</Link>
       </header>
 
+      <details className="rounded-xl border bg-card p-4 text-sm">
+        <summary className="cursor-pointer font-medium">¿Cómo funciona? (plataformas, modos, proceso)</summary>
+        <div className="mt-3 space-y-3 text-muted-foreground">
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Plataformas / herramientas</div>
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong>Imágenes:</strong> fal.ai — <strong>Nano Banana</strong> (Gemini 2.5 Flash Image) usa el packshot real del producto; <strong>Ideogram v3</strong> para genéricos y contenido creativo.</li>
+              <li><strong>Video:</strong> fal.ai — <strong>Kling</strong> / <strong>Veo</strong> (image-to-video, anima la pieza; ~5–8s).</li>
+              <li><strong>Copy y concepto:</strong> OpenAI <strong>gpt-4o-mini</strong> (escena, caption, hashtags, título + bajada de la placa).</li>
+              <li><strong>Datos:</strong> Supabase — top posts por pilar (insumo del brief), catálogo de modelos (Drive), calendario y <strong>storage</strong> del contenido propio.</li>
+              <li><strong>Tipografía de placa:</strong> <strong>Manrope</strong> (marca).</li>
+            </ul>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Modos de contenido</div>
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong>Producto:</strong> estética premium fija; producto real (Nano Banana) o el lineup Drean.</li>
+              <li><strong>Creativo / editorial:</strong> sale de la cocina — efemérides, trending, beneficio, disruptivo; estética flexible pero on-brand.</li>
+              <li><strong>Contenido propio:</strong> subís tus imágenes/videos externos y conviven con lo generado.</li>
+            </ul>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Proceso</div>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>Planificás el mes: agregás piezas a cada día (o subís contenido propio).</li>
+              <li><strong>Generar</strong> → imagen + copy + placa (opcional: video).</li>
+              <li>Revisás/editás título, bajada, caption y la placa (con/sin graph).</li>
+              <li><strong>Aprobás</strong> ✓ las que están OK.</li>
+              <li><em>Próxima etapa:</em> las aprobadas se publican solas en IG/FB (falta destrabar permisos de Meta).</li>
+            </ol>
+          </div>
+          <p className="text-xs">Nota: la generación con IA usa <strong>créditos prepagos de fal.ai</strong> (imágenes = centavos; video = más caro por clip).</p>
+        </div>
+      </details>
+
       <div className="flex items-center gap-3">
         <button onClick={prevMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">‹</button>
         <div className="min-w-[10rem] text-center text-sm font-medium">{MESES[m]} {y}</div>
