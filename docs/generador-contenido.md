@@ -160,6 +160,25 @@ respeto del `BRAND_LOOK`.
 referencia (packshot ~1:1), no el preset — el control de vertical/story es un
 "hint" en el prompt, no garantizado.
 
+## 6. Calendario editorial (`/contenido/calendario`) — Fase 1
+
+Cockpit para planificar el mes: grilla mensual + panel del día. Cada pieza se
+guarda en Supabase (`contenido_calendario`, migración 0075) con sus parámetros,
+el contenido generado (editable) y un estado (pendiente → generado → aprobado →
+publicado).
+
+- **Generación reutilizable:** la lógica del generador se extrajo a
+  `lib/contenido-generar.ts` (`generarPiezas`), que usan tanto `/api/generar-contenido`
+  como `/api/contenido/calendario/generar`.
+- **Endpoints:** `/api/contenido/calendario` (GET lista por rango, POST upsert,
+  DELETE), `/api/contenido/calendario/generar` (POST {id} → genera y guarda).
+  Escriben con service-role (`lib/supabase-admin.ts`).
+- **Flujo:** agregás piezas a un día → "Generar" (imagen + copy) → editás
+  título/bajada/caption → **Aprobar** ✓.
+- **Fase 2 (pendiente):** publicación automática en IG/FB. Necesita permisos de
+  publicación de Meta (`instagram_content_publish`, `pages_manage_posts`), espejar
+  la imagen a un bucket permanente (las URLs de fal caducan) y un cron scheduler.
+
 ## 5. Video (image-to-video)
 
 **Implementado.** Botón **"Generar video"** en cada pieza → anima la imagen ya
