@@ -197,6 +197,10 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [e, setE] = useState<Cal>(entry);
   const [busy, setBusy] = useState<string | null>(null);
   const [zoom, setZoom] = useState(false);
+  const [videoModelo, setVideoModelo] = useState("kling");
+  const [videoPrompt, setVideoPrompt] = useState("");
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [videoErr, setVideoErr] = useState<string | null>(null);
   const modelos = useMemo(() => getModelos(e.categoria ?? "porfolio"), [e.categoria]);
 
   useEffect(() => { setE(entry); }, [entry]);
@@ -233,6 +237,25 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     onChange();
   }
 
+  async function generarVideo() {
+    if (!e.imagen_url) return;
+    setVideoBusy(true);
+    setVideoErr(null);
+    try {
+      const r = await fetch("/api/generar-video", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: e.imagen_url, modelo: videoModelo, prompt: videoPrompt.trim() || undefined, aspecto: e.aspecto ?? "vertical" }),
+      });
+      const j = (await r.json()) as { ok?: boolean; video_url?: string; error?: string };
+      if (j.ok && j.video_url) await save({ video_url: j.video_url });
+      else setVideoErr(j.error ?? "No se pudo generar el video.");
+    } catch (err) {
+      setVideoErr(err instanceof Error ? err.message : String(err));
+    } finally {
+      setVideoBusy(false);
+    }
+  }
+
   const field = "rounded border px-2 py-1 text-xs";
 
   return (
@@ -241,7 +264,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: ESTADO_COLOR[e.estado] ?? "#94a3b8" }}>{ESTADO_LABEL[e.estado] ?? e.estado}</span>
         <input type="time" value={e.hora?.slice(0, 5) ?? ""} onChange={(ev) => setE({ ...e, hora: ev.target.value })} onBlur={() => save({ hora: e.hora })} className={field} />
-        <button onClick={borrar} disabled={!!busy} className="ml-auto rounded border px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50">Borrar</button>
+        <button onClick={borrar} disabled={busy === "gen" || busy === "del"} className="ml-auto rounded border px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50">Borrar</button>
       </div>
 
       {/* Parámetros */}
@@ -266,7 +289,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles (opcional): puertas cerradas, vista frontal…" className={`${field} mb-2 w-full`} />
 
       <div className="flex flex-wrap items-center gap-2">
-        <button onClick={generar} disabled={!!busy} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+        <button onClick={generar} disabled={busy === "gen" || busy === "del"} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
           {busy === "gen" ? "Generando… (~1 min)" : e.imagen_url ? "Regenerar" : "Generar"}
         </button>
       </div>
@@ -291,11 +314,34 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
             </div>
             <button
               onClick={() => save({ aprobado: !e.aprobado, estado: !e.aprobado ? "aprobado" : "generado" })}
-              disabled={!!busy}
+              disabled={busy === "gen" || busy === "del"}
               className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"}`}
             >
               {e.aprobado ? "✓ Aprobado (click para desaprobar)" : "Aprobar"}
             </button>
+
+            {/* Video */}
+            <div className="space-y-1 border-t pt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Video (≤6s)</span>
+                <select value={videoModelo} onChange={(ev) => setVideoModelo(ev.target.value)} className={field}>
+                  <option value="kling">Kling (5s)</option>
+                  <option value="veo">Veo (~8s)</option>
+                </select>
+                <input value={videoPrompt} onChange={(ev) => setVideoPrompt(ev.target.value)} placeholder="movimiento (opcional)" className={`${field} min-w-[8rem] flex-1`} />
+                <button onClick={generarVideo} disabled={videoBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+                  {videoBusy ? "Generando… (~1-3 min)" : e.video_url ? "Regenerar video" : "Generar video"}
+                </button>
+              </div>
+              {videoErr && <p className="text-[10px] text-red-700">{videoErr}</p>}
+              {e.video_url && (
+                <div className="space-y-1">
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video src={e.video_url} controls loop className="max-h-56 w-auto max-w-full rounded border" />
+                  <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar video</a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
