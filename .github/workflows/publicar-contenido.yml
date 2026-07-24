@@ -1,0 +1,33 @@
+name: Publicar contenido (IG/FB · calendario)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"  # cada 30 min: publica las aprobadas cuya fecha/hora llegó
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "1 = dry-run (no publica, sólo lista). Vacío = publica."
+        required: false
+        default: ""
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger /api/cron/publicar-contenido
+        run: |
+          set -euo pipefail
+          DRY="${{ github.event.inputs.dry || '' }}"
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/publicar-contenido"
+          if [ -n "$DRY" ]; then URL="${URL}?dry=1"; fi
+          echo "GET $URL"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 600 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" \
+            "$URL")
+          echo "HTTP $HTTP_CODE"
+          cat response.json; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
+          if grep -q '"error"' response.json; then echo "::error::cron devolvió error"; exit 1; fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
