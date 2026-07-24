@@ -59,10 +59,36 @@ function wrapCanvas(ctx: CanvasRenderingContext2D, text: string, maxW: number): 
 }
 
 // Placa (título + bajada) DENTRO de la imagen + descarga con el texto grabado.
-function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
+function PiezaCard({ pieza, idx, aspecto }: { pieza: Pieza; idx: number; aspecto: string }) {
   const [titulo, setTitulo] = useState(pieza.mensaje_clave ?? "");
   const [bajada, setBajada] = useState(pieza.bajada ?? "");
   const [bajando, setBajando] = useState(false);
+  const [videoModelo, setVideoModelo] = useState("kling");
+  const [videoPrompt, setVideoPrompt] = useState("");
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  async function generarVideo() {
+    if (!pieza.imagen) return;
+    setVideoLoading(true);
+    setVideoError(null);
+    setVideoUrl(null);
+    try {
+      const r = await fetch("/api/generar-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: pieza.imagen, modelo: videoModelo, prompt: videoPrompt.trim() || undefined, aspecto }),
+      });
+      const j = (await r.json()) as { ok?: boolean; video_url?: string; error?: string };
+      if (j.ok && j.video_url) setVideoUrl(j.video_url);
+      else setVideoError(j.error ?? "No se pudo generar el video.");
+    } catch (e) {
+      setVideoError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setVideoLoading(false);
+    }
+  }
 
   async function descargar(conTexto: boolean) {
     if (!pieza.imagen) return;
@@ -183,6 +209,32 @@ function PiezaCard({ pieza, idx }: { pieza: Pieza; idx: number }) {
             {pieza.slides.map((s, i) => (<li key={i}><strong>{i + 1}. {s.titulo}:</strong> {s.texto}</li>))}
           </ol>
         )}
+        <div className="mt-2 space-y-2 border-t pt-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Video (≤6s)</span>
+            <select value={videoModelo} onChange={(e) => setVideoModelo(e.target.value)} className="rounded border px-2 py-1 text-xs">
+              <option value="kling">Kling (5s)</option>
+              <option value="veo">Veo (~8s)</option>
+            </select>
+            <input
+              value={videoPrompt}
+              onChange={(e) => setVideoPrompt(e.target.value)}
+              placeholder="movimiento (opcional): cámara se acerca · la puerta se abre…"
+              className="min-w-[12rem] flex-1 rounded border px-2 py-1 text-xs"
+            />
+            <button type="button" onClick={generarVideo} disabled={videoLoading || !pieza.imagen} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+              {videoLoading ? "Generando… (~1-3 min)" : "Generar video"}
+            </button>
+          </div>
+          {videoError && <p className="text-[11px] text-red-700">{videoError}</p>}
+          {videoUrl && (
+            <div className="space-y-1">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video src={videoUrl} controls loop className="max-h-[26rem] w-auto max-w-full rounded border" />
+              <a href={videoUrl} target="_blank" rel="noopener" className="inline-block rounded border px-3 py-1 text-xs font-medium hover:bg-secondary">Abrir / descargar video</a>
+            </div>
+          )}
+        </div>
         <details className="text-[11px]">
           <summary className="cursor-pointer text-muted-foreground">Prompt de imagen</summary>
           <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{pieza.image_prompt}</p>
@@ -334,7 +386,7 @@ export default function ContenidoPage() {
             </div>
           )}
           <div className="grid gap-4 md:grid-cols-2">
-            {res.piezas.map((p, idx) => <PiezaCard key={idx} pieza={p} idx={idx} />)}
+            {res.piezas.map((p, idx) => <PiezaCard key={idx} pieza={p} idx={idx} aspecto={aspecto} />)}
           </div>
         </section>
       )}
