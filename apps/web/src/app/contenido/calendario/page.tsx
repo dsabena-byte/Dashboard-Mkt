@@ -35,12 +35,92 @@ interface Cal {
   tipo_contenido?: string;
   subtipo?: string;
   idea?: string;
+  imagen_final_url?: string | null;
+  redes?: string[] | null;
 }
 
 function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
 function falErr(raw: string): string {
   if (/exhausted balance|user is locked|top up|402|insufficient/i.test(raw)) return "Sin créditos en fal.ai — recargá el saldo en fal.ai/dashboard/billing y volvé a intentar.";
   return raw;
+}
+
+function wrapCanvas(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const words = text.trim().split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+// Compone la imagen FINAL (con la placa grabada si con_placa) y devuelve un PNG.
+// Sirve para publicar: la placa queda embebida y la URL es permanente.
+async function componerFinal(imagenUrl: string, titulo: string, bajada: string, conPlaca: boolean): Promise<Blob> {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(new Error("load")); img.src = imagenUrl; });
+  const canvas = document.createElement("canvas");
+  const W = (canvas.width = img.naturalWidth);
+  const H = (canvas.height = img.naturalHeight);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("ctx");
+  ctx.drawImage(img, 0, 0);
+  if (conPlaca && (titulo.trim() || bajada.trim())) {
+    const gradH = H * 0.4;
+    const grad = ctx.createLinearGradient(0, H - gradH, 0, H);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(1, "rgba(0,0,0,0.72)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, H - gradH, W, gradH);
+    const pad = Math.round(W * 0.055);
+    ctx.fillStyle = "#ffffff";
+    ctx.textBaseline = "alphabetic";
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = W * 0.02;
+    try { await document.fonts.load(`800 ${Math.round(W * 0.065)}px Manrope`); await document.fonts.load(`600 ${Math.round(W * 0.036)}px Manrope`); } catch { /* fallback */ }
+    let yBottom = H - pad;
+    if (bajada.trim()) {
+      const fsB = Math.round(W * 0.036);
+      ctx.font = `600 ${fsB}px "Manrope", Arial, sans-serif`;
+      const bl = wrapCanvas(ctx, bajada, W - pad * 2);
+      let y = yBottom - (bl.length - 1) * fsB * 1.25;
+      for (const l of bl) { ctx.fillText(l, pad, y); y += fsB * 1.25; }
+      yBottom -= bl.length * fsB * 1.25 + fsB * 0.4;
+    }
+    if (titulo.trim()) {
+      const fsT = Math.round(W * 0.065);
+      ctx.font = `800 ${fsT}px "Manrope", Arial, sans-serif`;
+      const tl = wrapCanvas(ctx, titulo, W - pad * 2);
+      let y = yBottom - (tl.length - 1) * fsT * 1.12;
+      for (const l of tl) { ctx.fillText(l, pad, y); y += fsT * 1.12; }
+    }
+  }
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+  if (!blob) throw new Error("toBlob");
+  return blob;
+}
+
+// Sube un blob a Supabase (URL firmada) y devuelve la URL pública.
+async function subirBlob(id: string, blob: Blob, filename: string): Promise<string> {
+  const r1 = await fetch("/api/contenido/calendario/upload-url", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, kind: "imagen", filename }),
+  });
+  const j1 = (await r1.json()) as { ok?: boolean; uploadUrl?: string; publicUrl?: string; error?: string };
+  if (!j1.ok || !j1.uploadUrl || !j1.publicUrl) throw new Error(j1.error ?? "no upload url");
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  const put = await fetch(j1.uploadUrl, {
+    method: "PUT",
+    headers: { apikey: anon, Authorization: `Bearer ${anon}`, "Content-Type": "image/png", "x-upsert": "true" },
+    body: blob,
+  });
+  if (!put.ok) throw new Error(`put ${put.status}`);
+  return j1.publicUrl;
 }
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function ymd(y: number, m: number, d: number) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
@@ -320,6 +400,34 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     }
   }
 
+  async function aprobarPieza() {
+    const nuevo = !e.aprobado;
+    setBusy("save");
+    try {
+      const patch: Record<string, unknown> = { id: e.id, aprobado: nuevo, estado: nuevo ? "aprobado" : "generado" };
+      // Al aprobar, componer la imagen final (placa grabada) y hostearla permanente
+      // para poder publicarla en IG/FB (las URLs de fal caducan).
+      if (nuevo && e.imagen_url) {
+        try {
+          const blob = await componerFinal(e.imagen_url, e.mensaje_clave ?? "", e.bajada ?? "", e.con_placa ?? true);
+          patch.imagen_final_url = await subirBlob(e.id, blob, "final.png");
+        } catch { /* si falla la composición, aprobar igual */ }
+      }
+      const r = await fetch("/api/contenido/calendario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const j = (await r.json()) as { ok?: boolean; item?: Cal };
+      if (j.ok && j.item) { setE(j.item); onChange(); }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function toggleRed(red: string) {
+    const cur = e.redes ?? [];
+    const next = cur.includes(red) ? cur.filter((x) => x !== red) : [...cur, red];
+    setE({ ...e, redes: next });
+    save({ redes: next });
+  }
+
   async function generarVideo() {
     if (!e.imagen_url) return;
     setVideoBusy(true);
@@ -434,12 +542,21 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
               <input type="checkbox" checked={e.con_placa ?? true} onChange={(ev) => { setE({ ...e, con_placa: ev.target.checked }); save({ con_placa: ev.target.checked }); }} />
               Publicar/mostrar <strong className="font-semibold">con placa</strong> (título + bajada sobre la imagen)
             </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar en:</span>
+              <label className="flex items-center gap-1 text-[11px]">
+                <input type="checkbox" checked={(e.redes ?? []).includes("instagram")} onChange={() => toggleRed("instagram")} /> Instagram
+              </label>
+              <label className="flex items-center gap-1 text-[11px]">
+                <input type="checkbox" checked={(e.redes ?? []).includes("facebook")} onChange={() => toggleRed("facebook")} /> Facebook
+              </label>
+            </div>
             <button
-              onClick={() => save({ aprobado: !e.aprobado, estado: !e.aprobado ? "aprobado" : "generado" })}
-              disabled={busy === "gen" || busy === "del"}
+              onClick={aprobarPieza}
+              disabled={busy === "gen" || busy === "del" || busy === "save"}
               className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"}`}
             >
-              {e.aprobado ? "✓ Aprobado (click para desaprobar)" : "Aprobar"}
+              {busy === "save" ? "Preparando…" : e.aprobado ? "✓ Aprobado (click para desaprobar)" : "Aprobar y preparar para publicar"}
             </button>
 
             {/* Video */}
