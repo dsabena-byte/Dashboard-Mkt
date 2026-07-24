@@ -160,8 +160,22 @@ respeto del `BRAND_LOOK`.
 referencia (packshot ~1:1), no el preset — el control de vertical/story es un
 "hint" en el prompt, no garantizado.
 
+## 5. Video (image-to-video)
+
+**Implementado.** Botón **"Generar video"** en cada pieza → anima la imagen ya
+generada (image-to-video). Clips cortos (Kling **5s**). Corre en la **cola async**
+de fal (`queue.fal.run`, `falVideoQueue` en `fal-client.ts`: submit → poll →
+resultado). Route `/api/generar-video`.
+
+- **Selector Kling / Veo** para comparar:
+  - Kling: `fal-ai/kling-video/v2.1/master/image-to-video` (5s).
+  - Veo: `fal-ai/veo3/image-to-video` (**mínimo ~8s** — puede pasarse de 6s).
+- **Movimiento:** `MOTION_BASE` (push-in cinematográfico sutil, premium) + texto
+  libre opcional del usuario (ej. "la puerta se abre").
+- **Pendiente de validar** en la app (no se pudo desde dev). Si un id de modelo
+  cambia/404ea, se ajusta en `VIDEO_MODELS`. El video es LENTO (~1-3 min) y CARO.
+
 ### Otros pendientes
-- **Video corto** (Kling 3.0 / Veo 3.1) vía la cola async de fal.
 - **Ampliar catálogo** con más flagships (packshot limpio de "Alta"; para
   CD6007MI/CD6009EI y más heladeras/lavarropas hace falta el link porque el tool
   no ve "MABE BRAND CENTER").
