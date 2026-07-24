@@ -35,8 +35,9 @@ export async function GET() {
     out.debug_token = await g(`/debug_token?input_token=${encodeURIComponent(token)}`, token);
     out.me_permissions = await g(`/me/permissions`, token);
 
-    // 2) Página: nombre, tasks (¿podemos gestionar?), page token, IG vinculado.
-    out.page = await g(`/${PAGE_ID}?fields=name,tasks,access_token,instagram_business_account`, token);
+    // 2) Página: nombre, page access token, IG vinculado. Y /me/accounts para ver tasks.
+    out.page = await g(`/${PAGE_ID}?fields=name,access_token,instagram_business_account`, token);
+    out.mis_paginas = await g(`/me/accounts?fields=name,id,tasks`, token);
 
     // 3) Cuenta de IG: tipo/username (confirma que es Business y accesible).
     out.instagram = await g(`/${IG_ID}?fields=username,name,profile_picture_url`, token);
