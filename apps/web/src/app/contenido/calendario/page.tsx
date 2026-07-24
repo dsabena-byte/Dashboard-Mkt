@@ -33,6 +33,7 @@ interface Cal {
   aprobado: boolean;
 }
 
+function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function ymd(y: number, m: number, d: number) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
 
@@ -144,11 +145,23 @@ export default function CalendarioPage() {
                 className={`min-h-[64px] rounded border p-1 text-left transition-colors hover:bg-muted/40 ${isSel ? "border-primary ring-1 ring-primary" : ""}`}
               >
                 <div className="text-[11px] font-medium">{cell.d}</div>
-                <div className="mt-0.5 flex flex-wrap gap-0.5">
-                  {dayItems.slice(0, 4).map((it) => (
-                    <span key={it.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ESTADO_COLOR[it.estado] ?? "#94a3b8" }} title={ESTADO_LABEL[it.estado]} />
+                <div className="mt-0.5 space-y-0.5">
+                  {dayItems.slice(0, 3).map((it) => (
+                    <div key={it.id} className="flex items-center gap-1 rounded bg-muted/40 p-0.5" title={`${it.pilar ?? ""} · ${catLabel(it.categoria)} · ${ESTADO_LABEL[it.estado] ?? it.estado}`}>
+                      {it.imagen_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={it.imagen_url} alt="" className="h-7 w-7 shrink-0 rounded object-cover" />
+                      ) : (
+                        <span className="h-7 w-7 shrink-0 rounded" style={{ backgroundColor: `${ESTADO_COLOR[it.estado] ?? "#94a3b8"}33` }} />
+                      )}
+                      <div className="min-w-0 flex-1 leading-tight">
+                        <div className="truncate text-[9px] font-medium">{it.mensaje_clave || catLabel(it.categoria) || "(sin generar)"}</div>
+                        <div className="truncate text-[8px] text-muted-foreground">{catLabel(it.categoria)} · {it.pilar ?? ""}</div>
+                      </div>
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: ESTADO_COLOR[it.estado] ?? "#94a3b8" }} />
+                    </div>
                   ))}
-                  {dayItems.length > 4 && <span className="text-[9px] text-muted-foreground">+{dayItems.length - 4}</span>}
+                  {dayItems.length > 3 && <div className="text-[8px] text-muted-foreground">+{dayItems.length - 3} más</div>}
                 </div>
               </button>
             );
@@ -183,6 +196,7 @@ export default function CalendarioPage() {
 function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [e, setE] = useState<Cal>(entry);
   const [busy, setBusy] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(false);
   const modelos = useMemo(() => getModelos(e.categoria ?? "porfolio"), [e.categoria]);
 
   useEffect(() => { setE(entry); }, [entry]);
@@ -222,6 +236,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const field = "rounded border px-2 py-1 text-xs";
 
   return (
+    <>
     <div className="rounded-xl border bg-card p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: ESTADO_COLOR[e.estado] ?? "#94a3b8" }}>{ESTADO_LABEL[e.estado] ?? e.estado}</span>
@@ -260,7 +275,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       {e.imagen_url && (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={e.imagen_url} alt="pieza" className="max-h-64 w-auto max-w-full rounded border object-contain sm:w-48" />
+          <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain sm:w-48" />
           <div className="flex-1 space-y-2">
             <div>
               <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Título placa</label>
@@ -285,5 +300,12 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
         </div>
       )}
     </div>
+    {zoom && e.imagen_url && (
+      <div onClick={() => setZoom(false)} className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/85 p-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={e.imagen_url} alt="pieza ampliada" className="max-h-[95vh] max-w-[95vw] object-contain" />
+      </div>
+    )}
+    </>
   );
 }
