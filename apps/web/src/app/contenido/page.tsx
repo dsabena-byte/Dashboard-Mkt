@@ -276,8 +276,11 @@ export default function ContenidoPage() {
 
   return (
     <div className="space-y-5">
-      <header>
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <h2 className="text-2xl font-semibold tracking-tight">Generador de contenido</h2>
+        <a href="/contenido/calendario" className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary">📅 Calendario</a>
+      </header>
+      <header>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Generá piezas orgánicas por pilar con la <strong>estética premium de Drean</strong> (cálida, oscura, minimalista,
           maderas y mármol). Si elegís un modelo, la pieza usa la <strong>foto real del producto</strong> (Nano Banana); sin
