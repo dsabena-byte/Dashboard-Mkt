@@ -402,22 +402,18 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
 
   async function aprobarPieza() {
     const nuevo = !e.aprobado;
-    setBusy("save");
-    try {
-      const patch: Record<string, unknown> = { id: e.id, aprobado: nuevo, estado: nuevo ? "aprobado" : "generado" };
-      // Al aprobar, componer la imagen final (placa grabada) y hostearla permanente
-      // para poder publicarla en IG/FB (las URLs de fal caducan).
-      if (nuevo && e.imagen_url) {
-        try {
-          const blob = await componerFinal(e.imagen_url, e.mensaje_clave ?? "", e.bajada ?? "", e.con_placa ?? true);
-          patch.imagen_final_url = await subirBlob(e.id, blob, "final.png");
-        } catch { /* si falla la composición, aprobar igual */ }
-      }
-      const r = await fetch("/api/contenido/calendario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
-      const j = (await r.json()) as { ok?: boolean; item?: Cal };
-      if (j.ok && j.item) { setE(j.item); onChange(); }
-    } finally {
-      setBusy(null);
+    // 1) Aprobar/desaprobar (siempre funciona).
+    await save({ aprobado: nuevo, estado: nuevo ? "aprobado" : "generado" });
+    // 2) Al aprobar, componer la imagen final (placa grabada) y hostearla permanente
+    //    para poder publicarla en IG/FB (las URLs de fal caducan). Best-effort.
+    if (nuevo && e.imagen_url) {
+      setBusy("save");
+      try {
+        const blob = await componerFinal(e.imagen_url, e.mensaje_clave ?? "", e.bajada ?? "", e.con_placa ?? true);
+        const finalUrl = await subirBlob(e.id, blob, "final.png");
+        await save({ imagen_final_url: finalUrl });
+      } catch { /* si falla, la pieza queda aprobada igual (sin imagen final) */ }
+      finally { setBusy(null); }
     }
   }
 
