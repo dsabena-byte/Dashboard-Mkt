@@ -31,6 +31,7 @@ interface Cal {
   bajada: string | null;
   estado: string;
   aprobado: boolean;
+  con_placa?: boolean;
 }
 
 function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
@@ -297,8 +298,16 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       {/* Contenido generado */}
       {e.imagen_url && (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain sm:w-48" />
+          <div className="relative inline-block h-min shrink-0 self-start">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="block max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain" />
+            {(e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent px-2 pb-2 pt-6" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
+                {e.mensaje_clave?.trim() && <div className="text-[11px] font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.mensaje_clave}</div>}
+                {e.bajada?.trim() && <div className="text-[9px] font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.bajada}</div>}
+              </div>
+            )}
+          </div>
           <div className="flex-1 space-y-2">
             <div>
               <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Título placa</label>
@@ -312,6 +321,10 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
               <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Caption</label>
               <textarea value={e.caption ?? ""} onChange={(ev) => setE({ ...e, caption: ev.target.value })} onBlur={() => save({ caption: e.caption })} rows={3} className={`${field} w-full`} />
             </div>
+            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <input type="checkbox" checked={e.con_placa ?? true} onChange={(ev) => { setE({ ...e, con_placa: ev.target.checked }); save({ con_placa: ev.target.checked }); }} />
+              Publicar/mostrar <strong className="font-semibold">con placa</strong> (título + bajada sobre la imagen)
+            </label>
             <button
               onClick={() => save({ aprobado: !e.aprobado, estado: !e.aprobado ? "aprobado" : "generado" })}
               disabled={busy === "gen" || busy === "del"}
