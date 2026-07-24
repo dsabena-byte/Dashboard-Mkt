@@ -109,7 +109,7 @@ export default function CalendarioPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Calendario de contenido</h2>
           <p className="text-sm text-muted-foreground">Planificá el mes, generá cada pieza, revisá y aprobá. La publicación automática en IG/FB es la próxima etapa.</p>
         </div>
-        <Link href="/contenido" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">← Generador</Link>
+        <Link href="/contenido/generar" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Generar pieza suelta →</Link>
       </header>
 
       <div className="flex items-center gap-3">

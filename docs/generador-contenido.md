@@ -160,7 +160,12 @@ respeto del `BRAND_LOOK`.
 referencia (packshot ~1:1), no el preset — el control de vertical/story es un
 "hint" en el prompt, no garantizado.
 
-## 6. Calendario editorial (`/contenido/calendario`) — Fase 1
+## 6. Calendario editorial — Fase 1 (entrada principal)
+
+> **Ruteo:** `/contenido` redirige al **calendario** (`/contenido/calendario`), que
+> es la entrada principal de "Generador de Contenido". El generador de piezas
+> sueltas quedó en **`/contenido/generar`** (accesible desde el calendario).
+
 
 Cockpit para planificar el mes: grilla mensual + panel del día. Cada pieza se
 guarda en Supabase (`contenido_calendario`, migración 0075) con sus parámetros,
