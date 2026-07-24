@@ -251,14 +251,33 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     if (!file) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("id", e.id);
-      fd.append("kind", kind);
-      const r = await fetch("/api/contenido/calendario/upload", { method: "POST", body: fd });
-      const j = (await r.json()) as { ok?: boolean; item?: Cal; error?: string };
-      if (j.ok && j.item) { setE(j.item); onChange(); }
-      else alert(`Error al subir: ${j.error ?? "?"}`);
+      // 1) URL firmada de subida (para subir directo a Supabase, sin límite de Vercel).
+      const r1 = await fetch("/api/contenido/calendario/upload-url", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: e.id, kind, filename: file.name }),
+      });
+      const j1 = (await r1.json()) as { ok?: boolean; uploadUrl?: string; publicUrl?: string; col?: string; esVideo?: boolean; error?: string };
+      if (!j1.ok || !j1.uploadUrl) { alert(`Error al subir: ${j1.error ?? "?"}`); return; }
+
+      // 2) Subida DIRECTA del archivo a Supabase Storage.
+      const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+      const put = await fetch(j1.uploadUrl, {
+        method: "PUT",
+        headers: { apikey: anon, Authorization: `Bearer ${anon}`, "Content-Type": file.type || "application/octet-stream", "x-upsert": "true" },
+        body: file,
+      });
+      if (!put.ok) { alert(`Error al subir el archivo (${put.status}): ${(await put.text()).slice(0, 200)}`); return; }
+
+      // 3) Guardar la URL pública en la entrada.
+      const patch: Record<string, unknown> = { id: e.id, [j1.col ?? "imagen_url"]: j1.publicUrl };
+      if (!j1.esVideo) patch.estado = "generado";
+      const r3 = await fetch("/api/contenido/calendario", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const j3 = (await r3.json()) as { ok?: boolean; item?: Cal; error?: string };
+      if (j3.ok && j3.item) { setE(j3.item); onChange(); }
+      else alert(`Subió pero no se guardó: ${j3.error ?? "?"}`);
     } catch (err) {
       alert(`Error al subir: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
