@@ -43,15 +43,20 @@ export default function CalendarioPage() {
   const [items, setItems] = useState<Cal[]>([]);
   const [sel, setSel] = useState<string>(ymd(now.getFullYear(), now.getMonth(), now.getDate()));
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setErr(null);
     try {
       const desde = ymd(y, m, 1);
       const hasta = ymd(y, m, new Date(y, m + 1, 0).getDate());
       const r = await fetch(`/api/contenido/calendario?desde=${desde}&hasta=${hasta}`);
       const j = await r.json();
       if (j.ok) setItems(j.items as Cal[]);
+      else setErr(j.error ?? "No se pudo leer el calendario.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -80,12 +85,18 @@ export default function CalendarioPage() {
   function nextMonth() { if (m === 11) { setY(y + 1); setM(0); } else setM(m + 1); }
 
   async function addEntry() {
-    const r = await fetch("/api/contenido/calendario", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fecha: sel, pilar: PILARES[0], categoria: "porfolio", formato: "imagen", aspecto: "vertical", estado: "pendiente" }),
-    });
-    const j = await r.json();
-    if (j.ok) load();
+    setErr(null);
+    try {
+      const r = await fetch("/api/contenido/calendario", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fecha: sel, pilar: PILARES[0], categoria: "porfolio", formato: "imagen", aspecto: "vertical", estado: "pendiente" }),
+      });
+      const j = await r.json();
+      if (j.ok) load();
+      else setErr(`No se pudo agregar: ${j.error ?? "error"}`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
   }
 
   const selItems = byDay[sel] ?? [];
@@ -106,6 +117,15 @@ export default function CalendarioPage() {
         <button onClick={nextMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">›</button>
         {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
       </div>
+
+      {err && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-900">
+          <strong>Error:</strong> {err}
+          {/relation|does not exist|contenido_calendario/i.test(err) && (
+            <div className="mt-1">Parece que falta crear la tabla <code>contenido_calendario</code> en Supabase (correr la migración 0075 / el SQL).</div>
+          )}
+        </div>
+      )}
 
       {/* Grilla del mes */}
       <div className="rounded-xl border bg-card p-2">
