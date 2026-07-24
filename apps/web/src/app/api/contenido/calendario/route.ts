@@ -9,7 +9,7 @@ const TABLE = "contenido_calendario";
 const WRITABLE = new Set([
   "fecha", "hora", "pilar", "categoria", "modelo", "formato", "aspecto", "detalles",
   "imagen_url", "video_url", "caption", "hashtags", "mensaje_clave", "bajada", "image_prompt",
-  "estado", "aprobado", "redes", "notas",
+  "estado", "aprobado", "redes", "notas", "con_placa",
 ]);
 
 function pick(body: Record<string, unknown>): Record<string, unknown> {
