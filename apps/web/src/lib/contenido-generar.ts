@@ -52,6 +52,20 @@ const ACABADO: Record<string, string> = {
     "FINISH: the Drean appliances are BRIGHT and glossy, their stainless steel and glass catching clean specular highlights and clearly reflecting the warm light — never dull, matte, dark or muddy.",
 };
 
+// Estética para contenido CREATIVO/editorial (efemérides, trending, beneficio,
+// disruptivo). Sale de la cocina y del producto-hero, PERO mantiene consistencia
+// de marca (freno): premium, cohesivo, argentino, cálido, humano — no "stock".
+const BRAND_CREATIVE =
+  "DREAN BRAND — editorial/creative look (flexible but strongly ON-BRAND): a premium, modern, high-quality editorial image with a cohesive, tasteful, cinematic color grade and refined natural lighting. Brand personality: Argentine, warm, close, human, trustworthy, with a touch of emotion or wit as the idea requires. The SETTING IS FREE — indoor, outdoor, urban, aspirational, lifestyle, or surreal/conceptual — NOT restricted to a kitchen. Consistent premium look across posts: warm, refined palette, clean and uncluttered composition, generous negative space, high production value. STRICTLY AVOID: cheap generic stock photos, cluttered scenes, low quality, harsh flat lighting, cold clinical looks.";
+
+// Orientación por sub-tipo de contenido creativo.
+const SUBTIPO_GUIA: Record<string, string> = {
+  efemeride: "It's a CALENDAR-MOMENT / holiday post (a special date, e.g. Mother's/Father's Day, Christmas, a national date). Warm, emotional, celebratory and human; tie the brand to the moment tastefully.",
+  trending: "It's a CULTURAL / trending-topic post: timely, witty, on-trend and a bit disruptive; connect the brand to what people are talking about right now.",
+  beneficio: "It's a BENEFIT post: convey the EMOTIONAL benefit of the brand's products WITHOUT necessarily showing the product (or only very subtly). Aspirational lifestyle, feeling, everyday life at home or beyond.",
+  disruptivo: "It's a DISRUPTIVE / CREATIVE concept post: a bold, surreal, unexpected, scroll-stopping visual idea (e.g. a washing machine made of clouds in the sky). High creativity; metaphor and visual surprise are encouraged.",
+};
+
 export interface Brief {
   escena: string;
   caption_es: string;
@@ -178,6 +192,46 @@ function buildPorfolioPrompt(escena: string, vertical: boolean, detalles?: strin
   return parts.filter(Boolean).join(" ");
 }
 
+// Brief para contenido CREATIVO/editorial: OpenAI como director creativo diseña
+// un concepto (no product shot) alrededor de una IDEA + sub-tipo.
+async function disenarBriefCreativo(idea: string, subtipo: string, productoNombre: string | null, tops: TopRef[]): Promise<Brief> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY no configurada.");
+  const ref = tops.slice(0, 6).map((t, i) => `${i + 1}. [${t.media_type ?? "?"}] int=${t.engagement} — "${(t.message ?? "").slice(0, 140)}"`).join("\n");
+  const sys = `Sos director creativo de Drean (marca argentina de electrodomésticos). Diseñás contenido ORGÁNICO CONCEPTUAL/editorial para redes (NO product shots): efemérides, trending topics, beneficios emocionales, ideas disruptivas. Tono de marca: cercano, argentino, confiable, con emoción o humor según el caso. Respondé SOLO JSON.`;
+  const user = `IDEA / TEMA: "${idea || "(libre — proponé un concepto on-brand)"}"
+SUB-TIPO: ${subtipo} — ${SUBTIPO_GUIA[subtipo] ?? SUBTIPO_GUIA.beneficio}
+${productoNombre ? `Producto asociado (mencionar SÓLO sutil/contextual o metafórico, NUNCA como product shot): ${productoNombre}` : "SIN producto visible (posteo de marca / concepto puro)."}
+Posteos que performaron (referencia de tono):
+${ref || "(sin data — usá tu criterio)"}
+
+Devolvé JSON con:
+{
+  "escena": "descripción CORTA en INGLÉS de la IMAGEN CONCEPTUAL. El AMBIENTE es LIBRE (exterior, urbano, aspiracional, lifestyle o surreal/conceptual — NO restringido a una cocina). ${productoNombre ? "El producto puede aparecer sutil o metafórico." : "SIN producto visible."} NO incluyas texto en la imagen. NO describas estilo/luz/colores (ya están definidos).",
+  "mensaje_clave": "TÍTULO de la placa: frase corta y potente en español (máx 5 palabras, tono de marca)",
+  "bajada": "BAJADA: una línea corta en español que complementa (máx 8 palabras)",
+  "caption_es": "caption en español: hook + cuerpo breve + CTA",
+  "hashtags": ["#...", "#..."],
+  "slides": []
+}`;
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: sys }, { role: "user", content: user }], response_format: { type: "json_object" }, temperature: 1 }),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  return JSON.parse(j.choices?.[0]?.message?.content ?? "{}") as Brief;
+}
+
+function buildCreativePrompt(escena: string, detalles?: string): string {
+  const parts = [escena.trim()];
+  if (detalles) parts.push(`USER DETAILS (very important, follow these EXACTLY): ${detalles}.`);
+  parts.push(BRAND_CREATIVE, NO_TEXT);
+  return parts.filter(Boolean).join(" ");
+}
+
 export interface GenerarParams {
   pilar?: string;
   categoria?: string;
@@ -189,6 +243,9 @@ export interface GenerarParams {
   cantidad?: number;
   productoReal?: boolean;
   detalles?: string;
+  tipoContenido?: string; // "producto" (default) | "creativo"
+  subtipo?: string; // creativo: efemeride | trending | beneficio | disruptivo
+  idea?: string; // creativo: tema/idea en texto libre
 }
 
 export interface GenerarResult {
@@ -225,6 +282,10 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
   const cantidad = Math.min(MAX_PIEZAS, Math.max(1, Math.floor(body.cantidad ?? 1)));
   const mensajeOverride = (body.mensaje ?? "").trim();
   const detalles = (body.detalles ?? "").trim();
+  // Modo creativo/editorial (efemérides, trending, beneficio, disruptivo).
+  const creativo = body.tipoContenido === "creativo";
+  const subtipo = body.subtipo ?? "beneficio";
+  const idea = (body.idea ?? "").trim();
 
   const topsAll = (await getTopByPilar())[pilar] ?? [];
   const tops = filtrarPorCategoria(topsAll, categoria);
@@ -233,10 +294,29 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
     Array.from({ length: cantidad }, (_, i) => i + 1).map(async (variante): Promise<Pieza> => {
       try {
         const productoDesc = producto ? `${producto.nombre}${producto.descripcion ? ` — ${producto.descripcion}` : ""}` : null;
-        const brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante, esPorfolio);
 
         let imagenUrl: string | null;
         let promptMostrar: string;
+        let brief: Brief;
+        if (creativo) {
+          // Concepto editorial: OpenAI director creativo + Ideogram estética flexible on-brand.
+          brief = await disenarBriefCreativo(idea, subtipo, producto?.nombre ?? null, tops);
+          const prompt = buildCreativePrompt(brief.escena ?? "", detalles);
+          const img = await falImage(MODEL_IDEOGRAM, { prompt, image_size: FAL_SIZES[aspecto], num_images: 1 });
+          imagenUrl = img.images[0]?.url ?? null;
+          promptMostrar = prompt;
+          return {
+            imagen: imagenUrl,
+            caption: brief.caption_es,
+            hashtags: brief.hashtags ?? [],
+            mensaje_clave: mensajeOverride || brief.mensaje_clave || "",
+            bajada: brief.bajada || "",
+            slides: brief.slides ?? [],
+            image_prompt: promptMostrar,
+          };
+        }
+        brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante, esPorfolio);
+
         if (productoReal && producto && packshotUrl) {
           const editPrompt = buildEditPrompt(brief.escena ?? "", categoria, producto.nombre, personas, aspecto !== "feed", detalles);
           const img = await falImage(MODEL_EDIT, { prompt: editPrompt, image_urls: [packshotUrl], num_images: 1 });
@@ -276,10 +356,10 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
     personas,
     formato,
     modelo: producto?.sku ?? null,
-    producto: producto?.nombre ?? (esPorfolio && porfolioUrls.length > 0 ? "Lineup Drean (porfolio)" : null),
-    usa_packshot: productoReal || (esPorfolio && porfolioUrls.length > 0),
-    engine: productoReal || (esPorfolio && porfolioUrls.length > 0) ? MODEL_EDIT : MODEL_IDEOGRAM,
+    producto: creativo ? "Creativo/editorial" : producto?.nombre ?? (esPorfolio && porfolioUrls.length > 0 ? "Lineup Drean (porfolio)" : null),
+    usa_packshot: !creativo && (productoReal || (esPorfolio && porfolioUrls.length > 0)),
+    engine: !creativo && (productoReal || (esPorfolio && porfolioUrls.length > 0)) ? MODEL_EDIT : MODEL_IDEOGRAM,
     piezas,
-    producto_ref: packshotUrl ?? (porfolioUrls.length > 0 ? porfolioUrls.join(" · ") : null),
+    producto_ref: creativo ? null : packshotUrl ?? (porfolioUrls.length > 0 ? porfolioUrls.join(" · ") : null),
   };
 }

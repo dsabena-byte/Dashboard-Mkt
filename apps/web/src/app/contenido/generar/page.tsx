@@ -261,8 +261,12 @@ export default function ContenidoPage() {
   const [aspecto, setAspecto] = useState("vertical");
   const [cantidad, setCantidad] = useState(1);
   const [detalles, setDetalles] = useState("");
+  const [tipoContenido, setTipoContenido] = useState("producto");
+  const [subtipo, setSubtipo] = useState("beneficio");
+  const [idea, setIdea] = useState("");
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState<Resultado | null>(null);
+  const creativo = tipoContenido === "creativo";
 
   const modelos = useMemo(() => getModelos(categoria), [categoria]);
 
@@ -273,7 +277,7 @@ export default function ContenidoPage() {
       const r = await fetch("/api/generar-contenido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, productoReal: !!modelo, detalles: detalles.trim() || undefined, formato, aspecto, cantidad }),
+        body: JSON.stringify({ pilar, categoria, modelo: modelo || undefined, productoReal: !creativo && !!modelo, detalles: detalles.trim() || undefined, formato, aspecto, cantidad, tipoContenido, subtipo: creativo ? subtipo : undefined, idea: creativo ? idea.trim() || undefined : undefined }),
       });
       setRes(await r.json());
     } catch (e) {
@@ -328,6 +332,24 @@ export default function ContenidoPage() {
 
       <section className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
         <label className="flex flex-col gap-1 text-xs">
+          <span className="font-medium text-muted-foreground">Tipo de contenido</span>
+          <select value={tipoContenido} onChange={(e) => setTipoContenido(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
+            <option value="producto">Producto (estética premium)</option>
+            <option value="creativo">Creativo / editorial</option>
+          </select>
+        </label>
+        {creativo && (
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-medium text-muted-foreground">Sub-tipo</span>
+            <select value={subtipo} onChange={(e) => setSubtipo(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
+              <option value="efemeride">Efeméride / fecha</option>
+              <option value="trending">Trending / cultural</option>
+              <option value="beneficio">Beneficio (sin producto)</option>
+              <option value="disruptivo">Disruptivo / creativo</option>
+            </select>
+          </label>
+        )}
+        <label className="flex flex-col gap-1 text-xs">
           <span className="font-medium text-muted-foreground">Pilar</span>
           <select value={pilar} onChange={(e) => setPilar(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
             {PILARES.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -364,6 +386,17 @@ export default function ContenidoPage() {
             {CANTIDADES.map((n) => <option key={n} value={n}>{n} pieza{n > 1 ? "s" : ""}</option>)}
           </select>
         </label>
+        {creativo && (
+          <label className="flex w-full flex-col gap-1 text-xs">
+            <span className="font-medium text-muted-foreground">Idea / tema (efeméride, trending, concepto…)</span>
+            <input
+              value={idea}
+              onChange={(e) => setIdea(e.target.value)}
+              className="w-full rounded border px-2 py-1.5 text-sm"
+              placeholder="ej: Día del Padre · Mundial (cooling break) · el beneficio de ganar tiempo · lavarropas de nubes"
+            />
+          </label>
+        )}
         <label className="flex w-full flex-col gap-1 text-xs">
           <span className="font-medium text-muted-foreground">Detalles (opcional) — instrucciones extra para la imagen</span>
           <input
