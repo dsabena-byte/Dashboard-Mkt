@@ -184,6 +184,22 @@ publicado).
   publicación de Meta (`instagram_content_publish`, `pages_manage_posts`), espejar
   la imagen a un bucket permanente (las URLs de fal caducan) y un cron scheduler.
 
+## 7. Modo Creativo / editorial (efemérides, trending, beneficio, disruptivo)
+
+Además del modo **Producto** (estética premium fija), hay un modo **Creativo**
+para posts conceptuales que salen de la cocina y del producto-hero: efemérides,
+trending topics, beneficios (sin producto), ideas disruptivas.
+
+- **Inputs:** `tipoContenido` = creativo · `subtipo` (efemeride/trending/beneficio/
+  disruptivo) · `idea` (texto libre: el tema/concepto).
+- **Brief:** OpenAI como **director creativo** (`disenarBriefCreativo`) arma el
+  concepto según la idea + sub-tipo (producto ausente/sutil/metafórico).
+- **Estética:** `BRAND_CREATIVE` — flexible (exterior/urbano/aspiracional/surreal)
+  pero **con freno de marca**: premium, cohesiva, argentina, cálida (no "stock").
+  Ideogram, sin `MINIMAL`/`PROPORCION`/producto-hero.
+- **Integrado** al generador y al calendario (columnas `tipo_contenido`, `subtipo`,
+  `idea` — migración 0077).
+
 ## 5. Video (image-to-video)
 
 **Implementado.** Botón **"Generar video"** en cada pieza → anima la imagen ya

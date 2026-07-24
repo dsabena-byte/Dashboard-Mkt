@@ -32,6 +32,9 @@ interface Cal {
   estado: string;
   aprobado: boolean;
   con_placa?: boolean;
+  tipo_contenido?: string;
+  subtipo?: string;
+  idea?: string;
 }
 
 function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
@@ -274,6 +277,18 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
 
       {/* Parámetros */}
       <div className="mb-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
+        <select value={e.tipo_contenido ?? "producto"} onChange={(ev) => { const t = ev.target.value; setE({ ...e, tipo_contenido: t }); save({ tipo_contenido: t }); }} className={field}>
+          <option value="producto">Producto</option>
+          <option value="creativo">Creativo/editorial</option>
+        </select>
+        {(e.tipo_contenido ?? "producto") === "creativo" && (
+          <select value={e.subtipo ?? "beneficio"} onChange={(ev) => { const s = ev.target.value; setE({ ...e, subtipo: s }); save({ subtipo: s }); }} className={field}>
+            <option value="efemeride">Efeméride</option>
+            <option value="trending">Trending</option>
+            <option value="beneficio">Beneficio</option>
+            <option value="disruptivo">Disruptivo</option>
+          </select>
+        )}
         <select value={e.pilar ?? ""} onChange={(ev) => setE({ ...e, pilar: ev.target.value })} onBlur={() => save({ pilar: e.pilar })} className={field}>
           {PILARES.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
@@ -291,6 +306,9 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
           {FORMATOS.map((f) => <option key={f.v} value={f.v}>{f.l}</option>)}
         </select>
       </div>
+      {(e.tipo_contenido ?? "producto") === "creativo" && (
+        <input value={e.idea ?? ""} onChange={(ev) => setE({ ...e, idea: ev.target.value })} onBlur={() => save({ idea: e.idea })} placeholder="Idea / tema: efeméride, trending, concepto… (ej. Día del Padre, lavarropas de nubes)" className={`${field} mb-2 w-full`} />
+      )}
       <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles (opcional): puertas cerradas, vista frontal…" className={`${field} mb-2 w-full`} />
 
       <div className="flex flex-wrap items-center gap-2">
