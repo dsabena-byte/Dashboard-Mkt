@@ -35,6 +35,10 @@ interface Cal {
 }
 
 function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
+function falErr(raw: string): string {
+  if (/exhausted balance|user is locked|top up|402|insufficient/i.test(raw)) return "Sin créditos en fal.ai — recargá el saldo en fal.ai/dashboard/billing y volvé a intentar.";
+  return raw;
+}
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function ymd(y: number, m: number, d: number) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
 
@@ -227,7 +231,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       });
       const j = await r.json();
       if (j.ok) { setE(j.item as Cal); onChange(); }
-      else alert(`Error al generar: ${j.error ?? "?"}`);
+      else alert(`Error al generar: ${falErr(j.error ?? "?")}`);
     } finally { setBusy(null); }
   }
 
@@ -249,7 +253,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       });
       const j = (await r.json()) as { ok?: boolean; video_url?: string; error?: string };
       if (j.ok && j.video_url) await save({ video_url: j.video_url });
-      else setVideoErr(j.error ?? "No se pudo generar el video.");
+      else setVideoErr(falErr(j.error ?? "No se pudo generar el video."));
     } catch (err) {
       setVideoErr(err instanceof Error ? err.message : String(err));
     } finally {
