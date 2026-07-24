@@ -68,6 +68,7 @@ function PiezaCard({ pieza, idx, aspecto }: { pieza: Pieza; idx: number; aspecto
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(false);
 
   async function generarVideo() {
     if (!pieza.imagen) return;
@@ -168,12 +169,13 @@ function PiezaCard({ pieza, idx, aspecto }: { pieza: Pieza; idx: number; aspecto
   }
 
   return (
+    <>
     <div className="overflow-hidden rounded-xl border bg-card">
       <div className="flex justify-center bg-neutral-900">
         {pieza.imagen ? (
           <div className="relative inline-block max-w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={pieza.imagen} alt={`pieza ${idx + 1}`} className="block max-h-[26rem] w-auto max-w-full" />
+            <img src={pieza.imagen} alt={`pieza ${idx + 1}`} onClick={() => setZoom(true)} className="block max-h-[26rem] w-auto max-w-full cursor-zoom-in" title="Click para agrandar" />
             {/* Placa DENTRO de la imagen: scrim + título + bajada */}
             {(titulo.trim() || bajada.trim()) && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent px-4 pb-4 pt-10" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
@@ -241,6 +243,13 @@ function PiezaCard({ pieza, idx, aspecto }: { pieza: Pieza; idx: number; aspecto
         </details>
       </div>
     </div>
+    {zoom && pieza.imagen && (
+      <div onClick={() => setZoom(false)} className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/85 p-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={pieza.imagen} alt="pieza ampliada" className="max-h-[95vh] max-w-[95vw] object-contain" />
+      </div>
+    )}
+    </>
   );
 }
 
