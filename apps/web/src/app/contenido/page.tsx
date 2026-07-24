@@ -273,7 +273,7 @@ export default function ContenidoPage() {
           <span className="font-medium text-muted-foreground">Modelo (producto real)</span>
           <select value={modelo} onChange={(e) => setModelo(e.target.value)} className="rounded border px-2 py-1.5 text-sm" disabled={modelos.length === 0}>
             <option value="">{modelos.length === 0 ? "— sin modelos cargados —" : "— sin producto (genérico) —"}</option>
-            {modelos.map((m) => <option key={m.sku} value={m.sku}>{m.nombre}</option>)}
+            {modelos.map((m) => <option key={m.sku} value={m.sku}>{m.nombreCorto ?? m.nombre}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
