@@ -20,7 +20,7 @@ interface Row {
 
 export async function POST(request: Request) {
   try {
-    const { id, red } = (await request.json()) as { id?: string; red?: string };
+    const { id, red, imageUrl } = (await request.json()) as { id?: string; red?: string; imageUrl?: string };
     if (!id || !red) return NextResponse.json({ ok: false, error: "Falta id o red." }, { status: 400 });
 
     const rowRes = await sbAdmin(`${TABLE}?id=eq.${id}&select=imagen_final_url,imagen_url,video_url,caption,hashtags`, { method: "GET" });
@@ -28,7 +28,9 @@ export async function POST(request: Request) {
     const row = ((await rowRes.json()) as Row[])[0];
     if (!row) return NextResponse.json({ ok: false, error: "Pieza no encontrada." }, { status: 404 });
 
-    const imagen = row.imagen_final_url ?? row.imagen_url;
+    // imageUrl (imagen compuesta con placa, enviada por el browser) tiene prioridad;
+    // si no vino, caemos a la final guardada o a la cruda.
+    const imagen = imageUrl ?? row.imagen_final_url ?? row.imagen_url;
     const esVideo = !imagen && !!row.video_url;
     if (!imagen && !row.video_url) return NextResponse.json({ ok: false, error: "La pieza no tiene imagen ni video." }, { status: 400 });
     const caption = [row.caption ?? "", (row.hashtags ?? []).join(" ")].filter(Boolean).join("\n\n");

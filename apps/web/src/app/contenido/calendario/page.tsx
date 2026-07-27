@@ -335,9 +335,20 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     if (!confirm(`¿Publicar esta pieza AHORA en ${nombre}? (se publica en la cuenta real de Drean)`)) return;
     setPubBusy(true);
     try {
+      // Si es imagen, componemos la placa (título+bajada) EN ESTE MOMENTO y la
+      // subimos, para publicar exactamente lo que se ve. Así no dependemos de que
+      // la imagen final se haya guardado al aprobar (que puede fallar).
+      let imageUrl: string | undefined;
+      if (e.imagen_url && !e.video_url) {
+        try {
+          const blob = await componerFinal(e.imagen_url, e.mensaje_clave ?? "", e.bajada ?? "", e.con_placa ?? true);
+          imageUrl = await subirBlob(e.id, blob, "final.png");
+          save({ imagen_final_url: imageUrl }); // best-effort: persiste si la columna existe
+        } catch { /* si la composición falla, se publica la imagen cruda */ }
+      }
       const r = await fetch("/api/contenido/calendario/publicar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: e.id, red }),
+        body: JSON.stringify({ id: e.id, red, imageUrl }),
       });
       const j = (await r.json()) as { ok?: boolean; id?: string; error?: string };
       if (j.ok) {
