@@ -325,6 +325,27 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoErr, setVideoErr] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [pubBusy, setPubBusy] = useState(false);
+
+  async function publicarPrueba(red: "instagram" | "facebook") {
+    if (!e.imagen_url && !e.video_url) return;
+    const nombre = red === "instagram" ? "Instagram" : "Facebook";
+    if (!confirm(`¿Publicar esta pieza AHORA en ${nombre}? (se publica en la cuenta real de Drean)`)) return;
+    setPubBusy(true);
+    try {
+      const r = await fetch("/api/contenido/calendario/publicar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: e.id, red }),
+      });
+      const j = (await r.json()) as { ok?: boolean; id?: string; error?: string };
+      if (j.ok) alert(`✅ ¡Publicado en ${nombre}! Revisá la cuenta. (id: ${j.id})`);
+      else alert(`Error al publicar: ${falErr(j.error ?? "?")}`);
+    } catch (err) {
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setPubBusy(false);
+    }
+  }
   const modelos = useMemo(() => getModelos(e.categoria ?? "porfolio"), [e.categoria]);
   const esCreativo = (e.tipo_contenido ?? "producto") === "creativo";
 
@@ -576,6 +597,14 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
                   <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar video</a>
                 </div>
               )}
+            </div>
+
+            {/* Publicar prueba (manual, publica en la cuenta real ahora) */}
+            <div className="flex flex-wrap items-center gap-2 border-t pt-2">
+              <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar prueba</span>
+              <button onClick={() => publicarPrueba("instagram")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Instagram</button>
+              <button onClick={() => publicarPrueba("facebook")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Facebook</button>
+              {pubBusy && <span className="text-[10px] text-muted-foreground">publicando…</span>}
             </div>
           </div>
         </div>
