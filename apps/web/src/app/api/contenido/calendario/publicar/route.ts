@@ -40,6 +40,13 @@ export async function POST(request: Request) {
     } else {
       postId = esVideo && row.video_url ? await publicarVideoFB(row.video_url, caption, pageToken) : await publicarImagenFB(imagen!, caption, pageToken);
     }
+
+    // Guardamos el id del post (best-effort) para poder retirarlo después. Si las
+    // columnas no existen todavía, el PATCH falla en silencio y el browser igual
+    // recibe el id para poder retirar en la misma sesión.
+    const col = red === "instagram" ? "publicado_ig_id" : "publicado_fb_id";
+    await sbAdmin(`${TABLE}?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ [col]: postId }) }).catch(() => {});
+
     return NextResponse.json({ ok: true, red, id: postId });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
