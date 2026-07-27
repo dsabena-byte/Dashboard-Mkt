@@ -30,6 +30,14 @@ async function get(path: string, tok: string): Promise<Record<string, unknown>> 
   return j;
 }
 
+async function del(path: string, tok: string): Promise<Record<string, unknown>> {
+  const sep = path.includes("?") ? "&" : "?";
+  const res = await fetch(`${GRAPH}${path}${sep}access_token=${encodeURIComponent(tok)}`, { method: "DELETE", cache: "no-store" });
+  const j = (await res.json()) as Record<string, unknown>;
+  if (!res.ok || j.error) throw new Error(`Graph DELETE ${path}: ${JSON.stringify(j.error ?? j).slice(0, 400)}`);
+  return j;
+}
+
 // Page access token (necesario para publicar en la Página y en IG).
 export async function getPageToken(): Promise<string> {
   const j = await get(`/${PAGE_ID}?fields=access_token`, token());
@@ -71,4 +79,11 @@ export async function publicarImagenFB(imageUrl: string, caption: string, pageTo
 export async function publicarVideoFB(videoUrl: string, description: string, pageToken: string): Promise<string> {
   const j = await post(`/${PAGE_ID}/videos`, { file_url: videoUrl, description, access_token: pageToken });
   return j.id as string;
+}
+
+// ---- Retirar (borrar) una publicación ----
+// Tanto en IG (media id) como en FB (post/photo/video id) el borrado es
+// DELETE /{id}. Devuelve {success:true, deleted_id} de la Graph API.
+export async function borrarPublicacion(objectId: string, pageToken: string): Promise<void> {
+  await del(`/${objectId}`, pageToken);
 }

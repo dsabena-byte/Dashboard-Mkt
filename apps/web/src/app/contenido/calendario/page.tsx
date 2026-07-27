@@ -37,6 +37,8 @@ interface Cal {
   idea?: string;
   imagen_final_url?: string | null;
   redes?: string[] | null;
+  publicado_ig_id?: string | null;
+  publicado_fb_id?: string | null;
 }
 
 function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
@@ -338,8 +340,35 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
         body: JSON.stringify({ id: e.id, red }),
       });
       const j = (await r.json()) as { ok?: boolean; id?: string; error?: string };
-      if (j.ok) alert(`✅ ¡Publicado en ${nombre}! Revisá la cuenta. (id: ${j.id})`);
-      else alert(`Error al publicar: ${falErr(j.error ?? "?")}`);
+      if (j.ok) {
+        const col = red === "instagram" ? "publicado_ig_id" : "publicado_fb_id";
+        setE((prev) => ({ ...prev, [col]: j.id }));
+        alert(`✅ ¡Publicado en ${nombre}! Revisá la cuenta. (id: ${j.id})`);
+      } else alert(`Error al publicar: ${falErr(j.error ?? "?")}`);
+    } catch (err) {
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setPubBusy(false);
+    }
+  }
+
+  async function retirarPublicacion(red: "instagram" | "facebook") {
+    const col = red === "instagram" ? "publicado_ig_id" : "publicado_fb_id";
+    const postId = e[col];
+    const nombre = red === "instagram" ? "Instagram" : "Facebook";
+    if (!postId) return;
+    if (!confirm(`¿Retirar (borrar) esta publicación de ${nombre}? Se elimina de la cuenta real de Drean.`)) return;
+    setPubBusy(true);
+    try {
+      const r = await fetch("/api/contenido/calendario/retirar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: e.id, red, postId }),
+      });
+      const j = (await r.json()) as { ok?: boolean; error?: string };
+      if (j.ok) {
+        setE((prev) => ({ ...prev, [col]: null }));
+        alert(`🗑️ Publicación retirada de ${nombre}.`);
+      } else alert(`No se pudo retirar: ${j.error ?? "?"}`);
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -602,9 +631,17 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
             {/* Publicar prueba (manual, publica en la cuenta real ahora) */}
             <div className="flex flex-wrap items-center gap-2 border-t pt-2">
               <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar prueba</span>
-              <button onClick={() => publicarPrueba("instagram")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Instagram</button>
-              <button onClick={() => publicarPrueba("facebook")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Facebook</button>
-              {pubBusy && <span className="text-[10px] text-muted-foreground">publicando…</span>}
+              {e.publicado_ig_id ? (
+                <button onClick={() => retirarPublicacion("instagram")} disabled={pubBusy} className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">✕ Retirar de Instagram</button>
+              ) : (
+                <button onClick={() => publicarPrueba("instagram")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Instagram</button>
+              )}
+              {e.publicado_fb_id ? (
+                <button onClick={() => retirarPublicacion("facebook")} disabled={pubBusy} className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">✕ Retirar de Facebook</button>
+              ) : (
+                <button onClick={() => publicarPrueba("facebook")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Facebook</button>
+              )}
+              {pubBusy && <span className="text-[10px] text-muted-foreground">procesando…</span>}
             </div>
           </div>
         </div>
