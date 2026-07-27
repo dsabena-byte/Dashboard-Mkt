@@ -370,6 +370,17 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     }
   }
 
+  // Instagram no permite borrar por API con los permisos actuales. Recordamos
+  // cómo hacerlo a mano y, si ya lo borró, permitimos resetear para republicar.
+  function avisoRetirarIG() {
+    const yaLoBorre = confirm(
+      "Instagram se retira a mano (la API no lo permite con los permisos actuales).\n\n" +
+      "Abrí el post en la app de Instagram → ⋯ → Eliminar.\n\n" +
+      "¿Ya lo borraste? Aceptar = liberar el botón para poder republicar."
+    );
+    if (yaLoBorre) setE((prev) => ({ ...prev, publicado_ig_id: null }));
+  }
+
   async function retirarPublicacion(red: "instagram" | "facebook") {
     const col = red === "instagram" ? "publicado_ig_id" : "publicado_fb_id";
     const postId = e[col];
@@ -657,7 +668,9 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
             <div className="flex flex-wrap items-center gap-2 border-t pt-2">
               <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar prueba</span>
               {e.publicado_ig_id ? (
-                <button onClick={() => retirarPublicacion("instagram")} disabled={pubBusy} className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">✕ Retirar de Instagram</button>
+                // IG no se puede borrar por API (falta instagram_manage_contents). Se
+                // retira a mano desde la app; el botón sólo recuerda cómo y resetea.
+                <button onClick={avisoRetirarIG} disabled={pubBusy} className="rounded border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50">✓ En Instagram · retirar a mano</button>
               ) : (
                 <button onClick={() => publicarPrueba("instagram")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Instagram</button>
               )}
