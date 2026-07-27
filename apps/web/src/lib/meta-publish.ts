@@ -48,10 +48,25 @@ export async function getPageToken(): Promise<string> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Espera a que el contenedor de IG esté FINISHED antes de publicar. Meta procesa
+// el media de forma async (incluso las imágenes: tiene que bajar la URL). Si se
+// publica antes, tira 9007 "Media ID is not available / no está listo".
+async function esperarContenedor(creationId: string, pageToken: string, tries: number, intervalMs: number): Promise<void> {
+  for (let i = 0; i < tries; i++) {
+    const st = await get(`/${creationId}?fields=status_code`, pageToken);
+    if (st.status_code === "FINISHED") return;
+    if (st.status_code === "ERROR") throw new Error("IG: el contenido falló al procesarse.");
+    await sleep(intervalMs);
+  }
+  throw new Error("IG: el contenido no terminó de procesarse a tiempo. Probá de nuevo en un momento.");
+}
+
 // ---- Instagram ----
 export async function publicarImagenIG(imageUrl: string, caption: string, pageToken: string): Promise<string> {
   const cont = await post(`/${IG_ID}/media`, { image_url: imageUrl, caption, access_token: pageToken });
   const creationId = cont.id as string;
+  // Imágenes: suelen estar listas en 1-3s; esperamos hasta ~30s por las dudas.
+  await esperarContenedor(creationId, pageToken, 15, 2000);
   const pub = await post(`/${IG_ID}/media_publish`, { creation_id: creationId, access_token: pageToken });
   return pub.id as string;
 }
@@ -59,13 +74,8 @@ export async function publicarImagenIG(imageUrl: string, caption: string, pageTo
 export async function publicarReelIG(videoUrl: string, caption: string, pageToken: string): Promise<string> {
   const cont = await post(`/${IG_ID}/media`, { media_type: "REELS", video_url: videoUrl, caption, access_token: pageToken });
   const creationId = cont.id as string;
-  // El contenedor de video se procesa async: esperar a que esté FINISHED.
-  for (let i = 0; i < 30; i++) {
-    await sleep(5000);
-    const st = await get(`/${creationId}?fields=status_code`, pageToken);
-    if (st.status_code === "FINISHED") break;
-    if (st.status_code === "ERROR") throw new Error("IG: el video falló al procesarse.");
-  }
+  // El contenedor de video tarda más en procesarse: esperamos hasta ~2,5 min.
+  await esperarContenedor(creationId, pageToken, 30, 5000);
   const pub = await post(`/${IG_ID}/media_publish`, { creation_id: creationId, access_token: pageToken });
   return pub.id as string;
 }
