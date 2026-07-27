@@ -62,6 +62,13 @@ function wrapCanvas(ctx: CanvasRenderingContext2D, text: string, maxW: number): 
 
 // Compone la imagen FINAL (con la placa grabada si con_placa) y devuelve un PNG.
 // Sirve para publicar: la placa queda embebida y la URL es permanente.
+// Proporciones de la placa (relativas al ANCHO de la imagen). Se usan tanto en
+// el canvas (imagen publicada) como en la preview (vía cqw), para que lo que se
+// ve sea EXACTAMENTE lo que se publica.
+const PLACA_TITULO_R = 0.056;
+const PLACA_BAJADA_R = 0.038;
+const PLACA_PAD_R = 0.055;
+
 async function componerFinal(imagenUrl: string, titulo: string, bajada: string, conPlaca: boolean): Promise<Blob> {
   const img = new Image();
   img.crossOrigin = "anonymous";
@@ -79,7 +86,7 @@ async function componerFinal(imagenUrl: string, titulo: string, bajada: string, 
     grad.addColorStop(1, "rgba(0,0,0,0.72)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, H - gradH, W, gradH);
-    const pad = Math.round(W * 0.055);
+    const pad = Math.round(W * PLACA_PAD_R);
     ctx.fillStyle = "#ffffff";
     ctx.textBaseline = "alphabetic";
     ctx.shadowColor = "rgba(0,0,0,0.5)";
@@ -87,7 +94,7 @@ async function componerFinal(imagenUrl: string, titulo: string, bajada: string, 
     try { await document.fonts.load(`800 ${Math.round(W * 0.065)}px Manrope`); await document.fonts.load(`600 ${Math.round(W * 0.036)}px Manrope`); } catch { /* fallback */ }
     let yBottom = H - pad;
     if (bajada.trim()) {
-      const fsB = Math.round(W * 0.036);
+      const fsB = Math.round(W * PLACA_BAJADA_R);
       ctx.font = `600 ${fsB}px "Manrope", Arial, sans-serif`;
       const bl = wrapCanvas(ctx, bajada, W - pad * 2);
       let y = yBottom - (bl.length - 1) * fsB * 1.25;
@@ -95,7 +102,7 @@ async function componerFinal(imagenUrl: string, titulo: string, bajada: string, 
       yBottom -= bl.length * fsB * 1.25 + fsB * 0.4;
     }
     if (titulo.trim()) {
-      const fsT = Math.round(W * 0.065);
+      const fsT = Math.round(W * PLACA_TITULO_R);
       ctx.font = `800 ${fsT}px "Manrope", Arial, sans-serif`;
       const tl = wrapCanvas(ctx, titulo, W - pad * 2);
       let y = yBottom - (tl.length - 1) * fsT * 1.12;
@@ -379,7 +386,12 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       if (j.ok) {
         setE((prev) => ({ ...prev, [col]: null }));
         alert(`🗑️ Publicación retirada de ${nombre}.`);
-      } else alert(`No se pudo retirar: ${j.error ?? "?"}`);
+      } else {
+        const err = j.error ?? "?";
+        if (red === "instagram" && /#10|insufficient permission/i.test(err)) {
+          alert("Instagram no permite borrar publicaciones por API con los permisos actuales (haría falta el permiso instagram_manage_contents, que requiere otra aprobación de Meta).\n\nPor ahora borralo a mano: abrí el post en la app de Instagram → ⋯ → Eliminar.\n\n(En Facebook el botón Retirar sí funciona.)");
+        } else alert(`No se pudo retirar: ${err}`);
+      }
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -572,13 +584,15 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       {/* Contenido generado */}
       {e.imagen_url && (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <div className="relative inline-block h-min shrink-0 self-start">
+          <div className="relative inline-block h-min shrink-0 self-start" style={{ containerType: "inline-size" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="block max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain" />
             {(e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent px-2 pb-2 pt-6" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
-                {e.mensaje_clave?.trim() && <div className="text-[11px] font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.mensaje_clave}</div>}
-                {e.bajada?.trim() && <div className="text-[9px] font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.bajada}</div>}
+              // Tamaños en cqw (relativos al ancho de la imagen) para que la preview
+              // coincida EXACTAMENTE con la placa que se graba al publicar.
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent" style={{ fontFamily: "'Manrope', system-ui, sans-serif", padding: `${PLACA_PAD_R * 200}cqw ${PLACA_PAD_R * 100}cqw ${PLACA_PAD_R * 100}cqw` }}>
+                {e.mensaje_clave?.trim() && <div className="font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]" style={{ fontSize: `${PLACA_TITULO_R * 100}cqw` }}>{e.mensaje_clave}</div>}
+                {e.bajada?.trim() && <div className="font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]" style={{ fontSize: `${PLACA_BAJADA_R * 100}cqw`, marginTop: "1cqw" }}>{e.bajada}</div>}
               </div>
             )}
           </div>
