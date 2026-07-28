@@ -11,6 +11,7 @@ const WRITABLE = new Set([
   "imagen_url", "video_url", "caption", "hashtags", "mensaje_clave", "bajada", "image_prompt",
   "estado", "aprobado", "redes", "notas", "con_placa",
   "tipo_contenido", "subtipo", "idea", "imagen_final_url",
+  "canal", "perfil", "guion", "persona_url",
 ]);
 
 function pick(body: Record<string, unknown>): Record<string, unknown> {
@@ -25,9 +26,13 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const desde = url.searchParams.get("desde");
     const hasta = url.searchParams.get("hasta");
+    const canal = url.searchParams.get("canal");
     let q = `${TABLE}?select=*&order=fecha.asc,hora.asc.nullsfirst`;
     if (desde) q += `&fecha=gte.${desde}`;
     if (hasta) q += `&fecha=lte.${hasta}`;
+    // Filtro por canal: rrss trae también las filas viejas sin canal (null).
+    if (canal === "ugc") q += `&canal=eq.ugc`;
+    else if (canal === "rrss") q += `&or=(canal.eq.rrss,canal.is.null)`;
     const res = await sbAdmin(q, { method: "GET" });
     if (!res.ok) return NextResponse.json({ ok: false, error: `read ${res.status}: ${(await res.text()).slice(0, 300)}` }, { status: 500 });
     return NextResponse.json({ ok: true, items: await res.json() });

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
 
@@ -39,6 +38,10 @@ interface Cal {
   redes?: string[] | null;
   publicado_ig_id?: string | null;
   publicado_fb_id?: string | null;
+  canal?: string;
+  perfil?: string;
+  guion?: string | null;
+  persona_url?: string | null;
 }
 
 function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
@@ -142,6 +145,7 @@ export default function CalendarioPage() {
   const [sel, setSel] = useState<string>(ymd(now.getFullYear(), now.getMonth(), now.getDate()));
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [canal, setCanal] = useState<"rrss" | "ugc">("rrss");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -149,7 +153,7 @@ export default function CalendarioPage() {
     try {
       const desde = ymd(y, m, 1);
       const hasta = ymd(y, m, new Date(y, m + 1, 0).getDate());
-      const r = await fetch(`/api/contenido/calendario?desde=${desde}&hasta=${hasta}`);
+      const r = await fetch(`/api/contenido/calendario?desde=${desde}&hasta=${hasta}&canal=${canal}`);
       const j = await r.json();
       if (j.ok) setItems(j.items as Cal[]);
       else setErr(j.error ?? "No se pudo leer el calendario.");
@@ -158,7 +162,7 @@ export default function CalendarioPage() {
     } finally {
       setLoading(false);
     }
-  }, [y, m]);
+  }, [y, m, canal]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -185,9 +189,12 @@ export default function CalendarioPage() {
   async function addEntry() {
     setErr(null);
     try {
+      const body = canal === "ugc"
+        ? { fecha: sel, canal: "ugc", perfil: "usuario", tipo_contenido: "ugc", aspecto: "story", estado: "pendiente" }
+        : { fecha: sel, canal: "rrss", pilar: PILARES[0], categoria: "porfolio", formato: "imagen", aspecto: "vertical", estado: "pendiente" };
       const r = await fetch("/api/contenido/calendario", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fecha: sel, pilar: PILARES[0], categoria: "porfolio", formato: "imagen", aspecto: "vertical", estado: "pendiente" }),
+        body: JSON.stringify(body),
       });
       const j = await r.json();
       if (j.ok) load();
@@ -199,14 +206,20 @@ export default function CalendarioPage() {
 
   const selItems = byDay[sel] ?? [];
 
+  const tabCls = (active: boolean) =>
+    `-mb-px border-b-2 px-4 py-2 text-sm font-medium ${active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`;
+
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap gap-1 border-b">
+        <button onClick={() => setCanal("rrss")} className={tabCls(canal === "rrss")}>Generación de Contenidos RRSS</button>
+        <button onClick={() => setCanal("ugc")} className={tabCls(canal === "ugc")}>Generación de Contenidos UGC</button>
+      </div>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Calendario de contenido</h2>
-          <p className="text-sm text-muted-foreground">Planificá el mes, generá cada pieza, revisá y aprobá. La publicación automática en IG/FB es la próxima etapa.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Calendario UGC (persona hablando)" : "Calendario de contenido RRSS"}</h2>
+          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Planificá y generá videos UGC (guion → persona → video), revisá y aprobá." : "Planificá el mes, generá cada pieza, revisá y aprobá. La publicación automática en IG/FB es la próxima etapa."}</p>
         </div>
-        <Link href="/contenido/generar" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Generar pieza suelta →</Link>
       </header>
 
       <details className="rounded-xl border bg-card p-4 text-sm">
@@ -311,7 +324,9 @@ export default function CalendarioPage() {
           <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Sin piezas para este día. Agregá una con el botón de arriba.</p>
         ) : (
           <div className="space-y-3">
-            {selItems.map((it) => <EntryCard key={it.id} entry={it} onChange={load} />)}
+            {selItems.map((it) => canal === "ugc"
+              ? <UgcEntryCard key={it.id} entry={it} onChange={load} />
+              : <EntryCard key={it.id} entry={it} onChange={load} />)}
           </div>
         )}
       </section>
@@ -692,5 +707,120 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       </div>
     )}
     </>
+  );
+}
+
+// ---- Pieza UGC (persona hablando): guion → persona → video, en el calendario ----
+const UGC_PERFILES = [
+  { key: "usuario", label: "Usuario", nota: "Testimonio · darkpost" },
+  { key: "tecnico", label: "Técnico posventa", nota: "Autoridad · darkpost" },
+  { key: "personal", label: "Personal Drean", nota: "Humanización · orgánico" },
+];
+const UGC_VOCES = [{ key: "fem", label: "Voz femenina" }, { key: "masc", label: "Voz masculina" }];
+
+function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
+  const [e, setE] = useState<Cal>(entry);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setE(entry); }, [entry]);
+
+  async function save(patch: Partial<Cal>) {
+    setBusy("save");
+    try {
+      const r = await fetch("/api/contenido/calendario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id, ...patch }) });
+      const j = await r.json();
+      if (j.ok) { setE(j.item as Cal); onChange(); }
+    } finally { setBusy(null); }
+  }
+  async function borrar() {
+    if (!confirm("¿Borrar esta pieza UGC?")) return;
+    setBusy("del");
+    await fetch(`/api/contenido/calendario?id=${e.id}`, { method: "DELETE" });
+    onChange();
+  }
+  async function call(url: string, body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = (await r.json()) as Record<string, unknown>;
+    if (!j.ok) { setError(falErr(String(j.error ?? "?"))); return null; }
+    return j;
+  }
+  async function genGuion() {
+    setBusy("guion"); setError(null);
+    try {
+      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", detalles: e.detalles ?? "" });
+      if (j) { setE((p) => ({ ...p, guion: j.guion as string })); await save({ guion: j.guion as string, estado: "generado" }); }
+    } finally { setBusy(null); }
+  }
+  async function genPersona() {
+    setBusy("persona"); setError(null);
+    try {
+      const j = await call("/api/ugc/persona", { perfil: e.perfil ?? "usuario", descripcion: e.detalles ?? "" });
+      if (j) { setE((p) => ({ ...p, persona_url: j.image_url as string })); await save({ persona_url: j.image_url as string }); }
+    } finally { setBusy(null); }
+  }
+  async function genVideo() {
+    if (!e.guion?.trim() || !e.persona_url) return;
+    setBusy("video"); setError(null);
+    try {
+      const j = await call("/api/ugc/video", { guion: e.guion, voz: e.subtipo ?? "fem", persona_url: e.persona_url });
+      if (j) { setE((p) => ({ ...p, video_url: j.video_url as string })); await save({ video_url: j.video_url as string, estado: "generado" }); }
+    } finally { setBusy(null); }
+  }
+  const field = "rounded border px-2 py-1 text-xs";
+  const perfilSel = UGC_PERFILES.find((p) => p.key === (e.perfil ?? "usuario"))!;
+
+  return (
+    <div className="rounded-xl border bg-card p-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: ESTADO_COLOR[e.estado] ?? "#94a3b8" }}>{ESTADO_LABEL[e.estado] ?? e.estado}</span>
+        <input type="time" value={e.hora?.slice(0, 5) ?? ""} onChange={(ev) => setE({ ...e, hora: ev.target.value })} onBlur={() => save({ hora: e.hora })} className={field} />
+        <div className="ml-auto flex gap-1">
+          <button onClick={borrar} disabled={busy === "del"} className="rounded border px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">Borrar</button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <select value={e.perfil ?? "usuario"} onChange={(ev) => { setE({ ...e, perfil: ev.target.value }); save({ perfil: ev.target.value }); }} className={field}>
+          {UGC_PERFILES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+        </select>
+        <span className="text-[11px] text-muted-foreground">{perfilSel.nota}</span>
+      </div>
+
+      <input value={e.idea ?? ""} onChange={(ev) => setE({ ...e, idea: ev.target.value })} onBlur={() => save({ idea: e.idea })} placeholder="Producto / tema (ej: Lavarropas Drean 12kg)" className={`${field} w-full`} />
+      <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / look de la persona (opcional)" className={`${field} w-full`} />
+
+      <div className="flex flex-wrap gap-2">
+        <button onClick={genGuion} disabled={busy !== null} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
+        <button onClick={genPersona} disabled={busy !== null} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "persona" ? "Generando…" : e.persona_url ? "2 · Regenerar persona" : "2 · Persona"}</button>
+        <select value={e.subtipo ?? "fem"} onChange={(ev) => { setE({ ...e, subtipo: ev.target.value }); save({ subtipo: ev.target.value }); }} className={field}>
+          {UGC_VOCES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
+        </select>
+        <button onClick={genVideo} disabled={busy !== null || !e.guion?.trim() || !e.persona_url} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando video (1-3 min)…" : "3 · Video"}</button>
+      </div>
+
+      <textarea value={e.guion ?? ""} onChange={(ev) => setE({ ...e, guion: ev.target.value })} onBlur={() => save({ guion: e.guion })} rows={3} placeholder="El guion aparece acá y lo podés editar." className={`${field} w-full resize-y`} />
+
+      {error && <p className="rounded border border-red-300 bg-red-50 p-2 text-[11px] text-red-700">{error}</p>}
+
+      <div className="flex flex-wrap gap-3">
+        {e.persona_url && !e.video_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={e.persona_url} alt="persona" className="max-h-56 w-auto rounded border" />
+        )}
+        {e.video_url && (
+          <div className="space-y-1">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video src={e.video_url} controls loop className="max-h-72 w-auto rounded border" />
+            <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar</a>
+          </div>
+        )}
+      </div>
+
+      {e.video_url && (
+        <button onClick={() => save({ aprobado: !e.aprobado, estado: e.aprobado ? "generado" : "aprobado" })} disabled={busy === "save"} className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"} disabled:opacity-50`}>
+          {e.aprobado ? "Aprobado ✓ (click para desaprobar)" : "Aprobar pieza"}
+        </button>
+      )}
+    </div>
   );
 }
