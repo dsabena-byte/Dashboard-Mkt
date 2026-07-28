@@ -5,9 +5,11 @@ import { LastUpdated } from "@/components/last-updated";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { KpiCard } from "@/components/kpi-card";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
+import { UgcTestingPanel } from "@/components/pauta/ugc-testing-panel";
 import { MEDIO_COLORS, extractMeses, type PautaRow } from "@/lib/pauta-data";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import type { UgcPieceAnalysis } from "@/lib/ugc-analysis-queries";
+import type { UgcTestEntry } from "@/lib/ugc-testing-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const fmtNum = (n: number) => formatNumber(Math.round(n));
@@ -40,7 +42,7 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
   return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
 }
 
-export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpdated = null }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[]; lastUpdated?: string | null }) {
+export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], ugcEntries = [], lastUpdated = null }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[]; ugcEntries?: UgcTestEntry[]; lastUpdated?: string | null }) {
   const meses = useMemo(() => extractMeses(rows), [rows]);
   const [selMeses, setSelMeses] = useState<string[]>([]);
 
@@ -282,6 +284,9 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpd
               </div>
             </>
           )}
+
+          {/* Testeo de creativos: ranking head-to-head + aprendizajes por dimensión. */}
+          <UgcTestingPanel creatives={piecesF} entries={ugcEntries} analysis={ugcAnalysis} />
 
           {/* Piezas pautadas (al final), separadas por plataforma. */}
           {piecesF.length > 0 && (() => {
