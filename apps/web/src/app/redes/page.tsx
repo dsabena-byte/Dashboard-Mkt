@@ -121,9 +121,10 @@ export default async function RedesPage({ searchParams }: PageProps) {
     label: BRAND_LABELS[s.key] ?? s.key,
   }));
   const contentSlices = computeContentTypeSlices(posts);
-  // Posteos de competencia (todas las marcas menos Drean) para el panel por marca.
+  // Posteos de competencia para el panel por marca. Solo Instagram: las marcas
+  // suelen duplicar contenido en FB y ahí las métricas son más pobres.
   const competenciaPosts = posts
-    .filter((p) => p.marca !== OWN_BRAND)
+    .filter((p) => p.marca !== OWN_BRAND && p.red_social === "INSTAGRAM")
     .map((p) => ({
       id: p.id,
       marca: p.marca,

@@ -39,8 +39,6 @@ const BRAND_COLORS: Record<string, string> = {
 };
 const BRAND_ORDER = ["philco.arg", "gafaargentina", "whirlpoolarg", "electroluxar", "dreanargentina"];
 
-const NET_LABELS: Record<string, string> = { INSTAGRAM: "Instagram", FACEBOOK: "Facebook", TIKTOK: "TikTok" };
-
 function marcaLabel(m: string): string { return BRAND_LABELS[m] ?? m; }
 function marcaColor(m: string): string { return BRAND_COLORS[m] ?? "#94a3b8"; }
 
@@ -86,7 +84,6 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
   }, [posts]);
 
   const [marca, setMarca] = useState<string>(marcas[0] ?? "");
-  const [red, setRed] = useState<string>("all");
   const [tipo, setTipo] = useState<string>("all");
   const [sort, setSort] = useState<"engagement" | "fecha">("engagement");
 
@@ -98,12 +95,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
     return delaMarca.reduce((s, p) => s + (p.engagement ?? 0), 0) / delaMarca.length;
   }, [delaMarca]);
 
-  // Opciones de red/tipo presentes para la marca elegida (con conteo).
-  const redOpts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const p of delaMarca) counts.set(p.red_social, (counts.get(p.red_social) ?? 0) + 1);
-    return Array.from(counts.entries());
-  }, [delaMarca]);
+  // Opciones de tipo presentes para la marca elegida (con conteo).
   const tipoOpts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of delaMarca) { const t = tipoBucket(p.content_type); counts.set(t, (counts.get(t) ?? 0) + 1); }
@@ -112,13 +104,12 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
 
   const filtered = useMemo(() => {
     let r = delaMarca;
-    if (red !== "all") r = r.filter((p) => p.red_social === red);
     if (tipo !== "all") r = r.filter((p) => tipoBucket(p.content_type) === tipo);
     const arr = [...r];
     if (sort === "engagement") arr.sort((a, b) => (b.engagement ?? 0) - (a.engagement ?? 0));
     else arr.sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));
     return arr;
-  }, [delaMarca, red, tipo, sort]);
+  }, [delaMarca, tipo, sort]);
 
   if (marcas.length === 0) {
     return <p className="rounded-xl border bg-card p-6 text-center text-xs text-muted-foreground">No hay posteos de competencia para el filtro seleccionado.</p>;
@@ -127,7 +118,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
   return (
     <section className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Posteos por marca — competencia</h3>
+        <h3 className="text-sm font-semibold">Posteos por marca — competencia <span className="font-normal text-muted-foreground">(Instagram)</span></h3>
         <span className="text-xs text-muted-foreground">{filtered.length} posts · Eng. promedio {marcaLabel(marcaSel)}: <strong>{avgEng.toFixed(2)}%</strong></span>
       </div>
 
@@ -140,18 +131,11 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
         ))}
       </div>
 
-      {/* Filtros: red, tipo, orden */}
+      {/* Filtros: tipo, orden */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-3 text-xs">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-semibold uppercase text-muted-foreground">Red</span>
-          <Chip active={red === "all"} onClick={() => setRed("all")}>Todas ({delaMarca.length})</Chip>
-          {redOpts.map(([r, c]) => (
-            <Chip key={r} active={red === r} onClick={() => setRed(r)}>{NET_LABELS[r] ?? r} ({c})</Chip>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-semibold uppercase text-muted-foreground">Tipo</span>
-          <Chip active={tipo === "all"} onClick={() => setTipo("all")}>Todos</Chip>
+          <Chip active={tipo === "all"} onClick={() => setTipo("all")}>Todos ({delaMarca.length})</Chip>
           {tipoOpts.map(([t, c]) => (
             <Chip key={t} active={tipo === t} onClick={() => setTipo(t)}>{TIPO_LABEL[t]} ({c})</Chip>
           ))}
@@ -188,7 +172,6 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium">{TIPO_LABEL[tipoBucket(p.content_type)]}</span>
-                    <span className="text-[10px] text-muted-foreground">{NET_LABELS[p.red_social] ?? p.red_social}</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground">{fmtFecha(p.fecha)}</span>
                 </div>
