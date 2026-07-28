@@ -19,6 +19,7 @@ export interface CompetenciaPost {
   comentarios: number | null;
   views: number | null;
   pilar: string | null;
+  thumbnail_url?: string | null;
 }
 
 // Etiquetas/colores locales (no importamos del lib server-only).
@@ -176,9 +177,14 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
                 href={p.url}
                 target="_blank"
                 rel="noopener"
-                className="flex flex-col gap-2 rounded-lg border bg-background p-3 transition hover:shadow-sm"
+                className="flex flex-col gap-2 overflow-hidden rounded-lg border bg-background transition hover:shadow-sm"
                 style={{ borderLeft: `3px solid ${marcaColor(p.marca)}` }}
               >
+                {p.thumbnail_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.thumbnail_url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+                )}
+                <div className="flex flex-col gap-2 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium">{TIPO_LABEL[tipoBucket(p.content_type)]}</span>
@@ -201,6 +207,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
                 <div className="flex items-center justify-between gap-2">
                   {p.pilar ? <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px]">{p.pilar}</span> : <span />}
                   <span className="text-[10px] font-medium text-primary">Ver →</span>
+                </div>
                 </div>
               </a>
             );

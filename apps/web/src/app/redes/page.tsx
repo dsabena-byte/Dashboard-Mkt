@@ -136,6 +136,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       comentarios: p.comentarios,
       views: p.views,
       pilar: p.pilar,
+      thumbnail_url: p.thumbnail_url,
     }));
 
   const hasData = posts.length > 0;
