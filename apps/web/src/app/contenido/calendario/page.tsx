@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos, getModelo } from "@/lib/producto-catalog";
 import { getDiferenciales } from "@/lib/diferenciales";
-import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS } from "@/lib/ugc-opciones";
+import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES } from "@/lib/ugc-opciones";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -245,7 +245,7 @@ export default function CalendarioPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Calendario UGC (persona hablando)" : "Calendario de contenido RRSS"}</h2>
-          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Planificá y generá videos UGC (guion → persona → video), revisá y aprobá." : "Planificá el mes, generá cada pieza, revisá y aprobá. La publicación automática en IG/FB es la próxima etapa."}</p>
+          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Planificá y generá videos UGC nativos (guion → video), con escenarios variados. La marca va en el copy, no hablada." : "Planificá el mes, generá cada pieza, revisá y aprobá. La publicación automática en IG/FB es la próxima etapa."}</p>
         </div>
       </header>
 
@@ -738,13 +738,15 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   );
 }
 
-// ---- Pieza UGC (persona hablando): guion → persona → video, en el calendario ----
+// ---- Pieza UGC (video nativo Seedance): guion → video, en el calendario ----
+// Escenario se guarda en `categoria`; el copy (con links) en `caption`.
 function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [e, setE] = useState<Cal>(entry);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [persEdad, setPersEdad] = useState("");
-  const [dur, setDur] = useState("15");
+  const [dur, setDur] = useState("10");
+  const [ctaKey, setCtaKey] = useState("ninguno");
+  const [ctaLibre, setCtaLibre] = useState("");
   const [videoMsg, setVideoMsg] = useState<string | null>(null);
   useEffect(() => { setE(entry); }, [entry]);
 
@@ -772,23 +774,16 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     setBusy("guion"); setError(null);
     try {
       const atributos = (e.notas ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "", modelo: e.modelo ?? undefined, duracion: Number(dur), atributos });
+      const cta = ctaLibre.trim() || (UGC_CTAS.find((c) => c.key === ctaKey)?.texto ?? "");
+      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "", modelo: e.modelo ?? undefined, duracion: Number(dur), atributos, cta });
       if (j) { setE((p) => ({ ...p, guion: j.guion as string })); await save({ guion: j.guion as string, estado: "generado" }); }
     } finally { setBusy(null); }
   }
-  async function genPersona() {
-    setBusy("persona"); setError(null);
-    try {
-      const j = await call("/api/ugc/persona", { perfil: e.perfil ?? "usuario", descripcion: e.detalles ?? "", genero: e.subtipo || undefined, edad: persEdad || undefined });
-      if (j) { setE((p) => ({ ...p, persona_url: j.image_url as string })); await save({ persona_url: j.image_url as string }); }
-    } finally { setBusy(null); }
-  }
   async function genVideo() {
-    if (!e.guion?.trim() || !e.persona_url) return;
+    if (!e.guion?.trim()) return;
     setBusy("video"); setError(null); setVideoMsg("Encolando el video…");
     try {
-      const voz = e.subtipo === "hombre" ? "masc" : "fem"; // voz deducida del género
-      const j = await call("/api/ugc/video", { guion: e.guion, voz, persona_url: e.persona_url });
+      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur) });
       if (!j) return;
       const statusUrl = j.status_url as string;
       const responseUrl = j.response_url as string;
@@ -802,7 +797,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
         const sr = await fetch(`/api/ugc/video/status?${qs}`);
         const sj = (await sr.json()) as { ok?: boolean; status?: string; video_url?: string | null };
         if (sj.video_url) { setE((p) => ({ ...p, video_url: sj.video_url! })); await save({ video_url: sj.video_url, estado: "generado" }); terminal = true; break; }
-        if (sj.status === "FAILED") { setError("El video falló al renderizar. Probá regenerar la persona (a veces la imagen tiene un detalle raro) y reintentá."); terminal = true; break; }
+        if (sj.status === "FAILED") { setError("El video falló al renderizar. Reintentá (a veces es un fallo puntual del render)."); terminal = true; break; }
       }
       if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
     } finally { setBusy(null); setVideoMsg(null); }
@@ -810,7 +805,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   const field = "rounded border px-2 py-1 text-xs";
   // Sólo bloqueamos las acciones durante una GENERACIÓN, no durante el autosave
   // (así no hace falta tocar el botón dos veces).
-  const genBusy = busy === "guion" || busy === "persona" || busy === "video";
+  const genBusy = busy === "guion" || busy === "video";
   const perfilSel = UGC_PERFILES.find((p) => p.key === (e.perfil ?? "usuario"))!;
 
   return (
@@ -853,47 +848,54 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
           {UGC_FORMATOS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
         </select>
         <select value={dur} onChange={(ev) => setDur(ev.target.value)} className={field} title="Duración del video (define el largo del guion)">
-          <option value="10">10 seg</option>
-          <option value="15">15 seg</option>
-          <option value="20">20 seg</option>
-          <option value="30">30 seg</option>
+          {UGC_DURACIONES.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
         </select>
-      </div>
-      <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / contexto / look de la persona (opcional)" className={`${field} w-full`} />
-
-      {/* Persona: género + edad. La VOZ se deduce del género (mujer→femenina,
-          hombre→masculina). El género se guarda en `subtipo`. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Persona</span>
-        <select value={e.subtipo ?? ""} onChange={(ev) => { setE({ ...e, subtipo: ev.target.value }); save({ subtipo: ev.target.value }); }} className={field} title="Género de la persona (define también la voz)">
+        <select value={e.subtipo ?? ""} onChange={(ev) => { setE({ ...e, subtipo: ev.target.value }); save({ subtipo: ev.target.value }); }} className={field} title="Género de la persona">
           <option value="">Género…</option>
           <option value="mujer">Mujer</option>
           <option value="hombre">Hombre</option>
         </select>
-        <select value={persEdad} onChange={(ev) => setPersEdad(ev.target.value)} className={field} title="Rango de edad">
-          <option value="">Edad…</option>
-          <option value="joven">18-30</option>
-          <option value="adulto">30-50</option>
-          <option value="mayor">50+</option>
+      </div>
+      <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / contexto (opcional)" className={`${field} w-full`} />
+
+      {/* Escenario/toma (variedad): chips rápidos + texto libre. Se guarda en `categoria`. */}
+      <div className="space-y-1 rounded border bg-secondary/30 p-2">
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Escenario / toma</span>
+        <div className="flex flex-wrap gap-1">
+          {UGC_ESCENARIOS.map((s) => (
+            <button key={s.key} type="button" onClick={() => { setE({ ...e, categoria: s.key }); save({ categoria: s.key }); }}
+              className={`rounded-full border px-2 py-0.5 text-[10px] ${e.categoria === s.key ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>{s.label}</button>
+          ))}
+        </div>
+        <input value={e.categoria ?? ""} onChange={(ev) => setE({ ...e, categoria: ev.target.value })} onBlur={() => save({ categoria: e.categoria })} placeholder="…o escribí una escena libre (ej: en el balcón tomando mate)" className={`${field} w-full`} />
+      </div>
+
+      {/* CTA de cierre del guion (la marca no se dice; se manda al copy/link). */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">CTA</span>
+        <select value={ctaKey} onChange={(ev) => setCtaKey(ev.target.value)} className={field} title="Call-to-action con el que cierra el guion">
+          {UGC_CTAS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
         </select>
+        <input value={ctaLibre} onChange={(ev) => setCtaLibre(ev.target.value)} placeholder="…o CTA libre (pisa el de arriba)" className={`${field} flex-1 min-w-[180px]`} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
-        <button onClick={genPersona} disabled={genBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "persona" ? "Generando…" : e.persona_url ? "2 · Regenerar persona" : "2 · Persona"}</button>
-        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim() || !e.persona_url} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "3 · Video"}</button>
+        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "2 · Video"}</button>
         {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
       </div>
 
-      <textarea value={e.guion ?? ""} onChange={(ev) => setE({ ...e, guion: ev.target.value })} onBlur={() => save({ guion: e.guion })} rows={3} placeholder="El guion aparece acá y lo podés editar." className={`${field} w-full resize-y`} />
+      <textarea value={e.guion ?? ""} onChange={(ev) => setE({ ...e, guion: ev.target.value })} onBlur={() => save({ guion: e.guion })} rows={3} placeholder="El guion aparece acá y lo podés editar. La marca no se nombra; cierra con el CTA al copy." className={`${field} w-full resize-y`} />
+
+      {/* Copy del posteo (con los links a la web del producto). Lo completás vos. */}
+      <div className="space-y-1">
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Copy del posteo (links a la web)</span>
+        <textarea value={e.caption ?? ""} onChange={(ev) => setE({ ...e, caption: ev.target.value })} onBlur={() => save({ caption: e.caption })} rows={3} placeholder="Escribí el copy y pegá el link al producto (ej: Más info 👉 drean.com.ar/…)" className={`${field} w-full resize-y`} />
+      </div>
 
       {error && <p className="rounded border border-red-300 bg-red-50 p-2 text-[11px] text-red-700">{error}</p>}
 
       <div className="flex flex-wrap gap-3">
-        {e.persona_url && !e.video_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={e.persona_url} alt="persona" className="max-h-56 w-auto rounded border" />
-        )}
         {e.video_url && (
           <div className="space-y-1">
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
