@@ -640,15 +640,13 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       {/* Contenido generado */}
       {e.imagen_url && (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <div className="relative inline-block h-min shrink-0 self-start" style={{ containerType: "inline-size" }}>
+          <div className="relative inline-block h-min max-w-full shrink-0 self-start">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="block max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain" />
             {(e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
-              // Tamaños en cqw (relativos al ancho de la imagen) para que la preview
-              // coincida EXACTAMENTE con la placa que se graba al publicar.
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent" style={{ fontFamily: "'Manrope', system-ui, sans-serif", padding: `${PLACA_PAD_R * 200}cqw ${PLACA_PAD_R * 100}cqw ${PLACA_PAD_R * 100}cqw` }}>
-                {e.mensaje_clave?.trim() && <div className="font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]" style={{ fontSize: `${PLACA_TITULO_R * 100}cqw` }}>{e.mensaje_clave}</div>}
-                {e.bajada?.trim() && <div className="font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]" style={{ fontSize: `${PLACA_BAJADA_R * 100}cqw`, marginTop: "1cqw" }}>{e.bajada}</div>}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent px-4 pb-4 pt-10" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
+                {e.mensaje_clave?.trim() && <div className="text-lg font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.mensaje_clave}</div>}
+                {e.bajada?.trim() && <div className="mt-0.5 text-xs font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.bajada}</div>}
               </div>
             )}
           </div>
