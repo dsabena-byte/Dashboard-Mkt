@@ -25,7 +25,8 @@ function buildPrompt(guion: string, genero: string): string {
     `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
     `Amateur phone-video look, natural indoor lighting, natural subtle head and hand movements, natural skin. ` +
     `They speak in warm, natural RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo), with clear lip-sync. ` +
-    `The person says, in Argentine Spanish: "${guion}". ` +
+    `CRITICAL: pronounce every word slowly and clearly in correct Argentine Spanish; do NOT slur or mispronounce product names or the brand. ` +
+    `The person says, in clear Argentine Spanish: "${guion}". ` +
     `Vertical 9:16, single person, realistic and human.`
   );
 }
