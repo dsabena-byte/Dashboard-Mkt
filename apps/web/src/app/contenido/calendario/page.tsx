@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
+import { UGC_PERFILES, UGC_VOCES, UGC_PILARES, UGC_FORMATOS } from "@/lib/ugc-opciones";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -711,13 +712,6 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
 }
 
 // ---- Pieza UGC (persona hablando): guion → persona → video, en el calendario ----
-const UGC_PERFILES = [
-  { key: "usuario", label: "Usuario", nota: "Testimonio · darkpost" },
-  { key: "tecnico", label: "Técnico posventa", nota: "Autoridad · darkpost" },
-  { key: "personal", label: "Personal Drean", nota: "Humanización · orgánico" },
-];
-const UGC_VOCES = [{ key: "fem", label: "Voz femenina" }, { key: "masc", label: "Voz masculina" }];
-
 function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [e, setE] = useState<Cal>(entry);
   const [busy, setBusy] = useState<string | null>(null);
@@ -747,7 +741,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   async function genGuion() {
     setBusy("guion"); setError(null);
     try {
-      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", detalles: e.detalles ?? "" });
+      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "" });
       if (j) { setE((p) => ({ ...p, guion: j.guion as string })); await save({ guion: j.guion as string, estado: "generado" }); }
     } finally { setBusy(null); }
   }
@@ -798,7 +792,17 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
         </select>
       </div>
       <input value={e.idea ?? ""} onChange={(ev) => setE({ ...e, idea: ev.target.value })} onBlur={() => save({ idea: e.idea })} placeholder="Producto / tema (o escribilo a mano)" className={`${field} w-full`} />
-      <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / look de la persona (opcional)" className={`${field} w-full`} />
+      <div className="flex flex-wrap items-center gap-2">
+        <select value={e.pilar ?? ""} onChange={(ev) => { setE({ ...e, pilar: ev.target.value }); save({ pilar: ev.target.value }); }} className={field} title="Pilar de contenido">
+          <option value="">Pilar…</option>
+          {UGC_PILARES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+        </select>
+        <select value={e.formato ?? ""} onChange={(ev) => { setE({ ...e, formato: ev.target.value }); save({ formato: ev.target.value }); }} className={field} title="Formato del video">
+          <option value="">Formato…</option>
+          {UGC_FORMATOS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+        </select>
+      </div>
+      <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / contexto / look de la persona (opcional)" className={`${field} w-full`} />
 
       <div className="flex flex-wrap gap-2">
         <button onClick={genGuion} disabled={busy !== null} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>

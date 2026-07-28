@@ -6,8 +6,8 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
-    const { perfil, tema, detalles } = (await request.json()) as { perfil?: string; tema?: string; detalles?: string };
-    const guion = await generarGuionUgc(perfil ?? "usuario", tema ?? "", detalles);
+    const b = (await request.json()) as { perfil?: string; tema?: string; pilar?: string; formato?: string; detalles?: string };
+    const guion = await generarGuionUgc({ perfil: b.perfil ?? "usuario", tema: b.tema ?? "", pilar: b.pilar, formato: b.formato, detalles: b.detalles });
     return NextResponse.json({ ok: true, guion });
   } catch (err) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
