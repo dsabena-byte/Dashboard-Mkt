@@ -457,7 +457,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   useEffect(() => { setE(entry); }, [entry]);
 
   async function save(patch: Partial<Cal>) {
-    setBusy("save");
+    setBusy((b) => (b === null ? "save" : b));
     try {
       const r = await fetch("/api/contenido/calendario", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -465,7 +465,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       });
       const j = await r.json();
       if (j.ok) { setE(j.item as Cal); onChange(); }
-    } finally { setBusy(null); }
+    } finally { setBusy((b) => (b === "save" ? null : b)); }
   }
 
   async function generar() {
@@ -749,12 +749,12 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   useEffect(() => { setE(entry); }, [entry]);
 
   async function save(patch: Partial<Cal>) {
-    setBusy("save");
+    setBusy((b) => (b === null ? "save" : b));
     try {
       const r = await fetch("/api/contenido/calendario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id, ...patch }) });
       const j = await r.json();
       if (j.ok) { setE(j.item as Cal); onChange(); }
-    } finally { setBusy(null); }
+    } finally { setBusy((b) => (b === "save" ? null : b)); }
   }
   async function borrar() {
     if (!confirm("¿Borrar esta pieza UGC?")) return;
