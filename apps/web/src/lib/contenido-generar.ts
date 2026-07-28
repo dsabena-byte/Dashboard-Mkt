@@ -2,6 +2,7 @@ import "server-only";
 import { getTopByPilar, PILARES, CATEGORIAS, categoriaBrief, filtrarPorCategoria } from "@/lib/contenido-queries";
 import { BRAND_LOOK } from "@/lib/contenido-shared";
 import { getModelo, getModelos, driveImageUrl } from "@/lib/producto-catalog";
+import { diferencialesTexto } from "@/lib/diferenciales";
 import { falImage, FAL_SIZES, type FalSizeKey } from "@/lib/fal-client";
 
 // Generación de piezas de contenido (brief OpenAI + imagen fal). Extraído del
@@ -102,6 +103,7 @@ async function disenarBrief(
   tops: TopRef[],
   variante: number,
   esPorfolio: boolean,
+  difTxt: string,
 ): Promise<Brief> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY no configurada.");
@@ -113,7 +115,7 @@ async function disenarBrief(
   const sys = `Sos director creativo de Drean (marca argentina de electrodomésticos: lavado, refrigeración, cocción). Diseñás contenido orgánico para redes manteniendo identidad de marca (cercana, confiable, argentina, sin estridencias). Respondé SOLO JSON.`;
   const user = `PILAR: "${pilar}" — ${PILAR_DEF[pilar] ?? ""}
 CATEGORÍA: ${categoriaTxt}${productoNombre ? ` — producto: ${productoNombre}` : ""}
-${personas ? "La escena INCLUYE personas/familia.\n" : ""}FORMATO: ${formato}
+${difTxt ? difTxt + "\n" : ""}${personas ? "La escena INCLUYE personas/familia.\n" : ""}FORMATO: ${formato}
 ${variante > 1 ? `VARIANTE #${variante}: buscá un ángulo/momento DISTINTO a las otras.\n` : ""}PIEZAS QUE MEJOR PERFORMARON en este pilar (referencia de qué funcionó):
 ${ref || "(sin data — usá tu criterio)"}
 
@@ -194,7 +196,7 @@ function buildPorfolioPrompt(escena: string, vertical: boolean, detalles?: strin
 
 // Brief para contenido CREATIVO/editorial: OpenAI como director creativo diseña
 // un concepto (no product shot) alrededor de una IDEA + sub-tipo.
-async function disenarBriefCreativo(idea: string, subtipo: string, productoNombre: string | null, tops: TopRef[]): Promise<Brief> {
+async function disenarBriefCreativo(idea: string, subtipo: string, productoNombre: string | null, tops: TopRef[], difTxt: string): Promise<Brief> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY no configurada.");
   const ref = tops.slice(0, 6).map((t, i) => `${i + 1}. [${t.media_type ?? "?"}] int=${t.engagement} — "${(t.message ?? "").slice(0, 140)}"`).join("\n");
@@ -202,7 +204,7 @@ async function disenarBriefCreativo(idea: string, subtipo: string, productoNombr
   const user = `IDEA / TEMA: "${idea || "(libre — proponé un concepto on-brand)"}"
 SUB-TIPO: ${subtipo} — ${SUBTIPO_GUIA[subtipo] ?? SUBTIPO_GUIA.beneficio}
 ${productoNombre ? `Producto asociado (mencionar SÓLO sutil/contextual o metafórico, NUNCA como product shot): ${productoNombre}` : "SIN producto visible (posteo de marca / concepto puro)."}
-Posteos que performaron (referencia de tono):
+${difTxt ? difTxt + "\n" : ""}Posteos que performaron (referencia de tono):
 ${ref || "(sin data — usá tu criterio)"}
 
 Devolvé JSON con:
@@ -271,6 +273,7 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
   const producto = getModelo(body.modelo);
   const productoReal = body.productoReal === true && producto != null;
   const packshotUrl = productoReal && producto ? driveImageUrl(producto.driveFileId) : null;
+  const difTxt = diferencialesTexto(producto?.sku);
   const esPorfolio = categoria === "porfolio";
   const porfolioUrls = esPorfolio
     ? (["heladeras", "cocinas", "lavarropas"] as const)
@@ -300,7 +303,7 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
         let brief: Brief;
         if (creativo) {
           // Concepto editorial: OpenAI director creativo + Ideogram estética flexible on-brand.
-          brief = await disenarBriefCreativo(idea, subtipo, producto?.nombre ?? null, tops);
+          brief = await disenarBriefCreativo(idea, subtipo, producto?.nombre ?? null, tops, difTxt);
           const prompt = buildCreativePrompt(brief.escena ?? "", detalles);
           const img = await falImage(MODEL_IDEOGRAM, { prompt, image_size: FAL_SIZES[aspecto], num_images: 1 });
           imagenUrl = img.images[0]?.url ?? null;
@@ -315,7 +318,7 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
             image_prompt: promptMostrar,
           };
         }
-        brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante, esPorfolio);
+        brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante, esPorfolio, difTxt);
 
         if (productoReal && producto && packshotUrl) {
           const editPrompt = buildEditPrompt(brief.escena ?? "", categoria, producto.nombre, personas, aspecto !== "feed", detalles);

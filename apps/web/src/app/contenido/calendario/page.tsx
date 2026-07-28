@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
-import { getModelos } from "@/lib/producto-catalog";
+import { getModelos, getModelo } from "@/lib/producto-catalog";
 import { UGC_PERFILES, UGC_VOCES, UGC_PILARES, UGC_FORMATOS } from "@/lib/ugc-opciones";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
@@ -741,7 +741,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   async function genGuion() {
     setBusy("guion"); setError(null);
     try {
-      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "" });
+      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "", modelo: e.modelo ?? undefined });
       if (j) { setE((p) => ({ ...p, guion: j.guion as string })); await save({ guion: j.guion as string, estado: "generado" }); }
     } finally { setBusy(null); }
   }
@@ -782,11 +782,11 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] font-semibold uppercase text-muted-foreground">Producto</span>
-        <select value="" onChange={(ev) => { if (ev.target.value) { setE({ ...e, idea: ev.target.value }); save({ idea: ev.target.value }); } }} className={field}>
+        <select value={e.modelo ?? ""} onChange={(ev) => { const mm = getModelo(ev.target.value); setE({ ...e, modelo: ev.target.value, idea: mm?.nombre ?? e.idea }); save({ modelo: ev.target.value, idea: mm?.nombre ?? e.idea }); }} className={field}>
           <option value="">Elegí del catálogo…</option>
           {([["heladeras", "Heladeras"], ["cocinas", "Cocinas"], ["lavarropas", "Lavarropas"]] as const).map(([cat, lbl]) => (
             <optgroup key={cat} label={lbl}>
-              {getModelos(cat).map((m) => <option key={m.sku} value={m.nombre}>{m.nombreCorto ?? m.nombre}</option>)}
+              {getModelos(cat).map((m) => <option key={m.sku} value={m.sku}>{m.nombreCorto ?? m.nombre}</option>)}
             </optgroup>
           ))}
         </select>

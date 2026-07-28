@@ -1,6 +1,7 @@
 import "server-only";
 import { falImage, falRun, falVideoQueue, FAL_SIZES } from "@/lib/fal-client";
 import { UGC_VOCES } from "@/lib/ugc-opciones";
+import { diferencialesTexto } from "@/lib/diferenciales";
 
 // Generación de contenido UGC (persona hablando a cámara) para Drean.
 // Pipeline sobre fal.ai: guion (OpenAI) → voz (ElevenLabs en fal) → avatar
@@ -80,7 +81,7 @@ export const UGC_VOCES_FULL = UGC_VOCES.map((v) => ({ ...v, voice: v.key === "ma
 function perfil(key: string): UgcPerfil { return UGC_PERFILES_FULL.find((p) => p.key === key) ?? UGC_PERFILES_FULL[0]!; }
 
 // ---- Guion (OpenAI) siguiendo el playbook ----
-export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; }
+export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; }
 
 export async function generarGuionUgc(params: GuionParams): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -91,6 +92,7 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
     PLAYBOOK,
     params.pilar && PILAR_DESC[params.pilar] ? PILAR_DESC[params.pilar] : "",
     params.formato && FORMATO_DESC[params.formato] ? FORMATO_DESC[params.formato] : "",
+    diferencialesTexto(params.modelo),
     "Salida: entre 15 y 25 segundos (aprox. 45-70 palabras). SOLO el texto hablado.",
   ].filter(Boolean);
   const sys = bloques.join("\n\n");
@@ -113,10 +115,12 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
 export async function generarPersonaUgc(perfilKey: string, descripcion?: string): Promise<string> {
   const p = perfil(perfilKey);
   const prompt =
-    `Photorealistic vertical portrait, UGC selfie style, of a ${p.personaPrompt}. ` +
+    `High-quality photorealistic vertical portrait of a ${p.personaPrompt}. ` +
     (descripcion ? `${descripcion}. ` : "") +
-    "Natural skin texture, realistic, looking at the camera, upper body, single person, authentic amateur phone photo look. No text, no watermark, no logo.";
-  const img = await falImage(MODEL_PERSONA, { prompt, image_size: FAL_SIZES.story, num_images: 1 });
+    "Sharp focus, highly detailed and realistic face with natural skin texture and pores, clear and evenly well-lit facial features, catchlights in the eyes, looking straight at the camera with a relaxed natural expression, head-and-shoulders framing, face clearly visible and centered, single person only. " +
+    "Tidy, aesthetically pleasing and realistic background with subtle depth of field. Natural and authentic (UGC feel, not over-retouched or plasticky), but crisp and high-resolution so it holds up when zoomed in. " +
+    "Correct human anatomy: well-formed symmetrical face, normal eyes, natural hands with five fingers. Avoid: blurry, low quality, distorted or deformed face, extra fingers or limbs, warped background, text, watermark, logo.";
+  const img = await falImage(MODEL_PERSONA, { prompt, image_size: FAL_SIZES.story, num_images: 1, rendering_speed: "QUALITY" });
   const url = img.images[0]?.url;
   if (!url) throw new Error("No se generó el retrato de la persona.");
   return url;
