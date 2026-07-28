@@ -20,6 +20,7 @@ export interface SocialPost {
   followers: number | null;
   resumen_sentimiento: string | null;
   thumbnail_url: string | null;
+  copy: string | null;
 }
 
 export interface SocialFilters {

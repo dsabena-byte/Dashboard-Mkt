@@ -20,6 +20,7 @@ export interface CompetenciaPost {
   views: number | null;
   pilar: string | null;
   thumbnail_url?: string | null;
+  copy?: string | null;
 }
 
 // Etiquetas/colores locales (no importamos del lib server-only).
@@ -85,7 +86,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
 
   const [marca, setMarca] = useState<string>(marcas[0] ?? "");
   const [tipo, setTipo] = useState<string>("all");
-  const [sort, setSort] = useState<"engagement" | "fecha">("engagement");
+  const [sort, setSort] = useState<"engagement" | "fecha">("fecha");
 
   const marcaSel = marcas.includes(marca) ? marca : (marcas[0] ?? "");
   const delaMarca = useMemo(() => posts.filter((p) => p.marca === marcaSel), [posts, marcaSel]);
@@ -161,36 +162,28 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
                 href={p.url}
                 target="_blank"
                 rel="noopener"
-                className="flex flex-col gap-2 overflow-hidden rounded-lg border bg-background transition hover:shadow-sm"
+                className="group block rounded-md border bg-card p-2 transition-colors hover:bg-muted/50"
                 style={{ borderLeft: `3px solid ${marcaColor(p.marca)}` }}
               >
-                {p.thumbnail_url && (
+                {p.thumbnail_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.thumbnail_url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+                  <img src={p.thumbnail_url} alt="" loading="lazy" className="mb-1.5 aspect-square w-full rounded object-cover" />
+                ) : (
+                  <div className="mb-1.5 flex aspect-square w-full items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">Sin img</div>
                 )}
-                <div className="flex flex-col gap-2 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium">{TIPO_LABEL[tipoBucket(p.content_type)]}</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">{fmtFecha(p.fecha)}</span>
+                <div className="mb-1 flex items-center justify-between gap-1">
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">{TIPO_LABEL[tipoBucket(p.content_type)]}</span>
+                  <span className="text-[9px] text-muted-foreground">{fmtFecha(p.fecha)}</span>
                 </div>
-
-                <div className="flex items-baseline gap-1.5">
-                  <span className={`text-lg font-bold ${arriba ? "text-emerald-600" : "text-rose-600"}`}>{eng.toFixed(2)}%</span>
-                  <span className={`text-[11px] ${arriba ? "text-emerald-600" : "text-rose-500"}`}>{arriba ? "▲" : "▼"} eng.</span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                {p.pilar && <span className="mb-1 inline-block rounded-full bg-secondary px-1.5 py-0.5 text-[9px]">{p.pilar}</span>}
+                <p className="line-clamp-2 text-[10px] text-foreground" title={p.copy ?? ""}>
+                  {p.copy || <span className="italic text-muted-foreground">Sin texto</span>}
+                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] tabular-nums text-muted-foreground">
+                  <span className={`font-semibold ${arriba ? "text-emerald-600" : "text-rose-600"}`}>{arriba ? "▲" : "▼"} {eng.toFixed(2)}%</span>
                   {(p.views ?? 0) > 0 && <span>👁 {fmtK(p.views ?? 0)}</span>}
                   <span>❤ {p.likes != null && p.likes >= 0 ? fmtK(p.likes) : "—"}</span>
                   <span>💬 {fmtK(p.comentarios ?? 0)}</span>
-                </div>
-
-                <div className="flex items-center justify-between gap-2">
-                  {p.pilar ? <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px]">{p.pilar}</span> : <span />}
-                  <span className="text-[10px] font-medium text-primary">Ver →</span>
-                </div>
                 </div>
               </a>
             );

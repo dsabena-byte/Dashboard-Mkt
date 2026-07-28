@@ -138,6 +138,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       views: p.views,
       pilar: p.pilar,
       thumbnail_url: p.thumbnail_url,
+      copy: p.copy,
     }));
 
   const hasData = posts.length > 0;
