@@ -1,0 +1,33 @@
+name: Re-hostear miniaturas de competencia
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"  # cada 3 h: re-hostea miniaturas nuevas antes de que caduquen
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "1 = dry-run (no re-hostea, sólo lista). Vacío = re-hostea."
+        required: false
+        default: ""
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger /api/cron/rehost-thumbs
+        run: |
+          set -euo pipefail
+          DRY="${{ github.event.inputs.dry || '' }}"
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/rehost-thumbs"
+          if [ -n "$DRY" ]; then URL="${URL}?dry=1"; fi
+          echo "GET $URL"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 600 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" \
+            "$URL")
+          echo "HTTP $HTTP_CODE"
+          cat response.json; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
+          if grep -q '"ok":false' response.json; then echo "::error::cron devolvió error"; exit 1; fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

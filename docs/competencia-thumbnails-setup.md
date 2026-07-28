@@ -1,86 +1,89 @@
 # Miniaturas de posts de competencia (thumbnails)
 
-Cómo sumar la **imagen del post** a las tarjetas de competencia en `/redes`.
-Hoy los posts propios de Drean muestran miniatura (vienen de la API de Meta),
-pero los de competencia no, porque el scraper no la traía.
+Cómo se muestran las **imágenes de los posts de competencia** en `/redes`.
+Los posts propios de Drean ya muestran miniatura (API de Meta); esto lo suma
+para la competencia, que viene del scraper (n8n + Apify).
 
-## La buena noticia
-
-El scraper de competencia usa **Apify**, y los actores de Apify **ya devuelven
-la imagen** de cada post (`displayUrl` en Instagram, thumbnail en Facebook,
-cover en TikTok). Sólo hay que **capturarla y guardarla**. No hace falta un
-scraper nuevo.
-
-## El problema a resolver: las URLs caducan
-
-Las URLs de imagen del CDN de Instagram/Facebook (`displayUrl` de Apify)
-**caducan en horas/días**. Si guardamos la URL cruda, las miniaturas de posts
-viejos se rompen. Por eso hay que **re-hostear** la imagen (bajarla y subirla a
-un lugar propio: Supabase Storage) apenas se scrapea.
-
-## Arquitectura recomendada
+## Cómo funciona (end-to-end)
 
 ```
-Apify (displayUrl) ──► n8n: agrega la URL cruda al Sheet (col IMAGE_URL)
-                         │
-                         ▼
-        n8n "Sheets Social Sync" ──► social_posts.thumbnail_url (URL cruda)
-                         │
-                         ▼
-   Vercel cron re-host ──► baja la imagen ──► Supabase Storage ──► pisa
-   thumbnail_url con la URL permanente
+Apify (displayUrl) ─► scraper n8n: guarda la URL en el Sheet (col IMAGE_URL)
+                        │
+                        ▼
+   sync n8n ─► social_posts.thumbnail_url  (URL cruda del CDN de IG/FB)
+                        │
+                        ▼
+   Vercel cron rehost-thumbs (cada 3 h) ─► baja la imagen ─► Supabase Storage
+   (bucket meta-thumbs, key competencia/{id}.jpg) ─► pisa thumbnail_url con la
+   URL permanente
+                        │
+                        ▼
+   Dashboard /redes ─► muestra la miniatura en las tarjetas de competencia
 ```
 
-## Lo que YA está hecho en el repo (dashboard listo)
+**Por qué el re-host:** las URLs del CDN de IG/FB caducan en 1-2 días. El cron
+las copia a nuestro Storage para que no se rompan.
 
-- ✅ Migración `0080_social_posts_thumbnail.sql`: columna `thumbnail_url` en
-  `social_posts`. **Correr en Supabase.**
-- ✅ El dashboard (`/redes` → competencia) ya muestra la miniatura **si existe**
-  (`thumbnail_url`). Sin miniatura, cae al diseño actual sin foto. O sea: apenas
-  empiece a llegar la imagen, aparece sola, sin tocar nada más.
+## Lo que YA está hecho (repo)
 
-## Lo que falta (cambios en n8n — los hace quien administra el scraper)
+- ✅ Columna `social_posts.thumbnail_url` (migración `0080`, ya corrida).
+- ✅ El dashboard muestra la miniatura si existe (fallback sin foto si no hay).
+- ✅ **Cron de re-host** `GET /api/cron/rehost-thumbs` + workflow
+  `.github/workflows/rehost-thumbs.yml` (cada 3 h). Usa el bucket `meta-thumbs`
+  que ya existe. Requiere el secret `CRON_SECRET` en GitHub (ya está, es el mismo
+  que usa `publicar-contenido`).
+- ✅ **Workflows de n8n del repo actualizados** para capturar la imagen:
+  `scraper-social-drean.json` (Tag IG/FB/TikTok + Parse Response + Append) y los
+  syncs `social-posts-sync.json` / `scraper-social-supabase.json` (mapean
+  `IMAGE_URL → thumbnail_url`).
 
-### 1. Capturar la imagen en el scraper (`Scrapper Pro — Drean (Social)`)
+## Lo que falta hacer en tu n8n (una vez)
 
-En los nodos **`Tag Instagram`**, **`Tag Facebook`** y **`Tag TikTok`** (que mapean
-el item de Apify al objeto común), agregar un campo `image` tomando:
+Tu flow **en vivo** no se actualiza solo con el repo. Tenés dos opciones:
 
-| Plataforma | Campo de Apify a usar |
-|------------|-----------------------|
-| Instagram  | `displayUrl` (fallback: `images[0]`) |
-| Facebook   | `thumbnailUrl` / `media[0].thumbnail` (según el actor de FB que uses) |
-| TikTok     | `videoMeta.coverUrl` (fallback: `covers[0]`) |
+### Opción rápida — editar los nodos a mano (no perdés credenciales)
 
-En el nodo **`Append row in sheet`**, agregar una columna nueva **`IMAGE_URL`**
-mapeada a ese campo `image`.
+En tu flow **"Scrapper Pro — Drean (Social)"**:
 
-### 2. Mapear al sync (`Sheets Social Sync`)
+1. **Nodo `Tag Instagram`** → antes de `platform: 'INSTAGRAM'` agregá:
+   ```js
+   image: d.displayUrl || (Array.isArray(d.images) ? d.images[0] : '') || '',
+   ```
+2. **Nodo `Tag Facebook`** → antes de `platform: 'FACEBOOK'`:
+   ```js
+   image: d.thumbnailUrl || d.image || (Array.isArray(d.media) && d.media[0] ? (d.media[0].thumbnail || (d.media[0].photo_image && d.media[0].photo_image.uri)) : '') || '',
+   ```
+3. **Nodo `Tag TikTok`** → antes de `platform: 'TIKTOK'`:
+   ```js
+   image: (d.videoMeta && (d.videoMeta.coverUrl || d.videoMeta.originCover)) || (Array.isArray(d.covers) ? d.covers[0] : '') || '',
+   ```
+4. **Nodo `Parse Response`** → dentro del `results.push({ ... })`, al lado de `url,` agregá:
+   ```js
+   image: post.image || '',
+   ```
+5. **Nodo `Append row in sheet`** → agregá la columna **`IMAGE_URL`** mapeada a
+   `={{ $json.image }}`.
+6. **En el Google Sheet**, agregá el header **`IMAGE_URL`** (una columna nueva al
+   final de la fila de títulos).
 
-En el nodo que arma el upsert a `social_posts`, agregar el mapeo
-`IMAGE_URL → thumbnail_url`.
+En tu flow de **sync a Supabase** (`social-posts-sync` / "Normalize rows"):
 
-> Con esto ya se ve la miniatura en el dashboard — **pero con URL que caduca**.
-> Para que no se rompa, falta el paso 3.
+7. Al lado de `content_type:` agregá:
+   ```js
+   thumbnail_url: (r['IMAGE_URL'] || '').toString().trim() || null,
+   ```
 
-### 3. Re-hostear (recomendado) — a definir
+### Opción prolija — re-importar
 
-Dos opciones:
+Importá los JSON actualizados del repo (`n8n-workflows/…`) y reconectá las
+credenciales (Apify, Google Sheets, Anthropic) como la primera vez.
 
-- **A) En n8n:** después del scrape, un nodo HTTP baja la imagen y otro la sube a
-  Supabase Storage (bucket `competencia-thumbs`), y se guarda esa URL. Todo en el
-  workflow.
-- **B) En Vercel (cron):** un endpoint `/api/cron/rehost-thumbs` que lee las filas
-  de `social_posts` con `thumbnail_url` de un CDN externo (no-Supabase), baja la
-  imagen, la sube a Storage y pisa `thumbnail_url`. Corre poco después del scrape
-  (ej. 8:30 AM). **Ventaja:** el cambio en n8n es mínimo (sólo pasar la URL cruda);
-  el re-host queda en código nuestro. **Este es el camino sugerido.**
+## Notas
 
-La opción B está pendiente de construir (ver con el equipo si arrancamos).
-
-## Resumen para pasarle a OMD / quien maneje n8n
-
-> En el scraper de Apify, capturen la imagen de cada post (`displayUrl` en IG)
-> y agréguenla al Sheet como columna `IMAGE_URL`. En el sync a Supabase, mapeen
-> `IMAGE_URL → social_posts.thumbnail_url`. La imagen se re-hostea después del
-> lado del dashboard para que no caduque.
+- Los campos de imagen de Facebook/TikTok varían según el actor de Apify. Si en
+  el primer run la columna `IMAGE_URL` sale vacía para FB o TikTok, revisá qué
+  campo trae la imagen en el output de Apify y ajustá esa línea.
+- El re-host corre cada 3 h: las miniaturas nuevas pueden tardar hasta ~3 h en
+  volverse permanentes. Mientras tanto, igual se ven (con la URL cruda).
+- Para forzar un re-host manual: en GitHub → Actions → "Re-hostear miniaturas de
+  competencia" → Run workflow. Con `dry=1` sólo lista, no re-hostea.
