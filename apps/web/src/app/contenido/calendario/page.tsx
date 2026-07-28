@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos, getModelo } from "@/lib/producto-catalog";
-import { UGC_PERFILES, UGC_VOCES, UGC_PILARES, UGC_FORMATOS } from "@/lib/ugc-opciones";
+import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS } from "@/lib/ugc-opciones";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -716,7 +716,6 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   const [e, setE] = useState<Cal>(entry);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [persGen, setPersGen] = useState("");
   const [persEdad, setPersEdad] = useState("");
   const [videoMsg, setVideoMsg] = useState<string | null>(null);
   useEffect(() => { setE(entry); }, [entry]);
@@ -751,7 +750,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   async function genPersona() {
     setBusy("persona"); setError(null);
     try {
-      const j = await call("/api/ugc/persona", { perfil: e.perfil ?? "usuario", descripcion: e.detalles ?? "", genero: persGen || undefined, edad: persEdad || undefined });
+      const j = await call("/api/ugc/persona", { perfil: e.perfil ?? "usuario", descripcion: e.detalles ?? "", genero: e.subtipo || undefined, edad: persEdad || undefined });
       if (j) { setE((p) => ({ ...p, persona_url: j.image_url as string })); await save({ persona_url: j.image_url as string }); }
     } finally { setBusy(null); }
   }
@@ -759,7 +758,8 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     if (!e.guion?.trim() || !e.persona_url) return;
     setBusy("video"); setError(null); setVideoMsg("Encolando el video…");
     try {
-      const j = await call("/api/ugc/video", { guion: e.guion, voz: e.subtipo ?? "fem", persona_url: e.persona_url });
+      const voz = e.subtipo === "hombre" ? "masc" : "fem"; // voz deducida del género
+      const j = await call("/api/ugc/video", { guion: e.guion, voz, persona_url: e.persona_url });
       if (!j) return;
       const statusUrl = j.status_url as string;
       const responseUrl = j.response_url as string;
@@ -825,10 +825,11 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       </div>
       <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / contexto / look de la persona (opcional)" className={`${field} w-full`} />
 
-      {/* Persona: género + edad (independiente de la voz) */}
+      {/* Persona: género + edad. La VOZ se deduce del género (mujer→femenina,
+          hombre→masculina). El género se guarda en `subtipo`. */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] font-semibold uppercase text-muted-foreground">Persona</span>
-        <select value={persGen} onChange={(ev) => setPersGen(ev.target.value)} className={field} title="Género de la persona">
+        <select value={e.subtipo ?? ""} onChange={(ev) => { setE({ ...e, subtipo: ev.target.value }); save({ subtipo: ev.target.value }); }} className={field} title="Género de la persona (define también la voz)">
           <option value="">Género…</option>
           <option value="mujer">Mujer</option>
           <option value="hombre">Hombre</option>
@@ -844,9 +845,6 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
         <button onClick={genPersona} disabled={genBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "persona" ? "Generando…" : e.persona_url ? "2 · Regenerar persona" : "2 · Persona"}</button>
-        <select value={e.subtipo ?? "fem"} onChange={(ev) => { setE({ ...e, subtipo: ev.target.value }); save({ subtipo: ev.target.value }); }} className={field} title="Voz">
-          {UGC_VOCES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
-        </select>
         <button onClick={genVideo} disabled={genBusy || !e.guion?.trim() || !e.persona_url} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "3 · Video"}</button>
         {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
       </div>
