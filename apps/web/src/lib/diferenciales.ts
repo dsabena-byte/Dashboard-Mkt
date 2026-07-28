@@ -99,10 +99,20 @@ export function getDiferenciales(sku: string | null | undefined): Diferencial[] 
   return sku ? (DIFERENCIALES[sku] ?? []) : [];
 }
 
-// Texto para inyectar en el prompt (bullets atributo: detalle, detalle acotado).
-export function diferencialesTexto(sku: string | null | undefined, max = 10): string {
-  const ds = getDiferenciales(sku).slice(0, max);
-  if (ds.length === 0) return "";
-  const lineas = ds.map((d) => `- ${d.atributo}: ${d.detalle.slice(0, 240)}`);
+// Texto para inyectar en el prompt. Si se pasan `seleccion` (nombres de atributo),
+// enfoca SÓLO en esos; si no, lista todos (acotados).
+export function diferencialesTexto(sku: string | null | undefined, seleccion?: string[], max = 10): string {
+  const all = getDiferenciales(sku);
+  if (all.length === 0) return "";
+  const sel = (seleccion ?? []).filter(Boolean);
+  if (sel.length > 0) {
+    const set = new Set(sel.map((s) => s.toLowerCase()));
+    const filt = all.filter((d) => set.has(d.atributo.toLowerCase()));
+    if (filt.length > 0) {
+      const lineas = filt.map((d) => `- ${d.atributo}: ${d.detalle.slice(0, 260)}`);
+      return `DIFERENCIALES ELEGIDOS — enfocá el contenido EN ESTOS (son los que se quieren destacar), con precisión y sin inventar:\n${lineas.join("\n")}`;
+    }
+  }
+  const lineas = all.slice(0, max).map((d) => `- ${d.atributo}: ${d.detalle.slice(0, 240)}`);
   return `DIFERENCIALES REALES DE ESTE PRODUCTO (usá los que apliquen, con precisión, sin inventar):\n${lineas.join("\n")}`;
 }

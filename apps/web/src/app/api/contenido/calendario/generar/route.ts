@@ -19,6 +19,7 @@ interface CalRow {
   tipo_contenido: string | null;
   subtipo: string | null;
   idea: string | null;
+  notas: string | null;
 }
 
 // POST /api/contenido/calendario/generar { id } → genera la pieza y la guarda.
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
       tipoContenido: row.tipo_contenido ?? undefined,
       subtipo: row.subtipo ?? undefined,
       idea: row.idea ?? undefined,
+      atributos: row.notas ? row.notas.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
       cantidad: 1,
     });
     const pieza = result.piezas[0];
