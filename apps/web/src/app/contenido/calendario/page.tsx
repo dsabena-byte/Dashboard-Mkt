@@ -786,7 +786,18 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
         <span className="text-[11px] text-muted-foreground">{perfilSel.nota}</span>
       </div>
 
-      <input value={e.idea ?? ""} onChange={(ev) => setE({ ...e, idea: ev.target.value })} onBlur={() => save({ idea: e.idea })} placeholder="Producto / tema (ej: Lavarropas Drean 12kg)" className={`${field} w-full`} />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Producto</span>
+        <select value="" onChange={(ev) => { if (ev.target.value) { setE({ ...e, idea: ev.target.value }); save({ idea: ev.target.value }); } }} className={field}>
+          <option value="">Elegí del catálogo…</option>
+          {([["heladeras", "Heladeras"], ["cocinas", "Cocinas"], ["lavarropas", "Lavarropas"]] as const).map(([cat, lbl]) => (
+            <optgroup key={cat} label={lbl}>
+              {getModelos(cat).map((m) => <option key={m.sku} value={m.nombre}>{m.nombreCorto ?? m.nombre}</option>)}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+      <input value={e.idea ?? ""} onChange={(ev) => setE({ ...e, idea: ev.target.value })} onBlur={() => save({ idea: e.idea })} placeholder="Producto / tema (o escribilo a mano)" className={`${field} w-full`} />
       <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / look de la persona (opcional)" className={`${field} w-full`} />
 
       <div className="flex flex-wrap gap-2">
