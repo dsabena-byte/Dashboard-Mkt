@@ -1,5 +1,5 @@
 import "server-only";
-import { falImage, falRun, falVideoQueue, FAL_SIZES } from "@/lib/fal-client";
+import { falImage, falRun, falQueueSubmit, falQueueVideoStatus, FAL_SIZES } from "@/lib/fal-client";
 import { UGC_VOCES } from "@/lib/ugc-opciones";
 import { diferencialesTexto } from "@/lib/diferenciales";
 
@@ -112,10 +112,19 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
 }
 
 // ---- Retrato de la persona (fal imagen) ----
-export async function generarPersonaUgc(perfilKey: string, descripcion?: string): Promise<string> {
-  const p = perfil(perfilKey);
+export interface PersonaParams { perfil: string; descripcion?: string; genero?: string; edad?: string; }
+
+function sujetoPersona(genero?: string, edad?: string): string {
+  const gen = genero === "hombre" ? "man" : genero === "mujer" ? "woman" : "person";
+  const edadTxt = edad === "joven" ? "young, about 25 years old," : edad === "adulto" ? "middle-aged, about 40 years old," : edad === "mayor" ? "older, about 60 years old," : "";
+  return `an Argentine ${edadTxt} ${gen}`.replace(/\s+/g, " ").trim();
+}
+
+export async function generarPersonaUgc(params: PersonaParams): Promise<string> {
+  const p = perfil(params.perfil);
+  const descripcion = params.descripcion;
   const prompt =
-    `High-quality photorealistic vertical portrait of a ${p.personaPrompt}. ` +
+    `High-quality photorealistic vertical portrait of ${sujetoPersona(params.genero, params.edad)} — ${p.personaPrompt}. ` +
     (descripcion ? `${descripcion}. ` : "") +
     "Sharp focus, highly detailed and realistic face with natural skin texture and pores, clear and evenly well-lit facial features, catchlights in the eyes, looking straight at the camera with a relaxed natural expression, head-and-shoulders framing, face clearly visible and centered, single person only. " +
     "Tidy, aesthetically pleasing and realistic background with subtle depth of field. Natural and authentic (UGC feel, not over-retouched or plasticky), but crisp and high-resolution so it holds up when zoomed in. " +
@@ -126,14 +135,18 @@ export async function generarPersonaUgc(perfilKey: string, descripcion?: string)
   return url;
 }
 
-// ---- Voz + video (ElevenLabs TTS + OmniHuman) ----
-export interface UgcVideoResult { audio_url: string; video_url: string; }
-export async function generarVideoUgc(guion: string, vozKey: string, personaUrl: string): Promise<UgcVideoResult> {
+// ---- Voz + video (ElevenLabs TTS + OmniHuman) — ASÍNCRONO ----
+// El render de OmniHuman puede tardar varios minutos (más que el límite de una
+// request serverless). Por eso: submit() hace la voz (rápido) y encola el video,
+// devolviendo el request_id; el cliente poolea status() hasta que esté listo.
+export async function generarVideoUgcSubmit(guion: string, vozKey: string, personaUrl: string): Promise<string> {
   const voz = UGC_VOCES_FULL.find((v) => v.key === vozKey) ?? UGC_VOCES_FULL[0]!;
   const tts = await falRun(MODEL_TTS, { text: guion, voice: voz.voice });
   const audioUrl = ((tts.audio as { url?: string } | undefined)?.url) ?? (tts.audio_url as string | undefined);
   if (!audioUrl) throw new Error("No se generó el audio de la voz.");
-  const out = await falVideoQueue(MODEL_AVATAR, { image_url: personaUrl, audio_url: audioUrl }, { timeoutMs: 280000, pollMs: 5000 });
-  if (!out.video_url) throw new Error("No se generó el video del avatar.");
-  return { audio_url: audioUrl, video_url: out.video_url };
+  return falQueueSubmit(MODEL_AVATAR, { image_url: personaUrl, audio_url: audioUrl });
+}
+
+export async function getVideoUgcStatus(requestId: string): Promise<{ status: string; video_url: string | null }> {
+  return falQueueVideoStatus(MODEL_AVATAR, requestId);
 }

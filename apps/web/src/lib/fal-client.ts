@@ -60,6 +60,37 @@ export interface FalVideoResult {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// ---- Cola async separada en submit + status (para renders largos que no entran
+// en el límite de una request serverless; el cliente poolea el estado). ----
+export async function falQueueSubmit(model: string, input: Record<string, unknown>): Promise<string> {
+  const key = process.env.FAL_KEY;
+  if (!key) throw new Error("FAL_KEY no configurada.");
+  const sub = await fetch(`https://queue.fal.run/${model}`, {
+    method: "POST",
+    headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    cache: "no-store",
+  });
+  if (!sub.ok) throw new Error(`fal submit ${sub.status}: ${(await sub.text()).slice(0, 400)}`);
+  const j = (await sub.json()) as { request_id?: string };
+  if (!j.request_id) throw new Error("fal: respuesta sin request_id");
+  return j.request_id;
+}
+
+export async function falQueueVideoStatus(model: string, requestId: string): Promise<{ status: string; video_url: string | null }> {
+  const key = process.env.FAL_KEY;
+  if (!key) throw new Error("FAL_KEY no configurada.");
+  const headers = { Authorization: `Key ${key}`, "Content-Type": "application/json" };
+  const st = await fetch(`https://queue.fal.run/${model}/requests/${requestId}/status`, { headers, cache: "no-store" });
+  if (!st.ok) return { status: "PENDING", video_url: null };
+  const stData = (await st.json()) as { status?: string };
+  if (stData.status !== "COMPLETED") return { status: stData.status ?? "IN_PROGRESS", video_url: null };
+  const res = await fetch(`https://queue.fal.run/${model}/requests/${requestId}`, { headers, cache: "no-store" });
+  if (!res.ok) return { status: "COMPLETED", video_url: null };
+  const data = (await res.json()) as { video?: { url?: string }; url?: string };
+  return { status: "COMPLETED", video_url: data.video?.url ?? data.url ?? null };
+}
+
 export async function falVideoQueue(
   model: string,
   input: Record<string, unknown>,

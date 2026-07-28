@@ -6,8 +6,8 @@ export const maxDuration = 120;
 
 export async function POST(request: Request) {
   try {
-    const { perfil, descripcion } = (await request.json()) as { perfil?: string; descripcion?: string };
-    const image_url = await generarPersonaUgc(perfil ?? "usuario", descripcion);
+    const b = (await request.json()) as { perfil?: string; descripcion?: string; genero?: string; edad?: string };
+    const image_url = await generarPersonaUgc({ perfil: b.perfil ?? "usuario", descripcion: b.descripcion, genero: b.genero, edad: b.edad });
     return NextResponse.json({ ok: true, image_url });
   } catch (err) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
