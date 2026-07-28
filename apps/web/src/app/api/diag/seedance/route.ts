@@ -53,7 +53,9 @@ const ESCENARIOS: Record<string, string> = {
 
 function buildPrompt(guion: string, genero: string, escenario?: string | null, fonetica?: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
-  const escena = ESCENARIOS[escenario ?? "selfie"] ?? ESCENARIOS.selfie;
+  // Escenario: si es una CLAVE conocida usa el preset; si no, se toma el texto
+  // LIBRE tal cual (podés describir cualquier escena). Si no hay, "selfie".
+  const escena = escenario ? (ESCENARIOS[escenario] ?? escenario) : ESCENARIOS.selfie;
   return (
     `Realistic UGC-style vertical video of a natural, everyday Argentine ${persona} in their early 30s, ` +
     `${escena}. ` +
