@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos } from "@/lib/producto-catalog";
+import { UgcGenerator } from "./ugc-generator";
 
 const PILARES = [
   "Liderazgo marca/porfolio",
@@ -253,7 +254,7 @@ function PiezaCard({ pieza, idx, aspecto }: { pieza: Pieza; idx: number; aspecto
   );
 }
 
-export default function ContenidoPage() {
+function RrssGenerator() {
   const [pilar, setPilar] = useState<string>(PILARES[0]!);
   const [categoria, setCategoria] = useState("porfolio");
   const [modelo, setModelo] = useState<string>("");
@@ -290,7 +291,7 @@ export default function ContenidoPage() {
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="text-2xl font-semibold tracking-tight">Generador de contenido</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Contenido para RRSS (imágenes / video de producto)</h2>
         <a href="/contenido/calendario" className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary">📅 Calendario</a>
       </header>
       <header>
@@ -438,6 +439,31 @@ export default function ContenidoPage() {
             {res.piezas.map((p, idx) => <PiezaCard key={idx} pieza={p} idx={idx} aspecto={aspecto} />)}
           </div>
         </section>
+      )}
+    </div>
+  );
+}
+
+export default function ContenidoPage() {
+  const [tab, setTab] = useState<"rrss" | "ugc">("rrss");
+  const tabCls = (active: boolean) =>
+    `-mb-px border-b-2 px-4 py-2 text-sm font-medium ${active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-1 border-b">
+        <button onClick={() => setTab("rrss")} className={tabCls(tab === "rrss")}>Generador de Contenidos RRSS</button>
+        <button onClick={() => setTab("ugc")} className={tabCls(tab === "ugc")}>Generador de Contenido UGC</button>
+      </div>
+      {tab === "rrss" ? (
+        <RrssGenerator />
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h2 className="text-2xl font-semibold tracking-tight">Contenido UGC (persona hablando a cámara)</h2>
+            <a href="/contenido/calendario" className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary">📅 Calendario</a>
+          </div>
+          <UgcGenerator />
+        </div>
       )}
     </div>
   );
