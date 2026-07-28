@@ -9,9 +9,15 @@ export const maxDuration = 30;
 
 export async function GET(request: Request) {
   try {
-    const id = new URL(request.url).searchParams.get("request_id");
-    if (!id) return NextResponse.json({ ok: false, error: "Falta request_id." }, { status: 400 });
-    const { status, video_url } = await getVideoUgcStatus(id);
+    const u = new URL(request.url);
+    const statusUrl = u.searchParams.get("status_url");
+    const responseUrl = u.searchParams.get("response_url");
+    if (!statusUrl || !responseUrl) return NextResponse.json({ ok: false, error: "Faltan status_url/response_url." }, { status: 400 });
+    // Seguridad mínima: sólo aceptamos URLs de la cola de fal.
+    if (!statusUrl.startsWith("https://queue.fal.run/") || !responseUrl.startsWith("https://queue.fal.run/")) {
+      return NextResponse.json({ ok: false, error: "URL inválida." }, { status: 400 });
+    }
+    const { status, video_url } = await getVideoUgcStatus(statusUrl, responseUrl);
     return NextResponse.json({ ok: true, status, video_url });
   } catch (err) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });

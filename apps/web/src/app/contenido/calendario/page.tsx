@@ -761,16 +761,19 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     try {
       const j = await call("/api/ugc/video", { guion: e.guion, voz: e.subtipo ?? "fem", persona_url: e.persona_url });
       if (!j) return;
-      const reqId = j.request_id as string;
-      // El render puede tardar varios minutos: pooleamos el estado.
+      const statusUrl = j.status_url as string;
+      const responseUrl = j.response_url as string;
+      const qs = `status_url=${encodeURIComponent(statusUrl)}&response_url=${encodeURIComponent(responseUrl)}`;
+      // El render puede tardar varios minutos: pooleamos el estado (usando las
+      // URLs que devolvió fal, no reconstruidas).
       let terminal = false;
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < 150; i++) {
         await new Promise((r) => setTimeout(r, 8000));
         setVideoMsg(`Renderizando video… (${Math.round((i + 1) * 8 / 60)} min)`);
-        const sr = await fetch(`/api/ugc/video/status?request_id=${reqId}`);
+        const sr = await fetch(`/api/ugc/video/status?${qs}`);
         const sj = (await sr.json()) as { ok?: boolean; status?: string; video_url?: string | null };
         if (sj.video_url) { setE((p) => ({ ...p, video_url: sj.video_url! })); await save({ video_url: sj.video_url, estado: "generado" }); terminal = true; break; }
-        if (sj.status === "FAILED" || sj.status === "ERROR") { setError("El video falló al renderizar. Probá regenerar la persona (a veces la imagen tiene un detalle raro) y reintentá."); terminal = true; break; }
+        if (sj.status === "FAILED") { setError("El video falló al renderizar. Probá regenerar la persona (a veces la imagen tiene un detalle raro) y reintentá."); terminal = true; break; }
       }
       if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
     } finally { setBusy(null); setVideoMsg(null); }
