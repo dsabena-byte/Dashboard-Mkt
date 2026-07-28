@@ -717,6 +717,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [persEdad, setPersEdad] = useState("");
+  const [dur, setDur] = useState("15");
   const [videoMsg, setVideoMsg] = useState<string | null>(null);
   useEffect(() => { setE(entry); }, [entry]);
 
@@ -743,7 +744,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   async function genGuion() {
     setBusy("guion"); setError(null);
     try {
-      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "", modelo: e.modelo ?? undefined });
+      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "", modelo: e.modelo ?? undefined, duracion: Number(dur) });
       if (j) { setE((p) => ({ ...p, guion: j.guion as string })); await save({ guion: j.guion as string, estado: "generado" }); }
     } finally { setBusy(null); }
   }
@@ -821,6 +822,12 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
         <select value={e.formato ?? ""} onChange={(ev) => { setE({ ...e, formato: ev.target.value }); save({ formato: ev.target.value }); }} className={field} title="Formato del video">
           <option value="">Formato…</option>
           {UGC_FORMATOS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+        </select>
+        <select value={dur} onChange={(ev) => setDur(ev.target.value)} className={field} title="Duración del video (define el largo del guion)">
+          <option value="10">10 seg</option>
+          <option value="15">15 seg</option>
+          <option value="20">20 seg</option>
+          <option value="30">30 seg</option>
         </select>
       </div>
       <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / contexto / look de la persona (opcional)" className={`${field} w-full`} />
