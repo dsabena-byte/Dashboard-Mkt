@@ -37,7 +37,27 @@ las copia a nuestro Storage para que no se rompan.
   syncs `social-posts-sync.json` / `scraper-social-supabase.json` (mapean
   `IMAGE_URL → thumbnail_url`).
 
-## Lo que falta hacer en tu n8n (una vez)
+## ⚡ Si tu flow va DIRECTO a Supabase (sin Google Sheet)
+
+Es el flow **"Instagram Scraper — Apify + GPT → Supabase"** (nodos: Instagram
+Actor → Tag Instagram → … → Parse + Map to Supabase → Upsert social_posts).
+**No tiene nodo "Append row in sheet".** Sólo hacen falta **2 ediciones**:
+
+1. **Nodo `Tag Instagram`** → antes de `platform: 'INSTAGRAM'` agregá:
+   ```js
+   image: d.displayUrl || (Array.isArray(d.images) ? d.images[0] : '') || '',
+   ```
+2. **Nodo `Parse + Map to Supabase`** → dentro del `results.push({ ... })` agregá:
+   ```js
+   thumbnail_url: post.image || null,
+   ```
+
+El nodo de upsert manda el objeto completo, así que `thumbnail_url` se guarda
+solo. **Eso es todo** — no hay Sheet, ni columna IMAGE_URL, ni sync aparte.
+
+---
+
+## Lo que falta hacer en tu n8n (variante con Google Sheet)
 
 Tu flow **en vivo** no se actualiza solo con el repo. Tenés dos opciones:
 
