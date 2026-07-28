@@ -6,7 +6,7 @@ import { SocialTrendChart } from "@/components/social/social-trend-chart";
 import { SocialPilarChart } from "@/components/social/social-pilar-chart";
 import { SocialSentimentChart } from "@/components/social/social-sentiment-chart";
 import { SocialContentTypeChart } from "@/components/social/social-content-type-chart";
-import { PaginatedPostsPanel } from "@/components/social/paginated-posts-panel";
+import { CompetenciaPostsPanel } from "@/components/social/competencia-posts-panel";
 import { BrandSentimentSummary } from "@/components/social/brand-sentiment-summary";
 import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { IgOrganicSection } from "@/components/social/ig-organic-section";
@@ -37,8 +37,6 @@ import {
   getLatestFollowers,
   getSocialFollowers,
   getSocialPosts,
-  topByBrandPerformance,
-  bottomByBrandPerformance,
 } from "@/lib/social-posts-queries";
 
 export const dynamic = "force-dynamic";
@@ -123,11 +121,22 @@ export default async function RedesPage({ searchParams }: PageProps) {
     label: BRAND_LABELS[s.key] ?? s.key,
   }));
   const contentSlices = computeContentTypeSlices(posts);
-  const brandAvgEng = posts.length > 0
-    ? posts.reduce((s, p) => s + (p.engagement ?? 0), 0) / posts.length
-    : 0;
-  const topBrand = topByBrandPerformance(posts);
-  const bottomBrand = bottomByBrandPerformance(posts);
+  // Posteos de competencia (todas las marcas menos Drean) para el panel por marca.
+  const competenciaPosts = posts
+    .filter((p) => p.marca !== OWN_BRAND)
+    .map((p) => ({
+      id: p.id,
+      marca: p.marca,
+      red_social: p.red_social,
+      content_type: p.content_type,
+      url: p.url,
+      fecha: p.fecha,
+      engagement: p.engagement,
+      likes: p.likes,
+      comentarios: p.comentarios,
+      views: p.views,
+      pilar: p.pilar,
+    }));
 
   const hasData = posts.length > 0;
   // Sentiment solo aplica para Instagram. Si filtran por FB/TT, lo ocultamos.
@@ -485,21 +494,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </section>
       )}
 
-      {/* Posts por performance de marca — mejores y peores vs promedio de la marca */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        <PaginatedPostsPanel
-          title="Mejores posts (arriba del promedio)"
-          posts={topBrand}
-          color="emerald"
-          avgEngagement={brandAvgEng}
-        />
-        <PaginatedPostsPanel
-          title="Peores posts (abajo del promedio)"
-          posts={bottomBrand}
-          color="rose"
-          avgEngagement={brandAvgEng}
-        />
-      </section>
+      {/* Posteos de competencia agrupados por marca (tarjetas con filtros) */}
+      <CompetenciaPostsPanel posts={competenciaPosts} />
         </>
       )}
     </div>
