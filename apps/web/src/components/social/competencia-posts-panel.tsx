@@ -151,7 +151,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
       {filtered.length === 0 ? (
         <p className="py-6 text-center text-xs text-muted-foreground">No hay posteos con este filtro.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map((p) => {
             const eng = p.engagement ?? 0;
             const arriba = eng >= avgEng;
@@ -166,7 +166,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
               >
                 {p.thumbnail_url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.thumbnail_url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+                  <img src={p.thumbnail_url} alt="" loading="lazy" className="h-40 w-full object-cover" />
                 )}
                 <div className="flex flex-col gap-2 p-3">
                 <div className="flex items-center justify-between gap-2">
