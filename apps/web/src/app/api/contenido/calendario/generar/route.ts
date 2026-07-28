@@ -55,6 +55,11 @@ export async function POST(request: Request) {
     if (!result.ok || !pieza || pieza.error) {
       return NextResponse.json({ ok: false, error: pieza?.error ?? "Falló la generación." }, { status: 500 });
     }
+    // fal a veces devuelve 200 pero sin imagen (moderación / fallo puntual). No
+    // guardamos una pieza sin imagen en silencio: avisamos para reintentar.
+    if (!pieza.imagen) {
+      return NextResponse.json({ ok: false, error: "fal no devolvió imagen (reintentá; si persiste puede ser saldo de fal.ai o moderación del prompt del producto)." }, { status: 502 });
+    }
 
     // 3) Guardar el contenido generado en la entrada.
     const patch = {
