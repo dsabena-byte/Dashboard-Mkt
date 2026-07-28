@@ -38,11 +38,25 @@ function guiaFonetica(extra?: string | null): string {
   return Object.entries(dict).map(([w, s]) => `"${w}" = ${s}`).join("; ");
 }
 
-function buildPrompt(guion: string, genero: string, fonetica?: string | null): string {
+// Escenarios/tomas para dar VARIEDAD (no siempre "hablando de frente"). Cada uno
+// describe el entorno + la acción; la persona sigue dando el testimonio en su voz.
+const ESCENARIOS: Record<string, string> = {
+  selfie: "at home in a casual setting, filming themselves with a phone front camera, talking directly to the camera",
+  sillon: "relaxed on the living-room sofa at home, phone propped up in front of them, talking casually to the camera",
+  compu: "sitting at a desk with a laptop, glancing at the screen and then turning to talk to the camera",
+  cocina: "standing in a home kitchen next to the appliances, doing a small everyday task while talking to the camera",
+  desempacando: "unpacking grocery and shopping bags on the kitchen counter at home, talking to the camera in between",
+  lavando: "next to the washing machine at home, loading or taking out laundry, talking to the camera while doing it",
+  doblando: "folding freshly washed laundry on the bed or sofa, talking casually to the camera",
+  cafe: "sitting relaxed at home with a cup of coffee or mate, talking to the camera",
+};
+
+function buildPrompt(guion: string, genero: string, escenario?: string | null, fonetica?: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
+  const escena = ESCENARIOS[escenario ?? "selfie"] ?? ESCENARIOS.selfie;
   return (
-    `Realistic UGC-style vertical selfie video of a natural, everyday Argentine ${persona} in their early 30s, ` +
-    `at home in a casual setting, filming themselves with a phone front camera, talking directly to the camera. ` +
+    `Realistic UGC-style vertical video of a natural, everyday Argentine ${persona} in their early 30s, ` +
+    `${escena}. ` +
     `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
     `Amateur phone-video look, natural indoor lighting, natural subtle head and hand movements, natural skin. ` +
     // Ritmo NORMAL y espontáneo (no lento, no sobre-articulado) para no perder naturalidad.
@@ -65,14 +79,15 @@ export async function GET(request: Request) {
       return NextResponse.json(out);
     }
 
-    const guion = u.searchParams.get("guion") ?? "Hace unos meses cambié mi lavarropas por un Dreán y la verdad, lava rapidísimo y la ropa queda impecable.";
+    const guion = u.searchParams.get("guion") ?? "Hace poco cambié el lavarropas y no lo puedo creer: lava en la mitad de tiempo, casi no hace ruido y la ropa queda impecable. Re contenta.";
     const genero = u.searchParams.get("genero") ?? "mujer";
+    const escenario = u.searchParams.get("escenario");
     const fonetica = u.searchParams.get("fonetica");
     if (u.searchParams.get("go") !== "1") {
-      return NextResponse.json({ ok: true, dry: true, model: MODEL, prompt: buildPrompt(guion, genero, fonetica), hint: "Agregá &go=1 para encolar el clip." });
+      return NextResponse.json({ ok: true, dry: true, model: MODEL, escenarios: Object.keys(ESCENARIOS), prompt: buildPrompt(guion, genero, escenario, fonetica), hint: "Agregá &go=1 para encolar el clip. Probá &escenario=sillon|compu|cocina|desempacando|lavando|doblando|cafe|selfie" });
     }
 
-    const input = { prompt: buildPrompt(guion, genero, fonetica), duration: "8", resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
+    const input = { prompt: buildPrompt(guion, genero, escenario, fonetica), duration: "8", resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
     const handle = await falQueueSubmit(MODEL, input);
     out.model = MODEL;
     out.handle = handle;
