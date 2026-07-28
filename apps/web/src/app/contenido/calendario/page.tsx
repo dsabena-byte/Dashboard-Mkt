@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos, getModelo } from "@/lib/producto-catalog";
+import { getDiferenciales } from "@/lib/diferenciales";
 import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS } from "@/lib/ugc-opciones";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
@@ -43,6 +44,31 @@ interface Cal {
   perfil?: string;
   guion?: string | null;
   persona_url?: string | null;
+  notas?: string | null;
+}
+
+// Multi-select de diferenciales del producto elegido (se guarda en `notas`,
+// coma-separado). Si hay elegidos, la generación se enfoca sólo en esos.
+function AtributosSelect({ sku, value, onChange }: { sku: string | null | undefined; value: string; onChange: (v: string) => void }) {
+  const ds = getDiferenciales(sku);
+  if (!sku || ds.length === 0) return null;
+  const sel = new Set((value || "").split(",").map((s) => s.trim()).filter(Boolean));
+  const toggle = (attr: string) => {
+    const next = new Set(sel);
+    if (next.has(attr)) next.delete(attr); else next.add(attr);
+    onChange(Array.from(next).join(","));
+  };
+  return (
+    <div className="flex flex-wrap gap-1.5 rounded border bg-secondary/30 p-2">
+      <span className="w-full text-[10px] font-semibold uppercase text-muted-foreground">Diferenciales a destacar (opcional · si no elegís, usa los que apliquen)</span>
+      {ds.map((d) => (
+        <button key={d.atributo} type="button" onClick={() => toggle(d.atributo)} title={d.detalle}
+          className={`rounded-full border px-2 py-0.5 text-[10px] ${sel.has(d.atributo) ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>
+          {d.atributo}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
@@ -591,6 +617,9 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       {(e.tipo_contenido ?? "producto") === "creativo" && (
         <input value={e.idea ?? ""} onChange={(ev) => setE({ ...e, idea: ev.target.value })} onBlur={() => save({ idea: e.idea })} placeholder="Idea / tema: efeméride, trending, concepto… (ej. Día del Padre, lavarropas de nubes)" className={`${field} mb-2 w-full`} />
       )}
+      <div className="mb-2">
+        <AtributosSelect sku={e.modelo} value={e.notas ?? ""} onChange={(v) => { setE({ ...e, notas: v }); save({ notas: v }); }} />
+      </div>
       <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles (opcional): puertas cerradas, vista frontal…" className={`${field} mb-2 w-full`} />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -744,7 +773,8 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   async function genGuion() {
     setBusy("guion"); setError(null);
     try {
-      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "", modelo: e.modelo ?? undefined, duracion: Number(dur) });
+      const atributos = (e.notas ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+      const j = await call("/api/ugc/guion", { perfil: e.perfil ?? "usuario", tema: e.idea ?? "", pilar: e.pilar ?? undefined, formato: e.formato ?? undefined, detalles: e.detalles ?? "", modelo: e.modelo ?? undefined, duracion: Number(dur), atributos });
       if (j) { setE((p) => ({ ...p, guion: j.guion as string })); await save({ guion: j.guion as string, estado: "generado" }); }
     } finally { setBusy(null); }
   }
@@ -814,6 +844,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
         </select>
       </div>
       <input value={e.idea ?? ""} onChange={(ev) => setE({ ...e, idea: ev.target.value })} onBlur={() => save({ idea: e.idea })} placeholder="Producto / tema (o escribilo a mano)" className={`${field} w-full`} />
+      <AtributosSelect sku={e.modelo} value={e.notas ?? ""} onChange={(v) => { setE({ ...e, notas: v }); save({ notas: v }); }} />
       <div className="flex flex-wrap items-center gap-2">
         <select value={e.pilar ?? ""} onChange={(ev) => { setE({ ...e, pilar: ev.target.value }); save({ pilar: ev.target.value }); }} className={field} title="Pilar de contenido">
           <option value="">Pilar…</option>

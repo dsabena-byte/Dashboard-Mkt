@@ -81,7 +81,7 @@ export const UGC_VOCES_FULL = UGC_VOCES.map((v) => ({ ...v, voice: v.key === "ma
 function perfil(key: string): UgcPerfil { return UGC_PERFILES_FULL.find((p) => p.key === key) ?? UGC_PERFILES_FULL[0]!; }
 
 // ---- Guion (OpenAI) siguiendo el playbook ----
-export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; duracion?: number; }
+export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; duracion?: number; atributos?: string[]; }
 
 export async function generarGuionUgc(params: GuionParams): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -92,7 +92,7 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
     PLAYBOOK,
     params.pilar && PILAR_DESC[params.pilar] ? PILAR_DESC[params.pilar] : "",
     params.formato && FORMATO_DESC[params.formato] ? FORMATO_DESC[params.formato] : "",
-    diferencialesTexto(params.modelo),
+    diferencialesTexto(params.modelo, params.atributos),
     (() => {
       const seg = params.duracion && params.duracion > 0 ? params.duracion : 15;
       const maxPal = Math.max(12, Math.round(seg * 2.6)); // ~2.6 palabras/seg (rioplatense)

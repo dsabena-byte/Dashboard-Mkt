@@ -248,6 +248,7 @@ export interface GenerarParams {
   tipoContenido?: string; // "producto" (default) | "creativo"
   subtipo?: string; // creativo: efemeride | trending | beneficio | disruptivo
   idea?: string; // creativo: tema/idea en texto libre
+  atributos?: string[]; // diferenciales elegidos a destacar (nombres)
 }
 
 export interface GenerarResult {
@@ -273,7 +274,7 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
   const producto = getModelo(body.modelo);
   const productoReal = body.productoReal === true && producto != null;
   const packshotUrl = productoReal && producto ? driveImageUrl(producto.driveFileId) : null;
-  const difTxt = diferencialesTexto(producto?.sku);
+  const difTxt = diferencialesTexto(producto?.sku, body.atributos);
   const esPorfolio = categoria === "porfolio";
   const porfolioUrls = esPorfolio
     ? (["heladeras", "cocinas", "lavarropas"] as const)
