@@ -35,6 +35,21 @@ export async function falImage(model: string, input: Record<string, unknown>): P
   return { images: data.images ?? [], seed: data.seed, raw: data };
 }
 
+// Endpoint síncrono genérico: devuelve el JSON crudo. Sirve para modelos rápidos
+// (p.ej. TTS de ElevenLabs en fal → { audio: { url } }).
+export async function falRun(model: string, input: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const key = process.env.FAL_KEY;
+  if (!key) throw new Error("FAL_KEY no configurada (crear en fal.ai/dashboard/keys y setear en Vercel).");
+  const res = await fetch(`https://fal.run/${model}`, {
+    method: "POST",
+    headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`fal ${res.status}: ${(await res.text()).slice(0, 500)}`);
+  return (await res.json()) as Record<string, unknown>;
+}
+
 // Video: los modelos (Kling / Veo) son lentos y corren en la COLA async de fal
 // (queue.fal.run). Se hace submit → se poolea el estado hasta COMPLETED → se lee
 // el resultado. Devuelve la URL del mp4.
