@@ -81,7 +81,7 @@ export const UGC_VOCES_FULL = UGC_VOCES.map((v) => ({ ...v, voice: v.key === "ma
 function perfil(key: string): UgcPerfil { return UGC_PERFILES_FULL.find((p) => p.key === key) ?? UGC_PERFILES_FULL[0]!; }
 
 // ---- Guion (OpenAI) siguiendo el playbook ----
-export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; }
+export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; duracion?: number; }
 
 export async function generarGuionUgc(params: GuionParams): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -93,7 +93,11 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
     params.pilar && PILAR_DESC[params.pilar] ? PILAR_DESC[params.pilar] : "",
     params.formato && FORMATO_DESC[params.formato] ? FORMATO_DESC[params.formato] : "",
     diferencialesTexto(params.modelo),
-    "Salida MUY BREVE: 12 a 18 segundos hablados, MÁXIMO 45 palabras. Un solo diferencial bien contado, no una lista. Cortá todo lo que sobre. SOLO el texto hablado.",
+    (() => {
+      const seg = params.duracion && params.duracion > 0 ? params.duracion : 15;
+      const maxPal = Math.max(12, Math.round(seg * 2.6)); // ~2.6 palabras/seg (rioplatense)
+      return `Salida de EXACTAMENTE ~${seg} segundos hablados: MÁXIMO ${maxPal} palabras. Ajustá el largo a ese tiempo. ${seg <= 15 ? "Un solo diferencial bien contado, no una lista." : ""} Cortá todo lo que sobre. SOLO el texto hablado.`;
+    })(),
   ].filter(Boolean);
   const sys = bloques.join("\n\n");
   const user = `Marca: Drean (electrodomésticos, Argentina).\nProducto/tema: ${params.tema || "un electrodoméstico Drean"}.` +
