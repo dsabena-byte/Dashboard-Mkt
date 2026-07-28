@@ -7,7 +7,10 @@
       "name": "Manual trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-900, 0]
+      "position": [
+        -900,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,7 +20,10 @@
       "name": "Set Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-720, 0]
+      "position": [
+        -720,
+        0
+      ]
     },
     {
       "parameters": {
@@ -35,7 +41,10 @@
       "name": "Instagram Actor",
       "type": "@apify/n8n-nodes-apify.apify",
       "typeVersion": 1,
-      "position": [-480, -240],
+      "position": [
+        -480,
+        -240
+      ],
       "credentials": {
         "apifyOAuth2Api": {
           "id": "eUm5nmUy2Eqh8k51",
@@ -53,7 +62,10 @@
       "name": "Tag Instagram",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-240, -240]
+      "position": [
+        -240,
+        -240
+      ]
     },
     {
       "parameters": {
@@ -71,7 +83,10 @@
       "name": "Facebook Actor",
       "type": "@apify/n8n-nodes-apify.apify",
       "typeVersion": 1,
-      "position": [-480, 0],
+      "position": [
+        -480,
+        0
+      ],
       "credentials": {
         "apifyOAuth2Api": {
           "id": "eUm5nmUy2Eqh8k51",
@@ -89,7 +104,10 @@
       "name": "Tag Facebook",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-240, 0]
+      "position": [
+        -240,
+        0
+      ]
     },
     {
       "parameters": {
@@ -107,7 +125,10 @@
       "name": "TikTok Actor",
       "type": "@apify/n8n-nodes-apify.apify",
       "typeVersion": 1,
-      "position": [-480, 240],
+      "position": [
+        -480,
+        240
+      ],
       "credentials": {
         "apifyOAuth2Api": {
           "id": "eUm5nmUy2Eqh8k51",
@@ -125,7 +146,10 @@
       "name": "Tag TikTok",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-240, 240]
+      "position": [
+        -240,
+        240
+      ]
     },
     {
       "parameters": {
@@ -135,7 +159,10 @@
       "name": "Merge Platforms",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [-20, 0]
+      "position": [
+        -20,
+        0
+      ]
     },
     {
       "parameters": {
@@ -147,7 +174,10 @@
       "name": "Aggregate Posts",
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
-      "position": [180, 0]
+      "position": [
+        180,
+        0
+      ]
     },
     {
       "parameters": {
@@ -156,8 +186,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -170,20 +206,26 @@
       "name": "GPT Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [380, 0],
+      "position": [
+        380,
+        0
+      ],
       "alwaysOutputData": true,
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Build records for Supabase social_posts. Match marca por ownerUsername.\n// Pilar canónico (5 únicos, sin combinaciones). Engagement se calcula en dashboard.\ntry {\n  const raw = $input.first().json;\n  const originalPosts = $('Aggregate Posts').first().json.posts || [];\n  const config = $('Set Config').first().json;\n  const marcas = config.brands.map(b => b.toLowerCase());\n  const fromDate = config.fromDate || '2026-01-01';\n  const VALID_PILARS = ['Branding','Producto','Promo','Influencer','Educacional'];\n\n  // Extract GPT JSON\n  let analysisArray;\n  if (raw.choices && raw.choices[0]) {\n    const content = raw.choices[0].message?.content || '';\n    const parsed = JSON.parse(content);\n    analysisArray = parsed.analysis || parsed;\n  } else if (Array.isArray(raw)) {\n    analysisArray = raw;\n  } else {\n    throw new Error('GPT response inesperado: ' + JSON.stringify(Object.keys(raw)));\n  }\n  if (!Array.isArray(analysisArray)) throw new Error('analysis no es un array');\n\n  const analysisMap = {};\n  for (const a of analysisArray) { if (a.url) analysisMap[a.url] = a; }\n\n  // Match marca por ownerUsername (normalizado)\n  const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n  const matchMarca = (owner) => {\n    const o = norm(owner);\n    if (!o) return null;\n    return marcas.find(m => {\n      const mn = norm(m);\n      return mn && (o === mn || o.startsWith(mn) || mn.startsWith(o));\n    }) || null;\n  };\n\n  // Pilar guard\n  const pickPilar = (raw) => {\n    if (!raw) return 'Branding';\n    if (VALID_PILARS.includes(raw)) return raw;\n    // Si vino combinado tipo \"Producto/Branding\", agarrá el primero válido\n    const parts = raw.split('/').map(s => s.trim());\n    for (const p of parts) if (VALID_PILARS.includes(p)) return p;\n    return 'Branding';\n  };\n\n  const results = [];\n  for (const post of originalPosts) {\n    try {\n      const url = post.url || '';\n      if (!url) continue;\n      const analysis = analysisMap[url];\n      if (!analysis) continue;\n\n      const fecha = post.timestamp ? new Date(post.timestamp).toISOString().slice(0, 10) : null;\n      if (!fecha || fecha < fromDate) continue;\n\n      // Prioridad: brandFromInput (la cuenta que scrapeamos) — captura collabs.\n      // Fallback: matchear ownerUsername contra la lista de marcas conocidas.\n      let marca = null;\n      if (post.brandFromInput && marcas.includes(post.brandFromInput)) {\n        marca = post.brandFromInput;\n      } else {\n        marca = matchMarca(post.ownerUsername || post.username || '');\n      }\n      if (!marca) continue;\n\n      const likes = Number(post.likesCount) || 0;\n      const comments = Number(post.commentsCount) || 0;\n      const views = Number(post.videoViewCount) || 0;\n      const followers = Number(post.ownerFollowerCount) || 0;\n\n      const t = (post.type || '').toLowerCase();\n      const contentType = post.platform === 'TIKTOK' ? 'VIDEO'\n        : t.includes('video') || t.includes('reel') ? 'VIDEO'\n        : t.includes('sidecar') || t.includes('album') ? 'SIDECAR' : 'IMAGE';\n\n      const sent = analysis.sentimiento;\n      const hasComments = Array.isArray(post.commentTexts) && post.commentTexts.length > 0;\n      const hasSent = hasComments && sent && typeof sent === 'object' && (sent.positivo != null || sent.negativo != null || sent.neutro != null);\n      results.push({\n        red_social:   post.platform,\n        url,\n        pilar:        pickPilar(analysis.pilar),\n        positivo:     hasSent ? (Number(sent.positivo) || 0) : null,\n        negativo:     hasSent ? (Number(sent.negativo) || 0) : null,\n        neutro:       hasSent ? (Number(sent.neutro)   || 0) : null,\n        likes,\n        comentarios:  comments,\n        engagement:   followers > 0 ? Number((((likes + comments) / followers) * 100).toFixed(3)) : null,\n        fecha,\n        tipo:         post.isSponsored ? 'PAUTA' : 'ORGÁNICO',\n        marca,\n        views,\n        content_type: contentType,\n        followers\n      });\n    } catch (e) { /* skip */ }\n  }\n\n  return results.map(json => ({ json }));\n} catch (e) {\n  return [{ json: { error: e.message } }];\n}"
+        "jsCode": "// Build records for Supabase social_posts. Match marca por ownerUsername.\n// Pilar canónico (5 únicos, sin combinaciones). Engagement se calcula en dashboard.\ntry {\n  const raw = $input.first().json;\n  const originalPosts = $('Aggregate Posts').first().json.posts || [];\n  const config = $('Set Config').first().json;\n  const marcas = config.brands.map(b => b.toLowerCase());\n  const fromDate = config.fromDate || '2026-01-01';\n  const VALID_PILARS = ['Branding','Producto','Promo','Influencer','Educacional'];\n\n  // Extract GPT JSON\n  let analysisArray;\n  if (raw.choices && raw.choices[0]) {\n    const content = raw.choices[0].message?.content || '';\n    const parsed = JSON.parse(content);\n    analysisArray = parsed.analysis || parsed;\n  } else if (Array.isArray(raw)) {\n    analysisArray = raw;\n  } else {\n    throw new Error('GPT response inesperado: ' + JSON.stringify(Object.keys(raw)));\n  }\n  if (!Array.isArray(analysisArray)) throw new Error('analysis no es un array');\n\n  const analysisMap = {};\n  for (const a of analysisArray) { if (a.url) analysisMap[a.url] = a; }\n\n  // Match marca por ownerUsername (normalizado)\n  const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n  const matchMarca = (owner) => {\n    const o = norm(owner);\n    if (!o) return null;\n    return marcas.find(m => {\n      const mn = norm(m);\n      return mn && (o === mn || o.startsWith(mn) || mn.startsWith(o));\n    }) || null;\n  };\n\n  // Pilar guard\n  const pickPilar = (raw) => {\n    if (!raw) return 'Branding';\n    if (VALID_PILARS.includes(raw)) return raw;\n    // Si vino combinado tipo \"Producto/Branding\", agarrá el primero válido\n    const parts = raw.split('/').map(s => s.trim());\n    for (const p of parts) if (VALID_PILARS.includes(p)) return p;\n    return 'Branding';\n  };\n\n  const results = [];\n  for (const post of originalPosts) {\n    try {\n      const url = post.url || '';\n      if (!url) continue;\n      const analysis = analysisMap[url];\n      if (!analysis) continue;\n\n      const fecha = post.timestamp ? new Date(post.timestamp).toISOString().slice(0, 10) : null;\n      if (!fecha || fecha < fromDate) continue;\n\n      // Prioridad: brandFromInput (la cuenta que scrapeamos) — captura collabs.\n      // Fallback: matchear ownerUsername contra la lista de marcas conocidas.\n      let marca = null;\n      if (post.brandFromInput && marcas.includes(post.brandFromInput)) {\n        marca = post.brandFromInput;\n      } else {\n        marca = matchMarca(post.ownerUsername || post.username || '');\n      }\n      if (!marca) continue;\n\n      const likes = Number(post.likesCount) || 0;\n      const comments = Number(post.commentsCount) || 0;\n      const views = Number(post.videoViewCount) || 0;\n      const followers = Number(post.ownerFollowerCount) || 0;\n\n      const t = (post.type || '').toLowerCase();\n      const contentType = post.platform === 'TIKTOK' ? 'VIDEO'\n        : t.includes('video') || t.includes('reel') ? 'VIDEO'\n        : t.includes('sidecar') || t.includes('album') ? 'SIDECAR' : 'IMAGE';\n\n      const sent = analysis.sentimiento;\n      const hasComments = Array.isArray(post.commentTexts) && post.commentTexts.length > 0;\n      const hasSent = hasComments && sent && typeof sent === 'object' && (sent.positivo != null || sent.negativo != null || sent.neutro != null);\n      results.push({\n        red_social:   post.platform,\n        url,\n        pilar:        pickPilar(analysis.pilar),\n        positivo:     hasSent ? (Number(sent.positivo) || 0) : null,\n        negativo:     hasSent ? (Number(sent.negativo) || 0) : null,\n        neutro:       hasSent ? (Number(sent.neutro)   || 0) : null,\n        likes,\n        comentarios:  comments,\n        engagement:   followers > 0 ? Number((((likes + comments) / followers) * 100).toFixed(3)) : null,\n        fecha,\n        tipo:         post.isSponsored ? 'PAUTA' : 'ORGÁNICO',\n        marca,\n        views,\n        content_type: contentType,\n    thumbnail_url: post.image || null,\n        followers\n      });\n    } catch (e) { /* skip */ }\n  }\n\n  return results.map(json => ({ json }));\n} catch (e) {\n  return [{ json: { error: e.message } }];\n}"
       },
       "id": "node-parse",
       "name": "Parse + Map to Supabase",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [580, 0],
+      "position": [
+        580,
+        0
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -215,7 +257,10 @@
       "name": "Filter Valid Posts",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2,
-      "position": [780, 0]
+      "position": [
+        780,
+        0
+      ]
     },
     {
       "parameters": {
@@ -226,7 +271,10 @@
       "name": "Batch into one array",
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
-      "position": [980, 0]
+      "position": [
+        980,
+        0
+      ]
     },
     {
       "parameters": {
@@ -235,10 +283,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "Prefer",        "value": "resolution=merge-duplicates,return=representation" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
           ]
         },
         "sendBody": true,
@@ -250,35 +310,182 @@
       "name": "Supabase — Upsert social_posts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1180, 0]
+      "position": [
+        1180,
+        0
+      ]
     }
   ],
   "connections": {
     "Manual trigger": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Config": {
-      "main": [[
-        { "node": "Instagram Actor", "type": "main", "index": 0 },
-        { "node": "Facebook Actor", "type": "main", "index": 0 },
-        { "node": "TikTok Actor", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Instagram Actor",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Facebook Actor",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "TikTok Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Instagram Actor": { "main": [[{ "node": "Tag Instagram", "type": "main", "index": 0 }]] },
-    "Tag Instagram":   { "main": [[{ "node": "Merge Platforms", "type": "main", "index": 0 }]] },
-    "Facebook Actor":  { "main": [[{ "node": "Tag Facebook", "type": "main", "index": 0 }]] },
-    "Tag Facebook":    { "main": [[{ "node": "Merge Platforms", "type": "main", "index": 1 }]] },
-    "TikTok Actor":    { "main": [[{ "node": "Tag TikTok", "type": "main", "index": 0 }]] },
-    "Tag TikTok":      { "main": [[{ "node": "Merge Platforms", "type": "main", "index": 2 }]] },
-    "Merge Platforms": { "main": [[{ "node": "Aggregate Posts", "type": "main", "index": 0 }]] },
-    "Aggregate Posts": { "main": [[{ "node": "GPT Analysis", "type": "main", "index": 0 }]] },
-    "GPT Analysis":    { "main": [[{ "node": "Parse + Map to Supabase", "type": "main", "index": 0 }]] },
-    "Parse + Map to Supabase": { "main": [[{ "node": "Filter Valid Posts", "type": "main", "index": 0 }]] },
-    "Filter Valid Posts": { "main": [[{ "node": "Batch into one array", "type": "main", "index": 0 }]] },
-    "Batch into one array": { "main": [[{ "node": "Supabase — Upsert social_posts", "type": "main", "index": 0 }]] }
+    "Instagram Actor": {
+      "main": [
+        [
+          {
+            "node": "Tag Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Instagram": {
+      "main": [
+        [
+          {
+            "node": "Merge Platforms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook Actor": {
+      "main": [
+        [
+          {
+            "node": "Tag Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Facebook": {
+      "main": [
+        [
+          {
+            "node": "Merge Platforms",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "TikTok Actor": {
+      "main": [
+        [
+          {
+            "node": "Tag TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag TikTok": {
+      "main": [
+        [
+          {
+            "node": "Merge Platforms",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Platforms": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Posts": {
+      "main": [
+        [
+          {
+            "node": "GPT Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT Analysis": {
+      "main": [
+        [
+          {
+            "node": "Parse + Map to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse + Map to Supabase": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Posts": {
+      "main": [
+        [
+          {
+            "node": "Batch into one array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch into one array": {
+      "main": [
+        [
+          {
+            "node": "Supabase — Upsert social_posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "settings": {
     "executionOrder": "v1"
   },
-  "meta": { "templateCredsSetupCompleted": false }
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
 }
