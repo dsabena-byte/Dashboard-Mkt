@@ -33,12 +33,18 @@ export async function GET(request: Request) {
     const guion = u.searchParams.get("guion") ?? "Hace unos meses cambié el lavarropas por uno de Dreán y se nota la diferencia: lava rápido, casi no vibra y la ropa queda impecable.";
     const voz = u.searchParams.get("voz") ?? "Rachel"; // TODO: cambiar por una voz rioplatense
     const lipsyncModel = u.searchParams.get("modelo") ?? MODEL_LIPSYNC;
+    // Se puede pasar un audio ya generado (?audio=<url>) para NO re-pagar TTS y
+    // reusar exactamente el mismo audio al comparar modelos de lipsync.
+    const audioParam = u.searchParams.get("audio");
     if (!video) return NextResponse.json({ ok: false, error: "Falta ?video=<url del video de Seedance>" }, { status: 400 });
-    if (u.searchParams.get("go") !== "1") return NextResponse.json({ ok: true, dry: true, guion, voz, lipsyncModel, hint: "Agregá &go=1 para generar." });
+    if (u.searchParams.get("go") !== "1") return NextResponse.json({ ok: true, dry: true, guion, voz, lipsyncModel, audio: audioParam, hint: "Agregá &go=1 para generar." });
 
-    // 1) Voz nuestra (ElevenLabs, síncrono).
-    const tts = await falRun(MODEL_TTS, { text: guion, voice: voz });
-    const audioUrl = ((tts.audio as { url?: string } | undefined)?.url) ?? (tts.audio_url as string | undefined);
+    // 1) Voz nuestra (ElevenLabs, síncrono) — salvo que ya nos pasen ?audio=.
+    let audioUrl: string | undefined = audioParam ?? undefined;
+    if (!audioUrl) {
+      const tts = await falRun(MODEL_TTS, { text: guion, voice: voz });
+      audioUrl = ((tts.audio as { url?: string } | undefined)?.url) ?? (tts.audio_url as string | undefined);
+    }
     out.audio_url = audioUrl ?? null;
     if (!audioUrl) { out.error = "TTS no devolvió audio"; return NextResponse.json(out, { status: 502 }); }
 
