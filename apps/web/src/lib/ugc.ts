@@ -1,5 +1,5 @@
 import "server-only";
-import { falImage, falRun, falQueueSubmit, falQueueVideoStatus, FAL_SIZES } from "@/lib/fal-client";
+import { falImage, falQueueSubmit, falQueueVideoStatus, FAL_SIZES } from "@/lib/fal-client";
 import { UGC_VOCES } from "@/lib/ugc-opciones";
 import { diferencialesTexto } from "@/lib/diferenciales";
 
@@ -11,8 +11,6 @@ import { diferencialesTexto } from "@/lib/diferenciales";
 // 2026 (estructura, tono, naming de marca, formatos y pilares) para que no sean
 // genéricos y respeten la estrategia de la marca.
 
-const MODEL_TTS = "fal-ai/elevenlabs/tts/multilingual-v2";
-const MODEL_AVATAR = "fal-ai/bytedance/omnihuman";
 const MODEL_PERSONA = "fal-ai/ideogram/v3";
 
 // ---- Base de conocimiento: playbook UGC Drean ----
@@ -81,7 +79,7 @@ export const UGC_VOCES_FULL = UGC_VOCES.map((v) => ({ ...v, voice: v.key === "ma
 function perfil(key: string): UgcPerfil { return UGC_PERFILES_FULL.find((p) => p.key === key) ?? UGC_PERFILES_FULL[0]!; }
 
 // ---- Guion (OpenAI) siguiendo el playbook ----
-export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; duracion?: number; atributos?: string[]; }
+export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; duracion?: number; atributos?: string[]; cta?: string; }
 
 export async function generarGuionUgc(params: GuionParams): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -98,6 +96,9 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
       const maxPal = Math.max(12, Math.round(seg * 2.6)); // ~2.6 palabras/seg (rioplatense)
       return `Salida de EXACTAMENTE ~${seg} segundos hablados: MÁXIMO ${maxPal} palabras. Ajustá el largo a ese tiempo. ${seg <= 15 ? "Un solo diferencial bien contado, no una lista." : ""} Cortá todo lo que sobre. SOLO el texto hablado.`;
     })(),
+    // CTA de cierre: la marca NO se dice (va en el copy/link); el guion cierra
+    // mandando al copy/link con esta frase natural.
+    params.cta?.trim() ? `CIERRE OBLIGATORIO: terminá el guion con este call-to-action, redactado natural y al final: "${params.cta.trim()}". No agregues nada después.` : "",
   ].filter(Boolean);
   const sys = bloques.join("\n\n");
   const user = `Marca: Drean (electrodomésticos, Argentina).\nProducto/tema: ${params.tema || "un electrodoméstico Drean"}.` +
@@ -139,18 +140,47 @@ export async function generarPersonaUgc(params: PersonaParams): Promise<string> 
   return url;
 }
 
-// ---- Voz + video (ElevenLabs TTS + OmniHuman) — ASÍNCRONO ----
-// El render de OmniHuman puede tardar varios minutos (más que el límite de una
-// request serverless). Por eso: submit() hace la voz (rápido) y encola el video,
-// devolviendo el request_id; el cliente poolea status() hasta que esté listo.
+// ---- Video NATIVO con Seedance 2.0 (persona + voz + escena en un solo paso) ----
+// Validado como el mejor método: video natural (no "foto hablando" ni lipsync
+// borroso). La persona se genera nativa, con la voz nativa de Seedance. La marca
+// NO se dice (el guion es "marca-free" y cierra con CTA al copy/link), así se
+// evita el problema de pronunciación de nombres propios.
+const MODEL_SEEDANCE = "bytedance/seedance-2.0/fast/text-to-video";
+
+// Escenarios/tomas (claves de UGC_ESCENARIOS) → descripción de escena para el prompt.
+const ESCENARIOS_PROMPT: Record<string, string> = {
+  selfie: "at home in a casual setting, filming themselves with a phone front camera, talking directly to the camera",
+  sillon: "relaxed on the living-room sofa at home, phone propped up in front of them, talking casually to the camera",
+  compu: "sitting at a desk with a laptop, glancing at the screen and then turning to talk to the camera",
+  cocina: "standing in a home kitchen next to the appliances, doing a small everyday task while talking to the camera",
+  desempacando: "unpacking grocery and shopping bags on the kitchen counter at home, talking to the camera in between",
+  lavando: "next to the washing machine at home, loading or taking out laundry, talking to the camera while doing it",
+  doblando: "folding freshly washed laundry on the bed or sofa, talking casually to the camera",
+  cafe: "sitting relaxed at home with a cup of coffee or mate, talking to the camera",
+};
+
+function buildPromptSeedance(guion: string, genero?: string, escenario?: string | null): string {
+  const persona = genero === "hombre" ? "man" : "woman";
+  // Si es una clave conocida usa el preset; si no, se toma el texto libre tal cual.
+  const escena = escenario ? (ESCENARIOS_PROMPT[escenario] ?? escenario) : ESCENARIOS_PROMPT.selfie;
+  return (
+    `Realistic UGC-style vertical video of a natural, everyday Argentine ${persona} in their early 30s, ` +
+    `${escena}. ` +
+    `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
+    `Amateur phone-video look, natural indoor lighting, natural subtle head and hand movements, natural skin. ` +
+    `They speak at a NORMAL, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo). Do NOT slow down and do NOT over-enunciate. ` +
+    `The person says, naturally and at a normal pace: "${guion}". ` +
+    `Vertical 9:16, single person, realistic and human.`
+  );
+}
+
+// Encola el video (Seedance, async). El render tarda; el cliente poolea status().
 export interface UgcVideoHandle { request_id: string; status_url: string; response_url: string }
 
-export async function generarVideoUgcSubmit(guion: string, vozKey: string, personaUrl: string): Promise<UgcVideoHandle> {
-  const voz = UGC_VOCES_FULL.find((v) => v.key === vozKey) ?? UGC_VOCES_FULL[0]!;
-  const tts = await falRun(MODEL_TTS, { text: guion, voice: voz.voice });
-  const audioUrl = ((tts.audio as { url?: string } | undefined)?.url) ?? (tts.audio_url as string | undefined);
-  if (!audioUrl) throw new Error("No se generó el audio de la voz.");
-  const h = await falQueueSubmit(MODEL_AVATAR, { image_url: personaUrl, audio_url: audioUrl });
+export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: string, escenario?: string | null, duracion?: number): Promise<UgcVideoHandle> {
+  const seg = Math.min(15, Math.max(4, duracion && duracion > 0 ? duracion : 10)); // Seedance: 4-15s
+  const input = { prompt: buildPromptSeedance(guion, genero, escenario), duration: String(seg), resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
+  const h = await falQueueSubmit(MODEL_SEEDANCE, input);
   return { request_id: h.requestId, status_url: h.statusUrl, response_url: h.responseUrl };
 }
 
