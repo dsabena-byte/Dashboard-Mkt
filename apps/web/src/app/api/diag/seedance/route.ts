@@ -17,16 +17,39 @@ export const maxDuration = 60;
 // Variante "fast" = más barata/rápida para el piloto.
 const MODEL = "bytedance/seedance-2.0/fast/text-to-video";
 
-function buildPrompt(guion: string, genero: string): string {
+// Guía fonética SOLO para las palabras que Seedance rompe (marca y términos
+// clave). Se pasa en el prompt SIN pedir que hable lento/claro (eso mataba la
+// naturalidad): el objetivo es que las diga bien manteniendo el ritmo normal.
+// Se puede extender con ?fonetica=palabra=como-suena;otra=como-suena
+const FONETICA_BASE: Record<string, string> = {
+  "Dreán": "dre-AN (two clear syllables, stress on the last; NEVER 'drian' or 'drin')",
+  "Drean": "dre-AN (two clear syllables, stress on the last; NEVER 'drian' or 'drin')",
+  "lavarropas": "la-va-RRO-pas",
+};
+
+function guiaFonetica(extra?: string | null): string {
+  const dict: Record<string, string> = { ...FONETICA_BASE };
+  if (extra) {
+    for (const par of extra.split(";")) {
+      const [w, s] = par.split("=");
+      if (w && s) dict[w.trim()] = s.trim();
+    }
+  }
+  return Object.entries(dict).map(([w, s]) => `"${w}" = ${s}`).join("; ");
+}
+
+function buildPrompt(guion: string, genero: string, fonetica?: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
   return (
     `Realistic UGC-style vertical selfie video of a natural, everyday Argentine ${persona} in their early 30s, ` +
     `at home in a casual setting, filming themselves with a phone front camera, talking directly to the camera. ` +
     `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
     `Amateur phone-video look, natural indoor lighting, natural subtle head and hand movements, natural skin. ` +
-    `They speak in warm, natural RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo), with clear lip-sync. ` +
-    `CRITICAL: pronounce every word slowly and clearly in correct Argentine Spanish; do NOT slur or mispronounce product names or the brand. ` +
-    `The person says, in clear Argentine Spanish: "${guion}". ` +
+    // Ritmo NORMAL y espontáneo (no lento, no sobre-articulado) para no perder naturalidad.
+    `They speak at a NORMAL, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo). Do NOT slow down and do NOT over-enunciate. ` +
+    // La corrección se logra con clave fonética puntual, no bajando el ritmo.
+    `Pronounce the Spanish correctly and naturally. Pronunciation key for specific words: ${guiaFonetica(fonetica)}. ` +
+    `The person says, naturally and at a normal pace: "${guion}". ` +
     `Vertical 9:16, single person, realistic and human.`
   );
 }
@@ -42,13 +65,14 @@ export async function GET(request: Request) {
       return NextResponse.json(out);
     }
 
-    const guion = u.searchParams.get("guion") ?? "Hace unos meses cambié mi lavarropas por un Drean y la verdad que se nota la diferencia: lava rápido y casi no hace ruido.";
+    const guion = u.searchParams.get("guion") ?? "Hace unos meses cambié mi lavarropas por un Dreán y la verdad, lava rapidísimo y la ropa queda impecable.";
     const genero = u.searchParams.get("genero") ?? "mujer";
+    const fonetica = u.searchParams.get("fonetica");
     if (u.searchParams.get("go") !== "1") {
-      return NextResponse.json({ ok: true, dry: true, model: MODEL, prompt: buildPrompt(guion, genero), hint: "Agregá &go=1 para encolar el clip." });
+      return NextResponse.json({ ok: true, dry: true, model: MODEL, prompt: buildPrompt(guion, genero, fonetica), hint: "Agregá &go=1 para encolar el clip." });
     }
 
-    const input = { prompt: buildPrompt(guion, genero), duration: "8", resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
+    const input = { prompt: buildPrompt(guion, genero, fonetica), duration: "8", resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
     const handle = await falQueueSubmit(MODEL, input);
     out.model = MODEL;
     out.handle = handle;
