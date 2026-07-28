@@ -93,7 +93,7 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
     params.pilar && PILAR_DESC[params.pilar] ? PILAR_DESC[params.pilar] : "",
     params.formato && FORMATO_DESC[params.formato] ? FORMATO_DESC[params.formato] : "",
     diferencialesTexto(params.modelo),
-    "Salida: entre 15 y 25 segundos (aprox. 45-70 palabras). SOLO el texto hablado.",
+    "Salida MUY BREVE: 12 a 18 segundos hablados, MÁXIMO 45 palabras. Un solo diferencial bien contado, no una lista. Cortá todo lo que sobre. SOLO el texto hablado.",
   ].filter(Boolean);
   const sys = bloques.join("\n\n");
   const user = `Marca: Drean (electrodomésticos, Argentina).\nProducto/tema: ${params.tema || "un electrodoméstico Drean"}.` +
