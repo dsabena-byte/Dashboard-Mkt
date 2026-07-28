@@ -716,6 +716,9 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   const [e, setE] = useState<Cal>(entry);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [persGen, setPersGen] = useState("");
+  const [persEdad, setPersEdad] = useState("");
+  const [videoMsg, setVideoMsg] = useState<string | null>(null);
   useEffect(() => { setE(entry); }, [entry]);
 
   async function save(patch: Partial<Cal>) {
@@ -748,19 +751,34 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   async function genPersona() {
     setBusy("persona"); setError(null);
     try {
-      const j = await call("/api/ugc/persona", { perfil: e.perfil ?? "usuario", descripcion: e.detalles ?? "" });
+      const j = await call("/api/ugc/persona", { perfil: e.perfil ?? "usuario", descripcion: e.detalles ?? "", genero: persGen || undefined, edad: persEdad || undefined });
       if (j) { setE((p) => ({ ...p, persona_url: j.image_url as string })); await save({ persona_url: j.image_url as string }); }
     } finally { setBusy(null); }
   }
   async function genVideo() {
     if (!e.guion?.trim() || !e.persona_url) return;
-    setBusy("video"); setError(null);
+    setBusy("video"); setError(null); setVideoMsg("Encolando el video…");
     try {
       const j = await call("/api/ugc/video", { guion: e.guion, voz: e.subtipo ?? "fem", persona_url: e.persona_url });
-      if (j) { setE((p) => ({ ...p, video_url: j.video_url as string })); await save({ video_url: j.video_url as string, estado: "generado" }); }
-    } finally { setBusy(null); }
+      if (!j) return;
+      const reqId = j.request_id as string;
+      // El render puede tardar varios minutos: pooleamos el estado.
+      let terminal = false;
+      for (let i = 0; i < 120; i++) {
+        await new Promise((r) => setTimeout(r, 8000));
+        setVideoMsg(`Renderizando video… (${Math.round((i + 1) * 8 / 60)} min)`);
+        const sr = await fetch(`/api/ugc/video/status?request_id=${reqId}`);
+        const sj = (await sr.json()) as { ok?: boolean; status?: string; video_url?: string | null };
+        if (sj.video_url) { setE((p) => ({ ...p, video_url: sj.video_url! })); await save({ video_url: sj.video_url, estado: "generado" }); terminal = true; break; }
+        if (sj.status === "FAILED" || sj.status === "ERROR") { setError("El video falló al renderizar. Probá regenerar la persona (a veces la imagen tiene un detalle raro) y reintentá."); terminal = true; break; }
+      }
+      if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
+    } finally { setBusy(null); setVideoMsg(null); }
   }
   const field = "rounded border px-2 py-1 text-xs";
+  // Sólo bloqueamos las acciones durante una GENERACIÓN, no durante el autosave
+  // (así no hace falta tocar el botón dos veces).
+  const genBusy = busy === "guion" || busy === "persona" || busy === "video";
   const perfilSel = UGC_PERFILES.find((p) => p.key === (e.perfil ?? "usuario"))!;
 
   return (
@@ -804,13 +822,30 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       </div>
       <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / contexto / look de la persona (opcional)" className={`${field} w-full`} />
 
-      <div className="flex flex-wrap gap-2">
-        <button onClick={genGuion} disabled={busy !== null} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
-        <button onClick={genPersona} disabled={busy !== null} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "persona" ? "Generando…" : e.persona_url ? "2 · Regenerar persona" : "2 · Persona"}</button>
-        <select value={e.subtipo ?? "fem"} onChange={(ev) => { setE({ ...e, subtipo: ev.target.value }); save({ subtipo: ev.target.value }); }} className={field}>
+      {/* Persona: género + edad (independiente de la voz) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Persona</span>
+        <select value={persGen} onChange={(ev) => setPersGen(ev.target.value)} className={field} title="Género de la persona">
+          <option value="">Género…</option>
+          <option value="mujer">Mujer</option>
+          <option value="hombre">Hombre</option>
+        </select>
+        <select value={persEdad} onChange={(ev) => setPersEdad(ev.target.value)} className={field} title="Rango de edad">
+          <option value="">Edad…</option>
+          <option value="joven">18-30</option>
+          <option value="adulto">30-50</option>
+          <option value="mayor">50+</option>
+        </select>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
+        <button onClick={genPersona} disabled={genBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "persona" ? "Generando…" : e.persona_url ? "2 · Regenerar persona" : "2 · Persona"}</button>
+        <select value={e.subtipo ?? "fem"} onChange={(ev) => { setE({ ...e, subtipo: ev.target.value }); save({ subtipo: ev.target.value }); }} className={field} title="Voz">
           {UGC_VOCES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
         </select>
-        <button onClick={genVideo} disabled={busy !== null || !e.guion?.trim() || !e.persona_url} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando video (1-3 min)…" : "3 · Video"}</button>
+        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim() || !e.persona_url} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "3 · Video"}</button>
+        {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
       </div>
 
       <textarea value={e.guion ?? ""} onChange={(ev) => setE({ ...e, guion: ev.target.value })} onBlur={() => save({ guion: e.guion })} rows={3} placeholder="El guion aparece acá y lo podés editar." className={`${field} w-full resize-y`} />
