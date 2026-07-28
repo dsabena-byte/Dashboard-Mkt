@@ -326,11 +326,13 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
           const img = await falImage(MODEL_EDIT, { prompt: editPrompt, image_urls: [packshotUrl], num_images: 1 });
           imagenUrl = img.images[0]?.url ?? null;
           promptMostrar = editPrompt;
+          if (!imagenUrl) throw new Error(`El modelo de imagen (nano-banana + packshot ${producto.sku}) no devolvió imagen. Respuesta de fal: ${JSON.stringify(img.raw).slice(0, 700)}`);
         } else if (esPorfolio && porfolioUrls.length > 0) {
           const editPrompt = buildPorfolioPrompt(brief.escena ?? "", aspecto !== "feed", detalles);
           const img = await falImage(MODEL_EDIT, { prompt: editPrompt, image_urls: porfolioUrls, num_images: 1 });
           imagenUrl = img.images[0]?.url ?? null;
           promptMostrar = editPrompt;
+          if (!imagenUrl) throw new Error(`El modelo de imagen (nano-banana porfolio) no devolvió imagen. Respuesta de fal: ${JSON.stringify(img.raw).slice(0, 700)}`);
         } else {
           const prompt = buildImagePrompt(brief.escena ?? "", categoria, personas, producto?.medidas, detalles);
           const img = await falImage(MODEL_IDEOGRAM, { prompt, image_size: FAL_SIZES[aspecto], num_images: 1 });
