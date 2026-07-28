@@ -139,14 +139,17 @@ export async function generarPersonaUgc(params: PersonaParams): Promise<string> 
 // El render de OmniHuman puede tardar varios minutos (más que el límite de una
 // request serverless). Por eso: submit() hace la voz (rápido) y encola el video,
 // devolviendo el request_id; el cliente poolea status() hasta que esté listo.
-export async function generarVideoUgcSubmit(guion: string, vozKey: string, personaUrl: string): Promise<string> {
+export interface UgcVideoHandle { request_id: string; status_url: string; response_url: string }
+
+export async function generarVideoUgcSubmit(guion: string, vozKey: string, personaUrl: string): Promise<UgcVideoHandle> {
   const voz = UGC_VOCES_FULL.find((v) => v.key === vozKey) ?? UGC_VOCES_FULL[0]!;
   const tts = await falRun(MODEL_TTS, { text: guion, voice: voz.voice });
   const audioUrl = ((tts.audio as { url?: string } | undefined)?.url) ?? (tts.audio_url as string | undefined);
   if (!audioUrl) throw new Error("No se generó el audio de la voz.");
-  return falQueueSubmit(MODEL_AVATAR, { image_url: personaUrl, audio_url: audioUrl });
+  const h = await falQueueSubmit(MODEL_AVATAR, { image_url: personaUrl, audio_url: audioUrl });
+  return { request_id: h.requestId, status_url: h.statusUrl, response_url: h.responseUrl };
 }
 
-export async function getVideoUgcStatus(requestId: string): Promise<{ status: string; video_url: string | null }> {
-  return falQueueVideoStatus(MODEL_AVATAR, requestId);
+export async function getVideoUgcStatus(statusUrl: string, responseUrl: string): Promise<{ status: string; video_url: string | null }> {
+  return falQueueVideoStatus(statusUrl, responseUrl);
 }

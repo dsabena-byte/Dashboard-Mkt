@@ -62,7 +62,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ---- Cola async separada en submit + status (para renders largos que no entran
 // en el límite de una request serverless; el cliente poolea el estado). ----
-export async function falQueueSubmit(model: string, input: Record<string, unknown>): Promise<string> {
+// IMPORTANTE: se usan las URLs status_url/response_url que DEVUELVE fal al
+// encolar. No se reconstruyen a mano: para modelos con subruta (p.ej.
+// fal-ai/bytedance/omnihuman) la URL de estado NO es /${model}/requests/... y
+// reconstruirla mal hace que nunca se detecte el COMPLETED.
+export interface FalQueueHandle { requestId: string; statusUrl: string; responseUrl: string }
+
+export async function falQueueSubmit(model: string, input: Record<string, unknown>): Promise<FalQueueHandle> {
   const key = process.env.FAL_KEY;
   if (!key) throw new Error("FAL_KEY no configurada.");
   const sub = await fetch(`https://queue.fal.run/${model}`, {
@@ -72,20 +78,26 @@ export async function falQueueSubmit(model: string, input: Record<string, unknow
     cache: "no-store",
   });
   if (!sub.ok) throw new Error(`fal submit ${sub.status}: ${(await sub.text()).slice(0, 400)}`);
-  const j = (await sub.json()) as { request_id?: string };
+  const j = (await sub.json()) as { request_id?: string; status_url?: string; response_url?: string };
   if (!j.request_id) throw new Error("fal: respuesta sin request_id");
-  return j.request_id;
+  const base = `https://queue.fal.run/${model.split("/").slice(0, 2).join("/")}/requests/${j.request_id}`;
+  return {
+    requestId: j.request_id,
+    statusUrl: j.status_url ?? `${base}/status`,
+    responseUrl: j.response_url ?? base,
+  };
 }
 
-export async function falQueueVideoStatus(model: string, requestId: string): Promise<{ status: string; video_url: string | null }> {
+export async function falQueueVideoStatus(statusUrl: string, responseUrl: string): Promise<{ status: string; video_url: string | null }> {
   const key = process.env.FAL_KEY;
   if (!key) throw new Error("FAL_KEY no configurada.");
   const headers = { Authorization: `Key ${key}`, "Content-Type": "application/json" };
-  const st = await fetch(`https://queue.fal.run/${model}/requests/${requestId}/status`, { headers, cache: "no-store" });
+  const st = await fetch(statusUrl, { headers, cache: "no-store" });
   if (!st.ok) return { status: "PENDING", video_url: null };
   const stData = (await st.json()) as { status?: string };
+  if (stData.status === "FAILED" || stData.status === "ERROR") return { status: "FAILED", video_url: null };
   if (stData.status !== "COMPLETED") return { status: stData.status ?? "IN_PROGRESS", video_url: null };
-  const res = await fetch(`https://queue.fal.run/${model}/requests/${requestId}`, { headers, cache: "no-store" });
+  const res = await fetch(responseUrl, { headers, cache: "no-store" });
   if (!res.ok) return { status: "COMPLETED", video_url: null };
   const data = (await res.json()) as { video?: { url?: string }; url?: string };
   return { status: "COMPLETED", video_url: data.video?.url ?? data.url ?? null };
