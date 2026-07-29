@@ -47,6 +47,7 @@ interface Cal {
   notas?: string | null;
   edad?: string | null;
   vestimenta?: string | null;
+  insert_url?: string | null;
 }
 
 // Multi-select de diferenciales del producto elegido (se guarda en `notas`,
@@ -804,10 +805,31 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
     } finally { setBusy(null); setVideoMsg(null); }
   }
+  // Insert shot del producto real (b-roll sin persona) para intercalar con el
+  // talking-head. Usa el producto (modelo) y el escenario de la pieza.
+  async function genInsert() {
+    if (!e.modelo) { setError("Elegí un producto (modelo) para generar el insert."); return; }
+    setBusy("insert"); setError(null); setVideoMsg("Componiendo el insert del producto…");
+    try {
+      const j = await call("/api/ugc/insert", { sku: e.modelo, escenario: e.categoria || undefined });
+      if (!j) return;
+      const qs = `status_url=${encodeURIComponent(j.status_url as string)}&response_url=${encodeURIComponent(j.response_url as string)}`;
+      let terminal = false;
+      for (let i = 0; i < 90; i++) {
+        await new Promise((r) => setTimeout(r, 8000));
+        setVideoMsg(`Renderizando insert… (${Math.round((i + 1) * 8 / 60)} min)`);
+        const sr = await fetch(`/api/ugc/video/status?${qs}`);
+        const sj = (await sr.json()) as { ok?: boolean; status?: string; video_url?: string | null };
+        if (sj.video_url) { setE((p) => ({ ...p, insert_url: sj.video_url! })); await save({ insert_url: sj.video_url }); terminal = true; break; }
+        if (sj.status === "FAILED") { setError("El insert falló al renderizar. Reintentá (a veces es un fallo puntual)."); terminal = true; break; }
+      }
+      if (!terminal) setError("El insert está tardando más de lo normal. Reintentá en un rato.");
+    } finally { setBusy(null); setVideoMsg(null); }
+  }
   const field = "rounded border px-2 py-1 text-xs";
   // Sólo bloqueamos las acciones durante una GENERACIÓN, no durante el autosave
   // (así no hace falta tocar el botón dos veces).
-  const genBusy = busy === "guion" || busy === "video";
+  const genBusy = busy === "guion" || busy === "video" || busy === "insert";
   const perfilSel = UGC_PERFILES.find((p) => p.key === (e.perfil ?? "usuario"))!;
 
   return (
@@ -900,6 +922,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
         <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "2 · Video"}</button>
+        <button onClick={genInsert} disabled={genBusy || !e.modelo} title={e.modelo ? "Genera un b-roll del producto real para intercalar con el testimonio" : "Elegí un producto (modelo) primero"} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "insert" ? "Generando…" : "3 · Insert producto"}</button>
         {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
       </div>
 
@@ -934,12 +957,24 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       <div className="flex flex-wrap gap-3">
         {e.video_url && (
           <div className="space-y-1">
+            <span className="text-[10px] font-semibold uppercase text-muted-foreground">Talking-head</span>
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <video src={e.video_url} controls loop className="max-h-72 w-auto rounded border" />
             <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar</a>
           </div>
         )}
+        {e.insert_url && (
+          <div className="space-y-1">
+            <span className="text-[10px] font-semibold uppercase text-muted-foreground">Insert producto</span>
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video src={e.insert_url} controls loop className="max-h-72 w-auto rounded border" />
+            <a href={e.insert_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar</a>
+          </div>
+        )}
       </div>
+      {e.video_url && e.insert_url && (
+        <p className="text-[10px] text-muted-foreground">Descargá ambos e intercalalos en tu editor: el testimonio (talking-head) + cortes al producto real (insert).</p>
+      )}
 
       {e.video_url && (
         <button onClick={() => save({ aprobado: !e.aprobado, estado: e.aprobado ? "generado" : "aprobado" })} disabled={busy === "save"} className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"} disabled:opacity-50`}>
