@@ -14,12 +14,29 @@ Toda la cadena de credenciales quedó **VALIDADA** (diag `GET /api/diag/google-a
   deprecada → daba 404).
 - `listAccessibleCustomers` devuelve **200**.
 
-Bloqueo restante (**único**, y NO es técnico):
-3. **Acceso a las cuentas.** El usuario Google que autentica ve **una sola cuenta,
-   cancelada** (`2698688444`) y **ninguna de Drean**. `listAccessibleCustomers` es la
-   prueba objetiva: si el usuario no las ve, el token tampoco. → **OMD tiene que dar
-   acceso de lectura a ese usuario** en las cuentas de Drean (o vincularlas a un MCC
-   que el usuario administre).
+**Acceso a las cuentas — RESUELTO:** OMD agregó al usuario (`dsabena@gmail.com`) al
+MCC **Mabe Argentina** (`2013657015`), que administra las 4 cuentas de Drean. Se
+cargó `GOOGLE_ADS_LOGIN_CUSTOMER_ID = 2013657015` en Vercel para consultar por el
+manager.
+
+**CAPTURA VALIDADA Y EN PRODUCCIÓN (2026-07-29):**
+- Diag `?customer=2703756419` → 200 con filas reales (impresiones, clicks, costo,
+  cuartiles de video). Fixes v22 aplicados: sacar `pageSize` y los campos
+  `metrics.video_views`/`video_view_rate` (no válidos en v22).
+- Dry-run del cron: 4 cuentas OK (Refrigeración 110 / Lavado 138 / Cocción 110 /
+  Search 483) y totales que **coinciden con el MCC** (~$6.98M, 8.48M impresiones,
+  551K clicks en 30 días).
+- **Ingesta real corrida:** `google_ads_creatives` poblada (2761 filas, 90 días).
+  La tabla `google_ads_creatives` había que crearla en Supabase (migración 0072 no
+  estaba aplicada) — ya creada.
+- El workflow `google-ads-sync.yml` corre solo (cron 05:45 UTC) → se mantiene al día.
+- Nota: `video_views`/`video_view_rate` quedan en 0 (campos v22 pendientes de mapear);
+  los cuartiles p25..p100 dan el embudo. El 401 puntual del ingest fue transitorio
+  (reintentar lo resolvió).
+
+**Pendiente (dashboard, Claude):** integrar `google_ads_creatives` en `/performance`
+— reemplazar la fuente pobre de GA4 (`ga4_google_ads_daily`) por esta profunda y
+sumar la grilla de piezas Google a nivel creativo (como las de Meta).
    - **Importante:** una vez que OMD da el acceso, **no hay que rehacer nada** (ni
      token ni secrets): con el mismo refresh token, se re-corre el diag y ya lista las
      cuentas. El acceso se evalúa por request.
