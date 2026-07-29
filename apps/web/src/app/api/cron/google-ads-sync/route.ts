@@ -69,6 +69,7 @@ interface GadsRow {
   ad_group_name: string | null;
   ad_id: string;
   ad_name: string | null;
+  thumbnail_url: string | null;
   impressions: number;
   clicks: number;
   cost: number;
@@ -162,6 +163,7 @@ async function fetchCustomer(getToken: GetToken, cust: { id: string; label: stri
         ad_group_name: r.adGroup?.name ?? null,
         ad_id: adId,
         ad_name: r.adGroupAd?.ad?.name ?? null,
+        thumbnail_url: null, // se completa en el enriquecimiento (fetchThumbnails)
         impressions: n(r.metrics?.impressions),
         clicks: n(r.metrics?.clicks),
         cost: Math.round(n(r.metrics?.costMicros) / 1e6 * 100) / 100,
@@ -176,6 +178,48 @@ async function fetchCustomer(getToken: GetToken, cust: { id: string; label: stri
     }
   }
   return rows;
+}
+
+// Enriquecimiento de thumbnails: la query de métricas no trae la imagen del
+// creativo. Acá, por cuenta, resolvemos ad_id → miniatura vía
+// ad_group_ad_asset_view (imagen del asset; si no hay, el thumbnail del video de
+// YouTube). Best-effort: si falla, las filas quedan sin thumbnail (no rompe).
+async function fetchThumbnails(getToken: GetToken, custId: string): Promise<Map<string, string>> {
+  const query = `
+    SELECT
+      ad_group_ad.ad.id,
+      asset.type,
+      asset.image_asset.full_size.url,
+      asset.youtube_video_asset.youtube_video_id,
+      ad_group_ad_asset_view.field_type
+    FROM ad_group_ad_asset_view`;
+  const img = new Map<string, string>();   // ad_id → URL de imagen (preferida)
+  const video = new Map<string, string>(); // ad_id → thumbnail de YouTube (fallback)
+  try {
+    const token = await getToken(false);
+    const res = await fetch(`${GADS_API}/customers/${custId}/googleAds:searchStream`, {
+      method: "POST",
+      headers: gadsHeaders(token),
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) return img;
+    const batches = (await res.json()) as Array<{ results?: Array<{
+      adGroupAd?: { ad?: { id?: string } };
+      asset?: { imageAsset?: { fullSize?: { url?: string } }; youtubeVideoAsset?: { youtubeVideoId?: string } };
+    }> }>;
+    for (const b of batches) {
+      for (const r of b.results ?? []) {
+        const adId = r.adGroupAd?.ad?.id;
+        if (!adId) continue;
+        const url = r.asset?.imageAsset?.fullSize?.url;
+        const yt = r.asset?.youtubeVideoAsset?.youtubeVideoId;
+        if (url && !img.has(adId)) img.set(adId, url);
+        else if (yt && !video.has(adId)) video.set(adId, `https://i.ytimg.com/vi/${yt}/hqdefault.jpg`);
+      }
+    }
+    for (const [adId, url] of video) if (!img.has(adId)) img.set(adId, url); // sin imagen → YouTube
+  } catch { /* best-effort: sin thumbnails */ }
+  return img;
 }
 
 async function upsert(rows: GadsRow[]): Promise<string> {
@@ -238,6 +282,10 @@ export async function GET(request: Request) {
     for (const cust of customers) {
       try {
         const rows = await fetchCustomer(getToken, cust, start, end);
+        if (rows.length > 0) {
+          const thumbs = await fetchThumbnails(getToken, cust.id);
+          for (const row of rows) { const t = thumbs.get(row.ad_id); if (t) row.thumbnail_url = t; }
+        }
         perAccount[cust.label] = rows.length;
         all.push(...rows);
       } catch (e) {
