@@ -167,3 +167,29 @@ No forzar "todo en un clip". Se arma editando dos piezas:
 - #396, #397, #400, #401 piloto `diag/ugc-producto` (frame + i2v + insert + altura).
 - #398, #399 fix lectura `video_url` de fal (i2v).
 - #402 insert shot integrado al generador (estrategia intercalar).
+
+---
+
+## 8. Decisión de alcance (2026-07-29): Caso 1 vs Caso 2
+
+Al probar el flujo integrado se llegó a una distinción clave que reordena la prioridad:
+
+- **Caso 1 — UGC de un producto que la persona YA TIENE (testimonio de experiencia real).**
+  El modelo específico **debe verse en la escena** (aunque sea de fondo, no primer
+  plano), o pierde credibilidad. Es **un solo video** donde persona y producto conviven.
+  - La estrategia "dos piezas + intercalar" **NO sirve** para este caso: rompe el
+    macheo (persona y producto quedan en mundos/luz/estilo distintos). Y animar la foto
+    persona+producto está **bloqueado por content policy** del i2v.
+  - **PARQUEADO.** Probablemente requiere una **herramienta más pro** (modelo de video
+    que permita persona + producto real conviviendo, o footage real). No forzar con lo
+    que tenemos. El ajuste de prompt del insert (amateur + anti-deformación) quedó
+    **sin mergear** (commit en branch, no en main), porque pertenece a este caso parqueado.
+
+- **Caso 2 — UGC sobre cómo ELEGIR algo que la persona NO tiene todavía (consejo).**
+  El producto **no necesita estar en la escena**: va en el copy / link / foto aparte.
+  - **FOCO ACTUAL.** No usa insert ni producto-en-escena. Es puramente **guion + persona**.
+  - Objetivo: **muchos videos para pautar**, con **guion bueno** y **persona natural /
+    humana**, bien pulido.
+  - Pendiente (a diagnosticar con el ojo del usuario, que vio los videos): qué falla hoy
+    en el **guion** (¿genérico? ¿hook? ¿cierre?) y en la **persona** (¿cara? ¿voz/ritmo?
+    ¿movimiento? ¿encuadre cerrado?). Recién con eso se pule dirigido, sin adivinar.
