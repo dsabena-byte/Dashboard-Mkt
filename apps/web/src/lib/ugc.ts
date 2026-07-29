@@ -93,8 +93,14 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
     diferencialesTexto(params.modelo, params.atributos),
     (() => {
       const seg = params.duracion && params.duracion > 0 ? params.duracion : 15;
-      const maxPal = Math.max(12, Math.round(seg * 2.6)); // ~2.6 palabras/seg (rioplatense)
-      return `Salida de EXACTAMENTE ~${seg} segundos hablados: MÁXIMO ${maxPal} palabras. Ajustá el largo a ese tiempo. ${seg <= 15 ? "Un solo diferencial bien contado, no una lista." : ""} Cortá todo lo que sobre. SOLO el texto hablado.`;
+      // El video dura EXACTAMENTE `seg` y el modelo mete TODO el texto adentro: si
+      // sobran palabras, la persona habla apurada y antinatural. Presupuesto
+      // conservador → ritmo hablado rioplatense ~2,3 pal/seg, reservando ~1,5s
+      // para el beat del hook (silencio/gesto). Si hay CTA, ocupa parte del cupo.
+      const efectivo = Math.max(3, seg - 1.5);
+      let maxPal = Math.max(8, Math.round(efectivo * 2.3));
+      if (params.cta?.trim()) maxPal = Math.max(8, maxPal - 5);
+      return `DURACIÓN CRÍTICA: el video dura EXACTAMENTE ${seg} segundos y la persona tiene que decir TODO el texto adentro hablando TRANQUILA y a ritmo natural (nunca apurada). Por eso: MÁXIMO ${maxPal} palabras${params.cta?.trim() ? " (CTA incluido)" : ""}. Es MEJOR quedarse corto que pasarse. Un solo diferencial bien contado, no una lista. Ante la duda, menos palabras. Contá las palabras y no te pases. SOLO el texto hablado.`;
     })(),
     // CTA de cierre: la marca NO se dice (va en el copy/link); el guion cierra
     // mandando al copy/link con esta frase natural.
@@ -159,17 +165,35 @@ const ESCENARIOS_PROMPT: Record<string, string> = {
   cafe: "sitting relaxed at home with a cup of coffee or mate, talking to the camera",
 };
 
-function buildPromptSeedance(guion: string, genero?: string, escenario?: string | null): string {
+// Rango de edad (claves de UGC_EDADES) → descripción para el prompt.
+const EDAD_PROMPT: Record<string, string> = {
+  joven: "in their mid 20s",
+  adulto: "in their early 40s",
+  mayor: "around 60 years old",
+};
+
+// Estilo de ropa (claves de UGC_VESTIMENTAS) → descripción para el prompt.
+const VESTIMENTA_PROMPT: Record<string, string> = {
+  informal: "casual everyday clothes (a t-shirt or sweater)",
+  camisa: "a casual button-up shirt",
+  prolijo: "a smart-casual, neat and tidy outfit",
+  deportivo: "sporty casual clothes",
+  trabajo: "clean work clothes / a tidy uniform",
+};
+
+function buildPromptSeedance(guion: string, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
-  // Si es una clave conocida usa el preset; si no, se toma el texto libre tal cual.
+  // Edad/ropa: clave conocida → preset; si no, se toma el texto libre tal cual.
+  const edadTxt = edad ? (EDAD_PROMPT[edad] ?? edad) : "in their early 30s";
   const escena = escenario ? (ESCENARIOS_PROMPT[escenario] ?? escenario) : ESCENARIOS_PROMPT.selfie;
+  const ropaTxt = vestimenta?.trim() ? `, wearing ${VESTIMENTA_PROMPT[vestimenta] ?? vestimenta}` : "";
   return (
-    `Realistic UGC-style vertical video of a natural, everyday Argentine ${persona} in their early 30s, ` +
+    `Realistic UGC-style vertical video of a natural, everyday Argentine ${persona} ${edadTxt}${ropaTxt}, ` +
     `${escena}. ` +
     `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
     `Amateur phone-video look, natural indoor lighting, natural subtle head and hand movements, natural skin. ` +
-    `They speak at a NORMAL, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo). Do NOT slow down and do NOT over-enunciate. ` +
-    `The person says, naturally and at a normal pace: "${guion}". ` +
+    `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo). Not slowed-down or over-enunciated, but also NOT rushed or crammed — relaxed and unhurried. ` +
+    `The person says, calmly and at a natural pace, without rushing: "${guion}". ` +
     `Vertical 9:16, single person, realistic and human.`
   );
 }
@@ -177,9 +201,9 @@ function buildPromptSeedance(guion: string, genero?: string, escenario?: string 
 // Encola el video (Seedance, async). El render tarda; el cliente poolea status().
 export interface UgcVideoHandle { request_id: string; status_url: string; response_url: string }
 
-export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: string, escenario?: string | null, duracion?: number): Promise<UgcVideoHandle> {
+export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null): Promise<UgcVideoHandle> {
   const seg = Math.min(15, Math.max(4, duracion && duracion > 0 ? duracion : 10)); // Seedance: 4-15s
-  const input = { prompt: buildPromptSeedance(guion, genero, escenario), duration: String(seg), resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
+  const input = { prompt: buildPromptSeedance(guion, genero, escenario, edad, vestimenta), duration: String(seg), resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
   const h = await falQueueSubmit(MODEL_SEEDANCE, input);
   return { request_id: h.requestId, status_url: h.statusUrl, response_url: h.responseUrl };
 }
