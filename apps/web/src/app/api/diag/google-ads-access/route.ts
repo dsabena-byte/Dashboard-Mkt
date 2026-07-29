@@ -111,7 +111,7 @@ export async function GET(request: Request) {
     const res = await fetch(`${GADS_API}/customers/${customer}/googleAds:search`, {
       method: "POST",
       headers: gadsHeaders(token),
-      body: JSON.stringify({ query, pageSize: 20 }),
+      body: JSON.stringify({ query }),
     });
     const body = await res.text();
     out.query = { customer, status: res.status, body: safeJson(body) };
