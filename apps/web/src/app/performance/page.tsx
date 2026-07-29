@@ -4,6 +4,7 @@ import { getDv360Creatives, getDv360Reach } from "@/lib/dv360-queries";
 import { getFxRates } from "@/lib/fx-queries";
 import { getPlanningMedia } from "@/lib/planning-media-queries";
 import { getGoogleAdsOmd } from "@/lib/google-ads-omd-queries";
+import { getGoogleAdsCreatives } from "@/lib/google-ads-creatives-queries";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { PerformanceClient } from "@/components/pauta/performance-client";
 
@@ -65,7 +66,7 @@ async function getPlanningMonthly(): Promise<PlanningByMes> {
 }
 
 export default async function PerformancePautaPage() {
-  const [data, metaPaid, dv360, dv360Reach, fxRates, planningMonthly, googleAdsOmd, fDv360, fMeta, fOmd, fGads] = await Promise.all([
+  const [data, metaPaid, dv360, dv360Reach, fxRates, planningMonthly, googleAdsOmd, googleAdsCreatives, fDv360, fMeta, fOmd, fGads] = await Promise.all([
     getPautaPerformance(),
     safe(getMetaPaidCreatives(), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
     safe(getDv360Creatives(), [] as Awaited<ReturnType<typeof getDv360Creatives>>),
@@ -73,11 +74,12 @@ export default async function PerformancePautaPage() {
     safe(getFxRates(), {} as Record<string, number>),
     safe(getPlanningMonthly(), {} as PlanningByMes),
     safe(getGoogleAdsOmd(), [] as Awaited<ReturnType<typeof getGoogleAdsOmd>>),
+    safe(getGoogleAdsCreatives(), [] as Awaited<ReturnType<typeof getGoogleAdsCreatives>>),
     // Frescura real por fuente (la tabla "Por Medio" sale de DV360 + Meta paid).
     safe(maxUpdatedAt("dv360_creatives"), null),
     safe(maxUpdatedAt("meta_paid_creatives", "principal", "fetched_at"), null),
     safe(maxUpdatedAt("pauta_performance"), null),
     safe(maxUpdatedAt("ga4_google_ads_daily", "principal", "updated_at"), null),
   ]);
-  return <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} />;
+  return <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} />;
 }

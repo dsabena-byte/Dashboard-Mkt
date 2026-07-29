@@ -105,7 +105,14 @@ function n(v: string | number | undefined | null): number {
   return typeof v === "number" ? v : Number(v) || 0;
 }
 
-async function fetchCustomer(token: string, cust: { id: string; label: string }, start: string, end: string): Promise<GadsRow[]> {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// getToken(force): token cacheado; con force pide uno nuevo. El endpoint de token
+// a veces devuelve tokens transitoriamente inválidos cuando se lo llama muy
+// seguido → ante un 401 refrescamos y reintentamos con backoff.
+type GetToken = (force: boolean) => Promise<string>;
+
+async function fetchCustomer(getToken: GetToken, cust: { id: string; label: string }, start: string, end: string): Promise<GadsRow[]> {
   const query = `
     SELECT
       segments.date,
@@ -118,15 +125,26 @@ async function fetchCustomer(token: string, cust: { id: string; label: string },
     FROM ad_group_ad
     WHERE segments.date BETWEEN '${start}' AND '${end}'`;
 
-  const res = await fetch(`${GADS_API}/customers/${cust.id}/googleAds:searchStream`, {
-    method: "POST",
-    headers: gadsHeaders(token),
-    body: JSON.stringify({ query }),
-  });
-  if (!res.ok) throw new Error(`searchStream ${cust.label} ${res.status}: ${(await res.text()).slice(0, 500)}`);
+  let batches: Array<{ results?: SearchResult[] }> | null = null;
+  let lastBody = "";
+  for (let attempt = 0; attempt < 3 && batches === null; attempt++) {
+    const token = await getToken(attempt > 0); // reintentos fuerzan token fresco
+    const res = await fetch(`${GADS_API}/customers/${cust.id}/googleAds:searchStream`, {
+      method: "POST",
+      headers: gadsHeaders(token),
+      body: JSON.stringify({ query }),
+    });
+    if (res.ok) {
+      batches = (await res.json()) as Array<{ results?: SearchResult[] }>;
+      break;
+    }
+    lastBody = (await res.text()).slice(0, 400);
+    if (res.status === 401 && attempt < 2) { await sleep(2000 * (attempt + 1)); continue; }
+    throw new Error(`searchStream ${cust.label} ${res.status}: ${lastBody}`);
+  }
+  if (batches === null) throw new Error(`searchStream ${cust.label} 401 tras reintentos: ${lastBody}`);
 
   // searchStream devuelve un array de batches { results: [...] }
-  const batches = (await res.json()) as Array<{ results?: SearchResult[] }>;
   const rows: GadsRow[] = [];
   for (const batch of batches) {
     for (const r of batch.results ?? []) {
@@ -206,7 +224,12 @@ export async function GET(request: Request) {
     out.range = `${start} → ${end}`;
     out.mode = dry ? "dry-run (no escribe)" : "ingest";
 
-    const token = await getAccessToken();
+    let cachedToken: string | null = null;
+    const getToken: GetToken = async (force) => {
+      if (force || !cachedToken) cachedToken = await getAccessToken();
+      return cachedToken;
+    };
+    await getToken(false); // valida credenciales de entrada
     out.auth = "OK";
 
     const customers = onlyCustomer ? OMD_CUSTOMERS.filter((c) => c.id === onlyCustomer) : OMD_CUSTOMERS;
@@ -214,7 +237,7 @@ export async function GET(request: Request) {
     const perAccount: Record<string, number> = {};
     for (const cust of customers) {
       try {
-        const rows = await fetchCustomer(token, cust, start, end);
+        const rows = await fetchCustomer(getToken, cust, start, end);
         perAccount[cust.label] = rows.length;
         all.push(...rows);
       } catch (e) {
