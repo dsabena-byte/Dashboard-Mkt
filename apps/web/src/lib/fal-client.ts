@@ -88,7 +88,23 @@ export async function falQueueSubmit(model: string, input: Record<string, unknow
   };
 }
 
-export async function falQueueVideoStatus(statusUrl: string, responseUrl: string): Promise<{ status: string; video_url: string | null }> {
+// Estructura de respuesta de los modelos de video de fal (varía según el modelo:
+// text-to-video, image-to-video, etc.). Extraemos la URL del mp4 cubriendo las
+// formas conocidas.
+interface FalVideoResp {
+  video?: { url?: string } | string;
+  url?: string;
+  videos?: Array<{ url?: string }>;
+  output?: { video?: { url?: string }; url?: string; videos?: Array<{ url?: string }> };
+}
+
+export function extractVideoUrl(d: FalVideoResp): string | null {
+  const v = d.video;
+  if (typeof v === "string") return v;
+  return v?.url ?? d.url ?? d.videos?.[0]?.url ?? d.output?.video?.url ?? d.output?.url ?? d.output?.videos?.[0]?.url ?? null;
+}
+
+export async function falQueueVideoStatus(statusUrl: string, responseUrl: string): Promise<{ status: string; video_url: string | null; raw?: unknown }> {
   const key = process.env.FAL_KEY;
   if (!key) throw new Error("FAL_KEY no configurada.");
   const headers = { Authorization: `Key ${key}`, "Content-Type": "application/json" };
@@ -99,8 +115,10 @@ export async function falQueueVideoStatus(statusUrl: string, responseUrl: string
   if (stData.status !== "COMPLETED") return { status: stData.status ?? "IN_PROGRESS", video_url: null };
   const res = await fetch(responseUrl, { headers, cache: "no-store" });
   if (!res.ok) return { status: "COMPLETED", video_url: null };
-  const data = (await res.json()) as { video?: { url?: string }; url?: string };
-  return { status: "COMPLETED", video_url: data.video?.url ?? data.url ?? null };
+  const data = (await res.json()) as FalVideoResp;
+  const video_url = extractVideoUrl(data);
+  // Si no lo encontramos, devolvemos la respuesta cruda para poder ver el formato.
+  return { status: "COMPLETED", video_url, ...(video_url ? {} : { raw: data }) };
 }
 
 export async function falVideoQueue(
@@ -143,8 +161,8 @@ export async function falVideoQueue(
   // 3) Resultado.
   const res = await fetch(responseUrl, { headers, cache: "no-store" });
   if (!res.ok) throw new Error(`fal result ${res.status}: ${(await res.text()).slice(0, 400)}`);
-  const data = (await res.json()) as { video?: { url?: string }; url?: string };
-  return { video_url: data.video?.url ?? data.url ?? null, raw: data };
+  const data = (await res.json()) as FalVideoResp;
+  return { video_url: extractVideoUrl(data), raw: data };
 }
 
 // Tamaños para social. fal expone un enum acotado de presets:
