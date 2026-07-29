@@ -459,17 +459,26 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return { impr, v25, v50, v75, v100, spend, count };
   }, [gadsCreativesF]);
 
+  // Normaliza un embudo a decreciente y ≤ base (corrige artefactos de medición:
+  // cuartiles no monótonos o que superan la base).
+  const clampFunnel = <T extends { impr: number; v25: number; v50: number; v75: number; v100: number }>(s: T): T => {
+    const v25 = Math.min(s.v25, s.impr);
+    const v50 = Math.min(s.v50, v25);
+    const v75 = Math.min(s.v75, v50);
+    const v100 = Math.min(s.v100, v75);
+    return { ...s, v25, v50, v75, v100 };
+  };
+
   const videoSources = useMemo(() => {
     const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
     const MED: Record<string, string> = { "Demand Gen": "Google Demand Gen" }; // DV360 = plataforma; el medio es el canal
-    for (const f of dv360Funnels) arr.push({ name: MED[f.canal] ?? f.canal, impr: f.impresiones, v25: f.q25, v50: f.q50, v75: f.q75, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 });
+    // DV360: los cuartiles se cuentan sobre STARTS (reproducciones), no sobre
+    // impresiones (starts ≥ impresiones en programmatic) → la base es starts.
+    for (const f of dv360Funnels) arr.push({ name: MED[f.canal] ?? f.canal, impr: f.starts > 0 ? f.starts : f.impresiones, v25: f.q25, v50: f.q50, v75: f.q75, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 });
     if (metaVideoFunnel.count > 0) arr.push({ name: "Meta", impr: metaVideoFunnel.impresiones, v25: metaVideoFunnel.p25, v50: metaVideoFunnel.p50, v75: metaVideoFunnel.p75, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend });
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
-    // Guard: si los cuartiles superan las impresiones, la data de esa fuente es
-    // incoherente (ej. Programmatic en el export de DV360: completions > impresiones)
-    // → daría >100% en el embudo. No la mostramos (mejor omitir que mostrar mal).
-    return arr.filter((s) => s.impr > 0 && Math.max(s.v25, s.v50, s.v75, s.v100) <= s.impr * 1.01).sort((a, b) => b.impr - a.impr);
+    return arr.map(clampFunnel).filter((s) => s.impr > 0).sort((a, b) => b.impr - a.impr);
   }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
   // Embudo desglosado por FORMATO dentro de cada fuente: YouTube → TrueView
   // (Consideración) / Bumper (Awareness); Meta → 6s/10s/15s/Video (del ad_name);
@@ -479,12 +488,12 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
     const MED: Record<string, string> = { "Demand Gen": "Google Demand Gen" };
     // DV360: por canal + rol (rol mapea el formato del line item).
-    const dvMap = new Map<string, { canal: string; rol: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }>();
+    const dvMap = new Map<string, { canal: string; rol: string; impr: number; starts: number; v25: number; v50: number; v75: number; v100: number; spend: number }>();
     for (const r of dv360Conv) {
       if ((r.starts ?? 0) <= 0) continue; // solo video
       const key = `${r.canal}|${r.rol}`;
-      const e = dvMap.get(key) ?? { canal: r.canal, rol: r.rol, impr: 0, v25: 0, v50: 0, v75: 0, v100: 0, spend: 0 };
-      e.impr += r.impresiones; e.v25 += r.q25; e.v50 += r.q50; e.v75 += r.q75; e.v100 += r.q100;
+      const e = dvMap.get(key) ?? { canal: r.canal, rol: r.rol, impr: 0, starts: 0, v25: 0, v50: 0, v75: 0, v100: 0, spend: 0 };
+      e.impr += r.impresiones; e.starts += r.starts; e.v25 += r.q25; e.v50 += r.q50; e.v75 += r.q75; e.v100 += r.q100;
       e.spend += arsMode ? r.revenue_usd : 0;
       dvMap.set(key, e);
     }
@@ -492,7 +501,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       const label = e.canal === "YouTube"
         ? `YouTube · ${e.rol === "Consideración" ? "TrueView" : "Bumper"}`
         : (MED[e.canal] ?? e.canal);
-      arr.push({ name: label, impr: e.impr, v25: e.v25, v50: e.v50, v75: e.v75, v100: e.v100, spend: e.spend });
+      // Base = starts (los cuartiles de DV360 se cuentan sobre reproducciones).
+      arr.push({ name: label, impr: e.starts > 0 ? e.starts : e.impr, v25: e.v25, v50: e.v50, v75: e.v75, v100: e.v100, spend: e.spend });
     }
     // Meta: por formato del ad_name (duración del video).
     const metaFmt = (name: string | null): string => {
@@ -515,10 +525,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     // Google Ads Demand Gen: un solo formato (video).
     if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
-    // Guard: si los cuartiles superan las impresiones, la data de esa fuente es
-    // incoherente (ej. Programmatic en el export de DV360: completions > impresiones)
-    // → daría >100% en el embudo. No la mostramos (mejor omitir que mostrar mal).
-    return arr.filter((s) => s.impr > 0 && Math.max(s.v25, s.v50, s.v75, s.v100) <= s.impr * 1.01).sort((a, b) => b.impr - a.impr);
+    return arr.map(clampFunnel).filter((s) => s.impr > 0).sort((a, b) => b.impr - a.impr);
   }, [dv360Conv, metaPaidF, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
   // Categoría/rol: solo medios digitales. Volumen OMD + gap-fill de ejecución real
   // (mismos medios que la tabla maestra) para que los totales cuadren.
