@@ -114,11 +114,13 @@ export async function falQueueVideoStatus(statusUrl: string, responseUrl: string
   if (stData.status === "FAILED" || stData.status === "ERROR") return { status: "FAILED", video_url: null };
   if (stData.status !== "COMPLETED") return { status: stData.status ?? "IN_PROGRESS", video_url: null };
   const res = await fetch(responseUrl, { headers, cache: "no-store" });
-  if (!res.ok) return { status: "COMPLETED", video_url: null };
-  const data = (await res.json()) as FalVideoResp;
+  const bodyText = await res.text();
+  let data: FalVideoResp = {};
+  try { data = JSON.parse(bodyText) as FalVideoResp; } catch { /* body no-JSON: queda en raw */ }
   const video_url = extractVideoUrl(data);
-  // Si no lo encontramos, devolvemos la respuesta cruda para poder ver el formato.
-  return { status: "COMPLETED", video_url, ...(video_url ? {} : { raw: data }) };
+  // Si no lo encontramos, devolvemos SIEMPRE la respuesta cruda (http + body) para
+  // poder ver el formato exacto o el motivo del fallo.
+  return { status: "COMPLETED", video_url, ...(video_url ? {} : { raw: { http: res.status, body: bodyText.slice(0, 2000) } }) };
 }
 
 export async function falVideoQueue(
