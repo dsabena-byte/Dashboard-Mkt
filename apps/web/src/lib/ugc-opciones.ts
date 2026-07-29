@@ -12,6 +12,22 @@ export const UGC_VOCES = [
   { key: "masc", label: "Voz masculina" },
 ];
 
+// Rango de edad de la persona del video (visual; el mapeo a prompt vive en ugc.ts).
+export const UGC_EDADES = [
+  { key: "joven", label: "Joven (~25)" },
+  { key: "adulto", label: "Adulto (~40)" },
+  { key: "mayor", label: "Mayor (~60)" },
+];
+
+// Estilo de ropa de la persona (chips rápidos; también admite texto libre).
+export const UGC_VESTIMENTAS = [
+  { key: "informal", label: "Informal" },
+  { key: "camisa", label: "Camisa" },
+  { key: "prolijo", label: "Prolijo / smart-casual" },
+  { key: "deportivo", label: "Deportivo" },
+  { key: "trabajo", label: "Ropa de trabajo" },
+];
+
 // Los 5 pilares de contenido del plan.
 export const UGC_PILARES = [
   { key: "liderazgo", label: "Liderazgo marca/porfolio" },

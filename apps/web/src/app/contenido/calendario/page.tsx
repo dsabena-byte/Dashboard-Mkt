@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos, getModelo } from "@/lib/producto-catalog";
 import { getDiferenciales } from "@/lib/diferenciales";
-import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES } from "@/lib/ugc-opciones";
+import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS } from "@/lib/ugc-opciones";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -45,6 +45,8 @@ interface Cal {
   guion?: string | null;
   persona_url?: string | null;
   notas?: string | null;
+  edad?: string | null;
+  vestimenta?: string | null;
 }
 
 // Multi-select de diferenciales del producto elegido (se guarda en `notas`,
@@ -783,7 +785,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     if (!e.guion?.trim()) return;
     setBusy("video"); setError(null); setVideoMsg("Encolando el video…");
     try {
-      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur) });
+      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
       if (!j) return;
       const statusUrl = j.status_url as string;
       const responseUrl = j.response_url as string;
@@ -855,6 +857,10 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
           <option value="mujer">Mujer</option>
           <option value="hombre">Hombre</option>
         </select>
+        <select value={e.edad ?? ""} onChange={(ev) => { setE({ ...e, edad: ev.target.value }); save({ edad: ev.target.value }); }} className={field} title="Rango de edad de la persona">
+          <option value="">Edad…</option>
+          {UGC_EDADES.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
+        </select>
       </div>
       <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / contexto (opcional)" className={`${field} w-full`} />
 
@@ -868,6 +874,18 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
           ))}
         </div>
         <input value={e.categoria ?? ""} onChange={(ev) => setE({ ...e, categoria: ev.target.value })} onBlur={() => save({ categoria: e.categoria })} placeholder="…o escribí una escena libre (ej: en el balcón tomando mate)" className={`${field} w-full`} />
+      </div>
+
+      {/* Estilo de ropa: chips rápidos + texto libre. Se guarda en `vestimenta`. */}
+      <div className="space-y-1 rounded border bg-secondary/30 p-2">
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Estilo de ropa</span>
+        <div className="flex flex-wrap gap-1">
+          {UGC_VESTIMENTAS.map((v) => (
+            <button key={v.key} type="button" onClick={() => { setE({ ...e, vestimenta: v.key }); save({ vestimenta: v.key }); }}
+              className={`rounded-full border px-2 py-0.5 text-[10px] ${e.vestimenta === v.key ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>{v.label}</button>
+          ))}
+        </div>
+        <input value={e.vestimenta ?? ""} onChange={(ev) => setE({ ...e, vestimenta: ev.target.value })} onBlur={() => save({ vestimenta: e.vestimenta })} placeholder="…o describí la ropa (ej: remera azul y campera de jean)" className={`${field} w-full`} />
       </div>
 
       {/* CTA de cierre del guion (la marca no se dice; se manda al copy/link). */}
