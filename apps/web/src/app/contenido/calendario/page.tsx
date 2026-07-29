@@ -912,17 +912,15 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
         if (!words) return null;
         const seg = Number(dur) || 15;
         const hasCta = !!(ctaLibre.trim() || (ctaKey !== "ninguno" && (UGC_CTAS.find((c) => c.key === ctaKey)?.texto ?? "")));
-        const efectivo = Math.max(3, seg - 1.5);
-        let maxPal = Math.max(8, Math.round(efectivo * 2.3));
-        if (hasCta) maxPal = Math.max(8, maxPal - 5);
-        const estSeg = Math.round(words / 2.3);
-        const over = words > maxPal;
-        return (
-          <div className={`text-[10px] ${over ? "font-medium text-rose-600" : "text-emerald-600"}`}>
-            {words} palabras · ~{estSeg}s hablados · máx ~{maxPal} para {seg}s
-            {over ? " · demasiado largo: va a hablar apurado (acortá o subí la duración)" : " · entra bien ✓"}
-          </div>
-        );
+        let maxPal = Math.round(seg * 2.4);
+        if (hasCta) maxPal -= 4;
+        maxPal = Math.max(13, maxPal);
+        const estSeg = Math.round(words / 2.4);
+        const over = words > Math.round(maxPal * 1.35);
+        const tight = !over && words > maxPal;
+        const cls = over ? "font-medium text-rose-600" : tight ? "text-amber-600" : "text-emerald-600";
+        const msg = over ? " · demasiado largo: va a hablar apurado (acortá o subí la duración)" : tight ? " · un poco largo, puede ir algo rápido" : " · entra bien ✓";
+        return <div className={`text-[10px] ${cls}`}>{words} palabras · ~{estSeg}s hablados · máx ~{maxPal} para {seg}s{msg}</div>;
       })()}
 
       {/* Copy del posteo (con los links a la web del producto). Lo completás vos. */}
