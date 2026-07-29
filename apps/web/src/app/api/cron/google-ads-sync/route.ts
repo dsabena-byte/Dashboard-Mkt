@@ -15,7 +15,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const GADS_API = "https://googleads.googleapis.com/v18";
+const GADS_API = "https://googleads.googleapis.com/v22";
 
 // Cuentas de Google Ads gestionadas por OMD (mismas que el allowlist de GA4,
 // sin el ecommerce inhouse de "Drean Argentina").
