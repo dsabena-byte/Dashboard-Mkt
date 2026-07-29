@@ -25,6 +25,8 @@ import {
   aggregateDv360VideoQuality,
 } from "@/lib/dv360-data";
 import type { GoogleAdsOmdRow } from "@/lib/google-ads-omd-queries";
+import { GoogleAdsCreativesGrid } from "@/components/pauta/google-ads-creatives-grid";
+import type { GoogleAdsCreativeRow } from "@/lib/google-ads-creatives-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const fmtUSD = (n: number): string =>
@@ -272,7 +274,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], freshness }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null } }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null } }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -1463,6 +1465,12 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             selCats={selCats}
             selRoles={selRoles}
           />
+
+          <SectionTitle>Piezas pautadas · Google Ads (nivel anuncio)</SectionTitle>
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            Directo de la Google Ads API (Demand Gen / Search / Video): embudo de video (VTR por cuartiles) e interacciones por anuncio — la profundidad que GA4 no da.
+          </p>
+          <GoogleAdsCreativesGrid data={googleAdsCreatives} selMeses={selMeses} selCats={selCats} />
 
           {dv360Pieces.length > 0 && (
             <>
