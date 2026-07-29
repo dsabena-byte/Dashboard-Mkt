@@ -98,8 +98,6 @@ export async function GET(request: Request) {
         metrics.clicks,
         metrics.cost_micros,
         metrics.interactions,
-        metrics.video_views,
-        metrics.video_view_rate,
         metrics.video_quartile_p25_rate,
         metrics.video_quartile_p50_rate,
         metrics.video_quartile_p75_rate,
