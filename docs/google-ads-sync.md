@@ -4,6 +4,33 @@
 > Nada de esto se muestra en el dashboard hasta que la ruta de diagnóstico
 > devuelva datos reales. No confiamos en ningún número sin validar primero.
 
+## Estado actual (2026-07-29) — dónde estamos y quién hace qué
+
+Validación corrida en `GET /api/diag/google-ads-access`:
+- ✅ **OAuth OK** (`"auth":"OK"`): `GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN` funcionan
+  (el refresh token viene del setup de GA4).
+- ❌ **Falta `GOOGLE_ADS_DEVELOPER_TOKEN`** en Vercel (respuesta:
+  `Env var GOOGLE_ADS_DEVELOPER_TOKEN no configurada`). **Es el bloqueo actual.**
+
+Bloqueos en orden (se resuelven de a uno; cada uno se revalida con el mismo diag):
+1. **Developer token ausente** → conseguirlo y cargar `GOOGLE_ADS_DEVELOPER_TOKEN`.
+2. **Scope `adwords` en el refresh token**: el actual es solo `analytics.readonly`
+   (GA4). Probable siguiente error. Se regenera el `GOOGLE_REFRESH_TOKEN` sumando
+   `https://www.googleapis.com/auth/adwords`.
+3. **Acceso a las cuentas**: el usuario Google del token necesita lectura en las 4
+   cuentas de OMD (o vincularlas a un MCC de Drean).
+
+### Quién hace qué
+| Responsable | Acción |
+|---|---|
+| **OMD** | Dar el **developer token** (de su MCC, con Basic Access) **o** dar **acceso de lectura** al usuario Google en las 4 cuentas (Refrigeración/Lavado/Cocción/Search) / vincularlas a un MCC de Drean. Las cuentas de Google Ads son de OMD. |
+| **Drean (usuario)** | Definir el email Google que autentica; **regenerar el refresh token** con scope `adwords`; **cargar los secrets** en Vercel + GitHub; redeploy. |
+| **Dashboard (Claude)** | Código ya construido. Post-validación: integrar la fuente profunda en `/performance` (reemplazar GA4-pobre por `google_ads_creatives`, grilla de piezas, thumbnails); actualizar IDs de cuenta si difieren. |
+
+> Nota técnica: el developer token NO tiene que ser del mismo MCC que las cuentas.
+> Pero como las cuentas son de OMD, lo más simple es que **OMD provea el token de su
+> MCC** (ya con acceso a esas cuentas y Basic Access).
+
 ## Por qué existe
 
 Hoy la inversión de Google Ads (Demand Gen + Search) entra **sólo vía GA4**
