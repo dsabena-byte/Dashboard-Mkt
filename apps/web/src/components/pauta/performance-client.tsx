@@ -466,7 +466,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (metaVideoFunnel.count > 0) arr.push({ name: "Meta", impr: metaVideoFunnel.impresiones, v25: metaVideoFunnel.p25, v50: metaVideoFunnel.p50, v75: metaVideoFunnel.p75, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend });
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
-    return arr.sort((a, b) => b.impr - a.impr);
+    // Guard: si los cuartiles superan las impresiones, la data de esa fuente es
+    // incoherente (ej. Programmatic en el export de DV360: completions > impresiones)
+    // → daría >100% en el embudo. No la mostramos (mejor omitir que mostrar mal).
+    return arr.filter((s) => s.impr > 0 && Math.max(s.v25, s.v50, s.v75, s.v100) <= s.impr * 1.01).sort((a, b) => b.impr - a.impr);
   }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
   // Embudo desglosado por FORMATO dentro de cada fuente: YouTube → TrueView
   // (Consideración) / Bumper (Awareness); Meta → 6s/10s/15s/Video (del ad_name);
@@ -512,7 +515,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     // Google Ads Demand Gen: un solo formato (video).
     if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
-    return arr.sort((a, b) => b.impr - a.impr);
+    // Guard: si los cuartiles superan las impresiones, la data de esa fuente es
+    // incoherente (ej. Programmatic en el export de DV360: completions > impresiones)
+    // → daría >100% en el embudo. No la mostramos (mejor omitir que mostrar mal).
+    return arr.filter((s) => s.impr > 0 && Math.max(s.v25, s.v50, s.v75, s.v100) <= s.impr * 1.01).sort((a, b) => b.impr - a.impr);
   }, [dv360Conv, metaPaidF, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
   // Categoría/rol: solo medios digitales. Volumen OMD + gap-fill de ejecución real
   // (mismos medios que la tabla maestra) para que los totales cuadren.
