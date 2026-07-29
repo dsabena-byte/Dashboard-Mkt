@@ -113,7 +113,6 @@ async function fetchCustomer(token: string, cust: { id: string; label: string },
       ad_group.id, ad_group.name,
       ad_group_ad.ad.id, ad_group_ad.ad.name,
       metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.interactions,
-      metrics.video_views, metrics.video_view_rate,
       metrics.video_quartile_p25_rate, metrics.video_quartile_p50_rate,
       metrics.video_quartile_p75_rate, metrics.video_quartile_p100_rate
     FROM ad_group_ad
