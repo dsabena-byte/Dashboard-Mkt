@@ -59,12 +59,26 @@ export async function GET(request: Request) {
 
     if (!customer) {
       // Paso 1: ¿qué cuentas ve este token? (confirma dev token + scope adwords)
-      const res = await fetch(`${GADS_API}/customers:listAccessibleCustomers`, {
-        method: "GET",
-        headers: gadsHeaders(token),
-      });
-      const body = await res.text();
-      out.listAccessibleCustomers = { status: res.status, body: safeJson(body) };
+      // v18 quedó deprecada (404). Probamos versiones recientes y reportamos cuál
+      // responde: 404 = versión muerta; cualquier otra cosa (200 o error JSON de la
+      // API) = versión viva. Nos quedamos con la primera que responde.
+      const versions = ["v22", "v21", "v20", "v19", "v18"];
+      const probes: Array<{ version: string; status: number }> = [];
+      for (const v of versions) {
+        const res = await fetch(`https://googleads.googleapis.com/${v}/customers:listAccessibleCustomers`, {
+          method: "GET",
+          headers: gadsHeaders(token),
+        });
+        probes.push({ version: v, status: res.status });
+        if (res.status !== 404) {
+          out.apiVersion = v;
+          out.listAccessibleCustomers = { status: res.status, body: safeJson(await res.text()) };
+          out.versionsProbed = probes;
+          return NextResponse.json(out);
+        }
+      }
+      out.versionsProbed = probes;
+      out.error = "Todas las versiones probadas devolvieron 404 (revisar rango de versiones).";
       return NextResponse.json(out);
     }
 
