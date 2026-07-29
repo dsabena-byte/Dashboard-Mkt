@@ -115,7 +115,9 @@ export async function GET(request: Request) {
     out.model_video = modeloVideo;
     out.handle = handle;
     out.first_status = await falQueueVideoStatus(handle.statusUrl, handle.responseUrl);
-    out.hint = "Mirá primero frame_url (que el producto salga fiel). Después repetí con ?status=<status_url>&response=<response_url> (encodeados) hasta COMPLETED y video_url.";
+    // Link listo para clickear que chequea el estado (ya URL-encodeado).
+    out.check_url = `${u.origin}${u.pathname}?status=${encodeURIComponent(handle.statusUrl)}&response=${encodeURIComponent(handle.responseUrl)}`;
+    out.hint = "1) Abrí frame_url (que el producto salga fiel a la Drean). 2) Esperá ~2-3 min y abrí check_url; repetí hasta que aparezca video_url.";
     return NextResponse.json(out);
   } catch (e) {
     out.error = e instanceof Error ? e.message : String(e);
