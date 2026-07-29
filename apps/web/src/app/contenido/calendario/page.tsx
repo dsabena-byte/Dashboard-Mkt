@@ -905,6 +905,26 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
 
       <textarea value={e.guion ?? ""} onChange={(ev) => setE({ ...e, guion: ev.target.value })} onBlur={() => save({ guion: e.guion })} rows={3} placeholder="El guion aparece acá y lo podés editar. La marca no se nombra; cierra con el CTA al copy." className={`${field} w-full resize-y`} />
 
+      {/* Indicador de largo: avisa si el guion entra natural en la duración elegida
+          (para no gastar en un video donde la persona habla apurada). */}
+      {(() => {
+        const words = (e.guion ?? "").trim().split(/\s+/).filter(Boolean).length;
+        if (!words) return null;
+        const seg = Number(dur) || 15;
+        const hasCta = !!(ctaLibre.trim() || (ctaKey !== "ninguno" && (UGC_CTAS.find((c) => c.key === ctaKey)?.texto ?? "")));
+        const efectivo = Math.max(3, seg - 1.5);
+        let maxPal = Math.max(8, Math.round(efectivo * 2.3));
+        if (hasCta) maxPal = Math.max(8, maxPal - 5);
+        const estSeg = Math.round(words / 2.3);
+        const over = words > maxPal;
+        return (
+          <div className={`text-[10px] ${over ? "font-medium text-rose-600" : "text-emerald-600"}`}>
+            {words} palabras · ~{estSeg}s hablados · máx ~{maxPal} para {seg}s
+            {over ? " · demasiado largo: va a hablar apurado (acortá o subí la duración)" : " · entra bien ✓"}
+          </div>
+        );
+      })()}
+
       {/* Copy del posteo (con los links a la web del producto). Lo completás vos. */}
       <div className="space-y-1">
         <span className="text-[10px] font-semibold uppercase text-muted-foreground">Copy del posteo (links a la web)</span>

@@ -81,10 +81,55 @@ function perfil(key: string): UgcPerfil { return UGC_PERFILES_FULL.find((p) => p
 // ---- Guion (OpenAI) siguiendo el playbook ----
 export interface GuionParams { perfil: string; tema: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; duracion?: number; atributos?: string[]; cta?: string; }
 
+// Cupo de palabras para que la persona diga el guion NATURAL y tranquilo en
+// `duracion` segundos: ritmo rioplatense ~2,3 pal/seg reservando ~1,5s para el
+// beat del hook; si hay CTA, ocupa parte del cupo. Se comparte con el enforcement
+// (post-generación) y sirve de referencia para el indicador del editor.
+export function maxPalabrasGuion(duracion?: number, cta?: string): number {
+  const seg = duracion && duracion > 0 ? duracion : 15;
+  const efectivo = Math.max(3, seg - 1.5);
+  let maxPal = Math.max(8, Math.round(efectivo * 2.3));
+  if (cta?.trim()) maxPal = Math.max(8, maxPal - 5);
+  return maxPal;
+}
+
+const contarPalabras = (t: string): number => t.trim().split(/\s+/).filter(Boolean).length;
+
+// Recorte duro a la última oración completa dentro del cupo (última red de seguridad).
+function recortarAOracion(texto: string, maxPal: number): string {
+  const palabras = texto.trim().split(/\s+/).filter(Boolean);
+  if (palabras.length <= maxPal) return texto.trim();
+  const cortado = palabras.slice(0, maxPal).join(" ");
+  const m = cortado.match(/^[\s\S]*[.!?…]/);
+  return (m ? m[0] : cortado).trim();
+}
+
+// Segunda pasada: GPT suele ignorar el cupo. Si se pasó, comprimimos manteniendo
+// hook + CTA; si aún se pasa, recorte duro. Garantiza que entre en la duración.
+async function comprimirGuion(apiKey: string, guion: string, maxPal: number, cta?: string): Promise<string> {
+  const sys =
+    `Sos editor de guiones UGC en español rioplatense (voseo). Reescribí el texto para que se diga NATURAL y tranquilo en poco tiempo: MÁXIMO ${maxPal} palabras. ` +
+    `Mantené el hook del arranque, UN solo diferencial y frases cortas.` +
+    (cta?.trim() ? ` Terminá EXACTAMENTE con: "${cta.trim()}".` : "") +
+    ` Devolvé SOLO el texto hablado, sin comillas ni acotaciones.`;
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: sys }, { role: "user", content: guion }], temperature: 0.5 }),
+    cache: "no-store",
+  });
+  if (!res.ok) return recortarAOracion(guion, maxPal);
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const corto = data.choices?.[0]?.message?.content?.trim();
+  if (!corto) return recortarAOracion(guion, maxPal);
+  return contarPalabras(corto) <= maxPal + 3 ? corto : recortarAOracion(corto, maxPal);
+}
+
 export async function generarGuionUgc(params: GuionParams): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY no configurada.");
   const p = perfil(params.perfil);
+  const maxPal = maxPalabrasGuion(params.duracion, params.cta);
   const bloques = [
     p.guionSys,
     PLAYBOOK,
@@ -92,14 +137,10 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
     params.formato && FORMATO_DESC[params.formato] ? FORMATO_DESC[params.formato] : "",
     diferencialesTexto(params.modelo, params.atributos),
     (() => {
-      const seg = params.duracion && params.duracion > 0 ? params.duracion : 15;
       // El video dura EXACTAMENTE `seg` y el modelo mete TODO el texto adentro: si
-      // sobran palabras, la persona habla apurada y antinatural. Presupuesto
-      // conservador → ritmo hablado rioplatense ~2,3 pal/seg, reservando ~1,5s
-      // para el beat del hook (silencio/gesto). Si hay CTA, ocupa parte del cupo.
-      const efectivo = Math.max(3, seg - 1.5);
-      let maxPal = Math.max(8, Math.round(efectivo * 2.3));
-      if (params.cta?.trim()) maxPal = Math.max(8, maxPal - 5);
+      // sobran palabras, la persona habla apurada y antinatural. El cupo `maxPal`
+      // es conservador (ver maxPalabrasGuion) y además se fuerza post-generación.
+      const seg = params.duracion && params.duracion > 0 ? params.duracion : 15;
       return `DURACIÓN CRÍTICA: el video dura EXACTAMENTE ${seg} segundos y la persona tiene que decir TODO el texto adentro hablando TRANQUILA y a ritmo natural (nunca apurada). Por eso: MÁXIMO ${maxPal} palabras${params.cta?.trim() ? " (CTA incluido)" : ""}. Es MEJOR quedarse corto que pasarse. Un solo diferencial bien contado, no una lista. Ante la duda, menos palabras. Contá las palabras y no te pases. SOLO el texto hablado.`;
     })(),
     // CTA de cierre: la marca NO se dice (va en el copy/link); el guion cierra
@@ -117,8 +158,13 @@ export async function generarGuionUgc(params: GuionParams): Promise<string> {
   });
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const guion = data.choices?.[0]?.message?.content?.trim();
+  let guion = data.choices?.[0]?.message?.content?.trim();
   if (!guion) throw new Error("OpenAI no devolvió guion.");
+  // Enforcement: si GPT ignoró el cupo (le pasa seguido), comprimimos para que
+  // realmente entre en la duración y la persona no hable apurada.
+  if (contarPalabras(guion) > maxPal + 2) {
+    guion = await comprimirGuion(apiKey, guion, maxPal, params.cta);
+  }
   return guion;
 }
 
