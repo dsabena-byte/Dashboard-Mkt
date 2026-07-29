@@ -1,15 +1,29 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import type { GoogleAdsCreativeRow } from "@/lib/google-ads-creatives-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
-// Grilla de piezas de Google Ads a nivel anuncio (Demand Gen / Search / Video),
-// con embudo de video (cuartiles). Mirrorea la de Meta (meta-paid-grid) pero con
-// las columnas de google_ads_creatives (cost, campaign_type, account_label).
+// Grilla de piezas de Google Ads a nivel anuncio. Mismo formato que la de Meta
+// (meta-paid-grid): tarjeta con badges, listado de métricas con íconos y paginado.
 
-const PAGE_SIZE = 12;
 const fmtNum = (n: number) => formatNumber(Math.round(n));
+const fmtARS = formatCurrency;
+const PAGE_SIZE = 12;
+
+function truncate(s: string | null, n: number): string {
+  if (!s) return "";
+  return s.length <= n ? s : s.slice(0, n - 1) + "…";
+}
+
+const CAT_COLORS: Record<string, string> = {
+  Brand: "#0a1849",
+  Lavado: "#2b4dff",
+  Refrigeración: "#06b6d4",
+  Cocción: "#f59e0b",
+  Promoción: "#e63946",
+  Search: "#64748b",
+};
 
 const TIPO_LABEL: Record<string, string> = {
   DEMAND_GEN: "Demand Gen",
@@ -18,19 +32,10 @@ const TIPO_LABEL: Record<string, string> = {
   PERFORMANCE_MAX: "PMax",
   MULTI_CHANNEL: "Multicanal",
 };
-const TIPO_COLOR: Record<string, string> = {
-  DEMAND_GEN: "#34A853",
-  SEARCH: "#FBBC05",
-  VIDEO: "#EA4335",
-  PERFORMANCE_MAX: "#4285F4",
-};
-
-function truncate(s: string | null, n: number): string {
-  if (!s) return "";
-  return s.length > n ? `${s.slice(0, n - 1)}…` : s;
-}
 
 export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: GoogleAdsCreativeRow[]; selMeses: string[]; selCats: string[] }) {
+  const [visible, setVisible] = useState(PAGE_SIZE);
+
   const filtered = useMemo(
     () =>
       data.filter(
@@ -42,97 +47,118 @@ export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: Goog
     [data, selMeses, selCats],
   );
 
-  const [shown, setShown] = useState(PAGE_SIZE);
-  useEffect(() => setShown(PAGE_SIZE), [selMeses, selCats]);
+  // Si los filtros cambian, volvemos a las primeras 12 (mismo patrón que Meta).
+  const filtersKey = `${selMeses.join("|")}-${selCats.join("|")}`;
+  const [lastKey, setLastKey] = useState(filtersKey);
+  if (lastKey !== filtersKey) {
+    setLastKey(filtersKey);
+    setVisible(PAGE_SIZE);
+  }
 
   if (filtered.length === 0) {
     return (
-      <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-        Sin piezas de Google Ads para el filtro seleccionado.
+      <div className="rounded-xl border bg-card p-8 text-center text-xs text-muted-foreground">
+        Sin piezas de Google Ads para los filtros seleccionados.
       </div>
     );
   }
 
-  const page = filtered.slice(0, shown);
+  const shown = filtered.slice(0, visible);
+  const remaining = filtered.length - shown.length;
 
   return (
-    <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {page.map((r) => {
-          const ctr = r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0;
-          const cpc = r.clicks > 0 ? r.cost / r.clicks : 0;
-          const hasVideo = r.vtr_p25 != null;
-          const tipo = r.campaign_type ?? "";
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        {shown.map((c) => {
+          const hasVideo = c.vtr_p25 != null;
+          const ctr = c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0;
+          const cpc = c.clicks > 0 ? c.cost / c.clicks : 0;
+          const viewsCompl = hasVideo ? c.impressions * (c.vtr_p100 ?? 0) : 0;
+          const catColor = CAT_COLORS[c.account_label ?? ""] ?? "#64748b";
           return (
-            <div key={`${r.ad_id}-${r.mes}`} className="flex flex-col rounded-xl border bg-card p-3">
-              <div className="mb-2 flex flex-wrap items-center gap-1">
-                <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white" style={{ backgroundColor: TIPO_COLOR[tipo] ?? "#94a3b8" }}>
-                  {TIPO_LABEL[tipo] ?? (tipo || "—")}
-                </span>
-                {r.account_label && <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9px] text-secondary-foreground">{r.account_label}</span>}
-                <span className="ml-auto text-[9px] text-muted-foreground">{r.mes}</span>
-              </div>
-
-              {r.thumbnail_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={r.thumbnail_url} alt={r.ad_name ?? ""} className="mb-2 h-32 w-full rounded object-cover" loading="lazy" />
-              ) : (
-                <div className="mb-2 flex h-16 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">sin miniatura</div>
-              )}
-
-              <div className="mb-2 min-w-0">
-                <div className="truncate text-xs font-semibold" title={r.ad_name ?? ""}>{truncate(r.ad_name, 46) || r.ad_id}</div>
-                {r.campaign_name && <div className="truncate text-[10px] text-muted-foreground" title={r.campaign_name}>{truncate(r.campaign_name, 52)}</div>}
-              </div>
-
-              <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-[10px]">
-                <Metric label="Inv." value={formatCurrency(r.cost)} />
-                <Metric label="Impr." value={fmtNum(r.impressions)} />
-                <Metric label="Clicks" value={fmtNum(r.clicks)} />
-                <Metric label="CTR" value={`${ctr.toFixed(2)}%`} />
-                <Metric label="CPC" value={formatCurrency(cpc)} />
-                <Metric label="Interac." value={fmtNum(r.interactions)} />
-              </div>
-
-              {hasVideo && (
-                <div className="mt-2 border-t pt-2">
-                  <div className="mb-1 text-[9px] uppercase tracking-wide text-muted-foreground">Embudo de video (VTR)</div>
-                  <div className="flex items-end gap-1">
-                    {([["25%", r.vtr_p25], ["50%", r.vtr_p50], ["75%", r.vtr_p75], ["100%", r.vtr_p100]] as Array<[string, number | null]>).map(([lbl, v]) => {
-                      const pct = (v ?? 0) * 100;
-                      return (
-                        <div key={lbl} className="flex-1">
-                          <div className="flex h-8 items-end overflow-hidden rounded bg-muted">
-                            <div className="w-full bg-[#34A853]/80" style={{ height: `${Math.min(100, pct)}%` }} />
-                          </div>
-                          <div className="mt-0.5 text-center text-[8px] tabular-nums text-muted-foreground">{lbl}·{pct.toFixed(0)}%</div>
-                        </div>
-                      );
-                    })}
-                  </div>
+            <div key={`${c.ad_id}-${c.mes}`} className="group flex flex-col overflow-hidden rounded-lg border bg-card">
+              <div className="relative aspect-square w-full overflow-hidden bg-muted">
+                <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1">
+                  {c.account_label && (
+                    <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white shadow" style={{ backgroundColor: catColor }}>
+                      {c.account_label}
+                    </span>
+                  )}
+                  {c.campaign_type && (
+                    <span className="rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                      {TIPO_LABEL[c.campaign_type] ?? c.campaign_type}
+                    </span>
+                  )}
                 </div>
-              )}
+                {c.thumbnail_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={c.thumbnail_url}
+                    alt={c.ad_name ?? c.ad_id}
+                    className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">Sin imagen</div>
+                )}
+              </div>
+              <div className="flex-1 p-3 text-xs">
+                <div className="mb-2 line-clamp-2 font-medium leading-snug">{truncate(c.ad_name, 60) || c.ad_id}</div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px]">
+                  <span className="text-muted-foreground">💰 Inv.</span>
+                  <span className="text-right font-semibold tabular-nums">{fmtARS(c.cost)}</span>
+                  <span className="text-muted-foreground">👁 Impr.</span>
+                  <span className="text-right tabular-nums">{fmtNum(c.impressions)}</span>
+                  <span className="text-muted-foreground">🖱 Clicks</span>
+                  <span className="text-right tabular-nums">{fmtNum(c.clicks)}</span>
+                  <span className="text-muted-foreground">CTR</span>
+                  <span className="text-right tabular-nums">{ctr.toFixed(2)}%</span>
+                  <span className="text-muted-foreground">CPC</span>
+                  <span className="text-right tabular-nums">{fmtARS(cpc)}</span>
+                  {hasVideo && (
+                    <>
+                      <span className="text-muted-foreground">▶ Views compl.</span>
+                      <span className="text-right tabular-nums">{fmtNum(viewsCompl)}</span>
+                      <span className="text-muted-foreground">VTR</span>
+                      <span className="text-right tabular-nums">{((c.vtr_p100 ?? 0) * 100).toFixed(2)}%</span>
+                    </>
+                  )}
+                </div>
+                {c.interactions > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t pt-1.5 text-[10px] text-muted-foreground">
+                    <span title="Interacciones">👆 {fmtNum(c.interactions)} interac.</span>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {shown < filtered.length && (
-        <div className="mt-3 text-center">
-          <button onClick={() => setShown((s) => s + PAGE_SIZE)} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary">
-            Mostrar más ({filtered.length - shown} restantes)
-          </button>
+      <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+        <span>
+          Mostrando <strong className="text-foreground">{shown.length}</strong> de{" "}
+          <strong className="text-foreground">{filtered.length}</strong> piezas
+        </span>
+        <div className="flex items-center gap-2">
+          {visible > PAGE_SIZE && (
+            <button
+              onClick={() => setVisible(PAGE_SIZE)}
+              className="rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+            >
+              Restablecer {PAGE_SIZE}
+            </button>
+          )}
+          {remaining > 0 && (
+            <button
+              onClick={() => setVisible((v) => v + PAGE_SIZE)}
+              className="rounded-full border bg-card px-4 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+            >
+              Mostrar {Math.min(PAGE_SIZE, remaining)} más
+            </button>
+          )}
         </div>
-      )}
-    </>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[8px] uppercase text-muted-foreground">{label}</div>
-      <div className="font-semibold tabular-nums">{value}</div>
+      </div>
     </div>
   );
 }
