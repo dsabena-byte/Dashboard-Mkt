@@ -75,7 +75,8 @@ Se necesitan **dos** secrets nuevos en GitHub Actions + Vercel:
    - Se genera desde un **manager account (MCC)** en *Herramientas → Configuración → API Center*.
    - Requiere aprobación de Google: primero da **Test Access** (sólo cuentas de test),
      hay que solicitar **Basic Access** para consultar cuentas productivas.
-   - Puede salir del MCC propio de Drean (ej. Brandlive) — no hace falta que sea el de OMD.
+   - Sale del **MCC de OMD: "MCC Mabe Argentina" `201-365-7015` (= `2013657015`)**.
+     Lo provee OMD (las cuentas de Google Ads son de OMD).
 
 2. **Scope `adwords` en el refresh token** — el `GOOGLE_REFRESH_TOKEN` actual se generó
    para GA4 (`analytics.readonly`). Hay que **regenerarlo** incluyendo también
@@ -86,8 +87,8 @@ Se necesitan **dos** secrets nuevos en GitHub Actions + Vercel:
      MCC nuestro. Sin este acceso, el token ve el dev token pero no las cuentas.
 
 3. (Opcional) **`GOOGLE_ADS_LOGIN_CUSTOMER_ID`** — si las cuentas se consultan a través
-   de un MCC, poner acá el ID del MCC (ej. el de OMD `2013657015`). Se manda en el
-   header `login-customer-id`.
+   de un MCC, poner acá el ID del MCC: el de OMD **"MCC Mabe Argentina" `2013657015`**
+   (se ve como `201-365-7015`). Se manda en el header `login-customer-id`.
 
 ## Cómo validar (en orden, sin escribir nada)
 
