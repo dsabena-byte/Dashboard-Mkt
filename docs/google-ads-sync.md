@@ -6,19 +6,24 @@
 
 ## Estado actual (2026-07-29) — dónde estamos y quién hace qué
 
-Validación corrida en `GET /api/diag/google-ads-access`:
-- ✅ **OAuth OK** (`"auth":"OK"`): `GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN` funcionan
-  (el refresh token viene del setup de GA4).
-- ❌ **Falta `GOOGLE_ADS_DEVELOPER_TOKEN`** en Vercel (respuesta:
-  `Env var GOOGLE_ADS_DEVELOPER_TOKEN no configurada`). **Es el bloqueo actual.**
+Toda la cadena de credenciales quedó **VALIDADA** (diag `GET /api/diag/google-ads-access`):
+- ✅ **OAuth OK** · ✅ **developer token** cargado · ✅ scope **`adwords`** en el
+  refresh token (regenerado con OAuth Playground, incluyendo también
+  `analytics.readonly` para no romper GA4) · ✅ **Google Ads API habilitada** en el
+  proyecto de Cloud de la app OAuth (`994976985`) · ✅ versión **v22** (v18 estaba
+  deprecada → daba 404).
+- `listAccessibleCustomers` devuelve **200**.
 
-Bloqueos en orden (se resuelven de a uno; cada uno se revalida con el mismo diag):
-1. **Developer token ausente** → conseguirlo y cargar `GOOGLE_ADS_DEVELOPER_TOKEN`.
-2. **Scope `adwords` en el refresh token**: el actual es solo `analytics.readonly`
-   (GA4). Probable siguiente error. Se regenera el `GOOGLE_REFRESH_TOKEN` sumando
-   `https://www.googleapis.com/auth/adwords`.
-3. **Acceso a las cuentas**: el usuario Google del token necesita lectura en las 4
-   cuentas de OMD (o vincularlas a un MCC de Drean).
+Bloqueo restante (**único**, y NO es técnico):
+3. **Acceso a las cuentas.** El usuario Google que autentica ve **una sola cuenta,
+   cancelada** (`2698688444`) y **ninguna de Drean**. `listAccessibleCustomers` es la
+   prueba objetiva: si el usuario no las ve, el token tampoco. → **OMD tiene que dar
+   acceso de lectura a ese usuario** en las cuentas de Drean (o vincularlas a un MCC
+   que el usuario administre).
+   - **Importante:** una vez que OMD da el acceso, **no hay que rehacer nada** (ni
+     token ni secrets): con el mismo refresh token, se re-corre el diag y ya lista las
+     cuentas. El acceso se evalúa por request.
+   - Bloqueos 1 y 2 (developer token + scope) ya resueltos ✅.
 
 ### Quién hace qué
 | Responsable | Acción |
