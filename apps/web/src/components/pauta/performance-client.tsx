@@ -437,14 +437,37 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     };
   }, [dv360VideoQ, metaVideoFunnel, tiktokVideoFunnel, arsMode]);
   // Embudos de video SEPARADOS por fuente (cada canal DV360 + Meta + TikTok), no mezclados.
+  // Google Ads (Demand Gen video): embudo desde google_ads_creatives (cuartiles
+  // reales por anuncio), filtrado por mes/categoría igual que el resto. Solo
+  // anuncios de video (los que tienen cuartiles).
+  const gadsCreativesF = useMemo(() => googleAdsCreatives.filter((r) =>
+    (selMeses.length === 0 || selMeses.includes(r.mes)) &&
+    (selCats.length === 0 || (r.account_label != null && selCats.includes(r.account_label))),
+  ), [googleAdsCreatives, selMeses, selCats]);
+  const gadsVideoFunnel = useMemo(() => {
+    let impr = 0, v25 = 0, v50 = 0, v75 = 0, v100 = 0, spend = 0, count = 0;
+    for (const r of gadsCreativesF) {
+      if (r.vtr_p25 == null || r.impressions <= 0) continue;
+      impr += r.impressions;
+      v25 += r.impressions * (r.vtr_p25 ?? 0);
+      v50 += r.impressions * (r.vtr_p50 ?? 0);
+      v75 += r.impressions * (r.vtr_p75 ?? 0);
+      v100 += r.impressions * (r.vtr_p100 ?? 0);
+      spend += r.cost;
+      count++;
+    }
+    return { impr, v25, v50, v75, v100, spend, count };
+  }, [gadsCreativesF]);
+
   const videoSources = useMemo(() => {
     const arr: Array<{ name: string; impr: number; v25: number; v50: number; v75: number; v100: number; spend: number }> = [];
     const MED: Record<string, string> = { "Demand Gen": "Google Demand Gen" }; // DV360 = plataforma; el medio es el canal
     for (const f of dv360Funnels) arr.push({ name: MED[f.canal] ?? f.canal, impr: f.impresiones, v25: f.q25, v50: f.q50, v75: f.q75, v100: f.q100, spend: arsMode ? f.revenueUsd : 0 });
     if (metaVideoFunnel.count > 0) arr.push({ name: "Meta", impr: metaVideoFunnel.impresiones, v25: metaVideoFunnel.p25, v50: metaVideoFunnel.p50, v75: metaVideoFunnel.p75, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend });
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
+    if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
     return arr.sort((a, b) => b.impr - a.impr);
-  }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, arsMode]);
+  }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
   // Embudo desglosado por FORMATO dentro de cada fuente: YouTube → TrueView
   // (Consideración) / Bumper (Awareness); Meta → 6s/10s/15s/Video (del ad_name);
   // el resto de DV360 (Programmatic, etc.) queda con su único formato.
@@ -487,8 +510,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     for (const [f, e] of metaMap) arr.push({ name: `Meta · ${f}`, ...e });
     // TikTok: un solo formato (reutiliza el embudo ya calculado).
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
+    // Google Ads Demand Gen: un solo formato (video).
+    if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
     return arr.sort((a, b) => b.impr - a.impr);
-  }, [dv360Conv, metaPaidF, tiktokVideoFunnel, arsMode]);
+  }, [dv360Conv, metaPaidF, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
   // Categoría/rol: solo medios digitales. Volumen OMD + gap-fill de ejecución real
   // (mismos medios que la tabla maestra) para que los totales cuadren.
   const digitalRows = useMemo(() => rows.filter((r) => tipoMedio(r.medio) === "Digital"), [rows]);
@@ -740,8 +765,14 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       const v = metaRowVideo(r);
       add(medio, v.vbase, v.comp);
     }
+    // Google Demand Gen: VTR EFECTIVA real desde google_ads_creatives (cuartiles
+    // por anuncio). Volumen sigue viniendo de OMD/GA4; acá solo el % efectivo.
+    for (const r of gadsCreativesF) {
+      if (r.vtr_p25 == null || r.impressions <= 0) continue;
+      add("Google Demand Gen", r.impressions, r.impressions * (r.vtr_p100 ?? 0));
+    }
     return agg;
-  }, [dv360Conv, metaPaidF]);
+  }, [dv360Conv, metaPaidF, gadsCreativesF]);
   // VOLUMEN REAL ejecutado (no el plan), desde los procesos automáticos. Sirve
   // para los medios que todavía NO tienen plan de OMD cargado en el período
   // (ej. el mes en curso): así se ve la pauta en tiempo real, no solo Meta.
