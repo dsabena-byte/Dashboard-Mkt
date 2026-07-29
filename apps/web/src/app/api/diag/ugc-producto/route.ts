@@ -43,6 +43,19 @@ const VESTIMENTA: Record<string, string> = {
   trabajo: "clean work clothes",
 };
 
+// Placement realista según el tipo de medida del catálogo: una cocina/lavarropas
+// "counter-height" va a NIVEL de la mesada (no más alta); una heladera "tall" va
+// al piso, más alta que la mesada.
+function placementHint(medidas?: string): string {
+  const m = (medidas ?? "").toLowerCase();
+  if (m.includes("counter-height") || m.includes("front-load")) {
+    return `PLACEMENT: it is a STANDARD counter-height appliance (~90 cm). Its top surface must be ALIGNED and FLUSH with the adjacent kitchen countertop — it must NOT be taller than the counter. It sits level with the surrounding cabinets, standing on the floor between them.`;
+  }
+  if (m.includes("top-load")) return `PLACEMENT: it is a standalone top-load washer standing on the floor, lid opening from the top.`;
+  if (m.includes("tall")) return `PLACEMENT: it is a TALL floor-standing appliance, taller than the counters, standing on the floor.`;
+  return "";
+}
+
 function buildFramePrompt(nombre: string, medidas: string | undefined, genero: string, escenario: string | null, edad: string | null, vestimenta: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
   const edadTxt = edad ? (EDAD[edad] ?? edad) : "in their early 30s";
@@ -52,8 +65,9 @@ function buildFramePrompt(nombre: string, medidas: string | undefined, genero: s
     `Photorealistic vertical 9:16 UGC-style photo. An everyday Argentine ${persona} ${edadTxt}${ropa}, ${donde}, ` +
     `holding a phone as if filming a casual selfie video, talking to the camera, standing right next to the Drean ${nombre} shown in the provided product photo. ` +
     `CRITICAL: keep the appliance EXACTLY IDENTICAL to the reference photo — same design, doors, finish, controls and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign or restyle it. ` +
+    `${placementHint(medidas)} ` +
     `The product is clearly visible in the scene, well integrated (not floating). Natural home lighting, amateur phone-photo look, authentic and candid — NOT a polished commercial. Single person, realistic and human. ` +
-    `Avoid: distorted product, extra doors/handles, warped proportions, text, watermark, logo overlay.`
+    `Avoid: distorted product, extra doors/handles, warped proportions, appliance taller than the countertop, text, watermark, logo overlay.`
   );
 }
 
@@ -74,15 +88,17 @@ function buildInsertFramePrompt(nombre: string, medidas: string | undefined, esc
   return (
     `Photorealistic vertical 9:16 photo of the Drean ${nombre} shown in the provided product photo, placed naturally ${donde} in a real Argentine home. ` +
     `CRITICAL: keep the appliance EXACTLY IDENTICAL to the reference photo — same design, doors, finish, controls and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign or restyle it. ` +
+    `${placementHint(medidas)} ` +
     `Cozy realistic home setting around it, natural window light, shallow depth of field, authentic and lived-in (not a showroom, not a polished commercial). ` +
     `NO people, NO hands. Single hero appliance, well integrated (not floating). ` +
-    `Avoid: people, hands, distorted product, extra doors/handles, warped proportions, text, watermark, logo overlay.`
+    `Avoid: people, hands, distorted product, extra doors/handles, warped proportions, appliance taller than the countertop, text, watermark, logo overlay.`
   );
 }
 
 function buildInsertVideoPrompt(): string {
   return (
-    `Cinematic product b-roll: a slow, smooth camera movement (gentle push-in and slight parallax) around the Drean appliance in a real home kitchen. ` +
+    `Cinematic product b-roll with ONE single, purposeful camera move: a slow, smooth, steady dolly push-in toward the Drean appliance, keeping it centered and in focus the whole time (a deliberate product hero shot). ` +
+    `The move is continuous and intentional — NOT wandering, random or shaky. ` +
     `The appliance stays EXACTLY UNCHANGED and undistorted — do not morph, melt or restyle it. Natural window light, shallow depth of field, calm and premium but realistic. ` +
     `NO people appear. Vertical 9:16, photorealistic, subtle and elegant motion.`
   );
@@ -133,6 +149,14 @@ export async function GET(request: Request) {
     if (!frameUrl) return NextResponse.json({ ok: false, error: "No se generó el frame (nano-banana edit).", packshot }, { status: 500 });
     out.modo = modo;
     out.frame_url = frameUrl;
+
+    // frame_only=1: sólo la imagen (para iterar la composición sin gastar el
+    // render de video, que es lo caro).
+    if (u.searchParams.get("frame_only") === "1") {
+      out.frame_only = true;
+      out.hint = "Sólo frame (no se encoló video). Ajustá el prompt/escenario y repetí; cuando te guste la imagen, sacá &frame_only=1 para generar el video.";
+      return NextResponse.json(out);
+    }
 
     // Paso 2: animar. En insert (sin persona) se anima el producto; en persona
     // el i2v lo rechaza por content policy (queda de referencia). Sin audio en
