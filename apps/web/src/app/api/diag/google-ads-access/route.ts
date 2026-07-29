@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const GADS_API = "https://googleads.googleapis.com/v18";
+const GADS_API = "https://googleads.googleapis.com/v22";
 
 function env(key: string): string {
   const v = process.env[key];
