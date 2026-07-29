@@ -66,6 +66,28 @@ function buildVideoPrompt(guion: string): string {
   );
 }
 
+// --- Modo INSERT SHOT: el producto real en una escena de hogar, SIN personas.
+// Al no haber una persona real, image-to-video no viola la content policy y sí
+// anima. Sirve como b-roll fiel del producto para intercalar con el talking-head.
+function buildInsertFramePrompt(nombre: string, medidas: string | undefined, escenario: string | null): string {
+  const donde = escenario ? (ESCENARIOS[escenario] ?? escenario) : ESCENARIOS.cocina;
+  return (
+    `Photorealistic vertical 9:16 photo of the Drean ${nombre} shown in the provided product photo, placed naturally ${donde} in a real Argentine home. ` +
+    `CRITICAL: keep the appliance EXACTLY IDENTICAL to the reference photo — same design, doors, finish, controls and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign or restyle it. ` +
+    `Cozy realistic home setting around it, natural window light, shallow depth of field, authentic and lived-in (not a showroom, not a polished commercial). ` +
+    `NO people, NO hands. Single hero appliance, well integrated (not floating). ` +
+    `Avoid: people, hands, distorted product, extra doors/handles, warped proportions, text, watermark, logo overlay.`
+  );
+}
+
+function buildInsertVideoPrompt(): string {
+  return (
+    `Cinematic product b-roll: a slow, smooth camera movement (gentle push-in and slight parallax) around the Drean appliance in a real home kitchen. ` +
+    `The appliance stays EXACTLY UNCHANGED and undistorted — do not morph, melt or restyle it. Natural window light, shallow depth of field, calm and premium but realistic. ` +
+    `NO people appear. Vertical 9:16, photorealistic, subtle and elegant motion.`
+  );
+}
+
 export async function GET(request: Request) {
   const out: Record<string, unknown> = {};
   try {
@@ -88,15 +110,20 @@ export async function GET(request: Request) {
     const edad = u.searchParams.get("edad");
     const vestimenta = u.searchParams.get("vestimenta");
     const modeloVideo = u.searchParams.get("modelo_video") ?? MODEL_VIDEO_DEFAULT;
-    const framePrompt = buildFramePrompt(modelo.nombre, modelo.medidas, genero, escenario, edad, vestimenta);
-    const videoPrompt = buildVideoPrompt(guion);
+    // modo: "insert" (producto sin persona → sí anima) | "persona" (persona +
+    // producto → el FRAME sirve, pero i2v lo rechaza por content policy).
+    const modo = u.searchParams.get("modo") === "persona" ? "persona" : "insert";
+    const framePrompt = modo === "persona"
+      ? buildFramePrompt(modelo.nombre, modelo.medidas, genero, escenario, edad, vestimenta)
+      : buildInsertFramePrompt(modelo.nombre, modelo.medidas, escenario);
+    const videoPrompt = modo === "persona" ? buildVideoPrompt(guion) : buildInsertVideoPrompt();
 
     if (u.searchParams.get("go") !== "1") {
       return NextResponse.json({
-        ok: true, dry: true, sku, producto: modelo.nombre, packshot,
+        ok: true, dry: true, modo, sku, producto: modelo.nombre, packshot,
         model_edit: MODEL_EDIT, model_video: modeloVideo,
         frame_prompt: framePrompt, video_prompt: videoPrompt,
-        hint: "Agregá &go=1 para componer el frame y encolar el video. Escenarios: cocina|lavando|cocinando|living|selfie. Podés pisar el modelo de video con &modelo_video=fal-ai/kling-video/v2.1/master/image-to-video (si Seedance i2v no habla bien).",
+        hint: "Agregá &go=1 para componer el frame y encolar el video. modo=insert (default: producto real animado, SÍ genera video) | modo=persona (persona+producto: el frame sirve pero i2v lo rechaza por content policy). Escenarios: cocina|lavando|cocinando|living|selfie.",
       });
     }
 
@@ -104,10 +131,13 @@ export async function GET(request: Request) {
     const frame = await falImage(MODEL_EDIT, { prompt: framePrompt, image_urls: [packshot], num_images: 1 });
     const frameUrl = frame.images[0]?.url;
     if (!frameUrl) return NextResponse.json({ ok: false, error: "No se generó el frame (nano-banana edit).", packshot }, { status: 500 });
+    out.modo = modo;
     out.frame_url = frameUrl;
 
-    // Paso 2: animar el frame (image-to-video con audio) para que hable.
-    const input = { image_url: frameUrl, prompt: videoPrompt, duration: "8", resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
+    // Paso 2: animar. En insert (sin persona) se anima el producto; en persona
+    // el i2v lo rechaza por content policy (queda de referencia). Sin audio en
+    // insert (es b-roll para intercalar).
+    const input = { image_url: frameUrl, prompt: videoPrompt, duration: modo === "insert" ? "5" : "8", resolution: "720p", aspect_ratio: "9:16", generate_audio: modo === "persona" };
     const handle = await falQueueSubmit(modeloVideo, input);
     out.sku = sku;
     out.producto = modelo.nombre;
