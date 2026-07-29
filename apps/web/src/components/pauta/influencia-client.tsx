@@ -170,17 +170,13 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], ugcEntr
         </div>
       ) : (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <section className={`grid gap-3 sm:grid-cols-2 ${totalViews > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
             <KpiCard title="Inversión ejecutada" value={fmtARS(totalInv)} hint={totalInvPlan > 0 ? `Plan: ${fmtARS(totalInvPlan)}` : undefined} />
             <KpiCard title="Alcance" value={fmtNum(totalAlcance)} hint="Suma de plataformas" />
             <KpiCard title="Impresiones" value={fmtNum(totalImpr)} hint={`CPM ${fmtARS(cpm)}`} />
             <KpiCard title="Clicks" value={fmtNum(totalClicks)} hint={`CTR ${ctr.toFixed(2)}%`} />
+            {totalViews > 0 && <KpiCard title="Video Views" value={fmtNum(totalViews)} hint="Suma del período" />}
           </section>
-          {totalViews > 0 && (
-            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard title="Video Views" value={fmtNum(totalViews)} hint="Suma del período" />
-            </section>
-          )}
 
           {/* Tabla maestra (misma estructura que Pauta Mkt: general + efectivo). */}
           <div className="mt-2 mb-3 text-sm font-medium text-muted-foreground">Tabla maestra · por medio · general + efectivo</div>
