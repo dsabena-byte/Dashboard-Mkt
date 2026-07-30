@@ -33,6 +33,16 @@ const TIPO_LABEL: Record<string, string> = {
   MULTI_CHANNEL: "Multicanal",
 };
 
+// Link para "ver el anuncio": Google Ads no tiene permalink público como Meta,
+// pero podemos abrir el video de YouTube (si el thumbnail es de YouTube) o la
+// imagen del creativo.
+function adLink(thumb: string | null): string | null {
+  if (!thumb) return null;
+  const m = thumb.match(/ytimg\.com\/vi\/([^/]+)\//);
+  if (m) return `https://www.youtube.com/watch?v=${m[1]}`;
+  return thumb;
+}
+
 export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: GoogleAdsCreativeRow[]; selMeses: string[]; selCats: string[] }) {
   const [visible, setVisible] = useState(PAGE_SIZE);
 
@@ -41,6 +51,7 @@ export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: Goog
       data.filter(
         (r) =>
           r.impressions > 0 &&
+          r.campaign_type !== "SEARCH" && // Search es texto: sin imagen ni datos de creativo → fuera de la grilla
           (selMeses.length === 0 || selMeses.includes(r.mes)) &&
           (selCats.length === 0 || (r.account_label != null && selCats.includes(r.account_label))),
       ),
@@ -75,8 +86,16 @@ export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: Goog
           const cpc = c.clicks > 0 ? c.cost / c.clicks : 0;
           const viewsCompl = hasVideo ? c.impressions * (c.vtr_p100 ?? 0) : 0;
           const catColor = CAT_COLORS[c.account_label ?? ""] ?? "#64748b";
+          const link = adLink(c.thumbnail_url);
           return (
-            <div key={`${c.ad_id}-${c.mes}`} className="group flex flex-col overflow-hidden rounded-lg border bg-card">
+            <a
+              key={`${c.ad_id}-${c.mes}`}
+              href={link ?? "#"}
+              target={link ? "_blank" : undefined}
+              rel="noopener"
+              aria-disabled={!link}
+              className="group flex flex-col overflow-hidden rounded-lg border bg-card transition-colors hover:bg-muted/50"
+            >
               <div className="relative aspect-square w-full overflow-hidden bg-muted">
                 <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1">
                   {c.account_label && (
@@ -130,7 +149,7 @@ export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: Goog
                   </div>
                 )}
               </div>
-            </div>
+            </a>
           );
         })}
       </div>
