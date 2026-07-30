@@ -193,8 +193,8 @@ async function fetchThumbnails(getToken: GetToken, custId: string): Promise<Map<
       asset.youtube_video_asset.youtube_video_id,
       ad_group_ad_asset_view.field_type
     FROM ad_group_ad_asset_view`;
-  const img = new Map<string, string>();   // ad_id → URL de imagen (preferida)
-  const video = new Map<string, string>(); // ad_id → thumbnail de YouTube (fallback)
+  const img = new Map<string, string>();   // ad_id → URL de imagen del creativo
+  const yt = new Map<string, string>();    // ad_id → thumbnail de YouTube (ads de video)
   try {
     const token = await getToken(false);
     const res = await fetch(`${GADS_API}/customers/${custId}/googleAds:searchStream`, {
@@ -212,12 +212,16 @@ async function fetchThumbnails(getToken: GetToken, custId: string): Promise<Map<
         const adId = r.adGroupAd?.ad?.id;
         if (!adId) continue;
         const url = r.asset?.imageAsset?.fullSize?.url;
-        const yt = r.asset?.youtubeVideoAsset?.youtubeVideoId;
+        const vid = r.asset?.youtubeVideoAsset?.youtubeVideoId;
         if (url && !img.has(adId)) img.set(adId, url);
-        else if (yt && !video.has(adId)) video.set(adId, `https://i.ytimg.com/vi/${yt}/hqdefault.jpg`);
+        if (vid && !yt.has(adId)) yt.set(adId, `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`);
       }
     }
-    for (const [adId, url] of video) if (!img.has(adId)) img.set(adId, url); // sin imagen → YouTube
+    // El VIDEO de YouTube GANA sobre la imagen: si el ad tiene un video, mostramos
+    // su thumbnail y el click va al video (no al logo/imagen companion).
+    const out = new Map(img);
+    for (const [adId, url] of yt) out.set(adId, url);
+    return out;
   } catch { /* best-effort: sin thumbnails */ }
   return img;
 }
