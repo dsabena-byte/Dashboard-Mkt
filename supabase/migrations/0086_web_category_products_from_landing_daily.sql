@@ -13,7 +13,10 @@
 -- =============================================================================
 
 -- ---- Performance por categoría (desde web_landing_daily) --------------------
-CREATE OR REPLACE VIEW vw_drean_web_by_category AS
+-- DROP + CREATE (no CREATE OR REPLACE): la vista vieja tiene otras columnas/orden
+-- y CREATE OR REPLACE no puede renombrar/reordenar.
+DROP VIEW IF EXISTS vw_drean_web_by_category;
+CREATE VIEW vw_drean_web_by_category AS
 SELECT
   fecha,
   CASE
