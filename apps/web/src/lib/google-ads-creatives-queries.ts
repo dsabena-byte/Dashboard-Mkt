@@ -107,7 +107,10 @@ export async function getGoogleAdsCreatives(): Promise<GoogleAdsCreativeRow[]> {
     a.cost += num(r.cost);
     a.interactions += num(r.interactions);
     if (!a.thumbnail_url && r.thumbnail_url) a.thumbnail_url = r.thumbnail_url;
-    if (r.vtr_p25 != null) {
+    // Solo sumamos al embudo de video las filas que REALMENTE son de video
+    // (cuartil >0). Los ads de imagen/Search guardan 0 (no null) por el coerce del
+    // sync; si los contáramos, diluirían el embudo y mostrarían "VTR 0%" de más.
+    if (num(r.vtr_p25) > 0) {
       a.q25 += num(r.vtr_p25) * impr;
       a.q50 += num(r.vtr_p50) * impr;
       a.q75 += num(r.vtr_p75) * impr;

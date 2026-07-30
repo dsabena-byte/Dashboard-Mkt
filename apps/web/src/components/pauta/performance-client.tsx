@@ -459,14 +459,12 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return { impr, v25, v50, v75, v100, spend, count };
   }, [gadsCreativesF]);
 
-  // Normaliza un embudo a decreciente y ≤ base (corrige artefactos de medición:
-  // cuartiles no monótonos o que superan la base).
-  const clampFunnel = <T extends { impr: number; v25: number; v50: number; v75: number; v100: number }>(s: T): T => {
-    const v25 = Math.min(s.v25, s.impr);
-    const v50 = Math.min(s.v50, v25);
-    const v75 = Math.min(s.v75, v50);
-    const v100 = Math.min(s.v100, v75);
-    return { ...s, v25, v50, v75, v100 };
+  // Un embudo es COHERENTE si sus cuartiles decrecen (25≥50≥75≥100) y no superan
+  // la base. Si no (data rota de DV360 en slices chicos: cuartiles no monótonos o
+  // > starts), lo omitimos — mostrarlo daría >100% o todo 100%, ambos sin sentido.
+  const coherentFunnel = (s: { impr: number; v25: number; v50: number; v75: number; v100: number }): boolean => {
+    const t = 1.01; // tolerancia de redondeo
+    return s.impr > 0 && s.v25 <= s.impr * t && s.v50 <= s.v25 * t && s.v75 <= s.v50 * t && s.v100 <= s.v75 * t;
   };
 
   const videoSources = useMemo(() => {
@@ -478,7 +476,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (metaVideoFunnel.count > 0) arr.push({ name: "Meta", impr: metaVideoFunnel.impresiones, v25: metaVideoFunnel.p25, v50: metaVideoFunnel.p50, v75: metaVideoFunnel.p75, v100: metaVideoFunnel.p100, spend: metaVideoFunnel.spend });
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
-    return arr.map(clampFunnel).filter((s) => s.impr > 0).sort((a, b) => b.impr - a.impr);
+    return arr.filter(coherentFunnel).sort((a, b) => b.impr - a.impr);
   }, [dv360Funnels, metaVideoFunnel, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
   // Embudo desglosado por FORMATO dentro de cada fuente: YouTube → TrueView
   // (Consideración) / Bumper (Awareness); Meta → 6s/10s/15s/Video (del ad_name);
@@ -525,7 +523,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (tiktokVideoFunnel.count > 0) arr.push({ name: "TikTok", impr: tiktokVideoFunnel.impresiones, v25: tiktokVideoFunnel.p25, v50: tiktokVideoFunnel.p50, v75: tiktokVideoFunnel.p75, v100: tiktokVideoFunnel.p100, spend: tiktokVideoFunnel.spend });
     // Google Ads Demand Gen: un solo formato (video).
     if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
-    return arr.map(clampFunnel).filter((s) => s.impr > 0).sort((a, b) => b.impr - a.impr);
+    return arr.filter(coherentFunnel).sort((a, b) => b.impr - a.impr);
   }, [dv360Conv, metaPaidF, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
   // Categoría/rol: solo medios digitales. Volumen OMD + gap-fill de ejecución real
   // (mismos medios que la tabla maestra) para que los totales cuadren.
