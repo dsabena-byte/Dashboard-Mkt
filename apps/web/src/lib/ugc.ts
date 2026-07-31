@@ -210,12 +210,12 @@ const ESCENARIOS_PROMPT: Record<string, string> = {
   lavando: "next to the washing machine at home, loading or taking out laundry, talking to the camera while doing it",
   doblando: "folding freshly washed laundry on the bed or sofa, talking casually to the camera",
   cafe: "sitting relaxed at home with a cup of coffee or mate, talking to the camera",
-  // Escenas INSTITUCIONALES / comerciales (para el perfil "Personal Drean").
-  // El "showroom" replica el look de marca: estudio premium celeste, podio,
-  // electros sobre mármol y madera clara (product-showcase aspiracional).
-  showroom: "in a premium minimalist brand studio set: a bright soft light-blue seamless studio background, a clean circular podium, home appliances elegantly staged on white marble surfaces and light-wood panels with a single decorative green plant, soft even studio lighting — a high-end, aspirational product-showcase look — talking to the camera as a brand representative",
-  tienda: "inside a home-appliance retail store, standing among the appliances on display, talking to the camera like a friendly in-store brand representative",
-  stand: "at a branded appliance point-of-sale stand in a store or expo, appliances showcased behind them, talking to the camera as a brand ambassador",
+  // Escenas INSTITUCIONALES (perfil "Personal Drean"). Prioridad: que parezca un
+  // lugar REAL y creíble (limpio y minimalista), NO un set de estudio artificial
+  // (eso, generado por IA, queda fake y le baja credibilidad al testimonio).
+  showroom: "in a clean, minimalist, modern appliance brand showroom that looks like a REAL place — bright and tidy, soft natural daylight, light walls with subtle white-and-blue tones, the space set up to showcase ONE single home appliance as the hero right next to them (NOT a cluttered lineup of products), realistic and believable, NOT an artificial CGI studio set — talking to the camera as a brand representative",
+  tienda: "inside a real, tidy home-appliance retail store with natural lighting, next to ONE featured appliance on display (not a crowded lineup), believable and realistic (not staged), talking to the camera like a friendly in-store brand representative",
+  stand: "at a clean, modern branded appliance stand in a real store or expo, with ONE single hero appliance beside them, realistic and believable, talking to the camera as a brand ambassador",
 };
 
 // Escenas que son de HOGAR (para saber cuándo el perfil institucional debe pisarlas).
@@ -252,7 +252,7 @@ function esPersonalDrean(perfil?: string | null): boolean {
 
 // Escena según perfil: si es personal y eligió una escena de hogar (o ninguna),
 // se usa una escena institucional por defecto; respeta la institucional o el texto libre.
-const ESCENA_SHOWROOM = "in a premium minimalist brand studio set with a bright soft light-blue seamless background, a circular podium and appliances staged on marble and light-wood, talking to the camera as a brand representative";
+const ESCENA_SHOWROOM = "in a clean, minimalist, modern appliance brand showroom that looks like a real place, bright and tidy with soft natural daylight, set up to showcase ONE single hero appliance next to them, talking to the camera as a brand representative";
 function escenaSegunPerfil(perfil: string | null | undefined, escenario: string | null | undefined, homeDefault: string): string {
   if (esPersonalDrean(perfil)) {
     if (escenario && ESCENARIOS_INSTITUCIONALES.has(escenario)) return ESCENARIOS_PROMPT[escenario] ?? ESCENA_SHOWROOM;
@@ -276,7 +276,7 @@ function sujetoSegunPerfil(perfil: string | null | undefined, persona: string, e
   return `a natural, everyday Argentine ${persona} ${edadTxt}${ropaTxt}`;
 }
 function estiloSegunPerfil(perfil: string | null | undefined): string {
-  if (esPersonalDrean(perfil)) return `Warm, professional and natural — a genuine brand ambassador talking to the camera, approachable and human (NOT stiff, NOT an over-polished TV commercial). `;
+  if (esPersonalDrean(perfil)) return `Warm, professional and natural — a genuine brand ambassador talking to the camera, approachable and human (NOT stiff, NOT an over-polished TV commercial). Their hands are empty and relaxed — they are NOT holding anything (no bottle, cup, phone, or product); hands rest naturally or gesture lightly while talking. `;
   return `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. `;
 }
 
