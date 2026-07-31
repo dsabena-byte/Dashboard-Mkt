@@ -211,7 +211,9 @@ const ESCENARIOS_PROMPT: Record<string, string> = {
   doblando: "folding freshly washed laundry on the bed or sofa, talking casually to the camera",
   cafe: "sitting relaxed at home with a cup of coffee or mate, talking to the camera",
   // Escenas INSTITUCIONALES / comerciales (para el perfil "Personal Drean").
-  showroom: "in a modern, bright home-appliance brand showroom, with washers, fridges and ovens displayed on the floor and shelves behind them, talking to the camera as a brand representative",
+  // El "showroom" replica el look de marca: estudio premium celeste, podio,
+  // electros sobre mármol y madera clara (product-showcase aspiracional).
+  showroom: "in a premium minimalist brand studio set: a bright soft light-blue seamless studio background, a clean circular podium, home appliances elegantly staged on white marble surfaces and light-wood panels with a single decorative green plant, soft even studio lighting — a high-end, aspirational product-showcase look — talking to the camera as a brand representative",
   tienda: "inside a home-appliance retail store, standing among the appliances on display, talking to the camera like a friendly in-store brand representative",
   stand: "at a branded appliance point-of-sale stand in a store or expo, appliances showcased behind them, talking to the camera as a brand ambassador",
 };
@@ -227,6 +229,10 @@ const EDAD_PROMPT: Record<string, string> = {
   mayor: "around 60 years old",
 };
 
+// Colores institucionales Drean (Manual de Identidad): azul marino profundo,
+// Pantone 281 C / HEX #00064F / RGB 0,6,79. Es el azul del logotipo.
+const DREAN_COLORES = "a deep navy blue (Pantone 281 C, dark midnight blue) with clean white";
+
 // Estilo de ropa (claves de UGC_VESTIMENTAS) → descripción para el prompt.
 const VESTIMENTA_PROMPT: Record<string, string> = {
   informal: "casual everyday clothes (a t-shirt or sweater)",
@@ -235,7 +241,7 @@ const VESTIMENTA_PROMPT: Record<string, string> = {
   deportivo: "sporty casual clothes",
   trabajo: "clean work clothes / a tidy uniform",
   // Uniforme de marca para el perfil "Personal Drean" (colores institucionales).
-  uniforme: "a neat, professional branded work uniform / polo shirt in the brand's institutional colors (predominantly RED with white), looking like an official in-store brand representative",
+  uniforme: `a neat, professional branded work uniform / polo shirt in the brand's official institutional colors${DREAN_COLORES ? ` (${DREAN_COLORES})` : ""}, looking like an official in-store brand representative`,
 };
 
 // ---- Perfil-aware: el "Personal Drean" (key `personal`) no es un cliente en su
@@ -246,7 +252,7 @@ function esPersonalDrean(perfil?: string | null): boolean {
 
 // Escena según perfil: si es personal y eligió una escena de hogar (o ninguna),
 // se usa una escena institucional por defecto; respeta la institucional o el texto libre.
-const ESCENA_SHOWROOM = "in a modern, bright home-appliance brand showroom, appliances displayed behind them, talking to the camera as a brand representative";
+const ESCENA_SHOWROOM = "in a premium minimalist brand studio set with a bright soft light-blue seamless background, a circular podium and appliances staged on marble and light-wood, talking to the camera as a brand representative";
 function escenaSegunPerfil(perfil: string | null | undefined, escenario: string | null | undefined, homeDefault: string): string {
   if (esPersonalDrean(perfil)) {
     if (escenario && ESCENARIOS_INSTITUCIONALES.has(escenario)) return ESCENARIOS_PROMPT[escenario] ?? ESCENA_SHOWROOM;
@@ -306,6 +312,24 @@ export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: stri
 
 export async function getVideoUgcStatus(statusUrl: string, responseUrl: string): Promise<{ status: string; video_url: string | null }> {
   return falQueueVideoStatus(statusUrl, responseUrl);
+}
+
+// Preview BARATO de la escena como imagen fija (fal image, centavos), para ver
+// cómo queda antes de gastar en video. Es una APROXIMACIÓN (otro modelo que el
+// video), pero sirve para validar escena + uniforme + perfil.
+export async function previewEscenaImagen(opts: { genero?: string; escenario?: string | null; edad?: string | null; vestimenta?: string | null; perfil?: string | null }): Promise<string> {
+  const persona = opts.genero === "hombre" ? "man" : "woman";
+  const edadTxt = opts.edad ? (EDAD_PROMPT[opts.edad] ?? opts.edad) : "in their early 30s";
+  const escena = escenaSegunPerfil(opts.perfil, opts.escenario, "selfie");
+  const ropaTxt = ropaSegunPerfil(opts.perfil, opts.vestimenta);
+  const prompt =
+    `Photorealistic vertical 9:16 still photo (natural UGC look) of ${sujetoSegunPerfil(opts.perfil, persona, edadTxt, ropaTxt)}, ${escena}. ` +
+    `Natural indoor lighting, realistic skin, looking at the camera with a relaxed friendly expression, single person, medium framing that shows the setting. ` +
+    `Authentic and realistic, not over-retouched. Avoid: text, watermark, logo overlay, distorted anatomy.`;
+  const img = await falImage(MODEL_PERSONA, { prompt, image_size: FAL_SIZES.story, num_images: 1, rendering_speed: "QUALITY" });
+  const url = img.images[0]?.url;
+  if (!url) throw new Error("No se generó la imagen de preview.");
+  return url;
 }
 
 // ---- Talking-head CON el producto real en la escena (Seedance 2.0 reference) --
