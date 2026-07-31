@@ -1,6 +1,7 @@
 import "server-only";
 import { falImage, falQueueSubmit, falQueueVideoStatus, FAL_SIZES } from "@/lib/fal-client";
 import { arcadsGenerateVideo, arcadsVideoStatus, type ArcadsModel, type ArcadsPollKind } from "@/lib/arcads";
+import { getModelo, driveImageUrl } from "@/lib/producto-catalog";
 import { UGC_VOCES } from "@/lib/ugc-opciones";
 import { diferencialesTexto } from "@/lib/diferenciales";
 
@@ -260,6 +261,47 @@ export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: stri
 
 export async function getVideoUgcStatus(statusUrl: string, responseUrl: string): Promise<{ status: string; video_url: string | null }> {
   return falQueueVideoStatus(statusUrl, responseUrl);
+}
+
+// ---- Talking-head CON el producto real en la escena (Seedance 2.0 reference) --
+// A diferencia del insert viejo (componer frame + animar → deformaba), acá se usa
+// el endpoint reference-to-video de Seedance 2.0: el packshot va como @Image1 y el
+// modelo mantiene el producto fiel (diseño/logo/controles) mientras genera al
+// actor hablando el guion en la escena. Un solo clip, con audio. Barato (fal).
+const MODEL_SEEDANCE_REF = "bytedance/seedance-2.0/reference-to-video";
+
+function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: string | undefined, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null): string {
+  const persona = genero === "hombre" ? "man" : "woman";
+  const edadTxt = edad ? (EDAD_PROMPT[edad] ?? edad) : "in their early 30s";
+  const escena = escenario ? (ESCENARIOS_PROMPT[escenario] ?? escenario) : ESCENARIOS_PROMPT.cocina;
+  const ropaTxt = vestimenta?.trim() ? `, wearing ${VESTIMENTA_PROMPT[vestimenta] ?? vestimenta}` : "";
+  return (
+    `Realistic UGC-style vertical video of a natural, everyday Argentine ${persona} ${edadTxt}${ropaTxt}, ${escena}. ` +
+    `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
+    // El producto real va como referencia @Image1 y NO se debe alterar.
+    `In the scene with them is the real Drean ${nombreProd} from @Image1. CRITICAL: keep that appliance EXACTLY IDENTICAL to @Image1 — same design, doors, finish, controls, logo, text and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign, restyle, warp, morph or distort it. It sits naturally in the home scene (standing on the floor or on the counter as appropriate), well integrated, not floating. ` +
+    // Cámara estable + encuadre medio: menos frames que cambian = producto más fiel.
+    `Amateur phone-video look, natural indoor lighting, shallow depth of field, gentle and STABLE camera with minimal motion so the product stays sharp and undistorted. Medium framing that shows both the person and the appliance. ` +
+    `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo) — not rushed, not slowed-down. The person says, calmly: "${guion}". ` +
+    `Vertical 9:16, single person, single appliance, realistic and human. Avoid: distorted product, extra doors/handles, warped proportions, text or logo overlays.`
+  );
+}
+
+export async function generarVideoUgcProductoSubmit(sku: string, guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null): Promise<UgcVideoHandle> {
+  const modelo = getModelo(sku);
+  if (!modelo) throw new Error(`Producto desconocido: ${sku}. Elegí un modelo del catálogo.`);
+  const packshot = driveImageUrl(modelo.driveFileId);
+  const seg = Math.min(15, Math.max(4, duracion && duracion > 0 ? duracion : 10));
+  const input = {
+    prompt: buildPromptSeedanceRef(guion, modelo.nombre, modelo.medidas, genero, escenario, edad, vestimenta),
+    image_urls: [packshot],
+    duration: String(seg),
+    resolution: "720p",
+    aspect_ratio: "9:16",
+    generate_audio: true,
+  };
+  const h = await falQueueSubmit(MODEL_SEEDANCE_REF, input);
+  return { request_id: h.requestId, status_url: h.statusUrl, response_url: h.responseUrl };
 }
 
 // ---- Video UGC "pro" con Arcads ----------------------------------------------

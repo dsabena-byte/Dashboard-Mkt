@@ -808,6 +808,28 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
     } finally { setBusy(null); setVideoMsg(null); }
   }
+  // Talking-head CON el producto real en la escena (Seedance 2.0 reference).
+  // El packshot se mantiene fiel; el actor habla el guion. Escribe en video_url.
+  async function genVideoProducto() {
+    if (!e.guion?.trim()) return;
+    if (!e.modelo) { setError("Elegí un producto (modelo) para meterlo en la escena."); return; }
+    setBusy("producto"); setError(null); setVideoMsg("Encolando video con el producto en escena…");
+    try {
+      const j = await call("/api/ugc/video-producto", { sku: e.modelo, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
+      if (!j) return;
+      const qs = `status_url=${encodeURIComponent(j.status_url as string)}&response_url=${encodeURIComponent(j.response_url as string)}`;
+      let terminal = false;
+      for (let i = 0; i < 150; i++) {
+        await new Promise((r) => setTimeout(r, 8000));
+        setVideoMsg(`Renderizando video con producto… (${Math.round((i + 1) * 8 / 60)} min)`);
+        const sr = await fetch(`/api/ugc/video/status?${qs}`);
+        const sj = (await sr.json()) as { ok?: boolean; status?: string; video_url?: string | null };
+        if (sj.video_url) { setE((p) => ({ ...p, video_url: sj.video_url! })); await save({ video_url: sj.video_url, estado: "generado" }); terminal = true; break; }
+        if (sj.status === "FAILED") { setError("El video con producto falló al renderizar. Reintentá (a veces es un fallo puntual)."); terminal = true; break; }
+      }
+      if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
+    } finally { setBusy(null); setVideoMsg(null); }
+  }
   // Video "pro" con Arcads: mismo guion, modelos top (Veo 3.1 / Sora 2 / Kling).
   // No persiste todavía: se muestra inline con link para abrir/descargar.
   async function genVideoArcads() {
@@ -833,7 +855,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   const field = "rounded border px-2 py-1 text-xs";
   // Sólo bloqueamos las acciones durante una GENERACIÓN, no durante el autosave
   // (así no hace falta tocar el botón dos veces).
-  const genBusy = busy === "guion" || busy === "video" || busy === "arcads";
+  const genBusy = busy === "guion" || busy === "video" || busy === "producto" || busy === "arcads";
   const perfilSel = UGC_PERFILES.find((p) => p.key === (e.perfil ?? "usuario"))!;
 
   return (
@@ -926,6 +948,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
         <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando… (Seedance)" : "2 · Video (barato)"}</button>
+        <button onClick={genVideoProducto} disabled={genBusy || !e.guion?.trim() || !e.modelo} title={e.modelo ? "Talking-head con el producto Drean real en la escena (Seedance 2.0 reference, mantiene el producto fiel)" : "Elegí un producto (modelo) primero"} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "producto" ? "Generando… (producto)" : "2b · Video + producto"}</button>
         {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
       </div>
 
