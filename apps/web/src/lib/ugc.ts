@@ -282,7 +282,7 @@ function estiloSegunPerfil(perfil: string | null | undefined): string {
   return `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. `;
 }
 
-function buildPromptSeedance(guion: string, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null, perfil?: string | null): string {
+function buildPromptSeedance(guion: string, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null, perfil?: string | null, detalles?: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
   // Edad/ropa: clave conocida → preset; si no, se toma el texto libre tal cual.
   const edadTxt = edad ? (EDAD_PROMPT[edad] ?? edad) : "in their early 30s";
@@ -300,6 +300,7 @@ function buildPromptSeedance(guion: string, genero?: string, escenario?: string 
     `EXPRESSIVE, warm and lively delivery: natural facial expressions and micro-expressions (subtle smiles, eyebrow movement, engaged and lively eyes). The mouth and lips move naturally in sync with the words. Human, animated and engaging — NEVER flat, stiff, deadpan or robotic, and never a still 'talking photo'. ` +
     `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo), pronouncing every Spanish word clearly and CORRECTLY (no garbled, slurred or invented words). Not slowed-down or over-enunciated, but also NOT rushed or crammed — relaxed and unhurried. ` +
     `The person says, calmly and at a natural pace, without rushing: "${guion}". ` +
+    (detalles?.trim() ? `Additional direction from the creator (follow it while keeping it natural and realistic): ${detalles.trim()}. ` : "") +
     `Vertical 9:16, single person, realistic and human.`
   );
 }
@@ -307,9 +308,9 @@ function buildPromptSeedance(guion: string, genero?: string, escenario?: string 
 // Encola el video (Seedance, async). El render tarda; el cliente poolea status().
 export interface UgcVideoHandle { request_id: string; status_url: string; response_url: string }
 
-export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null, perfil?: string | null): Promise<UgcVideoHandle> {
+export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null, perfil?: string | null, detalles?: string | null): Promise<UgcVideoHandle> {
   const seg = Math.min(15, Math.max(4, duracion && duracion > 0 ? duracion : 10)); // Seedance: 4-15s
-  const input = { prompt: buildPromptSeedance(guion, genero, escenario, edad, vestimenta, perfil), duration: String(seg), resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
+  const input = { prompt: buildPromptSeedance(guion, genero, escenario, edad, vestimenta, perfil, detalles), duration: String(seg), resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
   const h = await falQueueSubmit(MODEL_SEEDANCE, input);
   return { request_id: h.requestId, status_url: h.statusUrl, response_url: h.responseUrl };
 }
@@ -343,7 +344,7 @@ export async function previewEscenaImagen(opts: { genero?: string; escenario?: s
 // actor hablando el guion en la escena. Un solo clip, con audio. Barato (fal).
 const MODEL_SEEDANCE_REF = "bytedance/seedance-2.0/reference-to-video";
 
-function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: string | undefined, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null, perfil?: string | null): string {
+function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: string | undefined, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null, perfil?: string | null, detalles?: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
   const edadTxt = edad ? (EDAD_PROMPT[edad] ?? edad) : "in their early 30s";
   const escena = escenaSegunPerfil(perfil, escenario, "cocina");
@@ -358,17 +359,18 @@ function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: stri
     // Expresividad + lip-sync (lo más flojo del reference-to-video).
     `EXPRESSIVE, warm and lively delivery: natural facial expressions and micro-expressions; the mouth and lips move naturally in sync with the words. Engaging and human — NEVER flat, stiff, robotic or a still 'talking photo'. ` +
     `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo), pronouncing every Spanish word clearly and CORRECTLY (no garbled or invented words) — not rushed, not slowed-down. The person says, calmly: "${guion}". ` +
+    (detalles?.trim() ? `Additional direction from the creator (follow it while keeping the product faithful and realistic): ${detalles.trim()}. ` : "") +
     `Vertical 9:16, single person, single appliance, realistic and human. Avoid: distorted product, extra doors/handles, warped proportions, text or logo overlays.`
   );
 }
 
-export async function generarVideoUgcProductoSubmit(sku: string, guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null, perfil?: string | null): Promise<UgcVideoHandle> {
+export async function generarVideoUgcProductoSubmit(sku: string, guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null, perfil?: string | null, detalles?: string | null): Promise<UgcVideoHandle> {
   const modelo = getModelo(sku);
   if (!modelo) throw new Error(`Producto desconocido: ${sku}. Elegí un modelo del catálogo.`);
   const packshot = driveImageUrl(modelo.driveFileId);
   const seg = Math.min(15, Math.max(4, duracion && duracion > 0 ? duracion : 10));
   const input = {
-    prompt: buildPromptSeedanceRef(guion, modelo.nombre, modelo.medidas, genero, escenario, edad, vestimenta, perfil),
+    prompt: buildPromptSeedanceRef(guion, modelo.nombre, modelo.medidas, genero, escenario, edad, vestimenta, perfil, detalles),
     image_urls: [packshot],
     duration: String(seg),
     resolution: "720p",

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos, getModelo } from "@/lib/producto-catalog";
 import { getDiferenciales } from "@/lib/diferenciales";
-import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS } from "@/lib/ugc-opciones";
+import { UGC_PERFILES, UGC_PILARES, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS } from "@/lib/ugc-opciones";
 import { BibliotecaUgc } from "@/components/contenido/biblioteca-ugc";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
@@ -886,7 +886,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     if (!e.guion?.trim()) return;
     setBusy("video"); setError(null); setVideoMsg("Encolando el video…");
     try {
-      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined });
+      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined, detalles: e.mensaje_clave || undefined });
       if (!j) return;
       const statusUrl = j.status_url as string;
       const responseUrl = j.response_url as string;
@@ -912,7 +912,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     if (!e.modelo) { setError("Elegí un producto (modelo) para meterlo en la escena."); return; }
     setBusy("producto"); setError(null); setVideoMsg("Encolando video con el producto en escena…");
     try {
-      const j = await call("/api/ugc/video-producto", { sku: e.modelo, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined });
+      const j = await call("/api/ugc/video-producto", { sku: e.modelo, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined, detalles: e.mensaje_clave || undefined });
       if (!j) return;
       const qs = `status_url=${encodeURIComponent(j.status_url as string)}&response_url=${encodeURIComponent(j.response_url as string)}`;
       let terminal = false;
@@ -945,7 +945,6 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     <div className="rounded-xl border bg-card p-3 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: ESTADO_COLOR[e.estado] ?? "#94a3b8" }}>{ESTADO_LABEL[e.estado] ?? e.estado}</span>
-        <input type="time" value={e.hora?.slice(0, 5) ?? ""} onChange={(ev) => setE({ ...e, hora: ev.target.value })} onBlur={() => save({ hora: e.hora })} className={field} />
         <div className="ml-auto flex gap-1">
           <button onClick={borrar} disabled={busy === "del"} className="rounded border px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">Descartar</button>
         </div>
@@ -976,10 +975,6 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
           <option value="">Pilar…</option>
           {UGC_PILARES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
         </select>
-        <select value={e.formato ?? ""} onChange={(ev) => { setE({ ...e, formato: ev.target.value }); save({ formato: ev.target.value }); }} className={field} title="Formato del video">
-          <option value="">Formato…</option>
-          {UGC_FORMATOS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
-        </select>
         <select value={dur} onChange={(ev) => setDur(ev.target.value)} className={field} title="Duración del video (define el largo del guion)">
           {UGC_DURACIONES.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
         </select>
@@ -993,7 +988,8 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
           {UGC_EDADES.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
         </select>
       </div>
-      <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Detalles / contexto (opcional)" className={`${field} w-full`} />
+      <input value={e.detalles ?? ""} onChange={(ev) => setE({ ...e, detalles: ev.target.value })} onBlur={() => save({ detalles: e.detalles })} placeholder="Indicación al GUION (opcional): tono, qué destacar, ángulo…" className={`${field} w-full`} />
+      <input value={e.mensaje_clave ?? ""} onChange={(ev) => setE({ ...e, mensaje_clave: ev.target.value })} onBlur={() => save({ mensaje_clave: e.mensaje_clave })} placeholder="Indicación al VIDEO (opcional): ej. más expresivo, cámara más lejos, que sonría…" className={`${field} w-full`} />
 
       {/* Escenario/toma (variedad): chips rápidos + texto libre. Se guarda en `categoria`. */}
       <div className="space-y-1 rounded border bg-secondary/30 p-2">
