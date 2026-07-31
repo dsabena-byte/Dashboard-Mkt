@@ -97,9 +97,10 @@ export function BibliotecaUgc() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
+          <a href="/contenido/calendario#ugc" className="text-xs font-medium text-primary hover:underline">← Generador UGC</a>
           <h1 className="text-lg font-semibold">Biblioteca UGC · Stock de videos</h1>
           <p className="text-xs text-muted-foreground">
-            {aprobadosTotales.length} aprobados · {items.length} videos en total{mes ? "" : ""}
+            {aprobadosTotales.length} aprobados · {items.length} videos en total
           </p>
         </div>
         <button

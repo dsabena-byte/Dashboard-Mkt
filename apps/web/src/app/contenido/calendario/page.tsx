@@ -180,9 +180,12 @@ export default function CalendarioPage() {
     setLoading(true);
     setErr(null);
     try {
-      const desde = ymd(y, m, 1);
-      const hasta = ymd(y, m, new Date(y, m + 1, 0).getDate());
-      const r = await fetch(`/api/contenido/calendario?desde=${desde}&hasta=${hasta}&canal=${canal}`);
+      // UGC ya no usa calendario: se traen TODAS las piezas ugc (sin filtro de mes).
+      // RRSS sigue por mes (desde/hasta) para la grilla.
+      const url = canal === "ugc"
+        ? `/api/contenido/calendario?canal=ugc`
+        : `/api/contenido/calendario?desde=${ymd(y, m, 1)}&hasta=${ymd(y, m, new Date(y, m + 1, 0).getDate())}&canal=rrss`;
+      const r = await fetch(url);
       const j = await r.json();
       if (j.ok) setItems(j.items as Cal[]);
       else setErr(j.error ?? "No se pudo leer el calendario.");
@@ -194,6 +197,11 @@ export default function CalendarioPage() {
   }, [y, m, canal]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Permite entrar directo a la pestaña UGC (ej. desde la Biblioteca: .../calendario#ugc).
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#ugc") setCanal("ugc");
+  }, []);
 
   const byDay = useMemo(() => {
     const map: Record<string, Cal[]> = {};
@@ -218,8 +226,10 @@ export default function CalendarioPage() {
   async function addEntry() {
     setErr(null);
     try {
+      // UGC: sin calendario, la pieza se crea con la fecha de HOY (solo referencia).
+      const hoy = ymd(now.getFullYear(), now.getMonth(), now.getDate());
       const body = canal === "ugc"
-        ? { fecha: sel, canal: "ugc", perfil: "usuario", tipo_contenido: "ugc", aspecto: "story", estado: "pendiente" }
+        ? { fecha: hoy, canal: "ugc", perfil: "usuario", tipo_contenido: "ugc", aspecto: "story", estado: "pendiente" }
         : { fecha: sel, canal: "rrss", pilar: PILARES[0], categoria: "porfolio", formato: "imagen", aspecto: "vertical", estado: "pendiente" };
       const r = await fetch("/api/contenido/calendario", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -234,6 +244,8 @@ export default function CalendarioPage() {
   }
 
   const selItems = byDay[sel] ?? [];
+  // UGC sin calendario: todas las piezas ugc, más nuevas primero.
+  const ugcItems = useMemo(() => [...items].reverse(), [items]);
 
   const tabCls = (active: boolean) =>
     `-mb-px border-b-2 px-4 py-2 text-sm font-medium ${active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`;
@@ -247,8 +259,8 @@ export default function CalendarioPage() {
       </div>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Calendario UGC (persona hablando)" : "Calendario de contenido RRSS"}</h2>
-          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Planificá y generá videos UGC nativos (guion → video), con escenarios variados. La marca va en el copy, no hablada." : "Planificá el mes, generá cada pieza, revisá y aprobá. La publicación automática en IG/FB es la próxima etapa."}</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Generador UGC (persona hablando)" : "Calendario de contenido RRSS"}</h2>
+          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Generá videos UGC nativos (guion → video) con perfiles, escenarios y configuraciones. Lo generado se guarda en la Biblioteca UGC. La marca va en el copy, no hablada." : "Planificá el mes, generá cada pieza, revisá y aprobá. La publicación automática en IG/FB es la próxima etapa."}</p>
         </div>
       </header>
 
@@ -287,13 +299,6 @@ export default function CalendarioPage() {
         </div>
       </details>
 
-      <div className="flex items-center gap-3">
-        <button onClick={prevMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">‹</button>
-        <div className="min-w-[10rem] text-center text-sm font-medium">{MESES[m]} {y}</div>
-        <button onClick={nextMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">›</button>
-        {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
-      </div>
-
       {err && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-900">
           <strong>Error:</strong> {err}
@@ -302,6 +307,31 @@ export default function CalendarioPage() {
           )}
         </div>
       )}
+
+      {canal === "ugc" ? (
+        /* GENERADOR UGC — sin calendario. Crear + generar; el stock vive en la Biblioteca. */
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={addEntry} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">+ Nuevo UGC</button>
+            {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
+            <a href="/contenido/biblioteca" className="ml-auto text-xs font-medium text-primary hover:underline">Ver Biblioteca (stock) →</a>
+          </div>
+          {ugcItems.length === 0 ? (
+            <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Todavía no generaste UGC. Tocá &quot;+ Nuevo UGC&quot; para arrancar.</p>
+          ) : (
+            <div className="space-y-3">
+              {ugcItems.map((it) => <UgcEntryCard key={it.id} entry={it} onChange={load} />)}
+            </div>
+          )}
+        </section>
+      ) : (
+      <>
+      <div className="flex items-center gap-3">
+        <button onClick={prevMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">‹</button>
+        <div className="min-w-[10rem] text-center text-sm font-medium">{MESES[m]} {y}</div>
+        <button onClick={nextMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">›</button>
+        {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
+      </div>
 
       {/* Grilla del mes */}
       <div className="rounded-xl border bg-card p-2">
@@ -354,9 +384,7 @@ export default function CalendarioPage() {
           <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Sin piezas para este día. Agregá una con el botón de arriba.</p>
         ) : (
           <div className="space-y-3">
-            {selItems.map((it) => canal === "ugc"
-              ? <UgcEntryCard key={it.id} entry={it} onChange={load} />
-              : <EntryCard key={it.id} entry={it} onChange={load} />)}
+            {selItems.map((it) => <EntryCard key={it.id} entry={it} onChange={load} />)}
           </div>
         )}
       </section>
@@ -366,6 +394,8 @@ export default function CalendarioPage() {
           <span key={k} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: ESTADO_COLOR[k] }} /> {l}</span>
         ))}
       </div>
+      </>
+      )}
     </div>
   );
 }
