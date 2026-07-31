@@ -176,6 +176,7 @@ export default function CalendarioPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [canal, setCanal] = useState<"rrss" | "ugc" | "biblioteca">("rrss");
+  const [ugcActiveId, setUgcActiveId] = useState<string | null>(null); // borrador UGC en edición
 
   const load = useCallback(async () => {
     if (canal === "biblioteca") return; // la Biblioteca (tab) carga su propia data
@@ -247,7 +248,11 @@ export default function CalendarioPage() {
         body: JSON.stringify(body),
       });
       const j = await r.json();
-      if (j.ok) load();
+      if (j.ok) {
+        const newId = (j.item as { id?: string } | undefined)?.id;
+        if (canal === "ugc" && newId) setUgcActiveId(newId); // que la nueva pieza sea el formulario activo
+        load();
+      }
       else setErr(`No se pudo agregar: ${j.error ?? "error"}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -255,8 +260,11 @@ export default function CalendarioPage() {
   }
 
   const selItems = byDay[sel] ?? [];
-  // UGC sin calendario: todas las piezas ugc, más nuevas primero.
-  const ugcItems = useMemo(() => [...items].reverse(), [items]);
+  // UGC: un solo formulario a la vez. Borradores = piezas NO pasadas a la
+  // Biblioteca (aprobado != true), más nuevas primero. El "activo" es el que se
+  // muestra; los que se pasan a la Biblioteca (aprobado=true) salen de acá.
+  const ugcDrafts = useMemo(() => items.filter((i) => !i.aprobado).reverse(), [items]);
+  const ugcActive = useMemo(() => ugcDrafts.find((i) => i.id === ugcActiveId) ?? ugcDrafts[0] ?? null, [ugcDrafts, ugcActiveId]);
 
   const tabCls = (active: boolean) =>
     `-mb-px border-b-2 px-4 py-2 text-sm font-medium ${active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`;
@@ -324,18 +332,26 @@ export default function CalendarioPage() {
       )}
 
       {canal === "ugc" ? (
-        /* GENERADOR UGC — sin calendario. Crear + generar; el stock vive en la Biblioteca. */
+        /* GENERADOR UGC — UN solo formulario a la vez. Generás, revisás y decidís:
+           "Pasar a Biblioteca" (queda en el stock) o "Descartar". */
         <section className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={addEntry} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">+ Nuevo UGC</button>
+            {ugcDrafts.length > 1 && (
+              <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                Borrador:
+                <select value={ugcActive?.id ?? ""} onChange={(e) => setUgcActiveId(e.target.value)} className="rounded border px-2 py-1 text-xs">
+                  {ugcDrafts.map((d, i) => <option key={d.id} value={d.id}>#{ugcDrafts.length - i} · {getModelo(d.modelo ?? "")?.nombreCorto ?? d.idea ?? "sin producto"}</option>)}
+                </select>
+              </label>
+            )}
             {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
+            <span className="ml-auto text-[11px] text-muted-foreground">Cuando el video quede bien, pasalo a la Biblioteca ✓</span>
           </div>
-          {ugcItems.length === 0 ? (
-            <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Todavía no generaste UGC. Tocá &quot;+ Nuevo UGC&quot; para arrancar.</p>
+          {ugcActive ? (
+            <UgcEntryCard key={ugcActive.id} entry={ugcActive} onChange={load} />
           ) : (
-            <div className="space-y-3">
-              {ugcItems.map((it) => <UgcEntryCard key={it.id} entry={it} onChange={load} />)}
-            </div>
+            <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Tocá &quot;+ Nuevo UGC&quot; para generar un video.</p>
           )}
         </section>
       ) : (
@@ -809,7 +825,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     } finally { setBusy((b) => (b === "save" ? null : b)); }
   }
   async function borrar() {
-    if (!confirm("¿Borrar esta pieza UGC?")) return;
+    if (!confirm("¿Descartar este borrador? Se elimina (no pasa a la Biblioteca).")) return;
     setBusy("del");
     await fetch(`/api/contenido/calendario?id=${e.id}`, { method: "DELETE" });
     onChange();
@@ -894,7 +910,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
         <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: ESTADO_COLOR[e.estado] ?? "#94a3b8" }}>{ESTADO_LABEL[e.estado] ?? e.estado}</span>
         <input type="time" value={e.hora?.slice(0, 5) ?? ""} onChange={(ev) => setE({ ...e, hora: ev.target.value })} onBlur={() => save({ hora: e.hora })} className={field} />
         <div className="ml-auto flex gap-1">
-          <button onClick={borrar} disabled={busy === "del"} className="rounded border px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">Borrar</button>
+          <button onClick={borrar} disabled={busy === "del"} className="rounded border px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">Descartar</button>
         </div>
       </div>
 
@@ -1034,8 +1050,8 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       </div>
 
       {e.video_url && (
-        <button onClick={() => save({ aprobado: !e.aprobado, estado: e.aprobado ? "generado" : "aprobado" })} disabled={busy === "save"} className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"} disabled:opacity-50`}>
-          {e.aprobado ? "Aprobado ✓ (click para desaprobar)" : "Aprobar pieza"}
+        <button onClick={() => save({ aprobado: !e.aprobado, estado: e.aprobado ? "generado" : "aprobado" })} disabled={busy === "save"} className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50">
+          {e.aprobado ? "En Biblioteca ✓ (quitar)" : "✓ Pasar a la Biblioteca"}
         </button>
       )}
     </div>
