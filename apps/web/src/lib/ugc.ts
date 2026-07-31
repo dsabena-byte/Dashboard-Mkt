@@ -2,7 +2,6 @@ import "server-only";
 import { falImage, falQueueSubmit, falQueueVideoStatus, FAL_SIZES } from "@/lib/fal-client";
 import { UGC_VOCES } from "@/lib/ugc-opciones";
 import { diferencialesTexto } from "@/lib/diferenciales";
-import { getModelo, driveImageUrl } from "@/lib/producto-catalog";
 
 // Generación de contenido UGC (persona hablando a cámara) para Drean.
 // Pipeline sobre fal.ai: guion (OpenAI) → voz (ElevenLabs en fal) → avatar
@@ -239,7 +238,7 @@ function buildPromptSeedance(guion: string, genero?: string, escenario?: string 
     `${escena}. ` +
     `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
     // Encuadre CERRADO (cara y hombros, fondo desenfocado): así el ambiente no
-    // "compite" y el clip intercala limpio con el insert del producto.
+    // "compite" y el testimonio se ve natural y creíble.
     `Close selfie framing: head and shoulders fill the frame, with the background softly out of focus (shallow depth of field) — the room is not the focus. ` +
     `Amateur phone-video look, natural indoor lighting, natural subtle head and hand movements, natural skin. ` +
     `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo). Not slowed-down or over-enunciated, but also NOT rushed or crammed — relaxed and unhurried. ` +
@@ -260,68 +259,4 @@ export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: stri
 
 export async function getVideoUgcStatus(statusUrl: string, responseUrl: string): Promise<{ status: string; video_url: string | null }> {
   return falQueueVideoStatus(statusUrl, responseUrl);
-}
-
-// ---- INSERT SHOT del producto real (estrategia "intercalar") ----
-// Genera un b-roll fiel del producto Drean real (SIN persona → i2v lo procesa),
-// para intercalar con el talking-head. Dos pasos: componer el frame con el
-// packshot como referencia (nano-banana edit) → animarlo con movimiento de
-// cámara con intención.
-const MODEL_EDIT = "fal-ai/nano-banana/edit";
-const MODEL_INSERT_VIDEO = "bytedance/seedance-2.0/fast/image-to-video";
-
-const INSERT_ESCENARIOS: Record<string, string> = {
-  selfie: "in a real Argentine home",
-  cocina: "in their home kitchen",
-  lavando: "in their home laundry area",
-  doblando: "in a tidy home laundry area",
-  sillon: "in a cozy living room at home",
-  cafe: "in a warm home kitchen",
-};
-
-// Placement realista según el tipo de medida del catálogo (evita, p.ej., que una
-// cocina counter-height salga más alta que la mesada).
-function placementHintInsert(medidas?: string): string {
-  const m = (medidas ?? "").toLowerCase();
-  if (m.includes("counter-height") || m.includes("front-load")) return "PLACEMENT: standard counter-height appliance (~90 cm); its top surface is aligned and FLUSH with the adjacent countertop — NOT taller than the counter, level with the surrounding cabinets, standing on the floor.";
-  if (m.includes("top-load")) return "PLACEMENT: standalone top-load washer standing on the floor, lid opening from the top.";
-  if (m.includes("tall")) return "PLACEMENT: a TALL floor-standing appliance, taller than the counters, standing on the floor.";
-  return "";
-}
-
-function buildInsertFrame(nombre: string, medidas: string | undefined, escenario?: string | null): string {
-  const donde = escenario ? (INSERT_ESCENARIOS[escenario] ?? escenario) : INSERT_ESCENARIOS.cocina;
-  return (
-    `Photorealistic vertical 9:16 photo of the Drean ${nombre} shown in the provided product photo, placed naturally ${donde}. ` +
-    `CRITICAL: keep the appliance EXACTLY IDENTICAL to the reference photo — same design, doors, finish, controls and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign or restyle it. ` +
-    `${placementHintInsert(medidas)} ` +
-    `Cozy realistic home setting around it, natural window light, shallow depth of field, authentic and lived-in (not a showroom, not a polished commercial). ` +
-    `NO people, NO hands. Single hero appliance, well integrated (not floating). ` +
-    `Avoid: people, hands, distorted product, extra doors/handles, warped proportions, appliance taller than the countertop, text, watermark, logo overlay.`
-  );
-}
-
-function buildInsertVideo(): string {
-  return (
-    `Cinematic product b-roll with ONE single, purposeful camera move: a slow, smooth, steady dolly push-in toward the Drean appliance, keeping it centered and in focus the whole time (a deliberate product hero shot). ` +
-    `The move is continuous and intentional — NOT wandering, random or shaky. ` +
-    `The appliance stays EXACTLY UNCHANGED and undistorted — do not morph, melt or restyle it. Natural window light, shallow depth of field, calm and premium but realistic. ` +
-    `NO people appear. Vertical 9:16, photorealistic, subtle and elegant motion.`
-  );
-}
-
-export interface InsertHandle { frame_url: string; request_id: string; status_url: string; response_url: string }
-
-export async function generarInsertProductoSubmit(sku: string, escenario?: string | null): Promise<InsertHandle> {
-  const modelo = getModelo(sku);
-  if (!modelo) throw new Error(`Producto desconocido: ${sku}. Elegí un modelo del catálogo.`);
-  const packshot = driveImageUrl(modelo.driveFileId);
-  // 1) Frame con el producto real (packshot como referencia).
-  const frame = await falImage(MODEL_EDIT, { prompt: buildInsertFrame(modelo.nombre, modelo.medidas, escenario), image_urls: [packshot], num_images: 1 });
-  const frameUrl = frame.images[0]?.url;
-  if (!frameUrl) throw new Error("No se generó el frame del insert.");
-  // 2) Animarlo (sin audio: es b-roll).
-  const input = { image_url: frameUrl, prompt: buildInsertVideo(), duration: "5", resolution: "720p", aspect_ratio: "9:16", generate_audio: false };
-  const h = await falQueueSubmit(MODEL_INSERT_VIDEO, input);
-  return { frame_url: frameUrl, request_id: h.requestId, status_url: h.statusUrl, response_url: h.responseUrl };
 }

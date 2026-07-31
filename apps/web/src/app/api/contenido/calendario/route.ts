@@ -11,7 +11,7 @@ const WRITABLE = new Set([
   "imagen_url", "video_url", "caption", "hashtags", "mensaje_clave", "bajada", "image_prompt",
   "estado", "aprobado", "redes", "notas", "con_placa",
   "tipo_contenido", "subtipo", "idea", "imagen_final_url",
-  "canal", "perfil", "guion", "persona_url", "ad_id", "edad", "vestimenta", "insert_url",
+  "canal", "perfil", "guion", "persona_url", "ad_id", "edad", "vestimenta",
 ]);
 
 function pick(body: Record<string, unknown>): Record<string, unknown> {
