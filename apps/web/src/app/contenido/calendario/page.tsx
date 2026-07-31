@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos, getModelo } from "@/lib/producto-catalog";
 import { getDiferenciales } from "@/lib/diferenciales";
-import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS } from "@/lib/ugc-opciones";
+import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS, ARCADS_MODELOS } from "@/lib/ugc-opciones";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -47,7 +47,6 @@ interface Cal {
   notas?: string | null;
   edad?: string | null;
   vestimenta?: string | null;
-  insert_url?: string | null;
 }
 
 // Multi-select de diferenciales del producto elegido (se guarda en `notas`,
@@ -751,6 +750,10 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   const [ctaKey, setCtaKey] = useState("ninguno");
   const [ctaLibre, setCtaLibre] = useState("");
   const [videoMsg, setVideoMsg] = useState<string | null>(null);
+  // Video "pro" con Arcads (opción paralela; no persiste todavía → se muestra inline).
+  const [arcadsModel, setArcadsModel] = useState<string>(ARCADS_MODELOS[0].key);
+  const [arcadsUrl, setArcadsUrl] = useState<string | null>(null);
+  const [arcadsCredits, setArcadsCredits] = useState<number | null>(null);
   useEffect(() => { setE(entry); }, [entry]);
 
   async function save(patch: Partial<Cal>) {
@@ -805,31 +808,54 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
     } finally { setBusy(null); setVideoMsg(null); }
   }
-  // Insert shot del producto real (b-roll sin persona) para intercalar con el
-  // talking-head. Usa el producto (modelo) y el escenario de la pieza.
-  async function genInsert() {
-    if (!e.modelo) { setError("Elegí un producto (modelo) para generar el insert."); return; }
-    setBusy("insert"); setError(null); setVideoMsg("Componiendo el insert del producto…");
+  // Talking-head CON el producto real en la escena (Seedance 2.0 reference).
+  // El packshot se mantiene fiel; el actor habla el guion. Escribe en video_url.
+  async function genVideoProducto() {
+    if (!e.guion?.trim()) return;
+    if (!e.modelo) { setError("Elegí un producto (modelo) para meterlo en la escena."); return; }
+    setBusy("producto"); setError(null); setVideoMsg("Encolando video con el producto en escena…");
     try {
-      const j = await call("/api/ugc/insert", { sku: e.modelo, escenario: e.categoria || undefined });
+      const j = await call("/api/ugc/video-producto", { sku: e.modelo, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
       if (!j) return;
       const qs = `status_url=${encodeURIComponent(j.status_url as string)}&response_url=${encodeURIComponent(j.response_url as string)}`;
       let terminal = false;
-      for (let i = 0; i < 90; i++) {
+      for (let i = 0; i < 150; i++) {
         await new Promise((r) => setTimeout(r, 8000));
-        setVideoMsg(`Renderizando insert… (${Math.round((i + 1) * 8 / 60)} min)`);
+        setVideoMsg(`Renderizando video con producto… (${Math.round((i + 1) * 8 / 60)} min)`);
         const sr = await fetch(`/api/ugc/video/status?${qs}`);
         const sj = (await sr.json()) as { ok?: boolean; status?: string; video_url?: string | null };
-        if (sj.video_url) { setE((p) => ({ ...p, insert_url: sj.video_url! })); await save({ insert_url: sj.video_url }); terminal = true; break; }
-        if (sj.status === "FAILED") { setError("El insert falló al renderizar. Reintentá (a veces es un fallo puntual)."); terminal = true; break; }
+        if (sj.video_url) { setE((p) => ({ ...p, video_url: sj.video_url! })); await save({ video_url: sj.video_url, estado: "generado" }); terminal = true; break; }
+        if (sj.status === "FAILED") { setError("El video con producto falló al renderizar. Reintentá (a veces es un fallo puntual)."); terminal = true; break; }
       }
-      if (!terminal) setError("El insert está tardando más de lo normal. Reintentá en un rato.");
+      if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
+    } finally { setBusy(null); setVideoMsg(null); }
+  }
+  // Video "pro" con Arcads: mismo guion, modelos top (Veo 3.1 / Sora 2 / Kling).
+  // No persiste todavía: se muestra inline con link para abrir/descargar.
+  async function genVideoArcads() {
+    if (!e.guion?.trim()) return;
+    setBusy("arcads"); setError(null); setArcadsUrl(null); setArcadsCredits(null);
+    setVideoMsg(`Encolando en Arcads (${ARCADS_MODELOS.find((m) => m.key === arcadsModel)?.label ?? arcadsModel})…`);
+    try {
+      const j = await call("/api/ugc/arcads", { model: arcadsModel, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
+      if (!j) return;
+      const qs = `id=${encodeURIComponent(j.id as string)}&kind=${encodeURIComponent((j.kind as string) ?? "videos")}`;
+      let terminal = false;
+      for (let i = 0; i < 150; i++) {
+        await new Promise((r) => setTimeout(r, 8000));
+        setVideoMsg(`Renderizando en Arcads… (${Math.round((i + 1) * 8 / 60)} min)`);
+        const sr = await fetch(`/api/ugc/arcads/status?${qs}`);
+        const sj = (await sr.json()) as { ok?: boolean; status?: string; video_url?: string | null; credits?: number | null };
+        if (sj.video_url) { setArcadsUrl(sj.video_url); setArcadsCredits(sj.credits ?? null); terminal = true; break; }
+        if (sj.status === "FAILED") { setError("El video de Arcads falló al renderizar. Reintentá o probá otro modelo."); terminal = true; break; }
+      }
+      if (!terminal) setError("Arcads está tardando más de lo normal. Reintentá en un rato.");
     } finally { setBusy(null); setVideoMsg(null); }
   }
   const field = "rounded border px-2 py-1 text-xs";
   // Sólo bloqueamos las acciones durante una GENERACIÓN, no durante el autosave
   // (así no hace falta tocar el botón dos veces).
-  const genBusy = busy === "guion" || busy === "video" || busy === "insert";
+  const genBusy = busy === "guion" || busy === "video" || busy === "producto" || busy === "arcads";
   const perfilSel = UGC_PERFILES.find((p) => p.key === (e.perfil ?? "usuario"))!;
 
   return (
@@ -921,9 +947,20 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
-        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "2 · Video"}</button>
-        <button onClick={genInsert} disabled={genBusy || !e.modelo} title={e.modelo ? "Genera un b-roll del producto real para intercalar con el testimonio" : "Elegí un producto (modelo) primero"} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "insert" ? "Generando…" : "3 · Insert producto"}</button>
+        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando… (Seedance)" : "2 · Video (barato)"}</button>
+        <button onClick={genVideoProducto} disabled={genBusy || !e.guion?.trim() || !e.modelo} title={e.modelo ? "Talking-head con el producto Drean real en la escena (Seedance 2.0 reference, mantiene el producto fiel)" : "Elegí un producto (modelo) primero"} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "producto" ? "Generando… (producto)" : "2b · Video + producto"}</button>
         {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
+      </div>
+
+      {/* Opción PRO: mismo guion renderizado con modelos top vía Arcads. Es
+          paralela al Seedance barato; requiere credenciales ARCADS_* en Vercel. */}
+      <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-amber-300 bg-amber-50/40 px-2 py-1.5">
+        <span className="text-[10px] font-semibold uppercase text-amber-700">Pro · Arcads</span>
+        <select value={arcadsModel} onChange={(ev) => setArcadsModel(ev.target.value)} disabled={genBusy} className={field} title="Modelo de video de Arcads">
+          {ARCADS_MODELOS.map((mm) => <option key={mm.key} value={mm.key}>{mm.label}</option>)}
+        </select>
+        <button onClick={genVideoArcads} disabled={genBusy || !e.guion?.trim()} title="Renderiza el mismo guion con un modelo top (más caro). Requiere credenciales de Arcads." className="rounded border border-amber-400 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-200 disabled:opacity-50">{busy === "arcads" ? "Generando… (pro)" : "Video PRO"}</button>
+        <span className="text-[10px] text-muted-foreground">{ARCADS_MODELOS.find((m) => m.key === arcadsModel)?.nota}</span>
       </div>
 
       <textarea value={e.guion ?? ""} onChange={(ev) => setE({ ...e, guion: ev.target.value })} onBlur={() => save({ guion: e.guion })} rows={3} placeholder="El guion aparece acá y lo podés editar. La marca no se nombra; cierra con el CTA al copy." className={`${field} w-full resize-y`} />
@@ -957,24 +994,21 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       <div className="flex flex-wrap gap-3">
         {e.video_url && (
           <div className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase text-muted-foreground">Talking-head</span>
+            <span className="text-[10px] font-semibold uppercase text-muted-foreground">Talking-head (barato)</span>
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <video src={e.video_url} controls loop className="max-h-72 w-auto rounded border" />
             <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar</a>
           </div>
         )}
-        {e.insert_url && (
+        {arcadsUrl && (
           <div className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase text-muted-foreground">Insert producto</span>
+            <span className="text-[10px] font-semibold uppercase text-amber-700">Pro · Arcads {arcadsCredits != null ? `(${arcadsCredits} créd.)` : ""}</span>
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <video src={e.insert_url} controls loop className="max-h-72 w-auto rounded border" />
-            <a href={e.insert_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar</a>
+            <video src={arcadsUrl} controls loop className="max-h-72 w-auto rounded border border-amber-300" />
+            <a href={arcadsUrl} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar</a>
           </div>
         )}
       </div>
-      {e.video_url && e.insert_url && (
-        <p className="text-[10px] text-muted-foreground">Descargá ambos e intercalalos en tu editor: el testimonio (talking-head) + cortes al producto real (insert).</p>
-      )}
 
       {e.video_url && (
         <button onClick={() => save({ aprobado: !e.aprobado, estado: e.aprobado ? "generado" : "aprobado" })} disabled={busy === "save"} className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"} disabled:opacity-50`}>

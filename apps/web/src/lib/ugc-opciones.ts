@@ -77,3 +77,12 @@ export const UGC_DURACIONES = [
   { key: "12", label: "12 seg" },
   { key: "15", label: "15 seg" },
 ];
+
+// Modelos "pro" de Arcads para el video UGC (opción paralela al Seedance barato
+// de fal). El key va tal cual a la API de Arcads (POST /v2/videos/generate).
+export const ARCADS_MODELOS = [
+  { key: "veo31", label: "Veo 3.1", nota: "Top realismo talking-head (~8s)" },
+  { key: "sora2", label: "Sora 2", nota: "Muy realista, 4–20s" },
+  { key: "kling-3.0", label: "Kling 3.0", nota: "Buen movimiento, más barato" },
+  { key: "seedance-2.0", label: "Seedance 2.0 (Arcads)", nota: "Mismo modelo base, para comparar" },
+] as const;
