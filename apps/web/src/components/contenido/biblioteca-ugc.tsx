@@ -20,8 +20,6 @@ interface Item {
   guion: string | null;
 }
 
-type EstadoFiltro = "todos" | "aprobados" | "pendientes";
-
 const perfilLabel = (k: string | null) => UGC_PERFILES.find((p) => p.key === k)?.label ?? (k || "—");
 const productoLabel = (sku: string | null) => (sku ? (getModelo(sku)?.nombreCorto ?? getModelo(sku)?.nombre ?? sku) : "—");
 const mesDe = (fecha: string | null) => (fecha ? fecha.slice(0, 7) : "");
@@ -30,7 +28,6 @@ export function BibliotecaUgc() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [estado, setEstado] = useState<EstadoFiltro>("todos");
   const [prod, setProd] = useState<string>("");
   const [perf, setPerf] = useState<string>("");
   const [mes, setMes] = useState<string>("");
@@ -43,8 +40,8 @@ export function BibliotecaUgc() {
       const r = await fetch("/api/contenido/calendario?canal=ugc");
       const j = (await r.json()) as { ok?: boolean; items?: Item[]; error?: string };
       if (!j.ok) { setError(j.error ?? "No se pudo cargar."); return; }
-      // Solo el STOCK: piezas con video generado.
-      setItems((j.items ?? []).filter((i) => !!i.video_url));
+      // La Biblioteca = solo lo que se pasó explícitamente (aprobado) y tiene video.
+      setItems((j.items ?? []).filter((i) => !!i.video_url && !!i.aprobado));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally { setLoading(false); }
@@ -57,32 +54,28 @@ export function BibliotecaUgc() {
   const meses = useMemo(() => [...new Set(items.map((i) => mesDe(i.fecha)).filter(Boolean))].sort().reverse(), [items]);
 
   const filtrados = useMemo(() => items.filter((i) => {
-    if (estado === "aprobados" && !i.aprobado) return false;
-    if (estado === "pendientes" && i.aprobado) return false;
     if (prod && i.modelo !== prod) return false;
     if (perf && i.perfil !== perf) return false;
     if (mes && mesDe(i.fecha) !== mes) return false;
     return true;
-  }), [items, estado, prod, perf, mes]);
+  }), [items, prod, perf, mes]);
 
-  const aprobadosTotales = useMemo(() => items.filter((i) => i.aprobado), [items]);
-
+  // Quitar de la Biblioteca: desaprueba (vuelve al Generador como borrador) y sale de la lista.
   async function toggleAprobado(it: Item) {
     setSavingId(it.id);
     try {
-      const nuevo = !it.aprobado;
       const r = await fetch("/api/contenido/calendario", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: it.id, aprobado: nuevo, estado: nuevo ? "aprobado" : "generado" }),
+        body: JSON.stringify({ id: it.id, aprobado: false, estado: "generado" }),
       });
       const j = (await r.json()) as { ok?: boolean };
-      if (j.ok) setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, aprobado: nuevo, estado: nuevo ? "aprobado" : "generado" } : x)));
+      if (j.ok) setItems((prev) => prev.filter((x) => x.id !== it.id));
     } finally { setSavingId(null); }
   }
 
-  async function copiarLinksAprobados() {
-    const links = aprobadosTotales.map((i) => i.video_url).filter(Boolean).join("\n");
+  async function copiarLinks() {
+    const links = items.map((i) => i.video_url).filter(Boolean).join("\n");
     if (!links) return;
     try {
       await navigator.clipboard.writeText(links);
@@ -100,28 +93,20 @@ export function BibliotecaUgc() {
           <a href="/contenido/calendario#ugc" className="text-xs font-medium text-primary hover:underline">← Generador UGC</a>
           <h1 className="text-lg font-semibold">Biblioteca UGC · Stock de videos</h1>
           <p className="text-xs text-muted-foreground">
-            {aprobadosTotales.length} aprobados · {items.length} videos en total
+            {items.length} videos en la Biblioteca (los que pasaste como buenos)
           </p>
         </div>
         <button
-          onClick={copiarLinksAprobados}
-          disabled={aprobadosTotales.length === 0}
+          onClick={copiarLinks}
+          disabled={items.length === 0}
           className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
         >
-          {copiado ? "Copiado ✓" : `Copiar links de aprobados (${aprobadosTotales.length})`}
+          {copiado ? "Copiado ✓" : `Copiar links (${items.length})`}
         </button>
       </div>
 
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-2 rounded border bg-secondary/30 p-2">
-        <div className="flex gap-1">
-          {(["todos", "aprobados", "pendientes"] as EstadoFiltro[]).map((e) => (
-            <button key={e} onClick={() => setEstado(e)}
-              className={`rounded-full border px-2.5 py-0.5 text-[11px] capitalize ${estado === e ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>
-              {e}
-            </button>
-          ))}
-        </div>
         <select value={prod} onChange={(e) => setProd(e.target.value)} className={field}>
           <option value="">Todos los productos</option>
           {productos.map((p) => <option key={p} value={p}>{productoLabel(p)}</option>)}
@@ -140,19 +125,16 @@ export function BibliotecaUgc() {
       {loading && <p className="text-sm text-muted-foreground">Cargando stock…</p>}
       {error && <p className="rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">{error}</p>}
       {!loading && !error && filtrados.length === 0 && (
-        <p className="text-sm text-muted-foreground">No hay videos con estos filtros. Generá UGC desde el calendario y aparecerán acá.</p>
+        <p className="text-sm text-muted-foreground">No hay videos en la Biblioteca todavía. Generá en la pestaña UGC y, cuando uno quede bien, tocá &quot;Pasar a la Biblioteca&quot;.</p>
       )}
 
       {/* Grid de videos */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {filtrados.map((it) => (
-          <div key={it.id} className={`flex flex-col overflow-hidden rounded-lg border ${it.aprobado ? "border-emerald-400 ring-1 ring-emerald-300" : "border-border"}`}>
+          <div key={it.id} className="flex flex-col overflow-hidden rounded-lg border border-border">
             <div className="relative bg-black">
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <video src={it.video_url ?? undefined} controls loop preload="metadata" className="aspect-[9/16] w-full object-cover" />
-              {it.aprobado && (
-                <span className="absolute left-1.5 top-1.5 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Aprobado ✓</span>
-              )}
             </div>
             <div className="flex flex-1 flex-col gap-1 p-2">
               <div className="flex items-center justify-between gap-1">
@@ -164,9 +146,10 @@ export function BibliotecaUgc() {
                 <button
                   onClick={() => toggleAprobado(it)}
                   disabled={savingId === it.id}
-                  className={`flex-1 rounded px-2 py-1 text-[10px] font-medium disabled:opacity-50 ${it.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"}`}
+                  title="Sacar de la Biblioteca (vuelve al Generador como borrador)"
+                  className="flex-1 rounded border px-2 py-1 text-[10px] font-medium hover:bg-secondary disabled:opacity-50"
                 >
-                  {it.aprobado ? "Aprobado ✓" : "Aprobar"}
+                  Quitar
                 </button>
                 <a
                   href={it.video_url ?? "#"}
