@@ -750,6 +750,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   const [ctaKey, setCtaKey] = useState("ninguno");
   const [ctaLibre, setCtaLibre] = useState("");
   const [videoMsg, setVideoMsg] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   useEffect(() => { setE(entry); }, [entry]);
 
   async function save(patch: Partial<Cal>) {
@@ -785,7 +786,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     if (!e.guion?.trim()) return;
     setBusy("video"); setError(null); setVideoMsg("Encolando el video…");
     try {
-      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
+      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined });
       if (!j) return;
       const statusUrl = j.status_url as string;
       const responseUrl = j.response_url as string;
@@ -811,7 +812,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     if (!e.modelo) { setError("Elegí un producto (modelo) para meterlo en la escena."); return; }
     setBusy("producto"); setError(null); setVideoMsg("Encolando video con el producto en escena…");
     try {
-      const j = await call("/api/ugc/video-producto", { sku: e.modelo, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
+      const j = await call("/api/ugc/video-producto", { sku: e.modelo, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined });
       if (!j) return;
       const qs = `status_url=${encodeURIComponent(j.status_url as string)}&response_url=${encodeURIComponent(j.response_url as string)}`;
       let terminal = false;
@@ -826,10 +827,18 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
     } finally { setBusy(null); setVideoMsg(null); }
   }
+  // Preview BARATO de la escena como imagen fija, antes de gastar en video.
+  async function genPreviewEscena() {
+    setBusy("preview"); setError(null); setPreviewUrl(null); setVideoMsg("Generando preview de la escena (imagen)…");
+    try {
+      const j = await call("/api/ugc/preview-escena", { genero: e.subtipo || "mujer", escenario: e.categoria || undefined, edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined });
+      if (j?.image_url) setPreviewUrl(j.image_url as string);
+    } finally { setBusy(null); setVideoMsg(null); }
+  }
   const field = "rounded border px-2 py-1 text-xs";
   // Sólo bloqueamos las acciones durante una GENERACIÓN, no durante el autosave
   // (así no hace falta tocar el botón dos veces).
-  const genBusy = busy === "guion" || busy === "video" || busy === "producto";
+  const genBusy = busy === "guion" || busy === "video" || busy === "producto" || busy === "preview";
   const perfilSel = UGC_PERFILES.find((p) => p.key === (e.perfil ?? "usuario"))!;
 
   return (
@@ -888,9 +897,12 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
 
       {/* Escenario/toma (variedad): chips rápidos + texto libre. Se guarda en `categoria`. */}
       <div className="space-y-1 rounded border bg-secondary/30 p-2">
-        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Escenario / toma</span>
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+          Escenario / toma{e.perfil === "personal" ? " · institucional (Personal Drean)" : ""}
+        </span>
         <div className="flex flex-wrap gap-1">
-          {UGC_ESCENARIOS.map((s) => (
+          {/* Personal Drean = vocero de marca → escenas institucionales; el resto, hogar. */}
+          {UGC_ESCENARIOS.filter((s) => (e.perfil === "personal" ? s.tipo === "institucional" : s.tipo !== "institucional")).map((s) => (
             <button key={s.key} type="button" onClick={() => { setE({ ...e, categoria: s.key }); save({ categoria: s.key }); }}
               className={`rounded-full border px-2 py-0.5 text-[10px] ${e.categoria === s.key ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>{s.label}</button>
           ))}
@@ -923,6 +935,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
         <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
         <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "2 · Video"}</button>
         <button onClick={genVideoProducto} disabled={genBusy || !e.guion?.trim() || !e.modelo} title={e.modelo ? "Talking-head con el producto Drean real en la escena (Seedance 2.0 reference, mantiene el producto fiel)" : "Elegí un producto (modelo) primero"} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "producto" ? "Generando… (producto)" : "2b · Video + producto"}</button>
+        <button onClick={genPreviewEscena} disabled={genBusy} title="Genera una imagen fija de la escena (barato) para verla antes de gastar en video" className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "preview" ? "Generando…" : "👁 Ver escena"}</button>
         {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
       </div>
 
@@ -955,6 +968,14 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       {error && <p className="rounded border border-red-300 bg-red-50 p-2 text-[11px] text-red-700">{error}</p>}
 
       <div className="flex flex-wrap gap-3">
+        {previewUrl && (
+          <div className="space-y-1">
+            <span className="text-[10px] font-semibold uppercase text-muted-foreground">👁 Preview escena (imagen)</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} alt="preview escena" className="max-h-72 w-auto rounded border" />
+            <span className="block text-[10px] text-muted-foreground">Aproximación (otro modelo que el video). Sirve para validar escena/uniforme.</span>
+          </div>
+        )}
         {e.video_url && (
           <div className="space-y-1">
             <span className="text-[10px] font-semibold uppercase text-muted-foreground">Talking-head</span>
