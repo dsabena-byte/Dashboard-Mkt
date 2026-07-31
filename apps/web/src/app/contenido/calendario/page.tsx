@@ -785,7 +785,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     if (!e.guion?.trim()) return;
     setBusy("video"); setError(null); setVideoMsg("Encolando el video…");
     try {
-      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
+      const j = await call("/api/ugc/video", { guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined });
       if (!j) return;
       const statusUrl = j.status_url as string;
       const responseUrl = j.response_url as string;
@@ -811,7 +811,7 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
     if (!e.modelo) { setError("Elegí un producto (modelo) para meterlo en la escena."); return; }
     setBusy("producto"); setError(null); setVideoMsg("Encolando video con el producto en escena…");
     try {
-      const j = await call("/api/ugc/video-producto", { sku: e.modelo, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
+      const j = await call("/api/ugc/video-producto", { sku: e.modelo, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined, perfil: e.perfil || undefined });
       if (!j) return;
       const qs = `status_url=${encodeURIComponent(j.status_url as string)}&response_url=${encodeURIComponent(j.response_url as string)}`;
       let terminal = false;
@@ -888,9 +888,12 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
 
       {/* Escenario/toma (variedad): chips rápidos + texto libre. Se guarda en `categoria`. */}
       <div className="space-y-1 rounded border bg-secondary/30 p-2">
-        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Escenario / toma</span>
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+          Escenario / toma{e.perfil === "personal" ? " · institucional (Personal Drean)" : ""}
+        </span>
         <div className="flex flex-wrap gap-1">
-          {UGC_ESCENARIOS.map((s) => (
+          {/* Personal Drean = vocero de marca → escenas institucionales; el resto, hogar. */}
+          {UGC_ESCENARIOS.filter((s) => (e.perfil === "personal" ? s.tipo === "institucional" : s.tipo !== "institucional")).map((s) => (
             <button key={s.key} type="button" onClick={() => { setE({ ...e, categoria: s.key }); save({ categoria: s.key }); }}
               className={`rounded-full border px-2 py-0.5 text-[10px] ${e.categoria === s.key ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>{s.label}</button>
           ))}

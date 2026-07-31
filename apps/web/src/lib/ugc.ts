@@ -210,7 +210,15 @@ const ESCENARIOS_PROMPT: Record<string, string> = {
   lavando: "next to the washing machine at home, loading or taking out laundry, talking to the camera while doing it",
   doblando: "folding freshly washed laundry on the bed or sofa, talking casually to the camera",
   cafe: "sitting relaxed at home with a cup of coffee or mate, talking to the camera",
+  // Escenas INSTITUCIONALES / comerciales (para el perfil "Personal Drean").
+  showroom: "in a modern, bright home-appliance brand showroom, with washers, fridges and ovens displayed on the floor and shelves behind them, talking to the camera as a brand representative",
+  tienda: "inside a home-appliance retail store, standing among the appliances on display, talking to the camera like a friendly in-store brand representative",
+  stand: "at a branded appliance point-of-sale stand in a store or expo, appliances showcased behind them, talking to the camera as a brand ambassador",
 };
+
+// Escenas que son de HOGAR (para saber cuándo el perfil institucional debe pisarlas).
+const ESCENARIOS_HOGAR = new Set(["selfie", "sillon", "compu", "cocina", "desempacando", "lavando", "doblando", "cafe"]);
+const ESCENARIOS_INSTITUCIONALES = new Set(["showroom", "tienda", "stand"]);
 
 // Rango de edad (claves de UGC_EDADES) → descripción para el prompt.
 const EDAD_PROMPT: Record<string, string> = {
@@ -226,18 +234,56 @@ const VESTIMENTA_PROMPT: Record<string, string> = {
   prolijo: "a smart-casual, neat and tidy outfit",
   deportivo: "sporty casual clothes",
   trabajo: "clean work clothes / a tidy uniform",
+  // Uniforme de marca para el perfil "Personal Drean" (colores institucionales).
+  uniforme: "a neat, professional branded work uniform / polo shirt in the brand's institutional colors (predominantly RED with white), looking like an official in-store brand representative",
 };
 
-function buildPromptSeedance(guion: string, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null): string {
+// ---- Perfil-aware: el "Personal Drean" (key `personal`) no es un cliente en su
+// casa, es un vocero de marca → escena institucional (showroom/tienda) y uniforme.
+function esPersonalDrean(perfil?: string | null): boolean {
+  return perfil === "personal";
+}
+
+// Escena según perfil: si es personal y eligió una escena de hogar (o ninguna),
+// se usa una escena institucional por defecto; respeta la institucional o el texto libre.
+const ESCENA_SHOWROOM = "in a modern, bright home-appliance brand showroom, appliances displayed behind them, talking to the camera as a brand representative";
+function escenaSegunPerfil(perfil: string | null | undefined, escenario: string | null | undefined, homeDefault: string): string {
+  if (esPersonalDrean(perfil)) {
+    if (escenario && ESCENARIOS_INSTITUCIONALES.has(escenario)) return ESCENARIOS_PROMPT[escenario] ?? ESCENA_SHOWROOM;
+    if (escenario?.trim() && !ESCENARIOS_HOGAR.has(escenario)) return escenario; // texto libre institucional
+    return ESCENARIOS_PROMPT.showroom ?? ESCENA_SHOWROOM;
+  }
+  return escenario ? (ESCENARIOS_PROMPT[escenario] ?? escenario) : (ESCENARIOS_PROMPT[homeDefault] ?? "at home, talking directly to the camera");
+}
+
+// Ropa según perfil: texto/preset explícito manda; si es personal y no eligió nada,
+// se pone el uniforme de marca por defecto.
+function ropaSegunPerfil(perfil: string | null | undefined, vestimenta: string | null | undefined): string {
+  if (vestimenta?.trim()) return `, wearing ${VESTIMENTA_PROMPT[vestimenta] ?? vestimenta}`;
+  if (esPersonalDrean(perfil)) return `, wearing ${VESTIMENTA_PROMPT.uniforme}`;
+  return "";
+}
+
+// Cómo se describe al sujeto y el "tono" de actuación según perfil.
+function sujetoSegunPerfil(perfil: string | null | undefined, persona: string, edadTxt: string, ropaTxt: string): string {
+  if (esPersonalDrean(perfil)) return `a friendly, professional Argentine brand representative — a ${persona} ${edadTxt}${ropaTxt}`;
+  return `a natural, everyday Argentine ${persona} ${edadTxt}${ropaTxt}`;
+}
+function estiloSegunPerfil(perfil: string | null | undefined): string {
+  if (esPersonalDrean(perfil)) return `Warm, professional and natural — a genuine brand ambassador talking to the camera, approachable and human (NOT stiff, NOT an over-polished TV commercial). `;
+  return `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. `;
+}
+
+function buildPromptSeedance(guion: string, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null, perfil?: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
   // Edad/ropa: clave conocida → preset; si no, se toma el texto libre tal cual.
   const edadTxt = edad ? (EDAD_PROMPT[edad] ?? edad) : "in their early 30s";
-  const escena = escenario ? (ESCENARIOS_PROMPT[escenario] ?? escenario) : ESCENARIOS_PROMPT.selfie;
-  const ropaTxt = vestimenta?.trim() ? `, wearing ${VESTIMENTA_PROMPT[vestimenta] ?? vestimenta}` : "";
+  const escena = escenaSegunPerfil(perfil, escenario, "selfie");
+  const ropaTxt = ropaSegunPerfil(perfil, vestimenta);
   return (
-    `Realistic UGC-style vertical video of a natural, everyday Argentine ${persona} ${edadTxt}${ropaTxt}, ` +
+    `Realistic UGC-style vertical video of ${sujetoSegunPerfil(perfil, persona, edadTxt, ropaTxt)}, ` +
     `${escena}. ` +
-    `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
+    estiloSegunPerfil(perfil) +
     // Encuadre CERRADO (cara y hombros, fondo desenfocado): así el ambiente no
     // "compite" y el testimonio se ve natural y creíble.
     `Close selfie framing: head and shoulders fill the frame, with the background softly out of focus (shallow depth of field) — the room is not the focus. ` +
@@ -251,9 +297,9 @@ function buildPromptSeedance(guion: string, genero?: string, escenario?: string 
 // Encola el video (Seedance, async). El render tarda; el cliente poolea status().
 export interface UgcVideoHandle { request_id: string; status_url: string; response_url: string }
 
-export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null): Promise<UgcVideoHandle> {
+export async function generarVideoUgcSeedanceSubmit(guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null, perfil?: string | null): Promise<UgcVideoHandle> {
   const seg = Math.min(15, Math.max(4, duracion && duracion > 0 ? duracion : 10)); // Seedance: 4-15s
-  const input = { prompt: buildPromptSeedance(guion, genero, escenario, edad, vestimenta), duration: String(seg), resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
+  const input = { prompt: buildPromptSeedance(guion, genero, escenario, edad, vestimenta, perfil), duration: String(seg), resolution: "720p", aspect_ratio: "9:16", generate_audio: true };
   const h = await falQueueSubmit(MODEL_SEEDANCE, input);
   return { request_id: h.requestId, status_url: h.statusUrl, response_url: h.responseUrl };
 }
@@ -269,16 +315,16 @@ export async function getVideoUgcStatus(statusUrl: string, responseUrl: string):
 // actor hablando el guion en la escena. Un solo clip, con audio. Barato (fal).
 const MODEL_SEEDANCE_REF = "bytedance/seedance-2.0/reference-to-video";
 
-function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: string | undefined, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null): string {
+function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: string | undefined, genero?: string, escenario?: string | null, edad?: string | null, vestimenta?: string | null, perfil?: string | null): string {
   const persona = genero === "hombre" ? "man" : "woman";
   const edadTxt = edad ? (EDAD_PROMPT[edad] ?? edad) : "in their early 30s";
-  const escena = escenario ? (ESCENARIOS_PROMPT[escenario] ?? escenario) : ESCENARIOS_PROMPT.cocina;
-  const ropaTxt = vestimenta?.trim() ? `, wearing ${VESTIMENTA_PROMPT[vestimenta] ?? vestimenta}` : "";
+  const escena = escenaSegunPerfil(perfil, escenario, "cocina");
+  const ropaTxt = ropaSegunPerfil(perfil, vestimenta);
   return (
-    `Realistic UGC-style vertical video of a natural, everyday Argentine ${persona} ${edadTxt}${ropaTxt}, ${escena}. ` +
-    `Authentic and spontaneous, like a real customer testimonial — NOT a polished actor or a commercial. ` +
+    `Realistic UGC-style vertical video of ${sujetoSegunPerfil(perfil, persona, edadTxt, ropaTxt)}, ${escena}. ` +
+    estiloSegunPerfil(perfil) +
     // El producto real va como referencia @Image1 y NO se debe alterar.
-    `In the scene with them is the real Drean ${nombreProd} from @Image1. CRITICAL: keep that appliance EXACTLY IDENTICAL to @Image1 — same design, doors, finish, controls, logo, text and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign, restyle, warp, morph or distort it. It sits naturally in the home scene (standing on the floor or on the counter as appropriate), well integrated, not floating. ` +
+    `In the scene with them is the real Drean ${nombreProd} from @Image1. CRITICAL: keep that appliance EXACTLY IDENTICAL to @Image1 — same design, doors, finish, controls, logo, text and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign, restyle, warp, morph or distort it. It sits naturally in the scene (standing on the floor or on the counter as appropriate), well integrated, not floating. ` +
     // Cámara estable + encuadre medio: menos frames que cambian = producto más fiel.
     `Amateur phone-video look, natural indoor lighting, shallow depth of field, gentle and STABLE camera with minimal motion so the product stays sharp and undistorted. Medium framing that shows both the person and the appliance. ` +
     `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo) — not rushed, not slowed-down. The person says, calmly: "${guion}". ` +
@@ -286,13 +332,13 @@ function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: stri
   );
 }
 
-export async function generarVideoUgcProductoSubmit(sku: string, guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null): Promise<UgcVideoHandle> {
+export async function generarVideoUgcProductoSubmit(sku: string, guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null, perfil?: string | null): Promise<UgcVideoHandle> {
   const modelo = getModelo(sku);
   if (!modelo) throw new Error(`Producto desconocido: ${sku}. Elegí un modelo del catálogo.`);
   const packshot = driveImageUrl(modelo.driveFileId);
   const seg = Math.min(15, Math.max(4, duracion && duracion > 0 ? duracion : 10));
   const input = {
-    prompt: buildPromptSeedanceRef(guion, modelo.nombre, modelo.medidas, genero, escenario, edad, vestimenta),
+    prompt: buildPromptSeedanceRef(guion, modelo.nombre, modelo.medidas, genero, escenario, edad, vestimenta, perfil),
     image_urls: [packshot],
     duration: String(seg),
     resolution: "720p",

@@ -26,6 +26,7 @@ export const UGC_VESTIMENTAS = [
   { key: "prolijo", label: "Prolijo / smart-casual" },
   { key: "deportivo", label: "Deportivo" },
   { key: "trabajo", label: "Ropa de trabajo" },
+  { key: "uniforme", label: "Uniforme Drean" },
 ];
 
 // Los 5 pilares de contenido del plan.
@@ -48,15 +49,20 @@ export const UGC_FORMATOS = [
 
 // Escenarios/tomas para dar VARIEDAD a los videos (no siempre "hablando de
 // frente"). Son atajos; además se puede escribir una escena LIBRE en texto.
+// `tipo` distingue escenas de HOGAR (cliente/usuario) de las INSTITUCIONALES
+// (personal de marca): la UI muestra unas u otras según el perfil elegido.
 export const UGC_ESCENARIOS = [
-  { key: "selfie", label: "Selfie de frente" },
-  { key: "sillon", label: "En el sillón" },
-  { key: "compu", label: "Mirando la compu" },
-  { key: "cocina", label: "En la cocina" },
-  { key: "desempacando", label: "Desempacando compras" },
-  { key: "lavando", label: "Al lado del lavarropas" },
-  { key: "doblando", label: "Doblando ropa" },
-  { key: "cafe", label: "Con un café/mate" },
+  { key: "selfie", label: "Selfie de frente", tipo: "hogar" },
+  { key: "sillon", label: "En el sillón", tipo: "hogar" },
+  { key: "compu", label: "Mirando la compu", tipo: "hogar" },
+  { key: "cocina", label: "En la cocina", tipo: "hogar" },
+  { key: "desempacando", label: "Desempacando compras", tipo: "hogar" },
+  { key: "lavando", label: "Al lado del lavarropas", tipo: "hogar" },
+  { key: "doblando", label: "Doblando ropa", tipo: "hogar" },
+  { key: "cafe", label: "Con un café/mate", tipo: "hogar" },
+  { key: "showroom", label: "Showroom de marca", tipo: "institucional" },
+  { key: "tienda", label: "Tienda / punto de venta", tipo: "institucional" },
+  { key: "stand", label: "Stand / exhibición", tipo: "institucional" },
 ];
 
 // Call-to-action para CERRAR el guion (la marca no se dice; se manda al copy/link).
