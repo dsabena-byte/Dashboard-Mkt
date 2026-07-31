@@ -1,6 +1,5 @@
 import "server-only";
 import { falImage, falQueueSubmit, falQueueVideoStatus, FAL_SIZES } from "@/lib/fal-client";
-import { arcadsGenerateVideo, arcadsVideoStatus, type ArcadsModel, type ArcadsPollKind } from "@/lib/arcads";
 import { getModelo, driveImageUrl } from "@/lib/producto-catalog";
 import { UGC_VOCES } from "@/lib/ugc-opciones";
 import { diferencialesTexto } from "@/lib/diferenciales";
@@ -302,21 +301,4 @@ export async function generarVideoUgcProductoSubmit(sku: string, guion: string, 
   };
   const h = await falQueueSubmit(MODEL_SEEDANCE_REF, input);
   return { request_id: h.requestId, status_url: h.statusUrl, response_url: h.responseUrl };
-}
-
-// ---- Video UGC "pro" con Arcads ----------------------------------------------
-// Mismo prompt/guion que el Seedance barato, pero renderizado con modelos top
-// (Veo 3.1 / Sora 2 / Kling) vía la API de Arcads. Es una opción PARALELA: no
-// reemplaza el flujo fal barato. Requiere credenciales ARCADS_* en Vercel.
-export interface ArcadsUgcHandle { id: string; kind: ArcadsPollKind; model: ArcadsModel; credits: number | null }
-
-export async function generarVideoUgcArcadsSubmit(model: string, guion: string, genero?: string, escenario?: string | null, duracion?: number, edad?: string | null, vestimenta?: string | null): Promise<ArcadsUgcHandle> {
-  const prompt = buildPromptSeedance(guion, genero, escenario, edad, vestimenta);
-  return arcadsGenerateVideo({ model, prompt, aspectRatio: "9:16", duration: duracion, audioEnabled: true });
-}
-
-export async function getVideoUgcArcadsStatus(id: string, kind: string): Promise<{ status: string; video_url: string | null; credits: number | null }> {
-  const k: ArcadsPollKind = kind === "assets" ? "assets" : "videos";
-  const { status, video_url, credits } = await arcadsVideoStatus(id, k);
-  return { status, video_url, credits };
 }
