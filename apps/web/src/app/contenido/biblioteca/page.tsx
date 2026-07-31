@@ -7,3 +7,5 @@ export const dynamic = "force-dynamic";
 export default function BibliotecaUgcPage() {
   return <BibliotecaUgc />;
 }
+
+// redeploy nudge: Vercel no tomó el merge #427 (094bbfc) automáticamente.
