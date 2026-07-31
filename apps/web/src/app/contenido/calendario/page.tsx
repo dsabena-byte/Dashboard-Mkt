@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos, getModelo } from "@/lib/producto-catalog";
 import { getDiferenciales } from "@/lib/diferenciales";
-import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS, ARCADS_MODELOS } from "@/lib/ugc-opciones";
+import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS } from "@/lib/ugc-opciones";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -750,10 +750,6 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
   const [ctaKey, setCtaKey] = useState("ninguno");
   const [ctaLibre, setCtaLibre] = useState("");
   const [videoMsg, setVideoMsg] = useState<string | null>(null);
-  // Video "pro" con Arcads (opción paralela; no persiste todavía → se muestra inline).
-  const [arcadsModel, setArcadsModel] = useState<string>(ARCADS_MODELOS[0].key);
-  const [arcadsUrl, setArcadsUrl] = useState<string | null>(null);
-  const [arcadsCredits, setArcadsCredits] = useState<number | null>(null);
   useEffect(() => { setE(entry); }, [entry]);
 
   async function save(patch: Partial<Cal>) {
@@ -830,32 +826,10 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       if (!terminal) setError("El video está tardando más de lo normal. Reintentá en un rato.");
     } finally { setBusy(null); setVideoMsg(null); }
   }
-  // Video "pro" con Arcads: mismo guion, modelos top (Veo 3.1 / Sora 2 / Kling).
-  // No persiste todavía: se muestra inline con link para abrir/descargar.
-  async function genVideoArcads() {
-    if (!e.guion?.trim()) return;
-    setBusy("arcads"); setError(null); setArcadsUrl(null); setArcadsCredits(null);
-    setVideoMsg(`Encolando en Arcads (${ARCADS_MODELOS.find((m) => m.key === arcadsModel)?.label ?? arcadsModel})…`);
-    try {
-      const j = await call("/api/ugc/arcads", { model: arcadsModel, guion: e.guion, genero: e.subtipo || "mujer", escenario: e.categoria || undefined, duracion: Number(dur), edad: e.edad || undefined, vestimenta: e.vestimenta || undefined });
-      if (!j) return;
-      const qs = `id=${encodeURIComponent(j.id as string)}&kind=${encodeURIComponent((j.kind as string) ?? "videos")}`;
-      let terminal = false;
-      for (let i = 0; i < 150; i++) {
-        await new Promise((r) => setTimeout(r, 8000));
-        setVideoMsg(`Renderizando en Arcads… (${Math.round((i + 1) * 8 / 60)} min)`);
-        const sr = await fetch(`/api/ugc/arcads/status?${qs}`);
-        const sj = (await sr.json()) as { ok?: boolean; status?: string; video_url?: string | null; credits?: number | null };
-        if (sj.video_url) { setArcadsUrl(sj.video_url); setArcadsCredits(sj.credits ?? null); terminal = true; break; }
-        if (sj.status === "FAILED") { setError("El video de Arcads falló al renderizar. Reintentá o probá otro modelo."); terminal = true; break; }
-      }
-      if (!terminal) setError("Arcads está tardando más de lo normal. Reintentá en un rato.");
-    } finally { setBusy(null); setVideoMsg(null); }
-  }
   const field = "rounded border px-2 py-1 text-xs";
   // Sólo bloqueamos las acciones durante una GENERACIÓN, no durante el autosave
   // (así no hace falta tocar el botón dos veces).
-  const genBusy = busy === "guion" || busy === "video" || busy === "producto" || busy === "arcads";
+  const genBusy = busy === "guion" || busy === "video" || busy === "producto";
   const perfilSel = UGC_PERFILES.find((p) => p.key === (e.perfil ?? "usuario"))!;
 
   return (
@@ -947,20 +921,9 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
-        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando… (Seedance)" : "2 · Video (barato)"}</button>
+        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "2 · Video"}</button>
         <button onClick={genVideoProducto} disabled={genBusy || !e.guion?.trim() || !e.modelo} title={e.modelo ? "Talking-head con el producto Drean real en la escena (Seedance 2.0 reference, mantiene el producto fiel)" : "Elegí un producto (modelo) primero"} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "producto" ? "Generando… (producto)" : "2b · Video + producto"}</button>
         {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
-      </div>
-
-      {/* Opción PRO: mismo guion renderizado con modelos top vía Arcads. Es
-          paralela al Seedance barato; requiere credenciales ARCADS_* en Vercel. */}
-      <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-amber-300 bg-amber-50/40 px-2 py-1.5">
-        <span className="text-[10px] font-semibold uppercase text-amber-700">Pro · Arcads</span>
-        <select value={arcadsModel} onChange={(ev) => setArcadsModel(ev.target.value)} disabled={genBusy} className={field} title="Modelo de video de Arcads">
-          {ARCADS_MODELOS.map((mm) => <option key={mm.key} value={mm.key}>{mm.label}</option>)}
-        </select>
-        <button onClick={genVideoArcads} disabled={genBusy || !e.guion?.trim()} title="Renderiza el mismo guion con un modelo top (más caro). Requiere credenciales de Arcads." className="rounded border border-amber-400 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-200 disabled:opacity-50">{busy === "arcads" ? "Generando… (pro)" : "Video PRO"}</button>
-        <span className="text-[10px] text-muted-foreground">{ARCADS_MODELOS.find((m) => m.key === arcadsModel)?.nota}</span>
       </div>
 
       <textarea value={e.guion ?? ""} onChange={(ev) => setE({ ...e, guion: ev.target.value })} onBlur={() => save({ guion: e.guion })} rows={3} placeholder="El guion aparece acá y lo podés editar. La marca no se nombra; cierra con el CTA al copy." className={`${field} w-full resize-y`} />
@@ -994,18 +957,10 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
       <div className="flex flex-wrap gap-3">
         {e.video_url && (
           <div className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase text-muted-foreground">Talking-head (barato)</span>
+            <span className="text-[10px] font-semibold uppercase text-muted-foreground">Talking-head</span>
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <video src={e.video_url} controls loop className="max-h-72 w-auto rounded border" />
             <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar</a>
-          </div>
-        )}
-        {arcadsUrl && (
-          <div className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase text-amber-700">Pro · Arcads {arcadsCredits != null ? `(${arcadsCredits} créd.)` : ""}</span>
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <video src={arcadsUrl} controls loop className="max-h-72 w-auto rounded border border-amber-300" />
-            <a href={arcadsUrl} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar</a>
           </div>
         )}
       </div>
