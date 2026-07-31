@@ -206,7 +206,12 @@ export default function CalendarioPage() {
   useEffect(() => {
     const apply = () => {
       const h = window.location.hash;
-      if (h === "#ugc") setCanal("ugc");
+      // #ugc, o #ugc=<id> para abrir una pieza puntual en el generador (ej. "Editar" desde la Biblioteca).
+      if (h.startsWith("#ugc")) {
+        setCanal("ugc");
+        const id = h.includes("=") ? decodeURIComponent(h.split("=")[1] ?? "") : "";
+        if (id) setUgcActiveId(id);
+      }
       else if (h === "#biblioteca") setCanal("biblioteca");
       else if (h === "#rrss") setCanal("rrss");
     };

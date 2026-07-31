@@ -60,17 +60,17 @@ export function BibliotecaUgc() {
     return true;
   }), [items, prod, perf, mes]);
 
-  // Quitar de la Biblioteca: desaprueba (vuelve al Generador como borrador) y sale de la lista.
-  async function toggleAprobado(it: Item) {
+  // Editar: saca de la Biblioteca (vuelve a borrador) y abre esa pieza en el
+  // Generador (con guion/config intactos) para corregirla y regenerar.
+  async function editar(it: Item) {
     setSavingId(it.id);
     try {
-      const r = await fetch("/api/contenido/calendario", {
+      await fetch("/api/contenido/calendario", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: it.id, aprobado: false, estado: "generado" }),
       });
-      const j = (await r.json()) as { ok?: boolean };
-      if (j.ok) setItems((prev) => prev.filter((x) => x.id !== it.id));
+      window.location.href = `/contenido/calendario#ugc=${encodeURIComponent(it.id)}`;
     } finally { setSavingId(null); }
   }
 
@@ -144,12 +144,12 @@ export function BibliotecaUgc() {
               <span className="truncate text-[10px] text-muted-foreground">{perfilLabel(it.perfil)}</span>
               <div className="mt-auto flex items-center gap-1 pt-1">
                 <button
-                  onClick={() => toggleAprobado(it)}
+                  onClick={() => editar(it)}
                   disabled={savingId === it.id}
-                  title="Sacar de la Biblioteca (vuelve al Generador como borrador)"
+                  title="Vuelve al Generador con esta pieza cargada para corregir el guion/config y regenerar (sale de la Biblioteca)"
                   className="flex-1 rounded border px-2 py-1 text-[10px] font-medium hover:bg-secondary disabled:opacity-50"
                 >
-                  Quitar
+                  ✏️ Editar
                 </button>
                 <a
                   href={it.video_url ?? "#"}
