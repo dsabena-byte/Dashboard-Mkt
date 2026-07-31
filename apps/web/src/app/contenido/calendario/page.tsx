@@ -240,9 +240,10 @@ export default function CalendarioPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-1 border-b">
+      <div className="flex flex-wrap items-center gap-1 border-b">
         <button onClick={() => setCanal("rrss")} className={tabCls(canal === "rrss")}>Generación de Contenidos RRSS</button>
         <button onClick={() => setCanal("ugc")} className={tabCls(canal === "ugc")}>Generación de Contenidos UGC</button>
+        <a href="/contenido/biblioteca" className="ml-auto self-center px-2 text-xs font-medium text-primary hover:underline">Biblioteca UGC (stock) →</a>
       </div>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>

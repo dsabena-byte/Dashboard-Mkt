@@ -19,6 +19,7 @@ import {
   HeartPulse,
   Activity,
   Sparkles,
+  Film,
   Menu,
   X,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const NAV = [
   { href: "/web",         label: "Análisis Web",     icon: Globe },
   { href: "/redes",       label: "Análisis Redes",   icon: Share2 },
   { href: "/contenido",   label: "Generador Contenido", icon: Sparkles },
+  { href: "/contenido/biblioteca", label: "Biblioteca UGC", icon: Film },
   { href: "/mkt-canal",   label: "Mkt de Canal",     icon: Store },
   { href: "/cuadros-basicos", label: "Cuadros Básicos", icon: LayoutGrid },
   { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
