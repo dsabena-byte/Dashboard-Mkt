@@ -5,6 +5,7 @@ import { CATEGORIAS } from "@/lib/contenido-shared";
 import { getModelos, getModelo } from "@/lib/producto-catalog";
 import { getDiferenciales } from "@/lib/diferenciales";
 import { UGC_PERFILES, UGC_PILARES, UGC_FORMATOS, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS } from "@/lib/ugc-opciones";
+import { BibliotecaUgc } from "@/components/contenido/biblioteca-ugc";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -174,9 +175,10 @@ export default function CalendarioPage() {
   const [sel, setSel] = useState<string>(ymd(now.getFullYear(), now.getMonth(), now.getDate()));
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [canal, setCanal] = useState<"rrss" | "ugc">("rrss");
+  const [canal, setCanal] = useState<"rrss" | "ugc" | "biblioteca">("rrss");
 
   const load = useCallback(async () => {
+    if (canal === "biblioteca") return; // la Biblioteca (tab) carga su propia data
     setLoading(true);
     setErr(null);
     try {
@@ -198,9 +200,18 @@ export default function CalendarioPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Permite entrar directo a la pestaña UGC (ej. desde la Biblioteca: .../calendario#ugc).
+  // Deep-link a una pestaña por hash (#ugc / #biblioteca / #rrss) — para links
+  // externos y el botón "volver" de la Biblioteca. Escucha cambios de hash.
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#ugc") setCanal("ugc");
+    const apply = () => {
+      const h = window.location.hash;
+      if (h === "#ugc") setCanal("ugc");
+      else if (h === "#biblioteca") setCanal("biblioteca");
+      else if (h === "#rrss") setCanal("rrss");
+    };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
   }, []);
 
   const byDay = useMemo(() => {
@@ -255,8 +266,12 @@ export default function CalendarioPage() {
       <div className="flex flex-wrap items-center gap-1 border-b">
         <button onClick={() => setCanal("rrss")} className={tabCls(canal === "rrss")}>Generación de Contenidos RRSS</button>
         <button onClick={() => setCanal("ugc")} className={tabCls(canal === "ugc")}>Generación de Contenidos UGC</button>
-        <a href="/contenido/biblioteca" className="ml-auto self-center px-2 text-xs font-medium text-primary hover:underline">Biblioteca UGC (stock) →</a>
+        <button onClick={() => setCanal("biblioteca")} className={tabCls(canal === "biblioteca")}>Biblioteca UGC</button>
       </div>
+      {canal === "biblioteca" ? (
+        <BibliotecaUgc />
+      ) : (
+      <>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Generador UGC (persona hablando)" : "Calendario de contenido RRSS"}</h2>
@@ -314,7 +329,6 @@ export default function CalendarioPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={addEntry} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">+ Nuevo UGC</button>
             {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
-            <a href="/contenido/biblioteca" className="ml-auto text-xs font-medium text-primary hover:underline">Ver Biblioteca (stock) →</a>
           </div>
           {ugcItems.length === 0 ? (
             <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Todavía no generaste UGC. Tocá &quot;+ Nuevo UGC&quot; para arrancar.</p>
@@ -394,6 +408,8 @@ export default function CalendarioPage() {
           <span key={k} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: ESTADO_COLOR[k] }} /> {l}</span>
         ))}
       </div>
+      </>
+      )}
       </>
       )}
     </div>
