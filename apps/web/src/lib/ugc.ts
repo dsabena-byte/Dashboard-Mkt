@@ -294,6 +294,8 @@ function buildPromptSeedance(guion: string, genero?: string, escenario?: string 
     // "compite" y el testimonio se ve natural y creíble.
     `Close selfie framing: head and shoulders fill the frame, with the background softly out of focus (shallow depth of field) — the room is not the focus. ` +
     `Amateur phone-video look, natural indoor lighting, natural subtle head and hand movements, natural skin. ` +
+    // Expresividad + lip-sync: lo que más le faltaba (locución plana / desincronizada).
+    `EXPRESSIVE, warm and lively delivery: natural facial expressions and micro-expressions (subtle smiles, eyebrow movement, engaged and lively eyes). CRITICAL: the mouth and lips must move ACCURATELY and precisely in sync with each spoken word (tight, believable lip-sync — the lips match the audio). Human, animated and engaging — NEVER flat, stiff, deadpan or robotic, and never a still 'talking photo'. ` +
     `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo). Not slowed-down or over-enunciated, but also NOT rushed or crammed — relaxed and unhurried. ` +
     `The person says, calmly and at a natural pace, without rushing: "${guion}". ` +
     `Vertical 9:16, single person, realistic and human.`
@@ -351,6 +353,8 @@ function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: stri
     `In the scene with them is the real Drean ${nombreProd} from @Image1. CRITICAL: keep that appliance EXACTLY IDENTICAL to @Image1 — same design, doors, finish, controls, logo, text and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign, restyle, warp, morph or distort it. It sits naturally in the scene (standing on the floor or on the counter as appropriate), well integrated, not floating. ` +
     // Cámara estable + encuadre medio: menos frames que cambian = producto más fiel.
     `Amateur phone-video look, natural indoor lighting, shallow depth of field, gentle and STABLE camera with minimal motion so the product stays sharp and undistorted. Medium framing that shows both the person and the appliance. ` +
+    // Expresividad + lip-sync (lo más flojo del reference-to-video).
+    `EXPRESSIVE, warm and lively delivery: natural facial expressions and micro-expressions. CRITICAL: the mouth and lips must move ACCURATELY and precisely in sync with each spoken word (tight, believable lip-sync — lips matching the audio), engaging and human — NEVER flat, stiff, robotic or a still 'talking photo'. ` +
     `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo) — not rushed, not slowed-down. The person says, calmly: "${guion}". ` +
     `Vertical 9:16, single person, single appliance, realistic and human. Avoid: distorted product, extra doors/handles, warped proportions, text or logo overlays.`
   );
