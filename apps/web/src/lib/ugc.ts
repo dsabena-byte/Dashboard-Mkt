@@ -29,7 +29,9 @@ TONO: conversacional, explicativo, honesto. Español rioplatense (voseo).
 
 KILL LIST (NUNCA): superlativos ("el mejor", "increíble", "la mejor tecnología del mercado"), claims de marca directos, lectura de beneficios, sonar a comercial, guion evidente, sobreactuar. Lenguaje concreto y sensorial: en vez de "la mejor tecnología" → "esto hace que vibre menos".
 
-NAMING DE MARCA (crítico): la marca es CONSECUENCIA, no protagonista. NO la nombres en el hook. Preferí que se VEA el producto sin nombrarlo (implícito = máxima credibilidad). Si hace falta: "este modelo…" / "este equipo…", o una sola vez sin énfasis "en este Drean…", idealmente en la explicación técnica o el cierre. Ejemplo correcto: "Esto pasa porque tiene motor inverter…" (la marca aparece después, si corresponde).
+PRONUNCIACIÓN (la voz IA pronuncia MAL los anglicismos y tecnicismos): en lo que se DICE, NO uses palabras en inglés ni nombres técnicos (ej: "Inverter", "Direct Drive", "Air Fryer", "Super Freeze", "Pillow Drum"). Decí el beneficio en castellano llano: en vez de "motor Inverter" → "el motor que casi no vibra ni hace ruido"; "Air Fryer" → "freidora de aire"; "Super Freeze" → "enfría rapidísimo". Usá palabras simples y comunes, fáciles de pronunciar (evitá también trabalenguas o términos raros).
+
+NAMING DE MARCA (crítico): la marca es CONSECUENCIA, no protagonista. NO la nombres en el hook. Preferí que se VEA el producto sin nombrarlo (implícito = máxima credibilidad). Si hace falta: "este modelo…" / "este equipo…", o una sola vez sin énfasis "en este Drean…", idealmente en la explicación técnica o el cierre. Ejemplo correcto: "Esto pasa porque el motor casi no vibra ni hace ruido…" (en castellano llano, sin anglicismos; la marca aparece después, si corresponde).
 
 Escribí SOLO lo que la persona dice: sin acotaciones de escena, sin emojis, sin hashtags, sin comillas, sin subtítulos.`;
 
@@ -290,13 +292,13 @@ function buildPromptSeedance(guion: string, genero?: string, escenario?: string 
     `Realistic UGC-style vertical video of ${sujetoSegunPerfil(perfil, persona, edadTxt, ropaTxt)}, ` +
     `${escena}. ` +
     estiloSegunPerfil(perfil) +
-    // Encuadre CERRADO (cara y hombros, fondo desenfocado): así el ambiente no
-    // "compite" y el testimonio se ve natural y creíble.
-    `Close selfie framing: head and shoulders fill the frame, with the background softly out of focus (shallow depth of field) — the room is not the focus. ` +
+    // Encuadre MEDIO (no primer plano): la cara NO llena el cuadro, así los
+    // defectos de lip-sync (boca que no matchea el audio) NO se notan.
+    `MEDIUM shot framing: the person is seen from roughly the chest or waist up, filmed at a natural distance (about arm's length or a bit further away). The FACE does NOT fill the frame and is NOT in close-up — keep clear space around the head so any subtle mouth/lip-sync imperfection is not noticeable. Background softly out of focus. ` +
     `Amateur phone-video look, natural indoor lighting, natural subtle head and hand movements, natural skin. ` +
     // Expresividad + lip-sync: lo que más le faltaba (locución plana / desincronizada).
-    `EXPRESSIVE, warm and lively delivery: natural facial expressions and micro-expressions (subtle smiles, eyebrow movement, engaged and lively eyes). CRITICAL: the mouth and lips must move ACCURATELY and precisely in sync with each spoken word (tight, believable lip-sync — the lips match the audio). Human, animated and engaging — NEVER flat, stiff, deadpan or robotic, and never a still 'talking photo'. ` +
-    `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo). Not slowed-down or over-enunciated, but also NOT rushed or crammed — relaxed and unhurried. ` +
+    `EXPRESSIVE, warm and lively delivery: natural facial expressions and micro-expressions (subtle smiles, eyebrow movement, engaged and lively eyes). The mouth and lips move naturally in sync with the words. Human, animated and engaging — NEVER flat, stiff, deadpan or robotic, and never a still 'talking photo'. ` +
+    `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo), pronouncing every Spanish word clearly and CORRECTLY (no garbled, slurred or invented words). Not slowed-down or over-enunciated, but also NOT rushed or crammed — relaxed and unhurried. ` +
     `The person says, calmly and at a natural pace, without rushing: "${guion}". ` +
     `Vertical 9:16, single person, realistic and human.`
   );
@@ -352,10 +354,10 @@ function buildPromptSeedanceRef(guion: string, nombreProd: string, medidas: stri
     // El producto real va como referencia @Image1 y NO se debe alterar.
     `In the scene with them is the real Drean ${nombreProd} from @Image1. CRITICAL: keep that appliance EXACTLY IDENTICAL to @Image1 — same design, doors, finish, controls, logo, text and proportions${medidas ? ` (${medidas})` : ""}. Do NOT redesign, restyle, warp, morph or distort it. It sits naturally in the scene (standing on the floor or on the counter as appropriate), well integrated, not floating. ` +
     // Cámara estable + encuadre medio: menos frames que cambian = producto más fiel.
-    `Amateur phone-video look, natural indoor lighting, shallow depth of field, gentle and STABLE camera with minimal motion so the product stays sharp and undistorted. Medium framing that shows both the person and the appliance. ` +
+    `Amateur phone-video look, natural indoor lighting, shallow depth of field, gentle and STABLE camera with minimal motion so the product stays sharp and undistorted. MEDIUM/WIDE framing that shows both the person (from the chest up) and the appliance — the face is NOT in close-up and does not fill the frame, so subtle lip-sync imperfections are not noticeable. ` +
     // Expresividad + lip-sync (lo más flojo del reference-to-video).
-    `EXPRESSIVE, warm and lively delivery: natural facial expressions and micro-expressions. CRITICAL: the mouth and lips must move ACCURATELY and precisely in sync with each spoken word (tight, believable lip-sync — lips matching the audio), engaging and human — NEVER flat, stiff, robotic or a still 'talking photo'. ` +
-    `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo) — not rushed, not slowed-down. The person says, calmly: "${guion}". ` +
+    `EXPRESSIVE, warm and lively delivery: natural facial expressions and micro-expressions; the mouth and lips move naturally in sync with the words. Engaging and human — NEVER flat, stiff, robotic or a still 'talking photo'. ` +
+    `They speak at a NORMAL, calm, natural, spontaneous conversational pace in warm RIOPLATENSE ARGENTINE Spanish (Buenos Aires accent, voseo), pronouncing every Spanish word clearly and CORRECTLY (no garbled or invented words) — not rushed, not slowed-down. The person says, calmly: "${guion}". ` +
     `Vertical 9:16, single person, single appliance, realistic and human. Avoid: distorted product, extra doors/handles, warped proportions, text or logo overlays.`
   );
 }
