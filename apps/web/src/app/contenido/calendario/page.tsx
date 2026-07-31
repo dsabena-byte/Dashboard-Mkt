@@ -288,7 +288,43 @@ export default function CalendarioPage() {
       </header>
 
       <details className="rounded-xl border bg-card p-4 text-sm">
-        <summary className="cursor-pointer font-medium">¿Cómo funciona? (plataformas, modos, proceso)</summary>
+        <summary className="cursor-pointer font-medium">¿Cómo funciona?</summary>
+        {canal === "ugc" ? (
+        <div className="mt-3 space-y-3 text-muted-foreground">
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Qué genera</div>
+            <p>Videos <strong>UGC de una persona hablando a cámara</strong> (testimonio o vocero de marca). La marca NO se nombra en el video: va en el copy/link.</p>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Herramientas</div>
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong>Guion:</strong> OpenAI (se ajusta al largo elegido para que la persona hable natural).</li>
+              <li><strong>Video:</strong> fal.ai — <strong>Seedance 2.0</strong> nativo (persona + voz + escena en un solo paso).</li>
+              <li><strong>Video + producto:</strong> Seedance 2.0 <strong>reference-to-video</strong> — mete el producto Drean real y fiel en la escena.</li>
+              <li><strong>Ver escena:</strong> imagen de preview barata (Ideogram) para ver la escena/uniforme ANTES de gastar en video.</li>
+            </ul>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Perfiles</div>
+            <ul className="list-disc space-y-1 pl-5">
+              <li><strong>Usuario:</strong> testimonio / prueba social, en su casa.</li>
+              <li><strong>Técnico posventa:</strong> insight técnico con autoridad.</li>
+              <li><strong>Personal Drean:</strong> vocero de marca → escena institucional (showroom) + uniforme azul institucional, sin nada en la mano.</li>
+            </ul>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Proceso</div>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li><strong>+ Nuevo UGC</strong> → elegís perfil, producto, diferenciales, escenario, ropa y duración.</li>
+              <li><strong>1 · Guion</strong> (editable; que quede en verde &quot;entra bien ✓&quot; para mejor lip-sync).</li>
+              <li><strong>2 · Video</strong> (talking-head) o <strong>2b · Video + producto</strong>. Opcional <strong>👁 Ver escena</strong> para previsualizar barato.</li>
+              <li>Si quedó bien → <strong>✓ Pasar a la Biblioteca</strong>; si no → <strong>Descartar</strong>.</li>
+              <li>En la pestaña <strong>Biblioteca UGC</strong>: filtrás y <strong>Copiar links</strong> para pasarle a la agencia.</li>
+            </ol>
+          </div>
+          <p className="text-xs">Costo (fal.ai, pago por uso): video ~US$0,24/s · video+producto ~US$0,30/s · preview de escena ~centavos.</p>
+        </div>
+        ) : (
         <div className="mt-3 space-y-3 text-muted-foreground">
           <div>
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide">Plataformas / herramientas</div>
@@ -320,6 +356,7 @@ export default function CalendarioPage() {
           </div>
           <p className="text-xs">Nota: la generación con IA usa <strong>créditos prepagos de fal.ai</strong> (imágenes = centavos; video = más caro por clip).</p>
         </div>
+        )}
       </details>
 
       {err && (
