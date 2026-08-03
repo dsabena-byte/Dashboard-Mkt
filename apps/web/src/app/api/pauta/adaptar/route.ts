@@ -21,7 +21,13 @@ export async function POST(request: Request) {
     });
     const url = img.images[0]?.url;
     if (!url) return NextResponse.json({ ok: false, error: "El reframe no devolvió imagen." }, { status: 500 });
-    return NextResponse.json({ ok: true, url });
+    // Devolvemos la imagen como data-URI (misma-origen) para que el cliente pueda
+    // componerla en canvas sin "contaminar" el canvas (CORS) al hacer toBlob.
+    const resp = await fetch(url, { cache: "no-store" });
+    if (!resp.ok) return NextResponse.json({ ok: true, url }); // fallback: URL directa
+    const buf = Buffer.from(await resp.arrayBuffer());
+    const ct = resp.headers.get("content-type") ?? "image/png";
+    return NextResponse.json({ ok: true, url: `data:${ct};base64,${buf.toString("base64")}` });
   } catch (err) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
