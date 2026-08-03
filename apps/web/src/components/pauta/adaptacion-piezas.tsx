@@ -4,33 +4,30 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FORMATOS_IMG_PAUTA, type FormatoPauta } from "@/lib/pauta-formatos";
 
 // Adaptación de piezas para pauta (FASE 1: imágenes). Compositor por capas con
-// PREVIEW en vivo y config POR FORMATO:
+// PREVIEW en vivo y control FINO por formato:
 //  - FONDO (imagen sin logo/texto) → reframe al ratio (fal) al generar; en el
 //    preview se usa el fondo recortado (cover) como referencia.
-//  - LOGO (PNG) → posición (9 puntos) + tamaño (% del alto), por formato.
-//  - TEXTO/copy → Manrope, con **negrita**, posición + tamaño (% del alto), color.
-// La composición es client-side (canvas): píxeles exactos.
+//  - LOGO (PNG) → posición libre X/Y (%) + tamaño (% del alto), por formato.
+//  - TEXTO/copy → Manrope, con **negrita**, posición X/Y (%) + tamaño (%) + color.
+// Composición client-side (canvas): píxeles exactos.
 
-type PosV = "top" | "center" | "bottom";
-type PosH = "left" | "center" | "right";
-interface Pos { v: PosV; h: PosH }
-interface FmtCfg { on: boolean; logoPos: Pos; logoPct: number; textPos: Pos; textPct: number }
+interface FmtCfg { on: boolean; logoX: number; logoY: number; logoPct: number; textX: number; textY: number; textPct: number }
 interface Word { w: string; bold: boolean }
 
-const PCTS = [0.05, 0.08, 0.1, 0.12, 0.15, 0.2, 0.25, 0.3];
-const pctLabel = (p: number) => `${Math.round(p * 100)}%`;
-const defaultCfg = (): FmtCfg => ({ on: true, logoPos: { v: "top", h: "left" }, logoPct: 0.1, textPos: { v: "bottom", h: "center" }, textPct: 0.08 });
+// x/y en [0,1] (fracción del lienzo). pct = tamaño como fracción del ALTO.
+const defaultCfg = (): FmtCfg => ({ on: true, logoX: 0, logoY: 0, logoPct: 0.12, textX: 0.5, textY: 1, textPct: 0.08 });
 
-// ---- Parseo de **negrita** → palabras con flag bold ----
 function parseWords(copy: string): Word[] {
   const out: Word[] = [];
   copy.split("**").forEach((seg, i) => { const bold = i % 2 === 1; for (const w of seg.split(/\s+/).filter(Boolean)) out.push({ w, bold }); });
   return out;
 }
 const fontFor = (bold: boolean, fs: number) => `${bold ? 800 : 500} ${fs}px "Manrope", Arial, sans-serif`;
-const xFor = (h: PosH, W: number, ew: number, P: number) => (h === "left" ? P : h === "right" ? W - ew - P : (W - ew) / 2);
-const yFor = (v: PosV, H: number, eh: number, P: number) => (v === "top" ? P : v === "bottom" ? H - eh - P : (H - eh) / 2);
-
+function place(frac: number, span: number, size: number, P: number): number {
+  const lo = P, hi = span - size - P;
+  if (hi <= lo) return (span - size) / 2; // sin espacio → centrar
+  return lo + Math.max(0, Math.min(1, frac)) * (hi - lo);
+}
 function coverDraw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, W: number, H: number) {
   const ir = img.naturalWidth / img.naturalHeight, cr = W / H;
   let sw: number, sh: number, sx: number, sy: number;
@@ -50,41 +47,43 @@ function wrapBold(ctx: CanvasRenderingContext2D, words: Word[], maxW: number, fs
   if (line.length) lines.push(line);
   return lines;
 }
-function drawPieza(ctx: CanvasRenderingContext2D, fondo: HTMLImageElement, logo: HTMLImageElement | null, words: Word[], W: number, H: number, cfg: FmtCfg, color: string) {
+function lineWidth(ctx: CanvasRenderingContext2D, line: Word[], fs: number): number {
+  let w = 0; line.forEach((t, j) => { ctx.font = fontFor(t.bold, fs); w += ctx.measureText(t.w).width + (j ? ctx.measureText(" ").width : 0); }); return w;
+}
+function drawPieza(ctx: CanvasRenderingContext2D, fondo: HTMLImageElement, logo: HTMLImageElement | null, words: Word[], W: number, H: number, c: FmtCfg, color: string) {
   ctx.clearRect(0, 0, W, H);
   coverDraw(ctx, fondo, W, H);
-  const P = Math.round(Math.min(W, H) * 0.045);
+  const P = Math.round(Math.min(W, H) * 0.035);
   if (logo) {
-    let lh = H * cfg.logoPct; let lw = lh * (logo.naturalWidth / Math.max(1, logo.naturalHeight));
+    let lh = H * c.logoPct; let lw = lh * (logo.naturalWidth / Math.max(1, logo.naturalHeight));
     if (lw > W - P * 2) { lw = W - P * 2; lh = lw * (logo.naturalHeight / Math.max(1, logo.naturalWidth)); }
-    ctx.drawImage(logo, xFor(cfg.logoPos.h, W, lw, P), yFor(cfg.logoPos.v, H, lh, P), lw, lh);
+    ctx.drawImage(logo, place(c.logoX, W, lw, P), place(c.logoY, H, lh, P), lw, lh);
   }
   if (words.length) {
-    const fs = Math.round(H * cfg.textPct);
-    ctx.fillStyle = color; ctx.textBaseline = "top"; ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = fs * 0.22;
-    const lines = wrapBold(ctx, words, W - P * 2, fs); const lh = fs * 1.18; const y0 = yFor(cfg.textPos.v, H, lines.length * lh, P);
+    const fs = Math.max(8, Math.round(H * c.textPct));
+    ctx.textBaseline = "top"; ctx.fillStyle = color; ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = fs * 0.22;
+    const lines = wrapBold(ctx, words, W - P * 2, fs);
+    const lh = fs * 1.18; const blockH = lines.length * lh;
+    const blockW = Math.max(...lines.map((l) => lineWidth(ctx, l, fs)));
+    const bx = place(c.textX, W, blockW, P); const by = place(c.textY, H, blockH, P);
     lines.forEach((line, i) => {
-      let tw = 0; line.forEach((t, j) => { ctx.font = fontFor(t.bold, fs); tw += ctx.measureText(t.w).width + (j ? ctx.measureText(" ").width : 0); });
-      let x = xFor(cfg.textPos.h, W, tw, P); const y = y0 + i * lh;
+      let x = bx; const y = by + i * lh;
       line.forEach((t, j) => { ctx.font = fontFor(t.bold, fs); if (j) x += ctx.measureText(" ").width; ctx.fillText(t.w, x, y); x += ctx.measureText(t.w).width; });
     });
     ctx.shadowBlur = 0;
   }
 }
 
-function PosGrid({ value, onChange }: { value: Pos; onChange: (p: Pos) => void }) {
-  const vs: PosV[] = ["top", "center", "bottom"]; const hs: PosH[] = ["left", "center", "right"];
+function Slider({ label, value, min, max, step, onChange, fmt }: { label: string; value: number; min: number; max: number; step: number; onChange: (n: number) => void; fmt: (n: number) => string }) {
   return (
-    <div className="inline-grid grid-cols-3 gap-0.5">
-      {vs.map((v) => hs.map((h) => {
-        const active = value.v === v && value.h === h;
-        return <button key={`${v}-${h}`} type="button" onClick={() => onChange({ v, h })} className={`h-4 w-4 rounded-sm border ${active ? "bg-primary" : "bg-muted hover:bg-secondary"}`} title={`${v} ${h}`} />;
-      }))}
-    </div>
+    <label className="flex items-center gap-1">
+      <span className="w-3 text-[9px] text-muted-foreground">{label}</span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1 flex-1 accent-[var(--primary)]" />
+      <span className="w-9 text-right text-[9px] tabular-nums text-muted-foreground">{fmt(value)}</span>
+    </label>
   );
 }
 
-// Preview en vivo por formato: dibuja fondo(cover) + logo + texto a escala chica.
 function Preview({ f, cfg, fondo, logo, words, color, ready }: { f: FormatoPauta; cfg: FmtCfg; fondo: HTMLImageElement | null; logo: HTMLImageElement | null; words: Word[]; color: string; ready: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const DW = 260; const DH = Math.round(DW * (f.height / f.width));
@@ -115,7 +114,7 @@ export function AdaptacionPiezas() {
   const words = useMemo(() => parseWords(copy), [copy]);
   function onFile(file: File | undefined, set: (v: string) => void) { if (!file) return; const r = new FileReader(); r.onload = () => set(String(r.result)); r.readAsDataURL(file); }
   function upd(key: string, patch: Partial<FmtCfg>) { setCfg((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } as FmtCfg })); }
-  function aplicarATodos(key: string) { const s = cfg[key]; if (!s) return; setCfg((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, { ...v, logoPos: s.logoPos, logoPct: s.logoPct, textPos: s.textPos, textPct: s.textPct }]))); }
+  function aplicarATodos(key: string) { const s = cfg[key]; if (!s) return; setCfg((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, { ...v, logoX: s.logoX, logoY: s.logoY, logoPct: s.logoPct, textX: s.textX, textY: s.textY, textPct: s.textPct }]))); }
   const seleccionados = FORMATOS_IMG_PAUTA.filter((f) => cfg[f.key]?.on);
 
   async function adaptar() {
@@ -142,11 +141,13 @@ export function AdaptacionPiezas() {
     setBusy(false);
   }
 
+  const pct = (n: number) => `${Math.round(n)}%`;
+
   return (
     <div className="space-y-4">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Adaptación de piezas para pauta</h2>
-        <p className="text-sm text-muted-foreground">Subí un <strong>fondo</strong> (sin logo ni texto), el <strong>logo</strong> (PNG) y el <strong>copy</strong>. Acomodá posición y tamaño <strong>por formato</strong> con el preview en vivo. Negrita en el copy con <code>**palabra**</code>. Cubre Meta y Demand Gen.</p>
+        <p className="text-sm text-muted-foreground">Subí un <strong>fondo</strong> (sin logo ni texto), el <strong>logo</strong> (PNG) y el <strong>copy</strong>. Acomodá logo y texto <strong>por formato</strong> con sliders de <strong>posición (X/Y)</strong> y <strong>tamaño</strong>, viendo el preview en vivo. Negrita con <code>**palabra**</code>.</p>
       </header>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -175,7 +176,6 @@ export function AdaptacionPiezas() {
         </div>
       </div>
 
-      {/* 4 columnas: preview + controles por formato */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {FORMATOS_IMG_PAUTA.map((f) => {
           const c = cfg[f.key]!;
@@ -187,20 +187,18 @@ export function AdaptacionPiezas() {
               </label>
               <Preview f={f} cfg={c} fondo={fondoImg} logo={logoImg} words={words} color={color} ready={fontReady} />
               {c.on && (
-                <div className="space-y-1.5 text-[10px]">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="w-9 font-semibold uppercase text-muted-foreground">Logo</span>
-                    <PosGrid value={c.logoPos} onChange={(p) => upd(f.key, { logoPos: p })} />
-                    <select value={c.logoPct} onChange={(e) => upd(f.key, { logoPct: Number(e.target.value) })} className="rounded border px-1 py-0.5 text-[10px]" title="Tamaño (% del alto)">
-                      {PCTS.map((p) => <option key={p} value={p}>{pctLabel(p)}</option>)}
-                    </select>
+                <div className="space-y-2 text-[10px]">
+                  <div className="space-y-0.5 rounded border p-1.5">
+                    <div className="text-[9px] font-semibold uppercase text-muted-foreground">Logo</div>
+                    <Slider label="X" value={c.logoX * 100} min={0} max={100} step={1} onChange={(n) => upd(f.key, { logoX: n / 100 })} fmt={pct} />
+                    <Slider label="Y" value={c.logoY * 100} min={0} max={100} step={1} onChange={(n) => upd(f.key, { logoY: n / 100 })} fmt={pct} />
+                    <Slider label="T" value={c.logoPct * 100} min={2} max={60} step={1} onChange={(n) => upd(f.key, { logoPct: n / 100 })} fmt={pct} />
                   </div>
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="w-9 font-semibold uppercase text-muted-foreground">Texto</span>
-                    <PosGrid value={c.textPos} onChange={(p) => upd(f.key, { textPos: p })} />
-                    <select value={c.textPct} onChange={(e) => upd(f.key, { textPct: Number(e.target.value) })} className="rounded border px-1 py-0.5 text-[10px]" title="Tamaño (% del alto)">
-                      {PCTS.map((p) => <option key={p} value={p}>{pctLabel(p)}</option>)}
-                    </select>
+                  <div className="space-y-0.5 rounded border p-1.5">
+                    <div className="text-[9px] font-semibold uppercase text-muted-foreground">Texto</div>
+                    <Slider label="X" value={c.textX * 100} min={0} max={100} step={1} onChange={(n) => upd(f.key, { textX: n / 100 })} fmt={pct} />
+                    <Slider label="Y" value={c.textY * 100} min={0} max={100} step={1} onChange={(n) => upd(f.key, { textY: n / 100 })} fmt={pct} />
+                    <Slider label="T" value={c.textPct * 100} min={2} max={40} step={1} onChange={(n) => upd(f.key, { textPct: n / 100 })} fmt={pct} />
                   </div>
                   <button type="button" onClick={() => aplicarATodos(f.key)} className="text-[10px] font-medium text-primary hover:underline">aplicar esta config a todos →</button>
                 </div>
