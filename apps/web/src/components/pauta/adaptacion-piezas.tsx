@@ -5,15 +5,17 @@ import { FORMATOS_IMG_PAUTA } from "@/lib/pauta-formatos";
 
 // Adaptación de piezas para pauta (FASE 1: imágenes). Compositor por capas:
 //  1) FONDO (imagen sin logo/texto) → se adapta a cada ratio con reframe (fal).
-//  2) LOGO (PNG transparente) → posición (9 puntos) + tamaño.
-//  3) TEXTO/copy → en Manrope, posición + tamaño + color.
-// La composición es client-side (canvas): píxeles exactos, control total.
+//  2) LOGO (PNG transparente) → posición + tamaño, POR FORMATO.
+//  3) TEXTO/copy → Manrope, posición + tamaño POR FORMATO (+ color global).
+// Composición client-side (canvas): píxeles exactos, control total.
 
 type PosV = "top" | "center" | "bottom";
 type PosH = "left" | "center" | "right";
 interface Pos { v: PosV; h: PosH }
+interface FmtCfg { on: boolean; logoPos: Pos; logoSize: number; textPos: Pos; textSize: number }
 
 const SIZES = [{ k: "chico", m: 0.6 }, { k: "igual", m: 1 }, { k: "x2", m: 2 }, { k: "x3", m: 3 }] as const;
+const defaultCfg = (): FmtCfg => ({ on: true, logoPos: { v: "top", h: "left" }, logoSize: 1, textPos: { v: "bottom", h: "center" }, textSize: 1 });
 
 interface Resultado { key: string; label: string; width: number; height: number; url: string | null; error: string | null; loading: boolean }
 
@@ -32,7 +34,7 @@ async function componer(bgUrl: string, logoUrl: string | null, texto: string, W:
   const canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("ctx");
   const bg = await loadImg(bgUrl);
-  ctx.drawImage(bg, 0, 0, W, H); // el reframe ya viene al ratio W×H
+  ctx.drawImage(bg, 0, 0, W, H);
   const P = Math.round(W * 0.04);
   if (logoUrl) {
     const logo = await loadImg(logoUrl);
@@ -61,9 +63,21 @@ function GrillaPos({ value, onChange }: { value: Pos; onChange: (p: Pos) => void
     <div className="inline-grid grid-cols-3 gap-0.5">
       {vs.map((v) => hs.map((h) => {
         const active = value.v === v && value.h === h;
-        return <button key={`${v}-${h}`} type="button" onClick={() => onChange({ v, h })}
-          className={`h-5 w-5 rounded-sm border ${active ? "bg-primary" : "bg-muted hover:bg-secondary"}`} title={`${v} ${h}`} />;
+        return <button key={`${v}-${h}`} type="button" onClick={() => onChange({ v, h })} className={`h-5 w-5 rounded-sm border ${active ? "bg-primary" : "bg-muted hover:bg-secondary"}`} title={`${v} ${h}`} />;
       }))}
+    </div>
+  );
+}
+
+function Capa({ label, pos, setPos, size, setSize }: { label: string; pos: Pos; setPos: (p: Pos) => void; size: number; setSize: (n: number) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded border p-2">
+      <span className="w-12 text-[11px] font-semibold uppercase text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1"><span className="text-[10px] text-muted-foreground">pos.</span><GrillaPos value={pos} onChange={setPos} /></div>
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-muted-foreground">tamaño</span>
+        {SIZES.map((s) => <button key={s.k} type="button" onClick={() => setSize(s.m)} className={`rounded border px-2 py-0.5 text-[10px] ${size === s.m ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>{s.k}</button>)}
+      </div>
     </div>
   );
 }
@@ -72,34 +86,28 @@ export function AdaptacionPiezas() {
   const [bg, setBg] = useState<string | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
   const [texto, setTexto] = useState("");
-  const [logoPos, setLogoPos] = useState<Pos>({ v: "top", h: "left" });
-  const [logoSize, setLogoSize] = useState(1);
-  const [textPos, setTextPos] = useState<Pos>({ v: "bottom", h: "center" });
-  const [textSize, setTextSize] = useState(1);
   const [textColor, setTextColor] = useState("#ffffff");
-  const [sel, setSel] = useState<Set<string>>(new Set(FORMATOS_IMG_PAUTA.map((f) => f.key)));
+  const [cfg, setCfg] = useState<Record<string, FmtCfg>>(() => Object.fromEntries(FORMATOS_IMG_PAUTA.map((f) => [f.key, defaultCfg()])));
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [busy, setBusy] = useState(false);
 
-  function onFile(file: File | undefined, set: (v: string) => void) {
-    if (!file) return; const reader = new FileReader(); reader.onload = () => set(String(reader.result)); reader.readAsDataURL(file);
-  }
-  const toggle = (k: string) => setSel((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  function onFile(file: File | undefined, set: (v: string) => void) { if (!file) return; const r = new FileReader(); r.onload = () => set(String(r.result)); r.readAsDataURL(file); }
+  function upd(key: string, patch: Partial<FmtCfg>) { setCfg((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } as FmtCfg })); }
+  function aplicarATodos(key: string) { const src = cfg[key]; if (!src) return; setCfg((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, { ...v, logoPos: src.logoPos, logoSize: src.logoSize, textPos: src.textPos, textSize: src.textSize }]))); }
+
+  const seleccionados = FORMATOS_IMG_PAUTA.filter((f) => cfg[f.key]?.on);
 
   async function adaptar() {
-    if (!bg) return;
-    const formatos = FORMATOS_IMG_PAUTA.filter((f) => sel.has(f.key));
-    if (formatos.length === 0) return;
+    if (!bg || seleccionados.length === 0) return;
     setBusy(true);
-    setResultados(formatos.map((f) => ({ key: f.key, label: f.label, width: f.width, height: f.height, url: null, error: null, loading: true })));
-    await Promise.all(formatos.map(async (f) => {
+    setResultados(seleccionados.map((f) => ({ key: f.key, label: f.label, width: f.width, height: f.height, url: null, error: null, loading: true })));
+    await Promise.all(seleccionados.map(async (f) => {
+      const c = cfg[f.key]!;
       try {
-        // 1) reframe del fondo al ratio
         const r = await fetch("/api/pauta/adaptar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image_url: bg, width: f.width, height: f.height }) });
         const j = (await r.json()) as { ok?: boolean; url?: string; error?: string };
         if (!j.ok || !j.url) throw new Error(j.error ?? "reframe falló");
-        // 2) componer logo + texto encima (canvas)
-        const blob = await componer(j.url, logo, texto, f.width, f.height, { logoPos, logoSize, textPos, textSize, textColor });
+        const blob = await componer(j.url, logo, texto, f.width, f.height, { logoPos: c.logoPos, logoSize: c.logoSize, textPos: c.textPos, textSize: c.textSize, textColor });
         const url = URL.createObjectURL(blob);
         setResultados((prev) => prev.map((x) => x.key === f.key ? { ...x, loading: false, url } : x));
       } catch (e) {
@@ -109,22 +117,11 @@ export function AdaptacionPiezas() {
     setBusy(false);
   }
 
-  const capa = (label: string, pos: Pos, setPos: (p: Pos) => void, size: number, setSize: (n: number) => void) => (
-    <div className="flex flex-wrap items-center gap-3 rounded border p-2">
-      <span className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-1"><span className="text-[10px] text-muted-foreground">posición</span><GrillaPos value={pos} onChange={setPos} /></div>
-      <div className="flex items-center gap-1">
-        <span className="text-[10px] text-muted-foreground">tamaño</span>
-        {SIZES.map((s) => <button key={s.k} type="button" onClick={() => setSize(s.m)} className={`rounded border px-2 py-0.5 text-[10px] ${size === s.m ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>{s.k}</button>)}
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-4">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Adaptación de piezas para pauta</h2>
-        <p className="text-sm text-muted-foreground">Compositor por capas: <strong>fondo</strong> (imagen sin logo ni texto) adaptado a cada ratio + <strong>logo</strong> (PNG) + <strong>texto</strong>, con posición y tamaño. Cubre Meta y Demand Gen. Video en la próxima fase.</p>
+        <p className="text-sm text-muted-foreground">Compositor por capas: <strong>fondo</strong> (imagen sin logo ni texto) adaptado a cada ratio + <strong>logo</strong> (PNG) + <strong>texto</strong>, con posición y tamaño <strong>configurables por formato</strong>. Cubre Meta y Demand Gen. Video en la próxima fase.</p>
       </header>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -142,30 +139,42 @@ export function AdaptacionPiezas() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card p-4 space-y-3">
-        <div>
-          <label className="text-xs font-semibold uppercase text-muted-foreground">Texto / copy (opcional)</label>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Ej: Diseñada para el mundo" className="flex-1 min-w-[220px] rounded border px-2 py-1 text-xs" />
-            <span className="text-[10px] text-muted-foreground">color</span>
-            {([["#ffffff", "blanco"], ["#00064F", "azul Drean"], ["#111111", "negro"]] as const).map(([c, n]) => (
-              <button key={c} type="button" onClick={() => setTextColor(c)} className={`h-5 w-5 rounded border ${textColor === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n} />
-            ))}
-          </div>
-        </div>
-        {capa("Logo", logoPos, setLogoPos, logoSize, setLogoSize)}
-        {capa("Texto", textPos, setTextPos, textSize, setTextSize)}
-      </div>
-
       <div className="rounded-lg border bg-card p-4">
-        <label className="text-xs font-semibold uppercase text-muted-foreground">Formatos</label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {FORMATOS_IMG_PAUTA.map((f) => (
-            <button key={f.key} type="button" onClick={() => toggle(f.key)} className={`rounded-full border px-3 py-1 text-xs ${sel.has(f.key) ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`} title={`${f.width}×${f.height} · ${f.usos}`}>{f.label} ({f.width}×{f.height})</button>
+        <label className="text-xs font-semibold uppercase text-muted-foreground">Texto / copy (opcional)</label>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Ej: Diseñada para el mundo" className="flex-1 min-w-[220px] rounded border px-2 py-1 text-xs" />
+          <span className="text-[10px] text-muted-foreground">color</span>
+          {([["#ffffff", "blanco"], ["#00064F", "azul Drean"], ["#111111", "negro"]] as const).map(([c, n]) => (
+            <button key={c} type="button" onClick={() => setTextColor(c)} className={`h-5 w-5 rounded border ${textColor === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n} />
           ))}
         </div>
-        <button onClick={adaptar} disabled={busy || !bg || sel.size === 0} className="mt-3 rounded bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{busy ? "Generando…" : `Generar (${sel.size})`}</button>
-        {!bg && <p className="mt-2 text-[11px] text-muted-foreground">Subí el fondo para habilitar.</p>}
+      </div>
+
+      {/* Config POR FORMATO */}
+      <div className="space-y-2">
+        <label className="text-xs font-semibold uppercase text-muted-foreground">Formatos — posición y tamaño por formato</label>
+        {FORMATOS_IMG_PAUTA.map((f) => {
+          const c = cfg[f.key]!;
+          return (
+            <div key={f.key} className={`rounded-lg border p-3 ${c.on ? "bg-card" : "bg-muted/40 opacity-70"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" checked={c.on} onChange={(e) => upd(f.key, { on: e.target.checked })} />
+                  {f.label} <span className="text-[11px] text-muted-foreground">({f.width}×{f.height} · {f.usos})</span>
+                </label>
+                {c.on && <button type="button" onClick={() => aplicarATodos(f.key)} className="text-[10px] font-medium text-primary hover:underline" title="Copiar esta config de logo/texto a todos los formatos">aplicar a todos →</button>}
+              </div>
+              {c.on && (
+                <div className="mt-2 space-y-2">
+                  <Capa label="Logo" pos={c.logoPos} setPos={(p) => upd(f.key, { logoPos: p })} size={c.logoSize} setSize={(s) => upd(f.key, { logoSize: s })} />
+                  <Capa label="Texto" pos={c.textPos} setPos={(p) => upd(f.key, { textPos: p })} size={c.textSize} setSize={(s) => upd(f.key, { textSize: s })} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <button onClick={adaptar} disabled={busy || !bg || seleccionados.length === 0} className="rounded bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{busy ? "Generando…" : `Generar (${seleccionados.length})`}</button>
+        {!bg && <span className="ml-2 text-[11px] text-muted-foreground">Subí el fondo para habilitar.</span>}
       </div>
 
       {resultados.length > 0 && (
