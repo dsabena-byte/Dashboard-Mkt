@@ -4,78 +4,81 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FORMATOS_IMG_PAUTA, type FormatoPauta } from "@/lib/pauta-formatos";
 
 // Adaptación de piezas para pauta (FASE 1: imágenes). Compositor por capas con
-// PREVIEW en vivo y control FINO por formato:
-//  - FONDO (imagen sin logo/texto) → reframe al ratio (fal) al generar; en el
-//    preview se usa el fondo recortado (cover) como referencia.
-//  - LOGO (PNG) → posición libre X/Y (%) + tamaño (% del alto), por formato.
-//  - TEXTO/copy → Manrope, con **negrita**, posición X/Y (%) + tamaño (%) + color.
-// Composición client-side (canvas): píxeles exactos.
+// PREVIEW FIEL: al subir el fondo se hace el reframe (fal) a cada ratio UNA vez;
+// tanto el preview como el resultado usan ese MISMO fondo real, así lo que
+// acomodás es exactamente lo que se genera. "Generar" solo compone (instantáneo).
+//  - LOGO (PNG) → se auto-recorta el margen transparente; posición X/Y + tamaño.
+//  - TEXTO/copy → Manrope, **negrita** / _cursiva_, posición X/Y + tamaño + color.
+//  - FRANJA → banda de color arriba/abajo para dar espacio (formatos apretados).
 
-interface FmtCfg { on: boolean; logoX: number; logoY: number; logoPct: number; textX: number; textY: number; textPct: number }
+interface FmtCfg { on: boolean; logoX: number; logoY: number; logoPct: number; textX: number; textY: number; textPct: number; bandPct: number }
 interface Word { w: string; bold: boolean; italic: boolean }
+interface Trim { sx: number; sy: number; sw: number; sh: number }
+interface BgState { status: "loading" | "ready" | "error"; img?: HTMLImageElement; error?: string }
 
-// x/y en [0,1] (fracción del lienzo). pct = tamaño como fracción del ALTO.
-const defaultCfg = (): FmtCfg => ({ on: true, logoX: 0, logoY: 0, logoPct: 0.12, textX: 0.5, textY: 1, textPct: 0.08 });
+const defaultCfg = (): FmtCfg => ({ on: true, logoX: 0, logoY: 0, logoPct: 0.12, textX: 0.5, textY: 1, textPct: 0.08, bandPct: 0 });
 
 function parseWords(copy: string): Word[] {
   const out: Word[] = [];
   copy.split("**").forEach((boldSeg, bi) => {
     const bold = bi % 2 === 1;
-    boldSeg.split("_").forEach((itSeg, ii) => {
-      const italic = ii % 2 === 1;
-      for (const w of itSeg.split(/\s+/).filter(Boolean)) out.push({ w, bold, italic });
-    });
+    boldSeg.split("_").forEach((itSeg, ii) => { const italic = ii % 2 === 1; for (const w of itSeg.split(/\s+/).filter(Boolean)) out.push({ w, bold, italic }); });
   });
   return out;
 }
 const fontFor = (bold: boolean, italic: boolean, fs: number) => `${italic ? "italic " : ""}${bold ? 800 : 500} ${fs}px "Manrope", Arial, sans-serif`;
-// Posición de borde a borde: frac 0 = arriba/izq total, frac 1 = abajo/der total.
-function place(frac: number, span: number, size: number): number {
-  const room = span - size;
-  return room <= 0 ? room / 2 : Math.max(0, Math.min(1, frac)) * room;
+function place(frac: number, span: number, size: number): number { const room = span - size; return room <= 0 ? room / 2 : Math.max(0, Math.min(1, frac)) * room; }
+
+function computeTrim(img: HTMLImageElement): Trim {
+  const full: Trim = { sx: 0, sy: 0, sw: img.naturalWidth, sh: img.naturalHeight };
+  const scale = Math.min(1, 500 / Math.max(1, img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d"); if (!cx) return full;
+  cx.drawImage(img, 0, 0, w, h);
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  try {
+    const data = cx.getImageData(0, 0, w, h).data;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (data[(y * w + x) * 4 + 3]! > 12) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+  } catch { return full; }
+  if (maxX < 0) return full;
+  const inv = 1 / scale;
+  return { sx: Math.floor(minX * inv), sy: Math.floor(minY * inv), sw: Math.ceil((maxX - minX + 1) * inv), sh: Math.ceil((maxY - minY + 1) * inv) };
 }
-function coverDraw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, W: number, H: number) {
-  const ir = img.naturalWidth / img.naturalHeight, cr = W / H;
+function loadImg(src: string, cors = false): Promise<HTMLImageElement> {
+  return new Promise((res, rej) => { const i = new Image(); if (cors) i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = () => rej(new Error("img")); i.src = src; });
+}
+function coverDraw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, dx: number, dy: number, dw: number, dh: number) {
+  const ir = img.naturalWidth / img.naturalHeight, cr = dw / dh;
   let sw: number, sh: number, sx: number, sy: number;
   if (ir > cr) { sh = img.naturalHeight; sw = sh * cr; sx = (img.naturalWidth - sw) / 2; sy = 0; }
   else { sw = img.naturalWidth; sh = sw / cr; sx = 0; sy = (img.naturalHeight - sh) / 2; }
-  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
 }
 function wrapBold(ctx: CanvasRenderingContext2D, words: Word[], maxW: number, fs: number): Word[][] {
   const lines: Word[][] = []; let line: Word[] = []; let lineW = 0;
-  for (const tok of words) {
-    ctx.font = fontFor(tok.bold, tok.italic, fs);
-    const ww = ctx.measureText(tok.w).width;
-    const add = (line.length ? ctx.measureText(" ").width : 0) + ww;
-    if (lineW + add > maxW && line.length) { lines.push(line); line = [tok]; lineW = ww; }
-    else { line.push(tok); lineW += add; }
-  }
-  if (line.length) lines.push(line);
-  return lines;
+  for (const tok of words) { ctx.font = fontFor(tok.bold, tok.italic, fs); const ww = ctx.measureText(tok.w).width; const add = (line.length ? ctx.measureText(" ").width : 0) + ww; if (lineW + add > maxW && line.length) { lines.push(line); line = [tok]; lineW = ww; } else { line.push(tok); lineW += add; } }
+  if (line.length) lines.push(line); return lines;
 }
-function lineWidth(ctx: CanvasRenderingContext2D, line: Word[], fs: number): number {
-  let w = 0; line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); w += ctx.measureText(t.w).width + (j ? ctx.measureText(" ").width : 0); }); return w;
-}
-function drawPieza(ctx: CanvasRenderingContext2D, fondo: HTMLImageElement, logo: HTMLImageElement | null, words: Word[], W: number, H: number, c: FmtCfg, color: string) {
+function lineWidth(ctx: CanvasRenderingContext2D, line: Word[], fs: number): number { let w = 0; line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); w += ctx.measureText(t.w).width + (j ? ctx.measureText(" ").width : 0); }); return w; }
+
+function drawPieza(ctx: CanvasRenderingContext2D, bg: HTMLImageElement, logo: HTMLImageElement | null, trim: Trim | null, words: Word[], W: number, H: number, c: FmtCfg, color: string, bandColor: string) {
   ctx.clearRect(0, 0, W, H);
-  coverDraw(ctx, fondo, W, H);
+  const bandH = Math.round(H * (c.bandPct || 0));
+  if (bandH > 0) { coverDraw(ctx, bg, 0, bandH, W, H - bandH * 2); ctx.fillStyle = bandColor; ctx.fillRect(0, 0, W, bandH); ctx.fillRect(0, H - bandH, W, bandH); }
+  else coverDraw(ctx, bg, 0, 0, W, H);
   const P = Math.round(Math.min(W, H) * 0.035);
-  if (logo) {
-    let lh = H * c.logoPct; let lw = lh * (logo.naturalWidth / Math.max(1, logo.naturalHeight));
-    if (lw > W) { lw = W; lh = lw * (logo.naturalHeight / Math.max(1, logo.naturalWidth)); }
-    ctx.drawImage(logo, place(c.logoX, W, lw), place(c.logoY, H, lh), lw, lh);
+  if (logo && trim) {
+    const ar = trim.sw / Math.max(1, trim.sh);
+    let lh = H * c.logoPct; let lw = lh * ar; if (lw > W) { lw = W; lh = lw / ar; }
+    ctx.drawImage(logo, trim.sx, trim.sy, trim.sw, trim.sh, place(c.logoX, W, lw), place(c.logoY, H, lh), lw, lh);
   }
   if (words.length) {
     const fs = Math.max(8, Math.round(H * c.textPct));
     ctx.textBaseline = "top"; ctx.fillStyle = color; ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = fs * 0.22;
-    const lines = wrapBold(ctx, words, W - P * 2, fs);
-    const lh = fs * 1.18; const blockH = lines.length * lh;
+    const lines = wrapBold(ctx, words, W - P * 2, fs); const lh = fs * 1.18; const blockH = lines.length * lh;
     const blockW = Math.max(...lines.map((l) => lineWidth(ctx, l, fs)));
     const bx = place(c.textX, W, blockW); const by = place(c.textY, H, blockH);
-    lines.forEach((line, i) => {
-      let x = bx; const y = by + i * lh;
-      line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); if (j) x += ctx.measureText(" ").width; ctx.fillText(t.w, x, y); x += ctx.measureText(t.w).width; });
-    });
+    lines.forEach((line, i) => { let x = bx; const y = by + i * lh; line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); if (j) x += ctx.measureText(" ").width; ctx.fillText(t.w, x, y); x += ctx.measureText(t.w).width; }); });
     ctx.shadowBlur = 0;
   }
 }
@@ -90,70 +93,92 @@ function Slider({ label, value, min, max, step, onChange, fmt }: { label: string
   );
 }
 
-function Preview({ f, cfg, fondo, logo, words, color, ready }: { f: FormatoPauta; cfg: FmtCfg; fondo: HTMLImageElement | null; logo: HTMLImageElement | null; words: Word[]; color: string; ready: boolean }) {
+function Preview({ f, cfg, bgImg, status, logo, trim, words, color, bandColor, ready }: { f: FormatoPauta; cfg: FmtCfg; bgImg: HTMLImageElement | null; status: string; logo: HTMLImageElement | null; trim: Trim | null; words: Word[]; color: string; bandColor: string; ready: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const DW = 260; const DH = Math.round(DW * (f.height / f.width));
   useEffect(() => {
     const cv = ref.current; if (!cv) return; const ctx = cv.getContext("2d"); if (!ctx) return;
-    if (!fondo) { ctx.clearRect(0, 0, DW, DH); ctx.fillStyle = "#e5e7eb"; ctx.fillRect(0, 0, DW, DH); return; }
-    drawPieza(ctx, fondo, logo, words, DW, DH, cfg, color);
-  }, [f, cfg, fondo, logo, words, color, ready, DW, DH]);
+    ctx.clearRect(0, 0, DW, DH);
+    if (bgImg) drawPieza(ctx, bgImg, logo, trim, words, DW, DH, cfg, color, bandColor);
+    else { ctx.fillStyle = "#e5e7eb"; ctx.fillRect(0, 0, DW, DH); ctx.fillStyle = "#94a3b8"; ctx.font = "12px sans-serif"; ctx.textAlign = "center"; ctx.fillText(status === "loading" ? "preparando fondo…" : status === "error" ? "error de fondo" : "subí el fondo", DW / 2, DH / 2); ctx.textAlign = "left"; }
+  }, [f, cfg, bgImg, status, logo, trim, words, color, bandColor, ready, DW, DH]);
   return <canvas ref={ref} width={DW} height={DH} className="w-full rounded border bg-muted" />;
 }
 
 export function AdaptacionPiezas() {
   const [bg, setBg] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [fondoImg, setFondoImg] = useState<HTMLImageElement | null>(null);
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
+  const [logoTrim, setLogoTrim] = useState<Trim | null>(null);
+  const [bgFmt, setBgFmt] = useState<Record<string, BgState>>({});
   const [copy, setCopy] = useState("");
   const [color, setColor] = useState("#ffffff");
+  const [bandColor, setBandColor] = useState("#00064F");
   const [cfg, setCfg] = useState<Record<string, FmtCfg>>(() => Object.fromEntries(FORMATOS_IMG_PAUTA.map((f) => [f.key, defaultCfg()])));
   const [resultados, setResultados] = useState<{ key: string; label: string; url: string | null; error: string | null; loading: boolean }[]>([]);
   const [busy, setBusy] = useState(false);
   const [fontReady, setFontReady] = useState(false);
+  const copyRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { (async () => { try { await document.fonts.load('800 40px "Manrope"'); await document.fonts.load('500 40px "Manrope"'); } catch { /* */ } setFontReady(true); })(); }, []);
-  useEffect(() => { if (!bg) { setFondoImg(null); return; } const i = new Image(); i.onload = () => setFondoImg(i); i.src = bg; }, [bg]);
-  useEffect(() => { if (!logoUrl) { setLogoImg(null); return; } const i = new Image(); i.onload = () => setLogoImg(i); i.src = logoUrl; }, [logoUrl]);
+  useEffect(() => { if (!logoUrl) { setLogoImg(null); setLogoTrim(null); return; } (async () => { try { const i = await loadImg(logoUrl); setLogoImg(i); setLogoTrim(computeTrim(i)); } catch { /* */ } })(); }, [logoUrl]);
 
-  const words = useMemo(() => parseWords(copy), [copy]);
-  function onFile(file: File | undefined, set: (v: string) => void) { if (!file) return; const r = new FileReader(); r.onload = () => set(String(r.result)); r.readAsDataURL(file); }
-  function upd(key: string, patch: Partial<FmtCfg>) { setCfg((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } as FmtCfg })); }
-  function aplicarATodos(key: string) { const s = cfg[key]; if (!s) return; setCfg((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, { ...v, logoX: s.logoX, logoY: s.logoY, logoPct: s.logoPct, textX: s.textX, textY: s.textY, textPct: s.textPct }]))); }
-  const seleccionados = FORMATOS_IMG_PAUTA.filter((f) => cfg[f.key]?.on);
-
-  async function adaptar() {
-    if (!bg || seleccionados.length === 0) return;
-    setBusy(true);
-    setResultados(seleccionados.map((f) => ({ key: f.key, label: f.label, url: null, error: null, loading: true })));
-    await Promise.all(seleccionados.map(async (f) => {
-      const c = cfg[f.key]!;
+  // Reframe del fondo a cada ratio, UNA vez, al subir el fondo. Preview + resultado usan esto.
+  useEffect(() => {
+    if (!bg) { setBgFmt({}); return; }
+    let cancel = false;
+    setBgFmt(Object.fromEntries(FORMATOS_IMG_PAUTA.map((f) => [f.key, { status: "loading" as const }])));
+    FORMATOS_IMG_PAUTA.forEach(async (f) => {
       try {
         const r = await fetch("/api/pauta/adaptar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image_url: bg, width: f.width, height: f.height }) });
         const j = (await r.json()) as { ok?: boolean; url?: string; error?: string };
         if (!j.ok || !j.url) throw new Error(j.error ?? "reframe falló");
-        const bgImg = await new Promise<HTMLImageElement>((res, rej) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = () => rej(new Error("bg")); im.src = j.url!; });
+        const img = await loadImg(j.url, true);
+        if (!cancel) setBgFmt((prev) => ({ ...prev, [f.key]: { status: "ready", img } }));
+      } catch (e) { if (!cancel) setBgFmt((prev) => ({ ...prev, [f.key]: { status: "error", error: e instanceof Error ? e.message : String(e) } })); }
+    });
+    return () => { cancel = true; };
+  }, [bg]);
+
+  const words = useMemo(() => parseWords(copy), [copy]);
+  function onFile(file: File | undefined, set: (v: string) => void) { if (!file) return; const r = new FileReader(); r.onload = () => set(String(r.result)); r.readAsDataURL(file); }
+  function upd(key: string, patch: Partial<FmtCfg>) { setCfg((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } as FmtCfg })); }
+  function aplicarATodos(key: string) { const s = cfg[key]; if (!s) return; setCfg((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, { ...v, logoX: s.logoX, logoY: s.logoY, logoPct: s.logoPct, textX: s.textX, textY: s.textY, textPct: s.textPct, bandPct: s.bandPct }]))); }
+  function mark(sym: string) {
+    const el = copyRef.current; const s = el?.selectionStart ?? copy.length; const e = el?.selectionEnd ?? copy.length;
+    const sel = copy.slice(s, e) || "texto"; setCopy(copy.slice(0, s) + sym + sel + sym + copy.slice(e));
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(s + sym.length, s + sym.length + sel.length); });
+  }
+  const seleccionados = FORMATOS_IMG_PAUTA.filter((f) => cfg[f.key]?.on);
+  const listos = seleccionados.length > 0 && seleccionados.every((f) => bgFmt[f.key]?.status === "ready");
+
+  async function adaptar() {
+    if (!listos) return;
+    setBusy(true);
+    setResultados(seleccionados.map((f) => ({ key: f.key, label: f.label, url: null, error: null, loading: true })));
+    for (const f of seleccionados) {
+      const c = cfg[f.key]!; const bgImg = bgFmt[f.key]?.img;
+      try {
+        if (!bgImg) throw new Error("fondo no listo");
         const canvas = document.createElement("canvas"); canvas.width = f.width; canvas.height = f.height;
         const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("ctx");
-        drawPieza(ctx, bgImg, logoImg, words, f.width, f.height, c, color);
+        drawPieza(ctx, bgImg, logoImg, logoTrim, words, f.width, f.height, c, color, bandColor);
         const blob = await new Promise<Blob | null>((rr) => canvas.toBlob(rr, "image/png"));
         if (!blob) throw new Error("toBlob");
         setResultados((prev) => prev.map((x) => x.key === f.key ? { ...x, loading: false, url: URL.createObjectURL(blob) } : x));
-      } catch (e) {
-        setResultados((prev) => prev.map((x) => x.key === f.key ? { ...x, loading: false, error: e instanceof Error ? e.message : String(e) } : x));
-      }
-    }));
+      } catch (e) { setResultados((prev) => prev.map((x) => x.key === f.key ? { ...x, loading: false, error: e instanceof Error ? e.message : String(e) } : x)); }
+    }
     setBusy(false);
   }
 
   const pct = (n: number) => `${Math.round(n)}%`;
+  const prep = FORMATOS_IMG_PAUTA.some((f) => bgFmt[f.key]?.status === "loading");
 
   return (
     <div className="space-y-4">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Adaptación de piezas para pauta</h2>
-        <p className="text-sm text-muted-foreground">Subí un <strong>fondo</strong> (sin logo ni texto), el <strong>logo</strong> (PNG) y el <strong>copy</strong>. Acomodá logo y texto <strong>por formato</strong> con sliders de <strong>posición (X/Y)</strong> y <strong>tamaño</strong>, viendo el preview en vivo. Negrita con <code>**palabra**</code>.</p>
+        <p className="text-sm text-muted-foreground">Subí un <strong>fondo</strong> (sin logo ni texto): se prepara con IA (reframe) a cada ratio y el <strong>preview es fiel al resultado</strong>. Acomodá logo y texto por formato con sliders de posición/tamaño y <strong>franja</strong>. Negrita/cursiva con los botones N/C.</p>
       </header>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -161,7 +186,8 @@ export function AdaptacionPiezas() {
           <label className="text-xs font-semibold uppercase text-muted-foreground">Fondo (imagen, sin logo ni texto)</label>
           <input type="file" accept="image/*" onChange={(e) => onFile(e.target.files?.[0], setBg)} className="mt-2 block text-xs" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {bg && <img src={bg} alt="fondo" className="mt-2 max-h-28 w-auto rounded border" />}
+          {bg && <img src={bg} alt="fondo" className="mt-2 max-h-24 w-auto rounded border" />}
+          {prep && <p className="mt-1 text-[11px] text-amber-600">Preparando fondos con IA a cada ratio… (unos segundos)</p>}
         </div>
         <div className="rounded-lg border bg-card p-4">
           <label className="text-xs font-semibold uppercase text-muted-foreground">Logo (PNG transparente)</label>
@@ -172,26 +198,32 @@ export function AdaptacionPiezas() {
       </div>
 
       <div className="rounded-lg border bg-card p-4">
-        <label className="text-xs font-semibold uppercase text-muted-foreground">Texto / copy (opcional · **negrita** · _cursiva_)</label>
+        <label className="text-xs font-semibold uppercase text-muted-foreground">Texto / copy (opcional)</label>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <input value={copy} onChange={(e) => setCopy(e.target.value)} placeholder="Ej: **Diseñada** para el mundo" className="flex-1 min-w-[220px] rounded border px-2 py-1 text-xs" />
-          <span className="text-[10px] text-muted-foreground">color</span>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => mark("**")} className="rounded border px-2 py-1 text-xs hover:bg-secondary" title="Negrita: seleccioná texto y tocá N"><b>N</b></button>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => mark("_")} className="rounded border px-2 py-1 text-xs hover:bg-secondary" title="Cursiva: seleccioná texto y tocá C"><i>C</i></button>
+          <input ref={copyRef} value={copy} onChange={(e) => setCopy(e.target.value)} placeholder="Ej: Diseñada para el mundo" className="flex-1 min-w-[200px] rounded border px-2 py-1 text-xs" />
+          <span className="text-[10px] text-muted-foreground">color texto</span>
           {([["#ffffff", "blanco"], ["#00064F", "azul Drean"], ["#111111", "negro"]] as const).map(([c, n]) => (
             <button key={c} type="button" onClick={() => setColor(c)} className={`h-5 w-5 rounded border ${color === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n} />
+          ))}
+          <span className="ml-1 text-[10px] text-muted-foreground">franja</span>
+          {([["#00064F", "azul Drean"], ["#000000", "negro"], ["#ffffff", "blanco"]] as const).map(([c, n]) => (
+            <button key={c} type="button" onClick={() => setBandColor(c)} className={`h-5 w-5 rounded border ${bandColor === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n} />
           ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {FORMATOS_IMG_PAUTA.map((f) => {
-          const c = cfg[f.key]!;
+          const c = cfg[f.key]!; const st = bgFmt[f.key];
           return (
             <div key={f.key} className={`flex flex-col gap-2 rounded-lg border p-2 ${c.on ? "bg-card" : "bg-muted/40 opacity-70"}`}>
               <label className="flex items-center gap-1.5 text-[12px] font-medium">
                 <input type="checkbox" checked={c.on} onChange={(e) => upd(f.key, { on: e.target.checked })} />
                 {f.label} <span className="text-[10px] text-muted-foreground">{f.width}×{f.height}</span>
               </label>
-              <Preview f={f} cfg={c} fondo={fondoImg} logo={logoImg} words={words} color={color} ready={fontReady} />
+              <Preview f={f} cfg={c} bgImg={st?.img ?? null} status={st?.status ?? "empty"} logo={logoImg} trim={logoTrim} words={words} color={color} bandColor={bandColor} ready={fontReady} />
               {c.on && (
                 <div className="space-y-2 text-[10px]">
                   <div className="space-y-0.5 rounded border p-1.5">
@@ -206,6 +238,9 @@ export function AdaptacionPiezas() {
                     <Slider label="Y" value={c.textY * 100} min={0} max={100} step={1} onChange={(n) => upd(f.key, { textY: n / 100 })} fmt={pct} />
                     <Slider label="T" value={c.textPct * 100} min={2} max={40} step={1} onChange={(n) => upd(f.key, { textPct: n / 100 })} fmt={pct} />
                   </div>
+                  <div className="rounded border p-1.5">
+                    <Slider label="F" value={c.bandPct * 100} min={0} max={35} step={1} onChange={(n) => upd(f.key, { bandPct: n / 100 })} fmt={(v) => v < 1 ? "sin franja" : pct(v)} />
+                  </div>
                   <button type="button" onClick={() => aplicarATodos(f.key)} className="text-[10px] font-medium text-primary hover:underline">aplicar esta config a todos →</button>
                 </div>
               )}
@@ -215,9 +250,10 @@ export function AdaptacionPiezas() {
       </div>
 
       <div>
-        <button onClick={adaptar} disabled={busy || !bg || seleccionados.length === 0} className="rounded bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{busy ? "Generando…" : `Generar (${seleccionados.length})`}</button>
-        {!bg && <span className="ml-2 text-[11px] text-muted-foreground">Subí el fondo para habilitar.</span>}
-        <span className="ml-3 text-[11px] text-muted-foreground">El preview usa el fondo recortado; al generar, el fondo se extiende con IA (reframe) al ratio real.</span>
+        <button onClick={adaptar} disabled={busy || !listos} className="rounded bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{busy ? "Generando…" : `Generar (${seleccionados.length})`}</button>
+        {!bg && <span className="ml-2 text-[11px] text-muted-foreground">Subí el fondo para empezar.</span>}
+        {bg && !listos && !busy && <span className="ml-2 text-[11px] text-amber-600">Esperá a que se preparen los fondos.</span>}
+        <span className="ml-3 text-[11px] text-muted-foreground">Descargá cada pieza. Es idéntica al preview.</span>
       </div>
 
       {resultados.length > 0 && (
@@ -225,7 +261,7 @@ export function AdaptacionPiezas() {
           {resultados.map((r) => (
             <div key={r.key} className="flex flex-col gap-1 rounded-lg border bg-card p-2">
               <span className="text-[11px] font-medium">{r.label}</span>
-              {r.loading && <div className="flex aspect-square items-center justify-center rounded bg-muted text-[11px] text-muted-foreground">generando…</div>}
+              {r.loading && <div className="flex aspect-square items-center justify-center rounded bg-muted text-[11px] text-muted-foreground">componiendo…</div>}
               {r.error && <div className="rounded bg-red-50 p-2 text-[10px] text-red-700">{r.error}</div>}
               {r.url && (<>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
