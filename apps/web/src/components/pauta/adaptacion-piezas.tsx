@@ -12,21 +12,27 @@ import { FORMATOS_IMG_PAUTA, type FormatoPauta } from "@/lib/pauta-formatos";
 // Composición client-side (canvas): píxeles exactos.
 
 interface FmtCfg { on: boolean; logoX: number; logoY: number; logoPct: number; textX: number; textY: number; textPct: number }
-interface Word { w: string; bold: boolean }
+interface Word { w: string; bold: boolean; italic: boolean }
 
 // x/y en [0,1] (fracción del lienzo). pct = tamaño como fracción del ALTO.
 const defaultCfg = (): FmtCfg => ({ on: true, logoX: 0, logoY: 0, logoPct: 0.12, textX: 0.5, textY: 1, textPct: 0.08 });
 
 function parseWords(copy: string): Word[] {
   const out: Word[] = [];
-  copy.split("**").forEach((seg, i) => { const bold = i % 2 === 1; for (const w of seg.split(/\s+/).filter(Boolean)) out.push({ w, bold }); });
+  copy.split("**").forEach((boldSeg, bi) => {
+    const bold = bi % 2 === 1;
+    boldSeg.split("_").forEach((itSeg, ii) => {
+      const italic = ii % 2 === 1;
+      for (const w of itSeg.split(/\s+/).filter(Boolean)) out.push({ w, bold, italic });
+    });
+  });
   return out;
 }
-const fontFor = (bold: boolean, fs: number) => `${bold ? 800 : 500} ${fs}px "Manrope", Arial, sans-serif`;
-function place(frac: number, span: number, size: number, P: number): number {
-  const lo = P, hi = span - size - P;
-  if (hi <= lo) return (span - size) / 2; // sin espacio → centrar
-  return lo + Math.max(0, Math.min(1, frac)) * (hi - lo);
+const fontFor = (bold: boolean, italic: boolean, fs: number) => `${italic ? "italic " : ""}${bold ? 800 : 500} ${fs}px "Manrope", Arial, sans-serif`;
+// Posición de borde a borde: frac 0 = arriba/izq total, frac 1 = abajo/der total.
+function place(frac: number, span: number, size: number): number {
+  const room = span - size;
+  return room <= 0 ? room / 2 : Math.max(0, Math.min(1, frac)) * room;
 }
 function coverDraw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, W: number, H: number) {
   const ir = img.naturalWidth / img.naturalHeight, cr = W / H;
@@ -38,7 +44,7 @@ function coverDraw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, W: numb
 function wrapBold(ctx: CanvasRenderingContext2D, words: Word[], maxW: number, fs: number): Word[][] {
   const lines: Word[][] = []; let line: Word[] = []; let lineW = 0;
   for (const tok of words) {
-    ctx.font = fontFor(tok.bold, fs);
+    ctx.font = fontFor(tok.bold, tok.italic, fs);
     const ww = ctx.measureText(tok.w).width;
     const add = (line.length ? ctx.measureText(" ").width : 0) + ww;
     if (lineW + add > maxW && line.length) { lines.push(line); line = [tok]; lineW = ww; }
@@ -48,7 +54,7 @@ function wrapBold(ctx: CanvasRenderingContext2D, words: Word[], maxW: number, fs
   return lines;
 }
 function lineWidth(ctx: CanvasRenderingContext2D, line: Word[], fs: number): number {
-  let w = 0; line.forEach((t, j) => { ctx.font = fontFor(t.bold, fs); w += ctx.measureText(t.w).width + (j ? ctx.measureText(" ").width : 0); }); return w;
+  let w = 0; line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); w += ctx.measureText(t.w).width + (j ? ctx.measureText(" ").width : 0); }); return w;
 }
 function drawPieza(ctx: CanvasRenderingContext2D, fondo: HTMLImageElement, logo: HTMLImageElement | null, words: Word[], W: number, H: number, c: FmtCfg, color: string) {
   ctx.clearRect(0, 0, W, H);
@@ -56,8 +62,8 @@ function drawPieza(ctx: CanvasRenderingContext2D, fondo: HTMLImageElement, logo:
   const P = Math.round(Math.min(W, H) * 0.035);
   if (logo) {
     let lh = H * c.logoPct; let lw = lh * (logo.naturalWidth / Math.max(1, logo.naturalHeight));
-    if (lw > W - P * 2) { lw = W - P * 2; lh = lw * (logo.naturalHeight / Math.max(1, logo.naturalWidth)); }
-    ctx.drawImage(logo, place(c.logoX, W, lw, P), place(c.logoY, H, lh, P), lw, lh);
+    if (lw > W) { lw = W; lh = lw * (logo.naturalHeight / Math.max(1, logo.naturalWidth)); }
+    ctx.drawImage(logo, place(c.logoX, W, lw), place(c.logoY, H, lh), lw, lh);
   }
   if (words.length) {
     const fs = Math.max(8, Math.round(H * c.textPct));
@@ -65,10 +71,10 @@ function drawPieza(ctx: CanvasRenderingContext2D, fondo: HTMLImageElement, logo:
     const lines = wrapBold(ctx, words, W - P * 2, fs);
     const lh = fs * 1.18; const blockH = lines.length * lh;
     const blockW = Math.max(...lines.map((l) => lineWidth(ctx, l, fs)));
-    const bx = place(c.textX, W, blockW, P); const by = place(c.textY, H, blockH, P);
+    const bx = place(c.textX, W, blockW); const by = place(c.textY, H, blockH);
     lines.forEach((line, i) => {
       let x = bx; const y = by + i * lh;
-      line.forEach((t, j) => { ctx.font = fontFor(t.bold, fs); if (j) x += ctx.measureText(" ").width; ctx.fillText(t.w, x, y); x += ctx.measureText(t.w).width; });
+      line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); if (j) x += ctx.measureText(" ").width; ctx.fillText(t.w, x, y); x += ctx.measureText(t.w).width; });
     });
     ctx.shadowBlur = 0;
   }
@@ -166,7 +172,7 @@ export function AdaptacionPiezas() {
       </div>
 
       <div className="rounded-lg border bg-card p-4">
-        <label className="text-xs font-semibold uppercase text-muted-foreground">Texto / copy (opcional · usá **texto** para negrita)</label>
+        <label className="text-xs font-semibold uppercase text-muted-foreground">Texto / copy (opcional · **negrita** · _cursiva_)</label>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input value={copy} onChange={(e) => setCopy(e.target.value)} placeholder="Ej: **Diseñada** para el mundo" className="flex-1 min-w-[220px] rounded border px-2 py-1 text-xs" />
           <span className="text-[10px] text-muted-foreground">color</span>
@@ -192,7 +198,7 @@ export function AdaptacionPiezas() {
                     <div className="text-[9px] font-semibold uppercase text-muted-foreground">Logo</div>
                     <Slider label="X" value={c.logoX * 100} min={0} max={100} step={1} onChange={(n) => upd(f.key, { logoX: n / 100 })} fmt={pct} />
                     <Slider label="Y" value={c.logoY * 100} min={0} max={100} step={1} onChange={(n) => upd(f.key, { logoY: n / 100 })} fmt={pct} />
-                    <Slider label="T" value={c.logoPct * 100} min={2} max={60} step={1} onChange={(n) => upd(f.key, { logoPct: n / 100 })} fmt={pct} />
+                    <Slider label="T" value={c.logoPct * 100} min={2} max={100} step={1} onChange={(n) => upd(f.key, { logoPct: n / 100 })} fmt={pct} />
                   </div>
                   <div className="space-y-0.5 rounded border p-1.5">
                     <div className="text-[9px] font-semibold uppercase text-muted-foreground">Texto</div>
