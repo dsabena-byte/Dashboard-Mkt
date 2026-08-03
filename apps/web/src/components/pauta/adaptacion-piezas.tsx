@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FORMATOS_IMG_PAUTA, type FormatoPauta } from "@/lib/pauta-formatos";
+import { AdaptacionVideo } from "@/components/pauta/adaptacion-video";
 
 // Adaptación de piezas para pauta (FASE 1: imágenes). Compositor por capas con
 // PREVIEW FIEL: al subir el fondo se hace el reframe (fal) a cada ratio UNA vez;
@@ -106,6 +107,25 @@ function Preview({ f, cfg, bgImg, status, logo, trim, words, color, bandColor, r
 }
 
 export function AdaptacionPiezas() {
+  const [modo, setModo] = useState<"imagen" | "video">("imagen");
+  return (
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-2xl font-semibold tracking-tight">Adaptación de piezas para pauta</h2>
+        <p className="text-sm text-muted-foreground">Adaptá una pieza a los ratios que pide la pauta con reframe generativo (IA): extiende el encuadre sin deformar el foco.</p>
+      </header>
+
+      <div className="flex gap-1 rounded-lg border bg-muted/40 p-1 text-sm">
+        <button onClick={() => setModo("imagen")} className={`rounded px-3 py-1 font-medium ${modo === "imagen" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Imagen</button>
+        <button onClick={() => setModo("video")} className={`rounded px-3 py-1 font-medium ${modo === "video" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Video</button>
+      </div>
+
+      {modo === "video" ? <AdaptacionVideo /> : <ImagenBody />}
+    </div>
+  );
+}
+
+function ImagenBody() {
   const [bg, setBg] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
@@ -176,11 +196,6 @@ export function AdaptacionPiezas() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Adaptación de piezas para pauta</h2>
-        <p className="text-sm text-muted-foreground">Subí un <strong>fondo</strong> (sin logo ni texto): se prepara con IA (reframe) a cada ratio y el <strong>preview es fiel al resultado</strong>. Acomodá logo y texto por formato con sliders de posición/tamaño y <strong>franja</strong>. Negrita/cursiva con los botones N/C.</p>
-      </header>
-
       <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded-lg border bg-card p-4">
           <label className="text-xs font-semibold uppercase text-muted-foreground">Fondo (imagen, sin logo ni texto)</label>
