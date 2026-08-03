@@ -6,6 +6,7 @@ import { getModelos, getModelo } from "@/lib/producto-catalog";
 import { getDiferenciales } from "@/lib/diferenciales";
 import { UGC_PERFILES, UGC_PILARES, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS } from "@/lib/ugc-opciones";
 import { BibliotecaUgc } from "@/components/contenido/biblioteca-ugc";
+import { AdaptacionPiezas } from "@/components/pauta/adaptacion-piezas";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -175,11 +176,11 @@ export default function CalendarioPage() {
   const [sel, setSel] = useState<string>(ymd(now.getFullYear(), now.getMonth(), now.getDate()));
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [canal, setCanal] = useState<"rrss" | "ugc" | "biblioteca">("rrss");
+  const [canal, setCanal] = useState<"rrss" | "ugc" | "biblioteca" | "adaptacion">("rrss");
   const [ugcActiveId, setUgcActiveId] = useState<string | null>(null); // borrador UGC en edición
 
   const load = useCallback(async () => {
-    if (canal === "biblioteca") return; // la Biblioteca (tab) carga su propia data
+    if (canal === "biblioteca" || canal === "adaptacion") return; // esos tabs cargan su propia data (o ninguna)
     setLoading(true);
     setErr(null);
     try {
@@ -213,6 +214,7 @@ export default function CalendarioPage() {
         if (id) setUgcActiveId(id);
       }
       else if (h === "#biblioteca") setCanal("biblioteca");
+      else if (h === "#adaptacion") setCanal("adaptacion");
       else if (h === "#rrss") setCanal("rrss");
     };
     apply();
@@ -280,9 +282,12 @@ export default function CalendarioPage() {
         <button onClick={() => setCanal("rrss")} className={tabCls(canal === "rrss")}>Generación de Contenidos RRSS</button>
         <button onClick={() => setCanal("ugc")} className={tabCls(canal === "ugc")}>Generación de Contenidos UGC</button>
         <button onClick={() => setCanal("biblioteca")} className={tabCls(canal === "biblioteca")}>Biblioteca UGC</button>
+        <button onClick={() => setCanal("adaptacion")} className={tabCls(canal === "adaptacion")}>Adaptación de piezas</button>
       </div>
       {canal === "biblioteca" ? (
         <BibliotecaUgc />
+      ) : canal === "adaptacion" ? (
+        <AdaptacionPiezas />
       ) : (
       <>
       <header className="flex flex-wrap items-center justify-between gap-3">
