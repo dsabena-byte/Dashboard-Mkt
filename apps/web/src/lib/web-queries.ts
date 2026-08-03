@@ -413,6 +413,8 @@ export const PALETA_CANAL: Record<string, string> = {
   Email: "#facc15",
   Referral: "#0ea5e9",
   Display: "#94a3b8",
+  "Display / Programmatic": "#94a3b8",
+  "Demand Gen": "#14b8a6",
   "Cross-network": "#6366f1",
   "Paid Video": "#3b82f6",
   "Organic Video": "#06b6d4",
