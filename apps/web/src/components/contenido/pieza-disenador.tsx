@@ -1,27 +1,37 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type FmtCfg, type Trim, parseWords, computeTrim, loadImg, drawPieza } from "@/lib/pieza-compositor";
+import { type Trim, parseWords, computeTrim, loadImg, drawBg, drawLogoLayer, drawTextBlock } from "@/lib/pieza-compositor";
 
-// Editor de diseño de UNA pieza: sobre la imagen generada se acomoda el logo de
-// Drean y el texto (título + bajada) con la misma flexibilidad que la Adaptación
-// de piezas — posición X/Y, tamaño y color. Compone el PNG final WYSIWYG y lo
-// guarda (imagen_final_url) para publicar exactamente lo que se ve.
+// Editor de diseño de UNA pieza: sobre la imagen se acomodan el logo y DOS
+// bloques de texto independientes (título y bajada), cada uno con su posición
+// X/Y, tamaño, negrita y cursiva. Compone el PNG final WYSIWYG y lo guarda
+// (imagen_final_url) dejando la pieza lista en la Biblioteca.
 
 const LOGO_URL = "/drean-logo.png";
 
-// Config de diseño persistida por pieza (fracciones 0..1 + color del texto).
+// Config de diseño persistida por pieza (fracciones 0..1 + estilos).
 export interface Diseno {
   on: boolean; // logo visible
   logoX: number; logoY: number; logoPct: number;
-  textX: number; textY: number; textPct: number;
-  color: string;
+  color: string; // color de ambos textos
+  titX: number; titY: number; titPct: number; titBold: boolean; titItalic: boolean;
+  bajX: number; bajY: number; bajPct: number; bajBold: boolean; bajItalic: boolean;
 }
 
-const DEFAULT: Diseno = { on: true, logoX: 0.04, logoY: 0.04, logoPct: 0.12, textX: 0.04, textY: 0.96, textPct: 0.075, color: "#ffffff" };
+const DEFAULT: Diseno = {
+  on: true, logoX: 0.04, logoY: 0.04, logoPct: 0.12, color: "#ffffff",
+  titX: 0.04, titY: 0.84, titPct: 0.075, titBold: true, titItalic: false,
+  bajX: 0.04, bajY: 0.93, bajPct: 0.045, bajBold: false, bajItalic: false,
+};
 
-function toCfg(d: Diseno): FmtCfg {
-  return { on: d.on, logoX: d.logoX, logoY: d.logoY, logoPct: d.logoPct, textX: d.textX, textY: d.textY, textPct: d.textPct, bandPct: 0 };
+// Envuelve el texto en el markup que entiende el compositor (**negrita**, _cursiva_).
+function withMarks(text: string, bold: boolean, italic: boolean): string {
+  let t = text.trim();
+  if (!t) return "";
+  if (italic) t = `_${t}_`;
+  if (bold) t = `**${t}**`;
+  return t;
 }
 
 function Slider({ label, value, min, max, step, onChange, fmt }: { label: string; value: number; min: number; max: number; step: number; onChange: (n: number) => void; fmt: (n: number) => string }) {
@@ -31,6 +41,31 @@ function Slider({ label, value, min, max, step, onChange, fmt }: { label: string
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1 flex-1 accent-[var(--primary)]" />
       <span className="w-9 text-right text-[9px] tabular-nums text-muted-foreground">{fmt(value)}</span>
     </label>
+  );
+}
+
+const pctFmt = (n: number) => `${Math.round(n)}%`;
+
+// Controles de un bloque de texto (posición/tamaño + negrita/cursiva). A nivel
+// de módulo para no remontarse en cada render (rompería el arrastre del slider).
+function TextoBox({ nombre, bold, italic, x, y, t, onBold, onItalic, onX, onY, onT }: {
+  nombre: string; bold: boolean; italic: boolean; x: number; y: number; t: number;
+  onBold: () => void; onItalic: () => void; onX: (n: number) => void; onY: (n: number) => void; onT: (n: number) => void;
+}) {
+  const tog = "rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none";
+  return (
+    <div className="space-y-1 rounded border p-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase text-muted-foreground">{nombre}</span>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={onBold} className={`${tog} ${bold ? "bg-foreground text-background" : "hover:bg-secondary"}`} title="Negrita"><b>N</b></button>
+          <button type="button" onClick={onItalic} className={`${tog} ${italic ? "bg-foreground text-background" : "hover:bg-secondary"}`} title="Cursiva"><i>C</i></button>
+        </div>
+      </div>
+      <Slider label="X" value={x * 100} min={0} max={100} step={1} onChange={(n) => onX(n / 100)} fmt={pctFmt} />
+      <Slider label="Y" value={y * 100} min={0} max={100} step={1} onChange={(n) => onY(n / 100)} fmt={pctFmt} />
+      <Slider label="T" value={t * 100} min={2} max={20} step={1} onChange={(n) => onT(n / 100)} fmt={pctFmt} />
+    </div>
   );
 }
 
@@ -48,7 +83,6 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
   const [bgErr, setBgErr] = useState<string | null>(null);
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
   const [logoTrim, setLogoTrim] = useState<Trim | null>(null);
-  // Logo a usar: por defecto el de Drean, pero se puede subir uno propio (data URL).
   const [logoSrc, setLogoSrc] = useState<string>(LOGO_URL);
   const [d, setD] = useState<Diseno>({ ...DEFAULT, ...(diseno ?? {}) });
   const [fontReady, setFontReady] = useState(false);
@@ -56,7 +90,6 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
   const ref = useRef<HTMLCanvasElement>(null);
   const firstSave = useRef(true);
 
-  // Cargar fondo (la imagen de la pieza), logo y fuente Manrope.
   useEffect(() => { let cancel = false; setBgErr(null); setBgImg(null);
     (async () => { try { const i = await loadImg(imagenUrl, true); if (!cancel) setBgImg(i); } catch { if (!cancel) setBgErr("No se pudo cargar la imagen para el editor."); } })();
     return () => { cancel = true; }; }, [imagenUrl]);
@@ -65,9 +98,10 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
     return () => { cancel = true; }; }, [logoSrc]);
   useEffect(() => { (async () => { try { await document.fonts.load('800 40px "Manrope"'); await document.fonts.load('500 40px "Manrope"'); } catch { /* */ } setFontReady(true); })(); }, []);
 
-  const words = useMemo(() => parseWords(`${titulo.trim() ? `**${titulo.trim()}**` : ""}${bajada.trim() ? ` ${bajada.trim()}` : ""}`.trim()), [titulo, bajada]);
+  const titWords = useMemo(() => parseWords(withMarks(titulo, d.titBold, d.titItalic)), [titulo, d.titBold, d.titItalic]);
+  const bajWords = useMemo(() => parseWords(withMarks(bajada, d.bajBold, d.bajItalic)), [bajada, d.bajBold, d.bajItalic]);
 
-  // Persistir la config (posiciones) con debounce, sin recomponer la imagen.
+  // Persistir la config (posiciones/estilos) con debounce, sin recomponer.
   useEffect(() => {
     if (firstSave.current) { firstSave.current = false; return; }
     const t = setTimeout(() => save({ diseno: d }), 700);
@@ -75,18 +109,27 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d]);
 
+  // Dibuja fondo + logo + los dos bloques de texto en el contexto dado.
+  function render(ctx: CanvasRenderingContext2D, W: number, H: number) {
+    if (!bgImg) return;
+    drawBg(ctx, bgImg, W, H);
+    if (d.on && logoImg && logoTrim) drawLogoLayer(ctx, logoImg, logoTrim, W, H, d.logoX, d.logoY, d.logoPct);
+    drawTextBlock(ctx, titWords, W, H, d.titX, d.titY, d.titPct, d.color);
+    drawTextBlock(ctx, bajWords, W, H, d.bajX, d.bajY, d.bajPct, d.color);
+  }
+
   // Preview en vivo.
   const DW = 300;
   const DH = bgImg ? Math.round(DW * (bgImg.naturalHeight / bgImg.naturalWidth)) : Math.round(DW * 1.25);
   useEffect(() => {
     const cv = ref.current; if (!cv) return; const ctx = cv.getContext("2d"); if (!ctx) return;
     ctx.clearRect(0, 0, DW, DH);
-    if (bgImg) drawPieza(ctx, bgImg, d.on ? logoImg : null, d.on ? logoTrim : null, words, DW, DH, toCfg(d), d.color, "#00064F");
+    if (bgImg) render(ctx, DW, DH);
     else { ctx.fillStyle = "#e5e7eb"; ctx.fillRect(0, 0, DW, DH); }
-  }, [bgImg, logoImg, logoTrim, words, d, DW, DH, fontReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bgImg, logoImg, logoTrim, titWords, bajWords, d, DW, DH, fontReady]);
 
   const upd = (patch: Partial<Diseno>) => setD((prev) => ({ ...prev, ...patch }));
-  const pct = (n: number) => `${Math.round(n)}%`;
   function onLogoFile(file: File | undefined) {
     if (!file) return;
     const r = new FileReader();
@@ -102,14 +145,11 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
       const canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("ctx");
       try { await document.fonts.load(`800 ${Math.round(H * 0.08)}px "Manrope"`); await document.fonts.load(`500 ${Math.round(H * 0.08)}px "Manrope"`); } catch { /* fallback */ }
-      drawPieza(ctx, bgImg, d.on ? logoImg : null, d.on ? logoTrim : null, words, W, H, toCfg(d), d.color, "#00064F");
+      render(ctx, W, H);
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
       if (!blob) throw new Error("toBlob");
       const url = await uploadBlob(blob);
       // "Guardar" en Diseñar = pieza terminada → queda EN BIBLIOTECA (aprobada).
-      // con_placa=false: el diseño ya está quemado en imagen_final_url.
-      // Guardamos la imagen final + estado (siempre) y aparte el diseño
-      // (best-effort: si la columna `diseno` aún no existe, no rompe la compo).
       save({ imagen_final_url: url, con_placa: false, aprobado: true, estado: "aprobado" });
       save({ diseno: d });
       onDone?.();
@@ -136,11 +176,11 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
       <div className="flex-1 space-y-3">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div>
-            <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Título</label>
+            <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Título (texto)</label>
             <input defaultValue={titulo} onBlur={(e) => save({ mensaje_clave: e.target.value })} className={`${field} w-full`} />
           </div>
           <div>
-            <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Bajada</label>
+            <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Bajada (texto)</label>
             <input defaultValue={bajada} onBlur={(e) => save({ bajada: e.target.value })} className={`${field} w-full`} />
           </div>
         </div>
@@ -164,24 +204,29 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
                 {logoSrc !== LOGO_URL && <button type="button" onClick={() => setLogoSrc(LOGO_URL)} className="rounded border px-1.5 py-0.5 text-[9px] font-medium hover:bg-secondary">Drean</button>}
               </div>
             </div>
-            <Slider label="X" value={d.logoX * 100} min={0} max={100} step={1} onChange={(n) => upd({ logoX: n / 100 })} fmt={pct} />
-            <Slider label="Y" value={d.logoY * 100} min={0} max={100} step={1} onChange={(n) => upd({ logoY: n / 100 })} fmt={pct} />
-            <Slider label="T" value={d.logoPct * 100} min={3} max={60} step={1} onChange={(n) => upd({ logoPct: n / 100 })} fmt={pct} />
+            <Slider label="X" value={d.logoX * 100} min={0} max={100} step={1} onChange={(n) => upd({ logoX: n / 100 })} fmt={pctFmt} />
+            <Slider label="Y" value={d.logoY * 100} min={0} max={100} step={1} onChange={(n) => upd({ logoY: n / 100 })} fmt={pctFmt} />
+            <Slider label="T" value={d.logoPct * 100} min={3} max={60} step={1} onChange={(n) => upd({ logoPct: n / 100 })} fmt={pctFmt} />
           </div>
-          {/* Texto */}
+
+          {/* Color de los textos */}
           <div className="space-y-1 rounded border p-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase text-muted-foreground">Texto</span>
-              <div className="flex items-center gap-1">
-                {colores.map(([c, n]) => (
-                  <button key={c} type="button" onClick={() => upd({ color: c })} className={`h-4 w-4 rounded border ${d.color === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n} />
-                ))}
-              </div>
+            <span className="text-[11px] font-semibold uppercase text-muted-foreground">Color texto</span>
+            <div className="flex items-center gap-1.5 pt-1">
+              {colores.map(([c, n]) => (
+                <button key={c} type="button" onClick={() => upd({ color: c })} className={`h-5 w-5 rounded border ${d.color === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n} />
+              ))}
             </div>
-            <Slider label="X" value={d.textX * 100} min={0} max={100} step={1} onChange={(n) => upd({ textX: n / 100 })} fmt={pct} />
-            <Slider label="Y" value={d.textY * 100} min={0} max={100} step={1} onChange={(n) => upd({ textY: n / 100 })} fmt={pct} />
-            <Slider label="T" value={d.textPct * 100} min={2} max={20} step={1} onChange={(n) => upd({ textPct: n / 100 })} fmt={pct} />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextoBox nombre="Título · posición" bold={d.titBold} italic={d.titItalic} x={d.titX} y={d.titY} t={d.titPct}
+            onBold={() => upd({ titBold: !d.titBold })} onItalic={() => upd({ titItalic: !d.titItalic })}
+            onX={(n) => upd({ titX: n })} onY={(n) => upd({ titY: n })} onT={(n) => upd({ titPct: n })} />
+          <TextoBox nombre="Bajada · posición" bold={d.bajBold} italic={d.bajItalic} x={d.bajX} y={d.bajY} t={d.bajPct}
+            onBold={() => upd({ bajBold: !d.bajBold })} onItalic={() => upd({ bajItalic: !d.bajItalic })}
+            onX={(n) => upd({ bajX: n })} onY={(n) => upd({ bajY: n })} onT={(n) => upd({ bajPct: n })} />
         </div>
 
         <div className="flex items-center gap-2">

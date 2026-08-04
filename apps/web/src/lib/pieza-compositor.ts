@@ -70,25 +70,37 @@ function wrapBold(ctx: CanvasRenderingContext2D, words: Word[], maxW: number, fs
 }
 function lineWidth(ctx: CanvasRenderingContext2D, line: Word[], fs: number): number { let w = 0; line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); w += ctx.measureText(t.w).width + (j ? ctx.measureText(" ").width : 0); }); return w; }
 
-// Render principal de una pieza: fondo (cover) + franja opcional + logo + texto.
-export function drawPieza(ctx: CanvasRenderingContext2D, bg: HTMLImageElement, logo: HTMLImageElement | null, trim: Trim | null, words: Word[], W: number, H: number, c: FmtCfg, color: string, bandColor: string) {
+// Capa de fondo (cover) + franja opcional.
+export function drawBg(ctx: CanvasRenderingContext2D, bg: HTMLImageElement, W: number, H: number, bandPct = 0, bandColor = "#00064F") {
   ctx.clearRect(0, 0, W, H);
-  const bandH = Math.round(H * (c.bandPct || 0));
+  const bandH = Math.round(H * (bandPct || 0));
   if (bandH > 0) { coverDraw(ctx, bg, 0, bandH, W, H - bandH * 2); ctx.fillStyle = bandColor; ctx.fillRect(0, 0, W, bandH); ctx.fillRect(0, H - bandH, W, bandH); }
   else coverDraw(ctx, bg, 0, 0, W, H);
+}
+
+// Capa de logo (usa el trim para no incluir el margen transparente).
+export function drawLogoLayer(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, trim: Trim, W: number, H: number, logoX: number, logoY: number, logoPct: number) {
+  const ar = trim.sw / Math.max(1, trim.sh);
+  let lh = H * logoPct; let lw = lh * ar; if (lw > W) { lw = W; lh = lw / ar; }
+  ctx.drawImage(logo, trim.sx, trim.sy, trim.sw, trim.sh, place(logoX, W, lw), place(logoY, H, lh), lw, lh);
+}
+
+// Capa de un bloque de texto independiente (posición X/Y + tamaño + color).
+export function drawTextBlock(ctx: CanvasRenderingContext2D, words: Word[], W: number, H: number, x: number, y: number, pct: number, color: string) {
+  if (!words.length) return;
   const P = Math.round(Math.min(W, H) * 0.035);
-  if (logo && trim) {
-    const ar = trim.sw / Math.max(1, trim.sh);
-    let lh = H * c.logoPct; let lw = lh * ar; if (lw > W) { lw = W; lh = lw / ar; }
-    ctx.drawImage(logo, trim.sx, trim.sy, trim.sw, trim.sh, place(c.logoX, W, lw), place(c.logoY, H, lh), lw, lh);
-  }
-  if (words.length) {
-    const fs = Math.max(8, Math.round(H * c.textPct));
-    ctx.textBaseline = "top"; ctx.fillStyle = color; ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = fs * 0.22;
-    const lines = wrapBold(ctx, words, W - P * 2, fs); const lh = fs * 1.18; const blockH = lines.length * lh;
-    const blockW = Math.max(...lines.map((l) => lineWidth(ctx, l, fs)));
-    const bx = place(c.textX, W, blockW); const by = place(c.textY, H, blockH);
-    lines.forEach((line, i) => { let x = bx; const y = by + i * lh; line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); if (j) x += ctx.measureText(" ").width; ctx.fillText(t.w, x, y); x += ctx.measureText(t.w).width; }); });
-    ctx.shadowBlur = 0;
-  }
+  const fs = Math.max(8, Math.round(H * pct));
+  ctx.textBaseline = "top"; ctx.fillStyle = color; ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = fs * 0.22;
+  const lines = wrapBold(ctx, words, W - P * 2, fs); const lh = fs * 1.18; const blockH = lines.length * lh;
+  const blockW = Math.max(...lines.map((l) => lineWidth(ctx, l, fs)));
+  const bx = place(x, W, blockW); const by = place(y, H, blockH);
+  lines.forEach((line, i) => { let xx = bx; const yy = by + i * lh; line.forEach((t, j) => { ctx.font = fontFor(t.bold, t.italic, fs); if (j) xx += ctx.measureText(" ").width; ctx.fillText(t.w, xx, yy); xx += ctx.measureText(t.w).width; }); });
+  ctx.shadowBlur = 0;
+}
+
+// Render principal de una pieza (usado por la Adaptación): fondo + logo + UN texto.
+export function drawPieza(ctx: CanvasRenderingContext2D, bg: HTMLImageElement, logo: HTMLImageElement | null, trim: Trim | null, words: Word[], W: number, H: number, c: FmtCfg, color: string, bandColor: string) {
+  drawBg(ctx, bg, W, H, c.bandPct, bandColor);
+  if (logo && trim) drawLogoLayer(ctx, logo, trim, W, H, c.logoX, c.logoY, c.logoPct);
+  drawTextBlock(ctx, words, W, H, c.textX, c.textY, c.textPct, color);
 }
