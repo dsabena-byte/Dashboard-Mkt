@@ -10,7 +10,7 @@ const WRITABLE = new Set([
   "fecha", "hora", "pilar", "categoria", "modelo", "formato", "aspecto", "detalles",
   "imagen_url", "video_url", "caption", "hashtags", "mensaje_clave", "bajada", "image_prompt",
   "estado", "aprobado", "redes", "notas", "con_placa",
-  "tipo_contenido", "subtipo", "idea", "imagen_final_url", "imagen_versiones",
+  "tipo_contenido", "subtipo", "idea", "imagen_final_url", "imagen_versiones", "diseno",
   "canal", "perfil", "guion", "persona_url", "ad_id", "edad", "vestimenta",
 ]);
 

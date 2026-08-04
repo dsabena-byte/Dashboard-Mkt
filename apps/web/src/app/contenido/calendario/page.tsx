@@ -7,6 +7,7 @@ import { getDiferenciales } from "@/lib/diferenciales";
 import { UGC_PERFILES, UGC_PILARES, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UGC_EDADES, UGC_VESTIMENTAS } from "@/lib/ugc-opciones";
 import { BibliotecaUgc } from "@/components/contenido/biblioteca-ugc";
 import { AdaptacionPiezas } from "@/components/pauta/adaptacion-piezas";
+import { PiezaDisenador, type Diseno } from "@/components/contenido/pieza-disenador";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -49,6 +50,7 @@ interface Cal {
   idea?: string;
   imagen_final_url?: string | null;
   imagen_versiones?: string[] | null;
+  diseno?: Diseno | null;
   redes?: string[] | null;
   publicado_ig_id?: string | null;
   publicado_fb_id?: string | null;
@@ -531,11 +533,18 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       // la imagen final se haya guardado al aprobar (que puede fallar).
       let imageUrl: string | undefined;
       if (e.imagen_url && !e.video_url) {
-        try {
-          const blob = await componerFinal(e.imagen_url, e.mensaje_clave ?? "", e.bajada ?? "", e.con_placa ?? true);
-          imageUrl = await subirBlob(e.id, blob, "final.png");
-          save({ imagen_final_url: imageUrl }); // best-effort: persiste si la columna existe
-        } catch { /* si la composición falla, se publica la imagen cruda */ }
+        // Si la pieza se diseñó con el editor (logo+texto), ya hay una imagen
+        // final WYSIWYG: publicamos esa tal cual. Si no, componemos la placa
+        // legacy en el momento.
+        if (e.diseno && e.imagen_final_url) {
+          imageUrl = e.imagen_final_url;
+        } else {
+          try {
+            const blob = await componerFinal(e.imagen_url, e.mensaje_clave ?? "", e.bajada ?? "", e.con_placa ?? true);
+            imageUrl = await subirBlob(e.id, blob, "final.png");
+            save({ imagen_final_url: imageUrl }); // best-effort: persiste si la columna existe
+          } catch { /* si la composición falla, se publica la imagen cruda */ }
+        }
       }
       const r = await fetch("/api/contenido/calendario/publicar", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -695,9 +704,11 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     const nuevo = !e.aprobado;
     // 1) Aprobar/desaprobar (siempre funciona).
     await save({ aprobado: nuevo, estado: nuevo ? "aprobado" : "generado" });
-    // 2) Al aprobar, componer la imagen final (placa grabada) y hostearla permanente
-    //    para poder publicarla en IG/FB (las URLs de fal caducan). Best-effort.
-    if (nuevo && e.imagen_url) {
+    // 2) Al aprobar, asegurar la imagen final hosteada permanente para publicar
+    //    en IG/FB (las URLs de fal caducan). Si la pieza ya se diseñó con el
+    //    editor (logo+texto), esa imagen final ya está guardada: no re-componemos.
+    //    Si no, componemos la placa legacy. Best-effort.
+    if (nuevo && e.imagen_url && !(e.diseno && e.imagen_final_url)) {
       setBusy("save");
       try {
         const blob = await componerFinal(e.imagen_url, e.mensaje_clave ?? "", e.bajada ?? "", e.con_placa ?? true);
@@ -818,8 +829,20 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       </div>
       </>)}
 
-      {/* Contenido generado (visible en todos los pasos como referencia) */}
-      {e.imagen_url && (
+      {/* Paso 2 · Diseñar: editor flexible de logo + texto (canvas WYSIWYG) */}
+      {e.imagen_url && step === 2 && (
+        <PiezaDisenador
+          imagenUrl={e.imagen_url}
+          titulo={e.mensaje_clave ?? ""}
+          bajada={e.bajada ?? ""}
+          diseno={e.diseno ?? null}
+          save={(patch) => save(patch as Partial<Cal>)}
+          uploadBlob={(blob) => subirBlob(e.id, blob, "final.png")}
+        />
+      )}
+
+      {/* Contenido generado (referencia + controles de los otros pasos) */}
+      {e.imagen_url && step !== 2 && (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           <div className="flex shrink-0 flex-col gap-2 self-start">
             <div className="relative inline-block h-min max-w-full">
@@ -860,27 +883,6 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
               <p className="text-xs text-muted-foreground">Pieza generada. Pasá a <b>Diseñar</b> para el logo y los textos, o retocá la imagen a la izquierda.</p>
             )}
 
-            {/* Paso 2 · Diseñar: texto de la placa sobre el crudo */}
-            {step === 2 && (<>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Título placa</label>
-                <input value={e.mensaje_clave ?? ""} onChange={(ev) => setE({ ...e, mensaje_clave: ev.target.value })} onBlur={() => save({ mensaje_clave: e.mensaje_clave })} className={`${field} w-full`} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Bajada</label>
-                <input value={e.bajada ?? ""} onChange={(ev) => setE({ ...e, bajada: ev.target.value })} onBlur={() => save({ bajada: e.bajada })} className={`${field} w-full`} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Caption</label>
-                <textarea value={e.caption ?? ""} onChange={(ev) => setE({ ...e, caption: ev.target.value })} onBlur={() => save({ caption: e.caption })} rows={3} className={`${field} w-full`} />
-              </div>
-              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <input type="checkbox" checked={e.con_placa ?? true} onChange={(ev) => { setE({ ...e, con_placa: ev.target.checked }); save({ con_placa: ev.target.checked }); }} />
-                Publicar/mostrar <strong className="font-semibold">con placa</strong> (título + bajada sobre la imagen)
-              </label>
-              <p className="text-[10px] text-muted-foreground">Cuando la pieza esté lista, pasá a <b>Biblioteca</b> para aprobarla.</p>
-            </>)}
-
             {/* Paso 3 · Biblioteca: aprobar (pasa al stock) y sumar video */}
             {step === 3 && (<>
               <button
@@ -917,6 +919,10 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
 
             {/* Paso 4 · Distribuir: orgánico (redes/calendario) y prueba de publicación */}
             {step === 4 && (<>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Caption (copy del posteo)</label>
+                <textarea value={e.caption ?? ""} onChange={(ev) => setE({ ...e, caption: ev.target.value })} onBlur={() => save({ caption: e.caption })} rows={3} className={`${field} w-full`} />
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar en:</span>
                 <label className="flex items-center gap-1 text-[11px]">
