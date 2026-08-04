@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+// Cuántos posteos se muestran por tanda (botón "Ver más" para seguir).
+const PAGE_SIZE = 18;
 
 // Panel de posteos de competencia agrupado POR MARCA. Reemplaza el viejo
 // "mejores/peores vs promedio". Con la data que tenemos de social_posts
@@ -87,6 +90,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
   const [marca, setMarca] = useState<string>(marcas[0] ?? "");
   const [tipo, setTipo] = useState<string>("all");
   const [sort, setSort] = useState<"engagement" | "fecha">("fecha");
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
   const marcaSel = marcas.includes(marca) ? marca : (marcas[0] ?? "");
   const delaMarca = useMemo(() => posts.filter((p) => p.marca === marcaSel), [posts, marcaSel]);
@@ -111,6 +115,9 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
     else arr.sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""));
     return arr;
   }, [delaMarca, tipo, sort]);
+
+  // Al cambiar marca / tipo / orden, volver a mostrar solo la primera tanda.
+  useEffect(() => { setVisible(PAGE_SIZE); }, [marcaSel, tipo, sort]);
 
   if (marcas.length === 0) {
     return <p className="rounded-xl border bg-card p-6 text-center text-xs text-muted-foreground">No hay posteos de competencia para el filtro seleccionado.</p>;
@@ -152,8 +159,9 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
       {filtered.length === 0 ? (
         <p className="py-6 text-center text-xs text-muted-foreground">No hay posteos con este filtro.</p>
       ) : (
+        <>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {filtered.map((p) => {
+          {filtered.slice(0, visible).map((p) => {
             const eng = p.engagement ?? 0;
             const arriba = eng >= avgEng;
             return (
@@ -189,6 +197,17 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
             );
           })}
         </div>
+        {visible < filtered.length && (
+          <div className="flex justify-center pt-1">
+            <button
+              onClick={() => setVisible((v) => v + PAGE_SIZE)}
+              className="rounded-full border px-4 py-1.5 text-xs font-medium hover:bg-secondary"
+            >
+              Ver más ({filtered.length - visible} restantes)
+            </button>
+          </div>
+        )}
+        </>
       )}
     </section>
   );
