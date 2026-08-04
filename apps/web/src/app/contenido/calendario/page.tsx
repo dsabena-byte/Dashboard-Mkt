@@ -16,6 +16,15 @@ const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const ESTADO_COLOR: Record<string, string> = { pendiente: "#94a3b8", generado: "#f59e0b", aprobado: "#10b981", publicado: "#2563eb" };
 const ESTADO_LABEL: Record<string, string> = { pendiente: "Pendiente", generado: "Generado", aprobado: "Aprobado ✓", publicado: "Publicado" };
 
+// Pasos del proceso de una pieza (rediseño del generador): generar el crudo →
+// diseñarlo (logo + texto) → pasarlo a la biblioteca → distribuirlo.
+const STEPS = [
+  { n: 1, label: "Generar" },
+  { n: 2, label: "Diseñar" },
+  { n: 3, label: "Biblioteca" },
+  { n: 4, label: "Distribuir" },
+] as const;
+
 interface Cal {
   id: string;
   fecha: string;
@@ -491,6 +500,11 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [pubBusy, setPubBusy] = useState(false);
   const [retoque, setRetoque] = useState("");
+  // Paso activo del proceso. Arranca según el estado de la pieza para caer
+  // directo donde el usuario probablemente quiera seguir.
+  const [step, setStep] = useState<number>(
+    entry.publicado_ig_id || entry.publicado_fb_id ? 4 : entry.aprobado ? 3 : entry.imagen_url ? 2 : 1,
+  );
 
   async function publicarPrueba(red: "instagram" | "facebook") {
     if (!e.imagen_url && !e.video_url) return;
@@ -717,6 +731,21 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
         <button onClick={borrar} disabled={busy === "gen" || busy === "del"} className="ml-auto rounded border px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50">Borrar</button>
       </div>
 
+      {/* Pasos del proceso */}
+      <div className="mb-3 flex gap-1 overflow-x-auto border-b">
+        {STEPS.map((s) => (
+          <button
+            key={s.n}
+            onClick={() => setStep(s.n)}
+            className={`-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-1.5 text-xs font-medium transition-colors ${step === s.n ? "border-blue-600 text-blue-700" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            <span className={`grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold ${step === s.n ? "bg-blue-600 text-white" : "bg-secondary text-muted-foreground"}`}>{s.n}</span>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {step === 1 && (<>
       {/* Parámetros */}
       <div className="mb-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
         <select value={e.tipo_contenido ?? "producto"} onChange={(ev) => { const t = ev.target.value; setE({ ...e, tipo_contenido: t }); save({ tipo_contenido: t }); }} className={field}>
@@ -773,8 +802,9 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
           <input type="file" accept="video/*" className="hidden" disabled={uploading} onChange={(ev) => { subir("video", ev.target.files?.[0] ?? null); ev.target.value = ""; }} />
         </label>
       </div>
+      </>)}
 
-      {/* Contenido generado */}
+      {/* Contenido generado (visible en todos los pasos como referencia) */}
       {e.imagen_url && (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           <div className="flex shrink-0 flex-col gap-2 self-start">
@@ -812,81 +842,100 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
             </div>
           </div>
           <div className="flex-1 space-y-2">
-            <div>
-              <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Título placa</label>
-              <input value={e.mensaje_clave ?? ""} onChange={(ev) => setE({ ...e, mensaje_clave: ev.target.value })} onBlur={() => save({ mensaje_clave: e.mensaje_clave })} className={`${field} w-full`} />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Bajada</label>
-              <input value={e.bajada ?? ""} onChange={(ev) => setE({ ...e, bajada: ev.target.value })} onBlur={() => save({ bajada: e.bajada })} className={`${field} w-full`} />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Caption</label>
-              <textarea value={e.caption ?? ""} onChange={(ev) => setE({ ...e, caption: ev.target.value })} onBlur={() => save({ caption: e.caption })} rows={3} className={`${field} w-full`} />
-            </div>
-            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <input type="checkbox" checked={e.con_placa ?? true} onChange={(ev) => { setE({ ...e, con_placa: ev.target.checked }); save({ con_placa: ev.target.checked }); }} />
-              Publicar/mostrar <strong className="font-semibold">con placa</strong> (título + bajada sobre la imagen)
-            </label>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar en:</span>
-              <label className="flex items-center gap-1 text-[11px]">
-                <input type="checkbox" checked={(e.redes ?? []).includes("instagram")} onChange={() => toggleRed("instagram")} /> Instagram
-              </label>
-              <label className="flex items-center gap-1 text-[11px]">
-                <input type="checkbox" checked={(e.redes ?? []).includes("facebook")} onChange={() => toggleRed("facebook")} /> Facebook
-              </label>
-            </div>
-            <button
-              onClick={aprobarPieza}
-              disabled={busy === "gen" || busy === "del" || busy === "save"}
-              className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"}`}
-            >
-              {busy === "save" ? "Preparando…" : e.aprobado ? "✓ Aprobado (click para desaprobar)" : "Aprobar y preparar para publicar"}
-            </button>
+            {step === 1 && (
+              <p className="text-xs text-muted-foreground">Pieza generada. Pasá a <b>Diseñar</b> para el logo y los textos, o retocá la imagen a la izquierda.</p>
+            )}
 
-            {/* Video */}
-            <div className="space-y-1 border-t pt-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Video (≤6s)</span>
-                <select value={videoModelo} onChange={(ev) => setVideoModelo(ev.target.value)} className={field}>
-                  <option value="kling">Kling (5s)</option>
-                  <option value="veo">Veo (~8s)</option>
-                </select>
-                <input value={videoPrompt} onChange={(ev) => setVideoPrompt(ev.target.value)} placeholder="movimiento (opcional)" className={`${field} min-w-[8rem] flex-1`} />
-                <button onClick={generarVideo} disabled={videoBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
-                  {videoBusy ? "Generando… (~1-3 min)" : e.video_url ? "Regenerar video" : "Generar video"}
-                </button>
+            {/* Paso 2 · Diseñar: texto de la placa sobre el crudo */}
+            {step === 2 && (<>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Título placa</label>
+                <input value={e.mensaje_clave ?? ""} onChange={(ev) => setE({ ...e, mensaje_clave: ev.target.value })} onBlur={() => save({ mensaje_clave: e.mensaje_clave })} className={`${field} w-full`} />
               </div>
-              {videoErr && <p className="text-[10px] text-red-700">{videoErr}</p>}
-              {e.video_url && (
-                <div className="space-y-1">
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <video src={e.video_url} controls loop className="max-h-56 w-auto max-w-full rounded border" />
-                  <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar video</a>
-                </div>
-              )}
-            </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Bajada</label>
+                <input value={e.bajada ?? ""} onChange={(ev) => setE({ ...e, bajada: ev.target.value })} onBlur={() => save({ bajada: e.bajada })} className={`${field} w-full`} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Caption</label>
+                <textarea value={e.caption ?? ""} onChange={(ev) => setE({ ...e, caption: ev.target.value })} onBlur={() => save({ caption: e.caption })} rows={3} className={`${field} w-full`} />
+              </div>
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <input type="checkbox" checked={e.con_placa ?? true} onChange={(ev) => { setE({ ...e, con_placa: ev.target.checked }); save({ con_placa: ev.target.checked }); }} />
+                Publicar/mostrar <strong className="font-semibold">con placa</strong> (título + bajada sobre la imagen)
+              </label>
+              <p className="text-[10px] text-muted-foreground">Cuando la pieza esté lista, pasá a <b>Biblioteca</b> para aprobarla.</p>
+            </>)}
 
-            {/* Publicar prueba (manual, publica en la cuenta real ahora) */}
-            <div className="flex flex-wrap items-center gap-2 border-t pt-2">
-              <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar prueba</span>
-              {e.publicado_ig_id ? (
-                // IG no se puede borrar por API (falta instagram_manage_contents). Se
-                // retira a mano desde la app; el botón sólo recuerda cómo y resetea.
-                <button onClick={avisoRetirarIG} disabled={pubBusy} className="rounded border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50">✓ En Instagram · retirar a mano</button>
-              ) : (
-                <button onClick={() => publicarPrueba("instagram")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Instagram</button>
-              )}
-              {e.publicado_fb_id ? (
-                <button onClick={() => retirarPublicacion("facebook")} disabled={pubBusy} className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">✕ Retirar de Facebook</button>
-              ) : (
-                <button onClick={() => publicarPrueba("facebook")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Facebook</button>
-              )}
-              {pubBusy && <span className="text-[10px] text-muted-foreground">procesando…</span>}
-            </div>
+            {/* Paso 3 · Biblioteca: aprobar (pasa al stock) y sumar video */}
+            {step === 3 && (<>
+              <button
+                onClick={aprobarPieza}
+                disabled={busy === "gen" || busy === "del" || busy === "save"}
+                className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"}`}
+              >
+                {busy === "save" ? "Preparando…" : e.aprobado ? "✓ En biblioteca (click para sacar)" : "Aprobar y pasar a biblioteca"}
+              </button>
+
+              {/* Video: desde una imagen con potencial, sumar un clip al stock */}
+              <div className="space-y-1 border-t pt-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">Video (≤6s)</span>
+                  <select value={videoModelo} onChange={(ev) => setVideoModelo(ev.target.value)} className={field}>
+                    <option value="kling">Kling (5s)</option>
+                    <option value="veo">Veo (~8s)</option>
+                  </select>
+                  <input value={videoPrompt} onChange={(ev) => setVideoPrompt(ev.target.value)} placeholder="movimiento (opcional)" className={`${field} min-w-[8rem] flex-1`} />
+                  <button onClick={generarVideo} disabled={videoBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+                    {videoBusy ? "Generando… (~1-3 min)" : e.video_url ? "Regenerar video" : "Generar video"}
+                  </button>
+                </div>
+                {videoErr && <p className="text-[10px] text-red-700">{videoErr}</p>}
+                {e.video_url && (
+                  <div className="space-y-1">
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video src={e.video_url} controls loop className="max-h-56 w-auto max-w-full rounded border" />
+                    <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar video</a>
+                  </div>
+                )}
+              </div>
+            </>)}
+
+            {/* Paso 4 · Distribuir: orgánico (redes/calendario) y prueba de publicación */}
+            {step === 4 && (<>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar en:</span>
+                <label className="flex items-center gap-1 text-[11px]">
+                  <input type="checkbox" checked={(e.redes ?? []).includes("instagram")} onChange={() => toggleRed("instagram")} /> Instagram
+                </label>
+                <label className="flex items-center gap-1 text-[11px]">
+                  <input type="checkbox" checked={(e.redes ?? []).includes("facebook")} onChange={() => toggleRed("facebook")} /> Facebook
+                </label>
+              </div>
+
+              {/* Publicar prueba (manual, publica en la cuenta real ahora) */}
+              <div className="flex flex-wrap items-center gap-2 border-t pt-2">
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar prueba</span>
+                {e.publicado_ig_id ? (
+                  // IG no se puede borrar por API (falta instagram_manage_contents). Se
+                  // retira a mano desde la app; el botón sólo recuerda cómo y resetea.
+                  <button onClick={avisoRetirarIG} disabled={pubBusy} className="rounded border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50">✓ En Instagram · retirar a mano</button>
+                ) : (
+                  <button onClick={() => publicarPrueba("instagram")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Instagram</button>
+                )}
+                {e.publicado_fb_id ? (
+                  <button onClick={() => retirarPublicacion("facebook")} disabled={pubBusy} className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">✕ Retirar de Facebook</button>
+                ) : (
+                  <button onClick={() => publicarPrueba("facebook")} disabled={pubBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">▶ Facebook</button>
+                )}
+                {pubBusy && <span className="text-[10px] text-muted-foreground">procesando…</span>}
+              </div>
+            </>)}
           </div>
         </div>
+      )}
+      {!e.imagen_url && step !== 1 && (
+        <p className="mt-3 text-xs text-muted-foreground">Todavía no hay imagen. Volvé a <b>Generar</b> para crearla o subir una.</p>
       )}
     </div>
     {zoom && e.imagen_url && (
