@@ -327,13 +327,21 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   // (audiencia de Drean). Si la métrica devolviera un valor fuera de escala (>2M,
   // p.ej. media views / lifetime), lo ignoramos y usamos la suma de posts.
   const REACH_SANE_MAX = 2_000_000;
+  // El mes EN CURSO no usa el reach mensual de la Página: esa métrica es la
+  // ventana rodante de 28 días y, a mitad de mes, devuelve un valor "de mes
+  // completo" (dominado por el mes anterior) que infla la barra sin sentido.
+  // Para el mes actual (y futuros) usamos la suma de posts (parcial pero a escala).
+  const nowD = new Date();
+  const currentKey = `${nowD.getUTCFullYear()}-${String(nowD.getUTCMonth() + 1).padStart(2, "0")}`;
   const monthlyData: FbMonthlyDatum[] = Array.from({ length: 12 }, (_, i) => {
     const key = `${targetYear}-${String(i + 1).padStart(2, "0")}`;
     const v = monthlyMap.get(key);
     // Alcance = alcance de la Página (28 días, = el "reach" de Meta Business Suite)
     // cuando el valor es de escala reach; si no, suma de posts (fallback).
+    // Solo meses YA CERRADos usan el reach de Página.
     const pageReach = monthlyReach.get(key);
-    const usePage = pageReach != null && pageReach > 0 && pageReach < REACH_SANE_MAX;
+    const cerrado = key < currentKey;
+    const usePage = cerrado && pageReach != null && pageReach > 0 && pageReach < REACH_SANE_MAX;
     const alcance = usePage ? pageReach : v && v.alcance > 0 ? v.alcance : null;
     return {
       mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,

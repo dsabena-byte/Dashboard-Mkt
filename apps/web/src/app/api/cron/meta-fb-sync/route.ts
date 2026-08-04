@@ -296,6 +296,10 @@ export async function GET(request: Request) {
         if (startMs > nowMs) break;
         const since = Math.floor(startMs / 1000);
         const until = Math.floor(Date.UTC(nowY, mi + 1, 1) / 1000);
+        // Mes EN CURSO (todavía no cerró): el days_28 parcial es una ventana
+        // rodante dominada por el mes anterior y sale muy inflado. No lo
+        // guardamos hasta que el mes cierre (el gráfico usa suma de posts).
+        if (until * 1000 > nowMs) continue;
         const mesKey = `${nowY}-${String(mi + 1).padStart(2, "0")}-01`;
         let reach: number | null = null;
         for (const metric of ["page_total_media_view_unique", "page_total_media_views_unique"]) {
