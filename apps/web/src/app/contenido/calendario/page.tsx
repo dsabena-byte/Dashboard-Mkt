@@ -642,9 +642,16 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: e.id, instruccion: retoque.trim() }),
       });
-      const j = await r.json();
-      if (j.ok) { setE(j.item as Cal); setRetoque(""); onChange(); }
-      else alert(`Error al retocar: ${falErr(j.error ?? "?")}`);
+      // Leemos como texto y parseamos a mano: si la función tarda de más y el
+      // gateway devuelve HTML (504), r.json() tiraría una excepción y el error
+      // quedaría invisible ("no hace nada"). Así siempre mostramos qué pasó.
+      const txt = await r.text();
+      let j: { ok?: boolean; item?: Cal; error?: string } = {};
+      try { j = JSON.parse(txt) as typeof j; } catch { /* respuesta no-JSON */ }
+      if (r.ok && j.ok && j.item) { setE(j.item); setRetoque(""); onChange(); }
+      else alert(`No se pudo retocar: ${falErr(j.error ?? `${r.status} — ${txt.slice(0, 160) || "sin respuesta"}`)}`);
+    } catch (err) {
+      alert(`No se pudo retocar (¿conexión o tardó demasiado?): ${err instanceof Error ? err.message : String(err)}`);
     } finally { setBusy(null); }
   }
 
