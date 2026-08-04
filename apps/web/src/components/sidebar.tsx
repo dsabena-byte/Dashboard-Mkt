@@ -7,7 +7,6 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   GitBranch,
-  Target,
   BarChart3,
   Share2,
   Globe,
@@ -31,7 +30,6 @@ const NAV = [
   { href: "/salud-marca", label: "Salud de Marca",      icon: HeartPulse },
   { href: "/mercado",     label: "Análisis de Mercado", icon: TrendingUp },
   { href: "/funnel",      label: "BGT Inversión",       icon: GitBranch },
-  { href: "/planning",    label: "Planning Pauta Mkt",   icon: Target },
   { href: "/performance", label: "Pauta Mkt", icon: BarChart3 },
   { href: "/performance-conversion", label: "Pauta Ecommerce", icon: BarChart3 },
   { href: "/influencia",  label: "Mkt de Influencia", icon: Megaphone },
