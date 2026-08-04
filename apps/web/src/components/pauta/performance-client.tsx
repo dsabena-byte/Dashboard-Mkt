@@ -657,13 +657,37 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         return { mes: short, digital: plan.digital, tvCable: plan.tvCable, dooh: plan.dooh, ooh: plan.ooh, isPlanned: true, mes_pct: null, pct_marker: 1 };
       }
       const row = { mes: short, digital: 0, tvCable: 0, dooh: 0, ooh: 0, isPlanned: false, mes_pct: null as number | null, pct_marker: 1 };
-      for (const r of data.filter((x) => x.mes === mes)) {
+      const present = new Set<string>(); // medios que YA tiene el plan OMD de ese mes
+      for (const r of data) {
+        if (r.mes !== mes) continue;
         const v = r.inversion ?? 0;
+        if (v > 0 || (r.impresiones ?? 0) > 0) present.add(r.medio);
         const k = tipoMedio(r.medio);
         if (k === "TV Cable") row.tvCable += v;
         else if (k === "DOOH") row.dooh += v;
         else if (k === "OOH") row.ooh += v;
         else row.digital += v;
+      }
+      // Gap-fill del DIGITAL con la ejecución REAL (Meta/DV360/Google) de los
+      // medios que NO están en el plan OMD de ese mes — mismo criterio que
+      // medioModel (los KPIs), para que el gráfico cuadre con el total ejecutado.
+      // Meta/Google/OMD ya vienen en ARS; DV360 (USD) se convierte con el fx del mes.
+      const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
+      const mesISO = mesLabelToISO(mes);
+      const fx = fxRates[mesISO] ?? fxFallback;
+      for (const r of dv360) {
+        if (r.mes !== mesISO) continue;
+        const medio = DVMED[r.canal] ?? r.canal;
+        if (!present.has(medio)) row.digital += (r.revenue_usd ?? 0) * (arsMode ? fx : 1);
+      }
+      for (const r of metaPaid) {
+        if (r.mes !== mes) continue;
+        const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
+        if (medio && !present.has(medio)) row.digital += r.spend ?? 0;
+      }
+      for (const r of googleAdsOmd) {
+        if (r.mes !== mes) continue;
+        if (!present.has(r.canal)) row.digital += r.costo ?? 0;
       }
       return row;
     });
@@ -672,7 +696,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       const monthTotal = (r.digital ?? 0) + (r.tvCable ?? 0) + (r.dooh ?? 0) + (r.ooh ?? 0);
       return { ...r, mes_pct: total > 0 && monthTotal > 0 ? (monthTotal / total) * 100 : null };
     });
-  }, [data, currentMonth, planningMonthly]);
+  }, [data, currentMonth, planningMonthly, metaPaid, dv360, googleAdsOmd, fxRates, arsMode, fxFallback]);
 
   // ===== Resumen ejecutivo: scorecard mes vs mes anterior (MoM) =====
   // Mes de referencia = el seleccionado (si es uno) o el último con data.
@@ -1071,8 +1095,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           <div className="rounded-xl border bg-card p-4">
             <p className="mb-2 text-[10px] text-muted-foreground">
               Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
-              Meses ejecutados usan el real de pauta_performance; meses futuros usan el plan de OMD
-              (planning_media) en tonos más suaves. El % arriba de cada barra es el peso del mes sobre el total anual.
+              Meses ejecutados usan la inversión REAL del mes (OMD + ejecución de Meta/DV360/Google,
+              igual que los KPIs de arriba); meses futuros usan el plan de OMD (planning_media) en tonos
+              más suaves. El % arriba de cada barra es el peso del mes sobre el total anual.
             </p>
             <MonthlyInvestmentChart data={inversionMensual} />
           </div>
