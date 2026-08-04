@@ -8,7 +8,8 @@ import { type Trim, parseWords, computeTrim, loadImg, drawBg, drawLogoLayer, dra
 // X/Y, tamaño, negrita y cursiva. Compone el PNG final WYSIWYG y lo guarda
 // (imagen_final_url) dejando la pieza lista en la Biblioteca.
 
-const LOGO_URL = "/drean-logo.png";
+// Logo por defecto: la versión BLANCA del logo de Drean (mejor sobre fotos).
+const LOGO_URL = "/drean-logo-white.png";
 
 // Config de diseño persistida por pieza (fracciones 0..1 + estilos).
 export interface Diseno {
@@ -69,15 +70,17 @@ function TextoBox({ nombre, bold, italic, x, y, t, onBold, onItalic, onX, onY, o
   );
 }
 
-export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, save, uploadBlob, onDone }: {
+export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, fecha, hora, diseno, save, uploadBlob, onDone }: {
   imagenUrl: string;
   titulo: string;
   bajada: string;
   caption: string;
+  fecha: string;
+  hora: string | null;
   diseno: Diseno | null | undefined;
   save: (patch: Record<string, unknown>) => void;
   uploadBlob: (blob: Blob) => Promise<string>;
-  onDone?: () => void;
+  onDone?: (step: number) => void;
 }) {
   const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
   const [bgErr, setBgErr] = useState<string | null>(null);
@@ -87,6 +90,8 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
   const [d, setD] = useState<Diseno>({ ...DEFAULT, ...(diseno ?? {}) });
   const [fontReady, setFontReady] = useState(false);
   const [composing, setComposing] = useState(false);
+  const [fechaLocal, setFechaLocal] = useState(fecha);
+  const [horaLocal, setHoraLocal] = useState(hora?.slice(0, 5) ?? "");
   const ref = useRef<HTMLCanvasElement>(null);
   const firstSave = useRef(true);
 
@@ -137,7 +142,10 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
     r.readAsDataURL(file);
   }
 
-  async function componer() {
+  // Compone el PNG final (logo + texto quemados) y guarda. `extra` agrega
+  // campos al patch (fecha/hora para calendarizar, o caption:"" para biblioteca);
+  // `step` es a qué paso saltar al terminar.
+  async function componer(extra: Record<string, unknown>, step: number) {
     if (!bgImg) return;
     setComposing(true);
     try {
@@ -149,16 +157,20 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
       if (!blob) throw new Error("toBlob");
       const url = await uploadBlob(blob);
-      // "Guardar" en Diseñar = pieza terminada → queda EN BIBLIOTECA (aprobada).
-      save({ imagen_final_url: url, con_placa: false, aprobado: true, estado: "aprobado" });
+      save({ imagen_final_url: url, con_placa: false, aprobado: true, estado: "aprobado", ...extra });
       save({ diseno: d });
-      onDone?.();
+      onDone?.(step);
     } catch (e) {
       alert(`No se pudo componer el diseño: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setComposing(false);
     }
   }
+
+  // Calendarizar: fija la pieza en el día/hora elegidos (va al calendario RRSS,
+  // con su copy) → salta a Distribuir. Biblioteca: stock reusable SIN el copy.
+  const calendarizar = () => componer({ fecha: fechaLocal, hora: horaLocal || null }, 4);
+  const aBiblioteca = () => componer({ caption: "" }, 3);
 
   const field = "rounded border px-2 py-1 text-xs";
   const colores: [string, string][] = [["#ffffff", "blanco"], ["#00064F", "azul Drean"], ["#111111", "negro"]];
@@ -229,11 +241,30 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
             onX={(n) => upd({ bajX: n })} onY={(n) => upd({ bajY: n })} onT={(n) => upd({ bajPct: n })} />
         </div>
 
-        <div className="flex items-center gap-2">
-          <button onClick={componer} disabled={composing || !bgImg} className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50">
-            {composing ? "Guardando…" : "Guardar y pasar a Biblioteca ✓"}
-          </button>
-          <span className="text-[10px] text-muted-foreground">Quema logo + texto en la imagen final y la manda a la <b>Biblioteca</b>.</span>
+        {/* Con la pieza lista, elegís destino: calendario RRSS o biblioteca. */}
+        <div className="space-y-2 border-t pt-3">
+          <div className="text-[10px] font-semibold uppercase text-muted-foreground">¿Qué hacés con la pieza?</div>
+          {/* Camino 1: calendarizar en el día/hora elegidos */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="block text-[9px] font-semibold uppercase text-muted-foreground">Fecha</label>
+              <input type="date" value={fechaLocal} onChange={(e) => setFechaLocal(e.target.value)} className={field} />
+            </div>
+            <div>
+              <label className="block text-[9px] font-semibold uppercase text-muted-foreground">Hora</label>
+              <input type="time" value={horaLocal} onChange={(e) => setHoraLocal(e.target.value)} className={field} />
+            </div>
+            <button onClick={calendarizar} disabled={composing || !bgImg || !fechaLocal} className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50">
+              {composing ? "Guardando…" : "📅 Calendarizar RRSS"}
+            </button>
+          </div>
+          {/* Camino 2: a la biblioteca como stock reusable (sin el copy) */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={aBiblioteca} disabled={composing || !bgImg} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+              📚 Guardar en Biblioteca
+            </button>
+            <span className="text-[10px] text-muted-foreground">Stock reusable (imagen + logo + título/bajada). El caption del posteo NO se guarda.</span>
+          </div>
         </div>
       </div>
     </div>

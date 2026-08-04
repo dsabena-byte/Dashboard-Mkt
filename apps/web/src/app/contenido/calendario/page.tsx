@@ -759,10 +759,12 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
           titulo={e.mensaje_clave ?? ""}
           bajada={e.bajada ?? ""}
           caption={e.caption ?? ""}
+          fecha={e.fecha ?? ""}
+          hora={e.hora ?? null}
           diseno={e.diseno ?? null}
           save={(patch) => save(patch as Partial<Cal>)}
           uploadBlob={(blob) => subirBlob(e.id, blob, "final.png")}
-          onDone={() => setStep(3)}
+          onDone={(s) => setStep(s)}
         />
       )}
 
