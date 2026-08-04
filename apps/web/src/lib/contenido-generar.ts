@@ -380,10 +380,39 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
 // regenerar desde cero. Mantiene el resto de la escena y la sin-tipografía
 // (la placa de título/bajada se compone aparte). Devuelve la URL de la nueva
 // versión. Pensado para iterar hasta llegar al diseño deseado.
+// Kontext entiende mejor en inglés: convertimos la instrucción (normalmente en
+// español, y a veces ambigua: "sacar" = remove) a UNA orden de edición literal
+// en inglés. Si no hay API key o falla, se manda tal cual.
+async function instruccionRetoqueEnIngles(instruccion: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return instruccion;
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "Convert the user's Spanish photo-editing request into ONE concise, literal English image-editing instruction for an AI image editor (FLUX Kontext). Output ONLY the instruction: imperative, no quotes, no explanation. Preserve the EXACT intent and nothing more: 'sacar/quitar/eliminar X' = 'remove X', 'agregar/poner X' = 'add X', 'cambiar X por Y' = 'change X to Y', 'cerrar/abrir X' = 'close/open X'. Never invent extra changes." },
+          { role: "user", content: instruccion },
+        ],
+        temperature: 0,
+      }),
+      cache: "no-store",
+    });
+    if (!res.ok) return instruccion;
+    const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    return j.choices?.[0]?.message?.content?.trim() || instruccion;
+  } catch {
+    return instruccion;
+  }
+}
+
 export async function retocarImagen(imagenUrl: string, instruccion: string): Promise<string> {
   // FLUX.1 Kontext toma la instrucción directa como prompt de edición y aplica
   // SOLO ese cambio sobre la imagen dada (input: image_url singular).
-  const prompt = `${instruccion.trim()}. Keep the rest of the image unchanged. Do not add any text, letters or logos.`;
+  const enIngles = await instruccionRetoqueEnIngles(instruccion.trim());
+  const prompt = `${enIngles}. Make ONLY this change. Keep everything else in the image exactly the same and do NOT add anything (no new people, animals, objects, text or logos) that was not explicitly requested.`;
   const img = await falImage(MODEL_KONTEXT, { prompt, image_url: imagenUrl, num_images: 1 });
   const url = img.images[0]?.url ?? null;
   if (!url) {
