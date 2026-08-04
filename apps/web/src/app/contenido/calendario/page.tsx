@@ -632,25 +632,6 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     }
   }
 
-  async function aprobarPieza() {
-    const nuevo = !e.aprobado;
-    // 1) Aprobar/desaprobar (siempre funciona).
-    await save({ aprobado: nuevo, estado: nuevo ? "aprobado" : "generado" });
-    // 2) Al aprobar, asegurar la imagen final hosteada permanente para publicar
-    //    en IG/FB (las URLs de fal caducan). Si la pieza ya se diseñó con el
-    //    editor (logo+texto), esa imagen final ya está guardada: no re-componemos.
-    //    Si no, componemos la placa legacy. Best-effort.
-    if (nuevo && e.imagen_url && !(e.diseno && e.imagen_final_url)) {
-      setBusy("save");
-      try {
-        const blob = await componerFinal(e.imagen_url, e.mensaje_clave ?? "", e.bajada ?? "", e.con_placa ?? true);
-        const finalUrl = await subirBlob(e.id, blob, "final.png");
-        await save({ imagen_final_url: finalUrl });
-      } catch { /* si falla, la pieza queda aprobada igual (sin imagen final) */ }
-      finally { setBusy(null); }
-    }
-  }
-
   function toggleRed(red: string) {
     const cur = e.redes ?? [];
     const next = cur.includes(red) ? cur.filter((x) => x !== red) : [...cur, red];
@@ -771,6 +752,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
           diseno={e.diseno ?? null}
           save={(patch) => save(patch as Partial<Cal>)}
           uploadBlob={(blob) => subirBlob(e.id, blob, "final.png")}
+          onDone={() => setStep(3)}
         />
       )}
 
@@ -779,16 +761,19 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           <div className="flex shrink-0 flex-col gap-2 self-start">
             <div className="relative inline-block h-min max-w-full">
+              {/* En Biblioteca/Distribuir se muestra la imagen final ya diseñada
+                  (logo+texto quemados); en Generar, la imagen cruda. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="block max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain" />
-              {step !== 1 && (e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
+              <img src={step >= 3 && e.imagen_final_url ? e.imagen_final_url : e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="block max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain" />
+              {step !== 1 && !e.imagen_final_url && (e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent px-4 pb-4 pt-10" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
                   {e.mensaje_clave?.trim() && <div className="text-lg font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.mensaje_clave}</div>}
                   {e.bajada?.trim() && <div className="mt-0.5 text-xs font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.bajada}</div>}
                 </div>
               )}
             </div>
-            {/* Retoque iterativo: edita la imagen actual sin regenerar de cero. */}
+            {/* Retoque iterativo: SOLO en Generar (la imagen cruda). */}
+            {step === 1 && (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5">
                 <input
@@ -810,21 +795,26 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
                 )}
               </div>
             </div>
+            )}
           </div>
           <div className="flex-1 space-y-2">
             {step === 1 && (
               <p className="text-xs text-muted-foreground">Esta es la <b>imagen sola</b>. El título, el texto y el logo se agregan en <b>Diseñar</b>. Podés <b>Retocar</b> la imagen a la izquierda, o transformarla en <b>video</b> abajo de todo.</p>
             )}
 
-            {/* Paso 3 · Biblioteca: aprobar (pasa al stock) */}
+            {/* Paso 3 · Biblioteca: stock terminado (read-only). No se aprueba
+                acá: "Guardar y pasar a Biblioteca" en Diseñar ya la deja lista. */}
             {step === 3 && (
-              <button
-                onClick={aprobarPieza}
-                disabled={busy === "gen" || busy === "del" || busy === "save"}
-                className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"}`}
-              >
-                {busy === "save" ? "Preparando…" : e.aprobado ? "✓ En biblioteca (click para sacar)" : "Aprobar y pasar a biblioteca"}
-              </button>
+              <div className="space-y-2 text-xs">
+                {e.aprobado ? (
+                  <>
+                    <p className="rounded-md bg-emerald-50 px-3 py-2 text-emerald-800">✓ <b>En biblioteca.</b> Pieza terminada y lista. Programala en <b>Distribuir</b>, o volvé a <b>Diseñar</b> para retocar el diseño.</p>
+                    <button onClick={() => save({ aprobado: false, estado: "generado" })} disabled={busy === "save"} className="rounded border px-2.5 py-1 text-[11px] font-medium hover:bg-secondary disabled:opacity-50">Sacar de biblioteca</button>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">Todavía no está en biblioteca. Terminá el diseño y tocá <b>“Guardar y pasar a Biblioteca”</b> en el paso <b>Diseñar</b>.</p>
+                )}
+              </div>
             )}
 
             {/* Paso 4 · Distribuir: programación (calendario) + orgánico + prueba */}
