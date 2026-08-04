@@ -376,11 +376,12 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
 // (la placa de título/bajada se compone aparte). Devuelve la URL de la nueva
 // versión. Pensado para iterar hasta llegar al diseño deseado.
 export async function retocarImagen(imagenUrl: string, instruccion: string): Promise<string> {
+  // El cambio pedido va PRIMERO y explícito: los modelos de edición tienden a
+  // ignorar la instrucción si el prompt arranca pidiendo "mantené todo igual".
   const prompt = [
-    "Edit the PROVIDED image applying ONLY the following change requested by the user, and keep EVERYTHING ELSE identical (same composition, framing, product, people, background and lighting style). Do not restyle or re-generate the scene from scratch:",
-    instruccion.trim(),
-    NO_TEXT,
-  ].join("\n\n");
+    `Edit this image to make the following change: ${instruccion.trim()}.`,
+    "Apply that change clearly and visibly. Keep the rest of the scene (product, people, framing) coherent, realistic and high quality, but the requested change MUST be clearly noticeable in the result. Do not add any text, letters, captions, watermarks or logos.",
+  ].join(" ");
   const img = await falImage(MODEL_EDIT, { prompt, image_urls: [imagenUrl], num_images: 1 });
   const url = img.images[0]?.url ?? null;
   if (!url) {
