@@ -70,6 +70,13 @@ export async function GET(request: Request) {
 
     // Agregación por clave natural (suma ars/usd de conceptos repetidos).
     const now = new Date().toISOString();
+    // IMPORTANTE: updated_at = fecha REAL de la fuente (syncedAt del data.json),
+    // NO "ahora". Si estampáramos "now", el Monitoreo (que mide max(updated_at))
+    // se pondría en verde con cada corrida del cron aunque la data siga vieja.
+    // Con el syncedAt real, la frescura refleja cuándo cambió la DATA de verdad.
+    const srcSynced = Array.isArray(json) ? null : (json.syncedAt ?? null);
+    const parsedSync = srcSynced ? new Date(srcSynced) : null;
+    const stamp = parsedSync && !Number.isNaN(parsedSync.getTime()) ? parsedSync.toISOString() : now;
     const map = new Map<string, AggRow>();
     for (const r of raw) {
       const presupuesto = String(r[0] ?? "").trim();
@@ -86,7 +93,7 @@ export async function GET(request: Request) {
         ex.ars += ars;
         ex.usd += usd;
       } else {
-        map.set(k, { presupuesto, anio, mes, cuenta, concepto, ars, usd, updated_at: now });
+        map.set(k, { presupuesto, anio, mes, cuenta, concepto, ars, usd, updated_at: stamp });
       }
     }
     const rows = [...map.values()];
