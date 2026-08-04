@@ -270,11 +270,11 @@ export function UgcTestingPanel({
             </div>
             {t.allLow && <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-medium text-amber-600">muestra chica · tomar con pinzas</span>}
           </div>
-          <div className="divide-y">
+          <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3">
             {t.ranked.map((s) => {
               const isWinner = s.ad_id === t.winner && (s.hookRate ?? 0) > 0;
               return (
-                <div key={s.ad_id} className="p-4">
+                <div key={s.ad_id} className="rounded-lg border bg-background p-3">
                   <div className="flex gap-3">
                     <div className="relative shrink-0">
                       {s.thumb ? (
@@ -307,8 +307,8 @@ export function UgcTestingPanel({
                         </div>
                       )}
 
-                      {/* Métricas principales */}
-                      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
+                      {/* Métricas principales (2×2 compacto dentro de la tarjeta) */}
+                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
                         <Metric label="Hook rate" value={pct(s.hookRate)} big cls={tone(s.hookRate, t.bestHook, "higher")} />
                         <Metric label="Retención" value={pct(s.retention)} hint="del 100%" />
                         <Metric label="CTR" value={pct(s.ctr, 2)} cls={tone(s.ctr, t.bestCtr, "higher")} />
