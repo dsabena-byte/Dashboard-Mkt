@@ -34,10 +34,11 @@ function Slider({ label, value, min, max, step, onChange, fmt }: { label: string
   );
 }
 
-export function PiezaDisenador({ imagenUrl, titulo, bajada, diseno, save, uploadBlob }: {
+export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, save, uploadBlob }: {
   imagenUrl: string;
   titulo: string;
   bajada: string;
+  caption: string;
   diseno: Diseno | null | undefined;
   save: (patch: Record<string, unknown>) => void;
   uploadBlob: (blob: Blob) => Promise<string>;
@@ -131,6 +132,10 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, diseno, save, upload
             <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Bajada</label>
             <input defaultValue={bajada} onBlur={(e) => save({ bajada: e.target.value })} className={`${field} w-full`} />
           </div>
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Caption (copy del posteo)</label>
+          <textarea defaultValue={caption} onBlur={(e) => save({ caption: e.target.value })} rows={3} className={`${field} w-full`} />
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

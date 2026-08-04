@@ -12,8 +12,6 @@ import { PiezaDisenador, type Diseno } from "@/components/contenido/pieza-disena
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
 const ASPECTOS = [{ v: "vertical", l: "Feed vertical 3:4" }, { v: "feed", l: "Cuadrado 1:1" }, { v: "story", l: "Story/Reel 9:16" }];
-const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const ESTADO_COLOR: Record<string, string> = { pendiente: "#94a3b8", generado: "#f59e0b", aprobado: "#10b981", publicado: "#2563eb" };
 const ESTADO_LABEL: Record<string, string> = { pendiente: "Pendiente", generado: "Generado", aprobado: "Aprobado ✓", publicado: "Publicado" };
 
@@ -87,7 +85,6 @@ function AtributosSelect({ sku, value, onChange }: { sku: string | null | undefi
   );
 }
 
-function catLabel(v: string | null): string { return CATEGORIAS.find((c) => c.v === v)?.l ?? v ?? ""; }
 function falErr(raw: string): string {
   if (/exhausted balance|user is locked|top up|402|insufficient/i.test(raw)) return "Sin créditos en fal.ai — recargá el saldo en fal.ai/dashboard/billing y volvé a intentar.";
   return raw;
@@ -240,19 +237,8 @@ export default function CalendarioPage() {
     return map;
   }, [items]);
 
-  // Grilla del mes (semanas empezando en lunes).
-  const grid = useMemo(() => {
-    const firstWeekday = (new Date(y, m, 1).getDay() + 6) % 7; // lun=0
-    const days = new Date(y, m + 1, 0).getDate();
-    const cells: Array<{ fecha: string; d: number } | null> = [];
-    for (let i = 0; i < firstWeekday; i++) cells.push(null);
-    for (let d = 1; d <= days; d++) cells.push({ fecha: ymd(y, m, d), d });
-    while (cells.length % 7 !== 0) cells.push(null);
-    return cells;
-  }, [y, m]);
-
-  function prevMonth() { if (m === 0) { setY(y - 1); setM(11); } else setM(m - 1); }
-  function nextMonth() { if (m === 11) { setY(y + 1); setM(0); } else setM(m + 1); }
+  // (El calendario mensual se removió de esta vista: la programación de cada
+  // pieza vive dentro de su paso "Distribuir". y/m siguen acotando la carga del mes.)
 
   async function addEntry() {
     setErr(null);
@@ -415,14 +401,14 @@ export default function CalendarioPage() {
         </section>
       ) : (
       <>
-      {/* Piezas primero: crear / generar / diseñar es el foco. La agenda
-          (calendario) es un paso posterior y va colapsada más abajo. */}
+      {/* Piezas: crear / generar / diseñar es el foco. La programación
+          (calendario) vive dentro de cada pieza, en el paso Distribuir. */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-medium">Piezas</h3>
             <label className="flex items-center gap-1 text-xs text-muted-foreground">del
-              <input type="date" value={sel} onChange={(e) => setSel(e.target.value)} className="rounded border px-2 py-1 text-xs" />
+              <input type="date" value={sel} onChange={(e) => { const v = e.target.value; setSel(v); const [yy, mm] = v.split("-").map(Number); if (yy && mm) { setY(yy); setM(mm - 1); } }} className="rounded border px-2 py-1 text-xs" />
             </label>
             {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
           </div>
@@ -436,67 +422,6 @@ export default function CalendarioPage() {
           </div>
         )}
       </section>
-
-      {/* Agenda (calendario): paso posterior — programar cuándo se publica.
-          Colapsada por defecto para no tapar el foco de creación. */}
-      <details className="rounded-xl border bg-card">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">📅 Agenda — ver y programar en el calendario</summary>
-        <div className="space-y-3 border-t p-3">
-      <div className="flex items-center gap-3">
-        <button onClick={prevMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">‹</button>
-        <div className="min-w-[10rem] text-center text-sm font-medium">{MESES[m]} {y}</div>
-        <button onClick={nextMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">›</button>
-        {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
-      </div>
-
-      {/* Grilla del mes */}
-      <div className="rounded-xl border bg-card p-2">
-        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium uppercase text-muted-foreground">
-          {DIAS.map((d) => <div key={d} className="py-1">{d}</div>)}
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {grid.map((cell, i) => {
-            if (!cell) return <div key={i} className="min-h-[64px] rounded bg-muted/20" />;
-            const dayItems = byDay[cell.fecha] ?? [];
-            const isSel = cell.fecha === sel;
-            return (
-              <button
-                key={i}
-                onClick={() => setSel(cell.fecha)}
-                className={`min-h-[64px] rounded border p-1 text-left transition-colors hover:bg-muted/40 ${isSel ? "border-primary ring-1 ring-primary" : ""}`}
-              >
-                <div className="text-[11px] font-medium">{cell.d}</div>
-                <div className="mt-0.5 space-y-0.5">
-                  {dayItems.slice(0, 3).map((it) => (
-                    <div key={it.id} className="flex items-center gap-1 rounded bg-muted/40 p-0.5" title={`${it.pilar ?? ""} · ${catLabel(it.categoria)} · ${ESTADO_LABEL[it.estado] ?? it.estado}`}>
-                      {it.imagen_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={it.imagen_url} alt="" className="h-7 w-7 shrink-0 rounded object-cover" />
-                      ) : (
-                        <span className="h-7 w-7 shrink-0 rounded" style={{ backgroundColor: `${ESTADO_COLOR[it.estado] ?? "#94a3b8"}33` }} />
-                      )}
-                      <div className="min-w-0 flex-1 leading-tight">
-                        <div className="truncate text-[9px] font-medium">{it.mensaje_clave || catLabel(it.categoria) || "(sin generar)"}</div>
-                        <div className="truncate text-[8px] text-muted-foreground">{catLabel(it.categoria)} · {it.pilar ?? ""}</div>
-                      </div>
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: ESTADO_COLOR[it.estado] ?? "#94a3b8" }} />
-                    </div>
-                  ))}
-                  {dayItems.length > 3 && <div className="text-[8px] text-muted-foreground">+{dayItems.length - 3} más</div>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-        {Object.entries(ESTADO_LABEL).map(([k, l]) => (
-          <span key={k} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: ESTADO_COLOR[k] }} /> {l}</span>
-        ))}
-      </div>
-        </div>
-      </details>
       </>
       )}
       </>
@@ -842,6 +767,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
           imagenUrl={e.imagen_url}
           titulo={e.mensaje_clave ?? ""}
           bajada={e.bajada ?? ""}
+          caption={e.caption ?? ""}
           diseno={e.diseno ?? null}
           save={(patch) => save(patch as Partial<Cal>)}
           uploadBlob={(blob) => subirBlob(e.id, blob, "final.png")}
@@ -855,7 +781,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
             <div className="relative inline-block h-min max-w-full">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="block max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain" />
-              {(e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
+              {step !== 1 && (e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent px-4 pb-4 pt-10" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
                   {e.mensaje_clave?.trim() && <div className="text-lg font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.mensaje_clave}</div>}
                   {e.bajada?.trim() && <div className="mt-0.5 text-xs font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.bajada}</div>}
@@ -886,21 +812,10 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
             </div>
           </div>
           <div className="flex-1 space-y-2">
-            {step === 1 && (
-              <p className="text-xs text-muted-foreground">Pieza generada. Pasá a <b>Diseñar</b> para el logo y los textos, o retocá la imagen a la izquierda.</p>
-            )}
+            {step === 1 && (<>
+              <p className="text-xs text-muted-foreground">Esta es la <b>imagen/video sola</b>. El título, el texto y el logo se agregan en <b>Diseñar</b>. Acá podés <b>Retocar</b> la imagen o sumarle un <b>video</b>.</p>
 
-            {/* Paso 3 · Biblioteca: aprobar (pasa al stock) y sumar video */}
-            {step === 3 && (<>
-              <button
-                onClick={aprobarPieza}
-                disabled={busy === "gen" || busy === "del" || busy === "save"}
-                className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"}`}
-              >
-                {busy === "save" ? "Preparando…" : e.aprobado ? "✓ En biblioteca (click para sacar)" : "Aprobar y pasar a biblioteca"}
-              </button>
-
-              {/* Video: desde una imagen con potencial, sumar un clip al stock */}
+              {/* Video (≤6s): parte de "generar" — imagen y video puro */}
               <div className="space-y-1 border-t pt-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] font-semibold uppercase text-muted-foreground">Video (≤6s)</span>
@@ -924,11 +839,28 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
               </div>
             </>)}
 
-            {/* Paso 4 · Distribuir: orgánico (redes/calendario) y prueba de publicación */}
+            {/* Paso 3 · Biblioteca: aprobar (pasa al stock) */}
+            {step === 3 && (
+              <button
+                onClick={aprobarPieza}
+                disabled={busy === "gen" || busy === "del" || busy === "save"}
+                className={`rounded px-3 py-1.5 text-xs font-medium ${e.aprobado ? "bg-emerald-600 text-white" : "border hover:bg-secondary"}`}
+              >
+                {busy === "save" ? "Preparando…" : e.aprobado ? "✓ En biblioteca (click para sacar)" : "Aprobar y pasar a biblioteca"}
+              </button>
+            )}
+
+            {/* Paso 4 · Distribuir: programación (calendario) + orgánico + prueba */}
             {step === 4 && (<>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Caption (copy del posteo)</label>
-                <textarea value={e.caption ?? ""} onChange={(ev) => setE({ ...e, caption: ev.target.value })} onBlur={() => save({ caption: e.caption })} rows={3} className={`${field} w-full`} />
+              <div className="flex flex-wrap items-end gap-2">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Fecha</label>
+                  <input type="date" value={e.fecha ?? ""} onChange={(ev) => setE({ ...e, fecha: ev.target.value })} onBlur={() => save({ fecha: e.fecha })} className={field} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Hora</label>
+                  <input type="time" value={e.hora?.slice(0, 5) ?? ""} onChange={(ev) => setE({ ...e, hora: ev.target.value })} onBlur={() => save({ hora: e.hora })} className={field} />
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar en:</span>
