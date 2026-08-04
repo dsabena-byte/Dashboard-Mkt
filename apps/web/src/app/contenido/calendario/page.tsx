@@ -812,32 +812,9 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
             </div>
           </div>
           <div className="flex-1 space-y-2">
-            {step === 1 && (<>
-              <p className="text-xs text-muted-foreground">Esta es la <b>imagen/video sola</b>. El título, el texto y el logo se agregan en <b>Diseñar</b>. Acá podés <b>Retocar</b> la imagen o sumarle un <b>video</b>.</p>
-
-              {/* Video (≤6s): parte de "generar" — imagen y video puro */}
-              <div className="space-y-1 border-t pt-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">Video (≤6s)</span>
-                  <select value={videoModelo} onChange={(ev) => setVideoModelo(ev.target.value)} className={field}>
-                    <option value="kling">Kling (5s)</option>
-                    <option value="veo">Veo (~8s)</option>
-                  </select>
-                  <input value={videoPrompt} onChange={(ev) => setVideoPrompt(ev.target.value)} placeholder="movimiento (opcional)" className={`${field} min-w-[8rem] flex-1`} />
-                  <button onClick={generarVideo} disabled={videoBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
-                    {videoBusy ? "Generando… (~1-3 min)" : e.video_url ? "Regenerar video" : "Generar video"}
-                  </button>
-                </div>
-                {videoErr && <p className="text-[10px] text-red-700">{videoErr}</p>}
-                {e.video_url && (
-                  <div className="space-y-1">
-                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                    <video src={e.video_url} controls loop className="max-h-56 w-auto max-w-full rounded border" />
-                    <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar video</a>
-                  </div>
-                )}
-              </div>
-            </>)}
+            {step === 1 && (
+              <p className="text-xs text-muted-foreground">Esta es la <b>imagen sola</b>. El título, el texto y el logo se agregan en <b>Diseñar</b>. Podés <b>Retocar</b> la imagen a la izquierda, o transformarla en <b>video</b> abajo de todo.</p>
+            )}
 
             {/* Paso 3 · Biblioteca: aprobar (pasa al stock) */}
             {step === 3 && (
@@ -891,6 +868,32 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
               </div>
             </>)}
           </div>
+        </div>
+      )}
+
+      {/* Video: primero está la imagen (generada o subida) y recién después se
+          la transforma en video. Por eso va abajo de todo, en el paso Generar. */}
+      {e.imagen_url && step === 1 && (
+        <div className="mt-3 space-y-1 border-t pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase text-muted-foreground">Transformar en video (≤6s)</span>
+            <select value={videoModelo} onChange={(ev) => setVideoModelo(ev.target.value)} className={field}>
+              <option value="kling">Kling (5s)</option>
+              <option value="veo">Veo (~8s)</option>
+            </select>
+            <input value={videoPrompt} onChange={(ev) => setVideoPrompt(ev.target.value)} placeholder="movimiento (opcional)" className={`${field} min-w-[8rem] flex-1`} />
+            <button onClick={generarVideo} disabled={videoBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+              {videoBusy ? "Generando… (~1-3 min)" : e.video_url ? "Regenerar video" : "Generar video"}
+            </button>
+          </div>
+          {videoErr && <p className="text-[10px] text-red-700">{videoErr}</p>}
+          {e.video_url && (
+            <div className="space-y-1">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video src={e.video_url} controls loop className="max-h-56 w-auto max-w-full rounded border" />
+              <a href={e.video_url} target="_blank" rel="noopener" className="inline-block rounded border px-2 py-0.5 text-[10px] font-medium hover:bg-secondary">Abrir / descargar video</a>
+            </div>
+          )}
         </div>
       )}
       {!e.imagen_url && step !== 1 && (
