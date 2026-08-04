@@ -861,6 +861,11 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
                 ) : (
                   <span className="text-[11px] text-muted-foreground">Elegí fecha y al menos una red.</span>
                 )}
+                {(e.redes ?? []).length > 0 && (
+                  // Saca la pieza SOLO de Distribuir (limpia las redes agendadas):
+                  // la pieza queda intacta en Biblioteca. NO borra la pieza.
+                  <button onClick={() => save({ redes: [] })} disabled={busy === "save"} className="ml-auto text-[11px] font-medium text-red-600 hover:underline disabled:opacity-50">✕ Sacar de Distribuir</button>
+                )}
               </div>
               {(e.redes ?? []).includes("tiktok") && (
                 <p className="text-[10px] text-amber-600">TikTok queda agendado, pero el posteo automático todavía no está conectado (IG/FB sí). Por ahora se sube a mano.</p>
