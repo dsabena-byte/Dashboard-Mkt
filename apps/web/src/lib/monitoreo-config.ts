@@ -31,7 +31,6 @@ export const PROCS: Proc[] = [
   { id: "dv360_reach", proceso: "DV360 reach", fuente: "DV360 (reporte por email)", conexion: "Apps Script", detalle: "Gmail → Supabase · trigger diario 9am", cadenciaH: 24, tabla: "dv360_reach" },
   { id: "floor", proceso: "Floor Share", fuente: "Relevamiento góndola", conexion: "Apps Script", detalle: "Drive → Supabase CB · semanal", cadenciaH: 168, tabla: "floor_share", db: "cb" },
   { id: "cb", proceso: "Cuadros Básicos", fuente: "Cuadro Básico (Drive)", conexion: "Apps Script", detalle: "Drive → Supabase CB · semanal", cadenciaH: 168, tabla: "cuadro_basico_semanal", db: "cb" },
-  { id: "planning", proceso: "Planning Pauta", fuente: "OMD Sheet/Drive", conexion: "Apps Script", detalle: "Drive → Supabase · semanal", cadenciaH: 168, tabla: "planning_media", col: "created_at" },
   { id: "mercado", proceso: "Mercado (GFK)", fuente: "GFK (export manual)", conexion: "Carga manual", detalle: "Seed SQL · trimestral", cadenciaH: 2160, tabla: "mercado_share" },
 ];
 
