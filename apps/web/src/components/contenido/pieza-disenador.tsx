@@ -34,7 +34,7 @@ function Slider({ label, value, min, max, step, onChange, fmt }: { label: string
   );
 }
 
-export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, save, uploadBlob }: {
+export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, save, uploadBlob, onDone }: {
   imagenUrl: string;
   titulo: string;
   bajada: string;
@@ -42,6 +42,7 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
   diseno: Diseno | null | undefined;
   save: (patch: Record<string, unknown>) => void;
   uploadBlob: (blob: Blob) => Promise<string>;
+  onDone?: () => void;
 }) {
   const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
   const [bgErr, setBgErr] = useState<string | null>(null);
@@ -105,11 +106,13 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
       if (!blob) throw new Error("toBlob");
       const url = await uploadBlob(blob);
-      // con_placa=false: el diseño ya está quemado en imagen_final_url, no re-componemos placa.
-      // Guardamos primero la imagen final (siempre funciona) y aparte el diseño
+      // "Guardar" en Diseñar = pieza terminada → queda EN BIBLIOTECA (aprobada).
+      // con_placa=false: el diseño ya está quemado en imagen_final_url.
+      // Guardamos la imagen final + estado (siempre) y aparte el diseño
       // (best-effort: si la columna `diseno` aún no existe, no rompe la compo).
-      save({ imagen_final_url: url, con_placa: false });
+      save({ imagen_final_url: url, con_placa: false, aprobado: true, estado: "aprobado" });
       save({ diseno: d });
+      onDone?.();
     } catch (e) {
       alert(`No se pudo componer el diseño: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -183,9 +186,9 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
 
         <div className="flex items-center gap-2">
           <button onClick={componer} disabled={composing || !bgImg} className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50">
-            {composing ? "Componiendo…" : "Guardar diseño"}
+            {composing ? "Guardando…" : "Guardar y pasar a Biblioteca ✓"}
           </button>
-          <span className="text-[10px] text-muted-foreground">Quema logo + texto en la imagen final. Después pasá a <b>Biblioteca</b>.</span>
+          <span className="text-[10px] text-muted-foreground">Quema logo + texto en la imagen final y la manda a la <b>Biblioteca</b>.</span>
         </div>
       </div>
     </div>
