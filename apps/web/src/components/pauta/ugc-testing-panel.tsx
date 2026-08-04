@@ -58,6 +58,7 @@ interface Score {
   cred?: string;
   persu?: string;
   percep?: string;
+  piece: UgcPieceAnalysis | null; // análisis de comentarios de la pieza (matcheado por permalink)
   entry: UgcTestEntry | null;
   lowSample: boolean;
 }
@@ -129,7 +130,8 @@ export function UgcTestingPanel({
         ? { p25: agg.impr ? (agg.p25 / agg.impr) * 100 : 0, p50: agg.impr ? (agg.p50 / agg.impr) * 100 : 0, p75: agg.impr ? (agg.p75 / agg.impr) * 100 : 0, p100: agg.impr ? (agg.p100 / agg.impr) * 100 : 0 }
         : quartiles(main);
       const permalink = main.instagram_permalink_url ?? main.permalink_url;
-      const an = permalink ? analysisByLink.get(main.instagram_permalink_url ?? "")?.analysis ?? undefined : undefined;
+      const anPiece = analysisByLink.get(main.instagram_permalink_url ?? "") ?? null;
+      const an = anPiece?.analysis ?? undefined;
       out.push({
         ad_id: adId,
         name: main.ad_name ?? adId,
@@ -150,6 +152,7 @@ export function UgcTestingPanel({
         cred: an?.credibilidad?.nivel,
         persu: an?.intencion_compra?.nivel,
         percep: an?.percepcion_marca?.nivel,
+        piece: anPiece,
         entry: entryByAd.get(adId) ?? null,
         lowSample: agg.impr < LOW_IMPR,
       });
@@ -254,7 +257,7 @@ export function UgcTestingPanel({
       <div className="mt-2">
         <h3 className="text-sm font-medium">Testeo de creativos</h3>
         <p className="text-xs text-muted-foreground">
-          Ranking head-to-head por <strong>hook rate</strong> dentro de cada campaña (test), con embudo de retención, interacción y validación cualitativa. Linkeá cada pieza a su video generado para desbloquear los aprendizajes por dimensión.
+          Todo concentrado por pieza: ranking head-to-head por <strong>hook rate</strong> dentro de cada campaña (test), embudo de retención e interacción, y la <strong>validación desde comentarios reales</strong> (credibilidad · intención de compra · percepción de marca + mejoras de guión). Linkeá cada pieza a su video generado para desbloquear los aprendizajes por dimensión.
         </p>
       </div>
 
@@ -355,6 +358,46 @@ export function UgcTestingPanel({
                         </select>
                         {busy === s.ad_id && <span className="text-[10px] text-muted-foreground">guardando…</span>}
                       </div>
+
+                      {/* Validación cualitativa desde comentarios reales (credibilidad · intención · marca + mejoras de guión). */}
+                      {(s.piece?.analysis || (s.piece?.comments.length ?? 0) > 0) && (
+                        <div className="mt-3 rounded-lg border bg-muted/20 p-2.5">
+                          {s.piece?.analysis ? (
+                            <div className="space-y-2">
+                              {s.piece.analysis.resumen && <p className="text-[11px] text-muted-foreground">{s.piece.analysis.resumen}</p>}
+                              <ul className="space-y-0.5 text-[10px] text-muted-foreground">
+                                {s.piece.analysis.credibilidad?.detalle && <li><strong>Credibilidad:</strong> {s.piece.analysis.credibilidad.detalle}</li>}
+                                {s.piece.analysis.intencion_compra?.detalle && <li><strong>Intención:</strong> {s.piece.analysis.intencion_compra.detalle}</li>}
+                                {s.piece.analysis.percepcion_marca?.detalle && <li><strong>Marca:</strong> {s.piece.analysis.percepcion_marca.detalle}</li>}
+                              </ul>
+                              {s.piece.analysis.mejoras && s.piece.analysis.mejoras.length > 0 && (
+                                <div>
+                                  <div className="text-[11px] font-medium">Mejoras de contenido/guión</div>
+                                  <ul className="list-disc pl-4 text-[10px] text-muted-foreground">
+                                    {s.piece.analysis.mejoras.map((m, i) => <li key={i}>{m}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground">Análisis de comentarios pendiente — corré el cron <code>ugc-comments-analysis</code>.</p>
+                          )}
+                          {(s.piece?.comments.length ?? 0) > 0 && (
+                            <details className="mt-2">
+                              <summary className="cursor-pointer text-[11px] font-medium">Ver comentarios ({s.piece!.comments.length})</summary>
+                              <div className="mt-2 max-h-60 space-y-1.5 overflow-y-auto">
+                                {s.piece!.comments.map((c, i) => (
+                                  <div key={i} className="rounded bg-muted/40 p-2 text-[11px]">
+                                    {c.author && <span className="font-semibold">@{c.author} </span>}
+                                    {c.text}
+                                    {c.likes > 0 && <span className="ml-1 text-muted-foreground">· ❤️ {fmtNum(c.likes)}</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
