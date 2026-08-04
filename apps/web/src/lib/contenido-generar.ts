@@ -369,3 +369,22 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
     producto_ref: creativo ? null : packshotUrl ?? (porfolioUrls.length > 0 ? porfolioUrls.join(" · ") : null),
   };
 }
+
+// Retoque iterativo: edita la imagen ACTUAL (image-to-image con nano-banana /
+// Gemini 2.5 Flash Image edit) aplicando solo el cambio pedido, en vez de
+// regenerar desde cero. Mantiene el resto de la escena y la sin-tipografía
+// (la placa de título/bajada se compone aparte). Devuelve la URL de la nueva
+// versión. Pensado para iterar hasta llegar al diseño deseado.
+export async function retocarImagen(imagenUrl: string, instruccion: string): Promise<string> {
+  const prompt = [
+    "Edit the PROVIDED image applying ONLY the following change requested by the user, and keep EVERYTHING ELSE identical (same composition, framing, product, people, background and lighting style). Do not restyle or re-generate the scene from scratch:",
+    instruccion.trim(),
+    NO_TEXT,
+  ].join("\n\n");
+  const img = await falImage(MODEL_EDIT, { prompt, image_urls: [imagenUrl], num_images: 1 });
+  const url = img.images[0]?.url ?? null;
+  if (!url) {
+    throw new Error(`El modelo de retoque (nano-banana) no devolvió imagen. Respuesta de fal: ${JSON.stringify(img.raw).slice(0, 500)}`);
+  }
+  return url;
+}
