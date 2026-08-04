@@ -9,7 +9,6 @@ import { UgcTestingPanel } from "@/components/pauta/ugc-testing-panel";
 import { MEDIO_COLORS, extractMeses, type PautaRow } from "@/lib/pauta-data";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import type { UgcPieceAnalysis } from "@/lib/ugc-analysis-queries";
-import type { UgcTestEntry } from "@/lib/ugc-testing-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const fmtNum = (n: number) => formatNumber(Math.round(n));
@@ -33,7 +32,7 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
   return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
 }
 
-export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], ugcEntries = [], lastUpdated = null }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[]; ugcEntries?: UgcTestEntry[]; lastUpdated?: string | null }) {
+export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpdated = null }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[]; lastUpdated?: string | null }) {
   const meses = useMemo(() => extractMeses(rows), [rows]);
   const [selMeses, setSelMeses] = useState<string[]>([]);
 
@@ -272,10 +271,7 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], ugcEntr
             </>
           )}
 
-          {/* Testeo de creativos: ranking head-to-head + aprendizajes por dimensión. */}
-          <UgcTestingPanel creatives={piecesF} entries={ugcEntries} analysis={ugcAnalysis} />
-
-          {/* Piezas pautadas (al final), separadas por plataforma. */}
+          {/* Piezas pautadas primero, separadas por plataforma. */}
           {piecesF.length > 0 && (() => {
             const metaPieces = piecesF.filter((r) => r.plataforma === "meta");
             const tiktokPieces = piecesF.filter((r) => r.plataforma === "tiktok");
@@ -295,6 +291,9 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], ugcEntr
               </section>
             ));
           })()}
+
+          {/* Testeo de creativos con validación desde comentarios (después de las piezas). */}
+          <UgcTestingPanel creatives={piecesF} analysis={ugcAnalysis} />
         </>
       )}
     </div>

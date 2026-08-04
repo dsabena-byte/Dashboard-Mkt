@@ -2,24 +2,19 @@
 
 import { useMemo } from "react";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
-import type { UgcTestEntry } from "@/lib/ugc-testing-queries";
 import type { UgcPieceAnalysis } from "@/lib/ugc-analysis-queries";
-import { UGC_PERFILES, UGC_FORMATOS, UGC_PILARES, UGC_ESCENARIOS } from "@/lib/ugc-opciones";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 // Panel de "Testeo de creativos" para /influencia. Agrupa las piezas UGC
 // pauteadas por campaña (un A/B en Ads Manager = una campaña con varias piezas),
-// las rankea head-to-head y saca aprendizajes por dimensión del generador cuando
-// la pieza está linkeada a su video generado.
+// las rankea head-to-head por hook rate y suma la validación cualitativa desde
+// los comentarios reales de cada pieza.
 
 const fmtNum = (n: number) => formatNumber(Math.round(n));
 const pct = (n: number | null, d = 1) => (n == null ? "—" : `${n.toFixed(d)}%`);
 
 // Umbral de muestra chica: por debajo, los números son ruido y se avisa.
 const LOW_IMPR = 1000;
-
-const labelOf = (arr: { key: string; label: string }[], k?: string | null): string =>
-  (k ? arr.find((x) => x.key === k)?.label ?? k : null) ?? "—";
 
 // Semáforo: valor vs. mejor del grupo (más alto = mejor, salvo costos).
 function tone(value: number | null, best: number, kind: "higher" | "lower"): string {
@@ -58,7 +53,6 @@ interface Score {
   persu?: string;
   percep?: string;
   piece: UgcPieceAnalysis | null; // análisis de comentarios de la pieza (matcheado por permalink)
-  entry: UgcTestEntry | null;
   lowSample: boolean;
 }
 
@@ -73,19 +67,11 @@ function quartiles(r: MetaPaidCreativeRow): { p25: number; p50: number; p75: num
 
 export function UgcTestingPanel({
   creatives,
-  entries,
   analysis = [],
 }: {
   creatives: MetaPaidCreativeRow[];
-  entries: UgcTestEntry[];
   analysis?: UgcPieceAnalysis[];
 }) {
-  const entryByAd = useMemo(() => {
-    const m = new Map<string, UgcTestEntry>();
-    for (const e of entries) if (e.ad_id) m.set(e.ad_id, e);
-    return m;
-  }, [entries]);
-
   const analysisByLink = useMemo(() => {
     const m = new Map<string, UgcPieceAnalysis>();
     for (const a of analysis) m.set(a.permalink, a);
@@ -147,12 +133,11 @@ export function UgcTestingPanel({
         persu: an?.intencion_compra?.nivel,
         percep: an?.percepcion_marca?.nivel,
         piece: anPiece,
-        entry: entryByAd.get(adId) ?? null,
         lowSample: agg.impr < LOW_IMPR,
       });
     }
     return out;
-  }, [creatives, entryByAd, analysisByLink]);
+  }, [creatives, analysisByLink]);
 
   // Tests = grupos por campaña. Dentro de cada uno, ranking por hook rate.
   const tests = useMemo(() => {
@@ -175,45 +160,6 @@ export function UgcTestingPanel({
       .sort((a, b) => b.ranked.length - a.ranked.length || b.bestHook - a.bestHook);
   }, [scores]);
 
-  // Aprendizajes por dimensión (solo piezas linkeadas a su video generado).
-  const learnings = useMemo(() => {
-    const linked = scores.filter((s) => s.entry);
-    const dims: { key: string; title: string; labels: { key: string; label: string }[]; get: (e: UgcTestEntry) => string | null }[] = [
-      { key: "perfil", title: "Perfil", labels: UGC_PERFILES, get: (e) => e.perfil },
-      { key: "escenario", title: "Escenario", labels: UGC_ESCENARIOS, get: (e) => e.escenario },
-      { key: "formato", title: "Formato", labels: UGC_FORMATOS, get: (e) => e.formato },
-      { key: "pilar", title: "Pilar", labels: UGC_PILARES, get: (e) => e.pilar },
-      { key: "genero", title: "Género", labels: [{ key: "mujer", label: "Mujer" }, { key: "hombre", label: "Hombre" }], get: (e) => e.genero },
-    ];
-    return dims
-      .map((d) => {
-        const acc = new Map<string, { impr: number; plays: number; clicks: number; inter: number; n: number }>();
-        for (const s of linked) {
-          const v = d.get(s.entry!);
-          if (!v) continue;
-          const a = acc.get(v) ?? { impr: 0, plays: 0, clicks: 0, inter: 0, n: 0 };
-          a.impr += s.impr;
-          a.plays += s.hookRate != null ? (s.hookRate / 100) * s.impr : 0;
-          a.clicks += s.ctr != null ? (s.ctr / 100) * s.impr : 0;
-          a.inter += s.interactions;
-          a.n += 1;
-          acc.set(v, a);
-        }
-        const items = [...acc.entries()]
-          .map(([value, a]) => ({
-            value,
-            label: labelOf(d.labels, value),
-            n: a.n,
-            hookRate: a.impr > 0 ? (a.plays / a.impr) * 100 : 0,
-            ctr: a.impr > 0 ? (a.clicks / a.impr) * 100 : 0,
-            engRate: a.impr > 0 ? (a.inter / a.impr) * 100 : 0,
-          }))
-          .sort((x, y) => y.hookRate - x.hookRate);
-        return { key: d.key, title: d.title, items };
-      })
-      .filter((d) => d.items.length > 0);
-  }, [scores]);
-
   if (scores.length === 0) {
     return (
       <section className="space-y-3">
@@ -227,8 +173,6 @@ export function UgcTestingPanel({
       </section>
     );
   }
-
-  const linkedCount = scores.filter((s) => s.entry).length;
 
   return (
     <section className="space-y-4">
@@ -257,12 +201,22 @@ export function UgcTestingPanel({
                   <div className="flex gap-3">
                     <div className="relative shrink-0">
                       {s.thumb ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={s.thumb} alt={s.name} className="h-20 w-[3.5rem] rounded object-cover" loading="lazy" />
+                        s.permalink ? (
+                          <a href={s.permalink} target="_blank" rel="noopener" title="Ver el video" className="group relative block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={s.thumb} alt={s.name} className="h-20 w-[3.5rem] rounded object-cover transition group-hover:opacity-90" loading="lazy" />
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/55 pl-0.5 text-[10px] text-white shadow">▶</span>
+                            </span>
+                          </a>
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={s.thumb} alt={s.name} className="h-20 w-[3.5rem] rounded object-cover" loading="lazy" />
+                        )
                       ) : (
                         <div className="flex h-20 w-[3.5rem] items-center justify-center rounded bg-muted text-[9px] text-muted-foreground">sin<br />thumb</div>
                       )}
-                      {isWinner && <span className="absolute -left-1 -top-2 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">🏆</span>}
+                      {isWinner && <span className="absolute -left-1 -top-2 z-10 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">🏆</span>}
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -342,47 +296,6 @@ export function UgcTestingPanel({
           </div>
         </div>
       ))}
-
-      {/* Aprendizajes por dimensión */}
-      <div className="rounded-xl border bg-card p-4">
-        <div className="mb-1 text-sm font-medium">Aprendizajes por dimensión</div>
-        {learnings.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Linkeá las piezas a su video generado desde el calendario de contenido para ver qué <strong>perfil / escenario / formato / pilar / género</strong> rinde mejor. {linkedCount > 0 ? `${linkedCount} linkeada(s).` : ""}
-          </p>
-        ) : (
-          <>
-            <p className="mb-3 text-xs text-muted-foreground">Promedios ponderados por impresiones de las piezas linkeadas. El mejor de cada dimensión va resaltado.</p>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {learnings.map((d) => (
-                <div key={d.key}>
-                  <div className="mb-1 text-[11px] font-semibold text-muted-foreground">{d.title}</div>
-                  <table className="w-full text-[11px]">
-                    <thead>
-                      <tr className="text-[9px] uppercase tracking-wide text-muted-foreground">
-                        <th className="py-1 text-left font-normal">Valor</th>
-                        <th className="py-1 text-right font-normal">Hook</th>
-                        <th className="py-1 text-right font-normal">CTR</th>
-                        <th className="py-1 text-right font-normal">n</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {d.items.map((it, i) => (
-                        <tr key={it.value} className={i === 0 ? "font-semibold text-emerald-600" : ""}>
-                          <td className="py-0.5 pr-2">{i === 0 && "★ "}{it.label}</td>
-                          <td className="py-0.5 text-right tabular-nums">{it.hookRate.toFixed(1)}%</td>
-                          <td className="py-0.5 text-right tabular-nums text-muted-foreground">{it.ctr.toFixed(2)}%</td>
-                          <td className="py-0.5 text-right tabular-nums text-muted-foreground">{it.n}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
     </section>
   );
 }
