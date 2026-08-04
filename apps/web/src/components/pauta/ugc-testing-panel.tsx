@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import type { UgcTestEntry } from "@/lib/ugc-testing-queries";
 import type { UgcPieceAnalysis } from "@/lib/ugc-analysis-queries";
@@ -81,9 +80,6 @@ export function UgcTestingPanel({
   entries: UgcTestEntry[];
   analysis?: UgcPieceAnalysis[];
 }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState<string | null>(null);
-
   const entryByAd = useMemo(() => {
     const m = new Map<string, UgcTestEntry>();
     for (const e of entries) if (e.ad_id) m.set(e.ad_id, e);
@@ -95,8 +91,6 @@ export function UgcTestingPanel({
     for (const a of analysis) m.set(a.permalink, a);
     return m;
   }, [analysis]);
-
-  const entriesConVideo = useMemo(() => entries.filter((e) => e.video_url), [entries]);
 
   // Un score por anuncio (colapsando meses del mismo ad_id: sumamos volúmenes).
   const scores = useMemo(() => {
@@ -220,22 +214,6 @@ export function UgcTestingPanel({
       .filter((d) => d.items.length > 0);
   }, [scores]);
 
-  async function linkAd(adId: string, entryId: string) {
-    setBusy(adId);
-    try {
-      const prev = entries.find((e) => e.ad_id === adId && e.id !== entryId);
-      if (prev) {
-        await fetch("/api/contenido/calendario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: prev.id, ad_id: null }) });
-      }
-      if (entryId) {
-        await fetch("/api/contenido/calendario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: entryId, ad_id: adId }) });
-      }
-      router.refresh();
-    } finally {
-      setBusy(null);
-    }
-  }
-
   if (scores.length === 0) {
     return (
       <section className="space-y-3">
@@ -257,7 +235,7 @@ export function UgcTestingPanel({
       <div className="mt-2">
         <h3 className="text-sm font-medium">Testeo de creativos</h3>
         <p className="text-xs text-muted-foreground">
-          Todo concentrado por pieza: ranking head-to-head por <strong>hook rate</strong> dentro de cada campaña (test), embudo de retención e interacción, y la <strong>validación desde comentarios reales</strong> (credibilidad · intención de compra · percepción de marca + mejoras de guión). Linkeá cada pieza a su video generado para desbloquear los aprendizajes por dimensión.
+          Por pieza y rankeadas por <strong>hook rate</strong> dentro de cada campaña (test): primero las métricas del posteo y debajo la <strong>validación desde comentarios reales</strong> — credibilidad, persuasión y percepción de marca destacadas, con el detalle y las mejoras de guión.
         </p>
       </div>
 
@@ -270,11 +248,12 @@ export function UgcTestingPanel({
             </div>
             {t.allLow && <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-medium text-amber-600">muestra chica · tomar con pinzas</span>}
           </div>
-          <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 p-3 lg:grid-cols-2">
             {t.ranked.map((s) => {
               const isWinner = s.ad_id === t.winner && (s.hookRate ?? 0) > 0;
               return (
                 <div key={s.ad_id} className="rounded-lg border bg-background p-3">
+                  {/* 1) Info del posteo */}
                   <div className="flex gap-3">
                     <div className="relative shrink-0">
                       {s.thumb ? (
@@ -296,110 +275,67 @@ export function UgcTestingPanel({
                         {s.lowSample && <span className="shrink-0 text-[9px] text-amber-600">n bajo</span>}
                       </div>
 
-                      {/* Tags del generador (si está linkeado) */}
-                      {s.entry && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {[labelOf(UGC_PERFILES, s.entry.perfil), labelOf(UGC_ESCENARIOS, s.entry.escenario), labelOf(UGC_FORMATOS, s.entry.formato)]
-                            .filter((x) => x && x !== "—")
-                            .map((x, i) => (
-                              <span key={i} className="rounded-full bg-secondary px-1.5 py-0.5 text-[9px] text-secondary-foreground">{x}</span>
-                            ))}
-                        </div>
-                      )}
-
-                      {/* Métricas principales (2×2 compacto dentro de la tarjeta) */}
-                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
                         <Metric label="Hook rate" value={pct(s.hookRate)} big cls={tone(s.hookRate, t.bestHook, "higher")} />
                         <Metric label="Retención" value={pct(s.retention)} hint="del 100%" />
                         <Metric label="CTR" value={pct(s.ctr, 2)} cls={tone(s.ctr, t.bestCtr, "higher")} />
                         <Metric label="Interacción" value={pct(s.engRate, 2)} cls={tone(s.engRate, t.bestEng, "higher")} hint={`${fmtNum(s.interactions)} int.`} />
                       </div>
 
-                      {/* Embudo VTR 25/50/75/100 */}
-                      <div className="mt-2 flex items-center gap-1">
-                        {([["25%", s.q.p25], ["50%", s.q.p50], ["75%", s.q.p75], ["100%", s.q.p100]] as Array<[string, number]>).map(([lbl, v]) => (
-                          <div key={lbl} className="flex-1">
-                            <div className="h-6 overflow-hidden rounded bg-muted">
-                              <div className="flex h-full items-end justify-center" style={{ height: "100%" }}>
-                                <div className="w-full bg-[#1e3a8a]/80" style={{ height: `${Math.min(100, v)}%` }} />
-                              </div>
-                            </div>
-                            <div className="mt-0.5 text-center text-[9px] tabular-nums text-muted-foreground">{lbl}·{v.toFixed(0)}%</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Cualitativo + costos + link */}
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                         <span>{fmtNum(s.impr)} impr.</span>
                         <span>{formatCurrency(s.spend)} inv.</span>
                         {s.cpc != null && <span>CPC {formatCurrency(s.cpc)}</span>}
                         {s.comments > 0 && <span>💬 {fmtNum(s.comments)}</span>}
-                        {s.cred && <span>Credib. <strong className={nivelColor(s.cred)}>{s.cred}</strong></span>}
-                        {s.persu && <span>Persuasión <strong className={nivelColor(s.persu)}>{s.persu}</strong></span>}
-                        {s.percep && <span>Percep. marca <strong className={nivelColor(s.percep)}>{s.percep}</strong></span>}
                       </div>
-
-                      {/* Link a video generado */}
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground">Video generado:</span>
-                        <select
-                          value={s.entry?.id ?? ""}
-                          disabled={busy === s.ad_id}
-                          onChange={(ev) => linkAd(s.ad_id, ev.target.value)}
-                          className="max-w-[16rem] truncate rounded border bg-background px-1.5 py-0.5 text-[10px]"
-                        >
-                          <option value="">— sin linkear —</option>
-                          {entriesConVideo.map((e) => (
-                            <option key={e.id} value={e.id}>
-                              {(e.fecha ?? "").slice(5)} · {labelOf(UGC_PERFILES, e.perfil)} · {(e.idea ?? "sin tema").slice(0, 28)}
-                            </option>
-                          ))}
-                        </select>
-                        {busy === s.ad_id && <span className="text-[10px] text-muted-foreground">guardando…</span>}
-                      </div>
-
-                      {/* Validación cualitativa desde comentarios reales (credibilidad · intención · marca + mejoras de guión). */}
-                      {(s.piece?.analysis || (s.piece?.comments.length ?? 0) > 0) && (
-                        <div className="mt-3 rounded-lg border bg-muted/20 p-2.5">
-                          {s.piece?.analysis ? (
-                            <div className="space-y-2">
-                              {s.piece.analysis.resumen && <p className="text-[11px] text-muted-foreground">{s.piece.analysis.resumen}</p>}
-                              <ul className="space-y-0.5 text-[10px] text-muted-foreground">
-                                {s.piece.analysis.credibilidad?.detalle && <li><strong>Credibilidad:</strong> {s.piece.analysis.credibilidad.detalle}</li>}
-                                {s.piece.analysis.intencion_compra?.detalle && <li><strong>Intención:</strong> {s.piece.analysis.intencion_compra.detalle}</li>}
-                                {s.piece.analysis.percepcion_marca?.detalle && <li><strong>Marca:</strong> {s.piece.analysis.percepcion_marca.detalle}</li>}
-                              </ul>
-                              {s.piece.analysis.mejoras && s.piece.analysis.mejoras.length > 0 && (
-                                <div>
-                                  <div className="text-[11px] font-medium">Mejoras de contenido/guión</div>
-                                  <ul className="list-disc pl-4 text-[10px] text-muted-foreground">
-                                    {s.piece.analysis.mejoras.map((m, i) => <li key={i}>{m}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <p className="text-[10px] text-muted-foreground">Análisis de comentarios pendiente — corré el cron <code>ugc-comments-analysis</code>.</p>
-                          )}
-                          {(s.piece?.comments.length ?? 0) > 0 && (
-                            <details className="mt-2">
-                              <summary className="cursor-pointer text-[11px] font-medium">Ver comentarios ({s.piece!.comments.length})</summary>
-                              <div className="mt-2 max-h-60 space-y-1.5 overflow-y-auto">
-                                {s.piece!.comments.map((c, i) => (
-                                  <div key={i} className="rounded bg-muted/40 p-2 text-[11px]">
-                                    {c.author && <span className="font-semibold">@{c.author} </span>}
-                                    {c.text}
-                                    {c.likes > 0 && <span className="ml-1 text-muted-foreground">· ❤️ {fmtNum(c.likes)}</span>}
-                                  </div>
-                                ))}
-                              </div>
-                            </details>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
+
+                  {/* 2) Análisis desde comentarios reales */}
+                  {(s.piece?.analysis || (s.piece?.comments.length ?? 0) > 0) && (
+                    <div className="mt-3 space-y-2.5 border-t pt-3">
+                      {s.piece?.analysis ? (
+                        <>
+                          {/* Señales cualitativas destacadas */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <QualTile label="Credibilidad" nivel={s.piece.analysis.credibilidad?.nivel} />
+                            <QualTile label="Persuasión" nivel={s.piece.analysis.intencion_compra?.nivel} />
+                            <QualTile label="Percep. marca" nivel={s.piece.analysis.percepcion_marca?.nivel} />
+                          </div>
+                          {s.piece.analysis.resumen && <p className="text-xs leading-relaxed text-foreground/80">{s.piece.analysis.resumen}</p>}
+                          <ul className="space-y-1 text-[11px] text-muted-foreground">
+                            {s.piece.analysis.credibilidad?.detalle && <li><strong className="text-foreground/70">Credibilidad:</strong> {s.piece.analysis.credibilidad.detalle}</li>}
+                            {s.piece.analysis.intencion_compra?.detalle && <li><strong className="text-foreground/70">Persuasión / intención de compra:</strong> {s.piece.analysis.intencion_compra.detalle}</li>}
+                            {s.piece.analysis.percepcion_marca?.detalle && <li><strong className="text-foreground/70">Percepción de marca:</strong> {s.piece.analysis.percepcion_marca.detalle}</li>}
+                          </ul>
+                          {s.piece.analysis.mejoras && s.piece.analysis.mejoras.length > 0 && (
+                            <div>
+                              <div className="text-[11px] font-semibold">Mejoras de contenido/guión</div>
+                              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">
+                                {s.piece.analysis.mejoras.map((m, i) => <li key={i}>{m}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">Análisis de comentarios pendiente — corré el cron <code>ugc-comments-analysis</code>.</p>
+                      )}
+                      {(s.piece?.comments.length ?? 0) > 0 && (
+                        <details>
+                          <summary className="cursor-pointer text-[11px] font-medium">Ver comentarios ({s.piece!.comments.length})</summary>
+                          <div className="mt-2 max-h-60 space-y-1.5 overflow-y-auto">
+                            {s.piece!.comments.map((c, i) => (
+                              <div key={i} className="rounded bg-muted/40 p-2 text-[11px]">
+                                {c.author && <span className="font-semibold">@{c.author} </span>}
+                                {c.text}
+                                {c.likes > 0 && <span className="ml-1 text-muted-foreground">· ❤️ {fmtNum(c.likes)}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -412,7 +348,7 @@ export function UgcTestingPanel({
         <div className="mb-1 text-sm font-medium">Aprendizajes por dimensión</div>
         {learnings.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Linkeá las piezas a su video generado (arriba) para ver qué <strong>perfil / escenario / formato / pilar / género</strong> rinde mejor. {linkedCount > 0 ? `${linkedCount} linkeada(s).` : ""}
+            Linkeá las piezas a su video generado desde el calendario de contenido para ver qué <strong>perfil / escenario / formato / pilar / género</strong> rinde mejor. {linkedCount > 0 ? `${linkedCount} linkeada(s).` : ""}
           </p>
         ) : (
           <>
@@ -457,6 +393,16 @@ function Metric({ label, value, hint, big, cls }: { label: string; value: string
       <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={`${big ? "text-base font-bold" : "text-xs font-semibold"} tabular-nums ${cls ?? ""}`}>{value}</div>
       {hint && <div className="text-[9px] text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+// Señal cualitativa destacada (credibilidad · persuasión · percepción de marca).
+function QualTile({ label, nivel }: { label: string; nivel?: string }) {
+  return (
+    <div className="rounded-lg border bg-muted/30 p-2 text-center">
+      <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`text-sm font-bold capitalize ${nivelColor(nivel)}`}>{nivel ?? "—"}</div>
     </div>
   );
 }
