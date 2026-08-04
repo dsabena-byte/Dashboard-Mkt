@@ -8,6 +8,7 @@ import { UGC_PERFILES, UGC_PILARES, UGC_ESCENARIOS, UGC_CTAS, UGC_DURACIONES, UG
 import { BibliotecaUgc } from "@/components/contenido/biblioteca-ugc";
 import { AdaptacionPiezas } from "@/components/pauta/adaptacion-piezas";
 import { PiezaDisenador, type Diseno } from "@/components/contenido/pieza-disenador";
+import { COSTOS_IA, fmtUSD } from "@/lib/costos-ia";
 
 const PILARES = ["Liderazgo marca/porfolio", "Calidad superior", "Respaldo Posventa", "Elegir bien", "Experiencia uso"];
 const FORMATOS = [{ v: "imagen", l: "Imagen (post)" }, { v: "carrusel", l: "Carrusel" }];
@@ -529,6 +530,9 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   }
   const modelos = useMemo(() => getModelos(e.categoria ?? "porfolio"), [e.categoria]);
   const esCreativo = (e.tipo_contenido ?? "producto") === "creativo";
+  // Costo estimado de generar la imagen según el motor que se va a usar
+  // (producto real con packshot = nano-banana; genérico/creativo = ideogram).
+  const costoGen = !esCreativo && e.modelo ? COSTOS_IA.imagenProducto : COSTOS_IA.imagenCreativa;
 
   useEffect(() => { setE(entry); }, [entry]);
 
@@ -738,7 +742,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={generar} disabled={busy === "gen" || busy === "del"} className="rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
-          {busy === "gen" ? "Generando… (~1 min)" : e.imagen_url ? "Regenerar" : "Generar"}
+          {busy === "gen" ? "Generando… (~1 min)" : `${e.imagen_url ? "Regenerar" : "Generar"} · ~${fmtUSD(costoGen)}`}
         </button>
         <span className="text-[11px] text-muted-foreground">o subí contenido propio:</span>
         <label className={`cursor-pointer rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary ${uploading ? "opacity-50" : ""}`}>
@@ -797,7 +801,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
                   className={`${field} min-w-0 flex-1`}
                 />
                 <button onClick={retocar} disabled={busy === "retoque" || !retoque.trim()} className="shrink-0 rounded border px-2.5 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
-                  {busy === "retoque" ? "Retocando… (~1 min)" : "✎ Retocar"}
+                  {busy === "retoque" ? "Retocando… (~1 min)" : `✎ Retocar · ~${fmtUSD(COSTOS_IA.retoque)}`}
                 </button>
               </div>
               <div className="flex items-center gap-2">
@@ -900,8 +904,8 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-semibold uppercase text-muted-foreground">Transformar en video (≤6s)</span>
             <select value={videoModelo} onChange={(ev) => setVideoModelo(ev.target.value)} className={field}>
-              <option value="kling">Kling (5s)</option>
-              <option value="veo">Veo (~8s)</option>
+              <option value="kling">{`Kling (5s · ~${fmtUSD(COSTOS_IA.videoKling)})`}</option>
+              <option value="veo">{`Veo (~8s · ~${fmtUSD(COSTOS_IA.videoVeo)})`}</option>
             </select>
             <input value={videoPrompt} onChange={(ev) => setVideoPrompt(ev.target.value)} placeholder="movimiento (opcional)" className={`${field} min-w-[8rem] flex-1`} />
             <button onClick={generarVideo} disabled={videoBusy} className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
@@ -1121,8 +1125,8 @@ function UgcEntryCard({ entry, onChange }: { entry: Cal; onChange: () => void })
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={genGuion} disabled={genBusy} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "guion" ? "Generando…" : "1 · Guion"}</button>
-        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : "2 · Video"}</button>
-        <button onClick={genVideoProducto} disabled={genBusy || !e.guion?.trim() || !e.modelo} title={e.modelo ? "Talking-head con el producto Drean real en la escena (Seedance 2.0 reference, mantiene el producto fiel)" : "Elegí un producto (modelo) primero"} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "producto" ? "Generando… (producto)" : "2b · Video + producto"}</button>
+        <button onClick={genVideo} disabled={genBusy || !e.guion?.trim()} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "video" ? "Generando…" : `2 · Video · ~${fmtUSD(COSTOS_IA.videoSeedance)}`}</button>
+        <button onClick={genVideoProducto} disabled={genBusy || !e.guion?.trim() || !e.modelo} title={e.modelo ? "Talking-head con el producto Drean real en la escena (Seedance 2.0 reference, mantiene el producto fiel)" : "Elegí un producto (modelo) primero"} className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50">{busy === "producto" ? "Generando… (producto)" : `2b · Video + producto · ~${fmtUSD(COSTOS_IA.videoSeedance)}`}</button>
         <button onClick={genPreviewEscena} disabled={genBusy} title="Genera una imagen fija de la escena (barato) para verla antes de gastar en video" className="rounded border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">{busy === "preview" ? "Generando…" : "👁 Ver escena"}</button>
         {videoMsg && <span className="text-[11px] text-muted-foreground">{videoMsg}</span>}
       </div>
