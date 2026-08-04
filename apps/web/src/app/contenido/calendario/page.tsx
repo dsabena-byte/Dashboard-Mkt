@@ -39,6 +39,7 @@ interface Cal {
   subtipo?: string;
   idea?: string;
   imagen_final_url?: string | null;
+  imagen_versiones?: string[] | null;
   redes?: string[] | null;
   publicado_ig_id?: string | null;
   publicado_fb_id?: string | null;
@@ -489,6 +490,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
   const [videoErr, setVideoErr] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [pubBusy, setPubBusy] = useState(false);
+  const [retoque, setRetoque] = useState("");
 
   async function publicarPrueba(red: "instagram" | "facebook") {
     if (!e.imagen_url && !e.video_url) return;
@@ -591,6 +593,29 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       if (j.ok) { setE(j.item as Cal); onChange(); }
       else alert(`Error al generar: ${falErr(j.error ?? "?")}`);
     } finally { setBusy(null); }
+  }
+
+  // Retoque iterativo: edita la imagen ACTUAL con el cambio pedido (no regenera
+  // de cero). La versión previa queda en imagen_versiones para poder revertir.
+  async function retocar() {
+    if (!e.imagen_url || !retoque.trim() || busy) return;
+    setBusy("retoque");
+    try {
+      const r = await fetch("/api/contenido/calendario/retocar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: e.id, instruccion: retoque.trim() }),
+      });
+      const j = await r.json();
+      if (j.ok) { setE(j.item as Cal); setRetoque(""); onChange(); }
+      else alert(`Error al retocar: ${falErr(j.error ?? "?")}`);
+    } finally { setBusy(null); }
+  }
+
+  async function revertir() {
+    const versiones = e.imagen_versiones ?? [];
+    if (versiones.length === 0 || busy) return;
+    const prev = versiones[versiones.length - 1];
+    await save({ imagen_url: prev, imagen_versiones: versiones.slice(0, -1), estado: "generado" });
   }
 
   async function borrar() {
@@ -752,15 +777,39 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
       {/* Contenido generado */}
       {e.imagen_url && (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <div className="relative inline-block h-min max-w-full shrink-0 self-start">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="block max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain" />
-            {(e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent px-4 pb-4 pt-10" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
-                {e.mensaje_clave?.trim() && <div className="text-lg font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.mensaje_clave}</div>}
-                {e.bajada?.trim() && <div className="mt-0.5 text-xs font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.bajada}</div>}
+          <div className="flex shrink-0 flex-col gap-2 self-start">
+            <div className="relative inline-block h-min max-w-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={e.imagen_url} alt="pieza" onClick={() => setZoom(true)} title="Click para agrandar" className="block max-h-64 w-auto max-w-full cursor-zoom-in rounded border object-contain" />
+              {(e.con_placa ?? true) && (e.mensaje_clave?.trim() || e.bajada?.trim()) && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b bg-gradient-to-t from-black/75 via-black/25 to-transparent px-4 pb-4 pt-10" style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}>
+                  {e.mensaje_clave?.trim() && <div className="text-lg font-extrabold leading-tight text-white [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.mensaje_clave}</div>}
+                  {e.bajada?.trim() && <div className="mt-0.5 text-xs font-medium leading-snug text-white/90 [text-shadow:_0_1px_4px_rgb(0_0_0_/_60%)]">{e.bajada}</div>}
+                </div>
+              )}
+            </div>
+            {/* Retoque iterativo: edita la imagen actual sin regenerar de cero. */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={retoque}
+                  onChange={(ev) => setRetoque(ev.target.value)}
+                  onKeyDown={(ev) => { if (ev.key === "Enter") retocar(); }}
+                  disabled={busy === "retoque"}
+                  placeholder="Retocar: 'fondo azul', 'sacá la sombra'…"
+                  className={`${field} min-w-0 flex-1`}
+                />
+                <button onClick={retocar} disabled={busy === "retoque" || !retoque.trim()} className="shrink-0 rounded border px-2.5 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+                  {busy === "retoque" ? "Retocando… (~1 min)" : "✎ Retocar"}
+                </button>
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground">Edita la imagen actual, no regenera de cero.</span>
+                {(e.imagen_versiones?.length ?? 0) > 0 && (
+                  <button onClick={revertir} disabled={!!busy} className="text-[10px] font-medium text-blue-700 hover:underline disabled:opacity-50">↩ Revertir ({e.imagen_versiones!.length})</button>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex-1 space-y-2">
             <div>
