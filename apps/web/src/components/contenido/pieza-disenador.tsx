@@ -47,6 +47,8 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
   const [bgErr, setBgErr] = useState<string | null>(null);
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
   const [logoTrim, setLogoTrim] = useState<Trim | null>(null);
+  // Logo a usar: por defecto el de Drean, pero se puede subir uno propio (data URL).
+  const [logoSrc, setLogoSrc] = useState<string>(LOGO_URL);
   const [d, setD] = useState<Diseno>({ ...DEFAULT, ...(diseno ?? {}) });
   const [fontReady, setFontReady] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -58,8 +60,8 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
     (async () => { try { const i = await loadImg(imagenUrl, true); if (!cancel) setBgImg(i); } catch { if (!cancel) setBgErr("No se pudo cargar la imagen para el editor."); } })();
     return () => { cancel = true; }; }, [imagenUrl]);
   useEffect(() => { let cancel = false;
-    (async () => { try { const i = await loadImg(LOGO_URL); if (!cancel) { setLogoImg(i); setLogoTrim(computeTrim(i)); } } catch { /* sin logo */ } })();
-    return () => { cancel = true; }; }, []);
+    (async () => { try { const i = await loadImg(logoSrc); if (!cancel) { setLogoImg(i); setLogoTrim(computeTrim(i)); } } catch { /* sin logo */ } })();
+    return () => { cancel = true; }; }, [logoSrc]);
   useEffect(() => { (async () => { try { await document.fonts.load('800 40px "Manrope"'); await document.fonts.load('500 40px "Manrope"'); } catch { /* */ } setFontReady(true); })(); }, []);
 
   const words = useMemo(() => parseWords(`${titulo.trim() ? `**${titulo.trim()}**` : ""}${bajada.trim() ? ` ${bajada.trim()}` : ""}`.trim()), [titulo, bajada]);
@@ -84,6 +86,12 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
 
   const upd = (patch: Partial<Diseno>) => setD((prev) => ({ ...prev, ...patch }));
   const pct = (n: number) => `${Math.round(n)}%`;
+  function onLogoFile(file: File | undefined) {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => { setLogoSrc(String(r.result)); upd({ on: true }); };
+    r.readAsDataURL(file);
+  }
 
   async function componer() {
     if (!bgImg) return;
@@ -141,9 +149,18 @@ export function PiezaDisenador({ imagenUrl, titulo, bajada, caption, diseno, sav
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {/* Logo */}
           <div className="space-y-1 rounded border p-2">
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
-              <input type="checkbox" checked={d.on} onChange={(e) => upd({ on: e.target.checked })} /> Logo Drean
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
+                <input type="checkbox" checked={d.on} onChange={(e) => upd({ on: e.target.checked })} /> Logo
+              </label>
+              <div className="flex items-center gap-1">
+                <label className="cursor-pointer rounded border px-1.5 py-0.5 text-[9px] font-medium hover:bg-secondary" title="Subir tu propio logo (PNG con fondo transparente)">
+                  ⬆ Subir
+                  <input type="file" accept="image/png,image/webp" className="hidden" onChange={(e) => { onLogoFile(e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+                {logoSrc !== LOGO_URL && <button type="button" onClick={() => setLogoSrc(LOGO_URL)} className="rounded border px-1.5 py-0.5 text-[9px] font-medium hover:bg-secondary">Drean</button>}
+              </div>
+            </div>
             <Slider label="X" value={d.logoX * 100} min={0} max={100} step={1} onChange={(n) => upd({ logoX: n / 100 })} fmt={pct} />
             <Slider label="Y" value={d.logoY * 100} min={0} max={100} step={1} onChange={(n) => upd({ logoY: n / 100 })} fmt={pct} />
             <Slider label="T" value={d.logoPct * 100} min={3} max={60} step={1} onChange={(n) => upd({ logoPct: n / 100 })} fmt={pct} />
