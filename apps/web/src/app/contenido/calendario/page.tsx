@@ -302,8 +302,8 @@ export default function CalendarioPage() {
       <>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Generador UGC (persona hablando)" : "Calendario de contenido RRSS"}</h2>
-          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Generá videos UGC nativos (guion → video) con perfiles, escenarios y configuraciones. Lo generado se guarda en la Biblioteca UGC. La marca va en el copy, no hablada." : "Planificá el mes, generá cada pieza, revisá y aprobá. La publicación automática en IG/FB es la próxima etapa."}</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Generador UGC (persona hablando)" : "Generación de Contenidos RRSS"}</h2>
+          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Generá videos UGC nativos (guion → video) con perfiles, escenarios y configuraciones. Lo generado se guarda en la Biblioteca UGC. La marca va en el copy, no hablada." : "Generá cada pieza, diseñala y aprobala. Cuándo se publica (la agenda) se decide después, en el calendario de abajo."}</p>
         </div>
       </header>
 
@@ -413,6 +413,33 @@ export default function CalendarioPage() {
         </section>
       ) : (
       <>
+      {/* Piezas primero: crear / generar / diseñar es el foco. La agenda
+          (calendario) es un paso posterior y va colapsada más abajo. */}
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-medium">Piezas</h3>
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">del
+              <input type="date" value={sel} onChange={(e) => setSel(e.target.value)} className="rounded border px-2 py-1 text-xs" />
+            </label>
+            {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
+          </div>
+          <button onClick={addEntry} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">+ Agregar pieza</button>
+        </div>
+        {selItems.length === 0 ? (
+          <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Sin piezas para esta fecha. Agregá una con el botón, o elegí otra fecha.</p>
+        ) : (
+          <div className="space-y-3">
+            {selItems.map((it) => <EntryCard key={it.id} entry={it} onChange={load} />)}
+          </div>
+        )}
+      </section>
+
+      {/* Agenda (calendario): paso posterior — programar cuándo se publica.
+          Colapsada por defecto para no tapar el foco de creación. */}
+      <details className="rounded-xl border bg-card">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">📅 Agenda — ver y programar en el calendario</summary>
+        <div className="space-y-3 border-t p-3">
       <div className="flex items-center gap-3">
         <button onClick={prevMonth} className="rounded border px-2 py-1 text-sm hover:bg-secondary">‹</button>
         <div className="min-w-[10rem] text-center text-sm font-medium">{MESES[m]} {y}</div>
@@ -461,26 +488,13 @@ export default function CalendarioPage() {
         </div>
       </div>
 
-      {/* Panel del día seleccionado */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Piezas del {sel}</h3>
-          <button onClick={addEntry} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">+ Agregar pieza</button>
-        </div>
-        {selItems.length === 0 ? (
-          <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Sin piezas para este día. Agregá una con el botón de arriba.</p>
-        ) : (
-          <div className="space-y-3">
-            {selItems.map((it) => <EntryCard key={it.id} entry={it} onChange={load} />)}
-          </div>
-        )}
-      </section>
-
       <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
         {Object.entries(ESTADO_LABEL).map(([k, l]) => (
           <span key={k} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: ESTADO_COLOR[k] }} /> {l}</span>
         ))}
       </div>
+        </div>
+      </details>
       </>
       )}
       </>
