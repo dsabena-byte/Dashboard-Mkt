@@ -639,6 +639,16 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
     save({ redes: next });
   }
 
+  const redLabel = (r: string) => (r === "instagram" ? "Instagram" : r === "facebook" ? "Facebook" : r === "tiktok" ? "TikTok" : r);
+  // "Agendada" = pieza en biblioteca (aprobada) + fecha + al menos una red. Con
+  // eso, el cron publica IG/FB cuando llega la fecha (TikTok todavía a mano).
+  const agendada = !!e.aprobado && !!e.fecha && (e.redes ?? []).length > 0;
+  function agendar() {
+    if (!e.aprobado) { alert("Primero terminá el diseño: usá “Guardar y pasar a Biblioteca” en Diseñar."); return; }
+    if (!e.fecha || (e.redes ?? []).length === 0) { alert("Elegí una fecha y al menos una red para agendar."); return; }
+    alert(`✓ Agendada para el ${e.fecha}${e.hora ? " a las " + e.hora.slice(0, 5) : ""} en ${(e.redes ?? []).map(redLabel).join(", ")}.`);
+  }
+
   async function generarVideo() {
     if (!e.imagen_url) return;
     setVideoBusy(true);
@@ -817,8 +827,9 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
               </div>
             )}
 
-            {/* Paso 4 · Distribuir: programación (calendario) + orgánico + prueba */}
+            {/* Paso 4 · Distribuir: agendar orgánico (calendario IG/FB/TikTok) + prueba */}
             {step === 4 && (<>
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">Agendar publicación orgánica</div>
               <div className="flex flex-wrap items-end gap-2">
                 <div>
                   <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Fecha</label>
@@ -829,19 +840,33 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
                   <input type="time" value={e.hora?.slice(0, 5) ?? ""} onChange={(ev) => setE({ ...e, hora: ev.target.value })} onBlur={() => save({ hora: e.hora })} className={field} />
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar en:</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Redes:</span>
                 <label className="flex items-center gap-1 text-[11px]">
                   <input type="checkbox" checked={(e.redes ?? []).includes("instagram")} onChange={() => toggleRed("instagram")} /> Instagram
                 </label>
                 <label className="flex items-center gap-1 text-[11px]">
                   <input type="checkbox" checked={(e.redes ?? []).includes("facebook")} onChange={() => toggleRed("facebook")} /> Facebook
                 </label>
+                <label className="flex items-center gap-1 text-[11px]">
+                  <input type="checkbox" checked={(e.redes ?? []).includes("tiktok")} onChange={() => toggleRed("tiktok")} /> TikTok
+                </label>
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={agendar} className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90">📅 Agendar</button>
+                {agendada ? (
+                  <span className="text-[11px] font-medium text-emerald-700">✓ Agendada · {e.fecha}{e.hora ? ` ${e.hora.slice(0, 5)}` : ""} · {(e.redes ?? []).map(redLabel).join(", ")}</span>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">Elegí fecha y al menos una red.</span>
+                )}
+              </div>
+              {(e.redes ?? []).includes("tiktok") && (
+                <p className="text-[10px] text-amber-600">TikTok queda agendado, pero el posteo automático todavía no está conectado (IG/FB sí). Por ahora se sube a mano.</p>
+              )}
 
-              {/* Publicar prueba (manual, publica en la cuenta real ahora) */}
+              {/* Publicar ahora (manual, publica en la cuenta real en este momento) */}
               <div className="flex flex-wrap items-center gap-2 border-t pt-2">
-                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar prueba</span>
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Publicar ahora (prueba)</span>
                 {e.publicado_ig_id ? (
                   // IG no se puede borrar por API (falta instagram_manage_contents). Se
                   // retira a mano desde la app; el botón sólo recuerda cómo y resetea.
