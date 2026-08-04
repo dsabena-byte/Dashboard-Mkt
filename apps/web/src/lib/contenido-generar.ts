@@ -20,6 +20,11 @@ const MODEL_IDEOGRAM = "fal-ai/ideogram/v3";
 // Modo "producto real": edición por referencia con el packshot real. Nano Banana
 // (Gemini 2.5 Flash Image edit). Alternativa: "fal-ai/gemini-25-flash-image/edit".
 const MODEL_EDIT = "fal-ai/nano-banana/edit";
+// Retoque por instrucción sobre una foto ya terminada: FLUX.1 Kontext está
+// entrenado para editar (cerrar una puerta, cambiar un fondo, sacar una sombra)
+// aplicando el cambio y manteniendo el resto — mucho más fiable para esto que un
+// modelo de generación como nano-banana, que tiende a devolver casi lo mismo.
+const MODEL_KONTEXT = "fal-ai/flux-pro/kontext";
 export const MAX_PIEZAS = 4;
 
 const NO_TEXT = "CRITICAL: do NOT render any text, letters, words, captions, logos, brand names, watermarks or signage anywhere in the image. Clean image with no typography.";
@@ -376,16 +381,13 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
 // (la placa de título/bajada se compone aparte). Devuelve la URL de la nueva
 // versión. Pensado para iterar hasta llegar al diseño deseado.
 export async function retocarImagen(imagenUrl: string, instruccion: string): Promise<string> {
-  // El cambio pedido va PRIMERO y explícito: los modelos de edición tienden a
-  // ignorar la instrucción si el prompt arranca pidiendo "mantené todo igual".
-  const prompt = [
-    `Edit this image to make the following change: ${instruccion.trim()}.`,
-    "Apply that change clearly and visibly. Keep the rest of the scene (product, people, framing) coherent, realistic and high quality, but the requested change MUST be clearly noticeable in the result. Do not add any text, letters, captions, watermarks or logos.",
-  ].join(" ");
-  const img = await falImage(MODEL_EDIT, { prompt, image_urls: [imagenUrl], num_images: 1 });
+  // FLUX.1 Kontext toma la instrucción directa como prompt de edición y aplica
+  // SOLO ese cambio sobre la imagen dada (input: image_url singular).
+  const prompt = `${instruccion.trim()}. Keep the rest of the image unchanged. Do not add any text, letters or logos.`;
+  const img = await falImage(MODEL_KONTEXT, { prompt, image_url: imagenUrl, num_images: 1 });
   const url = img.images[0]?.url ?? null;
   if (!url) {
-    throw new Error(`El modelo de retoque (nano-banana) no devolvió imagen. Respuesta de fal: ${JSON.stringify(img.raw).slice(0, 500)}`);
+    throw new Error(`El modelo de retoque (FLUX Kontext) no devolvió imagen. Respuesta de fal: ${JSON.stringify(img.raw).slice(0, 500)}`);
   }
   return url;
 }
