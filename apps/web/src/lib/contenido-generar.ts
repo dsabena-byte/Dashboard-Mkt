@@ -413,8 +413,11 @@ export async function retocarImagen(imagenUrl: string, instruccion: string): Pro
   // FLUX.1 Kontext toma la instrucción directa como prompt de edición y aplica
   // SOLO ese cambio sobre la imagen dada (input: image_url singular).
   const enIngles = await instruccionRetoqueEnIngles(instruccion.trim());
-  const prompt = `${enIngles}. Make ONLY this change. Keep everything else in the image exactly the same and do NOT add anything (no new people, animals, objects, text or logos) that was not explicitly requested.`;
-  const img = await falImage(MODEL_KONTEXT, { prompt, image_url: imagenUrl, num_images: 1 });
+  // Prompt menos conservador: "mantené todo idéntico" frenaba cambios más
+  // grandes (ej. cerrar puertas). Ahora se le pide aplicar el cambio DE VERDAD,
+  // ajustando el producto/escena lo necesario, sin agregar cosas no pedidas.
+  const prompt = `${enIngles}. Apply this change clearly and fully — adjust the product or scene as needed to make it happen — while keeping the overall composition, lighting and style coherent and realistic. Do NOT add unrelated new elements, text, letters or logos that were not requested.`;
+  const img = await falImage(MODEL_KONTEXT, { prompt, image_url: imagenUrl, num_images: 1, guidance_scale: 4 });
   const url = img.images[0]?.url ?? null;
   if (!url) {
     throw new Error(`El modelo de retoque (FLUX Kontext) no devolvió imagen. Respuesta de fal: ${JSON.stringify(img.raw).slice(0, 500)}`);
