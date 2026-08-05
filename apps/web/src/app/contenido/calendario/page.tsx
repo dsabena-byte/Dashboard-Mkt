@@ -788,30 +788,6 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
                 </div>
               )}
             </div>
-            {/* Retoque iterativo: SOLO en Generar (la imagen cruda). */}
-            {step === 1 && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <input
-                  value={retoque}
-                  onChange={(ev) => setRetoque(ev.target.value)}
-                  onKeyDown={(ev) => { if (ev.key === "Enter") retocar(); }}
-                  disabled={busy === "retoque"}
-                  placeholder="Retocar: 'fondo azul', 'sacá la sombra'…"
-                  className={`${field} min-w-0 flex-1`}
-                />
-                <button onClick={retocar} disabled={busy === "retoque" || !retoque.trim()} className="shrink-0 rounded border px-2.5 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50">
-                  {busy === "retoque" ? "Retocando… (~1 min)" : `✎ Retocar · ~${fmtUSD(COSTOS_IA.retoque)}`}
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground">Edita la imagen actual, no regenera de cero.</span>
-                {(e.imagen_versiones?.length ?? 0) > 0 && (
-                  <button onClick={revertir} disabled={!!busy} className="text-[10px] font-medium text-blue-700 hover:underline disabled:opacity-50">↩ Revertir ({e.imagen_versiones!.length})</button>
-                )}
-              </div>
-            </div>
-            )}
           </div>
           <div className="flex-1 space-y-2">
             {step === 1 && (
@@ -893,6 +869,31 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
                 {pubBusy && <span className="text-[10px] text-muted-foreground">procesando…</span>}
               </div>
             </>)}
+          </div>
+        </div>
+      )}
+
+      {/* Retoque (fila FULL-WIDTH para leer toda la instrucción): SOLO en Generar */}
+      {e.imagen_url && step === 1 && (
+        <div className="mt-3 space-y-1">
+          <div className="flex items-center gap-2">
+            <input
+              value={retoque}
+              onChange={(ev) => setRetoque(ev.target.value)}
+              onKeyDown={(ev) => { if (ev.key === "Enter") retocar(); }}
+              disabled={busy === "retoque"}
+              placeholder="Retocar la imagen (ej. 'que la heladera tenga las puertas cerradas', 'fondo de cocina blanca', 'sacá la sombra del piso')…"
+              className={`${field} min-w-0 flex-1`}
+            />
+            <button onClick={retocar} disabled={busy === "retoque" || !retoque.trim()} className="shrink-0 rounded border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50">
+              {busy === "retoque" ? "Retocando… (~1 min)" : `✎ Retocar · ~${fmtUSD(COSTOS_IA.retoque)}`}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground">Edita la imagen actual, no regenera de cero.</span>
+            {(e.imagen_versiones?.length ?? 0) > 0 && (
+              <button onClick={revertir} disabled={!!busy} className="text-[10px] font-medium text-blue-700 hover:underline disabled:opacity-50">↩ Revertir ({e.imagen_versiones!.length})</button>
+            )}
           </div>
         </div>
       )}
