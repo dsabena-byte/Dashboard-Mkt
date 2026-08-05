@@ -694,7 +694,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     const total = rows.reduce((s, r) => s + (r.digital ?? 0) + (r.tvCable ?? 0) + (r.dooh ?? 0) + (r.ooh ?? 0), 0);
     return rows.map((r) => {
       const monthTotal = (r.digital ?? 0) + (r.tvCable ?? 0) + (r.dooh ?? 0) + (r.ooh ?? 0);
-      return { ...r, mes_pct: total > 0 && monthTotal > 0 ? (monthTotal / total) * 100 : null };
+      return { ...r, total: monthTotal > 0 ? monthTotal : null, mes_pct: total > 0 && monthTotal > 0 ? (monthTotal / total) * 100 : null };
     });
   }, [data, currentMonth, planningMonthly, metaPaid, dv360, googleAdsOmd, fxRates, arsMode, fxFallback]);
 

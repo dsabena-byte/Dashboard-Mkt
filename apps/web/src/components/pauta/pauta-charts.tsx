@@ -75,6 +75,7 @@ export function MonthlyInvestmentChart({
     tvCable: number | null;
     dooh: number | null;
     ooh: number | null;
+    total?: number | null;
     isPlanned?: boolean;
     mes_pct?: number | null;
     pct_marker?: number;
@@ -82,7 +83,7 @@ export function MonthlyInvestmentChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={data} margin={{ top: 24, right: 16, left: 8, bottom: 4 }}>
+      <ComposedChart data={data} margin={{ top: 24, right: 16, left: 8, bottom: 4 }}>
         <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="mes" fontSize={11} stroke="hsl(var(--muted-foreground))" />
         <YAxis tickFormatter={fmtARS} fontSize={11} stroke="hsl(var(--muted-foreground))" />
@@ -114,7 +115,9 @@ export function MonthlyInvestmentChart({
             formatter={(v: number | null | undefined) => (v != null ? `${v.toFixed(1)}%` : "")}
           />
         </Bar>
-      </BarChart>
+        {/* Línea con el total del mes (suma de los tipos de medio), para validar */}
+        <Line type="monotone" dataKey="total" name="Total mensual" stroke="#0f172a" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }
