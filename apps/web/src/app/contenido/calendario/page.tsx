@@ -413,7 +413,7 @@ export default function CalendarioPage() {
             </label>
             {loading && <span className="text-xs text-muted-foreground">cargando…</span>}
           </div>
-          <button onClick={addEntry} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">+ Agregar pieza</button>
+          <button onClick={addEntry} title="Crea una pieza nueva en blanco. Arranca en Generar (imagen o video); el logo y los textos se agregan después en Diseñar." className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">+ Agregar pieza</button>
         </div>
         {selItems.length === 0 ? (
           <p className="rounded-lg border bg-card p-6 text-center text-xs text-muted-foreground">Sin piezas para esta fecha. Agregá una con el botón, o elegí otra fecha.</p>
@@ -890,7 +890,7 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground">Edita la imagen actual, no regenera de cero.</span>
+            <span className="text-[10px] text-muted-foreground">Edita la imagen actual, no regenera de cero. Va bien para <b>fondo, color, luz, sacar/agregar cosas</b>. Para cambios grandes del producto (ej. cerrar puertas), <b>regenerá</b> poniendo el detalle arriba.</span>
             {(e.imagen_versiones?.length ?? 0) > 0 && (
               <button onClick={revertir} disabled={!!busy} className="text-[10px] font-medium text-blue-700 hover:underline disabled:opacity-50">↩ Revertir ({e.imagen_versiones!.length})</button>
             )}
