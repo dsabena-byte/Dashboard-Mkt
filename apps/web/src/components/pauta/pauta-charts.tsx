@@ -115,8 +115,10 @@ export function MonthlyInvestmentChart({
             formatter={(v: number | null | undefined) => (v != null ? `${v.toFixed(1)}%` : "")}
           />
         </Bar>
-        {/* Línea con el total del mes (suma de los tipos de medio), para validar */}
-        <Line type="monotone" dataKey="total" name="Total mensual" stroke="#0f172a" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
+        {/* Solo un punto por mes (sin línea) con el monto total etiquetado, siempre visible */}
+        <Line type="monotone" dataKey="total" name="Total mensual" stroke="transparent" legendType="none" isAnimationActive={false} connectNulls={false} dot={{ r: 4, fill: "#0f172a", strokeWidth: 0 }}>
+          <LabelList dataKey="total" position="top" offset={22} fontSize={11} fontWeight={700} fill="#0f172a" formatter={(v: number | null | undefined) => (v != null ? fmtARS(v) : "")} />
+        </Line>
       </ComposedChart>
     </ResponsiveContainer>
   );
