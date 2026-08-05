@@ -109,6 +109,7 @@ async function disenarBrief(
   variante: number,
   esPorfolio: boolean,
   difTxt: string,
+  detalles: string,
 ): Promise<Brief> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY no configurada.");
@@ -121,12 +122,12 @@ async function disenarBrief(
   const user = `PILAR: "${pilar}" — ${PILAR_DEF[pilar] ?? ""}
 CATEGORÍA: ${categoriaTxt}${productoNombre ? ` — producto: ${productoNombre}` : ""}
 ${difTxt ? difTxt + "\n" : ""}${personas ? "La escena INCLUYE personas/familia.\n" : ""}FORMATO: ${formato}
-${variante > 1 ? `VARIANTE #${variante}: buscá un ángulo/momento DISTINTO a las otras.\n` : ""}PIEZAS QUE MEJOR PERFORMARON en este pilar (referencia de qué funcionó):
+${variante > 1 ? `VARIANTE #${variante}: buscá un ángulo/momento DISTINTO a las otras.\n` : ""}${detalles ? `INSTRUCCIÓN CLAVE DEL USUARIO — la escena la DEBE cumplir AL PIE DE LA LETRA y tiene PRIORIDAD sobre cualquier otra idea (si dice "puertas cerradas", el electrodoméstico va con las puertas CERRADAS; si pide un detalle de la escena, respetalo): "${detalles}".\n` : ""}PIEZAS QUE MEJOR PERFORMARON en este pilar (referencia de qué funcionó):
 ${ref || "(sin data — usá tu criterio)"}
 
 Devolvé JSON con:
 {
-  "escena": "descripción CORTA en INGLÉS del sujeto/momento. ${personas ? `El SUJETO PRINCIPAL son personas reales (una persona o una familia) bien visibles en primer plano, usando activamente un ${productoNombre ? `Drean ${productoNombre}` : `electrodoméstico Drean de ${categoriaTxt}`} (cargándolo, cocinando, sacando comida, etc.); el electrodoméstico presente y en uso.` : esPorfolio ? `The scene shows the DREAN APPLIANCE LINEUP together in one premium home — a refrigerator, a kitchen range and a washing machine, coordinated (this is a brand/portfolio piece, NOT a single product).` : `El electrodoméstico Drean es el protagonista de la escena: ${productoNombre ? `a Drean ${productoNombre}` : `a Drean ${categoriaTxt} appliance`}.`} Sumá props relevantes al mensaje. NO describas estilo/luz/colores (ya están definidos). NO incluyas texto en la imagen.",
+  "escena": "descripción CORTA en INGLÉS del sujeto/momento. ${personas ? `El SUJETO PRINCIPAL son personas reales (una persona o una familia) bien visibles en primer plano, usando activamente un ${productoNombre ? `Drean ${productoNombre}` : `electrodoméstico Drean de ${categoriaTxt}`} (cargándolo, cocinando, sacando comida, etc.); el electrodoméstico presente y en uso.` : esPorfolio ? `The scene shows the DREAN APPLIANCE LINEUP together in one premium home — a refrigerator, a kitchen range and a washing machine, coordinated (this is a brand/portfolio piece, NOT a single product).` : `El electrodoméstico Drean es el protagonista de la escena: ${productoNombre ? `a Drean ${productoNombre}` : `a Drean ${categoriaTxt} appliance`}.`} Sumá props relevantes al mensaje. NO describas estilo/luz/colores (ya están definidos). NO incluyas texto en la imagen. Si hay INSTRUCCIÓN CLAVE DEL USUARIO, la escena la cumple SÍ O SÍ (tiene prioridad).",
   "mensaje_clave": "TÍTULO de la placa: frase corta y potente en español (máx 5 palabras, tono de marca)",
   "bajada": "BAJADA de la placa: una línea corta en español que complementa el título (máx 8 palabras)",
   "caption_es": "caption en español: hook en la 1ra línea + cuerpo breve + CTA",
@@ -324,7 +325,7 @@ export async function generarPiezas(body: GenerarParams): Promise<GenerarResult>
             image_prompt: promptMostrar,
           };
         }
-        brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante, esPorfolio, difTxt);
+        brief = await disenarBrief(pilar, formato, categoriaBrief(categoria), productoDesc, personas, tops, variante, esPorfolio, difTxt, detalles);
 
         if (productoReal && producto && packshotUrl) {
           const editPrompt = buildEditPrompt(brief.escena ?? "", categoria, producto.nombre, personas, aspecto !== "feed", detalles);
