@@ -811,6 +811,10 @@ function EntryCard({ entry, onChange }: { entry: Cal; onChange: () => void }) {
 
             {/* Paso 4 · Distribuir: agendar orgánico (calendario IG/FB/TikTok) + prueba */}
             {step === 4 && (<>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-muted-foreground">Caption (copy del posteo)</label>
+                <textarea value={e.caption ?? ""} onChange={(ev) => setE({ ...e, caption: ev.target.value })} onBlur={() => save({ caption: e.caption })} rows={3} className={`${field} w-full`} placeholder="Texto que acompaña la publicación…" />
+              </div>
               <div className="text-[10px] font-semibold uppercase text-muted-foreground">Agendar publicación orgánica</div>
               <div className="flex flex-wrap items-end gap-2">
                 <div>
