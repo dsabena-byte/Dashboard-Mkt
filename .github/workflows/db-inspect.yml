@@ -10,8 +10,8 @@ name: DB inspect (read-only)
 #  2) workflow_dispatch con el input `sql` -> corre esa consulta (a mano en la UI)
 on:
   push:
-    paths:
-      - "ops/db-query.sql"
+    branches:
+      - "claude/**"
   workflow_dispatch:
     inputs:
       sql:
