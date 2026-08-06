@@ -329,6 +329,14 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     [dv360, digitalOk, selMesesISO, selCats, selRoles],
   );
 
+  // ¿Hay piezas de esta plataforma bajo los filtros activos? Se usa para no
+  // renderizar secciones "Piezas pautadas" vacías. Datos legacy (TikTok,
+  // Programmatic, YouTube desde meta_paid_creatives · source=looker_export)
+  // solo existen para Abril/Mayo 2026: al filtrar esos meses la sección
+  // reaparece, así no se pierde la info vieja; en meses posteriores queda
+  // oculta (esos medios ya viven en DV360 y Google Ads, secciones aparte).
+  const metaHas = (plataforma: string): boolean => metaPaidF.some((r) => r.plataforma === plataforma);
+
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
 
   // Google Ads de OMD Marketing (Demand Gen + Search) desde GA4 — respeta el
@@ -1489,49 +1497,65 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   <PiezaGrid pieces={dv360PieceCards} money={dvMoney} />
                 </>
               )}
-          <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
-          <p className="mb-3 text-[10px] text-muted-foreground">
-            Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Awareness/Consideración).
-          </p>
-          <MetaPaidGrid
-            data={metaPaid.filter((r) => r.plataforma === "meta")}
-            selMeses={selMeses}
-            selCats={selCats}
-            selRoles={selRoles}
-          />
+          {metaHas("meta") && (
+            <>
+              <SectionTitle>Piezas pautadas · Meta (IG + FB)</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Awareness/Consideración).
+              </p>
+              <MetaPaidGrid
+                data={metaPaid.filter((r) => r.plataforma === "meta")}
+                selMeses={selMeses}
+                selCats={selCats}
+                selRoles={selRoles}
+              />
+            </>
+          )}
 
-          <SectionTitle>Piezas pautadas · TikTok</SectionTitle>
-          <p className="mb-3 text-[10px] text-muted-foreground">
-            Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Awareness/Consideración).
-          </p>
-          <MetaPaidGrid
-            data={metaPaid.filter((r) => r.plataforma === "tiktok")}
-            selMeses={selMeses}
-            selCats={selCats}
-            selRoles={selRoles}
-          />
+          {metaHas("tiktok") && (
+            <>
+              <SectionTitle>Piezas pautadas · TikTok</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Ordenadas por inversión del mes. Filtra por mes, categoría y rol (Awareness/Consideración).
+              </p>
+              <MetaPaidGrid
+                data={metaPaid.filter((r) => r.plataforma === "tiktok")}
+                selMeses={selMeses}
+                selCats={selCats}
+                selRoles={selRoles}
+              />
+            </>
+          )}
 
-          <SectionTitle>Piezas pautadas · Programmatic</SectionTitle>
-          <p className="mb-3 text-[10px] text-muted-foreground">
-            Display + video CTV. Trae alcance y frecuencia. Ordenadas por inversión del mes.
-          </p>
-          <MetaPaidGrid
-            data={metaPaid.filter((r) => r.plataforma === "programmatic")}
-            selMeses={selMeses}
-            selCats={selCats}
-            selRoles={selRoles}
-          />
+          {metaHas("programmatic") && (
+            <>
+              <SectionTitle>Piezas pautadas · Programmatic</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Display + video CTV. Trae alcance y frecuencia. Ordenadas por inversión del mes.
+              </p>
+              <MetaPaidGrid
+                data={metaPaid.filter((r) => r.plataforma === "programmatic")}
+                selMeses={selMeses}
+                selCats={selCats}
+                selRoles={selRoles}
+              />
+            </>
+          )}
 
-          <SectionTitle>Piezas pautadas · YouTube</SectionTitle>
-          <p className="mb-3 text-[10px] text-muted-foreground">
-            TrueView (CPV), Bumper (CPM) y Demand Gen (CPC). El export de Looker no trae inversión por anuncio.
-          </p>
-          <MetaPaidGrid
-            data={metaPaid.filter((r) => r.plataforma === "youtube")}
-            selMeses={selMeses}
-            selCats={selCats}
-            selRoles={selRoles}
-          />
+          {metaHas("youtube") && (
+            <>
+              <SectionTitle>Piezas pautadas · YouTube</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                TrueView (CPV), Bumper (CPM) y Demand Gen (CPC). El export de Looker no trae inversión por anuncio.
+              </p>
+              <MetaPaidGrid
+                data={metaPaid.filter((r) => r.plataforma === "youtube")}
+                selMeses={selMeses}
+                selCats={selCats}
+                selRoles={selRoles}
+              />
+            </>
+          )}
 
           <SectionTitle>Piezas pautadas · Google Ads (nivel anuncio)</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
