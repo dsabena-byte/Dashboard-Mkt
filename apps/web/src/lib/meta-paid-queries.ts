@@ -44,6 +44,7 @@ export interface MetaPaidCreativeRow {
   shares: number | null;
   saves: number | null;
   post_engagement: number | null;
+  dias_activos: number | null;
 }
 
 interface DbRow {
@@ -89,6 +90,7 @@ interface DbRow {
   shares: number | null;
   saves: number | null;
   post_engagement: number | null;
+  dias_activos: number | null;
 }
 
 const num = (v: string | number | null): number | null =>
@@ -138,6 +140,7 @@ function mapRow(r: DbRow): MetaPaidCreativeRow {
     shares: r.shares,
     saves: r.saves,
     post_engagement: r.post_engagement,
+    dias_activos: r.dias_activos,
   };
 }
 
@@ -146,7 +149,7 @@ export async function getMetaPaidCreatives(): Promise<MetaPaidCreativeRow[]> {
   const { data, error } = await supabase
     .from("meta_paid_creatives")
     .select(
-      "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100, reactions, comments, shares, saves, post_engagement",
+      "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100, reactions, comments, shares, saves, post_engagement, dias_activos",
     )
     .neq("categoria", "UGC")
     .order("spend", { ascending: false })
@@ -160,7 +163,7 @@ export async function getMetaUgcCreatives(): Promise<MetaPaidCreativeRow[]> {
   const { data, error } = await supabase
     .from("meta_paid_creatives")
     .select(
-      "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100, reactions, comments, shares, saves, post_engagement",
+      "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100, reactions, comments, shares, saves, post_engagement, dias_activos",
     )
     .eq("categoria", "UGC")
     .order("spend", { ascending: false })

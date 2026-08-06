@@ -32,6 +32,7 @@ export interface GoogleAdsCreativeRow {
   vtr_p50: number | null;
   vtr_p75: number | null;
   vtr_p100: number | null;
+  dias_activos: number;            // días del mes con impresiones > 0 (días reales pautados)
 }
 
 interface DbRow {
@@ -74,6 +75,7 @@ interface Agg {
   // Ponderación de cuartiles: acumulamos (rate × impresiones) y las impresiones
   // de las filas que tienen video, para el promedio ponderado.
   q25: number; q50: number; q75: number; q100: number; qImpr: number;
+  dias: Set<string>; // fechas distintas con impresiones > 0
 }
 
 export async function getGoogleAdsCreatives(): Promise<GoogleAdsCreativeRow[]> {
@@ -99,9 +101,11 @@ export async function getGoogleAdsCreatives(): Promise<GoogleAdsCreativeRow[]> {
         thumbnail_url: r.thumbnail_url,
         impressions: 0, clicks: 0, cost: 0, interactions: 0,
         q25: 0, q50: 0, q75: 0, q100: 0, qImpr: 0,
+        dias: new Set<string>(),
       };
       acc.set(key, a);
     }
+    if (impr > 0) a.dias.add(r.fecha); // día real con entrega
     a.impressions += impr;
     a.clicks += num(r.clicks);
     a.cost += num(r.cost);
@@ -129,6 +133,7 @@ export async function getGoogleAdsCreatives(): Promise<GoogleAdsCreativeRow[]> {
       vtr_p50: a.qImpr > 0 ? a.q50 / a.qImpr : null,
       vtr_p75: a.qImpr > 0 ? a.q75 / a.qImpr : null,
       vtr_p100: a.qImpr > 0 ? a.q100 / a.qImpr : null,
+      dias_activos: a.dias.size,
     }))
     .sort((x, y) => y.cost - x.cost);
 }

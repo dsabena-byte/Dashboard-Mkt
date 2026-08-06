@@ -128,6 +128,12 @@ export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: Goog
                   <span className="text-right font-semibold tabular-nums">{fmtARS(c.cost)}</span>
                   <span className="text-muted-foreground">👁 Impr.</span>
                   <span className="text-right tabular-nums">{fmtNum(c.impressions)}</span>
+                  {c.dias_activos > 0 && (
+                    <>
+                      <span className="text-muted-foreground">📅 Días</span>
+                      <span className="text-right tabular-nums">{c.dias_activos}</span>
+                    </>
+                  )}
                   <span className="text-muted-foreground">🖱 Clicks</span>
                   <span className="text-right tabular-nums">{fmtNum(c.clicks)}</span>
                   <span className="text-muted-foreground">CTR</span>
