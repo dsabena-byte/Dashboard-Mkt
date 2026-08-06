@@ -86,6 +86,47 @@ async function listAllAdAccounts(token: string): Promise<AdAccount[]> {
   return unique;
 }
 
+// Días REALES que cada pieza estuvo entregando en el mes: una consulta de
+// insights a nivel cuenta con time_increment=1 (una fila por ad × día) pidiendo
+// solo `impressions`. Contamos, por ad_id, los días con impresiones > 0. Es una
+// llamada barata (campo mínimo) y NO toca la llamada pesada de /ads con creative.
+// Nunca rompe el sync: ante error devuelve un mapa vacío (dias_activos queda null).
+async function fetchActiveDaysMap(
+  actId: string,
+  since: string,
+  until: string,
+  token: string,
+): Promise<Map<string, number>> {
+  const days = new Map<string, Set<string>>();
+  const timeRange = encodeURIComponent(JSON.stringify({ since, until }));
+  let nextUrl: string | undefined =
+    `${GRAPH_API}/${actId}/insights?level=ad&time_increment=1` +
+    `&fields=ad_id,impressions&time_range=${timeRange}&limit=500&access_token=${token}`;
+  try {
+    let pages = 0;
+    while (nextUrl && pages < 100) {
+      const page: { data?: Array<{ ad_id?: string; impressions?: string; date_start?: string }>; paging?: { next?: string } } =
+        await graphGet(nextUrl);
+      for (const row of page.data ?? []) {
+        const adId = row.ad_id;
+        const impr = Number(row.impressions ?? 0) || 0;
+        if (!adId || impr <= 0) continue;
+        const set = days.get(adId) ?? new Set<string>();
+        set.add(row.date_start ?? ""); // una fila por día → date_start es el día
+        days.set(adId, set);
+      }
+      nextUrl = page.paging?.next;
+      pages++;
+    }
+  } catch {
+    // Si la cuenta/token no permite insights a nivel cuenta, seguimos sin el dato.
+    return new Map();
+  }
+  const out = new Map<string, number>();
+  for (const [adId, set] of days) out.set(adId, set.size);
+  return out;
+}
+
 async function discoverActId(token: string): Promise<{ act_id: string; name: string }> {
   const accounts = await listAllAdAccounts(token);
   // La cuenta de Drean vive dentro de "Mabe Argentina", así que por defecto
@@ -686,6 +727,11 @@ export async function GET(req: Request) {
       pages++;
     }
 
+    phase = "active_days";
+    // Días reales pautados por pieza (impresiones > 0 por día). Una sola serie de
+    // llamadas baratas a nivel cuenta; si falla, el mapa queda vacío y no rompe nada.
+    const activeDaysMap = await fetchActiveDaysMap(act_id!, since, until, token);
+
     phase = "upsert";
     // Diagnóstico de origen de imagen: cuántas piezas resolvieron por cada vía y
     // el ancho máximo de thumbnail de video visto (para saber si Meta da alta o
@@ -802,6 +848,9 @@ export async function GET(req: Request) {
             mes: mesLabel,
             fecha_desde: ins.date_start ?? since,
             fecha_hasta: ins.date_stop ?? until,
+            // Días reales con entrega (impresiones > 0) en el mes. Del mapa diario;
+            // null si la cuenta no expuso insights a nivel cuenta.
+            dias_activos: activeDaysMap.get(ad.id) ?? null,
             act_id,
             campaign_id: ad.campaign_id ?? null,
             campaign_name: ad.campaign?.name ?? null,

@@ -129,6 +129,12 @@ export function MetaPaidGrid({
                   <span className="text-right font-semibold tabular-nums">{fmtARS(c.spend)}</span>
                   <span className="text-muted-foreground">👁 Impr.</span>
                   <span className="text-right tabular-nums">{fmtNum(c.impresiones)}</span>
+                  {c.dias_activos != null && c.dias_activos > 0 && (
+                    <>
+                      <span className="text-muted-foreground">📅 Días</span>
+                      <span className="text-right tabular-nums">{c.dias_activos}</span>
+                    </>
+                  )}
                   {c.alcance > 0 && (
                     <>
                       <span className="text-muted-foreground">👥 Alc.</span>
