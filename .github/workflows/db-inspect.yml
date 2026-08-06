@@ -1,9 +1,11 @@
 name: DB inspect (read-only)
 
-# Puente para consultar Supabase desde el runner de GitHub Actions (que tiene
-# salida a internet, a diferencia del entorno del agente). Corre UNA consulta
-# SQL dentro de una transacción READ ONLY: cualquier escritura/DDL falla. El
-# resultado queda en el log del run. Se dispara a mano (workflow_dispatch).
+# Fallback manual para consultar Supabase desde el runner de GitHub Actions.
+# Normalmente NO hace falta: el entorno de Claude ya llega directo a Supabase
+# (network access "Custom" con *.supabase.co). Esto queda como respaldo por si
+# la red se bloquea. Corre UNA consulta SQL dentro de una transacción READ ONLY
+# (cualquier escritura/DDL falla). El resultado queda en el log. Se dispara a
+# mano desde Actions -> "Run workflow".
 on:
   workflow_dispatch:
     inputs:
