@@ -38,9 +38,29 @@ jobs:
             echo "::error::Endpoint returned HTTP $HTTP_CODE"
             exit 1
           fi
-          if grep -q '"error"' response.json; then
-            echo "::error::Cron devolvió error"
-            exit 1
-          fi
+          # Parseo real del JSON (el grep viejo no matcheaba "error_<cuenta>" ni el
+          # \"error\" escapado adentro del mensaje → reportaba OK con 0 filas).
+          # Falla si: hay clave error/error_*, alguna cuenta dio -1, o total_filas=0.
+          python3 - "$DRY" <<'PY'
+          import json, sys
+          dry = sys.argv[1] != ""
+          try:
+              d = json.load(open("response.json"))
+          except Exception as e:
+              print(f"::error::respuesta no es JSON válido: {e}"); sys.exit(1)
+          errs = [k for k in d if k == "error" or k.startswith("error_")]
+          if errs:
+              for k in errs: print(f"::error::{k}: {str(d[k])[:300]}")
+              sys.exit(1)
+          malas = [c for c, n in (d.get("filas_por_cuenta") or {}).items() if n == -1]
+          if malas:
+              print(f"::error::cuentas con error de auth/fetch: {', '.join(malas)}")
+              sys.exit(1)
+          tot = d.get("total_filas")
+          if not dry and (tot is None or tot == 0):
+              print(f"::error::el sync trajo 0 filas (upsert: {d.get('upsert')})")
+              sys.exit(1)
+          print(f"OK real: total_filas={tot}, upsert={d.get('upsert')}")
+          PY
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
