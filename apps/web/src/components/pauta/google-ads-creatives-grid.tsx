@@ -109,6 +109,17 @@ export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: Goog
                     </span>
                   )}
                 </div>
+                {c.activa != null && (
+                  <div className="absolute right-1.5 top-1.5 z-10">
+                    <span
+                      className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white shadow ${c.activa ? "bg-emerald-500" : "bg-slate-500"}`}
+                      title={c.activa ? "Campaña y anuncio activos" : "Pausada o removida"}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      {c.activa ? "Activa" : "Pausada"}
+                    </span>
+                  </div>
+                )}
                 {c.thumbnail_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

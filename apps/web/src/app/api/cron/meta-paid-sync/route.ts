@@ -183,6 +183,7 @@ interface AdInsight {
 interface MetaAd {
   id: string;
   name?: string;
+  effective_status?: string;
   campaign_id?: string;
   adset_id?: string;
   campaign?: { name?: string; objective?: string };
@@ -663,6 +664,7 @@ export async function GET(req: Request) {
     const fields = [
       "id",
       "name",
+      "effective_status",
       "campaign_id",
       "adset_id",
       "campaign{name,objective}",
@@ -857,6 +859,7 @@ export async function GET(req: Request) {
             adset_id: ad.adset_id ?? null,
             adset_name: ad.adset?.name ?? null,
             ad_name: ad.name ?? null,
+            effective_status: ad.effective_status ?? null,
             objective: ad.campaign?.objective ?? null,
             categoria: classified.categoria,
             tipo_compra: classified.tipo_compra,
