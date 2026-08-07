@@ -197,7 +197,17 @@ async function fetchThumbnails(getToken: GetToken, custId: string): Promise<Map<
       asset.youtube_video_asset.youtube_video_id,
       ad_group_ad_asset_view.field_type
     FROM ad_group_ad_asset_view`;
+  // Prioridad de imagen por field_type: la imagen de MARKETING (el producto) gana
+  // sobre el LOGO. Los Demand Gen traen varios assets (marketing + cuadrada +
+  // logo); antes se tomaba el primero, que a veces era el logo de Drean. Ahora
+  // elegimos la de mayor rango; el logo queda como último recurso (rango 0).
+  const IMG_RANK: Record<string, number> = {
+    MARKETING_IMAGE: 4,
+    SQUARE_MARKETING_IMAGE: 3,
+    PORTRAIT_MARKETING_IMAGE: 2,
+  };
   const img = new Map<string, string>();   // ad_id → URL de imagen del creativo
+  const imgRank = new Map<string, number>(); // ad_id → mejor rango de imagen visto
   const yt = new Map<string, string>();    // ad_id → thumbnail de YouTube (ads de video)
   try {
     const token = await getToken(false);
@@ -210,6 +220,7 @@ async function fetchThumbnails(getToken: GetToken, custId: string): Promise<Map<
     const batches = (await res.json()) as Array<{ results?: Array<{
       adGroupAd?: { ad?: { id?: string } };
       asset?: { imageAsset?: { fullSize?: { url?: string } }; youtubeVideoAsset?: { youtubeVideoId?: string } };
+      adGroupAdAssetView?: { fieldType?: string };
     }> }>;
     for (const b of batches) {
       for (const r of b.results ?? []) {
@@ -217,7 +228,16 @@ async function fetchThumbnails(getToken: GetToken, custId: string): Promise<Map<
         if (!adId) continue;
         const url = r.asset?.imageAsset?.fullSize?.url;
         const vid = r.asset?.youtubeVideoAsset?.youtubeVideoId;
-        if (url && !img.has(adId)) img.set(adId, url);
+        if (url) {
+          const ft = r.adGroupAdAssetView?.fieldType ?? "";
+          // Logos (LOGO / LANDSCAPE_LOGO / BUSINESS_LOGO) = rango 0; marketing con
+          // su rango; cualquier otra imagen no-logo = 1. Nos quedamos con la mejor.
+          const rank = ft.includes("LOGO") ? 0 : (IMG_RANK[ft] ?? 1);
+          if (rank > (imgRank.get(adId) ?? -1)) {
+            img.set(adId, url);
+            imgRank.set(adId, rank);
+          }
+        }
         if (vid && !yt.has(adId)) yt.set(adId, `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`);
       }
     }
