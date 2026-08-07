@@ -33,6 +33,9 @@ export interface GoogleAdsCreativeRow {
   vtr_p75: number | null;
   vtr_p100: number | null;
   dias_activos: number;            // días del mes con impresiones > 0 (días reales pautados)
+  // Estado actual: true = ad y campaña ENABLED (corriendo); false = pausada/removida;
+  // null = el sync todavía no trajo el estado (meses viejos sin re-sync).
+  activa: boolean | null;
 }
 
 interface DbRow {
@@ -43,6 +46,8 @@ interface DbRow {
   campaign_type: string | null;
   ad_id: string;
   ad_name: string | null;
+  ad_status: string | null;
+  campaign_status: string | null;
   thumbnail_url: string | null;
   impressions: number | null;
   clicks: number | null;
@@ -76,13 +81,15 @@ interface Agg {
   // de las filas que tienen video, para el promedio ponderado.
   q25: number; q50: number; q75: number; q100: number; qImpr: number;
   dias: Set<string>; // fechas distintas con impresiones > 0
+  ad_status: string | null;       // estado del ad (de la fecha más reciente)
+  campaign_status: string | null; // estado de la campaña (de la fecha más reciente)
 }
 
 export async function getGoogleAdsCreatives(): Promise<GoogleAdsCreativeRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
     .from("google_ads_creatives")
-    .select("fecha, customer_id, account_label, campaign_name, campaign_type, ad_id, ad_name, thumbnail_url, impressions, clicks, cost, interactions, vtr_p25, vtr_p50, vtr_p75, vtr_p100")
+    .select("fecha, customer_id, account_label, campaign_name, campaign_type, ad_id, ad_name, ad_status, campaign_status, thumbnail_url, impressions, clicks, cost, interactions, vtr_p25, vtr_p50, vtr_p75, vtr_p100")
     .order("fecha", { ascending: false })
     .limit(50000)
     .returns<DbRow[]>();
@@ -102,6 +109,9 @@ export async function getGoogleAdsCreatives(): Promise<GoogleAdsCreativeRow[]> {
         impressions: 0, clicks: 0, cost: 0, interactions: 0,
         q25: 0, q50: 0, q75: 0, q100: 0, qImpr: 0,
         dias: new Set<string>(),
+        // Data ordenada por fecha desc → la primera fila del ad es la más reciente:
+        // su estado es el vigente. No lo pisamos con fechas más viejas.
+        ad_status: r.ad_status, campaign_status: r.campaign_status,
       };
       acc.set(key, a);
     }
@@ -134,6 +144,11 @@ export async function getGoogleAdsCreatives(): Promise<GoogleAdsCreativeRow[]> {
       vtr_p75: a.qImpr > 0 ? a.q75 / a.qImpr : null,
       vtr_p100: a.qImpr > 0 ? a.q100 / a.qImpr : null,
       dias_activos: a.dias.size,
+      // "Activa" solo si el ad Y la campaña están ENABLED. null si aún no hay estado.
+      activa:
+        a.ad_status == null && a.campaign_status == null
+          ? null
+          : a.ad_status === "ENABLED" && a.campaign_status === "ENABLED",
     }))
     .sort((x, y) => y.cost - x.cost);
 }

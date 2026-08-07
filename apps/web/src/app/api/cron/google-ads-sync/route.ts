@@ -69,6 +69,8 @@ interface GadsRow {
   ad_group_name: string | null;
   ad_id: string;
   ad_name: string | null;
+  ad_status: string | null;
+  campaign_status: string | null;
   thumbnail_url: string | null;
   impressions: number;
   clicks: number;
@@ -84,9 +86,9 @@ interface GadsRow {
 
 type SearchResult = {
   segments?: { date?: string };
-  campaign?: { id?: string; name?: string; advertisingChannelType?: string };
+  campaign?: { id?: string; name?: string; advertisingChannelType?: string; status?: string };
   adGroup?: { id?: string; name?: string };
-  adGroupAd?: { ad?: { id?: string; name?: string } };
+  adGroupAd?: { ad?: { id?: string; name?: string }; status?: string };
   metrics?: {
     impressions?: string;
     clicks?: string;
@@ -117,9 +119,9 @@ async function fetchCustomer(getToken: GetToken, cust: { id: string; label: stri
   const query = `
     SELECT
       segments.date,
-      campaign.id, campaign.name, campaign.advertising_channel_type,
+      campaign.id, campaign.name, campaign.advertising_channel_type, campaign.status,
       ad_group.id, ad_group.name,
-      ad_group_ad.ad.id, ad_group_ad.ad.name,
+      ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.status,
       metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.interactions,
       metrics.video_quartile_p25_rate, metrics.video_quartile_p50_rate,
       metrics.video_quartile_p75_rate, metrics.video_quartile_p100_rate
@@ -163,6 +165,8 @@ async function fetchCustomer(getToken: GetToken, cust: { id: string; label: stri
         ad_group_name: r.adGroup?.name ?? null,
         ad_id: adId,
         ad_name: r.adGroupAd?.ad?.name ?? null,
+        ad_status: r.adGroupAd?.status ?? null,
+        campaign_status: r.campaign?.status ?? null,
         thumbnail_url: null, // se completa en el enriquecimiento (fetchThumbnails)
         impressions: n(r.metrics?.impressions),
         clicks: n(r.metrics?.clicks),
