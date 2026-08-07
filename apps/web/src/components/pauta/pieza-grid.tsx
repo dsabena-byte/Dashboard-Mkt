@@ -16,6 +16,50 @@ function truncate(s: string | null | undefined, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
 
+// DV360 no expone el archivo del creative. Pero el nombre suele encodear el
+// formato: banners con el tamaño ("Lavado-300x600") y videos con la duración
+// ("... - 15 SEG (1920x1080)"). Con eso dibujamos un placeholder informativo
+// en vez de un "Sin imagen" muerto: para display, un rectángulo a escala del
+// banner con su tamaño; para video, un indicador de reproducción.
+function parseFormato(titulo: string, esVideo: boolean): { w: number; h: number; label: string; video: boolean } | null {
+  const m = titulo.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i);
+  const seg = titulo.match(/(\d+)\s*SEG/i);
+  if (!m && !seg) return null;
+  const w = m ? parseInt(m[1]!, 10) : 16;
+  const h = m ? parseInt(m[2]!, 10) : 9;
+  const label = m ? `${m[1]}×${m[2]}` : seg ? `${seg[1]}s` : "";
+  return { w, h, label, video: esVideo || !!seg };
+}
+
+function FormatoPlaceholder({ titulo, esVideo }: { titulo: string; esVideo: boolean }) {
+  const f = parseFormato(titulo, esVideo);
+  if (!f) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+        {esVideo ? "▶ Video (sin thumbnail)" : "Sin imagen"}
+      </div>
+    );
+  }
+  // Rectángulo a escala del banner (máx 78% del alto/ancho del contenedor).
+  const ratio = f.w / f.h;
+  const maxPct = 78;
+  const boxW = ratio >= 1 ? maxPct : maxPct * ratio;
+  const boxH = ratio >= 1 ? maxPct / ratio : maxPct;
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-muted to-muted/40">
+      <div
+        className="flex items-center justify-center rounded border border-dashed border-muted-foreground/40 bg-card/60"
+        style={{ width: `${boxW}%`, height: `${boxH}%` }}
+      >
+        {f.video && <span className="text-lg text-muted-foreground/70">▶</span>}
+      </div>
+      <span className="rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-white">
+        {f.video ? `▶ ${f.label}` : f.label}
+      </span>
+    </div>
+  );
+}
+
 const CAT_COLORS: Record<string, string> = {
   Brand: "#0a1849",
   Lavado: "#2b4dff",
@@ -42,6 +86,7 @@ export interface PiezaCard {
   cpm?: number | null;
   viewsCompl?: number | null;
   vtr?: number | null;
+  activa?: boolean | null;
   engagement?: { reactions?: number; comments?: number; shares?: number; saves?: number };
 }
 
@@ -95,6 +140,17 @@ export function PiezaGrid({ pieces, money }: { pieces: PiezaCard[]; money: (n: n
                     ))}
                   </div>
                 )}
+                {c.activa != null && (
+                  <div className="absolute right-1.5 top-1.5 z-10">
+                    <span
+                      className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white shadow ${c.activa ? "bg-emerald-500" : "bg-slate-500"}`}
+                      title={c.activa ? "Línea activa en DV360" : "Pausada o archivada"}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      {c.activa ? "Activa" : "Pausada"}
+                    </span>
+                  </div>
+                )}
                 {c.img ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -104,9 +160,7 @@ export function PiezaGrid({ pieces, money }: { pieces: PiezaCard[]; money: (n: n
                     loading="lazy"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
-                    Sin imagen
-                  </div>
+                  <FormatoPlaceholder titulo={c.titulo} esVideo={hasVideo} />
                 )}
               </div>
               <div className="flex-1 p-3 text-xs">

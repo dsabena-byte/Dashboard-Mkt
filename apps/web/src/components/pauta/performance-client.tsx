@@ -20,6 +20,8 @@ import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import {
   type Dv360CreativeRow,
   type Dv360ReachRow,
+  type Dv360Channel,
+  aggregateDv360Channels,
   aggregateDv360Funnels,
   aggregateDv360Pieces,
   aggregateDv360VideoQuality,
@@ -398,8 +400,20 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         ctr: p.ctr,
         cpm: p.cpm,
         vtr: p.vtr > 0 ? p.vtr : null,
+        activa: p.activa,
       })),
     [dv360Pieces],
+  );
+  // Reach de DV360 filtrado por mes (dv360_reach es a nivel line_item/canal, no
+  // trae categoría/rol → solo se puede filtrar por mes). Alimenta el resumen por
+  // canal (alcance + frecuencia), que la lib ya calculaba pero el dash no mostraba.
+  const dv360ReachF = useMemo(
+    () => (!digitalOk ? [] : dv360Reach.filter((r) => selMesesISO.size === 0 || selMesesISO.has(r.mes))),
+    [dv360Reach, digitalOk, selMesesISO],
+  );
+  const dv360Channels = useMemo<Dv360Channel[]>(
+    () => aggregateDv360Channels(dv360Conv, dv360ReachF).canales,
+    [dv360Conv, dv360ReachF],
   );
   const dv360VideoQ = useMemo(() => aggregateDv360VideoQuality(dv360Conv), [dv360Conv]);
   // Embudo de video de TikTok (desde metaPaid, solo filas de video).
@@ -1486,13 +1500,53 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== POR MEDIO ===== */}
       {tab === "Por Medio" && (
         <div>
+              {dv360Channels.length > 0 && (
+                <>
+                  <SectionTitle>DV360 · Resumen por canal</SectionTitle>
+                  <p className="mb-3 text-[10px] text-muted-foreground">
+                    Alcance y frecuencia <strong>a nivel canal</strong> (de <code>dv360_reach</code>) — no vienen por pieza, pero sí por
+                    canal. Frecuencia = impresiones / alcance. VTR = completions de video / impresiones de video del canal.
+                  </p>
+                  <div className="mb-6 overflow-x-auto rounded-lg border bg-card">
+                    <table className="w-full text-xs">
+                      <thead className="border-b bg-muted/40">
+                        <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                          <th className="px-3 py-2">Canal</th>
+                          <th className="px-3 py-2 text-right">Inversión</th>
+                          <th className="px-3 py-2 text-right">Impresiones</th>
+                          <th className="px-3 py-2 text-right">Alcance</th>
+                          <th className="px-3 py-2 text-right">Frecuencia</th>
+                          <th className="px-3 py-2 text-right">Clicks</th>
+                          <th className="px-3 py-2 text-right">CTR</th>
+                          <th className="px-3 py-2 text-right">CPM</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dv360Channels.map((c) => (
+                          <tr key={c.canal} className="border-b last:border-0">
+                            <td className="px-3 py-2 font-medium">{c.canal}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{dvMoney(c.revenueUsd)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{Math.round(c.impresiones).toLocaleString("es-AR")}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{c.reach > 0 ? Math.round(c.reach).toLocaleString("es-AR") : "—"}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{c.frequency > 0 ? c.frequency.toFixed(2) : "—"}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{Math.round(c.clicks).toLocaleString("es-AR")}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{c.ctr.toFixed(2)}%</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{dvMoney(c.cpm)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
               {dv360Pieces.length > 0 && (
                 <>
                   <SectionTitle>Piezas pautadas · Programmatic + Marketplace</SectionTitle>
                   <p className="mb-3 text-[10px] text-muted-foreground">
                     Top piezas por inversión. <strong>YouTube no se incluye</strong>: DV360 no expone el creative (figura como
                     &quot;Unknown&quot;). <strong>Sin thumbnail</strong>: el reporte de métricas de DV360 no trae el archivo del
-                    creative. DV360 tampoco da alcance/frecuencia ni interacciones por pieza. El detalle en tabla está al final.
+                    creative; se muestra el <strong>formato del banner</strong> (tamaño) o un indicador de video. Alcance/frecuencia por
+                    canal está en el resumen de arriba.
                   </p>
                   <PiezaGrid pieces={dv360PieceCards} money={dvMoney} />
                 </>
