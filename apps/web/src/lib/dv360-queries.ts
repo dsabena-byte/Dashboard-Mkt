@@ -20,13 +20,14 @@ interface DbCreative {
   q100: number | null;
   skips: number | null;
   revenue_usd: string | number | null;
+  line_item_status: string | null;
 }
 
 export async function getDv360Creatives(): Promise<Dv360CreativeRow[]> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
     .from("dv360_creatives")
-    .select("mes, canal, categoria, rol, creative, impresiones, clicks, starts, q25, q50, q75, q100, skips, revenue_usd")
+    .select("mes, canal, categoria, rol, creative, impresiones, clicks, starts, q25, q50, q75, q100, skips, revenue_usd, line_item_status")
     .order("mes", { ascending: true })
     .returns<DbCreative[]>();
   if (error) throw new Error(`dv360_creatives: ${error.message}`);
@@ -45,6 +46,7 @@ export async function getDv360Creatives(): Promise<Dv360CreativeRow[]> {
     q100: num(r.q100),
     skips: num(r.skips),
     revenue_usd: num(r.revenue_usd),
+    line_item_status: r.line_item_status,
   }));
 }
 

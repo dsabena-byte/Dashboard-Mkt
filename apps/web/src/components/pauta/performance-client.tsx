@@ -400,6 +400,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         ctr: p.ctr,
         cpm: p.cpm,
         vtr: p.vtr > 0 ? p.vtr : null,
+        activa: p.activa,
       })),
     [dv360Pieces],
   );

@@ -175,6 +175,8 @@ function syncDv360() {
       iRev=ix('Revenue (USD)'), iSt=ix('Starts (Video)'), iSk=ix('Skips (Video)'),
       iQ1=ix('First-Quartile Views (Video)'), iM=ix('Midpoint Views (Video)'),
       iQ3=ix('Third-Quartile Views (Video)'), iC=ix('Complete Views (Video)');
+  // Estado de la línea (Active/Paused/Archived). Tolerante al nombre del header.
+  var iEst=ix('Line Item Status'); if (iEst<0) iEst=ix('Status');
   if (iD<0||iImp<0||iCr<0){ Logger.log('Header inesperado (piezas)'); return; }
   var agg={}, meses={};
   for (var r=1;r<g.length;r++){
@@ -182,14 +184,21 @@ function syncDv360() {
     var pr=String(row[iD]||'').split('/'); if(pr.length<2) continue;
     var li=String(row[iLI]||''), mes=pr[0]+'-'+pr[1]+'-01', cn=dv360Canal_(li),
         cat=dv360Categoria_(li), rl=dv360Rol_(li), name=String(row[iCr]||''), k=mes+'|'+cn+'|'+cat+'|'+rl+'|'+name;
-    var a=agg[k]||(agg[k]={mes:mes,canal:cn,categoria:cat,rol:rl,creative:name,impresiones:0,clicks:0,starts:0,q25:0,q50:0,q75:0,q100:0,skips:0,revenue_usd:0});
+    var a=agg[k]||(agg[k]={mes:mes,canal:cn,categoria:cat,rol:rl,creative:name,impresiones:0,clicks:0,starts:0,q25:0,q50:0,q75:0,q100:0,skips:0,revenue_usd:0,line_item_status:null,_stRank:-1});
     a.impresiones+=dv360Num_(row[iImp]); a.clicks+=dv360Num_(row[iClk]); a.revenue_usd+=dv360Num_(row[iRev]);
     a.starts+=dv360Num_(row[iSt]); a.skips+=dv360Num_(row[iSk]);
     a.q25+=dv360Num_(row[iQ1]); a.q50+=dv360Num_(row[iM]); a.q75+=dv360Num_(row[iQ3]); a.q100+=dv360Num_(row[iC]);
+    // Un creative puede correr en varias líneas: nos quedamos con el estado "más
+    // activo" (Active > Paused > Archived), así una pieza figura Activa si al
+    // menos una de sus líneas lo está.
+    if (iEst>=0){
+      var st=String(row[iEst]||'').trim(), rk=dv360EstadoRank_(st);
+      if (rk>a._stRank){ a._stRank=rk; a.line_item_status=st||a.line_item_status; }
+    }
     meses[mes]=true;
   }
   var recs=Object.keys(agg).map(function(k){
-    var a=agg[k]; a.source='dv360_scheduled';
+    var a=agg[k]; a.source='dv360_scheduled'; delete a._stRank;
     ['impresiones','clicks','starts','skips','q25','q50','q75','q100'].forEach(function(f){a[f]=Math.round(a[f]);});
     a.revenue_usd=Math.round(a.revenue_usd*10000)/10000; return a;
   });
@@ -236,6 +245,15 @@ function syncDv360Reach() {
 
 ```javascript
 function dv360Num_(x){ var n=parseFloat(String(x).replace('%','').replace(/,/g,'').trim()); return isNaN(n)?0:n; }
+// Rango del estado de línea para quedarse con el "más activo" (Active gana).
+// Matchea tanto "Active" como "ENTITY_STATUS_ACTIVE" (case-insensitive).
+function dv360EstadoRank_(s){
+  s=String(s||'').toLowerCase();
+  if (s.indexOf('active')>=0) return 3;
+  if (s.indexOf('paused')>=0) return 2;
+  if (s.indexOf('archiv')>=0) return 1;
+  return 0;
+}
 function dv360Canal_(name){
   var l=String(name||'').toLowerCase();
   if (l.indexOf('youtube')>=0||l.indexOf('trueview')>=0||l.indexOf('bumper')>=0) return 'YouTube';

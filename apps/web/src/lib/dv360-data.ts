@@ -16,6 +16,7 @@ export interface Dv360CreativeRow {
   q100: number;
   skips: number;
   revenue_usd: number;
+  line_item_status?: string | null; // Active / Paused / Archived (del reporte DV360)
 }
 
 export interface Dv360ReachRow {
@@ -125,21 +126,28 @@ export interface Dv360Piece {
   ctr: number;
   cpm: number;
   vtr: number; // % completions / starts
+  // Estado actual: true = alguna línea de la pieza está Active; false = todas
+  // pausadas/archivadas; null = el reporte todavía no trae el estado.
+  activa: boolean | null;
 }
 
 // Top piezas por inversión, sumadas across meses. Excluye 'Unknown' (YouTube no
 // expone el creative) porque no es una pieza real.
 export function aggregateDv360Pieces(creatives: Dv360CreativeRow[], limit = 25): Dv360Piece[] {
-  const map = new Map<string, { canal: string; categoria: string; rol: string; impresiones: number; clicks: number; revenueUsd: number; starts: number; q100: number }>();
+  const map = new Map<string, { canal: string; categoria: string; rol: string; impresiones: number; clicks: number; revenueUsd: number; starts: number; q100: number; stAny: boolean; stActive: boolean }>();
   for (const r of creatives) {
     if (r.creative === "Unknown") continue;
     const key = `${r.canal}|${r.categoria}|${r.rol}|${r.creative}`;
-    const p = map.get(key) ?? { canal: r.canal, categoria: r.categoria, rol: r.rol, impresiones: 0, clicks: 0, revenueUsd: 0, starts: 0, q100: 0 };
+    const p = map.get(key) ?? { canal: r.canal, categoria: r.categoria, rol: r.rol, impresiones: 0, clicks: 0, revenueUsd: 0, starts: 0, q100: 0, stAny: false, stActive: false };
     p.impresiones += r.impresiones;
     p.clicks += r.clicks;
     p.revenueUsd += r.revenue_usd;
     p.starts += r.starts;
     p.q100 += r.q100;
+    if (r.line_item_status) {
+      p.stAny = true;
+      if (r.line_item_status.toLowerCase().includes("active")) p.stActive = true;
+    }
     map.set(key, p);
   }
   return [...map.entries()]
@@ -154,6 +162,7 @@ export function aggregateDv360Pieces(creatives: Dv360CreativeRow[], limit = 25):
       ctr: p.impresiones > 0 ? (p.clicks / p.impresiones) * 100 : 0,
       cpm: p.impresiones > 0 ? (p.revenueUsd / p.impresiones) * 1000 : 0,
       vtr: p.starts > 0 ? (p.q100 / p.starts) * 100 : 0,
+      activa: p.stAny ? p.stActive : null,
     }))
     .sort((a, b) => b.revenueUsd - a.revenueUsd)
     .slice(0, limit);
