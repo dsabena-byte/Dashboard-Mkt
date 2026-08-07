@@ -291,7 +291,15 @@ export async function GET(request: Request) {
     to.setUTCDate(to.getUTCDate() - 1);
     const from = new Date(to);
     from.setUTCDate(from.getUTCDate() - (days - 1));
-    const start = from.toISOString().slice(0, 10);
+    // Piso de fecha: las cuentas de OMD no son accesibles vía la MCC antes de que
+    // OMD dio acceso (~abril 2026; la data arranca 2026-04-08). Pedir fechas
+    // anteriores hace que la Google Ads API rechace TODO el request con 401
+    // UNAUTHENTICATED — validado por logs: days=30 y days=120 (desde abril) andan,
+    // days=200 (desde 2026-01-19) da 401 en las 4 cuentas. Clampeamos el inicio así
+    // un backfill grande (days alto) no cruza ese borde y no rompe el sync.
+    const accessFloor = process.env.GOOGLE_ADS_ACCESS_FLOOR || "2026-04-01";
+    let start = from.toISOString().slice(0, 10);
+    if (start < accessFloor) start = accessFloor;
     const end = to.toISOString().slice(0, 10);
     out.range = `${start} → ${end}`;
     out.mode = dry ? "dry-run (no escribe)" : "ingest";
