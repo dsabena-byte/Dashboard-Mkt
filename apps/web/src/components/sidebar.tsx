@@ -18,6 +18,7 @@ import {
   HeartPulse,
   Activity,
   Sparkles,
+  Search,
   Menu,
   X,
 } from "lucide-react";
@@ -36,6 +37,7 @@ const NAV = [
   { href: "/mkt-canal",   label: "Mkt de Canal",     icon: Store },
   { href: "/web",         label: "Análisis Web",     icon: Globe },
   { href: "/redes",       label: "Análisis Redes",   icon: Share2 },
+  { href: "/seo-search",  label: "Análisis SEO / Search", icon: Search },
   { href: "/contenido",   label: "Generador Contenido", icon: Sparkles },
   { href: "/cuadros-basicos", label: "Cuadros Básicos", icon: LayoutGrid },
   { href: "/floor-share",     label: "Floor Share",     icon: PieChart },
