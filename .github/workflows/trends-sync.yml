@@ -1,0 +1,40 @@
+name: Trends sync (demanda · Share of Search)
+
+# Módulo A de Inteligencia Competitiva: volúmenes absolutos + Google Trends desde
+# DataForSEO → search_volume + trends_interest. Semanal (los volúmenes son
+# mensuales, con actualizar 1x/semana sobra). Dispara el route en Vercel.
+on:
+  schedule:
+    - cron: "20 6 * * 1"  # lunes 06:20 UTC
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Limitar a 'volume' o 'trends' (vacío = ambos)"
+        required: false
+        default: ""
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger /api/cron/trends-sync
+        run: |
+          set -euo pipefail
+          ONLY="${{ github.event.inputs.only || '' }}"
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/trends-sync"
+          if [ -n "$ONLY" ]; then URL="${URL}?only=${ONLY}"; fi
+          echo "GET $URL"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 300 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+          echo "HTTP $HTTP_CODE"; cat response.json; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("response.json"))
+          if not d.get("ok"):
+              print(f"::error::sync falló: {d.get('error')}"); sys.exit(1)
+          print(f"OK: search_volume={d.get('search_volume_filas')} trends={d.get('trends_filas')}")
+          PY
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
