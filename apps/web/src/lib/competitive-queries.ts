@@ -52,6 +52,47 @@ export async function getTrendsInterest(): Promise<TrendRow[]> {
   return ((data ?? []) as TrendRow[]).map((r) => ({ ...r, interes: num(r.interes) }));
 }
 
+// ===== Módulo B · SEO =====
+export interface SeoOverviewRow {
+  dominio: string;
+  marca: string | null;
+  keywords_count: number | null;
+  pos_1_3: number | null;
+  pos_4_10: number | null;
+  etv: number | null;
+  fecha: string;
+}
+export interface KeywordGapRow {
+  keyword: string;
+  competidor: string;
+  categoria: string | null;
+  pos_competidor: number | null;
+  search_volume: number | null;
+}
+
+export async function getSeoOverview(): Promise<SeoOverviewRow[]> {
+  const sb = getServerSupabase();
+  const { data, error } = await sb
+    .from("seo_domain_overview")
+    .select("dominio, marca, keywords_count, pos_1_3, pos_4_10, etv, fecha")
+    .order("etv", { ascending: false })
+    .returns<SeoOverviewRow[]>();
+  if (error) throw new Error(`seo_domain_overview: ${error.message}`);
+  return (data ?? []) as SeoOverviewRow[];
+}
+
+export async function getKeywordGap(): Promise<KeywordGapRow[]> {
+  const sb = getServerSupabase();
+  const { data, error } = await sb
+    .from("seo_keyword_gap")
+    .select("keyword, competidor, categoria, pos_competidor, search_volume")
+    .order("search_volume", { ascending: false })
+    .limit(200)
+    .returns<KeywordGapRow[]>();
+  if (error) throw new Error(`seo_keyword_gap: ${error.message}`);
+  return (data ?? []) as KeywordGapRow[];
+}
+
 // Demanda genérica de la categoría (keyword genérica, sin marca) por mes.
 export async function getDemandaGenerica(): Promise<DemandaRow[]> {
   const sb = getServerSupabase();
