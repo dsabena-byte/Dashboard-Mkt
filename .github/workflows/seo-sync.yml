@@ -1,0 +1,48 @@
+name: SEO sync (rankings · keyword gap)
+
+# Módulo B de Inteligencia Competitiva: visibilidad orgánica + rankings + keyword
+# gap desde DataForSEO Labs → seo_domain_overview + seo_rankings + seo_keyword_gap.
+# Semanal. NECESITA saldo en DataForSEO (Labs no entra en el crédito free).
+on:
+  schedule:
+    - cron: "40 6 * * 1"  # lunes 06:40 UTC (después de trends-sync)
+  workflow_dispatch:
+    inputs:
+      ranked_limit:
+        description: "Keywords por dominio (0 = saltear ranked). Default 300."
+        required: false
+        default: "300"
+      gap_limit:
+        description: "Keywords de gap por competidor (0 = saltear). Default 100."
+        required: false
+        default: "100"
+      only:
+        description: "Limitar a overview | ranked | gap (vacío = todos)"
+        required: false
+        default: ""
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Trigger /api/cron/seo-sync
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/seo-sync?ranked_limit=${{ github.event.inputs.ranked_limit || '300' }}&gap_limit=${{ github.event.inputs.gap_limit || '100' }}"
+          ONLY="${{ github.event.inputs.only || '' }}"
+          if [ -n "$ONLY" ]; then URL="${URL}&only=${ONLY}"; fi
+          echo "GET $URL"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 300 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+          echo "HTTP $HTTP_CODE"; cat response.json; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("response.json"))
+          if not d.get("ok"):
+              print(f"::error::sync falló: {d.get('error')}"); sys.exit(1)
+          print(f"OK: overview={d.get('overview_filas')} ranked={d.get('ranked_filas')} gap={d.get('gap_filas')}")
+          PY
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
