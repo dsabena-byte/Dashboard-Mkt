@@ -18,6 +18,7 @@ const tooltipStyle = { backgroundColor: "hsl(var(--card))", border: "1px solid h
 
 export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
   const [cat, setCat] = useState("lavarropas");
+  const [set, setSet] = useState<"todos" | "marca" | "retailer">("todos");
   // Filtra basura (ej. "Total:" filas-resumen del Excel) y filas sin keyword real.
   const esValida = (kw: string) => !!kw && !/^total\b/i.test(kw.trim()) && kw.trim().length > 2;
   const catRows = useMemo(() => rows.filter((r) => r.categoria === cat && esValida(r.keyword)), [rows, cat]);
@@ -122,21 +123,37 @@ export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
 
       {/* Índice conglomerado — ranking */}
       <div className="rounded-xl border bg-card p-4">
-        <h3 className="text-sm font-semibold">Índice de posición conglomerado</h3>
-        <p className="mb-3 mt-0.5 text-[11px] text-muted-foreground">Posición promedio ponderada por volumen (no rankea = 100). <strong>Menor = mejor posicionado.</strong> Azul = Drean, gris = marcas, violeta = retailers.</p>
-        <ResponsiveContainer width="100%" height={Math.max(260, indice.length * 26)}>
-          <BarChart data={indice} layout="vertical" margin={{ left: 8, right: 44, top: 4, bottom: 4 }}>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold">Índice de posición conglomerado</h3>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Posición promedio ponderada por volumen (no rankea = 100). <strong>Menor = mejor.</strong> Azul = Drean, gris = marcas, violeta = retailers.</p>
+          </div>
+          <div className="flex gap-1">
+            {([["todos", "Todos"], ["marca", "Marcas"], ["retailer", "Retail"]] as const).map(([k, lbl]) => (
+              <button key={k} onClick={() => setSet(k)} className={`rounded-full border px-2.5 py-1 text-[11px] ${set === k ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+        {(() => {
+          const idx = indice.filter((d) => set === "todos" || d.marca === "Drean" || (set === "retailer" ? d.retailer : !d.retailer));
+          return (
+        <ResponsiveContainer width="100%" height={Math.max(200, idx.length * 26)}>
+          <BarChart data={idx} layout="vertical" margin={{ left: 8, right: 44, top: 4, bottom: 4 }}>
             <XAxis type="number" fontSize={11} stroke="hsl(var(--muted-foreground))" />
             <YAxis type="category" dataKey="marca" width={96} fontSize={11} stroke="hsl(var(--muted-foreground))" />
             <Tooltip formatter={(v: number) => v.toFixed(1)} contentStyle={tooltipStyle} />
             <Bar dataKey="indice" radius={[0, 4, 4, 0]}>
-              {indice.map((d) => (
+              {idx.map((d) => (
                 <Cell key={d.marca} fill={d.marca === "Drean" ? "#2b4dff" : d.retailer ? "#a855f7" : "#94a3b8"} />
               ))}
               <LabelList dataKey="indice" position="right" fontSize={10} formatter={(v: number) => v.toFixed(1)} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+          );
+        })()}
       </div>
 
       {/* Buckets accionables */}

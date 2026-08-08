@@ -133,6 +133,24 @@ export async function getKeywordGap(): Promise<KeywordGapRow[]> {
   return (data ?? []) as KeywordGapRow[];
 }
 
+// Interés de búsqueda por provincia (para el mapa).
+export interface RegionRow {
+  marca: string;
+  categoria: string;
+  provincia: string;
+  interes: number | null;
+}
+export async function getSearchRegion(): Promise<RegionRow[]> {
+  const sb = getServerSupabase();
+  const { data, error } = await sb
+    .from("search_region")
+    .select("marca, categoria, provincia, interes")
+    .limit(5000)
+    .returns<RegionRow[]>();
+  if (error) throw new Error(`search_region: ${error.message}`);
+  return (data ?? []) as RegionRow[];
+}
+
 // Demanda genérica de la categoría (keyword genérica, sin marca) por mes.
 export async function getDemandaGenerica(): Promise<DemandaRow[]> {
   const sb = getServerSupabase();
