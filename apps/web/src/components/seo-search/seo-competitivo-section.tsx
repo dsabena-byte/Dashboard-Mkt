@@ -12,14 +12,15 @@ const CATS: Array<{ key: string; label: string }> = [
   { key: "lavarropas", label: "Lavarropas" },
   { key: "heladeras", label: "Heladeras" },
   { key: "cocinas", label: "Cocinas" },
-  { key: "lavavajillas", label: "Lavavajillas" },
 ];
 const fmtNum = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(0)}K` : String(Math.round(n)));
 const tooltipStyle = { backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 };
 
 export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
   const [cat, setCat] = useState("lavarropas");
-  const catRows = useMemo(() => rows.filter((r) => r.categoria === cat), [rows, cat]);
+  // Filtra basura (ej. "Total:" filas-resumen del Excel) y filas sin keyword real.
+  const esValida = (kw: string) => !!kw && !/^total\b/i.test(kw.trim()) && kw.trim().length > 2;
+  const catRows = useMemo(() => rows.filter((r) => r.categoria === cat && esValida(r.keyword)), [rows, cat]);
 
   // Universo de keywords de la categoría (con volumen).
   const universo = useMemo(() => {
@@ -153,7 +154,7 @@ function BucketTable({ title, subtitle, rows, extraLabel }: { title: string; sub
     <div className="rounded-xl border bg-card p-3">
       <h4 className="text-sm font-semibold">{title}</h4>
       <p className="mb-2 text-[10px] text-muted-foreground">{subtitle}</p>
-      <div className="max-h-[320px] overflow-auto">
+      <div className="max-h-[360px] overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <table className="w-full text-[11px]">
           <thead className="sticky top-0 bg-card text-[9px] uppercase text-muted-foreground">
             <tr><th className="py-1 text-left">Keyword</th><th className="py-1 text-right">Vol</th><th className="py-1 text-right">{extraLabel}</th></tr>

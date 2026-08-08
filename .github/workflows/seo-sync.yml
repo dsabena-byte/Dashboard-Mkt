@@ -1,48 +1,42 @@
-name: SEO sync (rankings · keyword gap)
+name: SEO sync (SERP matrix · competitivo)
 
-# Módulo B de Inteligencia Competitiva: visibilidad orgánica + rankings + keyword
-# gap desde DataForSEO Labs → seo_domain_overview + seo_rankings + seo_keyword_gap.
-# Semanal. NECESITA saldo en DataForSEO (Labs no entra en el crédito free).
+# Módulo B · SEO Competitivo: para cada keyword del universo consulta la SERP y
+# guarda la posición de cada dominio (marcas + retailers) → seo_rankings.
+# Se procesa por chunks (Vercel corta a 300s): el loop llama offset=0,80,160...
+# hasta cubrir todo. Semanal. NECESITA saldo en DataForSEO.
 on:
   schedule:
-    - cron: "40 6 * * 1"  # lunes 06:40 UTC (después de trends-sync)
+    - cron: "40 6 * * 1"  # lunes 06:40 UTC
   workflow_dispatch:
     inputs:
-      ranked_limit:
-        description: "Keywords por dominio (0 = saltear ranked). Default 300."
+      limit:
+        description: "Keywords por chunk (default 80)"
         required: false
-        default: "300"
-      gap_limit:
-        description: "Keywords de gap por competidor (0 = saltear). Default 100."
-        required: false
-        default: "100"
-      only:
-        description: "Limitar a overview | ranked | gap (vacío = todos)"
-        required: false
-        default: ""
+        default: "80"
 
 jobs:
   trigger:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
-      - name: Trigger /api/cron/seo-sync
+      - name: SERP matrix por chunks
         run: |
           set -euo pipefail
-          URL="https://dashboard-mkt-seven.vercel.app/api/cron/seo-sync?ranked_limit=${{ github.event.inputs.ranked_limit || '300' }}&gap_limit=${{ github.event.inputs.gap_limit || '100' }}"
-          ONLY="${{ github.event.inputs.only || '' }}"
-          if [ -n "$ONLY" ]; then URL="${URL}&only=${ONLY}"; fi
-          echo "GET $URL"
-          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 300 \
-            -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
-          echo "HTTP $HTTP_CODE"; cat response.json; echo ""
-          if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
-          python3 - <<'PY'
-          import json, sys
-          d = json.load(open("response.json"))
-          if not d.get("ok"):
-              print(f"::error::sync falló: {d.get('error')}"); sys.exit(1)
-          print(f"OK: overview={d.get('overview_filas')} ranked={d.get('ranked_filas')} gap={d.get('gap_filas')}")
-          PY
+          BASE="https://dashboard-mkt-seven.vercel.app/api/cron/seo-sync"
+          LIMIT="${{ github.event.inputs.limit || '80' }}"
+          OFFSET=0
+          for i in $(seq 1 30); do
+            URL="${BASE}?offset=${OFFSET}&limit=${LIMIT}"
+            echo "== chunk offset=${OFFSET} =="
+            HTTP=$(curl -s -o resp.json -w '%{http_code}' --max-time 300 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+            cat resp.json; echo ""
+            if [ "$HTTP" != "200" ]; then echo "::error::HTTP $HTTP"; exit 1; fi
+            RESTO=$(python3 -c "import json,sys; d=json.load(open('resp.json')); print('ERR' if not d.get('ok') else d.get('resto',0))")
+            if [ "$RESTO" = "ERR" ]; then
+              echo "::error::sync falló: $(python3 -c "import json; print(json.load(open('resp.json')).get('error'))")"; exit 1
+            fi
+            OFFSET=$((OFFSET + LIMIT))
+            if [ "$RESTO" -le 0 ]; then echo "Completo."; break; fi
+          done
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
