@@ -81,6 +81,26 @@ export async function getSeoOverview(): Promise<SeoOverviewRow[]> {
   return (data ?? []) as SeoOverviewRow[];
 }
 
+// Matriz competitiva de SEO: posición de cada dominio (marca + retailer) en cada
+// keyword del universo. Alimenta el índice conglomerado + buckets.
+export interface SerpRow {
+  marca: string;
+  keyword: string;
+  categoria: string | null;
+  posicion: number | null;
+  search_volume: number | null;
+}
+export async function getSeoCompetitivo(): Promise<SerpRow[]> {
+  const sb = getServerSupabase();
+  const { data, error } = await sb
+    .from("seo_rankings")
+    .select("marca, keyword, categoria, posicion, search_volume")
+    .limit(20000)
+    .returns<SerpRow[]>();
+  if (error) throw new Error(`seo_rankings: ${error.message}`);
+  return (data ?? []) as SerpRow[];
+}
+
 export interface RankingRow {
   keyword: string;
   categoria: string | null;
