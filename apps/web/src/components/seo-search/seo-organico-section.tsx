@@ -2,23 +2,43 @@
 
 import { useMemo, useState } from "react";
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { SeoOverviewRow, KeywordGapRow } from "@/lib/competitive-queries";
+import type { SeoOverviewRow, KeywordGapRow, RankingRow } from "@/lib/competitive-queries";
 
 const fmtNum = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(0)}K` : String(Math.round(n)));
 const tooltipStyle = { backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 };
 const CATS = ["Todas", "lavarropas", "heladeras", "cocinas"];
 
-export function SeoOrganicoSection({ overview, gap }: { overview: SeoOverviewRow[]; gap: KeywordGapRow[] }) {
+// Badge de posición de Drean: verde ≤3, ámbar ≤10, gris resto, rojo si no rankea.
+function PosBadge({ pos }: { pos: number | null }) {
+  if (pos == null) return <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">no rankea</span>;
+  const c = pos <= 3 ? "bg-emerald-100 text-emerald-700" : pos <= 10 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600";
+  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c}`}>#{pos}</span>;
+}
+
+export function SeoOrganicoSection({ overview, gap, rankings }: { overview: SeoOverviewRow[]; gap: KeywordGapRow[]; rankings: RankingRow[] }) {
   const [cat, setCat] = useState("Todas");
 
   const barData = useMemo(
     () => overview.filter((o) => (o.etv ?? 0) > 0).map((o) => ({ marca: o.marca ?? o.dominio, etv: o.etv ?? 0, kw: o.keywords_count ?? 0, top: o.pos_1_3 ?? 0 })),
     [overview],
   );
-  const gapFiltrado = useMemo(
-    () => gap.filter((g) => cat === "Todas" || g.categoria === cat).slice(0, 40),
-    [gap, cat],
-  );
+
+  // Universo de keywords relevantes: las que Drean rankea (con su posición) + las
+  // del gap (donde Drean no rankea, con el competidor líder). Ordenado por volumen
+  // → "en las búsquedas más grandes, ¿dónde está parada Drean?".
+  const topKeywords = useMemo(() => {
+    const by = new Map<string, { keyword: string; categoria: string | null; volumen: number; dreanPos: number | null; lider: string | null }>();
+    for (const r of rankings) by.set(r.keyword, { keyword: r.keyword, categoria: r.categoria, volumen: r.search_volume ?? 0, dreanPos: r.posicion, lider: null });
+    for (const g of gap) {
+      const ex = by.get(g.keyword);
+      if (ex) { if (!ex.lider) ex.lider = g.competidor; }
+      else by.set(g.keyword, { keyword: g.keyword, categoria: g.categoria, volumen: g.search_volume ?? 0, dreanPos: null, lider: g.competidor });
+    }
+    return [...by.values()]
+      .filter((k) => cat === "Todas" || k.categoria === cat)
+      .sort((a, b) => b.volumen - a.volumen)
+      .slice(0, 50);
+  }, [rankings, gap, cat]);
 
   if (overview.length === 0) {
     return (
@@ -54,12 +74,14 @@ export function SeoOrganicoSection({ overview, gap }: { overview: SeoOverviewRow
         </ResponsiveContainer>
       </div>
 
-      {/* Keyword gap */}
+      {/* Posición de Drean en las keywords top */}
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold">Keyword gap — oportunidades</h3>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Keywords donde un competidor rankea y <strong>Drean no</strong>. Ordenadas por volumen: contenido a crear.</p>
+            <h3 className="text-sm font-semibold">Posición de Drean en las keywords top</h3>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Para las búsquedas de mayor volumen: <strong>en qué posición rankea Drean</strong> (o si no rankea, qué competidor la lleva). Verde = top 3, ámbar = top 10.
+            </p>
           </div>
           <div className="flex gap-1">
             {CATS.map((c) => (
@@ -69,27 +91,29 @@ export function SeoOrganicoSection({ overview, gap }: { overview: SeoOverviewRow
             ))}
           </div>
         </div>
-        <div className="max-h-[420px] overflow-auto rounded-lg border">
+        <div className="max-h-[460px] overflow-auto rounded-lg border">
           <table className="w-full text-xs">
             <thead className="sticky top-0 border-b bg-muted/40">
               <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th className="px-3 py-2">Keyword</th>
                 <th className="px-3 py-2">Categoría</th>
-                <th className="px-3 py-2">Competidor</th>
                 <th className="px-3 py-2 text-right">Volumen/mes</th>
+                <th className="px-3 py-2 text-center">Drean</th>
+                <th className="px-3 py-2">Si no rankea, líder</th>
               </tr>
             </thead>
             <tbody>
-              {gapFiltrado.map((g, i) => (
-                <tr key={`${g.keyword}-${g.competidor}-${i}`} className="border-b last:border-0">
-                  <td className="px-3 py-2 font-medium">{g.keyword}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{g.categoria ?? "—"}</td>
-                  <td className="px-3 py-2">{g.competidor}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{g.search_volume != null ? fmtNum(g.search_volume) : "—"}</td>
+              {topKeywords.map((k, i) => (
+                <tr key={`${k.keyword}-${i}`} className="border-b last:border-0">
+                  <td className="px-3 py-2 font-medium">{k.keyword}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{k.categoria ?? "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{k.volumen ? fmtNum(k.volumen) : "—"}</td>
+                  <td className="px-3 py-2 text-center"><PosBadge pos={k.dreanPos} /></td>
+                  <td className="px-3 py-2 text-muted-foreground">{k.dreanPos == null ? (k.lider ?? "—") : ""}</td>
                 </tr>
               ))}
-              {gapFiltrado.length === 0 && (
-                <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">Sin gaps para esta categoría.</td></tr>
+              {topKeywords.length === 0 && (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">Sin data para esta categoría.</td></tr>
               )}
             </tbody>
           </table>

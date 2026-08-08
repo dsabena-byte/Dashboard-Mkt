@@ -81,6 +81,26 @@ export async function getSeoOverview(): Promise<SeoOverviewRow[]> {
   return (data ?? []) as SeoOverviewRow[];
 }
 
+export interface RankingRow {
+  keyword: string;
+  categoria: string | null;
+  posicion: number | null;
+  search_volume: number | null;
+  url: string | null;
+}
+export async function getDreanRankings(): Promise<RankingRow[]> {
+  const sb = getServerSupabase();
+  const { data, error } = await sb
+    .from("seo_rankings")
+    .select("keyword, categoria, posicion, search_volume, url")
+    .eq("dominio", "drean.com.ar")
+    .order("search_volume", { ascending: false })
+    .limit(500)
+    .returns<RankingRow[]>();
+  if (error) throw new Error(`seo_rankings: ${error.message}`);
+  return (data ?? []) as RankingRow[];
+}
+
 export async function getKeywordGap(): Promise<KeywordGapRow[]> {
   const sb = getServerSupabase();
   const { data, error } = await sb

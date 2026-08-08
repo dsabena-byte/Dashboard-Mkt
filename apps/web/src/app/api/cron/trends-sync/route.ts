@@ -42,8 +42,13 @@ async function dfsPost<T = unknown>(path: string, body: unknown): Promise<T> {
     status_message?: string;
     tasks?: Array<{ status_code?: number; status_message?: string; result?: unknown }>;
   };
-  if (!res.ok || json.status_code !== 20000) {
-    throw new Error(`DataForSEO ${path}: ${json.status_code} ${json.status_message ?? res.status}`);
+  const task = json.tasks?.[0];
+  // 40200 = Payment Required (sin saldo en DataForSEO). Mensaje claro.
+  if (json.status_code === 40200 || task?.status_code === 40200) {
+    throw new Error(`DataForSEO sin saldo (Payment Required) — cargá fondos en la cuenta`);
+  }
+  if (json.status_code !== 20000 || (task && task.status_code !== 20000)) {
+    throw new Error(`DataForSEO ${path}: ${task?.status_code ?? json.status_code} ${task?.status_message ?? json.status_message ?? res.status}`);
   }
   return json as T;
 }

@@ -98,6 +98,23 @@ export function SeoSearchClient({
     return { total, dreanShare: drean?.share_pct ?? 0, dreanVol: drean?.vol ?? 0, rank, gen };
   }, [snapshot, demanda, cat]);
 
+  // Crecimiento de demanda por marca: volumen del último mes vs 12 meses atrás
+  // (YoY). Ideal para ver quién acelera (Hisense/Midea) o cae.
+  const crecimiento = useMemo(() => {
+    const primerMes = meses[0];
+    const rows = share.filter((r) => r.categoria === cat);
+    return brands
+      .map((b) => {
+        const volUlt = rows.find((r) => r.mes === ultMes && r.marca === b)?.vol ?? 0;
+        const volIni = rows.find((r) => r.mes === primerMes && r.marca === b)?.vol ?? 0;
+        const g = volIni > 0 ? ((volUlt - volIni) / volIni) * 100 : volUlt > 0 ? 100 : 0;
+        return { marca: b, growth: g, volUlt, volIni };
+      })
+      .sort((a, b) => b.growth - a.growth);
+  }, [share, cat, ultMes, meses, brands]);
+
+  const dreanGrowth = crecimiento.find((c) => c.marca === "Drean")?.growth ?? 0;
+
   return (
     <div className="space-y-6">
       {/* Tabs de categoría */}
@@ -121,7 +138,7 @@ export function SeoSearchClient({
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Share of Search · Drean" value={`${kpis.dreanShare.toFixed(1)}%`} sub={`Ranking #${kpis.rank} de ${brands.length}`} accent />
-        <Kpi label="Búsquedas Drean / mes" value={fmtNum(kpis.dreanVol)} sub={`${cat}`} />
+        <Kpi label="Búsquedas Drean / mes" value={fmtNum(kpis.dreanVol)} sub={`${dreanGrowth >= 0 ? "▲" : "▼"} ${dreanGrowth.toFixed(0)}% YoY`} />
         <Kpi label="Demanda genérica" value={kpis.gen != null ? fmtNum(kpis.gen) : "—"} sub={`"${cat}" (mes)`} />
         <Kpi label="Demanda total marcas" value={fmtNum(kpis.total)} sub="suma del set (mes)" />
       </div>
@@ -138,6 +155,23 @@ export function SeoSearchClient({
                 <Cell key={r.marca} fill={colorOf(r.marca)} fillOpacity={r.marca === "Drean" ? 1 : 0.75} />
               ))}
               <LabelList dataKey="share_pct" position="right" fontSize={10} formatter={(v: number) => `${v.toFixed(1)}%`} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Crecimiento de demanda (YoY) */}
+      <Card title="Crecimiento de demanda — YoY" subtitle="Variación del volumen de búsqueda del último mes vs 12 meses atrás. Positivo = la marca acelera (clave para Hisense/Midea); negativo = pierde demanda.">
+        <ResponsiveContainer width="100%" height={Math.max(240, crecimiento.length * 30)}>
+          <BarChart data={crecimiento} layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }}>
+            <XAxis type="number" tickFormatter={(v) => `${v}%`} fontSize={11} stroke="hsl(var(--muted-foreground))" />
+            <YAxis type="category" dataKey="marca" width={78} fontSize={11} stroke="hsl(var(--muted-foreground))" />
+            <Tooltip formatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`} contentStyle={tooltipStyle} />
+            <Bar dataKey="growth" radius={[0, 4, 4, 0]}>
+              {crecimiento.map((d) => (
+                <Cell key={d.marca} fill={d.growth >= 0 ? "#10b981" : "#e11d48"} fillOpacity={d.marca === "Drean" ? 1 : 0.7} />
+              ))}
+              <LabelList dataKey="growth" position="right" fontSize={10} formatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
