@@ -61,6 +61,35 @@ export function marcasDeCategoria(cat: Categoria): string[] {
   return (CATEGORIA_MARCAS[cat] ?? []).map((s) => BY_SLUG[s]?.nombre ?? s);
 }
 
+// Dominios trackeados en el SEO competitivo (SERP-matrix): marcas + retailers.
+// Se busca su posición en cada keyword del universo. Musimundo sacado (ya no
+// existe → Oncity). ML = MercadoLibre (display corto).
+export interface TrackedDomain {
+  display: string;
+  dominio: string;
+  tipo: "marca" | "retailer";
+}
+export const TRACKED_DOMAINS: TrackedDomain[] = [
+  { display: "Drean", dominio: "drean.com.ar", tipo: "marca" },
+  { display: "Whirlpool", dominio: "whirlpool.com.ar", tipo: "marca" },
+  { display: "Electrolux", dominio: "electrolux.com.ar", tipo: "marca" },
+  { display: "Philco", dominio: "philco.com.ar", tipo: "marca" },
+  { display: "Longvie", dominio: "longvie.com", tipo: "marca" },
+  { display: "Escorial", dominio: "escorial.com.ar", tipo: "marca" },
+  { display: "Domec", dominio: "domec.com.ar", tipo: "marca" },
+  { display: "Gafa", dominio: "gafa.com.ar", tipo: "marca" },
+  { display: "Midea", dominio: "midea.com.ar", tipo: "marca" },
+  { display: "ML", dominio: "mercadolibre.com.ar", tipo: "retailer" },
+  { display: "Frávega", dominio: "fravega.com", tipo: "retailer" },
+  { display: "Naldo", dominio: "naldo.com.ar", tipo: "retailer" },
+  { display: "Rodo", dominio: "rodo.com.ar", tipo: "retailer" },
+  { display: "Cetrogar", dominio: "cetrogar.com.ar", tipo: "retailer" },
+  { display: "Megatone", dominio: "megatone.net", tipo: "retailer" },
+  { display: "Casa del Audio", dominio: "casadelaudio.com", tipo: "retailer" },
+  { display: "Coto", dominio: "coto.com.ar", tipo: "retailer" },
+  { display: "Oncity", dominio: "oncity.com", tipo: "retailer" },
+];
+
 export interface KeywordDef {
   keyword: string;
   marca: string | null; // null = genérico de categoría
