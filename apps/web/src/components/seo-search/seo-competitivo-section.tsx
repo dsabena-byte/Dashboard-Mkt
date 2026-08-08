@@ -14,6 +14,15 @@ const CATS: Array<{ key: string; label: string }> = [
   { key: "cocinas", label: "Cocinas" },
 ];
 const fmtNum = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(0)}K` : String(Math.round(n)));
+// Color de celda de la matriz por posición (verde top → rojo → gris ausente).
+function cellClass(pos: number | undefined): string {
+  if (pos == null) return "bg-slate-50 text-slate-300";
+  if (pos <= 3) return "bg-emerald-500 text-white font-semibold";
+  if (pos <= 10) return "bg-emerald-200 text-emerald-900";
+  if (pos <= 20) return "bg-amber-200 text-amber-900";
+  if (pos <= 50) return "bg-orange-200 text-orange-900";
+  return "bg-rose-100 text-rose-700";
+}
 const tooltipStyle = { backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 };
 
 export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
@@ -72,6 +81,22 @@ export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
     const byVol = <T extends { vol: number }>(a: T, b: T) => b.vol - a.vol;
     return { faltantes: faltantes.sort(byVol).slice(0, 20), debiles: debiles.sort(byVol).slice(0, 20), fuertes: fuertes.sort(byVol).slice(0, 20) };
   }, [catRows, universo]);
+
+  // Matriz keyword × dominio: posición de cada dominio en las top keywords.
+  const matriz = useMemo(() => {
+    const posMap = new Map<string, number>();
+    const marcasSet = new Set<string>();
+    for (const r of catRows) {
+      marcasSet.add(r.marca);
+      if (r.posicion != null) posMap.set(`${r.marca}|${r.keyword}`, r.posicion);
+    }
+    const kws = [...universo.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([keyword, vol]) => ({ keyword, vol }));
+    const rank = (m: string) => (m === "Drean" ? -1 : RETAILERS.has(m) ? 1 : 0);
+    const doms = [...marcasSet]
+      .filter((m) => set === "todos" || m === "Drean" || (set === "retailer" ? RETAILERS.has(m) : !RETAILERS.has(m)))
+      .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    return { kws, doms, posMap };
+  }, [catRows, universo, set]);
 
   const dreanIdx = indice.find((i) => i.marca === "Drean");
   const dreanRank = indice.findIndex((i) => i.marca === "Drean") + 1;
@@ -161,6 +186,41 @@ export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
         <BucketTable title="🔴 Faltantes" subtitle="Drean no rankea — contenido a crear" rows={buckets.faltantes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: f.lider ?? "—" }))} extraLabel="Líder" />
         <BucketTable title="🟡 Débiles" subtitle="Pos. 8-20 — quick wins" rows={buckets.debiles.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
         <BucketTable title="🟢 Fuertes" subtitle="Top-3 — defender" rows={buckets.fuertes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
+      </div>
+
+      {/* Matriz de posición (Content GAP) */}
+      <div className="rounded-xl border bg-card p-4">
+        <h3 className="text-sm font-semibold">Matriz de posición · keyword × dominio</h3>
+        <p className="mb-2 mt-0.5 text-[11px] text-muted-foreground">
+          Posición de cada dominio en las top keywords por volumen. <span className="rounded bg-emerald-500 px-1 text-white">1-3</span> <span className="rounded bg-emerald-200 px-1">4-10</span> <span className="rounded bg-amber-200 px-1">11-20</span> <span className="rounded bg-orange-200 px-1">21-50</span> <span className="rounded bg-rose-100 px-1 text-rose-700">50+</span> <span className="rounded bg-slate-50 px-1 text-slate-400">no rankea</span>. Respeta el filtro Todos/Marcas/Retail de arriba.
+        </p>
+        <div className="overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <table className="w-full border-separate border-spacing-0 text-[10px]">
+            <thead>
+              <tr>
+                <th className="sticky left-0 z-10 bg-card px-2 py-1 text-left font-medium">Keyword</th>
+                {matriz.doms.map((d) => (
+                  <th key={d} className={`px-1 py-1 text-center font-medium ${d === "Drean" ? "text-primary" : RETAILERS.has(d) ? "text-purple-600" : ""}`}>
+                    <div className="w-9 truncate" title={d}>{d}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {matriz.kws.map(({ keyword }) => (
+                <tr key={keyword}>
+                  <td className="sticky left-0 z-10 max-w-[180px] truncate bg-card px-2 py-1" title={keyword}>{keyword}</td>
+                  {matriz.doms.map((d) => {
+                    const pos = matriz.posMap.get(`${d}|${keyword}`);
+                    return (
+                      <td key={d} className={`px-1 py-1 text-center tabular-nums ${cellClass(pos)}`}>{pos ?? ""}</td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
