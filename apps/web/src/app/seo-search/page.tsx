@@ -1,16 +1,17 @@
 import { SeoSearchClient } from "@/components/seo-search/seo-search-client";
 import { SeoOrganicoSection } from "@/components/seo-search/seo-organico-section";
-import { getShareOfSearch, getTrendsInterest, getDemandaGenerica, getSeoOverview, getKeywordGap } from "@/lib/competitive-queries";
+import { getShareOfSearch, getTrendsInterest, getDemandaGenerica, getSeoOverview, getKeywordGap, getDreanRankings } from "@/lib/competitive-queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function SeoSearchPage() {
-  const [share, trends, demanda, seoOverview, gap] = await Promise.all([
+  const [share, trends, demanda, seoOverview, gap, rankings] = await Promise.all([
     getShareOfSearch().catch(() => []),
     getTrendsInterest().catch(() => []),
     getDemandaGenerica().catch(() => []),
     getSeoOverview().catch(() => []),
     getKeywordGap().catch(() => []),
+    getDreanRankings().catch(() => []),
   ]);
 
   const sinData = share.length === 0;
@@ -36,7 +37,7 @@ export default async function SeoSearchPage() {
 
       {seoOverview.length > 0 && (
         <div className="border-t pt-6">
-          <SeoOrganicoSection overview={seoOverview} gap={gap} />
+          <SeoOrganicoSection overview={seoOverview} gap={gap} rankings={rankings} />
         </div>
       )}
     </div>
