@@ -18,16 +18,15 @@ import {
   LabelList,
 } from "recharts";
 import type { ShareRow, TrendRow, DemandaRow } from "@/lib/competitive-queries";
+import { marcasDeCategoria, type Categoria } from "@/lib/competitive-config";
 
-// Orden y colores del set competitivo. Drean resaltado; el resto en una paleta
-// distinguible. Marcas emergentes (Hisense/Midea) al final.
-const BRANDS = [
-  "Drean", "Whirlpool", "Electrolux", "Samsung", "LG", "BGH", "Gafa", "Philco", "Hisense", "Midea",
-];
+// Colores del set competitivo. Drean resaltado; el resto en paleta distinguible.
 const COLOR: Record<string, string> = {
   Drean: "#2b4dff", Whirlpool: "#0ea5e9", Electrolux: "#14b8a6", Samsung: "#6366f1",
   LG: "#e11d48", BGH: "#f59e0b", Gafa: "#84cc16", Philco: "#a855f7", Hisense: "#64748b", Midea: "#ec4899",
+  Escorial: "#d97706", Florencia: "#db2777", Orbis: "#0891b2",
 };
+const colorOf = (b: string) => COLOR[b] ?? "#94a3b8";
 const CATS: Array<{ key: string; label: string; emoji: string }> = [
   { key: "lavarropas", label: "Lavarropas", emoji: "🧺" },
   { key: "heladeras", label: "Heladeras", emoji: "❄️" },
@@ -53,6 +52,8 @@ export function SeoSearchClient({
 }) {
   const [cat, setCat] = useState("lavarropas");
 
+  // Marcas que compiten en la categoría seleccionada (por config, no todas).
+  const brands = useMemo(() => marcasDeCategoria(cat as Categoria), [cat]);
   const meses = useMemo(() => [...new Set(share.map((r) => r.mes))].sort(), [share]);
   const ultMes = meses[meses.length - 1] ?? "";
 
@@ -70,12 +71,12 @@ export function SeoSearchClient({
     const rows = share.filter((r) => r.categoria === cat);
     return meses.map((m) => {
       const o: Record<string, number | string> = { mes: mesCorto(m) };
-      for (const b of BRANDS) {
+      for (const b of brands) {
         o[b] = rows.find((r) => r.mes === m && r.marca === b)?.share_pct ?? 0;
       }
       return o;
     });
-  }, [share, cat, meses]);
+  }, [share, cat, meses, brands]);
 
   // Trends (interés 0-100) por marca, serie semanal.
   const trendSeries = useMemo(() => {
@@ -83,10 +84,10 @@ export function SeoSearchClient({
     const fechas = [...new Set(rows.map((r) => r.fecha))].sort();
     return fechas.map((f) => {
       const o: Record<string, number | string> = { fecha: f.slice(5) };
-      for (const b of BRANDS) o[b] = rows.find((r) => r.fecha === f && r.marca === b)?.interes ?? 0;
+      for (const b of brands) o[b] = rows.find((r) => r.fecha === f && r.marca === b)?.interes ?? 0;
       return o;
     });
-  }, [trends, cat]);
+  }, [trends, cat, brands]);
 
   // KPIs: demanda total de marcas de la categoría (último mes) + Drean.
   const kpis = useMemo(() => {
@@ -119,7 +120,7 @@ export function SeoSearchClient({
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Share of Search · Drean" value={`${kpis.dreanShare.toFixed(1)}%`} sub={`Ranking #${kpis.rank} de ${BRANDS.length}`} accent />
+        <Kpi label="Share of Search · Drean" value={`${kpis.dreanShare.toFixed(1)}%`} sub={`Ranking #${kpis.rank} de ${brands.length}`} accent />
         <Kpi label="Búsquedas Drean / mes" value={fmtNum(kpis.dreanVol)} sub={`${cat}`} />
         <Kpi label="Demanda genérica" value={kpis.gen != null ? fmtNum(kpis.gen) : "—"} sub={`"${cat}" (mes)`} />
         <Kpi label="Demanda total marcas" value={fmtNum(kpis.total)} sub="suma del set (mes)" />
@@ -134,7 +135,7 @@ export function SeoSearchClient({
             <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} contentStyle={tooltipStyle} />
             <Bar dataKey="share_pct" radius={[0, 4, 4, 0]}>
               {snapshot.map((r) => (
-                <Cell key={r.marca} fill={COLOR[r.marca] ?? "#94a3b8"} fillOpacity={r.marca === "Drean" ? 1 : 0.75} />
+                <Cell key={r.marca} fill={colorOf(r.marca)} fillOpacity={r.marca === "Drean" ? 1 : 0.75} />
               ))}
               <LabelList dataKey="share_pct" position="right" fontSize={10} formatter={(v: number) => `${v.toFixed(1)}%`} />
             </Bar>
@@ -151,8 +152,8 @@ export function SeoSearchClient({
             <YAxis tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={10} stroke="hsl(var(--muted-foreground))" />
             <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            {BRANDS.map((b) => (
-              <Area key={b} type="monotone" dataKey={b} stackId="s" stroke={COLOR[b]} fill={COLOR[b]} fillOpacity={b === "Drean" ? 0.95 : 0.6} />
+            {brands.map((b) => (
+              <Area key={b} type="monotone" dataKey={b} stackId="s" stroke={colorOf(b)} fill={colorOf(b)} fillOpacity={b === "Drean" ? 0.95 : 0.6} />
             ))}
           </AreaChart>
         </ResponsiveContainer>
@@ -167,8 +168,8 @@ export function SeoSearchClient({
             <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" domain={[0, 100]} />
             <Tooltip contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            {BRANDS.map((b) => (
-              <Line key={b} type="monotone" dataKey={b} stroke={COLOR[b]} strokeWidth={b === "Drean" ? 2.5 : 1} dot={false} />
+            {brands.map((b) => (
+              <Line key={b} type="monotone" dataKey={b} stroke={colorOf(b)} strokeWidth={b === "Drean" ? 2.5 : 1} dot={false} />
             ))}
           </LineChart>
         </ResponsiveContainer>
