@@ -101,8 +101,13 @@ export function PiezaGrid({ pieces, money }: { pieces: PiezaCard[]; money: (n: n
     );
   }
 
-  const shown = pieces.slice(0, visible);
-  const remaining = pieces.length - shown.length;
+  // Activas primero, pausadas después (estado desconocido al final); dentro de
+  // cada grupo se preserva el orden que trae el caller (inversión desc).
+  const ordered = [...pieces].sort(
+    (a, b) => (a.activa === true ? 0 : a.activa === false ? 1 : 2) - (b.activa === true ? 0 : b.activa === false ? 1 : 2),
+  );
+  const shown = ordered.slice(0, visible);
+  const remaining = ordered.length - shown.length;
 
   return (
     <div className="space-y-3">

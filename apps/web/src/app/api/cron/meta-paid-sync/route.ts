@@ -263,9 +263,16 @@ function parseAdName(adName: string | null | undefined, objective?: string | nul
   // cualquier parte del nombre, no solo en el patrón de guiones.
   if (!categoria && /(^|[^a-z])ugc([^a-z]|$)/i.test(adName)) categoria = "UGC";
   // Brand: piezas institucionales sin categoría de producto — videos "MASTER" de
-  // marca (ej. "Drean_Video_MASTER ... DREAN VIDEO AD TOKIO 15s") o que mencionan
-  // "brand" en cualquier parte del nombre.
-  if (!categoria && (/video[ _]?master/i.test(adName) || /(^|[^a-z])brand([^a-z]|$)/i.test(adName))) categoria = "Brand";
+  // marca (ej. "Drean_Video_MASTER ... DREAN VIDEO AD TOKIO 15s"), campañas de
+  // talento/vocero (ej. "Marcelino", el vocero de "El tipo que vende Drean") o que
+  // mencionan "brand" en cualquier parte del nombre.
+  if (
+    !categoria &&
+    (/video[ _]?master/i.test(adName) ||
+      /(^|[^a-z])brand([^a-z]|$)/i.test(adName) ||
+      /(^|[^a-z])marcelino([^a-z]|$)/i.test(adName))
+  )
+    categoria = "Brand";
   // Fallback por nombre de CAMPAÑA (ej. "MABE_Drean_Reach_UGC_Julio_26"): si el ad
   // no encodea la categoría en su nombre, la derivamos de la campaña. UGC primero
   // (campañas de creadores). Los separadores son "_", que cuentan como no-letra.
@@ -277,7 +284,7 @@ function parseAdName(adName: string | null | undefined, objective?: string | nul
       : /refriger|heladera/.test(c) ? "Refrigeración"
       : /cocci|cocina/.test(c) ? "Cocción"
       : /promo/.test(c) ? "Promoción"
-      : (/(^|[^a-z])brand([^a-z]|$)/.test(c) || /video[ _]?master/.test(c)) ? "Brand"
+      : (/(^|[^a-z])brand([^a-z]|$)/.test(c) || /video[ _]?master/.test(c) || /(^|[^a-z])marcelino([^a-z]|$)/.test(c)) ? "Brand"
       : null;
   }
   if (!tipo_compra) {

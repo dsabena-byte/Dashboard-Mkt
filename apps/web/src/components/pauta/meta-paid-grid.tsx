@@ -13,6 +13,10 @@ function truncate(s: string | null, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
 
+// Orden de piezas: activas primero, luego pausadas, y por último las de estado
+// desconocido. Dentro de cada grupo se preserva el orden previo (spend desc).
+const activaRank = (v: boolean | null | undefined): number => (v === true ? 0 : v === false ? 1 : 2);
+
 const CAT_COLORS: Record<string, string> = {
   Brand: "#0a1849",
   Lavado: "#2b4dff",
@@ -43,13 +47,15 @@ export function MetaPaidGrid({
   const [visible, setVisible] = useState(PAGE_SIZE);
 
   const filtered = useMemo(() => {
-    return data.filter(
-      (r) =>
-        (r.impresiones ?? 0) > 0 &&
-        (selMeses.length === 0 || selMeses.includes(r.mes)) &&
-        (selCats.length === 0 || (r.categoria != null && selCats.includes(r.categoria))) &&
-        (selRoles.length === 0 || selRoles.includes(tipoCompraToRol(r.tipo_compra) ?? "")),
-    );
+    return data
+      .filter(
+        (r) =>
+          (r.impresiones ?? 0) > 0 &&
+          (selMeses.length === 0 || selMeses.includes(r.mes)) &&
+          (selCats.length === 0 || (r.categoria != null && selCats.includes(r.categoria))) &&
+          (selRoles.length === 0 || selRoles.includes(tipoCompraToRol(r.tipo_compra) ?? "")),
+      )
+      .sort((a, b) => activaRank(a.activa) - activaRank(b.activa));
   }, [data, selMeses, selCats, selRoles]);
 
   // Si los filtros cambian, volvemos a las primeras 12.
