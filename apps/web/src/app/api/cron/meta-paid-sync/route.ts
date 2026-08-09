@@ -234,11 +234,11 @@ function sumActions(arr: Array<{ value?: string }> | undefined): number {
 // Parsea el nombre OMD-convention "Drean - {Categoria} - {Medio} - {TipoCompra} - {SKU} [extra]"
 // Devuelve la clasificación inferida o nulls si no matchea el patrón.
 function parseAdName(adName: string | null | undefined, objective?: string | null, campaignName?: string | null): {
-  categoria: string | null;
+  categoria: string;   // nunca null: cae en "Otras" si no se pudo inferir (red de seguridad)
   tipo_compra: string | null;
   rol: string | null;
 } {
-  if (!adName && !campaignName) return { categoria: null, tipo_compra: null, rol: null };
+  if (!adName && !campaignName) return { categoria: "Otras", tipo_compra: null, rol: null };
   adName = adName ?? "";
   // Separadores tolerantes (algunos ads tienen "Lavado- Meta" sin espacio).
   const parts = adName.split(/\s*-\s*/).map((p) => p.trim());
@@ -306,7 +306,11 @@ function parseAdName(adName: string | null | undefined, objective?: string | nul
   const rol = tipo_compra === "CPC" ? "Consideración"
             : tipo_compra === "CPM" || tipo_compra === "CPV" ? "Awareness"
             : null;
-  return { categoria, tipo_compra, rol };
+  // Red de seguridad: NINGUNA pieza debe quedar sin categoría. Una pieza con
+  // categoria=null desaparece del dashboard (las grillas/tablas filtran y agrupan
+  // por categoría, y cae bajo "—"). Si no se pudo inferir, va a "Otras" — visible,
+  // y señala que conviene renombrarla según la convención OMD.
+  return { categoria: categoria ?? "Otras", tipo_compra, rol };
 }
 
 // Agrega meta_paid_creatives del mes por (categoria, rol, tipo_compra) y

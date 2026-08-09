@@ -24,6 +24,7 @@ const CAT_COLORS: Record<string, string> = {
   Cocción: "#f59e0b",
   Promoción: "#e63946",
   UGC: "#8b5cf6",
+  Otras: "#64748b", // catch-all: piezas sin categoría inferible (ver red de seguridad en meta-paid-sync)
 };
 
 // CPM/CPV se usan para Awareness; CPC para Consideración (tráfico).
