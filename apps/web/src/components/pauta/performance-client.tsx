@@ -1547,54 +1547,11 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                   </div>
                 </>
               )}
-              {dv360LineItems.length > 0 && (
-                <>
-                  <SectionTitle>DV360 · Line items (reporte de reach)</SectionTitle>
-                  <p className="mb-3 text-[10px] text-muted-foreground">
-                    Cada línea pautada <strong>por nombre</strong> (de <code>dv360_reach</code>) — es la única vista donde el
-                    <strong> YouTube aparece identificado</strong> (el reporte de creatives lo colapsa a &quot;Unknown&quot;). Incluye el
-                    line item de <strong>Marcelino</strong>. Trae alcance y frecuencia reales; no trae clicks ni thumbnail. Frecuencia =
-                    impresiones / alcance.
-                  </p>
-                  <div className="mb-6 overflow-x-auto rounded-lg border bg-card">
-                    <table className="w-full text-xs">
-                      <thead className="border-b bg-muted/40">
-                        <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                          <th className="px-3 py-2">Line item</th>
-                          <th className="px-3 py-2">Canal</th>
-                          <th className="px-3 py-2">Categoría</th>
-                          <th className="px-3 py-2 text-right">Inversión</th>
-                          <th className="px-3 py-2 text-right">Impresiones</th>
-                          <th className="px-3 py-2 text-right">Alcance</th>
-                          <th className="px-3 py-2 text-right">Frecuencia</th>
-                          <th className="px-3 py-2 text-right">CPM</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dv360LineItems.map((li) => (
-                          <tr key={`${li.canal}-${li.lineItem}`} className="border-b last:border-0">
-                            <td className="px-3 py-2 font-medium">{li.lineItem}</td>
-                            <td className="px-3 py-2">{li.canal}</td>
-                            <td className="px-3 py-2">
-                              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">{li.categoria}</span>
-                            </td>
-                            <td className="px-3 py-2 text-right tabular-nums">{dvMoney(li.revenueUsd)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{Math.round(li.impresiones).toLocaleString("es-AR")}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{li.reach > 0 ? Math.round(li.reach).toLocaleString("es-AR") : "—"}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{li.frequency > 0 ? li.frequency.toFixed(2) : "—"}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{dvMoney(li.cpm)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
               {dv360Pieces.length > 0 && (
                 <>
                   <SectionTitle>Piezas pautadas · Programmatic + Marketplace</SectionTitle>
                   <p className="mb-3 text-[10px] text-muted-foreground">
-                    Top piezas por inversión. <strong>El YouTube por nombre está en la tabla de line items de arriba</strong> (acá el
+                    Top piezas por inversión. <strong>El YouTube por nombre está en la tabla de line items del final</strong> (acá el
                     reporte de creatives lo colapsa a &quot;Unknown&quot;). <strong>Sin thumbnail</strong>: el reporte de métricas de DV360
                     no trae el archivo del creative; se muestra el <strong>formato del banner</strong> (tamaño) o un indicador de video.
                     Alcance/frecuencia por canal está en el resumen de arriba.
@@ -1668,6 +1625,49 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           </p>
           <GoogleAdsCreativesGrid data={googleAdsCreatives} selMeses={selMeses} selCats={selCats} />
 
+          {dv360LineItems.length > 0 && (
+            <>
+              <SectionTitle>DV360 · Line items (reporte de reach)</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Cada línea pautada <strong>por nombre</strong> (de <code>dv360_reach</code>) — es la única vista donde el
+                <strong> YouTube aparece identificado</strong> (el reporte de creatives lo colapsa a &quot;Unknown&quot;). Incluye el
+                line item de <strong>Marcelino</strong>. Trae alcance y frecuencia reales; no trae clicks ni thumbnail. Frecuencia =
+                impresiones / alcance.
+              </p>
+              <div className="mb-6 overflow-x-auto rounded-lg border bg-card">
+                <table className="w-full text-xs">
+                  <thead className="border-b bg-muted/40">
+                    <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2">Line item</th>
+                      <th className="px-3 py-2">Canal</th>
+                      <th className="px-3 py-2">Categoría</th>
+                      <th className="px-3 py-2 text-right">Inversión</th>
+                      <th className="px-3 py-2 text-right">Impresiones</th>
+                      <th className="px-3 py-2 text-right">Alcance</th>
+                      <th className="px-3 py-2 text-right">Frecuencia</th>
+                      <th className="px-3 py-2 text-right">CPM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dv360LineItems.map((li) => (
+                      <tr key={`${li.canal}-${li.lineItem}`} className="border-b last:border-0">
+                        <td className="px-3 py-2 font-medium">{li.lineItem}</td>
+                        <td className="px-3 py-2">{li.canal}</td>
+                        <td className="px-3 py-2">
+                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">{li.categoria}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">{dvMoney(li.revenueUsd)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{Math.round(li.impresiones).toLocaleString("es-AR")}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{li.reach > 0 ? Math.round(li.reach).toLocaleString("es-AR") : "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{li.frequency > 0 ? li.frequency.toFixed(2) : "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{dvMoney(li.cpm)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
           {dv360Pieces.length > 0 && (
             <>
               <SectionTitle>Detalle de piezas · Programmatic + Marketplace (tabla)</SectionTitle>
