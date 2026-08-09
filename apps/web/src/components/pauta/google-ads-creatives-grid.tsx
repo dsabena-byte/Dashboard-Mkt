@@ -11,6 +11,9 @@ const fmtNum = (n: number) => formatNumber(Math.round(n));
 const fmtARS = formatCurrency;
 const PAGE_SIZE = 12;
 
+// Activas primero, luego pausadas, y por último estado desconocido.
+const activaRank = (v: boolean | null | undefined): number => (v === true ? 0 : v === false ? 1 : 2);
+
 function truncate(s: string | null, n: number): string {
   if (!s) return "";
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
@@ -48,13 +51,16 @@ export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: Goog
 
   const filtered = useMemo(
     () =>
-      data.filter(
-        (r) =>
-          r.impressions > 0 &&
-          r.campaign_type !== "SEARCH" && // Search es texto: sin imagen ni datos de creativo → fuera de la grilla
-          (selMeses.length === 0 || selMeses.includes(r.mes)) &&
-          (selCats.length === 0 || (r.account_label != null && selCats.includes(r.account_label))),
-      ),
+      data
+        .filter(
+          (r) =>
+            r.impressions > 0 &&
+            r.campaign_type !== "SEARCH" && // Search es texto: sin imagen ni datos de creativo → fuera de la grilla
+            (selMeses.length === 0 || selMeses.includes(r.mes)) &&
+            (selCats.length === 0 || (r.account_label != null && selCats.includes(r.account_label))),
+        )
+        // Activas primero, pausadas después (estado desconocido al final).
+        .sort((a, b) => activaRank(a.activa) - activaRank(b.activa)),
     [data, selMeses, selCats],
   );
 

@@ -83,6 +83,62 @@ export function aggregateDv360Channels(
   return { canales, total: build("Total", totals) };
 }
 
+// ---- Line items nombrados (de dv360_reach) ----------------------------------
+// dv360_reach trae el NOMBRE real de cada line item (que dv360_creatives colapsa
+// a "Unknown" en YouTube). Acá lo surfaceamos: es la única vista de DV360 donde
+// el YouTube aparece por nombre (ej. "Marcelino - YouTube - CPM - Shorts").
+export interface Dv360LineItem {
+  lineItem: string;      // nombre display (sin el prefijo "Drean - Producto -")
+  canal: string;
+  categoria: string;     // parseada del nombre (Marcelino → Brand)
+  formato: string;       // TrueView / Bumper / Shorts / Display...
+  tipoCompra: string | null; // CPM / CPV
+  impresiones: number;
+  reach: number;
+  frequency: number;
+  revenueUsd: number;
+  cpm: number;
+}
+
+const DV_LINEITEM_CAT: Array<[RegExp, string]> = [
+  [/refriger|heladera/i, "Refrigeración"],
+  [/lavado/i, "Lavado"],
+  [/cocci|cocina/i, "Cocción"],
+  [/marcelino/i, "Brand"], // vocero de marca → Brand (igual criterio que Meta)
+  [/brand/i, "Brand"],
+];
+
+export function aggregateDv360LineItems(reach: Dv360ReachRow[]): Dv360LineItem[] {
+  const map = new Map<string, { canal: string; categoria: string; formato: string; tipoCompra: string | null; display: string; impresiones: number; reach: number; revenueUsd: number }>();
+  for (const r of reach) {
+    const parts = r.line_item.split(/\s*-\s*/).map((s) => s.trim()).filter(Boolean);
+    let categoria = "Otras";
+    for (const [re, cat] of DV_LINEITEM_CAT) if (re.test(r.line_item)) { categoria = cat; break; }
+    const tipoCompra = /(cpv|truview|trueview)/i.test(r.line_item) ? "CPV" : /(^|[^a-z])cpm([^a-z]|$)/i.test(r.line_item) ? "CPM" : null;
+    const formato = parts[parts.length - 1] ?? "";
+    const display = parts.filter((p) => !/^drean$/i.test(p) && !/^producto$/i.test(p)).join(" · ");
+    const e = map.get(r.line_item) ?? { canal: r.canal, categoria, formato, tipoCompra, display, impresiones: 0, reach: 0, revenueUsd: 0 };
+    e.impresiones += r.impresiones;
+    e.reach += r.reach;
+    e.revenueUsd += r.revenue_usd;
+    map.set(r.line_item, e);
+  }
+  return [...map.values()]
+    .map((e) => ({
+      lineItem: e.display,
+      canal: e.canal,
+      categoria: e.categoria,
+      formato: e.formato,
+      tipoCompra: e.tipoCompra,
+      impresiones: e.impresiones,
+      reach: e.reach,
+      frequency: e.reach > 0 ? e.impresiones / e.reach : 0,
+      revenueUsd: e.revenueUsd,
+      cpm: e.impresiones > 0 ? (e.revenueUsd / e.impresiones) * 1000 : 0,
+    }))
+    .sort((a, b) => b.revenueUsd - a.revenueUsd);
+}
+
 // ---- Embudo de visibilidad de video por canal -------------------------------
 export interface Dv360Funnel {
   canal: string;

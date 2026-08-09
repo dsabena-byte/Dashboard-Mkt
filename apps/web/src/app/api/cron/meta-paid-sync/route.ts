@@ -234,11 +234,11 @@ function sumActions(arr: Array<{ value?: string }> | undefined): number {
 // Parsea el nombre OMD-convention "Drean - {Categoria} - {Medio} - {TipoCompra} - {SKU} [extra]"
 // Devuelve la clasificación inferida o nulls si no matchea el patrón.
 function parseAdName(adName: string | null | undefined, objective?: string | null, campaignName?: string | null): {
-  categoria: string | null;
+  categoria: string;   // nunca null: cae en "Otras" si no se pudo inferir (red de seguridad)
   tipo_compra: string | null;
   rol: string | null;
 } {
-  if (!adName && !campaignName) return { categoria: null, tipo_compra: null, rol: null };
+  if (!adName && !campaignName) return { categoria: "Otras", tipo_compra: null, rol: null };
   adName = adName ?? "";
   // Separadores tolerantes (algunos ads tienen "Lavado- Meta" sin espacio).
   const parts = adName.split(/\s*-\s*/).map((p) => p.trim());
@@ -263,9 +263,16 @@ function parseAdName(adName: string | null | undefined, objective?: string | nul
   // cualquier parte del nombre, no solo en el patrón de guiones.
   if (!categoria && /(^|[^a-z])ugc([^a-z]|$)/i.test(adName)) categoria = "UGC";
   // Brand: piezas institucionales sin categoría de producto — videos "MASTER" de
-  // marca (ej. "Drean_Video_MASTER ... DREAN VIDEO AD TOKIO 15s") o que mencionan
-  // "brand" en cualquier parte del nombre.
-  if (!categoria && (/video[ _]?master/i.test(adName) || /(^|[^a-z])brand([^a-z]|$)/i.test(adName))) categoria = "Brand";
+  // marca (ej. "Drean_Video_MASTER ... DREAN VIDEO AD TOKIO 15s"), campañas de
+  // talento/vocero (ej. "Marcelino", el vocero de "El tipo que vende Drean") o que
+  // mencionan "brand" en cualquier parte del nombre.
+  if (
+    !categoria &&
+    (/video[ _]?master/i.test(adName) ||
+      /(^|[^a-z])brand([^a-z]|$)/i.test(adName) ||
+      /(^|[^a-z])marcelino([^a-z]|$)/i.test(adName))
+  )
+    categoria = "Brand";
   // Fallback por nombre de CAMPAÑA (ej. "MABE_Drean_Reach_UGC_Julio_26"): si el ad
   // no encodea la categoría en su nombre, la derivamos de la campaña. UGC primero
   // (campañas de creadores). Los separadores son "_", que cuentan como no-letra.
@@ -277,7 +284,7 @@ function parseAdName(adName: string | null | undefined, objective?: string | nul
       : /refriger|heladera/.test(c) ? "Refrigeración"
       : /cocci|cocina/.test(c) ? "Cocción"
       : /promo/.test(c) ? "Promoción"
-      : (/(^|[^a-z])brand([^a-z]|$)/.test(c) || /video[ _]?master/.test(c)) ? "Brand"
+      : (/(^|[^a-z])brand([^a-z]|$)/.test(c) || /video[ _]?master/.test(c) || /(^|[^a-z])marcelino([^a-z]|$)/.test(c)) ? "Brand"
       : null;
   }
   if (!tipo_compra) {
@@ -299,7 +306,11 @@ function parseAdName(adName: string | null | undefined, objective?: string | nul
   const rol = tipo_compra === "CPC" ? "Consideración"
             : tipo_compra === "CPM" || tipo_compra === "CPV" ? "Awareness"
             : null;
-  return { categoria, tipo_compra, rol };
+  // Red de seguridad: NINGUNA pieza debe quedar sin categoría. Una pieza con
+  // categoria=null desaparece del dashboard (las grillas/tablas filtran y agrupan
+  // por categoría, y cae bajo "—"). Si no se pudo inferir, va a "Otras" — visible,
+  // y señala que conviene renombrarla según la convención OMD.
+  return { categoria: categoria ?? "Otras", tipo_compra, rol };
 }
 
 // Agrega meta_paid_creatives del mes por (categoria, rol, tipo_compra) y
