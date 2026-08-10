@@ -36,7 +36,7 @@ export function LlmoSection({ rows }: { rows: LlmoRow[] }) {
         <div>
           <h2 className="text-lg font-bold">Visibilidad en IA · LLMO</h2>
           <p className="mt-1 max-w-3xl text-[11px] text-muted-foreground">
-            <strong>Qué mide:</strong> cuánto aparece cada marca cuando un consumidor le pregunta a una IA (ChatGPT / Gemini) por la categoría — el nuevo lugar donde se investiga antes de comprar. Es el <strong>Share of Search del canal de IA generativa</strong> (LLMO / GEO). <strong>Cómo se calcula:</strong> se corren varios prompts (&quot;¿qué {"{"}categoría{"}"} conviene en Argentina?&quot;) varias veces; se cuenta cuántas veces se nombra cada marca y su <strong>share de menciones</strong>. <em>v1: refleja el conocimiento del modelo (gpt-4o-mini), no búsqueda web en vivo.</em>
+            <strong>Qué mide:</strong> cuánto aparece cada marca cuando un consumidor le pregunta a una IA (ChatGPT / Gemini) por la categoría — el nuevo lugar donde se investiga antes de comprar. Es el <strong>Share of Search del canal de IA generativa</strong> (LLMO / GEO). <strong>Cómo se calcula:</strong> se corren varios prompts (&quot;¿qué {"{"}categoría{"}"} conviene en Argentina?&quot;) varias veces; se cuenta cuántas veces se nombra cada marca y su <strong>share de menciones</strong>. <em>Con búsqueda web en vivo (gpt-4o-search-preview): refleja lo que la IA responde hoy leyendo la web, no su memoria de entrenamiento.</em>
           </p>
         </div>
         <div className="ml-auto flex gap-1">
