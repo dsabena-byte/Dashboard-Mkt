@@ -94,6 +94,9 @@ function quartiles(r: MetaPaidCreativeRow): { p25: number; p50: number; p75: num
   return { p25: r.vtr_p25 ?? 0, p50: r.vtr_p50 ?? 0, p75: r.vtr_p75 ?? 0, p100: r.vtr_p100 ?? 0 };
 }
 
+// ¿La pieza tiene comentarios (y por ende análisis cualitativo)?
+const hasQual = (s: Score) => !!s.piece?.analysis || (s.piece?.comments.length ?? 0) > 0;
+
 export function UgcTestingPanel({
   creatives,
   analysis = [],
@@ -176,7 +179,6 @@ export function UgcTestingPanel({
       arr.push(s);
       g.set(s.campaign, arr);
     }
-    const hasQual = (s: Score) => !!s.piece?.analysis || (s.piece?.comments.length ?? 0) > 0;
     return [...g.entries()]
       .map(([campaign, items]) => {
         // Primero las piezas con comentarios (las que tienen análisis), y al final
@@ -228,8 +230,10 @@ export function UgcTestingPanel({
             </div>
             {t.allLow && <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-medium text-amber-600">muestra chica · tomar con pinzas</span>}
           </div>
-          <div className="grid gap-3 p-3 lg:grid-cols-2">
-            {t.ranked.map((s) => {
+          {(() => {
+            const conAn = t.ranked.filter(hasQual);
+            const sinAn = t.ranked.filter((s) => !hasQual(s));
+            const card = (s: Score) => {
               const isWinner = s.ad_id === t.winner && (s.hookRate ?? 0) > 0;
               const cq = contentQuality(s.retention, s.engRate, t.bestRet, t.bestEng);
               return (
@@ -342,8 +346,25 @@ export function UgcTestingPanel({
                   )}
                 </div>
               );
-            })}
-          </div>
+            };
+            return (
+              <div className="space-y-3 p-3">
+                {conAn.length > 0 && (
+                  <div className="grid gap-3 lg:grid-cols-2">{conAn.map(card)}</div>
+                )}
+                {sinAn.length > 0 && (
+                  <>
+                    {conAn.length > 0 && (
+                      <div className="px-1 pt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Sin comentarios · lectura por calidad de contenido
+                      </div>
+                    )}
+                    <div className="grid gap-3 lg:grid-cols-2">{sinAn.map(card)}</div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </div>
       ))}
     </section>
