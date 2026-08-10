@@ -3,10 +3,12 @@ name: SEO sync (SERP matrix · competitivo)
 # Módulo B · SEO Competitivo: para cada keyword del universo consulta la SERP y
 # guarda la posición de cada dominio (marcas + retailers) → seo_rankings.
 # Se procesa por chunks (Vercel corta a 300s): el loop llama offset=0,80,160...
-# hasta cubrir todo. Semanal. NECESITA saldo en DataForSEO.
+# hasta cubrir todo. MENSUAL (el SERP live depth-100 cuesta ~$0.0138/keyword, así
+# que una corrida completa ≈ $5-7; el índice se mueve lento → no hace falta semanal).
+# NECESITA saldo en DataForSEO.
 on:
   schedule:
-    - cron: "40 6 * * 1"  # lunes 06:40 UTC
+    - cron: "40 6 1 * *"  # día 1 de cada mes, 06:40 UTC (mensual: el índice se mueve lento y el SERP es caro)
   workflow_dispatch:
     inputs:
       limit:

@@ -111,6 +111,10 @@ export async function GET(request: Request) {
       acciones: i.acciones,
       datos: i.datos,
       fecha_generado: new Date().toISOString(),
+      // updated_at explícito: el upsert merge-duplicates NO lo bumpea solo cuando
+      // se re-emiten las mismas señales, y el Monitoreo mide frescura por esta
+      // columna. Sin esto, insights_log figura "crítico" aunque corra a diario.
+      updated_at: new Date().toISOString(),
       estado: "nuevo",
     }));
     results.upsert = await supabaseUpsert("insights_log", rows, "categoria,signal_key");
