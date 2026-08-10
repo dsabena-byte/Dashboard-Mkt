@@ -32,6 +32,35 @@ function nivelColor(nivel?: string): string {
   return "text-muted-foreground";
 }
 
+// Calidad de contenido a partir del engagement que genera la pieza —retención
+// (que se vea completo) + reacción (interacciones)—, relativo al mejor del test.
+// Da una lectura para TODA pieza, tenga o no comentarios. La retención pesa más:
+// que la vean hasta el final es la señal más fuerte de contenido que engancha.
+function contentQuality(
+  retention: number | null,
+  engRate: number | null,
+  bestRet: number,
+  bestEng: number,
+): { nivel: string; detalle: string } | null {
+  const hasRet = retention != null && retention > 0;
+  const hasEng = engRate != null && engRate > 0;
+  if (!hasRet && !hasEng) return null;
+  const rr = bestRet > 0 && hasRet ? Math.min(retention! / bestRet, 1) : 0;
+  const re = bestEng > 0 && hasEng ? Math.min(engRate! / bestEng, 1) : 0;
+  const score = 0.6 * rr + 0.4 * re;
+  const nivel = score >= 0.7 ? "alta" : score >= 0.4 ? "media" : "baja";
+  const strongRet = rr >= 0.7;
+  const strongEng = re >= 0.7;
+  const detalle = strongRet && strongEng
+    ? "Retiene hasta el final y genera reacción — contenido que engancha."
+    : strongRet
+      ? "Buena retención (se ve completo), pero genera poca reacción."
+      : strongEng
+        ? "Genera reacción, pero pocos lo ven hasta el final."
+        : "Baja retención y poca reacción frente a las otras del test.";
+  return { nivel, detalle };
+}
+
 interface Score {
   ad_id: string;
   name: string;
@@ -147,15 +176,22 @@ export function UgcTestingPanel({
       arr.push(s);
       g.set(s.campaign, arr);
     }
+    const hasQual = (s: Score) => !!s.piece?.analysis || (s.piece?.comments.length ?? 0) > 0;
     return [...g.entries()]
       .map(([campaign, items]) => {
-        const ranked = items.slice().sort((a, b) => (b.hookRate ?? -1) - (a.hookRate ?? -1));
+        // Primero las piezas con comentarios (las que tienen análisis), y al final
+        // las que no; dentro de cada grupo, ranking por hook rate.
+        const ranked = items.slice().sort((a, b) => {
+          const d = (hasQual(b) ? 1 : 0) - (hasQual(a) ? 1 : 0);
+          return d !== 0 ? d : (b.hookRate ?? -1) - (a.hookRate ?? -1);
+        });
         const bestHook = Math.max(0, ...ranked.map((s) => s.hookRate ?? 0));
         const bestCtr = Math.max(0, ...ranked.map((s) => s.ctr ?? 0));
         const bestEng = Math.max(0, ...ranked.map((s) => s.engRate ?? 0));
+        const bestRet = Math.max(0, ...ranked.map((s) => s.retention ?? 0));
         // Ganador: mejor hook rate con muestra suficiente; si ninguno, tentativo.
         const winner = ranked.find((s) => !s.lowSample && (s.hookRate ?? 0) > 0)?.ad_id ?? ranked[0]?.ad_id;
-        return { campaign, ranked, bestHook, bestCtr, bestEng, winner, allLow: ranked.every((s) => s.lowSample) };
+        return { campaign, ranked, bestHook, bestCtr, bestEng, bestRet, winner, allLow: ranked.every((s) => s.lowSample) };
       })
       .sort((a, b) => b.ranked.length - a.ranked.length || b.bestHook - a.bestHook);
   }, [scores]);
@@ -179,7 +215,7 @@ export function UgcTestingPanel({
       <div className="mt-2">
         <h3 className="text-sm font-medium">Testeo de creativos</h3>
         <p className="text-xs text-muted-foreground">
-          Por pieza y rankeadas por <strong>hook rate</strong> dentro de cada campaña (test): primero las métricas del posteo y debajo la <strong>validación desde comentarios reales</strong> — credibilidad, persuasión y percepción de marca destacadas, con el detalle y las mejoras de guión.
+          Por pieza dentro de cada campaña (test): primero las métricas del posteo, después la <strong>calidad de contenido</strong> (retención + reacción, para toda pieza) y —si tiene comentarios— la <strong>validación cualitativa</strong> (credibilidad, persuasión y percepción de marca). Las piezas con comentarios van primero; las que no tienen, al final.
         </p>
       </div>
 
@@ -195,6 +231,7 @@ export function UgcTestingPanel({
           <div className="grid gap-3 p-3 lg:grid-cols-2">
             {t.ranked.map((s) => {
               const isWinner = s.ad_id === t.winner && (s.hookRate ?? 0) > 0;
+              const cq = contentQuality(s.retention, s.engRate, t.bestRet, t.bestEng);
               return (
                 <div key={s.ad_id} className="rounded-lg border bg-background p-3">
                   {/* 1) Info del posteo */}
@@ -245,8 +282,17 @@ export function UgcTestingPanel({
                     </div>
                   </div>
 
+                  {/* Calidad de contenido — lectura por engagement (toda pieza) */}
+                  {cq && (
+                    <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-lg border bg-muted/20 px-3 py-2">
+                      <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Calidad de contenido</span>
+                      <span className={`text-xs font-bold capitalize ${nivelColor(cq.nivel)}`}>{cq.nivel}</span>
+                      <span className="text-[11px] text-muted-foreground">· {cq.detalle}</span>
+                    </div>
+                  )}
+
                   {/* 2) Análisis desde comentarios reales */}
-                  {(s.piece?.analysis || (s.piece?.comments.length ?? 0) > 0) && (
+                  {(s.piece?.analysis || (s.piece?.comments.length ?? 0) > 0) ? (
                     <div className="mt-3 space-y-2.5 border-t pt-3">
                       {s.piece?.analysis ? (
                         <>
@@ -289,6 +335,10 @@ export function UgcTestingPanel({
                         </details>
                       )}
                     </div>
+                  ) : (
+                    <p className="mt-3 border-t pt-3 text-[11px] italic text-muted-foreground">
+                      Sin comentarios para analizar — la lectura de esta pieza es por calidad de contenido (arriba).
+                    </p>
                   )}
                 </div>
               );
