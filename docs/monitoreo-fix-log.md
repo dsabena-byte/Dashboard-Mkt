@@ -6,6 +6,22 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-08-10 · SEO sync — proceso caro y lento (optimización de costo)
+
+- **Detectado:** el sync de SEO (SERP matrix) corría **semanal** y cada corrida
+  completa (489 keywords, SERP live depth-100 a ~$0.0138 c/u) cuesta **$5-7** →
+  ~$25-30/mes. Además tardaba ~12 min. Desproporcionado para un índice de
+  posición que se mueve lento.
+- **Arreglo:** cadencia **semanal → mensual** (`cron: 40 6 1 * *`). El histórico
+  del índice ya es mensual, así que es la cadencia natural. Corta el costo ~4x
+  (~$6/mes). Antes se había paralelizado el SERP (8 concurrentes) para evitar el
+  timeout de 300s.
+- **Pendiente opcional (si se quiere aún más barato):** pasar de SERP `live` a
+  task-based (standard, ~3x más barato, async), bajar `depth`, o recortar el
+  universo a las keywords de mayor volumen.
+
+---
+
 ## 2026-08-10 · Insights orgánicos — "crítico (hace 3d)"
 
 - **Alarma:** `Insights orgánicos` en crítico — última actualización hace 3 días
