@@ -32,6 +32,7 @@ async function serp(keyword: string): Promise<SerpTask | undefined> {
     method: "POST",
     headers: { Authorization: `Basic ${env("DATAFORSEO_AUTH")}`, "Content-Type": "application/json" },
     body: JSON.stringify([{ keyword, location_code: LOCATION_CODE_AR, language_code: LANGUAGE_CODE_ES, depth: 100 }]),
+    signal: AbortSignal.timeout(45000), // que una keyword colgada no trabe el batch
   });
   const json = (await res.json()) as { status_code?: number; tasks?: SerpTask[] };
   const task = json.tasks?.[0];
@@ -73,27 +74,39 @@ export async function GET(request: Request) {
   const out: Record<string, unknown> = { total: universo.length, offset, limit, procesadas: slice.length };
   try {
     const rows: Record<string, unknown>[] = [];
-    for (const kw of slice) {
-      let task;
-      try {
-        task = await serp(kw.keyword);
-      } catch (e) {
-        if (String(e).includes("sin saldo")) throw e; // corta si no hay fondos
-        continue; // otra falla puntual: saltea la keyword
-      }
-      const items = task?.result?.[0]?.items ?? [];
-      const seen = new Set<string>();
-      for (const it of items) {
-        if (it.type !== "organic") continue;
-        const dom = (it.domain ?? "").toLowerCase();
-        for (const td of TRACKED_DOMAINS) {
-          if (dom.includes(td.dominio) && !seen.has(td.display)) {
-            seen.add(td.display);
-            rows.push({ dominio: td.dominio, marca: td.display, keyword: kw.keyword, categoria: kw.categoria, posicion: it.rank_group ?? null, search_volume: kw.volume, url: it.url ?? null, fecha, fetched_at: now });
+    // Las llamadas SERP live (depth 100) tardan ~6s c/u; en secuencial 40 keywords
+    // rozan los 300s de Vercel. Se procesan en batches CONCURRENTES para bajar el
+    // tiempo a ~1/8 (DataForSEO soporta esta concurrencia holgadamente).
+    const CONCURRENCY = 8;
+    let sinSaldo = false;
+    for (let i = 0; i < slice.length && !sinSaldo; i += CONCURRENCY) {
+      const batch = slice.slice(i, i + CONCURRENCY);
+      const tasks = await Promise.all(
+        batch.map(async (kw) => {
+          try {
+            return { kw, task: await serp(kw.keyword) };
+          } catch (e) {
+            if (String(e).includes("sin saldo")) sinSaldo = true;
+            return { kw, task: undefined }; // falla puntual (timeout/red): se saltea
+          }
+        }),
+      );
+      for (const { kw, task } of tasks) {
+        const items = task?.result?.[0]?.items ?? [];
+        const seen = new Set<string>();
+        for (const it of items) {
+          if (it.type !== "organic") continue;
+          const dom = (it.domain ?? "").toLowerCase();
+          for (const td of TRACKED_DOMAINS) {
+            if (dom.includes(td.dominio) && !seen.has(td.display)) {
+              seen.add(td.display);
+              rows.push({ dominio: td.dominio, marca: td.display, keyword: kw.keyword, categoria: kw.categoria, posicion: it.rank_group ?? null, search_volume: kw.volume, url: it.url ?? null, fecha, fetched_at: now });
+            }
           }
         }
       }
     }
+    if (sinSaldo) throw new Error("DataForSEO sin saldo (Payment Required) — cargá fondos");
     await sbUpsert(rows);
     out.filas = rows.length;
     out.resto = Math.max(0, universo.length - (offset + slice.length));
