@@ -8,8 +8,11 @@ import { CATEGORIAS, CATEGORIA_TERMINO, marcasDeCategoria } from "@/lib/competit
 // del canal de IA generativa. Guarda en seo_llmo (mes actual).
 
 export const maxDuration = 300;
-const MODEL = "gpt-4o-mini";
-const REPEATS = 2; // cada prompt se corre 2 veces para estabilizar
+// Modelo CON búsqueda web en vivo: mide la visibilidad real en IA (lo que la IA
+// responde hoy leyendo la web), no la memoria de entrenamiento. No acepta
+// temperature. Las llamadas son más lentas, por eso 1 corrida por prompt.
+const MODEL = "gpt-4o-search-preview";
+const REPEATS = 1;
 
 function env(key: string): string {
   const v = process.env[key];
@@ -43,7 +46,15 @@ async function askLLM(apiKey: string, prompt: string): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, messages: [{ role: "user", content: prompt }], temperature: 0.7, max_tokens: 500 }),
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 800,
+      // Búsqueda geolocalizada en Argentina (no resultados globales).
+      web_search_options: {
+        user_location: { type: "approximate", approximate: { country: "AR", city: "Buenos Aires", region: "Buenos Aires" } },
+      },
+    }),
   });
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 150)}`);
   const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
