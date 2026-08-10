@@ -192,7 +192,7 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
       {historiaDrean.length > 0 && (
         <div className="rounded-xl border bg-card p-4">
           <h3 className="text-sm font-semibold">Evolución del índice de Drean — {CATS.find((c) => c.key === cat)?.label}</h3>
-          <p className="mt-0.5 text-[11px] text-muted-foreground"><strong>Qué mide:</strong> cómo se mueve mes a mes el índice de posición de Drean (menor = mejor; eje invertido, así "arriba" es mejor). Se guarda un snapshot mensual; el histórico se acumula con el tiempo.</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground"><strong>Qué mide:</strong> cómo se mueve mes a mes el índice de posición de Drean (menor = mejor; el eje está invertido, así lo mejor queda arriba). Se guarda un snapshot mensual; el histórico se acumula con el tiempo.</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historiaDrean} margin={{ left: 0, right: 16, top: 16, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
