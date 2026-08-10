@@ -56,7 +56,7 @@ export function RegionSection({ rows }: { rows: RegionRow[] }) {
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Interés de búsqueda (índice 0-100 de Google Trends) por provincia para <strong>{marca === "Genérico" ? "la categoría" : marca}</strong> en {cat}. Más oscuro = más búsquedas.
+        <strong>Qué mide:</strong> el interés de búsqueda de <strong>{marca === "Genérico" ? "la categoría" : marca}</strong> en {cat} por provincia (Google Trends, últimos 12 meses). <strong>Cómo se lee:</strong> índice relativo 0-100 — <strong>100</strong> = la provincia que más busca; el resto es relativo a ella. Más oscuro en el mapa = más interés. El ranking de la derecha ordena las provincias por ese índice.
       </p>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_260px]">

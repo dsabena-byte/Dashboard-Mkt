@@ -151,7 +151,7 @@ export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold">Índice de posición conglomerado</h3>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Posición promedio ponderada por volumen (no rankea = 100). <strong>Menor = mejor.</strong> Azul = Drean, gris = marcas, violeta = retailers.</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground"><strong>Qué mide:</strong> qué tan bien posicionado está cada dominio en Google para TODAS las keywords de la categoría, ponderando por volumen de búsqueda. <strong>Cómo se calcula:</strong> Σ(volumen × posición) ÷ Σ(volumen) sobre todo el universo de keywords; si el dominio no aparece en una keyword, cuenta como posición 100. <strong>Menor = mejor</strong> (ej. 5.5 = en promedio ponderado rankea ~5º). Azul = Drean, gris = marcas, violeta = retailers.</p>
           </div>
           <div className="flex gap-1">
             {([["todos", "Todos"], ["marca", "Marcas"], ["retailer", "Retail"]] as const).map(([k, lbl]) => (
@@ -182,10 +182,14 @@ export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
       </div>
 
       {/* Buckets accionables */}
+      <div>
+        <h3 className="text-sm font-semibold">Keywords según la posición de Drean</h3>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">Las keywords de la categoría clasificadas según <strong>en qué posición de Google rankea DREAN</strong> hoy — dónde falta contenido, dónde hay quick wins y qué hay que defender. <strong>VOL</strong> = volumen mensual de búsqueda. En Faltantes, <strong>Líder</strong> = quién ocupa el top hoy.</p>
+      </div>
       <div className="grid gap-4 lg:grid-cols-3">
         <BucketTable title="🔴 Faltantes" subtitle="Drean no rankea — contenido a crear" rows={buckets.faltantes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: f.lider ?? "—" }))} extraLabel="Líder" />
-        <BucketTable title="🟡 Débiles" subtitle="Pos. 8-20 — quick wins" rows={buckets.debiles.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
-        <BucketTable title="🟢 Fuertes" subtitle="Top-3 — defender" rows={buckets.fuertes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
+        <BucketTable title="🟡 Débiles" subtitle="Drean pos. 8-20 — quick wins" rows={buckets.debiles.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
+        <BucketTable title="🟢 Fuertes" subtitle="Drean top-3 — defender" rows={buckets.fuertes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
       </div>
 
       {/* Matriz de posición (Content GAP) */}

@@ -144,7 +144,7 @@ export function SeoSearchClient({
       </div>
 
       {/* Share of Search — snapshot */}
-      <Card title="Share of Search — último mes" subtitle="Participación de cada marca en las búsquedas de la categoría (predice market share). Drean resaltado.">
+      <Card title="Share of Search — último mes" subtitle="Participación de cada marca en las búsquedas de la categoría (predice la Intención de Compra). Suma 100% entre las marcas. Drean resaltado.">
         <ResponsiveContainer width="100%" height={Math.max(240, snapshot.length * 30)}>
           <BarChart data={snapshot} layout="vertical" margin={{ left: 8, right: 40, top: 4, bottom: 4 }}>
             <XAxis type="number" tickFormatter={(v) => `${v}%`} fontSize={11} stroke="hsl(var(--muted-foreground))" />
@@ -194,7 +194,7 @@ export function SeoSearchClient({
       </Card>
 
       {/* Google Trends — interés */}
-      <Card title="Interés de búsqueda (Google Trends)" subtitle="Índice 0-100, serie semanal. Complementa el volumen absoluto con la forma/estacionalidad.">
+      <Card title="Interés de búsqueda (Google Trends)" subtitle="Qué mide: la evolución del interés de búsqueda de cada marca, semanal, últimos 12 meses. Cómo se lee: es un índice RELATIVO 0-100, no un share — 100 = el pico de interés más alto de todo el set; cada punto es el interés de esa marca relativo a ese máximo. Por eso las marcas NO suman 100 (para el share, ver el gráfico de arriba). Sirve para ver forma y estacionalidad, no volumen absoluto.">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={trendSeries} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
             <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
