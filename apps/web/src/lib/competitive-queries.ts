@@ -198,6 +198,38 @@ export async function getLlmo(): Promise<LlmoRow[]> {
   }));
 }
 
+// Última actualización de cada fuente del dashboard SEO / Search.
+export interface SeoFreshness {
+  demanda: string | null; // search_volume (Share of Search + demanda)
+  trends: string | null;  // trends_interest
+  serp: string | null;    // seo_rankings (posición / SEO competitivo)
+  region: string | null;  // search_region (mapa por provincia)
+  indice: string | null;  // seo_index_history (histórico del índice)
+  llmo: string | null;    // seo_llmo (visibilidad en IA)
+}
+async function ultimaFecha(tabla: string, col: string): Promise<string | null> {
+  const sb = getServerSupabase();
+  const { data, error } = await sb
+    .from(tabla as never)
+    .select(col)
+    .order(col, { ascending: false })
+    .limit(1)
+    .returns<Array<Record<string, string | null>>>();
+  if (error || !data || data.length === 0) return null;
+  return data[0]?.[col] ?? null;
+}
+export async function getSeoFreshness(): Promise<SeoFreshness> {
+  const [demanda, trends, serp, region, indice, llmo] = await Promise.all([
+    ultimaFecha("search_volume", "fetched_at").catch(() => null),
+    ultimaFecha("trends_interest", "fetched_at").catch(() => null),
+    ultimaFecha("seo_rankings", "fetched_at").catch(() => null),
+    ultimaFecha("search_region", "fetched_at").catch(() => null),
+    ultimaFecha("seo_index_history", "updated_at").catch(() => null),
+    ultimaFecha("seo_llmo", "updated_at").catch(() => null),
+  ]);
+  return { demanda, trends, serp, region, indice, llmo };
+}
+
 // Demanda genérica de la categoría (keyword genérica, sin marca) por mes.
 export async function getDemandaGenerica(): Promise<DemandaRow[]> {
   const sb = getServerSupabase();
