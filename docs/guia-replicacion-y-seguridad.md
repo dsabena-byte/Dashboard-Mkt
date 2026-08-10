@@ -1,4 +1,4 @@
-# Guía completa: replicar el tablero, modelo de negocio, seguridad y la brújula de marca
+# Guía completa: replicar la plataforma, modelo de negocio, seguridad y la brújula de marca
 
 > Documento en lenguaje simple. Explica **qué es el sistema**, **cómo se
 > replicaría para otra empresa**, **cómo cobrarlo (modelo de alquiler)**, **cómo
@@ -10,24 +10,42 @@
 
 ## 1. Qué es este sistema, en simple
 
-Es un tablero de marketing que hace tres cosas:
+**Ojo con la palabra "tablero": esto NO es un dashboard que solo muestra números.**
+Es una **plataforma integral de gestión de marca y marketing** que cubre el ciclo
+completo —de la estrategia a la ejecución y a la proyección— en un circuito que se
+retroalimenta. Hace cuatro cosas:
 
-1. **Recolecta** datos de muchas fuentes: Meta/Instagram, Google Ads, YouTube/DV360, Google Analytics, TikTok, buscadores (SEO), research de mercado, etc.
-2. **Los guarda** ordenados en una base de datos en la nube.
-3. **Los muestra** en gráficos y tableros para tomar decisiones.
+1. **Despliega la estrategia.** Baja el plan a lo concreto: objetivos, presupuesto
+   por medio, calendario, y **genera el contenido con IA** (imágenes, videos,
+   guiones UGC) listo para publicar. No solo planifica: **produce**.
+2. **Ejecuta y acciona.** Crea las piezas, las programa y las publica; y sobre la
+   marcha te dice **qué optimizar y dónde hay oportunidad** (testeo de creativos,
+   insights accionables).
+3. **Mide e identifica desvíos.** En **todos los canales a la vez** (pauta paga,
+   orgánico, web, SEO/buscadores, góndola, competencia), con un **Monitoreo** que
+   avisa cuando una fuente se rompe o algo se aparta del plan.
+4. **Proyecta el brand equity.** La **"brújula"** que anticipa hacia dónde va la
+   salud de marca entre mediciones, para corregir el rumbo a tiempo.
+
+En una frase: es el **centro de comando del marketing** — plan → ejecución →
+medición → acción → proyección, y vuelta a empezar. Los gráficos son solo la
+superficie visible; abajo hay generación de contenido, automatización de datos de
+todas las fuentes, y modelos predictivos.
 
 Las piezas técnicas, cada una explicada en una línea:
 
 | Pieza | Qué es, en criollo |
 |---|---|
-| **Next.js / React** | El programa que dibuja las pantallas y los gráficos (la parte visible). |
+| **Next.js / React** | El programa que dibuja las pantallas y las herramientas con las que operás (la parte visible). |
 | **Vercel** | El servicio en la nube que mantiene la app "prendida" y online. |
 | **Supabase** | La base de datos en la nube (como un archivo gigante y seguro donde se guarda todo) + el sistema de login. |
-| **GitHub Actions** | Unos "robots" programados que corren cada tanto y salen a buscar los datos frescos de cada fuente. |
-| **APIs de las plataformas** (Meta, Google…) | Las puertas oficiales por donde cada plataforma nos entrega SUS datos. |
-| **IA (OpenAI, fal.ai)** | Analiza comentarios, arma insights, mide visibilidad, genera contenido. |
+| **GitHub Actions** | Unos "robots" programados que corren solos: traen los datos frescos de cada fuente y disparan procesos (ej. publicar contenido). |
+| **APIs de las plataformas** (Meta, Google…) | Las puertas oficiales por donde se leen los datos **y** se ejecutan acciones (publicar, pautar). |
+| **IA (OpenAI, fal.ai)** | **Genera** contenido (imágenes, videos, guiones), analiza comentarios, arma insights, mide visibilidad y alimenta la proyección de equity. |
 
-La regla mental clave: **los gráficos son lo fácil. Lo difícil y valioso es la "cañería" que trae los datos de cada fuente** (los conectores).
+La regla mental clave: **las pantallas son la punta del iceberg. El valor está
+abajo: la cañería que trae datos de todas las fuentes, la generación de contenido,
+y los modelos que proyectan la marca.**
 
 ---
 
@@ -83,8 +101,8 @@ No son los gráficos —esos ya están hechos—. El esfuerzo real es:
 ## 3. El modelo de negocio (alquiler de la plataforma)
 
 La idea: vos sos el dueño de la plataforma y de las herramientas; el cliente
-**solo usa el tablero**, paga un abono mensual, y si deja de pagar le cortás el
-acceso. Es el modelo clásico de "software como servicio". Funciona muy bien, con
+**solo usa la plataforma** (opera desde las pantallas), paga un abono mensual, y
+si deja de pagar le cortás el acceso. Es el modelo clásico de "software como servicio". Funciona muy bien, con
 un matiz clave.
 
 ### Hay DOS tipos de cuentas
@@ -103,9 +121,9 @@ permiso.
 > cliente, vos solo tenés la llave para leerlas.**
 
 ### Cómo responde el modelo a lo importante
-- **El cliente solo ve el tablero, nada más.** Correcto y recomendable: un login
-  al tablero y punto. No ve la base, ni el hosting, ni los robots, ni las llaves.
-  Menos accesos = más seguro.
+- **El cliente solo ve las pantallas de la plataforma, nada más.** Correcto y
+  recomendable: un login y punto. No ve la base, ni el hosting, ni los robots, ni
+  las llaves. Menos accesos = más seguro.
 - **"Le alquilo la plataforma".** Sí. El abono cubre tus costos de herramientas +
   tu trabajo + margen.
 - **"Si deja de pagar, no ve más nada".** Sí, y es **inmediato**: deshabilitás su
@@ -137,7 +155,7 @@ permiso.
 Esta es la parte más importante si se lo ofrecés a otra empresa: van a confiarte datos muy sensibles y van a querer garantías.
 
 ### Por qué importa tanto
-Un tablero de marketing contiene información **muy delicada**: cuánto gasta la empresa en publicidad, su estrategia, qué campañas funcionan, datos de la competencia, a veces datos de clientes. Si se filtra, el daño es serio: competitivo (que lo vea un rival), legal (leyes de protección de datos) y reputacional (perder la confianza del cliente).
+Una plataforma de marketing como esta contiene información **muy delicada**: cuánto gasta la empresa en publicidad, su estrategia, qué campañas funcionan, datos de la competencia, a veces datos de clientes. Si se filtra, el daño es serio: competitivo (que lo vea un rival), legal (leyes de protección de datos) y reputacional (perder la confianza del cliente).
 
 ### Las "llaves" del sistema y por qué cuidarlas
 
@@ -272,7 +290,7 @@ ofrecer la plataforma.
 - **Replicar:** el código se reutiliza; el trabajo real es preparar el molde una
   vez y conseguir/cargar los accesos de cada empresa nueva.
 - **Negocio:** modelo de alquiler — vos dueño de la plataforma y las herramientas,
-  el cliente solo usa el tablero; si no paga, se corta el acceso al instante. Cuidá
+  el cliente solo usa la plataforma; si no paga, se corta el acceso al instante. Cuidá
   el contrato de datos, los topes de gasto de IA y no depender de una sola cuenta.
 - **Seguridad:** tres pilares — secretos bien guardados, datos aislados por
   empresa, y control estricto de quién entra.
