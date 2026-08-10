@@ -219,6 +219,12 @@ export function UgcTestingPanel({
         <p className="text-xs text-muted-foreground">
           Por pieza dentro de cada campaña (test): primero las métricas del posteo, después la <strong>calidad de contenido</strong> (retención + reacción, para toda pieza) y —si tiene comentarios— la <strong>validación cualitativa</strong> (credibilidad, persuasión y percepción de marca). Las piezas con comentarios van primero; las que no tienen, al final.
         </p>
+        <div className="mt-2 grid gap-x-4 gap-y-1 rounded-lg border bg-muted/20 p-2.5 text-[10px] leading-relaxed text-muted-foreground sm:grid-cols-2">
+          <span><strong className="text-foreground/70">Hook rate</strong> = reproducciones de video ÷ impresiones. De los que la cruzaron, qué % arrancó a mirarla (el gancho de los primeros segundos).</span>
+          <span><strong className="text-foreground/70">Retención</strong> = reproducciones que llegaron al 100% ÷ reproducciones. De los que arrancaron, cuántos la vieron hasta el final.</span>
+          <span><strong className="text-foreground/70">CTR</strong> = clics ÷ impresiones.</span>
+          <span><strong className="text-foreground/70">Interacción</strong> = engagement rate = (reacciones + comentarios + compartidos + guardados) ÷ impresiones.</span>
+        </div>
       </div>
 
       {tests.map((t) => (
@@ -271,10 +277,10 @@ export function UgcTestingPanel({
                       </div>
 
                       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
-                        <Metric label="Hook rate" value={pct(s.hookRate)} big cls={tone(s.hookRate, t.bestHook, "higher")} />
-                        <Metric label="Retención" value={pct(s.retention)} hint="del 100%" />
-                        <Metric label="CTR" value={pct(s.ctr, 2)} cls={tone(s.ctr, t.bestCtr, "higher")} />
-                        <Metric label="Interacción" value={pct(s.engRate, 2)} cls={tone(s.engRate, t.bestEng, "higher")} hint={`${fmtNum(s.interactions)} int.`} />
+                        <Metric label="Hook rate" value={pct(s.hookRate)} big cls={tone(s.hookRate, t.bestHook, "higher")} tip="Reproducciones de video ÷ impresiones — qué % arrancó a mirar la pieza." />
+                        <Metric label="Retención" value={pct(s.retention)} hint="del 100%" tip="Reproducciones que llegaron al 100% ÷ reproducciones — cuántos la vieron hasta el final." />
+                        <Metric label="CTR" value={pct(s.ctr, 2)} cls={tone(s.ctr, t.bestCtr, "higher")} tip="Clics ÷ impresiones." />
+                        <Metric label="Interacción" value={pct(s.engRate, 2)} cls={tone(s.engRate, t.bestEng, "higher")} hint={`${fmtNum(s.interactions)} int.`} tip="Engagement rate = (reacciones + comentarios + compartidos + guardados) ÷ impresiones." />
                       </div>
 
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
@@ -371,10 +377,10 @@ export function UgcTestingPanel({
   );
 }
 
-function Metric({ label, value, hint, big, cls }: { label: string; value: string; hint?: string; big?: boolean; cls?: string }) {
+function Metric({ label, value, hint, big, cls, tip }: { label: string; value: string; hint?: string; big?: boolean; cls?: string; tip?: string }) {
   return (
-    <div>
-      <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div>
+    <div title={tip}>
+      <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}{tip && <span className="ml-0.5 cursor-help opacity-50">ⓘ</span>}</div>
       <div className={`${big ? "text-base font-bold" : "text-xs font-semibold"} tabular-nums ${cls ?? ""}`}>{value}</div>
       {hint && <div className="text-[9px] text-muted-foreground">{hint}</div>}
     </div>
