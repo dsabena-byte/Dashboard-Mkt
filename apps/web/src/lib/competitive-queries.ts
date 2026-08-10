@@ -151,6 +151,53 @@ export async function getSearchRegion(): Promise<RegionRow[]> {
   return (data ?? []) as RegionRow[];
 }
 
+// Histórico mensual del índice de posición conglomerado por marca × categoría.
+export interface SeoIndexHistRow {
+  categoria: string;
+  marca: string;
+  mes: string;      // YYYY-MM-DD (primer día del mes)
+  indice: number;
+}
+export async function getSeoIndexHistory(): Promise<SeoIndexHistRow[]> {
+  const sb = getServerSupabase();
+  const { data, error } = await sb
+    .from("seo_index_history")
+    .select("categoria, marca, mes, indice")
+    .order("mes", { ascending: true })
+    .limit(5000)
+    .returns<SeoIndexHistRow[]>();
+  if (error) throw new Error(`seo_index_history: ${error.message}`);
+  return ((data ?? []) as SeoIndexHistRow[]).map((r) => ({ ...r, indice: num(r.indice) }));
+}
+
+// LLMO — visibilidad de marca en respuestas de LLM (share of model) por categoría.
+export interface LlmoRow {
+  categoria: string;
+  marca: string;
+  mes: string;
+  menciones: number;
+  prompts: number;
+  share_pct: number;
+  rank_prom: number | null;
+}
+export async function getLlmo(): Promise<LlmoRow[]> {
+  const sb = getServerSupabase();
+  const { data, error } = await sb
+    .from("seo_llmo")
+    .select("categoria, marca, mes, menciones, prompts, share_pct, rank_prom")
+    .order("mes", { ascending: true })
+    .limit(5000)
+    .returns<LlmoRow[]>();
+  if (error) throw new Error(`seo_llmo: ${error.message}`);
+  return ((data ?? []) as LlmoRow[]).map((r) => ({
+    ...r,
+    menciones: num(r.menciones),
+    prompts: num(r.prompts),
+    share_pct: num(r.share_pct),
+    rank_prom: r.rank_prom == null ? null : num(r.rank_prom),
+  }));
+}
+
 // Demanda genérica de la categoría (keyword genérica, sin marca) por mes.
 export async function getDemandaGenerica(): Promise<DemandaRow[]> {
   const sb = getServerSupabase();

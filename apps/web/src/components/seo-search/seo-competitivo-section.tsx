@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { SerpRow } from "@/lib/competitive-queries";
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { SerpRow, SeoIndexHistRow } from "@/lib/competitive-queries";
 
 // Retailers vs marcas (para colorear y agrupar el set competitivo).
 const RETAILERS = new Set(["ML", "Frávega", "Naldo", "Rodo", "Cetrogar", "Megatone", "Casa del Audio", "Coto", "Oncity"]);
@@ -25,7 +25,7 @@ function cellClass(pos: number | undefined): string {
 }
 const tooltipStyle = { backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 };
 
-export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
+export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]; historia?: SeoIndexHistRow[] }) {
   const [cat, setCat] = useState("lavarropas");
   const [set, setSet] = useState<"todos" | "marca" | "retailer">("todos");
   // Filtra basura (ej. "Total:" filas-resumen del Excel) y filas sin keyword real.
@@ -57,6 +57,13 @@ export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
       })
       .sort((a, b) => a.indice - b.indice);
   }, [catRows, universo]);
+
+  // Evolución mensual del índice de Drean (snapshot de seo_index_history).
+  const historiaDrean = useMemo(() => {
+    const byMes = new Map<string, number>();
+    for (const h of historia) if (h.categoria === cat && h.marca === "Drean") byMes.set(h.mes, h.indice);
+    return [...byMes.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([mes, indice]) => ({ mes: mes.slice(0, 7), indice }));
+  }, [historia, cat]);
 
   // Buckets Drean-céntricos.
   const buckets = useMemo(() => {
@@ -180,6 +187,26 @@ export function SeoCompetitivoSection({ rows }: { rows: SerpRow[] }) {
           );
         })()}
       </div>
+
+      {/* Evolución del índice de Drean */}
+      {historiaDrean.length > 0 && (
+        <div className="rounded-xl border bg-card p-4">
+          <h3 className="text-sm font-semibold">Evolución del índice de Drean — {CATS.find((c) => c.key === cat)?.label}</h3>
+          <p className="mt-0.5 text-[11px] text-muted-foreground"><strong>Qué mide:</strong> cómo se mueve mes a mes el índice de posición de Drean (menor = mejor; eje invertido, así "arriba" es mejor). Se guarda un snapshot mensual; el histórico se acumula con el tiempo.</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={historiaDrean} margin={{ left: 0, right: 16, top: 16, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="mes" fontSize={11} stroke="hsl(var(--muted-foreground))" />
+              <YAxis reversed domain={[0, 100]} fontSize={11} stroke="hsl(var(--muted-foreground))" width={32} />
+              <Tooltip formatter={(v: number) => [v.toFixed(1), "Índice"]} contentStyle={tooltipStyle} />
+              <Line type="monotone" dataKey="indice" stroke="#2b4dff" strokeWidth={2.5} dot={{ r: 4, fill: "#2b4dff" }}>
+                <LabelList dataKey="indice" position="top" fontSize={10} formatter={(v: number) => v.toFixed(1)} />
+              </Line>
+            </LineChart>
+          </ResponsiveContainer>
+          {historiaDrean.length === 1 && <p className="mt-1 text-[10px] text-muted-foreground">Primer mes registrado — la línea se dibuja a medida que entran los próximos snapshots mensuales.</p>}
+        </div>
+      )}
 
       {/* Buckets accionables */}
       <div>
