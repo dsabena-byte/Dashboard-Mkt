@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Keywords por chunk (default 80)"
+        description: "Keywords por chunk (default 40; bajá si da timeout)"
         required: false
-        default: "80"
+        default: "40"
 
 jobs:
   trigger:
@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://dashboard-mkt-seven.vercel.app/api/cron/seo-sync"
-          LIMIT="${{ github.event.inputs.limit || '80' }}"
+          LIMIT="${{ github.event.inputs.limit || '40' }}"
           OFFSET=0
           for i in $(seq 1 30); do
             URL="${BASE}?offset=${OFFSET}&limit=${LIMIT}"
