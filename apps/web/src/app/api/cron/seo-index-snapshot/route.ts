@@ -48,7 +48,7 @@ export async function GET(req: Request) {
     const now = new Date();
     const mes = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
 
-    const out: Array<{ categoria: string; marca: string; mes: string; indice: number }> = [];
+    const out: Array<{ categoria: string; marca: string; mes: string; indice: number; updated_at: string }> = [];
     for (const cat of CATS) {
       const crows = rows.filter((r) => r.categoria === cat && esValida(r.keyword));
       const uni = new Map<string, number>();
@@ -63,7 +63,9 @@ export async function GET(req: Request) {
       for (const m of marcas) {
         let num = 0;
         for (const [kw, vol] of uni) num += vol * (pos.get(`${m}|${kw}`) ?? ABSENT);
-        out.push({ categoria: cat, marca: m, mes, indice: Math.round((num / total) * 100) / 100 });
+        // updated_at explícito: el upsert merge-duplicates no lo bumpea al
+        // reescribir el mismo mes, y el Monitoreo mide frescura por esta columna.
+        out.push({ categoria: cat, marca: m, mes, indice: Math.round((num / total) * 100) / 100, updated_at: new Date().toISOString() });
       }
     }
 
