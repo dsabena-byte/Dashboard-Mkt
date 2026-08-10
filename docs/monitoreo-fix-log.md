@@ -6,6 +6,21 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-08-10 · SEO índice histórico — mismo bug de updated_at (preventivo)
+
+- **Detectado (proactivo):** el cron `seo-index-snapshot` upserteaba el índice sin
+  setear `updated_at`, así que al reescribir el mismo mes no lo bumpeaba → el
+  Monitoreo iba a dar un falso "SEO índice atrasado" (mismo patrón que insights).
+- **Arreglo:** se agrega `updated_at` al payload del snapshot + se recomputó y
+  guardó el índice del mes con `updated_at` fresco.
+- **Nota de dato:** al recomputar con la corrida de hoy, cocinas Drean saltó de
+  ~30 a ~71. Verificado: Drean perdió ~5 keywords de cocinas (rankea en 45 vs 50);
+  como el índice pondera por volumen, pocas pérdidas de alto volumen lo mueven
+  mucho. Parte real, parte ruido de snapshot SERP. No es alarma; el índice de
+  cocinas es volátil con snapshots únicos → observar la tendencia mensual.
+
+---
+
 ## 2026-08-10 · SEO sync — proceso caro y lento (optimización de costo)
 
 - **Detectado:** el sync de SEO (SERP matrix) corría **semanal** y cada corrida
