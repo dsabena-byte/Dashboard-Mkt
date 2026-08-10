@@ -40,3 +40,13 @@ jobs:
           done
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - name: Snapshot mensual del índice de posición
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/seo-index-snapshot"
+          echo "== snapshot índice =="
+          HTTP=$(curl -s -o snap.json -w '%{http_code}' --max-time 120 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+          cat snap.json; echo ""
+          if [ "$HTTP" != "200" ]; then echo "::error::HTTP $HTTP"; exit 1; fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

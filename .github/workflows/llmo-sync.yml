@@ -1,0 +1,24 @@
+name: LLMO sync (visibilidad en IA)
+
+# Le pregunta a un LLM por cada categoría y mide el share de menciones de cada
+# marca (LLMO / Share of Model). Mensual. Usa OPENAI_API_KEY (config en Vercel).
+on:
+  schedule:
+    - cron: "30 6 1 * *"  # día 1 de cada mes, 06:30 UTC
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger /api/cron/llmo-sync
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/llmo-sync"
+          HTTP=$(curl -s -o resp.json -w '%{http_code}' --max-time 300 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+          cat resp.json; echo ""
+          if [ "$HTTP" != "200" ]; then echo "::error::HTTP $HTTP"; exit 1; fi
+          python3 -c "import json,sys; d=json.load(open('resp.json')); sys.exit(0 if d.get('ok') else 1)" || { echo "::error::llmo-sync falló"; exit 1; }
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
