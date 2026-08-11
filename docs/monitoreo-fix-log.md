@@ -6,6 +6,45 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-08-11 · Tráfico Web (GA4) — "Sin dato" permanente (falso positivo)
+
+- **Detectado (rutina de Monitoreo):** `Tráfico Web (GA4)` aparecía en
+  "Sin dato" (`estado: sindato`, `lastUpdate: null`) en **todas** las corridas
+  del watchdog revisadas de los últimos ~4 días (08/08 → 11/08), pese a que la
+  cadencia esperada es cada 6h.
+- **Diagnóstico:** el cron `ga4-web-traffic` **corre bien** — se disparó a las
+  07:43 UTC de hoy (run `31470144951`, workflow `ga4-sync.yml`) y devolvió
+  `trafficUpsert: "1353 filas OK"` sobre `web_traffic`. No es un cron caído ni
+  un bug de sync. El problema es de medición, mismo patrón que el fix de
+  Insights orgánicos (10/08):
+  - `monitoreo-config.ts` medía frescura de `web_traffic` por `created_at`.
+    Esa columna sólo cambia cuando aparece una fila realmente **nueva**
+    (una vez por día calendario, cuando el rolling window de `?days=` avanza
+    a una fecha nueva); el resto de las corridas del día son `UPDATE`s sobre
+    filas ya existentes — el trigger `trg_web_updated` sí pisa `updated_at`
+    en cada una, pero `created_at` queda fijo desde el insert original.
+  - Además, `web_traffic` (~130k filas) no tiene índice en ninguna columna de
+    timestamp — sólo `idx_web_traffic_fecha` / `idx_web_traffic_utm_key` — así
+    que un `order by created_at desc limit 1` fuerza un seq scan + sort
+    completo con el rol `anon` (mismo tipo de timeout que ya se había resuelto
+    para otras vistas de esta tabla en las migraciones `0016` y `0025`), lo
+    que probablemente hacía fallar la query de frescura → `null` → "Sin dato".
+- **Arreglo (PR, este commit):**
+  1. Código: `monitoreo-config.ts` — `col` de `"created_at"` a `"updated_at"`
+     para `ga4` (igual que el resto de los procesos "GitHub Action").
+  2. Migración `supabase/migrations/0098_web_traffic_updated_at_index.sql` —
+     agrega `idx_web_traffic_updated_at` para que la query de frescura no
+     escanee la tabla completa.
+- **Pendiente (no automatizable desde acá):** este repo aplica las
+  migraciones a mano por el SQL Editor de Supabase (no hay CI que las
+  corra — ver `docs/supabase-setup.md`), y esta rutina no tiene acceso de red
+  a Supabase ni a Vercel. **Falta correr `0098_web_traffic_updated_at_index.sql`
+  en el proyecto principal** para que el fix de código surta efecto sin
+  timeouts. Hasta entonces, "Tráfico Web (GA4)" puede seguir mostrando
+  "Sin dato" en el tab /monitoreo aunque el sync esté 100% al día.
+
+---
+
 ## 2026-08-10 · SEO índice histórico — mismo bug de updated_at (preventivo)
 
 - **Detectado (proactivo):** el cron `seo-index-snapshot` upserteaba el índice sin
