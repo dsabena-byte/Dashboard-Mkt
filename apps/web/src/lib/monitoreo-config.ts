@@ -21,7 +21,7 @@ export interface Proc {
 }
 
 export const PROCS: Proc[] = [
-  { id: "ga4", proceso: "Tráfico Web (GA4)", fuente: "Google Analytics 4", conexion: "GitHub Action", detalle: "/api/cron/ga4-web-traffic · cada 6h", cadenciaH: 6, tabla: "web_traffic", col: "created_at", workflow: "ga4-sync.yml" },
+  { id: "ga4", proceso: "Tráfico Web (GA4)", fuente: "Google Analytics 4", conexion: "GitHub Action", detalle: "/api/cron/ga4-web-traffic · cada 6h", cadenciaH: 6, tabla: "web_traffic", col: "updated_at", workflow: "ga4-sync.yml" },
   { id: "bgt", proceso: "BGT Inversión", fuente: "SharePoint", conexion: "GitHub Action", detalle: "/api/cron/bgt-sync · cada 6h", cadenciaH: 6, tabla: "bgt_marketing", workflow: "bgt-sync.yml" },
   { id: "meta_paid", proceso: "Meta Ads (paid)", fuente: "Meta Ads API", conexion: "GitHub Action", detalle: "/api/cron/meta-paid-sync · 1x/día", cadenciaH: 24, tabla: "meta_paid_creatives", col: "fetched_at", workflow: "meta-paid-sync.yml" },
   { id: "influencia", proceso: "Mkt de Influencia (UGC)", fuente: "Meta Ads API (ads UGC)", conexion: "GitHub Action", detalle: "/api/cron/meta-paid-sync (categoría UGC) · 1x/día", cadenciaH: 24, tabla: "meta_paid_creatives", col: "fetched_at", filter: { col: "categoria", val: "UGC" }, workflow: "meta-paid-sync.yml", nota: "Piezas UGC = ads de Meta clasificados 'UGC' por el nombre del ad." },
