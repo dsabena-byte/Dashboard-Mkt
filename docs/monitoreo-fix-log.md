@@ -6,6 +6,68 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-08-12 · Chequeo de rutina — sin desvíos Atrasado/Crítico, pero 2 hallazgos proactivos
+
+- **Chequeo:** corrida automática sobre los 17 procesos de `monitoreo-config.ts`.
+  Fuente: `/api/cron/health` vía los últimos runs del watchdog (07:53, 02:45 y
+  corridas previas del 8/10-8/11 UTC) — no se tuvo acceso directo a Supabase
+  desde este entorno (red bloqueada al dominio de Vercel y a Supabase, y sin
+  las env vars de servicio), así que se leyó el resultado ya calculado por el
+  propio endpoint de salud en las corridas reales del watchdog en vez de
+  recalcularlo. `ok:true`, `criticos:0`, `desvios:[]` en todas las corridas
+  revisadas — **ningún proceso está Atrasado o Crítico**. Por regla, esto no
+  ameritaría tocar el log, pero se encontraron dos problemas reales de forma
+  proactiva:
+
+  1. **GA4 (Tráfico Web) — "sin dato" permanente, falso negativo de monitoreo.**
+     El proceso `ga4` (tabla `web_traffic`, columna `created_at`) devuelve
+     `estado:"sindato", ageH:null` en **todas** las corridas revisadas de los
+     últimos ~2 días (cadencia esperada: 6h). Se confirmó que el cron
+     **sí está corriendo bien**: `ga4-sync.yml` corre cada ~4-6h y el último
+     run (2026-08-12 07:57 UTC, 4 min después del chequeo del watchdog) devolvió
+     `"ok":true` con `"trafficUpsert":"1330 filas OK"`. También se confirmó que
+     la columna existe (`web_traffic.created_at timestamptz not null default
+     now()`, migration `0001_initial_schema.sql`, sin `ALTER TABLE` posterior).
+     O sea: hay cron corriendo bien y columna con datos, pero la consulta de
+     frescura (`maxUpdatedAt` en `apps/web/src/lib/freshness-queries.ts`, vía
+     el cliente anon de `getServerSupabase()`) devuelve 0 filas/error
+     específicamente para esta tabla — las otras 13 tablas del proyecto
+     principal consultadas con el mismo cliente sí devuelven fecha OK. No se
+     pudo confirmar la causa raíz exacta (¿falta un GRANT SELECT para `anon`
+     en `web_traffic` puntualmente? ¿algo del PostgREST schema cache?) porque
+     este entorno no tiene acceso de red a Supabase ni al dominio de
+     producción, y el token de GitHub Actions disponible no tiene permiso para
+     disparar `db-inspect.yml` (`workflow_dispatch` → 403 "Resource not
+     accessible by integration"). **No resuelto — queda pendiente que alguien
+     con acceso directo a Supabase corra
+     `select count(*), max(created_at) from web_traffic;` y revise los
+     privilegios de `anon` sobre esa tabla.** Importante: como `sindato` no
+     cuenta como `crítico` para el watchdog (por diseño, ver comentario en
+     `route.ts`: "sindato es no medible"), si el sync de GA4 se rompiera de
+     verdad hoy, el watchdog no lo detectaría — es un punto ciego real.
+  2. **Watchdog — el auto-retry de Actions nunca encontró runs (probable bug,
+     no crítico).** La sección 1 del script de `watchdog.yml` (`gh run list
+     --workflow "$wf"`) devolvió `-> none` para los 11 workflows monitoreados
+     (ga4-sync, bgt-sync, meta-paid-sync, organic-insights, clasificar-
+     contenido, meta-fb-sync, ig-sync-6h, ig-sentiment-sync, ugc-comments-
+     graph/sync/analysis) en **todas** las corridas revisadas del watchdog
+     (8/10 a 8/12), pese a que esos workflows tienen cientos de runs exitosos.
+     Efecto: el re-intento automático de syncs fallidos nunca se activó en
+     este período (no es grave ahora porque los syncs vienen corriendo bien
+     solos, pero la salvaguarda no está funcionando). No se investigó a fondo
+     ni se tocó el workflow en esta corrida — requiere poder disparar/depurar
+     `watchdog.yml` manualmente, algo que este entorno tampoco pudo hacer
+     (mismo bloqueo de permisos de `workflow_dispatch`).
+  - **Otros procesos revisados sin issues:** DV360 piezas/reach, Floor Share y
+    Cuadros Básicos (Apps Script, proyecto CB) — todos con `ageH` dentro de
+    tolerancia en el snapshot más reciente. Mercado (GFK) y SEO · Interés por
+    provincia (cargas manuales, cadencia trimestral) también OK. No hay nada
+    para marcar como "no resuelto" en el sentido del punto 4 del checklist
+    (fuentes manuales/Apps Script que no se pueden auto-arreglar) porque
+    ninguno está atrasado — el único pendiente real es el punto 1 de arriba.
+
+---
+
 ## 2026-08-10 · SEO índice histórico — mismo bug de updated_at (preventivo)
 
 - **Detectado (proactivo):** el cron `seo-index-snapshot` upserteaba el índice sin
