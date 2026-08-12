@@ -408,26 +408,39 @@ export default async function RedesPage({ searchParams }: PageProps) {
             Benchmark de marcas · KPIs comparados
           </h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full table-fixed text-[11px]">
+              <colgroup>
+                <col className="w-[17%]" />
+                <col className="w-[10%]" />
+                <col className="w-[7%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[7%]" />
+                <col className="w-[7%]" />
+                <col className="w-[7%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+              </colgroup>
               <thead className="border-b">
-                <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                  <th className="px-2 py-1.5">Marca</th>
-                  <th className="px-2 py-1.5 text-right">Followers</th>
-                  <th className="px-2 py-1.5 text-right">Posts</th>
-                  <th className="px-2 py-1.5 text-right">Posts/sem</th>
-                  <th className="px-2 py-1.5 text-right">Eng. prom</th>
-                  <th className="px-2 py-1.5 text-right">% Pos</th>
-                  <th className="px-2 py-1.5 text-right">% Neg</th>
-                  <th className="px-2 py-1.5 text-right">% Neu</th>
-                  <th className="px-2 py-1.5 text-right">Likes</th>
-                  <th className="px-2 py-1.5 text-right">Coment.</th>
-                  <th className="px-2 py-1.5 text-right">Views</th>
+                <tr className="text-left text-[9px] uppercase tracking-wide text-muted-foreground">
+                  <th className="px-1 py-1.5">Marca</th>
+                  <th className="px-1 py-1.5 text-right">Follow.</th>
+                  <th className="px-1 py-1.5 text-right">Posts</th>
+                  <th className="px-1 py-1.5 text-right">P/sem</th>
+                  <th className="px-1 py-1.5 text-right">Eng.</th>
+                  <th className="px-1 py-1.5 text-right">Pos</th>
+                  <th className="px-1 py-1.5 text-right">Neg</th>
+                  <th className="px-1 py-1.5 text-right">Neu</th>
+                  <th className="px-1 py-1.5 text-right">Likes</th>
+                  <th className="px-1 py-1.5 text-right">Com.</th>
+                  <th className="px-1 py-1.5 text-right">Views</th>
                 </tr>
               </thead>
               <tbody>
                 {brandStats.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-2 py-6 text-center text-muted-foreground">
+                    <td colSpan={11} className="px-1 py-6 text-center text-muted-foreground">
                       Sin datos.
                     </td>
                   </tr>
@@ -437,23 +450,23 @@ export default async function RedesPage({ searchParams }: PageProps) {
                       const color = BRAND_COLORS[b.marca] ?? "#94a3b8";
                       return (
                         <tr key={b.marca} className="border-b last:border-0">
-                          <td className="px-2 py-1.5 font-medium">
-                            <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: color }} />
-                            {BRAND_LABELS[b.marca] ?? b.marca}
-                            {b.marca === OWN_BRAND && <span className="ml-1 text-rose-500">★</span>}
+                          <td className="px-1 py-1.5 font-medium">
+                            <span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle" style={{ backgroundColor: color }} />
+                            <span className="align-middle">{BRAND_LABELS[b.marca] ?? b.marca}</span>
+                            {b.marca === OWN_BRAND && <span className="ml-0.5 align-middle text-rose-500">★</span>}
                           </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                          <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground">
                             {b.followers > 0 ? fmtK(b.followers) : "—"}
                           </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{b.posts}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{b.posts_per_week.toFixed(1)}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{b.engagement_promedio.toFixed(2)}%</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-emerald-600">{Math.round(b.positivo)}%</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-rose-600">{Math.round(b.negativo)}%</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-slate-500">{Math.round(b.neutro)}%</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtK(b.total_likes)}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtK(b.total_comentarios)}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">
+                          <td className="px-1 py-1.5 text-right tabular-nums">{b.posts}</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground">{b.posts_per_week.toFixed(1)}</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums">{b.engagement_promedio.toFixed(2)}%</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums text-emerald-600">{Math.round(b.positivo)}%</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums text-rose-600">{Math.round(b.negativo)}%</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums text-slate-500">{Math.round(b.neutro)}%</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums">{fmtK(b.total_likes)}</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums">{fmtK(b.total_comentarios)}</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums">
                             {b.total_views > 0 ? fmtK(b.total_views) : "—"}
                           </td>
                         </tr>
