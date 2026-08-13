@@ -300,15 +300,24 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const monthlyMap = new Map<string, { alcance: number; engagement: number }>();
 
-  // Sumar alcance, video views y clicks desde posts
-  for (const p of posts) {
+  // Un post BOOSTEADO/pago contamina el gráfico ORGÁNICO: la métrica de reach de Meta
+  // (post_total_media_view_unique) no separa pago de orgánico. Firma del pago: reach
+  // fuera de escala (el techo orgánico histórico de la Página es ~8K) con engagement
+  // casi nulo. Ej real: 11-ago-2026 → reach 121.253 con 15 reacciones (0,01%). Se excluye
+  // del orgánico para que un boosteo no infle alcance ni engagement del mes.
+  const isPaidOutlier = (p: FbPostRow) =>
+    (p.reach ?? 0) > 20000 && (p.reactions ?? 0) / (p.reach || 1) < 0.01;
+  const organicPosts = posts.filter((p: FbPostRow) => !isPaidOutlier(p));
+
+  // Sumar alcance, video views y clicks desde posts (solo orgánicos)
+  for (const p of organicPosts) {
     totals.impressions_unique += p.reach ?? 0;
     totals.video_views += p.video_views ?? 0;
     totals.clicks += p.clicks ?? 0;
   }
 
-  // Todo desde posts para consistencia desde enero
-  for (const p of posts) {
+  // Todo desde posts para consistencia desde enero (excluye boosteos/pauta)
+  for (const p of organicPosts) {
     const monthKey = p.fecha_post.slice(0, 7);
     const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0 };
     m.alcance += p.reach ?? 0;
