@@ -33,11 +33,25 @@ export interface Competitor {
   dominio?: string;
 }
 
+/** Branding visible de la empresa (logo + bajada). */
+export interface TenantBranding {
+  /** Ruta al logo en /public (ej. "/drean-logo.png"). */
+  logoSrc: string;
+  /** Ancho intrínseco del logo (para next/image; el tamaño real lo da la clase). */
+  logoWidth: number;
+  /** Alto intrínseco del logo. */
+  logoHeight: number;
+  /** Bajada bajo el logo / nombre. */
+  tagline: string;
+}
+
 export interface TenantConfig {
   /** Slug del tenant, usado para routing/resolución (Fase 1). */
   id: string;
   /** Nombre visible de la empresa. */
   displayName: string;
+  /** Branding visible (logo + bajada) para sidebar y login. */
+  branding: TenantBranding;
   /** Marca propia. */
   ownBrand: BrandIdentity;
   /** Cuentas sociales: la propia + competidoras, con label y color. */
@@ -61,6 +75,12 @@ export interface TenantConfig {
 export const DREAN: TenantConfig = {
   id: "drean",
   displayName: "Drean",
+  branding: {
+    logoSrc: "/drean-logo.png",
+    logoWidth: 1239,
+    logoHeight: 387,
+    tagline: "Marketing Management",
+  },
   ownBrand: { key: "dreanargentina", label: "Drean", color: "#dc2626" },
   socialAccounts: [
     { key: "dreanargentina", handle: "dreanargentina", label: "Drean", color: "#dc2626" },

@@ -25,6 +25,9 @@ import {
 import { cn } from "@/lib/utils";
 import { isPathAllowed } from "@/lib/dashboard-access";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { getTenant } from "@/lib/tenant/current";
+
+const tenant = getTenant();
 
 const NAV = [
   { href: "/overview",    label: "Objetivos Marketing", icon: LayoutDashboard },
@@ -66,14 +69,14 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
     <>
       <div className="border-b px-4 py-4">
         <Image
-          src="/drean-logo.png"
-          alt="Drean"
-          width={1239}
-          height={387}
+          src={tenant.branding.logoSrc}
+          alt={tenant.displayName}
+          width={tenant.branding.logoWidth}
+          height={tenant.branding.logoHeight}
           priority
           className="w-3/5 h-auto"
         />
-        <p className="mt-2 text-xs text-muted-foreground">Marketing Management</p>
+        <p className="mt-2 text-xs text-muted-foreground">{tenant.branding.tagline}</p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {nav.map((item) => {
@@ -117,7 +120,7 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Image src="/drean-logo.png" alt="Drean" width={120} height={38} className="h-7 w-auto" />
+        <Image src={tenant.branding.logoSrc} alt={tenant.displayName} width={tenant.branding.logoWidth} height={tenant.branding.logoHeight} className="h-7 w-auto" />
       </div>
 
       {/* Sidebar desktop (md+) */}
