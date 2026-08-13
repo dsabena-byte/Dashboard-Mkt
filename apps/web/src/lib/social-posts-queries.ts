@@ -1,5 +1,6 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
+import { getTenant } from "./tenant/current";
 
 export interface SocialPost {
   id: string;
@@ -30,23 +31,19 @@ export interface SocialFilters {
   to?: string;           // YYYY-MM-DD (filtro de fecha final)
 }
 
-export const OWN_BRAND = "dreanargentina";
+// Identidad de marca derivada del tenant activo (Fase 0: Drean). Mismos valores
+// que antes; ahora la fuente única es lib/tenant/config.ts.
+const _tenant = getTenant();
 
-export const BRAND_LABELS: Record<string, string> = {
-  dreanargentina: "Drean",
-  "philco.arg": "Philco",
-  gafaargentina: "Gafa",
-  whirlpoolarg: "Whirlpool",
-  electroluxar: "Electrolux",
-};
+export const OWN_BRAND = _tenant.ownBrand.key;
 
-export const BRAND_COLORS: Record<string, string> = {
-  dreanargentina: "#dc2626",      // rojo (color institucional)
-  "philco.arg": "#f97316",        // naranja
-  gafaargentina: "#0ea5e9",       // celeste
-  whirlpoolarg: "#7c3aed",        // violeta
-  electroluxar: "#64748b",        // gris azulado
-};
+export const BRAND_LABELS: Record<string, string> = Object.fromEntries(
+  _tenant.socialAccounts.map((a) => [a.key, a.label]),
+);
+
+export const BRAND_COLORS: Record<string, string> = Object.fromEntries(
+  _tenant.socialAccounts.map((a) => [a.key, a.color]),
+);
 
 export const NET_LABELS: Record<string, string> = {
   INSTAGRAM: "Instagram",
