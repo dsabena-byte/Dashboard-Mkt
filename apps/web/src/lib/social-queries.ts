@@ -1,8 +1,10 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
 import type { DateRange } from "./dates";
+import { getTenant } from "./tenant/current";
 
-export const OWN_BRAND = "dreanargentina";
+// Marca propia del tenant activo (Fase 0: Drean). Mismo valor que antes.
+export const OWN_BRAND = getTenant().ownBrand.key;
 
 export interface SocialTotals {
   posts: number;
