@@ -6,6 +6,46 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-08-14 · Tráfico Web (GA4) — "sin dato" persistente pese a syncs OK
+
+- **Chequeo de rutina:** corrida automática del monitoreo (14/8, ~13:44 UTC).
+  No pude leer Supabase/el endpoint `/api/cron/health` directo desde esta sesión
+  (el egress de red de este entorno bloquea `dashboard-mkt-seven.vercel.app` y
+  Supabase), así que reconstruí el estado real leyendo los logs de las últimas
+  corridas del GitHub Action `watchdog.yml` (que sí llama al health-check con
+  red completa). Snapshot real más reciente (`/api/cron/health`, 14/8 13:44 UTC):
+  16 de 17 procesos `ok`, 0 críticos — **`ga4` (Tráfico Web) en `sindato`**
+  (`ageH: null`, `lastUpdate: null`). Mismo patrón confirmado en los 2 watchdog
+  runs anteriores (12/8 y 13/8) → no es un blip, es persistente desde al menos
+  hace 3 días.
+- **Diagnóstico:** NO es un cron caído — `ga4-sync.yml` corre cada 6h y termina
+  en éxito (confirmado en el log de la corrida de las 13:50 UTC del 14/8:
+  `HTTP 200`, `"ok":true`, `"trafficUpsert":"1503 filas OK"`). El bug es de
+  performance/medición: `monitoreo-config.ts` mide frescura de `ga4` ordenando
+  `web_traffic` por `created_at` (`maxUpdatedAt` → `order(created_at, desc).limit(1)`),
+  pero `web_traffic` es la tabla más grande del proyecto (>130k filas, crece
+  ~1.5k filas cada 6h) y no tenía **ningún índice sobre `created_at`** (sólo
+  `idx_web_traffic_fecha` e `idx_web_traffic_utm_key`, ninguno sirve para ese
+  ORDER BY). La query de frescura falla/tarda de más contra la tabla sin
+  índice; `maxUpdatedAt()` traga el error y devuelve `null` → el proceso queda
+  invisible para el watchdog (ni Atrasado ni Crítico: directamente no medible).
+  No es falso positivo de `updated_at` (patrón de la entrada del 10/8) ni un
+  problema de datos — el timestamp existe en cada fila desde el insert
+  (`created_at timestamptz not null default now()`, sin triggers que lo toquen).
+- **Arreglo (código):** migración `supabase/migrations/0098_web_traffic_created_at_index.sql`
+  agrega `create index if not exists idx_web_traffic_created_at on web_traffic (created_at desc)`.
+  PR creado y mergeado a `main` en esta corrida.
+- **Pendiente (manual):** este repo no auto-aplica migraciones al mergear (ver
+  `docs/supabase-setup.md` — se aplican con `supabase db push` o pegando el SQL
+  en el SQL Editor). **Falta aplicar la migración 0098 contra el proyecto
+  Supabase principal** para que el fix tome efecto. Hasta entonces, `ga4`
+  seguirá viéndose `sindato` en `/monitoreo` aunque el sync esté sano.
+- **Estado:** código arreglado y mergeado; dato subyacente sano (el sync nunca
+  dejó de correr); **acción humana pendiente** para aplicar la migración en
+  Supabase.
+
+---
+
 ## 2026-08-10 · SEO índice histórico — mismo bug de updated_at (preventivo)
 
 - **Detectado (proactivo):** el cron `seo-index-snapshot` upserteaba el índice sin
