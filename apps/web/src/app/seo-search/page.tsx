@@ -5,6 +5,7 @@ import { LlmoSection } from "@/components/seo-search/llmo-section";
 import { getShareOfSearch, getTrendsInterest, getDemandaGenerica, getSeoCompetitivo, getSearchRegion, getSeoIndexHistory, getLlmo, getSeoFreshness } from "@/lib/competitive-queries";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // dd/mm hh:mm en hora argentina (o "—" si no hay fecha).
 function fechaCorta(d: string | null): string {

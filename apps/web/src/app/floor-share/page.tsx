@@ -24,6 +24,7 @@ import {
 import { isoWeekToMes } from "@/lib/cb-queries";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 60;
 
 interface PageProps {

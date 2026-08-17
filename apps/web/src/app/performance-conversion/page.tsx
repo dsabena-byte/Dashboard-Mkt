@@ -2,6 +2,7 @@ import { getConversionDaily, getConversionItems } from "@/lib/pauta-conversion-q
 import { PerformanceConversionClient } from "@/components/pauta/performance-conversion-client";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try {

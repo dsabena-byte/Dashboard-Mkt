@@ -62,6 +62,11 @@ const ENABLED: Record<string, string[]> = {
     "¿Cómo viene el Top of Mind por categoría?",
     "Graficá SM por categoría",
   ],
+  "mkt-canal": [
+    "¿Qué acción en retailers rindió mejor?",
+    "¿Cuál es el CTR promedio por plataforma?",
+    "Graficá la inversión por cliente",
+  ],
 };
 
 export function GlobalDataChat() {

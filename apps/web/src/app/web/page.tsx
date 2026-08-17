@@ -33,6 +33,9 @@ import { lastClosedMonthRange, parseDateRange } from "@/lib/dates";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 interface PageProps {
   searchParams: Record<string, string | string[] | undefined>;
 }

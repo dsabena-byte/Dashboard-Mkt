@@ -22,6 +22,7 @@ import {
 } from "@/lib/cb-queries";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 interface PageProps {
   searchParams: Record<string, string | string[] | undefined>;

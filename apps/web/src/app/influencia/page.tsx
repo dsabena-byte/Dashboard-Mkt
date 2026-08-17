@@ -5,6 +5,7 @@ import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { InfluenciaClient } from "@/components/pauta/influencia-client";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try {

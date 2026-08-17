@@ -10,6 +10,7 @@ import { performanceConversionTools } from "./tools-performance-conversion";
 import { influenciaTools } from "./tools-influencia";
 import { mercadoTools } from "./tools-mercado";
 import { saludMarcaTools } from "./tools-salud-marca";
+import { mktCanalTools } from "./tools-mkt-canal";
 import type { ChatTool } from "./types";
 
 // ============================================================================
@@ -97,6 +98,12 @@ const REGISTRY: Record<string, DashboardChat> = {
       BASE +
       "Dashboard Salud de Marca (Kantar): Top of Mind, Share of Mind, Intención de compra, Poder de Marca y puntaje SM consolidado, por categoría y ola.",
     tools: saludMarcaTools,
+  },
+  "mkt-canal": {
+    context:
+      BASE +
+      "Dashboard Mkt Canal: acciones digitales en retailers (por cliente, acción, plataforma y mes) con impresiones, clics, conversiones, ingresos e inversión. Calculá CTR, CPC, CPM y ROAS por acción o cliente cuando lo pidan.",
+    tools: mktCanalTools,
   },
 };
 
