@@ -13,6 +13,53 @@ interface Msg {
   charts?: ChartSpec[];
 }
 
+// Renderer de markdown MÍNIMO (sin dependencias): negritas, listas, saltos de
+// línea; saca imágenes y deja los links como texto. Suficiente para la salida
+// del copiloto, sin sumar librerías.
+function renderInline(text: string, keyBase: string) {
+  const clean = text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+  return clean.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
+    p.startsWith("**") && p.endsWith("**") && p.length > 4 ? (
+      <strong key={`${keyBase}-${i}`} className="font-semibold">
+        {p.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={`${keyBase}-${i}`}>{p}</span>
+    ),
+  );
+}
+
+function MiniMarkdown({ text }: { text: string }) {
+  return (
+    <div className="space-y-1">
+      {text.split("\n").map((line, i) => {
+        const t = line.trim();
+        if (!t) return <div key={i} className="h-1.5" />;
+        if (/^[-*]\s+/.test(t)) {
+          return (
+            <div key={i} className="flex gap-1.5 pl-1">
+              <span className="mt-px text-primary">•</span>
+              <span>{renderInline(t.replace(/^[-*]\s+/, ""), `l${i}`)}</span>
+            </div>
+          );
+        }
+        const num = t.match(/^(\d+)\.\s+(.*)$/);
+        if (num) {
+          return (
+            <div key={i} className="flex gap-1.5">
+              <span className="font-semibold text-primary">{num[1]}.</span>
+              <span>{renderInline(num[2] ?? "", `l${i}`)}</span>
+            </div>
+          );
+        }
+        return <div key={i}>{renderInline(t, `l${i}`)}</div>;
+      })}
+    </div>
+  );
+}
+
 export function DataChat({ dashboard, suggestions = [] }: { dashboard: string; suggestions?: string[] }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -81,19 +128,21 @@ export function DataChat({ dashboard, suggestions = [] }: { dashboard: string; s
               </div>
             )}
             {msgs.map((m, i) => (
-              <div key={i} className={m.role === "user" ? "text-right" : ""}>
+              <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
                 <div
-                  className={`inline-block max-w-[90%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs ${
-                    m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                  }`}
+                  className={
+                    m.role === "user"
+                      ? "max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+                      : "w-full rounded-2xl rounded-bl-sm bg-muted px-3 py-2.5 text-xs leading-relaxed text-foreground"
+                  }
                 >
-                  {m.content}
+                  {m.role === "user" ? m.content : <MiniMarkdown text={m.content} />}
+                  {m.charts?.map((c, j) => (
+                    <div key={j} className="mt-2">
+                      <DynamicChart spec={c} />
+                    </div>
+                  ))}
                 </div>
-                {m.charts?.map((c, j) => (
-                  <div key={j} className="mt-2">
-                    <DynamicChart spec={c} />
-                  </div>
-                ))}
               </div>
             ))}
             {loading && <div className="text-xs text-muted-foreground">Pensando…</div>}

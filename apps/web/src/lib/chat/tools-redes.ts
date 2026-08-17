@@ -103,7 +103,23 @@ export const redesTools: ChatTool[] = [
     run: async (args) => {
       const dias = typeof args.dias === "number" ? args.dias : 30;
       const cantidad = typeof args.cantidad === "number" ? args.cantidad : 5;
-      return getTopAndBottomPostsLastNDays(dias, cantidad);
+      const r = await getTopAndBottomPostsLastNDays(dias, cantidad);
+      type TopPost = (typeof r)["instagram"]["top"][number];
+      // Trimeado: sin thumbnails, permalinks ni ids (ensucian la respuesta del chat).
+      const trim = (p: TopPost) => ({
+        fecha: p.fecha_post?.slice(0, 10),
+        tipo: p.media_type,
+        alcance: p.reach,
+        engagement: p.engagement,
+        reacciones: p.reactions,
+        video_views: p.video_views,
+        eng_rate: p.eng_rate,
+        mensaje: p.message?.slice(0, 60) ?? null,
+      });
+      return {
+        instagram: { top: r.instagram.top.map(trim), bottom: r.instagram.bottom.map(trim) },
+        facebook: { top: r.facebook.top.map(trim), bottom: r.facebook.bottom.map(trim) },
+      };
     },
   },
 ];
