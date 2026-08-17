@@ -80,13 +80,10 @@ export default async function WebPage({ searchParams }: PageProps) {
 
   // Wrapper: si una query individual revienta, devolvemos su fallback en vez
   // de tirar abajo todo el dashboard.
-  const safeErrors: string[] = [];
   const safe = async <T,>(p: Promise<T>, fallback: T, label: string): Promise<T> => {
     try {
       return await p;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      safeErrors.push(`${label}: ${msg}`);
       console.error(`[web/page] ${label} failed:`, err);
       return fallback;
     }
@@ -363,16 +360,6 @@ export default async function WebPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      {safeErrors.length > 0 && (
-        <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-[11px] text-rose-900">
-          <strong>⚠ Diagnóstico temporal — queries que fallaron en el server:</strong>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4">
-            {safeErrors.map((e, i) => (
-              <li key={i} className="break-all">{e}</li>
-            ))}
-          </ul>
-        </div>
-      )}
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Web · Drean</h2>
@@ -542,14 +529,14 @@ export default async function WebPage({ searchParams }: PageProps) {
               Sin productos en el rango. Probá un período más amplio.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+            <div>
+              <table className="w-full table-fixed text-xs">
                 <thead className="border-b bg-muted/40">
                   <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                    <th className="px-3 py-2">Producto</th>
-                    <th className="hidden px-3 py-2 sm:table-cell">Cat.</th>
+                    <th className="w-[50%] px-3 py-2">Producto</th>
+                    <th className="hidden w-[22%] px-3 py-2 sm:table-cell">Cat.</th>
                     <th className="px-3 py-2 text-right">Usuarios</th>
-                    <th className="hidden px-3 py-2 text-right md:table-cell">% total</th>
+                    <th className="hidden w-[16%] px-3 py-2 text-right md:table-cell">% total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -559,8 +546,8 @@ export default async function WebPage({ searchParams }: PageProps) {
                       : (p.sku ?? "(sin nombre)");
                     return (
                       <tr key={p.landing_page} className="border-b last:border-0">
-                        <td className="px-3 py-2 max-w-[220px] text-xs sm:max-w-[260px] sm:truncate" title={p.producto_slug ?? p.landing_page}>
-                          <div className="line-clamp-2 sm:line-clamp-1">{nombre}</div>
+                        <td className="px-3 py-2 text-xs" title={p.producto_slug ?? p.landing_page}>
+                          <div className="truncate">{nombre}</div>
                           <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
                             <span>{p.sku ?? ""}</span>
                             {/* Categoría inline en mobile */}
