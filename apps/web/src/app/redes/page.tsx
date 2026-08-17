@@ -15,6 +15,7 @@ import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { InsightsPanel } from "@/components/insights/insights-panel";
 import { TopContentPanel } from "@/components/insights/top-content-panel";
 import { RedesTabs } from "@/components/social/redes-tabs";
+import { DataChat } from "@/components/data-chat";
 import { getInsightsByCategoria, getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
@@ -514,6 +515,16 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <CompetenciaPostsPanel posts={competenciaPosts} />
         </>
       )}
+
+      <DataChat
+        dashboard="redes"
+        suggestions={[
+          "¿Cómo viene el alcance orgánico de Facebook este año?",
+          "Graficá alcance vs engagement mensual de Facebook",
+          "¿Cuáles fueron los mejores 3 posts de los últimos 30 días?",
+          "Comparame el reach de Instagram vs Facebook",
+        ]}
+      />
     </div>
   );
 }

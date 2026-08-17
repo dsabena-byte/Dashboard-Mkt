@@ -1,0 +1,109 @@
+import "server-only";
+import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
+import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
+import { getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
+import type { ChatTool } from "./types";
+
+// ============================================================================
+// Tools del dashboard Análisis de Redes. Envuelven las query functions que ya
+// existen (tenant-scopeadas vía getTenant). Devuelven data TRIMEADA para no
+// gastar tokens de más. Agregar un dashboard nuevo = un archivo como este.
+// ============================================================================
+
+function rangeArg(args: Record<string, unknown>): { from: string; to: string } | undefined {
+  const from = typeof args.from === "string" ? args.from : undefined;
+  const to = typeof args.to === "string" ? args.to : undefined;
+  return from && to ? { from, to } : undefined;
+}
+
+export const redesTools: ChatTool[] = [
+  {
+    name: "get_fb_organic",
+    description:
+      "Métricas orgánicas de Facebook (Página Drean): alcance (personas únicas), engagement, video views, reacciones, fans, evolución mensual (alcance vs engagement) y top posts. Usar para preguntas de FB orgánico y para graficar su evolución. Excluye posts pagos/boosteados. Rango de fechas opcional (YYYY-MM-DD).",
+    parameters: {
+      type: "object",
+      properties: {
+        from: { type: "string", description: "Fecha desde YYYY-MM-DD (opcional)" },
+        to: { type: "string", description: "Fecha hasta YYYY-MM-DD (opcional)" },
+      },
+    },
+    run: async (args) => {
+      const s = await getFbOrganicSummary(rangeArg(args));
+      return {
+        rango: s.rangeLabel,
+        totales: {
+          alcance: s.totals.impressions_unique,
+          engagement: s.totals.post_engagements,
+          reacciones: s.totals.reactions_total,
+          video_views: s.totals.video_views,
+          fans: s.totals.fans_total,
+        },
+        evolucion_mensual: s.monthlyData,
+        top_posts: s.topPosts.slice(0, 5).map((p) => ({
+          fecha: p.fecha_post?.slice(0, 10),
+          tipo: p.media_type,
+          alcance: p.reach,
+          engagement: p.engagement,
+          reacciones: p.reactions,
+          mensaje: p.message?.slice(0, 80) ?? null,
+        })),
+      };
+    },
+  },
+  {
+    name: "get_ig_organic",
+    description:
+      "Métricas orgánicas de Instagram (@dreanargentina): alcance, engagement, reacciones, comentarios, guardados, video views, cantidad de posts, evolución mensual y top posts. Requiere rango de fechas (YYYY-MM-DD).",
+    parameters: {
+      type: "object",
+      required: ["from", "to"],
+      properties: {
+        from: { type: "string", description: "Fecha desde YYYY-MM-DD" },
+        to: { type: "string", description: "Fecha hasta YYYY-MM-DD" },
+      },
+    },
+    run: async (args) => {
+      const r = rangeArg(args);
+      if (!r) return { error: "get_ig_organic requiere 'from' y 'to'" };
+      const s = await getIgOrganicSummary(r);
+      return {
+        rango: s.rangeLabel,
+        totales: {
+          alcance: s.totalReach,
+          engagement: s.totalEngagement,
+          reacciones: s.totalReactions,
+          comentarios: s.totalComments,
+          guardados: s.totalSaves,
+          video_views: s.totalVideoViews,
+          posts: s.postCount,
+        },
+        evolucion_mensual: s.monthlyData,
+        top_posts: s.topPosts.slice(0, 5).map((p) => ({
+          fecha: p.fecha_post?.slice(0, 10),
+          tipo: p.media_type,
+          alcance: p.reach,
+          engagement: p.engagement,
+          mensaje: p.message?.slice(0, 80) ?? null,
+        })),
+      };
+    },
+  },
+  {
+    name: "get_top_posts",
+    description:
+      "Mejores y peores posts (por engagement rate) de los últimos N días, separados por plataforma (Instagram y Facebook). Útil para '¿qué post rindió mejor?' o comparar contenidos.",
+    parameters: {
+      type: "object",
+      properties: {
+        dias: { type: "number", description: "Días hacia atrás (default 30)" },
+        cantidad: { type: "number", description: "Cuántos por plataforma (default 5)" },
+      },
+    },
+    run: async (args) => {
+      const dias = typeof args.dias === "number" ? args.dias : 30;
+      const cantidad = typeof args.cantidad === "number" ? args.cantidad : 5;
+      return getTopAndBottomPostsLastNDays(dias, cantidad);
+    },
+  },
+];
