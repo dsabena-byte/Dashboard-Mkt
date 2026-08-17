@@ -90,8 +90,28 @@ function splitRangeByMonth(range: WebRange): WebRange[] {
   return out;
 }
 
+// Chunks de ~7 días. Las vistas derivadas de web_landing_daily (categoría/productos)
+// aplican regex por fila sobre ~113k filas/mes y TIMEOUTEAN si se pide el mes entero.
+// Partiendo por semana, cada query queda en ~2s (bajo el statement_timeout) y se corren
+// en paralelo → sin timeout, sin migración.
+function splitRangeByWeek(range: WebRange): WebRange[] {
+  const out: WebRange[] = [];
+  const start = new Date(`${range.from}T00:00:00Z`);
+  const end = new Date(`${range.to}T00:00:00Z`);
+  let cur = new Date(start);
+  while (cur <= end) {
+    const chunkEnd = new Date(cur);
+    chunkEnd.setUTCDate(chunkEnd.getUTCDate() + 6);
+    const to = chunkEnd > end ? end : chunkEnd;
+    out.push({ from: cur.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) });
+    cur = new Date(chunkEnd);
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+
 export async function getWebDailyKpis(range: WebRange): Promise<DailyKpiRow[]> {
-  const chunks = splitRangeByMonth(range);
+  const chunks = splitRangeByWeek(range);
   const results = await Promise.all(chunks.map(async (r) => {
     const supabase = getServerSupabase();
     const { data, error } = await supabase
@@ -126,7 +146,7 @@ export async function getWebBySource(range: WebRange): Promise<BySourceRow[]> {
 }
 
 export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]> {
-  const chunks = splitRangeByMonth(range);
+  const chunks = splitRangeByWeek(range);
   const results = await Promise.all(chunks.map(async (r) => {
     const supabase = getServerSupabase();
     const { data, error } = await supabase
@@ -240,6 +260,18 @@ export async function getWebMonthlyByChannel(monthsBack = 12): Promise<MonthlyBy
   return rows.filter((r) => keep.has(r.mes));
 }
 
+interface ProdRpcRow {
+  landing_page: string;
+  sku: string | null;
+  producto_slug: string | null;
+  categoria: string;
+  sesiones: number;
+  usuarios: number;
+  conversiones: number;
+  pageviews: number;
+  conversion_rate: number | null;
+}
+
 export async function getWebTopProducts(range: WebRange, limit = 10): Promise<TopProductRow[]> {
   const supabase = getServerSupabase();
   const client = supabase as unknown as {
@@ -248,27 +280,41 @@ export async function getWebTopProducts(range: WebRange, limit = 10): Promise<To
       args: Record<string, unknown>,
     ) => Promise<{ data: unknown; error: { message: string } | null }>;
   };
-  const { data, error } = await client.rpc("top_products_in_range", {
-    p_from: range.from,
-    p_to: range.to,
-    p_limit: limit,
-  });
-  if (error) {
-    if (/does not exist|function .* does not exist/i.test(error.message)) return [];
-    throw new Error(`top_products_in_range: ${error.message}`);
+  // Chunk semanal: el RPC procesa ~11k filas PDP/mes con regex y timeoutea a full month.
+  // Pedimos un top amplio por semana (para no perder un producto que es top en el
+  // acumulado) y mergeamos por landing_page.
+  const perChunk = await Promise.all(
+    splitRangeByWeek(range).map(async (r) => {
+      const { data, error } = await client.rpc("top_products_in_range", {
+        p_from: r.from,
+        p_to: r.to,
+        p_limit: 200,
+      });
+      if (error) {
+        if (/does not exist|function .* does not exist/i.test(error.message)) return [] as ProdRpcRow[];
+        throw new Error(`top_products_in_range: ${error.message}`);
+      }
+      return (data ?? []) as ProdRpcRow[];
+    }),
+  );
+  const map = new Map<string, ProdRpcRow>();
+  for (const rows of perChunk) {
+    for (const row of rows) {
+      const acc = map.get(row.landing_page);
+      if (acc) {
+        acc.sesiones += row.sesiones ?? 0;
+        acc.usuarios += row.usuarios ?? 0;
+        acc.conversiones += row.conversiones ?? 0;
+        acc.pageviews += row.pageviews ?? 0;
+      } else {
+        map.set(row.landing_page, { ...row, usuarios: row.usuarios ?? 0 });
+      }
+    }
   }
-  const rows = (data ?? []) as Array<{
-    landing_page: string;
-    sku: string | null;
-    producto_slug: string | null;
-    categoria: string;
-    sesiones: number;
-    usuarios: number;
-    conversiones: number;
-    pageviews: number;
-    conversion_rate: number | null;
-  }>;
-  return rows.map((r) => ({ ...r, usuarios: r.usuarios ?? 0, ultima_fecha: range.to }));
+  return [...map.values()]
+    .sort((a, b) => b.sesiones - a.sesiones)
+    .slice(0, limit)
+    .map((r) => ({ ...r, usuarios: r.usuarios ?? 0, ultima_fecha: range.to }));
 }
 
 export async function getWebTopLandingPages(range: WebRange, limit = 10): Promise<TopLandingRow[]> {
