@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Sidebar } from "@/components/sidebar";
+import { GlobalDataChat } from "@/components/global-data-chat";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { allowedFromRows } from "@/lib/dashboard-access";
 import "./globals.css";
@@ -33,6 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">{children}</div>
           </main>
         </div>
+        <GlobalDataChat />
       </body>
     </html>
   );
