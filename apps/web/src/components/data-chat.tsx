@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { DynamicChart } from "@/components/dynamic-chart";
-import type { ChartSpec } from "@/lib/chat/types";
+import type { ChartSpec, PostCard } from "@/lib/chat/types";
 
 // Copiloto GENÉRICO: botón flotante + drawer + hilo. Se monta en cualquier
 // dashboard pasándole su `dashboard` id (mapea a lib/chat/registry.ts). El hilo
@@ -11,6 +11,57 @@ interface Msg {
   role: "user" | "assistant";
   content: string;
   charts?: ChartSpec[];
+  posts?: PostCard[];
+}
+
+// Tarjetas visuales de posteos (miniatura + métricas + link).
+function PostCards({ posts }: { posts: PostCard[] }) {
+  return (
+    <div className="mt-2 space-y-2">
+      {posts.map((p, i) => {
+        const inner = (
+          <>
+            {p.thumbnail ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.thumbnail} alt="" className="h-16 w-16 shrink-0 rounded object-cover" />
+            ) : (
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-background text-lg">📄</div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+                {p.plataforma && <span className="font-semibold text-foreground">{p.plataforma}</span>}
+                {p.tipo && <span>· {p.tipo}</span>}
+                {p.fecha && <span>· {p.fecha}</span>}
+              </div>
+              {p.titulo && <div className="mt-0.5 line-clamp-2 text-[11px]">{p.titulo}</div>}
+              <div className="mt-1 flex gap-3 text-[10px] tabular-nums text-muted-foreground">
+                {p.alcance != null && (
+                  <span>
+                    <b className="text-foreground">{p.alcance.toLocaleString()}</b> alcance
+                  </span>
+                )}
+                {p.engagement != null && (
+                  <span>
+                    <b className="text-foreground">{p.engagement.toLocaleString()}</b> eng
+                  </span>
+                )}
+              </div>
+            </div>
+          </>
+        );
+        const cls = "flex gap-2 rounded-lg border bg-card p-2 transition";
+        return p.url ? (
+          <a key={i} href={p.url} target="_blank" rel="noreferrer" className={`${cls} hover:bg-muted`}>
+            {inner}
+          </a>
+        ) : (
+          <div key={i} className={cls}>
+            {inner}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 // Renderer de markdown MÍNIMO (sin dependencias): negritas, listas, saltos de
@@ -83,8 +134,16 @@ export function DataChat({ dashboard, suggestions = [] }: { dashboard: string; s
           messages: next.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
-      const data = (await res.json()) as { text?: string; charts?: ChartSpec[]; error?: string };
-      setMsgs([...next, { role: "assistant", content: data.text || data.error || "…", charts: data.charts ?? [] }]);
+      const data = (await res.json()) as {
+        text?: string;
+        charts?: ChartSpec[];
+        posts?: PostCard[];
+        error?: string;
+      };
+      setMsgs([
+        ...next,
+        { role: "assistant", content: data.text || data.error || "…", charts: data.charts ?? [], posts: data.posts ?? [] },
+      ]);
     } catch {
       setMsgs([...next, { role: "assistant", content: "Error al consultar. Reintentá." }]);
     } finally {
@@ -142,6 +201,7 @@ export function DataChat({ dashboard, suggestions = [] }: { dashboard: string; s
                       <DynamicChart spec={c} />
                     </div>
                   ))}
+                  {m.posts && m.posts.length > 0 && <PostCards posts={m.posts} />}
                 </div>
               </div>
             ))}

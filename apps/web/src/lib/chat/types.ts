@@ -20,6 +20,18 @@ export interface ChartSpec {
   series: ChartSeries[];
 }
 
+/** Tarjeta visual de un posteo (miniatura + métricas), para "mostrame los posts". */
+export interface PostCard {
+  titulo?: string;
+  plataforma?: string;
+  fecha?: string;
+  tipo?: string;
+  alcance?: number;
+  engagement?: number;
+  thumbnail?: string;
+  url?: string;
+}
+
 /** Una herramienta que el modelo puede llamar: una query function envuelta. */
 export interface ChatTool {
   name: string;

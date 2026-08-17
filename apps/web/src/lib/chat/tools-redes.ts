@@ -47,6 +47,8 @@ export const redesTools: ChatTool[] = [
           engagement: p.engagement,
           reacciones: p.reactions,
           mensaje: p.message?.slice(0, 80) ?? null,
+          thumbnail: p.thumbnail_url ?? null,
+          url: p.permalink ?? null,
         })),
       };
     },
@@ -85,6 +87,8 @@ export const redesTools: ChatTool[] = [
           alcance: p.reach,
           engagement: p.engagement,
           mensaje: p.message?.slice(0, 80) ?? null,
+          thumbnail: p.thumbnail_url ?? null,
+          url: p.permalink ?? null,
         })),
       };
     },
@@ -115,6 +119,8 @@ export const redesTools: ChatTool[] = [
         video_views: p.video_views,
         eng_rate: p.eng_rate,
         mensaje: p.message?.slice(0, 60) ?? null,
+        thumbnail: p.thumbnail_url ?? null,
+        url: p.permalink ?? null,
       });
       return {
         instagram: { top: r.instagram.top.map(trim), bottom: r.instagram.bottom.map(trim) },

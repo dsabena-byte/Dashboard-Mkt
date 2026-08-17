@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDashboardChat } from "@/lib/chat/registry";
-import type { ChartSpec } from "@/lib/chat/types";
+import type { ChartSpec, PostCard } from "@/lib/chat/types";
 
 // ============================================================================
 // Motor GENÉRICO del copiloto. Loop de function-calling (OpenAI) sobre las tools
@@ -58,6 +58,37 @@ const RENDER_CHART_TOOL = {
   },
 };
 
+const RENDER_POSTS_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "render_posts",
+    description:
+      "Muestra posteos como TARJETAS VISUALES con su miniatura. Usalo cuando el usuario pida ver/mostrar los posts (ej. 'mostrame los posteos', 'quiero verlos'). Pasá los posts con su thumbnail y url tal como vinieron de las tools; no los listes también en texto.",
+    parameters: {
+      type: "object",
+      required: ["posts"],
+      properties: {
+        posts: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              titulo: { type: "string", description: "primeras palabras del mensaje del post" },
+              plataforma: { type: "string", enum: ["Instagram", "Facebook"] },
+              fecha: { type: "string" },
+              tipo: { type: "string" },
+              alcance: { type: "number" },
+              engagement: { type: "number" },
+              thumbnail: { type: "string", description: "url de la miniatura tal cual vino de la tool" },
+              url: { type: "string", description: "permalink del post" },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
 export async function POST(req: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "OPENAI_API_KEY no configurada" }, { status: 500 });
@@ -73,6 +104,7 @@ export async function POST(req: Request) {
       function: { name: t.name, description: t.description, parameters: t.parameters },
     })),
     RENDER_CHART_TOOL,
+    RENDER_POSTS_TOOL,
   ];
 
   const messages: OAIMessage[] = [
@@ -81,6 +113,7 @@ export async function POST(req: Request) {
   ];
 
   const charts: ChartSpec[] = [];
+  const posts: PostCard[] = [];
 
   for (let step = 0; step < 6; step++) {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -98,7 +131,7 @@ export async function POST(req: Request) {
 
     const calls = msg.tool_calls ?? [];
     if (calls.length === 0) {
-      return NextResponse.json({ text: msg.content ?? "", charts });
+      return NextResponse.json({ text: msg.content ?? "", charts, posts });
     }
 
     for (const call of calls) {
@@ -113,6 +146,10 @@ export async function POST(req: Request) {
       if (name === "render_chart") {
         charts.push(args as unknown as ChartSpec);
         result = { ok: true };
+      } else if (name === "render_posts") {
+        const arr = Array.isArray(args.posts) ? (args.posts as PostCard[]) : [];
+        posts.push(...arr);
+        result = { ok: true };
       } else {
         const tool = toolMap.get(name);
         result = tool ? await tool.run(args) : { error: `tool desconocida: ${name}` };
@@ -121,5 +158,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ text: "No pude completar la respuesta (demasiados pasos).", charts });
+  return NextResponse.json({ text: "No pude completar la respuesta (demasiados pasos).", charts, posts });
 }
