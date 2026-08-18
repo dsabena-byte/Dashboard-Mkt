@@ -1,8 +1,8 @@
-name: BGT Mkt sync (cada 6h)
+name: BGT Mkt sync (cada 12h)
 
 on:
   schedule:
-    - cron: "0 */6 * * *"  # 00:00, 06:00, 12:00, 18:00 UTC — sigue de cerca al data.json
+    - cron: "0 */12 * * *"  # 00:00, 12:00 UTC — presupuesto de mkt, cambia lento; 2×/día alcanza
   workflow_dispatch:
 
 jobs:

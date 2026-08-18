@@ -2,7 +2,7 @@ name: Re-hostear miniaturas de competencia
 
 on:
   schedule:
-    - cron: "0 */3 * * *"  # cada 3 h: re-hostea miniaturas nuevas antes de que caduquen
+    - cron: "0 */12 * * *"  # cada 12 h: las miniaturas del CDN caducan en 1-2 días; 2×/día alcanza (validado: ~1-5 nuevas/día, 0 pendientes acumuladas)
   workflow_dispatch:
     inputs:
       dry:

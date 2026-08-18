@@ -1,8 +1,8 @@
-name: GA4 web traffic sync (cada 6h)
+name: GA4 web traffic sync (cada 12h)
 
 on:
   schedule:
-    - cron: "30 */6 * * *"  # 00:30, 06:30, 12:30, 18:30 UTC
+    - cron: "30 */12 * * *"  # 00:30, 12:30 UTC — GA4 no carga el día en curso (llega hasta ayer); 2×/día alcanza
   workflow_dispatch:
     inputs:
       days:
