@@ -217,7 +217,7 @@ export function UgcTestingPanel({
       <div className="mt-2">
         <h3 className="text-sm font-medium">Testeo de creativos</h3>
         <p className="text-xs text-muted-foreground">
-          Por pieza dentro de cada campaña (test): primero las métricas del posteo, después la <strong>calidad de contenido</strong> (retención + reacción, para toda pieza) y —si tiene comentarios— la <strong>validación cualitativa</strong> (credibilidad, persuasión y percepción de marca). Las piezas con comentarios van primero; las que no tienen, al final.
+          Por pieza dentro de cada campaña (test): primero las métricas del posteo, después la <strong>calidad de contenido</strong> (retención + reacción, para toda pieza) y la <strong>validación cualitativa</strong> (credibilidad, persuasión y percepción de marca), que combina los comentarios con las señales de interacción de la pauta (guardados, compartidos, reacciones, VTR). Las piezas con análisis van primero; las de bajo delivery, sin análisis, al final.
         </p>
         <div className="mt-2 grid gap-x-4 gap-y-1 rounded-lg border bg-muted/20 p-2.5 text-[10px] leading-relaxed text-muted-foreground sm:grid-cols-2">
           <span><strong className="text-foreground/70">Hook rate</strong> = reproducciones de video ÷ impresiones. De los que la cruzaron, qué % arrancó a mirarla (el gancho de los primeros segundos).</span>

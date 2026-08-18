@@ -171,15 +171,16 @@ export async function GET(req: Request) {
   const batch = Math.min(Math.max(parseInt(url.searchParams.get("batch") ?? "5", 10) || 5, 1), 20);
   const force = url.searchParams.get("force") === "1";
 
+  // Umbral de impresiones para analizar piezas SIN comentarios (solo por interacción).
+  // Debajo de esto, la pieza tiene delivery/engagement demasiado bajo para un análisis
+  // significativo → se deja con la lectura por "calidad de contenido" del panel.
+  const minImpr = Math.max(parseInt(url.searchParams.get("minImpr") ?? "30000", 10) || 30000, 0);
+
   try {
-    // Permalinks con comentarios.
+    // Permalinks con comentarios (señal cualitativa directa).
     const withComments = await sb<Array<{ permalink: string }>>("ugc_comments?select=permalink");
     const counts = new Map<string, number>();
     for (const r of withComments) counts.set(r.permalink, (counts.get(r.permalink) ?? 0) + 1);
-    // Ya analizados (para saltarlos salvo force).
-    const done = force ? new Set<string>() : new Set((await sb<Array<{ permalink: string }>>("ugc_piece_analysis?select=permalink")).map((r) => r.permalink));
-    const pending = [...counts.keys()].filter((p) => !done.has(p));
-    const toProcess = pending.slice(0, batch);
 
     // Piezas UGC: nombre + métricas de interacción de la pauta (misma data que la
     // pauta de marca) por permalink, para enriquecer el análisis cualitativo.
@@ -201,10 +202,13 @@ export async function GET(req: Request) {
     );
     const nameByLink = new Map<string, string>();
     const metricsByLink = new Map<string, PieceMetrics>();
+    const highDelivery = new Set<string>(); // UGC con impresiones >= minImpr
     for (const p of pieces) {
       if (!p.instagram_permalink_url) continue;
       nameByLink.set(p.instagram_permalink_url, p.ad_name ?? "");
-      metricsByLink.set(p.instagram_permalink_url, ratesOf(p));
+      const m = ratesOf(p);
+      metricsByLink.set(p.instagram_permalink_url, m);
+      if (m.impresiones >= minImpr) highDelivery.add(p.instagram_permalink_url);
     }
 
     // Benchmark UGC (pooled): tasa promedio = sum(métrica) / sum(impresiones).
@@ -227,6 +231,17 @@ export async function GET(req: Request) {
       vtr: sImp ? sVtrW / sImp : 0,
     };
 
+    // Ya analizados (para saltarlos salvo force).
+    const done = force ? new Set<string>() : new Set((await sb<Array<{ permalink: string }>>("ugc_piece_analysis?select=permalink")).map((r) => r.permalink));
+
+    // Candidatas = piezas con comentarios (más señal, van primero) + piezas UGC con
+    // delivery real (impresiones >= minImpr) aunque NO tengan comentarios: el análisis
+    // ahora también se apoya en las señales de interacción, no solo en el texto.
+    const conComentarios = [...counts.keys()].filter((p) => !done.has(p));
+    const soloInteraccion = [...highDelivery].filter((p) => !counts.has(p) && !done.has(p));
+    const pending = [...conComentarios, ...soloInteraccion];
+    const toProcess = pending.slice(0, batch);
+
     const processed: Array<{ permalink: string; n: number; status: string }> = [];
     let errors = 0;
     for (const permalink of toProcess) {
@@ -248,7 +263,16 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: errors === 0, con_comentarios: counts.size, procesados: toProcess.length, restantes: pending.length - toProcess.length, errors, processed });
+    return NextResponse.json({
+      ok: errors === 0,
+      con_comentarios: counts.size,
+      solo_interaccion: soloInteraccion.length,
+      min_impresiones: minImpr,
+      procesados: toProcess.length,
+      restantes: pending.length - toProcess.length,
+      errors,
+      processed,
+    });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
