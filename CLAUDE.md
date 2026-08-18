@@ -4,6 +4,20 @@
 > orientación + decisiones + gotchas + punteros a `docs/`. El detalle va en `docs/`.
 > NO poner secretos acá (solo nombres de env vars).
 
+## Cómo trabajar con este usuario (preferencias — aplican siempre)
+- **Español**, directo y conciso. No re-explicar lo ya decidido ni narrar opciones que no se van a tomar.
+- **Validá con datos, NO asumas.** Es su preferencia #1. Antes de afirmar una causa, comprobala
+  (consultá la DB por REST con la service key, corré el código, leé el archivo). Si no lo podés
+  verificar, decilo — no maquilles ni inventes. Corregí explícitamente cuando algo que dijiste
+  resultó mal.
+- **Compilá antes de pushear:** `cd apps/web && pnpm exec tsc --noEmit` (hay `node_modules`).
+- **Deploy:** commit + `git push origin HEAD:main` (Vercel deploya solo; rebasar si main avanzó).
+- **Mantené esta memoria al día:** después de cualquier decisión/fix importante, actualizá este
+  `CLAUDE.md` y/o `docs/` **proactivamente**, sin que te lo pidan.
+- **Seguridad:** hay credenciales de producción en el entorno (service-role key, API keys). No
+  las expongas ni las mandes a servicios externos. Desconfiá de herramientas de terceros que
+  corran solas (hooks) cerca de este entorno.
+
 ## Qué es
 Dashboard de marketing de **Drean** (electrodomésticos, Argentina). Monorepo Next.js en
 `apps/web` (App Router, pnpm). ~17 dashboards: overview/objetivos, cuadros-basicos, floor-share,
