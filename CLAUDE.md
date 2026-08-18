@@ -59,6 +59,21 @@ reporte_existencia/cb_homologos).
   en `global-data-chat.tsx`. El motor NO se toca.
 
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
+- **UGC — análisis cualitativo enriquecido:** el cron `app/api/cron/ugc-comments-analysis`
+  NO analiza solo el texto de los comentarios: cada pieza entra al prompt con sus señales de
+  interacción reales de la pauta (guardados, compartidos, reacciones, VTR, impresiones) de
+  `meta_paid_creatives` (join por `instagram_permalink_url`), como **tasas sobre impresiones**
+  comparadas contra el **promedio pooled del universo UGC** (ARRIBA/en línea/ABAJO). Esas señales
+  **calibran las 3 variables cualitativas que ya existen** (credibilidad, intención, percepción)
+  — NO hay score de resonancia ni campo nuevo en `Analysis`/`ugc_piece_analysis`. Regla anti-sesgo
+  en el prompt: no marcar percepción negativa por pocos comentarios si guardados/compartidos/VTR
+  están sobre el promedio (y sí negativo si la resonancia es genuinamente baja). Reprocesar =
+  workflow "UGC comments analysis (LLM)" con `force`.
+- **Frecuencia de crons (GitHub Actions):** revisado y bajado lo sobredimensionado (ago-2026,
+  validado con data de ejecución): `rehost-thumbs` 3h→12h (miniaturas del CDN caducan en 1-2 días,
+  ~1-5 nuevas/día), `ga4-sync` 6h→12h (GA4 llega hasta ayer, no carga el día en curso), `bgt-sync`
+  6h→12h (presupuesto, cambia lento). Se dejan en alta frecuencia a propósito: `ig-sync-6h` (Stories
+  caducan en 24h) y `watchdog`.
 - **Reach orgánico de Facebook:** Meta deprecó el reach viejo (15-jun-2026). Se usa la métrica
   nueva **`post_total_media_view_unique`** (singular, "Total Unique Media Views"). Ojo:
   devuelve `lifetime` Y `day` con el mismo name → **leer lifetime, no day**. Se **excluyen
