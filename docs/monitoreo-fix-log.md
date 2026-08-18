@@ -6,6 +6,47 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-08-18 · UGC comentarios — "atrasado", rate limit transitorio de Graph API
+
+- **Chequeo de rutina:** corrida automática del monitoreo (18/8, ~12:20 UTC).
+  Igual que el 14/8, esta sesión no puede llamar directo a
+  `dashboard-mkt-seven.vercel.app` ni a Supabase (egress bloqueado por política
+  de red), así que reconstruí el estado leyendo el log de la corrida más
+  reciente del watchdog (`watchdog.yml`, run del 18/8 07:05 UTC, que sí tiene
+  red completa). Snapshot real (`/api/cron/health`, 18/8 07:05:13 UTC): 16 de
+  17 procesos `ok`, 0 críticos — **`ugc` (UGC comentarios) en `atrasado`**
+  (`ageH: 44`, `cadenciaH: 24` → 1.83×, dentro del rango 1.5×-3×).
+  `lastUpdate` real: 2026-08-16T11:14:39Z.
+- **Diagnóstico:** NO es un cron caído — `ugc-comments-graph.yml` corre a
+  diario (11:xx UTC) y termina en `success` todos los días, incluido el 17/8.
+  Tampoco es un bug de `updated_at` (la columna que mide frescura es
+  `fetched_at`, que sí se toca en cada upsert exitoso). La causa real: en la
+  corrida del **17/8 11:19 UTC**, el endpoint devolvió `HTTP 200` /
+  `"ok":true` (por eso GitHub Actions no lo marca como falla), pero los 20
+  ítems procesados fallaron **todos** con el mismo error de Meta Graph API:
+  `"There have been too many calls to this ad-account. Wait a bit and try
+  again"` (rate limit de la cuenta publicitaria) → `comments:0` en todos,
+  ninguna fila de `ugc_comments` se actualizó ese día, así que `fetched_at`
+  quedó congelado en el 16/8. Es un rate-limit transitorio de Meta, no un bug
+  de nuestro código ni un cron roto.
+- **Estado al momento de este chequeo:** ya auto-recuperado. La corrida
+  programada del **18/8 11:19 UTC** (posterior a la alarma, antes de esta
+  verificación) volvió a tener cupo en la API y procesó los 20 ítems
+  normalmente (`"via":"ig_media"`, comentarios reales devueltos, sin errores
+  de rate limit) → `fetched_at` de `ugc_comments` ya debería estar en ~18/8
+  11:19 UTC, lo que deja `ugc` en `ok` (ageH ~1h vs cadenciaH 24h). No se
+  re-disparó el cron (ya había corrido solo) ni se aplicó ningún PATCH de
+  datos — no hacía falta.
+- **Sin acción de código:** no se abrió PR. El endpoint ya reporta `ok:true`
+  incluso cuando todos los ítems individuales fallan (por diseño, para no
+  marcar el Action en rojo por un rate-limit externo transitorio); eso está
+  bien porque el monitoreo de frescura (`fetched_at`) es justamente lo que
+  detecta este caso, y el retry natural del día siguiente ya lo resolvió sin
+  intervención.
+- **Estado:** resuelto solo, por el próximo ciclo programado. Sin pendientes.
+
+---
+
 ## 2026-08-14 · Tráfico Web (GA4) — "sin dato" persistente pese a syncs OK
 
 - **Chequeo de rutina:** corrida automática del monitoreo (14/8, ~13:44 UTC).
