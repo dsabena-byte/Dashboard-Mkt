@@ -159,7 +159,7 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold">Índice de posición conglomerado</h3>
-            <p className="mt-0.5 text-[11px] text-muted-foreground"><strong>Qué mide:</strong> qué tan bien posicionado está cada dominio en Google para TODAS las keywords de la categoría, ponderando por volumen de búsqueda. <strong>Cómo se calcula:</strong> Σ(volumen × posición) ÷ Σ(volumen) sobre todo el universo de keywords; si el dominio no aparece en una keyword, cuenta como posición 100. <strong>Menor = mejor</strong> (ej. 5.5 = en promedio ponderado rankea ~5º). Azul = Drean, gris = marcas, violeta = retailers.</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground"><strong>Qué mide:</strong> qué tan bien posicionado está cada dominio en Google para TODAS las keywords de la categoría, ponderando por volumen de búsqueda. <strong>Cómo se calcula:</strong> Σ(volumen × posición) ÷ Σ(volumen) sobre todo el universo de keywords; si el dominio no aparece en una keyword, cuenta como posición 100. <strong>Menor = mejor</strong> (ej. 5.5 = en promedio ponderado rankea ~5º). Azul = {brandLabel("Drean")}, gris = marcas, violeta = retailers.</p>
           </div>
           <div className="flex gap-1">
             {([["todos", "Todos"], ["marca", "Marcas"], ["retailer", "Retail"]] as const).map(([k, lbl]) => (
@@ -175,8 +175,8 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
         <ResponsiveContainer width="100%" height={Math.max(200, idx.length * 26)}>
           <BarChart data={idx} layout="vertical" margin={{ left: 8, right: 44, top: 4, bottom: 4 }}>
             <XAxis type="number" fontSize={11} stroke="hsl(var(--muted-foreground))" />
-            <YAxis type="category" dataKey="marca" width={96} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-            <Tooltip formatter={(v: number) => v.toFixed(1)} contentStyle={tooltipStyle} />
+            <YAxis type="category" dataKey="marca" width={96} fontSize={11} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: string) => brandLabel(v)} />
+            <Tooltip formatter={(v: number) => v.toFixed(1)} labelFormatter={(l: string) => brandLabel(l)} contentStyle={tooltipStyle} />
             <Bar dataKey="indice" radius={[0, 4, 4, 0]}>
               {idx.map((d) => (
                 <Cell key={d.marca} fill={d.marca === "Drean" ? "#2b4dff" : d.retailer ? "#a855f7" : "#94a3b8"} />
@@ -192,8 +192,8 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
       {/* Evolución del índice de Drean */}
       {historiaDrean.length > 0 && (
         <div className="rounded-xl border bg-card p-4">
-          <h3 className="text-sm font-semibold">Evolución del índice de Drean — {CATS.find((c) => c.key === cat)?.label}</h3>
-          <p className="mt-0.5 text-[11px] text-muted-foreground"><strong>Qué mide:</strong> cómo se mueve mes a mes el índice de posición de Drean (menor = mejor; el eje está invertido, así lo mejor queda arriba). Se guarda un snapshot mensual; el histórico se acumula con el tiempo.</p>
+          <h3 className="text-sm font-semibold">Evolución del índice de {brandLabel("Drean")} — {categoryLabel(CATS.find((c) => c.key === cat)?.label ?? "")}</h3>
+          <p className="mt-0.5 text-[11px] text-muted-foreground"><strong>Qué mide:</strong> cómo se mueve mes a mes el índice de posición de {brandLabel("Drean")} (menor = mejor; el eje está invertido, así lo mejor queda arriba). Se guarda un snapshot mensual; el histórico se acumula con el tiempo.</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historiaDrean} margin={{ left: 0, right: 16, top: 16, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -211,13 +211,13 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
 
       {/* Buckets accionables */}
       <div>
-        <h3 className="text-sm font-semibold">Keywords según la posición de Drean</h3>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">Las keywords de la categoría clasificadas según <strong>en qué posición de Google rankea DREAN</strong> hoy — dónde falta contenido, dónde hay quick wins y qué hay que defender. <strong>VOL</strong> = volumen mensual de búsqueda. En Faltantes, <strong>Líder</strong> = quién ocupa el top hoy.</p>
+        <h3 className="text-sm font-semibold">Keywords según la posición de {brandLabel("Drean")}</h3>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">Las keywords de la categoría clasificadas según <strong>en qué posición de Google rankea {brandLabel("Drean")}</strong> hoy — dónde falta contenido, dónde hay quick wins y qué hay que defender. <strong>VOL</strong> = volumen mensual de búsqueda. En Faltantes, <strong>Líder</strong> = quién ocupa el top hoy.</p>
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
-        <BucketTable title="🔴 Faltantes" subtitle="Drean no rankea — contenido a crear" rows={buckets.faltantes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: f.lider ?? "—" }))} extraLabel="Líder" />
-        <BucketTable title="🟡 Débiles" subtitle="Drean pos. 8-20 — quick wins" rows={buckets.debiles.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
-        <BucketTable title="🟢 Fuertes" subtitle="Drean top-3 — defender" rows={buckets.fuertes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
+        <BucketTable title="🔴 Faltantes" subtitle={`${brandLabel("Drean")} no rankea — contenido a crear`} rows={buckets.faltantes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: f.lider ? brandLabel(f.lider) : "—" }))} extraLabel="Líder" />
+        <BucketTable title="🟡 Débiles" subtitle={`${brandLabel("Drean")} pos. 8-20 — quick wins`} rows={buckets.debiles.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
+        <BucketTable title="🟢 Fuertes" subtitle={`${brandLabel("Drean")} top-3 — defender`} rows={buckets.fuertes.map((f) => ({ keyword: f.keyword, vol: f.vol, extra: `#${f.pos}` }))} extraLabel="Pos." />
       </div>
 
       {/* Matriz de posición (Content GAP) */}
@@ -233,7 +233,7 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
                 <th className="sticky left-0 z-10 bg-card px-2 py-1 text-left font-medium">Keyword</th>
                 {matriz.doms.map((d) => (
                   <th key={d} className={`px-1 py-1 text-center font-medium ${d === "Drean" ? "text-primary" : RETAILERS.has(d) ? "text-purple-600" : ""}`}>
-                    <div className="w-9 truncate" title={d}>{d}</div>
+                    <div className="w-9 truncate" title={brandLabel(d)}>{brandLabel(d)}</div>
                   </th>
                 ))}
               </tr>
@@ -241,7 +241,7 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
             <tbody>
               {matriz.kws.map(({ keyword }) => (
                 <tr key={keyword}>
-                  <td className="sticky left-0 z-10 max-w-[180px] truncate bg-card px-2 py-1" title={keyword}>{keyword}</td>
+                  <td className="sticky left-0 z-10 max-w-[180px] truncate bg-card px-2 py-1" title={scrubText(keyword)}>{scrubText(keyword)}</td>
                   {matriz.doms.map((d) => {
                     const pos = matriz.posMap.get(`${d}|${keyword}`);
                     return (
@@ -270,7 +270,7 @@ function BucketTable({ title, subtitle, rows, extraLabel }: { title: string; sub
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={i} className="border-t"><td className="py-1 pr-2">{r.keyword}</td><td className="py-1 text-right tabular-nums">{fmtNum(r.vol)}</td><td className="py-1 text-right">{r.extra}</td></tr>
+              <tr key={i} className="border-t"><td className="py-1 pr-2">{scrubText(r.keyword)}</td><td className="py-1 text-right tabular-nums">{fmtNum(r.vol)}</td><td className="py-1 text-right">{r.extra}</td></tr>
             ))}
             {rows.length === 0 && <tr><td colSpan={3} className="py-4 text-center text-muted-foreground">—</td></tr>}
           </tbody>

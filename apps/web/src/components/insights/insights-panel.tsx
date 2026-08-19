@@ -1,4 +1,5 @@
 import type { InsightRow } from "@/lib/insights-queries";
+import { DEMO } from "@/lib/demo/anonymize";
 
 const PRIO_STYLE: Record<string, { bg: string; border: string; text: string; chip: string; label: string }> = {
   alta:  { bg: "bg-rose-50",    border: "border-rose-300",    text: "text-rose-900",    chip: "bg-rose-500 text-white",    label: "ALTA" },
@@ -13,6 +14,9 @@ const TIPO_ICON: Record<string, string> = {
 };
 
 export function InsightsPanel({ insights, titulo = "📊 Insights del período" }: { insights: InsightRow[]; titulo?: string }) {
+  // Los insights son texto libre generado por LLM: pueden mencionar marcas o
+  // categorías reales que no se pueden anonimizar por campo. Se ocultan en demo.
+  if (DEMO) return <div className="rounded-lg border bg-muted/30 p-4 text-xs text-muted-foreground">Insights no disponibles en la vista demo.</div>;
   if (insights.length === 0) {
     return (
       <section className="rounded-xl border bg-card p-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import type { TopAndBottom, TopPostRow } from "@/lib/insights-queries";
+import { DEMO } from "@/lib/demo/anonymize";
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -128,6 +129,9 @@ export function TopContentPanel({
   instagram: TopAndBottom;
   facebook: TopAndBottom;
 }) {
+  // Los captions/nombres de posts y los badges de plataforma exponen el handle
+  // real (@dreanargentina / Page Drean); se oculta el panel entero en demo.
+  if (DEMO) return <div className="rounded-lg border bg-muted/30 p-4 text-xs text-muted-foreground">Top contenidos no disponibles en la vista demo.</div>;
   if (instagram.top.length === 0 && facebook.top.length === 0) {
     return (
       <section className="rounded-xl border bg-card p-4">
