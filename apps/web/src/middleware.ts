@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith("/bgt-mkt")
   ) {
     const DEMO_ROUTES = [
-      "/overview", "/funnel", "/performance", "/influencia", "/web",
+      "/overview", "/salud-marca", "/funnel", "/performance", "/influencia", "/web",
       "/redes", "/seo-search", "/cuadros-basicos", "/floor-share",
     ];
     const ok = DEMO_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));

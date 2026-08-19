@@ -226,19 +226,28 @@ const REAL_BRAND_NAMES = [
   "Gafa", "Hisense", "Midea", "Escorial", "Orbis", "Mabe", "Patrick", "BGH", "LG",
   "Frávega", "Fravega", "Cetrogar", "Megatone", "Naldo", "Oncity", "Rodo",
 ]
-  .map((n) => ({ n, re: new RegExp(`\\b${escapeRegex(n)}\\b`, "gi") }))
-  // Más largos primero para no romper coincidencias parciales.
+  .map((n) => ({ n, label: () => brandLabel(n), re: new RegExp(`\\b${escapeRegex(n)}\\b`, "gi") }))
+  .sort((a, b) => b.n.length - a.n.length);
+
+// Nombres reales de categoría de producto para scrubbing de texto libre.
+const REAL_CATEGORY_NAMES = [
+  "Refrigeración", "Refrigeracion", "Lavavajillas", "Lavarropas", "Secarropas",
+  "Lavado y Secado", "Lavado", "Cocción", "Coccion", "Cocinas", "Heladeras",
+]
+  .map((n) => ({ n, label: () => categoryLabel(n), re: new RegExp(`\\b${escapeRegex(n)}\\b`, "gi") }))
   .sort((a, b) => b.n.length - a.n.length);
 
 /**
- * Reemplaza nombres de marca/retailer reales dentro de texto libre (ej. keywords,
- * títulos) por su etiqueta anonimizada. Sin DEMO devuelve el texto original.
+ * Reemplaza nombres de marca/retailer/categoría reales dentro de texto libre
+ * (prosa, keywords, títulos) por su etiqueta anonimizada. Sin DEMO devuelve el
+ * texto original.
  */
 export function scrubText(text: string | null | undefined): string {
   const raw = (text ?? "").toString();
   if (!DEMO || !raw) return raw;
   let out = raw;
-  for (const { n, re } of REAL_BRAND_NAMES) out = out.replace(re, brandLabel(n));
+  for (const { re, label } of REAL_BRAND_NAMES) out = out.replace(re, label());
+  for (const { re, label } of REAL_CATEGORY_NAMES) out = out.replace(re, label());
   return out;
 }
 

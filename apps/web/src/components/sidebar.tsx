@@ -34,6 +34,7 @@ const tenant = getTenant();
 // nav (y el middleware bloquea el acceso directo) para no filtrar nombres reales.
 const DEMO_ROUTES = new Set<string>([
   "/overview",
+  "/salud-marca",
   "/funnel",
   "/performance",
   "/influencia",

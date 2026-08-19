@@ -9,9 +9,21 @@ import {
   computeDreanConsolidado, SM_DIMS,
   type SMState,
 } from "@/lib/salud-marca-model";
+import { brandLabel, categoryLabel, scrubText, DEMO } from "@/lib/demo/anonymize";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
+
+// MODO DEMO: scrubText + las abreviaturas de categoría que scrubText no cubre
+// (refri/lav/cocc, que en prosa/labels revelan la categoría). Sin DEMO = identidad.
+function scrub(text: string): string {
+  const out = scrubText(text);
+  if (!DEMO) return out;
+  return out
+    .replace(/\brefri\b/gi, categoryLabel("Refrigeración"))
+    .replace(/\bcocc\b/gi, categoryLabel("Cocción"))
+    .replace(/\blav\b/gi, categoryLabel("Lavado"));
+}
 
 const TABS = [
   { key: "lavado", label: "Lavado", idx: 0 },
@@ -160,7 +172,7 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
   return (
     <section className="overflow-hidden rounded-xl border bg-card">
       <div className="border-b px-4 py-3">
-        <h3 className="text-sm font-bold tracking-tight">Salud de Marca — Drean por categoría
+        <h3 className="text-sm font-bold tracking-tight">Salud de Marca — {brandLabel("Drean")} por categoría
           <span className="ml-2 text-[11px] font-normal text-muted-foreground">SM categoría = 0,25·(TOM+SOM+Intención+Poder) · Global = Σ SM·peso de categoría</span>
         </h3>
       </div>
@@ -176,9 +188,9 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
             <tr className="border-b text-[9px] font-semibold uppercase text-muted-foreground">
               {waves.map((w) => (
                 <Fragment key={w}>
-                  <th className="border-l px-2 py-1 text-center">Lav</th>
-                  <th className="px-2 py-1 text-center">Refri</th>
-                  <th className="px-2 py-1 text-center">Cocc</th>
+                  <th className="border-l px-2 py-1 text-center">{scrub("Lav")}</th>
+                  <th className="px-2 py-1 text-center">{scrub("Refri")}</th>
+                  <th className="px-2 py-1 text-center">{scrub("Cocc")}</th>
                   <th className="bg-sky-50 px-2 py-1 text-center text-sky-700">SM</th>
                 </Fragment>
               ))}
@@ -226,8 +238,7 @@ function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc
           <p>
             <span className="font-semibold text-blue-600">Azul</span> = valor <strong>proyectado</strong> para nov-26 (modelo de mercado).{" "}
             <span className="font-semibold text-amber-600">Ámbar</span> = se <strong>arrastra el valor de nov-25</strong> porque esa
-            categoría/dimensión <strong>no tiene proyección de marca</strong> (Refrigeración no se estima; Intención no acopla en ninguna
-            categoría; Poder no se estima en Lavado).
+            categoría/dimensión <strong>no tiene proyección de marca</strong>{scrub(" (Refrigeración no se estima; Intención no acopla en ninguna categoría; Poder no se estima en Lavado).")}
           </p>
         </div>
       </div>
@@ -309,7 +320,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       tom: tomEq(13.23, 1.154), tomBand: 2.3, som: somEq(33.73, 1.083), somBand: 1.4,
       nota: (
         <>
-          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Drean — se estiman TOM y SOM (marca enfocada en la categoría, fuerte relación mercado↔salud)</p>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span>{scrub(" Drean — se estiman TOM y SOM (marca enfocada en la categoría, fuerte relación mercado↔salud)")}</p>
           {notaModelo}
           <p>Ecuaciones: <strong>TOM ≈ 13,2 + 1,154·driver</strong> (R²=0,90, ±2,3) · <strong>SOM ≈ 33,7 + 1,083·driver</strong> (R²=0,94, ±1,4). Intención y Poder no se estiman.</p>
         </>
@@ -319,9 +330,9 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       som: somEq(8.82, 3.405), somBand: 1.4,
       nota: (
         <>
-          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Samsung — solo se estima SOM</p>
-          <p><strong>SOM ≈ 8,8 + 3,41·driver</strong> (R²=0,88): su share of mind en lavado sigue su volumen (US Total).</p>
-          <p><strong>TOM no se estima</strong>: su notoriedad no depende del share en lavado (marca multicategoría; R²=0,16, pendiente negativa) → se mantiene en su nivel real.</p>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span>{scrub(" Samsung — solo se estima SOM")}</p>
+          <p><strong>SOM ≈ 8,8 + 3,41·driver</strong>{scrub(" (R²=0,88): su share of mind en lavado sigue su volumen (US Total).")}</p>
+          <p><strong>TOM no se estima</strong>{scrub(": su notoriedad no depende del share en lavado (marca multicategoría; R²=0,16, pendiente negativa) → se mantiene en su nivel real.")}</p>
         </>
       ),
     },
@@ -329,16 +340,16 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       tom: tomEq(1.2, 0.33), tomBand: 0.6,
       nota: (
         <>
-          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Philco — solo se estima TOM (señal moderada/frágil)</p>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span>{scrub(" Philco — solo se estima TOM (señal moderada/frágil)")}</p>
           <p><strong>TOM ≈ 1,2 + 0,33·driver</strong> (R²=0,72; marca chica, N=5). SOM: sin señal suficiente.</p>
         </>
       ),
     },
     Whirlpool: {
-      nota: <p>{marca} — <strong>no se estima</strong> TOM ni SOM: el mercado de lavado no predice su salud de marca (relación débil/espuria; marca multicategoría). Solo se muestran los valores reales.</p>,
+      nota: <p>{brandLabel(marca)} — <strong>no se estima</strong>{scrub(" TOM ni SOM: el mercado de lavado no predice su salud de marca (relación débil/espuria; marca multicategoría). Solo se muestran los valores reales.")}</p>,
     },
     LG: {
-      nota: <p>{marca} — <strong>no se estima</strong> TOM ni SOM: el mercado de lavado no predice su salud de marca (relación débil/espuria; marca multicategoría). Solo se muestran los valores reales.</p>,
+      nota: <p>{brandLabel(marca)} — <strong>no se estima</strong>{scrub(" TOM ni SOM: el mercado de lavado no predice su salud de marca (relación débil/espuria; marca multicategoría). Solo se muestran los valores reales.")}</p>,
     },
   };
   // Refrigeración. Driver = blend(US_Total) para TOM/SOM/Poder (en refri Drean casi
@@ -346,8 +357,8 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
   // sobre las olas medidas (N=4 con blend → direccional, no de precisión).
   const notaRefri = (
     <p>
-      <strong>Blend 50/50 (Kantar).</strong> Driver = 0,5·U12(T) + 0,5·U12(T-12). En refrigeración el predictor es el{" "}
-      <strong>unit share TOTAL</strong> (no la gama alta, donde Drean casi no compite). <em>Inercia comercial</em>; no incluye
+      <strong>Blend 50/50 (Kantar).</strong>{scrub(" Driver = 0,5·U12(T) + 0,5·U12(T-12). En refrigeración el predictor es el ")}
+      <strong>unit share TOTAL</strong>{scrub(" (no la gama alta, donde Drean casi no compite). ")}<em>Inercia comercial</em>; no incluye
       medios/tienda/comunicación. N=4 olas con blend → estimación <strong>direccional</strong>.
     </p>
   );
@@ -359,7 +370,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       damp: 0.5,
       nota: (
         <>
-          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Samsung (refri) — se estiman TOM, SOM y Poder desde el unit share total</p>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span>{scrub(" Samsung (refri) — se estiman TOM, SOM y Poder desde el unit share total")}</p>
           {notaRefri}
           <p>
             Ecuaciones: <strong>TOM ≈ −13,97 + 1,724·driver</strong> (R²=0,97, ±0,4) · <strong>SOM ≈ −15,51 + 4,012·driver</strong>{" "}
@@ -380,10 +391,10 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       damp: 0.5,
       nota: (
         <>
-          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Philco (refri) — se estiman TOM, SOM y Poder desde el unit share total</p>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span>{scrub(" Philco (refri) — se estiman TOM, SOM y Poder desde el unit share total")}</p>
           {notaRefri}
           <p>
-            Philco viene <strong>creciendo fuerte</strong> (US Total 4,9 → 12,9) y su marca acompaña al share (correlaciones muy altas).
+            {scrub("Philco viene ")}<strong>creciendo fuerte</strong> (US Total 4,9 → 12,9) y su marca acompaña al share (correlaciones muy altas).
             Ecuaciones: <strong>TOM ≈ −3,05 + 1,101·driver</strong> (R²=0,98) · <strong>SOM ≈ 3,64 + 2,706·driver</strong> (R²=0,85) ·{" "}
             <strong>Poder ≈ 2,86 + 0,646·driver</strong> (R²=0,99). Driver = blend(US Total). <strong>Amortiguación 50/50</strong> (N=4).
             Intención/Significancia/Diferenciación no se estiman.
@@ -394,9 +405,9 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     Drean: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">Drean (refri) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("Drean (refri) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
-            Drean es <strong>nueva</strong> en refrigeración: entró por distribución/precio (ganó share rápido 2023-24) <em>antes</em> de
+            {scrub("Drean es ")}<strong>nueva</strong>{scrub(" en refrigeración: entró por distribución/precio (ganó share rápido 2023-24) ")}<em>antes</em> de
             construir marca. Share e indicadores de marca están <strong>desacoplados</strong> (incluso inversos): TOM/SOM/Poder planos
             mientras el share subió y corrigió, y la Intención sube por <em>construcción de marca</em>, no por share. Correlaciones
             débiles/espurias → <strong>se mantienen los últimos valores reales</strong>. (Con planes de medios/comunicación sí se podría
@@ -408,7 +419,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     Gafa: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">Gafa (refri) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("Gafa (refri) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
             Incumbente fuerte: su brand equity se mantiene <strong>estable</strong> (TOM ~19, SOM ~49, Poder ~12) aunque su share cae
             (US Total 22,8 → 13,3). Relación mercado↔marca débil/inversa (espuria) → se mantienen los últimos valores reales.
@@ -419,7 +430,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     Whirlpool: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">Whirlpool (refri) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("Whirlpool (refri) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
             Su share <strong>creció</strong> (US Total 2,6 → 10,8) pero la marca <strong>no acompañó</strong> (TOM/SOM planos o bajando).
             Share y marca <strong>desacoplados</strong> → se mantienen los últimos valores reales.
@@ -430,10 +441,9 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     LG: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">LG (refri) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("LG (refri) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
-            GFK <strong>no desglosa el share total de LG</strong> en refrigeración (sin driver de mercado disponible) → se mantienen los
-            últimos valores reales.
+            GFK <strong>{scrub("no desglosa el share total de LG")}</strong>{scrub(" en refrigeración (sin driver de mercado disponible) → se mantienen los últimos valores reales.")}
           </p>
         </>
       ),
@@ -444,9 +454,9 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
   // las olas medidas (N=5; nov-23 sin T-12 → blend direccional).
   const notaCoccion = (
     <p>
-      <strong>Blend 50/50 (Kantar).</strong> Driver = 0,5·(US<sub>Mid</sub>+US<sub>High</sub>)(T) + 0,5·(…)(T-12). En cocción el equity{" "}
+      <strong>Blend 50/50 (Kantar).</strong> Driver = 0,5·(US<sub>Mid</sub>+US<sub>High</sub>)(T) + 0,5·(…)(T-12).{scrub(" En cocción el equity ")}
       <strong>se construye desde la gama media/alta</strong>: el segmento Low (entrada) tiene mucho volumen pero{" "}
-      <strong>no construye marca</strong> (verificado: Escorial domina Low y su marca está desacoplada). <em>Inercia comercial</em>;
+      <strong>no construye marca</strong>{scrub(" (verificado: Escorial domina Low y su marca está desacoplada). ")}<em>Inercia comercial</em>;
       no incluye medios/tienda/comunicación. N=5 olas → estimación <strong>direccional</strong>.
     </p>
   );
@@ -458,10 +468,10 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       damp: 0.3,
       nota: (
         <>
-          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Drean (cocción) — se estiman TOM, SOM y Poder desde la gama media/alta</p>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span>{scrub(" Drean (cocción) — se estiman TOM, SOM y Poder desde la gama media/alta")}</p>
           {notaCoccion}
           <p>
-            Drean <strong>lanzó un nuevo portfolio en may-25</strong> enfocado en Mid (y modelos High a fin de año): su presencia
+            {scrub("Drean ")}<strong>lanzó un nuevo portfolio en may-25</strong> enfocado en Mid (y modelos High a fin de año): su presencia
             Mid+High saltó y arrastró la <strong>notoriedad/propiedad</strong> de marca (TOM/SOM/Poder/Saliencia suben juntos; el segmento
             High es el termómetro más fino, r≈+0,8). Ecuaciones: <strong>TOM ≈ −0,05 + 0,637·driver</strong> (R²=0,41, ±1,4) ·{" "}
             <strong>SOM ≈ 3,74 + 1,538·driver</strong> (R²=0,36, ±4,7) · <strong>Poder ≈ 8,53 + 0,245·driver</strong> (R²=0,24, ±0,6).
@@ -479,7 +489,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     Escorial: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">Escorial (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("Escorial (cocción) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
             Líder de volumen del <strong>segmento de entrada</strong> (Low, anchos ≤52cm: 86%→74%) con índice de precio ~0,65 (vende ~35%
             bajo el promedio). Su share <em>total</em> de unidades está <strong>desacoplado/invertido</strong> respecto del equity: tocó
@@ -498,7 +508,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       damp: 0.5,
       nota: (
         <>
-          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span> Electrolux (cocción) — se estiman TOM, SOM y Poder desde el unit share total</p>
+          <p className="font-semibold text-foreground"><span className="text-blue-600">≈</span>{scrub(" Electrolux (cocción) — se estiman TOM, SOM y Poder desde el unit share total")}</p>
           <p>
             <strong>Blend 50/50 (Kantar).</strong> Driver = 0,5·US<sub>Total</sub>(T) + 0,5·US<sub>Total</sub>(T-12). Marca premium{" "}
             <strong>chica y en crecimiento parejo</strong> (US Total 0,84 → 2,43): su marca <strong>construye en lockstep</strong> con el
@@ -516,7 +526,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     Whirlpool: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">Whirlpool (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("Whirlpool (cocción) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
             Marca <strong>premium pura</strong> (índice de precio 1,5-1,8) que se está <strong>retirando a una posición más chica pero más
             premium</strong>: pierde share de volumen en gama media/alta (blend Mid+High 15,7 → 10,2) <em>mientras</em> su equity{" "}
@@ -531,7 +541,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     Longvie: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">Longvie (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("Longvie (cocción) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
             Incumbente mid-tier (TOM ~13, presencia sólida en High). Su share y su SOM <strong>co-movieron en un ciclo</strong> (ambos pico
             nov-24), pero bajo la <strong>metodología de blend 50/50 la señal se lava</strong> (SOM↔blend +0,32) porque el año móvil sigue
@@ -544,10 +554,9 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     Gafa: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">Gafa (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("Gafa (cocción) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
-            GFK <strong>no desglosa el share total de Gafa</strong> en cocción (queda en “otros”; solo aparece en Mid hasta may-24). Sin
-            driver de mercado disponible → se mantienen los últimos valores reales.
+            GFK <strong>{scrub("no desglosa el share total de Gafa")}</strong>{scrub(" en cocción (queda en “otros”; solo aparece en Mid hasta may-24). Sin driver de mercado disponible → se mantienen los últimos valores reales.")}
           </p>
         </>
       ),
@@ -555,7 +564,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
     Florencia: {
       nota: (
         <>
-          <p className="font-semibold text-foreground">Florencia (cocción) — <strong>no se estima</strong> desde mercado</p>
+          <p className="font-semibold text-foreground">{scrub("Florencia (cocción) — ")}<strong>no se estima</strong> desde mercado</p>
           <p>
             Jugador grande de <strong>volumen</strong> (~15% total) pero <strong>comprado por precio, no por marca</strong>: índice de precio
             bajísimo (High 46-73, Mid 86-94) y la <strong>marca más débil</strong> de la categoría (Poder ~5, Diferenciación 57-62). Además
@@ -695,9 +704,9 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       <div className="border-b px-4 py-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold tracking-tight">{catLabel} — Salud de Marca (Kantar)</h3>
+            <h3 className="text-sm font-bold tracking-tight">{categoryLabel(catLabel)} — Salud de Marca (Kantar)</h3>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {marca}. Columnas = olas de medición. Debajo de cada valor, el desvío vs la ola anterior.
+              {brandLabel(marca)}. Columnas = olas de medición. Debajo de cada valor, el desvío vs la ola anterior.
             </p>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -708,7 +717,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
                 scroll={false}
                 className={`rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${b === marca ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
               >
-                {b}
+                {brandLabel(b)}
               </Link>
             ))}
           </div>
@@ -785,8 +794,8 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
       {kantarTable()}
       {mercadoTable(
         serieU12,
-        `${catLabel} — Mercado · GFK (U12 · año móvil)`,
-        `${marca}. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.`,
+        `${categoryLabel(catLabel)} — Mercado · GFK (U12 · año móvil)`,
+        `${brandLabel(marca)}. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.`,
         esLavado && esDrean ? (
           <>
             <strong>nov-26 (proyección).</strong> Valores <strong>mensuales finales</strong> asumidos para nov-26 — VS High 20% ·
@@ -813,7 +822,7 @@ function Header({ tab, lastUpdated }: { tab: (typeof TABS)[number]; lastUpdated?
         <p className="max-w-3xl text-sm text-muted-foreground">
           Salud de marca medida por <b>Kantar</b> (Top of Mind, Share of Mind, Intención y Poder de marca) por categoría,
           contrastada con la evolución de mercado. La proyección de <b>Nov-2026</b> se estima desde los drivers de mercado de
-          cada marca. El tab <b>Marca</b> consolida a Drean ponderando las categorías.
+          cada marca. El tab <b>Marca</b>{scrub(" consolida a Drean ponderando las categorías.")}
         </p>
       </header>
       <div className="flex flex-wrap gap-2">
@@ -828,7 +837,7 @@ function Header({ tab, lastUpdated }: { tab: (typeof TABS)[number]; lastUpdated?
                 : "border-border bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
-            {t.label}
+            {categoryLabel(t.label)}
           </Link>
         ))}
       </div>
