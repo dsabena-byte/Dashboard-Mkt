@@ -97,7 +97,7 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
             className="w-3/5 h-auto"
           />
         )}
-        <p className="mt-2 text-xs text-muted-foreground">{DEMO ? "Vista demo · datos anonimizados" : tenant.branding.tagline}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{DEMO ? "Demo Marketing Management" : tenant.branding.tagline}</p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {nav.map((item) => {
