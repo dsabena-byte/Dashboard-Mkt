@@ -58,6 +58,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
+  // MODO DEMO: solo se exponen los 9 dashboards elegidos. Cualquier otra ruta de
+  // página (fuera de /api y del iframe /bgt-mkt) se redirige a /overview, así las
+  // páginas fuera de alcance (con nombres reales) no son alcanzables por el link.
+  if (
+    process.env.NEXT_PUBLIC_DEMO_MODE === "1" &&
+    user &&
+    !pathname.startsWith("/api") &&
+    !pathname.startsWith("/bgt-mkt")
+  ) {
+    const DEMO_ROUTES = [
+      "/overview", "/funnel", "/performance", "/influencia", "/web",
+      "/redes", "/seo-search", "/cuadros-basicos", "/floor-share",
+    ];
+    const ok = DEMO_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
+    if (!ok) {
+      return NextResponse.redirect(new URL("/overview", request.url));
+    }
+  }
+
   // Control de acceso por dashboard (tabla dashboard_access). Si el usuario tiene
   // filas, queda restringido a esos paths; si no, ve todo. No aplica a /api.
   if (user && !pathname.startsWith("/api")) {

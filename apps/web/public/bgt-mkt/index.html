@@ -766,6 +766,13 @@ async function loadData(){
   const json = await res.json();
   DATA = Array.isArray(json) ? json : json.rows;
   if(!Array.isArray(DATA)) throw new Error('Formato invalido en data.json');
+  // MODO DEMO (?demo=1): anonimiza la dimensión de categoría (r[1]) → "Categoría N"
+  // de forma consistente, sin exponer nombres reales. Mes/versión quedan intactos.
+  if(new URLSearchParams(location.search).get('demo')==='1'){
+    const known={'lavado':'Categoría 1','refrigeración':'Categoría 2','refrigeracion':'Categoría 2','cocción':'Categoría 3','coccion':'Categoría 3','cocinas':'Categoría 3','lavavajillas':'Categoría 4'};
+    const catMap={}; let n=0;
+    DATA = DATA.map(r=>{ const row=r.slice(); const raw=String(row[1]==null?'':row[1]); const k=raw.toLowerCase().trim(); if(raw){ let lbl=known[k]||catMap[k]; if(!lbl){ n++; lbl='Categoría '+n; catMap[k]=lbl; } row[1]=lbl; } return row; });
+  }
   let syncDate = null;
   if(json && json.syncedAt) syncDate = new Date(json.syncedAt);
   else { const lm = res.headers.get('Last-Modified'); if(lm) syncDate = new Date(lm); }

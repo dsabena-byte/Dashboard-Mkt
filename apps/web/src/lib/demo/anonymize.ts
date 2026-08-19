@@ -128,6 +128,26 @@ export function isOwnBrand(name: string | null | undefined): boolean {
   return norm((name ?? "").toString()) === OWN_REAL;
 }
 
+/**
+ * Dominio anonimizado. drean.com.ar → "marca-a.com.ar"; whirlpool.com.ar →
+ * "marca-b.com.ar". Si la base no es una marca conocida, la vuelve genérica.
+ * Sin DEMO devuelve el original.
+ */
+export function domainLabel(domain: string | null | undefined): string {
+  const raw = (domain ?? "").toString();
+  if (!DEMO || !raw) return raw;
+  const clean = raw.replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+  const slash = clean.indexOf("/");
+  const host = slash >= 0 ? clean.slice(0, slash) : clean;
+  const path = slash >= 0 ? clean.slice(slash) : "";
+  const parts = host.split(".");
+  const base = parts[0] ?? "";
+  const tld = parts.length > 1 ? parts.slice(1).join(".") : "com";
+  const b = brandLabel(base);
+  const slug = b !== base ? b.toLowerCase().replace(/\s+/g, "-") : "sitio";
+  return `${slug}.${tld}${path}`;
+}
+
 // Marcas reales desconocidas (no listadas): se les asigna una etiqueta estable
 // derivada, para no filtrar el nombre real igual.
 const dynBrand = new Map<string, string>();
@@ -183,6 +203,32 @@ export function rekeyByBrand<V>(map: Record<string, V>): Record<string, V> {
   if (!DEMO) return map;
   const out: Record<string, V> = {};
   for (const [k, v] of Object.entries(map)) out[brandLabel(k)] = v;
+  return out;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Nombres reales de marca/retailer (formas legibles) para scrubbing de texto libre.
+const REAL_BRAND_NAMES = [
+  "Drean", "Whirlpool", "Samsung", "Electrolux", "Longvie", "Florencia", "Philco",
+  "Gafa", "Hisense", "Midea", "Escorial", "Orbis", "Mabe", "Patrick", "BGH", "LG",
+  "Frávega", "Fravega", "Cetrogar", "Megatone", "Naldo", "Oncity", "Rodo",
+]
+  .map((n) => ({ n, re: new RegExp(`\\b${escapeRegex(n)}\\b`, "gi") }))
+  // Más largos primero para no romper coincidencias parciales.
+  .sort((a, b) => b.n.length - a.n.length);
+
+/**
+ * Reemplaza nombres de marca/retailer reales dentro de texto libre (ej. keywords,
+ * títulos) por su etiqueta anonimizada. Sin DEMO devuelve el texto original.
+ */
+export function scrubText(text: string | null | undefined): string {
+  const raw = (text ?? "").toString();
+  if (!DEMO || !raw) return raw;
+  let out = raw;
+  for (const { n, re } of REAL_BRAND_NAMES) out = out.replace(re, brandLabel(n));
   return out;
 }
 

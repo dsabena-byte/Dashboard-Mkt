@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 interface PaginatedPost {
   id: string;
@@ -91,7 +92,7 @@ export function PaginatedPostsPanel({
                       color: BRAND_COLORS[p.marca] ?? "#64748b",
                     }}
                   >
-                    {BRAND_LABELS[p.marca] ?? p.marca}
+                    {brandLabel(BRAND_LABELS[p.marca] ?? p.marca)}
                   </span>
                   <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{p.red_social}</span>
                   {p.pilar && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{p.pilar}</span>}

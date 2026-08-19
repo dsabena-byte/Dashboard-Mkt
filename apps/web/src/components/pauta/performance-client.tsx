@@ -31,6 +31,7 @@ import type { GoogleAdsOmdRow } from "@/lib/google-ads-omd-queries";
 import { GoogleAdsCreativesGrid } from "@/components/pauta/google-ads-creatives-grid";
 import type { GoogleAdsCreativeRow } from "@/lib/google-ads-creatives-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 const fmtUSD = (n: number): string =>
   `US$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -156,7 +157,8 @@ function ColGroup10() {
 
 // Tabla por dimensión (categoría o rol) con la MISMA estructura que la tabla maestra
 // por medio: general (gris) + efectivo (semáforo).
-function DimTable({ titulo, col1, model, money }: { titulo: string; col1: string; model: ReturnType<typeof buildDimModel>; money: (n: number) => string }) {
+function DimTable({ titulo, col1, model, money, labelFn }: { titulo: string; col1: string; model: ReturnType<typeof buildDimModel>; money: (n: number) => string; labelFn?: (s: string) => string }) {
+  const lbl = labelFn ?? ((s: string) => s);
   return (
     <div className="overflow-x-auto rounded-lg border bg-card">
       <div className="border-b px-3 py-2 text-xs font-semibold">{titulo}</div>
@@ -182,7 +184,7 @@ function DimTable({ titulo, col1, model, money }: { titulo: string; col1: string
             const frec = b.alcance > 0 ? b.impresiones / b.alcance : 0;
             return (
               <tr key={b.nombre} className="border-b last:border-0">
-                <td className="px-3 py-2 font-medium">{b.nombre}</td>
+                <td className="px-3 py-2 font-medium">{lbl(b.nombre)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{money(b.inversion)}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtNum(b.impresiones)}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{b.alcance > 0 ? fmtNum(b.alcance) : "—"}</td>
@@ -968,7 +970,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     const cats = catModel.items.filter((c) => c.cpmEf > 0);
     if (cats.length > 1) {
       const cB = [...cats].sort((a, b) => a.cpmEf - b.cpmEf)[0]!, cW = [...cats].sort((a, b) => b.cpmEf - a.cpmEf)[0]!;
-      if (cW.cpmEf > cB.cpmEf * 1.4) out.push({ kind: "oportunidad", title: `Categorías: ${cB.nombre} rinde, ${cW.nombre} no`, text: `${cB.nombre} tiene el mejor costo efectivo (${fmtARS(cB.cpmEf)}, VTR ${cB.vtr.toFixed(0)}%); ${cW.nombre} el peor (${fmtARS(cW.cpmEf)}). Revisar formato/targeting de ${cW.nombre}.` });
+      if (cW.cpmEf > cB.cpmEf * 1.4) out.push({ kind: "oportunidad", title: `Categorías: ${categoryLabel(cB.nombre)} rinde, ${categoryLabel(cW.nombre)} no`, text: `${categoryLabel(cB.nombre)} tiene el mejor costo efectivo (${fmtARS(cB.cpmEf)}, VTR ${cB.vtr.toFixed(0)}%); ${categoryLabel(cW.nombre)} el peor (${fmtARS(cW.cpmEf)}). Revisar formato/targeting de ${categoryLabel(cW.nombre)}.` });
     }
     if (videoQuality.hasData && videoQuality.pct50 < 50) out.push({ kind: "optimizacion", title: `${(100 - videoQuality.pct50).toFixed(0)}% del video se desperdicia`, text: `Solo ${videoQuality.pct50.toFixed(0)}% de las impresiones de video llega al 50%. Priorizar formatos cortos / no-skippables y los medios de mejor VTR para no pagar por impresiones que no se ven.` });
     const tt = meds.find((m) => m.medio === "TikTok");
@@ -1117,7 +1119,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             </div>
             <div className="rounded-xl border bg-card p-4">
               <h3 className="mb-2 text-sm font-bold">Inversión por categoría</h3>
-              <InvestmentDonut data={catDonutData} />
+              <InvestmentDonut data={catDonutData.map((d) => ({ ...d, name: categoryLabel(d.name) }))} />
             </div>
           </div>
 
@@ -1221,7 +1223,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
 
           {insight && (
             <>
-              <SectionTitle>Highlights de ejecución · {selCats[0]}</SectionTitle>
+              <SectionTitle>Highlights de ejecución · {categoryLabel(selCats[0])}</SectionTitle>
               <p className="mb-3 text-sm leading-relaxed text-foreground/90">{insight.conclusion}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {insight.positivos.map((p, i) => (
@@ -1387,7 +1389,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           ) : (
             <>
               <div className="space-y-3">
-                <DimTable titulo="Por categoría" col1="Categoría" model={catModel} money={dvMoney} />
+                <DimTable titulo="Por categoría" col1="Categoría" model={catModel} money={dvMoney} labelFn={categoryLabel} />
                 <DimTable titulo="Por rol de comunicación" col1="Rol" model={rolModel} money={dvMoney} />
               </div>
               <p className="mb-3 mt-1 text-[10px] text-muted-foreground/70">
@@ -1654,7 +1656,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                         <td className="px-3 py-2 font-medium">{li.lineItem}</td>
                         <td className="px-3 py-2">{li.canal}</td>
                         <td className="px-3 py-2">
-                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">{li.categoria}</span>
+                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">{categoryLabel(li.categoria)}</span>
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{dvMoney(li.revenueUsd)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{Math.round(li.impresiones).toLocaleString("es-AR")}</td>
@@ -1695,7 +1697,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
                       <tr key={`${p.canal}-${p.categoria}-${p.rol}-${p.creative}`} className="border-b last:border-0">
                         <td className="px-3 py-2 font-medium">{p.creative}</td>
                         <td className="px-3 py-2 text-muted-foreground">{p.canal}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{p.categoria}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{categoryLabel(p.categoria)}</td>
                         <td className="px-3 py-2 text-muted-foreground">{p.rol}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{dvMoney(p.revenueUsd)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{fmtNum(p.impresiones)}</td>

@@ -5,6 +5,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { ClasifBadge } from "@/components/social/clasif-badge";
 import type { FbOrganicSummary, FbDemoBreakdown } from "@/lib/meta-fb-queries";
+import { brandLabel, categoryLabel } from "@/lib/demo/anonymize";
 
 function fmtK(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -89,7 +90,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ backgroundColor: "#1877F2" }}>FB</div>
         <div>
           <h3 className="text-base font-semibold tracking-tight">
-            Facebook organico &mdash; Page Drean
+            Facebook organico &mdash; Page {brandLabel("Drean")}
           </h3>
           <p className="text-xs text-muted-foreground">
             KPIs del periodo{" "}
@@ -276,7 +277,7 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
                       Sin img
                     </div>
                     {/* Clasificación: categoría + pilar */}
-                    <ClasifBadge categoria={p.categoria} pilar={p.pilar_contenido} />
+                    <ClasifBadge categoria={categoryLabel(p.categoria)} pilar={p.pilar_contenido} />
                     <p className="line-clamp-2 text-[10px] text-foreground" title={p.message ?? ""}>
                       {p.message || <span className="italic text-muted-foreground">Sin texto</span>}
                     </p>

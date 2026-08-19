@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatNumber } from "@/lib/utils";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 // Grilla de tarjetas de piezas pautadas, genérica (mismo formato que Meta) para
 // medios que NO son Meta: Programmatic/DV360 hoy, y Google Ads / TikTok cuando
@@ -135,7 +136,7 @@ export function PiezaGrid({ pieces, money }: { pieces: PiezaCard[]; money: (n: n
                         className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white shadow"
                         style={{ backgroundColor: catColor }}
                       >
-                        {c.categoria}
+                        {categoryLabel(c.categoria)}
                       </span>
                     )}
                     {c.badges?.map((b) => (

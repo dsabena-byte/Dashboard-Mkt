@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SerpRow, SeoIndexHistRow } from "@/lib/competitive-queries";
+import { brandLabel, categoryLabel, scrubText } from "@/lib/demo/anonymize";
 
 // Retailers vs marcas (para colorear y agrupar el set competitivo).
 const RETAILERS = new Set(["ML", "Frávega", "Naldo", "Rodo", "Cetrogar", "Megatone", "Casa del Audio", "Coto", "Oncity"]);
@@ -123,7 +124,7 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
         <div className="ml-auto flex flex-wrap gap-2">
           {CATS.map((c) => (
             <button key={c.key} onClick={() => setCat(c.key)} className={`rounded-full border px-3 py-1 text-xs font-medium ${cat === c.key ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
-              {c.label}
+              {categoryLabel(c.label)}
             </button>
           ))}
         </div>
@@ -132,14 +133,14 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-xl border bg-primary/5 p-4">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Índice de posición · Drean</div>
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Índice de posición · {brandLabel("Drean")}</div>
           <div className="mt-1 text-2xl font-bold tabular-nums text-primary">{dreanIdx ? dreanIdx.indice.toFixed(1) : "—"}</div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">pos. prom. ponderada · #{dreanRank} de {indice.length}</div>
         </div>
         <div className="rounded-xl border bg-card p-4">
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Keywords faltantes</div>
           <div className="mt-1 text-2xl font-bold tabular-nums text-rose-600">{buckets.faltantes.length}</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">Drean no rankea (top volumen)</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">{brandLabel("Drean")} no rankea (top volumen)</div>
         </div>
         <div className="rounded-xl border bg-card p-4">
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Keywords débiles</div>
@@ -149,7 +150,7 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
         <div className="rounded-xl border bg-card p-4">
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Keywords fuertes</div>
           <div className="mt-1 text-2xl font-bold tabular-nums text-emerald-600">{buckets.fuertes.length}</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">Drean top-3 · defender</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">{brandLabel("Drean")} top-3 · defender</div>
         </div>
       </div>
 

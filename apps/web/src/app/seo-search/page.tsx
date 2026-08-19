@@ -3,6 +3,7 @@ import { SeoCompetitivoSection } from "@/components/seo-search/seo-competitivo-s
 import { RegionSection } from "@/components/seo-search/region-section";
 import { LlmoSection } from "@/components/seo-search/llmo-section";
 import { getShareOfSearch, getTrendsInterest, getDemandaGenerica, getSeoCompetitivo, getSearchRegion, getSeoIndexHistory, getLlmo, getSeoFreshness } from "@/lib/competitive-queries";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -41,7 +42,7 @@ export default async function SeoSearchPage() {
         <h1 className="text-xl font-bold">Análisis SEO / Search</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Inteligencia competitiva de demanda: <strong>Share of Search</strong> (predice la intención de compra) e interés de
-          búsqueda de Drean vs el set de electrodomésticos en Argentina.
+          búsqueda de {brandLabel("Drean")} vs el set de electrodomésticos en Argentina.
         </p>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
           <Fresh label="Demanda / Share" date={fresh.demanda} />

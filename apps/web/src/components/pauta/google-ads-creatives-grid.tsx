@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { GoogleAdsCreativeRow } from "@/lib/google-ads-creatives-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 // Grilla de piezas de Google Ads a nivel anuncio. Mismo formato que la de Meta
 // (meta-paid-grid): tarjeta con badges, listado de métricas con íconos y paginado.
@@ -106,7 +107,7 @@ export function GoogleAdsCreativesGrid({ data, selMeses, selCats }: { data: Goog
                 <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1">
                   {c.account_label && (
                     <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white shadow" style={{ backgroundColor: catColor }}>
-                      {c.account_label}
+                      {categoryLabel(c.account_label)}
                     </span>
                   )}
                   {c.campaign_type && (

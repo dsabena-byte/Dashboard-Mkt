@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { DataChat } from "@/components/data-chat";
+import { DEMO } from "@/lib/demo/anonymize";
 
 // Copiloto global: detecta el dashboard por la URL y monta <DataChat> con las
 // sugerencias de ese dashboard. Solo aparece en dashboards habilitados (los que
@@ -71,6 +72,9 @@ const ENABLED: Record<string, string[]> = {
 
 export function GlobalDataChat() {
   const pathname = usePathname();
+  // En modo demo se oculta el copiloto: responde con un LLM que podría mencionar
+  // marcas reales (fuga de confidencialidad). Anonimizar el chat es un follow-up.
+  if (DEMO) return null;
   const seg = (pathname || "/").split("/").filter(Boolean)[0] ?? "";
   const suggestions = ENABLED[seg];
   if (!suggestions) return null;

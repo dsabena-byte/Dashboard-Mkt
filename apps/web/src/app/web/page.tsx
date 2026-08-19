@@ -32,6 +32,7 @@ import {
 import { lastClosedMonthRange, parseDateRange } from "@/lib/dates";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
+import { brandLabel, categoryLabel, domainLabel, scrubText } from "@/lib/demo/anonymize";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -362,9 +363,9 @@ export default async function WebPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Web · Drean</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Web · {brandLabel("Drean")}</h2>
           <p className="text-sm text-muted-foreground">
-            Tráfico real de Google Analytics 4 (drean.com.ar) — performance, canales, categorías y top landings.
+            Tráfico real de Google Analytics 4 ({domainLabel("drean.com.ar")}) — performance, canales, categorías y top landings.
           </p>
           {ultimaFecha && (
             <p className="mt-1 text-xs text-muted-foreground/70">
@@ -451,7 +452,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <header className="border-b p-6 pb-4">
           <h3 className="text-sm font-medium text-muted-foreground">Performance por categoría</h3>
           <p className="text-xs text-muted-foreground">
-            Derivado del path de la landing page. Si una URL no matchea Lavado/Refrigeración/Cocinas, cae en &ldquo;Otros / Home&rdquo;.
+            Derivado del path de la landing page. Si una URL no matchea {categoryLabel("Lavado")}/{categoryLabel("Refrigeración")}/{categoryLabel("Cocinas")}, cae en &ldquo;Otros / Home&rdquo;.
           </p>
         </header>
         <div className="overflow-x-auto">
@@ -473,7 +474,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                       className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
                       style={{ backgroundColor: PALETA_CATEGORIA[c.categoria] ?? "#94a3b8" }}
                     />
-                    {c.categoria}
+                    {categoryLabel(c.categoria)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatNumber(c.usuarios || c.sesiones)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
@@ -556,7 +557,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                                 className="inline-block h-1.5 w-1.5 rounded-full align-middle"
                                 style={{ backgroundColor: PALETA_CAT_WEB[p.categoria] ?? "#94a3b8" }}
                               />
-                              {p.categoria}
+                              {categoryLabel(p.categoria)}
                             </span>
                           </div>
                         </td>
@@ -565,7 +566,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                             className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
                             style={{ backgroundColor: PALETA_CAT_WEB[p.categoria] ?? "#94a3b8" }}
                           />
-                          {p.categoria}
+                          {categoryLabel(p.categoria)}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatNumber(p.usuarios || p.sesiones)}</td>
                         <td className="hidden px-3 py-2 text-right tabular-nums text-muted-foreground md:table-cell">
@@ -738,7 +739,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       <div className="pt-6">
         <h2 className="text-xl font-semibold tracking-tight">Competencia web</h2>
         <p className="text-sm text-muted-foreground">
-          Benchmark de Drean contra competidores (SimilarWeb) + datos reales GA4 de Drean para volumen.
+          Benchmark de {brandLabel("Drean")} contra competidores (SimilarWeb) + datos reales GA4 de {brandLabel("Drean")} para volumen.
         </p>
       </div>
 
@@ -748,7 +749,7 @@ export default async function WebPage({ searchParams }: PageProps) {
             Tráfico web — Benchmark de dominios
           </h3>
           <p className="text-xs text-muted-foreground">
-            <strong>Fuente única: SimilarWeb</strong> (estimación panel + modelos) para Drean y todos los competidores, así la comparación usa la misma metodología. Período mostrado:{" "}
+            <strong>Fuente única: SimilarWeb</strong> (estimación panel + modelos) para {brandLabel("Drean")} y todos los competidores, así la comparación usa la misma metodología. Período mostrado:{" "}
             <strong>{latestMonth ? fmtMonthFull(latestMonth) : "—"}</strong>
             {previousMonth && (
               <>
@@ -789,7 +790,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                   return (
                     <tr key={row.competidor} className="border-b last:border-0">
                       <td className="px-4 py-2 font-medium">
-                        {row.competidor}
+                        {brandLabel(row.competidor)}
                         <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-slate-600">
                           SimilarWeb
                         </span>
@@ -799,7 +800,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-muted-foreground">{row.dominio}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{domainLabel(row.dominio)}</td>
                       <td className="px-4 py-2 text-right tabular-nums">
                         {visitasMes !== null ? formatNumber(visitasMes) : "—"}
                       </td>
@@ -835,7 +836,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           Historia mensual de visitas
         </h3>
         <p className="text-xs text-muted-foreground">
-          Fuente única: SimilarWeb (Drean + competidores). Picos sostenidos = campaña activa.
+          Fuente única: SimilarWeb ({brandLabel("Drean")} + competidores). Picos sostenidos = campaña activa.
         </p>
         <div className="mt-4">
           <CompetitorMonthlyChart data={monthlyHistory} />
@@ -848,7 +849,7 @@ export default async function WebPage({ searchParams }: PageProps) {
             Calidad del tráfico — engagement web
           </h3>
           <p className="text-xs text-muted-foreground">
-            <strong>Fuente: SimilarWeb para todas las marcas</strong> (incluido Drean) para que la comparación use la misma metodología.{" "}
+            <strong>Fuente: SimilarWeb para todas las marcas</strong> (incluido {brandLabel("Drean")}) para que la comparación use la misma metodología.{" "}
             <strong>Período</strong>: snapshot más reciente disponible (estas métricas se reportan como punto-en-el-tiempo, no mensualizadas).
             <strong> Bounce rate</strong> bajo = visitan más de 1 página.
             <strong> Pages/visit</strong> alto = exploran más.
@@ -860,7 +861,7 @@ export default async function WebPage({ searchParams }: PageProps) {
               subtitle="Menor es mejor"
               data={[...webSnapshotRaw]
                 .filter((r) => r.bounce_rate !== null)
-                .map((r) => ({ label: r.competidor, value: (r.bounce_rate ?? 0) * 100, display: `${((r.bounce_rate ?? 0) * 100).toFixed(1)}%` }))
+                .map((r) => ({ label: brandLabel(r.competidor), value: (r.bounce_rate ?? 0) * 100, display: `${((r.bounce_rate ?? 0) * 100).toFixed(1)}%` }))
                 .sort((a, b) => a.value - b.value)}
               colorBy="reverse"
               maxLabel="%"
@@ -870,7 +871,7 @@ export default async function WebPage({ searchParams }: PageProps) {
               subtitle="Mayor es mejor"
               data={[...webSnapshotRaw]
                 .filter((r) => r.pages_per_visit !== null)
-                .map((r) => ({ label: r.competidor, value: r.pages_per_visit ?? 0, display: (r.pages_per_visit ?? 0).toFixed(2) }))
+                .map((r) => ({ label: brandLabel(r.competidor), value: r.pages_per_visit ?? 0, display: (r.pages_per_visit ?? 0).toFixed(2) }))
                 .sort((a, b) => b.value - a.value)}
               colorBy="direct"
             />
@@ -879,7 +880,7 @@ export default async function WebPage({ searchParams }: PageProps) {
               subtitle="Mayor es mejor"
               data={[...webSnapshotRaw]
                 .filter((r) => r.avg_visit_duration !== null)
-                .map((r) => ({ label: r.competidor, value: r.avg_visit_duration ?? 0, display: `${Math.round(r.avg_visit_duration ?? 0)}s` }))
+                .map((r) => ({ label: brandLabel(r.competidor), value: r.avg_visit_duration ?? 0, display: `${Math.round(r.avg_visit_duration ?? 0)}s` }))
                 .sort((a, b) => b.value - a.value)}
               colorBy="direct"
             />
@@ -901,14 +902,14 @@ export default async function WebPage({ searchParams }: PageProps) {
                 <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-3 py-2">Categoría</th>
                   {competidoresEnCat.map((c) => (
-                    <th key={c} className="px-3 py-2 text-right">{c}</th>
+                    <th key={c} className="px-3 py-2 text-right">{brandLabel(c)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {categorias.map((cat) => (
                   <tr key={cat} className="border-b last:border-0">
-                    <td className="px-3 py-2 font-medium">{cat}</td>
+                    <td className="px-3 py-2 font-medium">{categoryLabel(cat)}</td>
                     {competidoresEnCat.map((c) => {
                       const r = porCategoria.find((x) => x.categoria === cat && x.competidor === c);
                       return (
@@ -939,7 +940,7 @@ export default async function WebPage({ searchParams }: PageProps) {
               return (
                 <div key={kw} className="rounded border border-input p-3">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-xs font-medium">{kw}</span>
+                    <span className="text-xs font-medium">{scrubText(kw)}</span>
                     <span className="text-xs text-muted-foreground">
                       máx {max} · últimos {points.length} puntos
                     </span>
@@ -984,7 +985,7 @@ export default async function WebPage({ searchParams }: PageProps) {
                     <tbody>
                       {sourcesConData.map((row) => (
                         <tr key={row.competidor} className="border-b last:border-0">
-                          <td className="px-3 py-2 font-medium align-top">{row.competidor}</td>
+                          <td className="px-3 py-2 font-medium align-top">{brandLabel(row.competidor)}</td>
                           <td className="px-3 py-2">
                             <div className="flex flex-wrap gap-1.5">
                               {row.fuentes.map((f) => (
@@ -1012,12 +1013,12 @@ export default async function WebPage({ searchParams }: PageProps) {
                 <div className="mt-4 space-y-3">
                   {keywordsConData.map((row) => (
                     <div key={row.competidor} className="rounded border border-input p-3">
-                      <div className="text-xs font-medium">{row.competidor}</div>
+                      <div className="text-xs font-medium">{brandLabel(row.competidor)}</div>
                       <ol className="mt-1 grid gap-0.5 text-xs">
                         {row.keywords.slice(0, 5).map((k, i) => (
                           <li key={k.keyword + i} className="flex justify-between gap-2">
                             <span className="truncate">
-                              {i + 1}. {k.keyword}
+                              {i + 1}. {scrubText(k.keyword)}
                             </span>
                             {k.visits !== null && (
                               <span className="tabular-nums text-muted-foreground">

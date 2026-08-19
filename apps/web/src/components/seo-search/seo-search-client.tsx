@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import type { ShareRow, TrendRow, DemandaRow } from "@/lib/competitive-queries";
 import { marcasDeCategoria, type Categoria } from "@/lib/competitive-config";
+import { brandLabel, categoryLabel } from "@/lib/demo/anonymize";
 
 // Colores del set competitivo. Drean resaltado; el resto en paleta distinguible.
 const COLOR: Record<string, string> = {
@@ -127,7 +128,7 @@ export function SeoSearchClient({
               cat === c.key ? "border-transparent bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
             }`}
           >
-            {c.emoji} {c.label}
+            {c.emoji} {categoryLabel(c.label)}
           </button>
         ))}
         <span className="ml-auto self-center text-[11px] text-muted-foreground">
@@ -137,19 +138,19 @@ export function SeoSearchClient({
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Share of Search · Drean" value={`${kpis.dreanShare.toFixed(1)}%`} sub={`Ranking #${kpis.rank} de ${brands.length}`} accent />
-        <Kpi label="Búsquedas Drean / mes" value={fmtNum(kpis.dreanVol)} sub={`${dreanGrowth >= 0 ? "▲" : "▼"} ${dreanGrowth.toFixed(0)}% YoY`} />
-        <Kpi label="Demanda genérica" value={kpis.gen != null ? fmtNum(kpis.gen) : "—"} sub={`"${cat}" (mes)`} />
+        <Kpi label={`Share of Search · ${brandLabel("Drean")}`} value={`${kpis.dreanShare.toFixed(1)}%`} sub={`Ranking #${kpis.rank} de ${brands.length}`} accent />
+        <Kpi label={`Búsquedas ${brandLabel("Drean")} / mes`} value={fmtNum(kpis.dreanVol)} sub={`${dreanGrowth >= 0 ? "▲" : "▼"} ${dreanGrowth.toFixed(0)}% YoY`} />
+        <Kpi label="Demanda genérica" value={kpis.gen != null ? fmtNum(kpis.gen) : "—"} sub={`"${categoryLabel(cat)}" (mes)`} />
         <Kpi label="Demanda total marcas" value={fmtNum(kpis.total)} sub="suma del set (mes)" />
       </div>
 
       {/* Share of Search — snapshot */}
-      <Card title="Share of Search — último mes" subtitle="Participación de cada marca en las búsquedas de la categoría (predice la Intención de Compra). Suma 100% entre las marcas. Drean resaltado.">
+      <Card title="Share of Search — último mes" subtitle={`Participación de cada marca en las búsquedas de la categoría (predice la Intención de Compra). Suma 100% entre las marcas. ${brandLabel("Drean")} resaltado.`}>
         <ResponsiveContainer width="100%" height={Math.max(240, snapshot.length * 30)}>
           <BarChart data={snapshot} layout="vertical" margin={{ left: 8, right: 40, top: 4, bottom: 4 }}>
             <XAxis type="number" tickFormatter={(v) => `${v}%`} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-            <YAxis type="category" dataKey="marca" width={78} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-            <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} contentStyle={tooltipStyle} />
+            <YAxis type="category" dataKey="marca" width={78} fontSize={11} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: string) => brandLabel(v)} />
+            <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} labelFormatter={(l: string) => brandLabel(l)} contentStyle={tooltipStyle} />
             <Bar dataKey="share_pct" radius={[0, 4, 4, 0]}>
               {snapshot.map((r) => (
                 <Cell key={r.marca} fill={colorOf(r.marca)} fillOpacity={r.marca === "Drean" ? 1 : 0.75} />
@@ -161,12 +162,12 @@ export function SeoSearchClient({
       </Card>
 
       {/* Crecimiento de demanda (YoY) */}
-      <Card title="Crecimiento de demanda — YoY" subtitle="Variación del volumen de búsqueda del último mes vs 12 meses atrás. Positivo = la marca acelera (clave para Hisense/Midea); negativo = pierde demanda.">
+      <Card title="Crecimiento de demanda — YoY" subtitle={`Variación del volumen de búsqueda del último mes vs 12 meses atrás. Positivo = la marca acelera (clave para ${brandLabel("Hisense")}/${brandLabel("Midea")}); negativo = pierde demanda.`}>
         <ResponsiveContainer width="100%" height={Math.max(240, crecimiento.length * 30)}>
           <BarChart data={crecimiento} layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }}>
             <XAxis type="number" tickFormatter={(v) => `${v}%`} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-            <YAxis type="category" dataKey="marca" width={78} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-            <Tooltip formatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`} contentStyle={tooltipStyle} />
+            <YAxis type="category" dataKey="marca" width={78} fontSize={11} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: string) => brandLabel(v)} />
+            <Tooltip formatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`} labelFormatter={(l: string) => brandLabel(l)} contentStyle={tooltipStyle} />
             <Bar dataKey="growth" radius={[0, 4, 4, 0]}>
               {crecimiento.map((d) => (
                 <Cell key={d.marca} fill={d.growth >= 0 ? "#10b981" : "#e11d48"} fillOpacity={d.marca === "Drean" ? 1 : 0.7} />
@@ -178,7 +179,7 @@ export function SeoSearchClient({
       </Card>
 
       {/* Share of Search — evolución (área 100%) */}
-      <Card title="Share of Search — evolución 12 meses" subtitle="Cómo se mueven las bandas de share mes a mes. Ideal para ver marcas que ganan/pierden terreno (Hisense/Midea en la rampa).">
+      <Card title="Share of Search — evolución 12 meses" subtitle={`Cómo se mueven las bandas de share mes a mes. Ideal para ver marcas que ganan/pierden terreno (${brandLabel("Hisense")}/${brandLabel("Midea")} en la rampa).`}>
         <ResponsiveContainer width="100%" height={320}>
           <AreaChart data={evolucion} margin={{ top: 8, right: 12, left: 0, bottom: 4 }} stackOffset="expand">
             <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
@@ -187,7 +188,7 @@ export function SeoSearchClient({
             <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {brands.map((b) => (
-              <Area key={b} type="monotone" dataKey={b} stackId="s" stroke={colorOf(b)} fill={colorOf(b)} fillOpacity={b === "Drean" ? 0.95 : 0.6} />
+              <Area key={b} type="monotone" dataKey={b} name={brandLabel(b)} stackId="s" stroke={colorOf(b)} fill={colorOf(b)} fillOpacity={b === "Drean" ? 0.95 : 0.6} />
             ))}
           </AreaChart>
         </ResponsiveContainer>
@@ -203,7 +204,7 @@ export function SeoSearchClient({
             <Tooltip contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {brands.map((b) => (
-              <Line key={b} type="monotone" dataKey={b} stroke={colorOf(b)} strokeWidth={b === "Drean" ? 2.5 : 1} dot={false} />
+              <Line key={b} type="monotone" dataKey={b} name={brandLabel(b)} stroke={colorOf(b)} strokeWidth={b === "Drean" ? 2.5 : 1} dot={false} />
             ))}
           </LineChart>
         </ResponsiveContainer>

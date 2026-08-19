@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SeoOverviewRow, KeywordGapRow, RankingRow } from "@/lib/competitive-queries";
+import { brandLabel, categoryLabel } from "@/lib/demo/anonymize";
 
 const fmtNum = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(0)}K` : String(Math.round(n)));
 const tooltipStyle = { backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 };
@@ -62,8 +63,8 @@ export function SeoOrganicoSection({ overview, gap, rankings }: { overview: SeoO
         <ResponsiveContainer width="100%" height={Math.max(240, barData.length * 32)}>
           <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }}>
             <XAxis type="number" tickFormatter={fmtNum} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-            <YAxis type="category" dataKey="marca" width={80} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-            <Tooltip formatter={(v: number, n: string) => [n === "etv" ? fmtNum(v) : v, n === "etv" ? "ETV" : n]} contentStyle={tooltipStyle} />
+            <YAxis type="category" dataKey="marca" width={80} fontSize={11} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: string) => brandLabel(v)} />
+            <Tooltip formatter={(v: number, n: string) => [n === "etv" ? fmtNum(v) : v, n === "etv" ? "ETV" : n]} labelFormatter={(l: string) => brandLabel(l)} contentStyle={tooltipStyle} />
             <Bar dataKey="etv" radius={[0, 4, 4, 0]}>
               {barData.map((d) => (
                 <Cell key={d.marca} fill={d.marca === "Drean" ? "#2b4dff" : "#94a3b8"} fillOpacity={d.marca === "Drean" ? 1 : 0.7} />
@@ -78,15 +79,15 @@ export function SeoOrganicoSection({ overview, gap, rankings }: { overview: SeoO
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold">Posición de Drean en las keywords top</h3>
+            <h3 className="text-sm font-semibold">Posición de {brandLabel("Drean")} en las keywords top</h3>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Para las búsquedas de mayor volumen: <strong>en qué posición rankea Drean</strong> (o si no rankea, qué competidor la lleva). Verde = top 3, ámbar = top 10.
+              Para las búsquedas de mayor volumen: <strong>en qué posición rankea {brandLabel("Drean")}</strong> (o si no rankea, qué competidor la lleva). Verde = top 3, ámbar = top 10.
             </p>
           </div>
           <div className="flex gap-1">
             {CATS.map((c) => (
               <button key={c} onClick={() => setCat(c)} className={`rounded-full border px-2.5 py-1 text-[11px] ${cat === c ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
-                {c}
+                {categoryLabel(c)}
               </button>
             ))}
           </div>
@@ -98,7 +99,7 @@ export function SeoOrganicoSection({ overview, gap, rankings }: { overview: SeoO
                 <th className="px-3 py-2">Keyword</th>
                 <th className="px-3 py-2">Categoría</th>
                 <th className="px-3 py-2 text-right">Volumen/mes</th>
-                <th className="px-3 py-2 text-center">Drean</th>
+                <th className="px-3 py-2 text-center">{brandLabel("Drean")}</th>
                 <th className="px-3 py-2">Si no rankea, líder</th>
               </tr>
             </thead>
@@ -106,10 +107,10 @@ export function SeoOrganicoSection({ overview, gap, rankings }: { overview: SeoO
               {topKeywords.map((k, i) => (
                 <tr key={`${k.keyword}-${i}`} className="border-b last:border-0">
                   <td className="px-3 py-2 font-medium">{k.keyword}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{k.categoria ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{k.categoria ? categoryLabel(k.categoria) : "—"}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{k.volumen ? fmtNum(k.volumen) : "—"}</td>
                   <td className="px-3 py-2 text-center"><PosBadge pos={k.dreanPos} /></td>
-                  <td className="px-3 py-2 text-muted-foreground">{k.dreanPos == null ? (k.lider ?? "—") : ""}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{k.dreanPos == null ? (k.lider ? brandLabel(k.lider) : "—") : ""}</td>
                 </tr>
               ))}
               {topKeywords.length === 0 && (

@@ -14,6 +14,7 @@ import {
 import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
 import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
 import { computeDreanConsolidado, SM_DIMS, type SMRow, type SMState } from "@/lib/salud-marca-model";
+import { brandLabel, categoryLabel } from "@/lib/demo/anonymize";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -459,16 +460,16 @@ export default async function OverviewPage() {
                 <h3 className="text-sm font-bold tracking-tight">Floor Share de exhibición — categorías core</h3>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Alcanzar el Floor Share objetivo en las tres categorías core, en promedio de los últimos 4 meses: Lavado 32%, Refrigeración 25%, Cocción 23%.
+                Alcanzar el Floor Share objetivo en las tres categorías core, en promedio de los últimos 4 meses: {categoryLabel("Lavado")} 32%, {categoryLabel("Refrigeración")} 25%, {categoryLabel("Cocción")} 23%.
                 {floorShare && floorShare.mesesUsados.length > 0 && (
                   <span className="text-foreground/70"> · U4M: {floorShare.mesesUsados.join(" · ")}</span>
                 )}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">32%</span><span className="text-muted-foreground">Lavado</span></span>
-              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">25%</span><span className="text-muted-foreground">Refri</span></span>
-              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">23%</span><span className="text-muted-foreground">Cocción</span></span>
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">32%</span><span className="text-muted-foreground">{categoryLabel("Lavado")}</span></span>
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">25%</span><span className="text-muted-foreground">{categoryLabel("Refri")}</span></span>
+              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">23%</span><span className="text-muted-foreground">{categoryLabel("Cocción")}</span></span>
             </div>
           </div>
         </div>
@@ -484,7 +485,7 @@ export default async function OverviewPage() {
           ) : (
             <div className="grid gap-4 lg:grid-cols-3">
               {(["lavado", "refri", "coccion"] as FsCatKey[]).map((k) => (
-                <ProgressCard key={k} m={fsToProgress(FS_CAT_LABEL[k], floorShare[k])} />
+                <ProgressCard key={k} m={fsToProgress(categoryLabel(FS_CAT_LABEL[k]), floorShare[k])} />
               ))}
             </div>
           )}
@@ -541,8 +542,8 @@ export default async function OverviewPage() {
                 <h3 className="text-sm font-bold tracking-tight">Salud de Marca</h3>
               </div>
               <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">
-                Ejecutar campañas de comunicación 360 en cada categoría core del negocio (Lavado, Refrigeración y Cocción) para
-                alcanzar una <b>Salud de Marca Drean de 34 puntos</b>, medida por la investigación Kantar de fin de año.
+                Ejecutar campañas de comunicación 360 en cada categoría core del negocio ({categoryLabel("Lavado")}, {categoryLabel("Refrigeración")} y {categoryLabel("Cocción")}) para
+                alcanzar una <b>Salud de Marca {brandLabel("Drean")} de 34 puntos</b>, medida por la investigación Kantar de fin de año.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
@@ -555,7 +556,7 @@ export default async function OverviewPage() {
             {/* Resultado proyectado */}
             <div className="rounded-xl border bg-card p-5">
               <div className="mb-2 flex items-center justify-between">
-                <div className="text-base font-semibold tracking-tight">Salud de Marca Drean</div>
+                <div className="text-base font-semibold tracking-tight">Salud de Marca {brandLabel("Drean")}</div>
                 <span className="rounded-md border bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground/80">Meta {f1(sm.target)}</span>
               </div>
               <div className="flex items-baseline gap-2">
@@ -589,9 +590,9 @@ export default async function OverviewPage() {
                   <thead>
                     <tr className="border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       <th className="py-1.5 text-left">Dimensión</th>
-                      <th className="py-1.5 text-center">Lav</th>
-                      <th className="py-1.5 text-center">Refri</th>
-                      <th className="py-1.5 text-center">Cocc</th>
+                      <th className="py-1.5 text-center">{categoryLabel("Lavado")}</th>
+                      <th className="py-1.5 text-center">{categoryLabel("Refrigeración")}</th>
+                      <th className="py-1.5 text-center">{categoryLabel("Cocción")}</th>
                       <th className="bg-sky-50 py-1.5 text-center text-sky-700">SM</th>
                     </tr>
                   </thead>
@@ -631,9 +632,9 @@ export default async function OverviewPage() {
               )}
               <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
                 <span className="font-semibold text-blue-600">Azul</span> = proyectado · <span className="font-semibold text-amber-600">ámbar</span> = se
-                arrastra nov-25 (sin proyección de marca). <b>Por qué el desvío:</b> lo domina <b>Lavado</b> ({(sm.lav.w * 100).toFixed(0)}% del mix), cuya
-                proyección de marca {sm.lavDir} ({f1(sm.lav.sm25)} → {f1(sm.lav.sm26)}), y eso pesa más que la mejora de <b>Cocción</b>{" "}
-                ({f1(sm.coc.sm25)} → {f1(sm.coc.sm26)}, pero solo {(sm.coc.w * 100).toFixed(0)}% del mix). <b>Refrigeración</b> se mantiene.
+                arrastra nov-25 (sin proyección de marca). <b>Por qué el desvío:</b> lo domina <b>{categoryLabel("Lavado")}</b> ({(sm.lav.w * 100).toFixed(0)}% del mix), cuya
+                proyección de marca {sm.lavDir} ({f1(sm.lav.sm25)} → {f1(sm.lav.sm26)}), y eso pesa más que la mejora de <b>{categoryLabel("Cocción")}</b>{" "}
+                ({f1(sm.coc.sm25)} → {f1(sm.coc.sm26)}, pero solo {(sm.coc.w * 100).toFixed(0)}% del mix). <b>{categoryLabel("Refrigeración")}</b> se mantiene.
               </p>
             </div>
           </div>

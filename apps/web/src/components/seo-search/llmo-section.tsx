@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { LlmoRow } from "@/lib/competitive-queries";
+import { brandLabel, categoryLabel } from "@/lib/demo/anonymize";
 
 // LLMO / GEO — visibilidad de marca en respuestas de LLM. Mide cuánto aparece
 // cada marca cuando el consumidor le pregunta a una IA por la categoría.
@@ -42,7 +43,7 @@ export function LlmoSection({ rows }: { rows: LlmoRow[] }) {
         <div className="ml-auto flex gap-1">
           {CATS.map((c) => (
             <button key={c.key} onClick={() => setCat(c.key)} className={`rounded-full border px-3 py-1 text-xs font-medium ${cat === c.key ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
-              {c.label}
+              {categoryLabel(c.label)}
             </button>
           ))}
         </div>
@@ -50,7 +51,7 @@ export function LlmoSection({ rows }: { rows: LlmoRow[] }) {
 
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold">Share de menciones en IA — {CATS.find((c) => c.key === cat)?.label}</h3>
+          <h3 className="text-sm font-semibold">Share de menciones en IA — {categoryLabel(CATS.find((c) => c.key === cat)?.label ?? "")}</h3>
           {mes && <span className="text-[10px] text-muted-foreground">{mes.slice(0, 7)} · {prompts} respuestas evaluadas</span>}
         </div>
         {bars.length === 0 ? (
@@ -59,9 +60,10 @@ export function LlmoSection({ rows }: { rows: LlmoRow[] }) {
           <ResponsiveContainer width="100%" height={Math.max(200, bars.length * 28)}>
             <BarChart data={bars} layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }}>
               <XAxis type="number" fontSize={11} stroke="hsl(var(--muted-foreground))" unit="%" />
-              <YAxis type="category" dataKey="marca" width={90} fontSize={11} stroke="hsl(var(--muted-foreground))" />
+              <YAxis type="category" dataKey="marca" width={90} fontSize={11} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: string) => brandLabel(v)} />
               <Tooltip
                 contentStyle={tooltipStyle}
+                labelFormatter={(l: string) => brandLabel(l)}
                 formatter={(v: number, _n, p) => [`${v.toFixed(1)}% · ${(p?.payload?.menciones ?? 0)} menciones${p?.payload?.rank ? ` · orden prom. ${p.payload.rank}` : ""}`, "Share IA"]}
               />
               <Bar dataKey="share" radius={[0, 4, 4, 0]}>

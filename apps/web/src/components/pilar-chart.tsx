@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { PilarBreakdownRow } from "@/lib/social-queries";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 interface Props {
   data: PilarBreakdownRow[];
@@ -22,8 +23,22 @@ const BRAND_COLORS: Record<string, string> = {
   gafaargentina: "#0ea5e9",
 };
 
+// handle interno → nombre de marca real (para que brandLabel resuelva la
+// etiqueta demo consistente). Sin demo brandLabel devuelve el nombre igual.
+const BRAND_NAMES: Record<string, string> = {
+  dreanargentina: "Drean",
+  "philco.arg": "Philco",
+  gafaargentina: "Gafa",
+};
+
 function colorFor(cuenta: string): string {
   return BRAND_COLORS[cuenta] ?? "#7c3aed";
+}
+
+// Etiqueta visible de la cuenta (anonimizada en modo demo). El color y la
+// agrupación siguen usando el handle real; solo el texto pasa por brandLabel.
+function labelFor(cuenta: string): string {
+  return brandLabel(BRAND_NAMES[cuenta] ?? cuenta);
 }
 
 export function PilarChart({ data }: Props) {
@@ -35,13 +50,19 @@ export function PilarChart({ data }: Props) {
     );
   }
 
-  // Pivot: { pilar, [cuenta]: posts }
+  // Serie por cuenta: real = handle (color/agrupación) ; label = texto visible
+  // (anonimizado en demo). El pivot se keyea por el label visible para que la
+  // Legend/Tooltip muestren la etiqueta anonimizada.
+  const cuentasSet = new Set<string>();
+  for (const r of data) cuentasSet.add(r.cuenta);
+  const cuentaSeries = [...cuentasSet].map((real) => ({ real, label: labelFor(real) }));
+
+  // Pivot: { pilar, [label]: posts }
   const pivot = new Map<string, Record<string, number | string>>();
-  const cuentas = new Set<string>();
   for (const r of data) {
-    cuentas.add(r.cuenta);
+    const label = labelFor(r.cuenta);
     const existing = pivot.get(r.pilar) ?? { pilar: r.pilar };
-    existing[r.cuenta] = ((existing[r.cuenta] as number) ?? 0) + r.posts;
+    existing[label] = ((existing[label] as number) ?? 0) + r.posts;
     pivot.set(r.pilar, existing);
   }
   const series = [...pivot.values()];
@@ -71,8 +92,8 @@ export function PilarChart({ data }: Props) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        {[...cuentas].map((cuenta) => (
-          <Bar key={cuenta} dataKey={cuenta} fill={colorFor(cuenta)} />
+        {cuentaSeries.map((s) => (
+          <Bar key={s.label} dataKey={s.label} fill={colorFor(s.real)} />
         ))}
       </BarChart>
     </ResponsiveContainer>
