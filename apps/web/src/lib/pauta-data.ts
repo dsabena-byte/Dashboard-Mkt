@@ -46,7 +46,19 @@ export function extractMeses(rows: PautaRow[]): string[] {
 }
 
 export function defaultMes(meses: string[]): string {
-  return meses[meses.length - 1] ?? "";
+  if (meses.length === 0) return "";
+  // Default = mes EN CURSO si está disponible; si no, el último mes disponible que
+  // no sea futuro (los tableros suelen tener meses de plan/presupuesto a futuro, no
+  // hay que arrancar ahí). Si todos son futuros, el más próximo.
+  const now = new Date();
+  const curKey = now.getFullYear() * 100 + (now.getMonth() + 1);
+  const keyed = meses.map((m) => ({ m, k: mesKey(m) })).filter((x) => x.k > 0);
+  const exact = keyed.find((x) => x.k === curKey);
+  if (exact) return exact.m;
+  const past = keyed.filter((x) => x.k <= curKey).sort((a, b) => b.k - a.k);
+  if (past.length) return past[0]!.m;
+  const asc = [...keyed].sort((a, b) => a.k - b.k);
+  return asc[0]?.m ?? meses[meses.length - 1] ?? "";
 }
 
 export const PAUTA_CATEGORIAS = ["Todas", "Brand", "Lavado", "Refrigeración", "Cocción", "Promoción"];

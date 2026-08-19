@@ -138,14 +138,24 @@ export function domainLabel(domain: string | null | undefined): string {
   if (!DEMO || !raw) return raw;
   const clean = raw.replace(/^https?:\/\//i, "").replace(/^www\./i, "");
   const slash = clean.indexOf("/");
-  const host = slash >= 0 ? clean.slice(0, slash) : clean;
+  const host = (slash >= 0 ? clean.slice(0, slash) : clean).toLowerCase();
   const path = slash >= 0 ? clean.slice(slash) : "";
-  const parts = host.split(".");
-  const base = parts[0] ?? "";
-  const tld = parts.length > 1 ? parts.slice(1).join(".") : "com";
-  const b = brandLabel(base);
-  const slug = b !== base ? b.toLowerCase().replace(/\s+/g, "-") : "sitio";
-  return `${slug}.${tld}${path}`;
+  // Sufijo público (no revela marca): .com.ar, .com, o el último label.
+  const labels = host.split(".");
+  let suffix = ".com";
+  if (host.endsWith(".com.ar")) suffix = ".com.ar";
+  else if (labels.length > 1) suffix = `.${labels[labels.length - 1]}`;
+  // Buscar la marca en CUALQUIER label del host (cubre subdominios como
+  // tienda.electrolux.com.ar → no filtra "electrolux").
+  let slug = "sitio";
+  for (const l of labels) {
+    const b = brandLabel(l);
+    if (b !== l) {
+      slug = b.toLowerCase().replace(/\s+/g, "-");
+      break;
+    }
+  }
+  return `${slug}${suffix}${path}`;
 }
 
 // Marcas reales desconocidas (no listadas): se les asigna una etiqueta estable

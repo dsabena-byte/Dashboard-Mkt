@@ -64,12 +64,12 @@ export function CategoryTrendChart({ data, categorias, colors }: CategoryTrendCh
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {categorias.map((cat) => (
+        {serie.map((c) => (
           <Line
-            key={cat}
+            key={c.label}
             type="monotone"
-            dataKey={cat}
-            stroke={colors[cat] ?? "#64748b"}
+            dataKey={c.label}
+            stroke={colors[c.real] ?? "#64748b"}
             strokeWidth={2}
             dot={{ r: 2 }}
             connectNulls

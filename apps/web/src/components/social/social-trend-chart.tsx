@@ -1,6 +1,7 @@
 "use client";
 
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 interface TrendDatum {
   mes: string;                                  // YYYY-MM
@@ -47,7 +48,7 @@ export function SocialTrendChart({ data, brands, brandLabels, brandColors, value
             stroke={brandColors[b] ?? "#94a3b8"}
             strokeWidth={2}
             dot={{ r: 3 }}
-            name={brandLabels[b] ?? b}
+            name={brandLabel(brandLabels[b] ?? b)}
             connectNulls
           />
         ))}
