@@ -1,5 +1,6 @@
 import { LoginForm } from "@/components/auth/login-form";
 import { getTenant } from "@/lib/tenant/current";
+import { DEMO } from "@/lib/demo/anonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,8 @@ export default function LoginPage({ searchParams }: PageProps) {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="w-full max-w-sm rounded-2xl border bg-white p-8 shadow-lg">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-slate-900">{tenant.displayName.toUpperCase()}</h1>
-          <p className="mt-1 text-sm text-slate-500">{tenant.branding.tagline}</p>
+          <h1 className="text-2xl font-bold text-slate-900">{DEMO ? "MARCA A" : tenant.displayName.toUpperCase()}</h1>
+          <p className="mt-1 text-sm text-slate-500">{DEMO ? "Marketing Management · Demo" : tenant.branding.tagline}</p>
         </div>
         <LoginForm redirectTo={searchParams.redirect ?? "/"} initialError={searchParams.error} />
       </div>
