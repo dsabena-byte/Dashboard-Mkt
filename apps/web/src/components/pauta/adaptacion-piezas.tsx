@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FORMATOS_IMG_PAUTA, type FormatoPauta } from "@/lib/pauta-formatos";
 import { AdaptacionVideo } from "@/components/pauta/adaptacion-video";
 import { type FmtCfg, type Word, type Trim, defaultCfg, parseWords, computeTrim, loadImg, drawPieza } from "@/lib/pieza-compositor";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 // Adaptación de piezas para pauta (FASE 1: imágenes). Compositor por capas con
 // PREVIEW FIEL: al subir el fondo se hace el reframe (fal) a cada ratio UNA vez;
@@ -151,11 +152,11 @@ function ImagenBody() {
           <input ref={copyRef} value={copy} onChange={(e) => setCopy(e.target.value)} placeholder="Ej: Diseñada para el mundo" className="flex-1 min-w-[200px] rounded border px-2 py-1 text-xs" />
           <span className="text-[10px] text-muted-foreground">color texto</span>
           {([["#ffffff", "blanco"], ["#00064F", "azul Drean"], ["#111111", "negro"]] as const).map(([c, n]) => (
-            <button key={c} type="button" onClick={() => setColor(c)} className={`h-5 w-5 rounded border ${color === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n} />
+            <button key={c} type="button" onClick={() => setColor(c)} className={`h-5 w-5 rounded border ${color === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n.replace(/Drean/g, brandLabel("Drean"))} />
           ))}
           <span className="ml-1 text-[10px] text-muted-foreground">franja</span>
           {([["#00064F", "azul Drean"], ["#000000", "negro"], ["#ffffff", "blanco"]] as const).map(([c, n]) => (
-            <button key={c} type="button" onClick={() => setBandColor(c)} className={`h-5 w-5 rounded border ${bandColor === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n} />
+            <button key={c} type="button" onClick={() => setBandColor(c)} className={`h-5 w-5 rounded border ${bandColor === c ? "ring-2 ring-primary" : ""}`} style={{ backgroundColor: c }} title={n.replace(/Drean/g, brandLabel("Drean"))} />
           ))}
         </div>
       </div>

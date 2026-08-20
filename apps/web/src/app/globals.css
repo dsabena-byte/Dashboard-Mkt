@@ -64,3 +64,11 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* MODO DEMO: difumina las miniaturas de creativos/posts (revelan la marca
+   visualmente). Los gráficos son SVG y los íconos son SVG, así que no se ven
+   afectados; solo las <img> de contenido dentro del área principal. */
+body[data-demo="true"] main img {
+  filter: blur(14px);
+  transform: scale(1.05);
+}

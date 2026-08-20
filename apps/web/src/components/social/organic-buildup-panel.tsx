@@ -1,4 +1,5 @@
 import type { BuildupRow } from "@/lib/social-posts-queries";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 function fmtK(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -9,6 +10,10 @@ function fmtK(n: number): string {
 // Tabla de construcción: por cada fila (pilar o categoría) muestra cómo se va
 // construyendo alcance / views / interacción, con una barra de share de alcance.
 function BuildupTable({ title, rows, emptyHint }: { title: string; rows: BuildupRow[]; emptyHint: string }) {
+  // Solo la tabla "Por categoría" anonimiza el label de fila (los pilares son
+  // genéricos y no revelan nada). Keys/orden siguen usando el label real.
+  const isCategoria = !title.toLowerCase().includes("pilar");
+  const rowLabel = (label: string) => (isCategoria ? categoryLabel(label) : label);
   const totAlcance = rows.reduce((s, r) => s + r.alcance, 0);
   const tot = rows.reduce(
     (a, r) => ({ alcance: a.alcance + r.alcance, views: a.views + r.views, interaccion: a.interaccion + r.interaccion, posts: a.posts + r.posts }),
@@ -37,7 +42,7 @@ function BuildupTable({ title, rows, emptyHint }: { title: string; rows: Buildup
                 return (
                   <tr key={r.label} className="border-b last:border-0">
                     <td className="px-2 py-1.5">
-                      <div className="font-medium">{r.label}</div>
+                      <div className="font-medium">{rowLabel(r.label)}</div>
                       <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-muted">
                         <div className="h-full rounded bg-foreground/70" style={{ width: `${pct}%` }} />
                       </div>

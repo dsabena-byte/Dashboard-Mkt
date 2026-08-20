@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatNumber } from "@/lib/utils";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 interface CategoryDatum {
   fecha: string;
@@ -37,9 +38,18 @@ export function CategoryTrendChart({ data, categorias, colors }: CategoryTrendCh
       : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k`
       : String(v);
 
+  // Etiquetas visibles anonimizadas; la data se re-keyea al label y el color sigue
+  // resolviéndose por el nombre real de categoría.
+  const serie = categorias.map((cat) => ({ real: cat, label: categoryLabel(cat) }));
+  const dataL = data.map((row) => {
+    const out: CategoryDatum = { fecha: row.fecha };
+    for (const c of serie) out[c.label] = row[c.real] ?? null;
+    return out;
+  });
+
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+      <LineChart data={dataL} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="fecha" stroke="hsl(var(--muted-foreground))" fontSize={11} />
         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={formatTick} />
@@ -54,12 +64,12 @@ export function CategoryTrendChart({ data, categorias, colors }: CategoryTrendCh
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {categorias.map((cat) => (
+        {serie.map((c) => (
           <Line
-            key={cat}
+            key={c.label}
             type="monotone"
-            dataKey={cat}
-            stroke={colors[cat] ?? "#64748b"}
+            dataKey={c.label}
+            stroke={colors[c.real] ?? "#64748b"}
             strokeWidth={2}
             dot={{ r: 2 }}
             connectNulls

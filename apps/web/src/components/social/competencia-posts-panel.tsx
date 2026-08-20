@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 // Cuántos posteos se muestran por tanda (botón "Ver más" para seguir).
 const PAGE_SIZE = 18;
@@ -43,7 +44,7 @@ const BRAND_COLORS: Record<string, string> = {
 };
 const BRAND_ORDER = ["philco.arg", "gafaargentina", "whirlpoolarg", "electroluxar", "dreanargentina"];
 
-function marcaLabel(m: string): string { return BRAND_LABELS[m] ?? m; }
+function marcaLabel(m: string): string { return brandLabel(BRAND_LABELS[m] ?? m); }
 function marcaColor(m: string): string { return BRAND_COLORS[m] ?? "#94a3b8"; }
 
 // Agrupa content_type en 3 baldes: imagen | video | reel.

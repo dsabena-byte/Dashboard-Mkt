@@ -22,6 +22,7 @@ import {
   type FloorShareRow,
 } from "@/lib/floor-share-queries";
 import { isoWeekToMes } from "@/lib/cb-queries";
+import { brandLabel, categoryLabel } from "@/lib/demo/anonymize";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -200,7 +201,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           <section className="grid gap-3 lg:grid-cols-4">
             <div className="rounded-xl bg-[#0a1849] p-5 text-white">
               <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
-                Floor Share Drean — Todas las categorías
+                Floor Share {brandLabel("Drean")} — Todas las categorías
               </div>
               <div className="mt-2 text-4xl font-bold text-rose-300">
                 {overall.total.share.toFixed(1)}%
@@ -209,9 +210,9 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
                 {totalTiendasRelevadas} tiendas relevadas · {overall.total.drean_units.toLocaleString()} unidades exhibidas / {overall.total.total_units.toLocaleString()} total piso
               </div>
             </div>
-            <CategoryCard label="Cocción" obj={FS_OBJ_PCT.coccion} block={overall.coccion} />
-            <CategoryCard label="Lavado" obj={FS_OBJ_PCT.lavado} block={overall.lavado} />
-            <CategoryCard label="Refrigeración" obj={FS_OBJ_PCT.refri} block={overall.refri} />
+            <CategoryCard label={categoryLabel("Cocción")} obj={FS_OBJ_PCT.coccion} block={overall.coccion} />
+            <CategoryCard label={categoryLabel("Lavado")} obj={FS_OBJ_PCT.lavado} block={overall.lavado} />
+            <CategoryCard label={categoryLabel("Refrigeración")} obj={FS_OBJ_PCT.refri} block={overall.refri} />
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
@@ -240,14 +241,14 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
                       return items.map((r, i) => (
                         <tr key={`${cat}-${r.marca}`} className="border-b last:border-0">
                           {i === 0 ? (
-                            <td rowSpan={items.length} className="px-3 py-1.5 font-semibold align-top bg-muted/30">{cat}</td>
+                            <td rowSpan={items.length} className="px-3 py-1.5 font-semibold align-top bg-muted/30">{categoryLabel(cat)}</td>
                           ) : null}
                           <td className="px-3 py-1.5">
                             <span
                               className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
                               style={{ backgroundColor: colorForBrand(r.marca) }}
                             />
-                            {r.marca}
+                            {brandLabel(r.marca)}
                             {r.marca === OWN_BRAND_FS && <span className="ml-1 text-rose-500">★</span>}
                           </td>
                           <td className={`px-3 py-1.5 text-right tabular-nums ${cellBg(r.share)}`}>{r.share.toFixed(1)}%</td>
@@ -339,9 +340,9 @@ function ClienteTable({ rows }: { rows: import("@/lib/floor-share-queries").Clie
           <thead className="bg-[#0a1849] text-white">
             <tr>
               <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">Cliente</th>
-              <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS Lavado</th>
-              <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Refri</th>
-              <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Cocción</th>
+              <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS {categoryLabel("Lavado")}</th>
+              <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS {categoryLabel("Refrigeración")}</th>
+              <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS {categoryLabel("Cocción")}</th>
             </tr>
             <tr className="text-[10px] uppercase tracking-wide opacity-80">
               <th className="px-2 py-1 text-center">%</th>
@@ -390,9 +391,9 @@ function TiendaTable({ rows }: { rows: import("@/lib/floor-share-queries").Tiend
           <thead className="bg-[#0a1849] text-white">
             <tr>
               <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">Tienda</th>
-              <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS Lavado</th>
-              <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Refri</th>
-              <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Cocción</th>
+              <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS {categoryLabel("Lavado")}</th>
+              <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS {categoryLabel("Refrigeración")}</th>
+              <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS {categoryLabel("Cocción")}</th>
             </tr>
             <tr className="text-[10px] uppercase tracking-wide opacity-80">
               <th className="px-2 py-1 text-center">%</th>

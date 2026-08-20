@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import type { EngagementTrendRow } from "@/lib/social-queries";
 import { formatFechaCorta } from "@/lib/dates";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 interface Props {
   data: EngagementTrendRow[];
@@ -23,8 +24,22 @@ const BRAND_COLORS: Record<string, string> = {
   gafaargentina: "#0ea5e9",
 };
 
+// handle interno → nombre de marca real (para que brandLabel resuelva la
+// etiqueta demo consistente). Sin demo brandLabel devuelve el nombre igual.
+const BRAND_NAMES: Record<string, string> = {
+  dreanargentina: "Drean",
+  "philco.arg": "Philco",
+  gafaargentina: "Gafa",
+};
+
 function colorFor(cuenta: string): string {
   return BRAND_COLORS[cuenta] ?? "#7c3aed";
+}
+
+// Etiqueta visible de la cuenta (anonimizada en modo demo). El color y la
+// agrupación siguen usando el handle real; solo el texto pasa por brandLabel.
+function labelFor(cuenta: string): string {
+  return brandLabel(BRAND_NAMES[cuenta] ?? cuenta);
 }
 
 export function EngagementTrendChart({ data }: Props) {
@@ -36,17 +51,22 @@ export function EngagementTrendChart({ data }: Props) {
     );
   }
 
-  // Pivot: { fechaLabel, [cuenta]: engagement }
+  // Serie por cuenta: real = handle (color/agrupación) ; label = texto visible
+  // (anonimizado en demo). El pivot se keyea por el label visible para que la
+  // Legend/Tooltip muestren la etiqueta anonimizada.
+  const cuentasSet = new Set<string>();
+  for (const row of data) cuentasSet.add(row.cuenta);
+  const cuentaSeries = [...cuentasSet].map((real) => ({ real, label: labelFor(real) }));
+
+  // Pivot: { fechaLabel, [label]: engagement }
   const fechas = new Map<
     string,
     { fechaLabel: string; [k: string]: number | string | null }
   >();
-  const cuentas = new Set<string>();
   for (const row of data) {
-    cuentas.add(row.cuenta);
     const fechaLabel = formatFechaCorta(row.fecha);
     const existing = fechas.get(row.fecha) ?? { fechaLabel };
-    existing[row.cuenta] = row.engagement;
+    existing[labelFor(row.cuenta)] = row.engagement;
     fechas.set(row.fecha, existing);
   }
   const series = [...fechas.entries()]
@@ -72,12 +92,12 @@ export function EngagementTrendChart({ data }: Props) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        {[...cuentas].map((cuenta) => (
+        {cuentaSeries.map((s) => (
           <Line
-            key={cuenta}
+            key={s.label}
             type="monotone"
-            dataKey={cuenta}
-            stroke={colorFor(cuenta)}
+            dataKey={s.label}
+            stroke={colorFor(s.real)}
             strokeWidth={2}
             dot={{ r: 2 }}
             connectNulls

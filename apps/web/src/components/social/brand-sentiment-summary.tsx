@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 const BRAND_COLORS: Record<string, string> = {
   dreanargentina: "#dc2626",
@@ -103,7 +104,7 @@ export function BrandSentimentSummary({
                   className="text-xs font-semibold"
                   style={{ color: BRAND_COLORS[s.marca] ?? "#64748b" }}
                 >
-                  {BRAND_LABELS[s.marca] ?? s.marca}
+                  {brandLabel(BRAND_LABELS[s.marca] ?? s.marca)}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
                   ({s.posts} posts)

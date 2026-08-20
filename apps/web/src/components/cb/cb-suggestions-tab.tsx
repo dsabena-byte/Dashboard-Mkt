@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CbBaselineMedidas, CbSuggestion, CbSuggestionDetail } from "@/lib/cb-queries";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 interface Props {
   baseline: CbBaselineMedidas;
@@ -87,7 +88,7 @@ function DetailColumn({ title, count, pillColor, items }: {
                 <div>
                   <div className="font-semibold tabular-nums">{i.modelo}</div>
                   <div className="text-[10px] uppercase text-muted-foreground">
-                    {i.categoria}
+                    {categoryLabel(i.categoria)}
                     {showFoundSku && (
                       <span className="ml-1 font-semibold normal-case text-emerald-700">
                         · encontrado: {i.found_sku}

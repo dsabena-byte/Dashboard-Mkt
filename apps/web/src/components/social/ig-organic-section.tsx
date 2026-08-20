@@ -4,6 +4,7 @@ import { useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
 import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { ClasifBadge } from "@/components/social/clasif-badge";
+import { brandLabel, categoryLabel } from "@/lib/demo/anonymize";
 import type { IgOrganicSummary, IgDemoBreakdown } from "@/lib/meta-ig-queries";
 
 function fmtK(n: number | null | undefined): string {
@@ -76,7 +77,7 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
   if (data.postCount === 0 && data.demoAge.length === 0) {
     return (
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-base font-semibold tracking-tight">Instagram org&aacute;nico &mdash; @dreanargentina</h3>
+        <h3 className="text-base font-semibold tracking-tight">Instagram org&aacute;nico &mdash; {brandLabel("Drean")}</h3>
         <div className="mt-3 rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
           <strong>Sin datos de Instagram.</strong> Ejecut&aacute; <code>/api/cron/ig-sync?days=148</code> para cargar datos.
         </div>
@@ -90,7 +91,7 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>IG</div>
         <div>
         <h3 className="text-base font-semibold tracking-tight">
-          Instagram organico &mdash; @dreanargentina
+          Instagram organico &mdash; {brandLabel("Drean")}
         </h3>
         <p className="text-xs text-muted-foreground">
           KPIs del periodo <span className="text-muted-foreground/70">({data.rangeLabel})</span>
@@ -252,7 +253,7 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
                   </span>
                 )}
                 {/* Clasificación: categoría + pilar */}
-                <ClasifBadge categoria={p.categoria} pilar={p.pilar_contenido} />
+                <ClasifBadge categoria={categoryLabel(p.categoria)} pilar={p.pilar_contenido} />
                 <p className="line-clamp-2 text-[10px] text-foreground" title={p.message ?? ""}>
                   {p.message || <span className="italic text-muted-foreground">
                     {(p.media_type ?? "").toUpperCase() === "STORY" ? "Story (sin caption)" : "Sin texto"}

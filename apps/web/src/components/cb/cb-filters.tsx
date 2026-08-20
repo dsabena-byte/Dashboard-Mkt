@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { MultiDropdown } from "@/components/multi-dropdown";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 interface CbFiltersBarProps {
   current: {
@@ -61,7 +62,7 @@ export function CbFiltersBar({ current, options }: CbFiltersBarProps) {
         label="División"
         placeholder="Todas"
         selected={current.divisiones ?? []}
-        options={options.divisiones.map((d) => ({ value: d, label: d }))}
+        options={options.divisiones.map((d) => ({ value: d, label: categoryLabel(d) }))}
         onChange={(v) => update("divisiones", v)}
       />
       <MultiDropdown

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 const fmtNum = (n: number) => formatNumber(Math.round(n));
 const fmtARS = formatCurrency;
@@ -103,7 +104,7 @@ export function MetaPaidGrid({
                         className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white shadow"
                         style={{ backgroundColor: catColor }}
                       >
-                        {c.categoria}
+                        {categoryLabel(c.categoria)}
                       </span>
                     )}
                     {c.tipo_compra && (

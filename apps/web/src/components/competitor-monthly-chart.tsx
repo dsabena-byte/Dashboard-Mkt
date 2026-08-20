@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatNumber } from "@/lib/utils";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 interface MonthlyDatum {
   fecha: string;
@@ -51,11 +52,13 @@ export function CompetitorMonthlyChart({ data }: CompetitorMonthlyChartProps) {
   for (const c of competidores) for (const m of c.meses) fechasSet.add(m.fecha);
   const fechas = [...fechasSet].sort();
 
+  // Label visible anonimizado (color va por índice, no por nombre → no se rompe).
+  const serie = competidores.map((c) => ({ real: c.competidor, label: brandLabel(c.competidor) }));
   const rows: MonthlyDatum[] = fechas.map((fecha) => {
     const row: MonthlyDatum = { fecha: fmtMonth(fecha) };
     for (const c of competidores) {
       const m = c.meses.find((x) => x.fecha === fecha);
-      row[c.competidor] = m?.visitas ?? null;
+      row[brandLabel(c.competidor)] = m?.visitas ?? null;
     }
     return row;
   });
@@ -81,11 +84,11 @@ export function CompetitorMonthlyChart({ data }: CompetitorMonthlyChartProps) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {competidores.map((c, i) => (
+        {serie.map((c, i) => (
           <Line
-            key={c.competidor}
+            key={c.label}
             type="monotone"
-            dataKey={c.competidor}
+            dataKey={c.label}
             stroke={PALETA[i % PALETA.length]}
             strokeWidth={2.5}
             dot={{ r: 4 }}

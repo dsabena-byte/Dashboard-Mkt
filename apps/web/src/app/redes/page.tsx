@@ -38,6 +38,7 @@ import {
   getSocialFollowers,
   getSocialPosts,
 } from "@/lib/social-posts-queries";
+import { brandLabel } from "@/lib/demo/anonymize";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -99,8 +100,15 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
   const brandOptions = allMarcas.map((m) => ({
     value: m,
-    label: BRAND_LABELS[m] ?? m,
+    label: brandLabel(BRAND_LABELS[m] ?? m),
   }));
+
+  // Modo demo: mapa de labels anonimizadas keyeado por el MISMO handle interno
+  // (las keys/handles no cambian → color y agrupación intactos; solo el texto
+  // visible pasa por brandLabel). Sin demo devuelve las etiquetas originales.
+  const brandLabelsAnon: Record<string, string> = Object.fromEntries(
+    Object.entries(BRAND_LABELS).map(([k, v]) => [k, brandLabel(v)]),
+  );
 
   const kpis = computeKpis(posts);
   const netStats = computeNetStats(posts);
@@ -118,7 +126,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const pilarStats = computePilarStats(posts);
   const sentByBrand = computeSentimentByBrand(posts).map((s) => ({
     ...s,
-    label: BRAND_LABELS[s.key] ?? s.key,
+    label: brandLabel(BRAND_LABELS[s.key] ?? s.key),
   }));
   const contentSlices = computeContentTypeSlices(posts);
   // Posteos de competencia para el panel por marca. Solo Instagram: las marcas
@@ -188,7 +196,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Redes Sociales</h2>
           <p className="text-sm text-muted-foreground">
-            Analítica Orgánica de Drean y Análisis competitivo de RRSS.
+            Analítica Orgánica de {brandLabel("Drean")} y Análisis competitivo de RRSS.
           </p>
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
@@ -198,7 +206,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         current={tab}
         tabs={[
           { key: "analitica", label: "📊 Analítica" },
-          { key: "insights", label: "💡 Insights Drean", badge: insightsOrganico.length || undefined },
+          { key: "insights", label: `💡 Insights ${brandLabel("Drean")}`, badge: insightsOrganico.length || undefined },
         ]}
         preserveParams={searchParams}
       />
@@ -210,7 +218,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
             El cron corre 1x/día. Para forzar una recorrida: GitHub → Actions → &quot;Organic insights&quot; → Run workflow.
           </p>
           <TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />
-          <InsightsPanel insights={insightsOrganico} titulo="📊 Insights orgánico Drean (últimos 30d vs 30d previos)" />
+          <InsightsPanel insights={insightsOrganico} titulo={`📊 Insights orgánico ${brandLabel("Drean")} (últimos 30d vs 30d previos)`} />
         </div>
       )}
 
@@ -222,9 +230,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <header className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ background: "linear-gradient(135deg, #1877F2 0%, #dc2743 100%)" }}>★</div>
           <div>
-            <h3 className="text-base font-semibold tracking-tight">Drean en redes — Instagram + Facebook</h3>
+            <h3 className="text-base font-semibold tracking-tight">{brandLabel("Drean")} en redes — Instagram + Facebook</h3>
             <p className="text-xs text-muted-foreground">
-              KPIs sumados de @dreanargentina + Page Drean en el período seleccionado.
+              KPIs sumados de {brandLabel("Drean")} en Instagram + Facebook en el período seleccionado.
             </p>
             {ultimaActualizacion && (
               <p className="text-[11px] text-muted-foreground/70">Actualizado al {ultimaActualizacion}</p>
@@ -267,7 +275,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <div className="border-t-2 border-muted pt-6">
         <div className="mb-4">
           <h2 className="text-xl font-semibold tracking-tight">Análisis Competitivo</h2>
-          <p className="text-sm text-muted-foreground">Drean vs Philco vs Gafa vs Electrolux vs Whirlpool en IG, FB y TT.</p>
+          <p className="text-sm text-muted-foreground">{brandLabel("Drean")} vs {brandLabel("Philco")} vs {brandLabel("Gafa")} vs {brandLabel("Electrolux")} vs {brandLabel("Whirlpool")} en IG, FB y TT.</p>
         </div>
         <SocialFilters
           currentBrand={marca}
@@ -361,7 +369,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
                 + getLatestFollowers(followers, m, "TIKTOK");
             }, 0),
           )}
-          hint={marca !== "all" ? (BRAND_LABELS[marca] ?? marca) : red === "all" ? "Suma IG + FB + TT" : NET_LABELS[red] ?? red}
+          hint={marca !== "all" ? brandLabel(BRAND_LABELS[marca] ?? marca) : red === "all" ? "Suma IG + FB + TT" : NET_LABELS[red] ?? red}
         />
         <KpiCard title="Posts" value={String(kpis.posts)} hint={kpis.redes.join(" · ") || "—"} />
       </section>
@@ -374,7 +382,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <SocialTrendChart
           data={weeklyVolume}
           brands={[...new Set(posts.map((p) => p.marca))]}
-          brandLabels={BRAND_LABELS}
+          brandLabels={brandLabelsAnon}
           brandColors={BRAND_COLORS}
           valueFormat="integer"
         />
@@ -452,7 +460,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
                         <tr key={b.marca} className="border-b last:border-0">
                           <td className="px-1 py-1.5 font-medium">
                             <span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle" style={{ backgroundColor: color }} />
-                            <span className="align-middle">{BRAND_LABELS[b.marca] ?? b.marca}</span>
+                            <span className="align-middle">{brandLabel(BRAND_LABELS[b.marca] ?? b.marca)}</span>
                             {b.marca === OWN_BRAND && <span className="ml-0.5 align-middle text-rose-500">★</span>}
                           </td>
                           <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground">

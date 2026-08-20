@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/sidebar";
 import { GlobalDataChat } from "@/components/global-data-chat";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { allowedFromRows } from "@/lib/dashboard-access";
+import { DEMO } from "@/lib/demo/anonymize";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const allowed = await getAllowedPaths();
   return (
     <html lang="es">
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="min-h-screen bg-background font-sans antialiased" data-demo={DEMO ? "true" : undefined}>
         <div className="flex min-h-screen flex-col md:flex-row">
           <Sidebar allowed={allowed} />
           <main className="min-w-0 flex-1 overflow-x-hidden">

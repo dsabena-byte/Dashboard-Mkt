@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { colorForBrand } from "@/lib/floor-share-colors";
+import { brandLabel, isOwnBrand } from "@/lib/demo/anonymize";
 export { colorForBrand, BRAND_COLORS_FS } from "@/lib/floor-share-colors";
 
 interface BrandRankingProps {
@@ -24,8 +25,11 @@ interface BrandRankingProps {
 
 export function FloorShareBrandRanking({ data, highlight = "Drean" }: BrandRankingProps) {
   if (data.length === 0) return <div className="py-12 text-center text-xs text-muted-foreground">Sin datos.</div>;
+  // marca = etiqueta visible (anonimizada en modo demo); real = nombre real para
+  // color y comparación con la marca destacada.
   const chartData = data.map((d) => ({
-    marca: d.marca,
+    marca: brandLabel(d.marca),
+    real: d.marca,
     share: Number(d.share.toFixed(1)),
   }));
   return (
@@ -40,7 +44,7 @@ export function FloorShareBrandRanking({ data, highlight = "Drean" }: BrandRanki
         />
         <Bar dataKey="share" radius={[0, 4, 4, 0]}>
           {chartData.map((d, i) => (
-            <Cell key={i} fill={d.marca === highlight ? colorForBrand(highlight) : colorForBrand(d.marca)} opacity={d.marca === highlight ? 1 : 0.65} />
+            <Cell key={i} fill={d.real === highlight ? colorForBrand(highlight) : colorForBrand(d.real)} opacity={d.real === highlight ? 1 : 0.65} />
           ))}
           <LabelList dataKey="share" position="right" fontSize={11} fontWeight={700} formatter={(v: number) => `${v.toFixed(1)}%`} />
         </Bar>
@@ -56,9 +60,11 @@ interface WeeklyProps {
 
 export function FloorShareWeeklyChart({ data, marcas }: WeeklyProps) {
   if (data.length === 0) return <div className="py-12 text-center text-xs text-muted-foreground">Sin datos.</div>;
+  // Serie: key/label visible = etiqueta anonimizada; color y ancho por nombre real.
+  const series = marcas.map((m) => ({ real: m, label: brandLabel(m) }));
   const chartData = data.map((d) => {
     const row: Record<string, string | number> = { label: `Sem ${d.semana}` };
-    for (const m of marcas) row[m] = Number((d.shares[m] ?? 0).toFixed(1));
+    for (const s of series) row[s.label] = Number((d.shares[s.real] ?? 0).toFixed(1));
     return row;
   });
   return (
@@ -72,14 +78,14 @@ export function FloorShareWeeklyChart({ data, marcas }: WeeklyProps) {
           formatter={(v: number) => `${v}%`}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {marcas.map((m) => (
+        {series.map((s) => (
           <Line
-            key={m}
+            key={s.label}
             type="monotone"
-            dataKey={m}
-            stroke={colorForBrand(m)}
-            strokeWidth={m === "Drean" ? 3 : 2}
-            dot={{ r: m === "Drean" ? 5 : 3 }}
+            dataKey={s.label}
+            stroke={colorForBrand(s.real)}
+            strokeWidth={isOwnBrand(s.real) ? 3 : 2}
+            dot={{ r: isOwnBrand(s.real) ? 5 : 3 }}
           />
         ))}
       </LineChart>

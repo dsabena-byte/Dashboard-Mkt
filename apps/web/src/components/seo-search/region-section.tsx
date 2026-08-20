@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArgentinaMap } from "./argentina-map";
 import type { RegionRow } from "@/lib/competitive-queries";
+import { brandLabel, categoryLabel } from "@/lib/demo/anonymize";
 
 const CATS = [
   { key: "lavarropas", label: "Lavarropas" },
@@ -44,19 +45,19 @@ export function RegionSection({ rows }: { rows: RegionRow[] }) {
           className="ml-auto rounded-md border bg-card px-3 py-1.5 text-sm"
         >
           {marcas.map((m) => (
-            <option key={m} value={m}>{m === "Genérico" ? "Demanda genérica" : m}</option>
+            <option key={m} value={m}>{m === "Genérico" ? "Demanda genérica" : brandLabel(m)}</option>
           ))}
         </select>
         <div className="flex gap-1">
           {CATS.map((c) => (
             <button key={c.key} onClick={() => setCat(c.key)} className={`rounded-full border px-3 py-1 text-xs font-medium ${cat === c.key ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
-              {c.label}
+              {categoryLabel(c.label)}
             </button>
           ))}
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        <strong>Qué mide:</strong> el interés de búsqueda de <strong>{marca === "Genérico" ? "la categoría" : marca}</strong> en {cat} por provincia (Google Trends, últimos 12 meses). <strong>Cómo se lee:</strong> índice relativo 0-100 — <strong>100</strong> = la provincia que más busca; el resto es relativo a ella. Más oscuro en el mapa = más interés. El ranking de la derecha ordena las provincias por ese índice.
+        <strong>Qué mide:</strong> el interés de búsqueda de <strong>{marca === "Genérico" ? "la categoría" : brandLabel(marca)}</strong> en {categoryLabel(cat)} por provincia (Google Trends, últimos 12 meses). <strong>Cómo se lee:</strong> índice relativo 0-100 — <strong>100</strong> = la provincia que más busca; el resto es relativo a ella. Más oscuro en el mapa = más interés. El ranking de la derecha ordena las provincias por ese índice.
       </p>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_260px]">

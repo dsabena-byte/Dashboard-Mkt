@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { categoryLabel } from "@/lib/demo/anonymize";
 
 interface Row {
   division: string;
@@ -24,7 +25,7 @@ export function CbCategoryChart({ data }: { data: Row[] }) {
     return <div className="py-12 text-center text-xs text-muted-foreground">Sin datos para graficar.</div>;
   }
   const chartData = data.map((d) => ({
-    division: d.division,
+    division: categoryLabel(d.division),
     "% CB": Number(d.cb_pct.toFixed(0)),
     "% Infaltables": Number(d.infalt_pct.toFixed(0)),
     "% Estratégico": Number(d.estrat_pct.toFixed(0)),

@@ -26,8 +26,24 @@ import { cn } from "@/lib/utils";
 import { isPathAllowed } from "@/lib/dashboard-access";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { getTenant } from "@/lib/tenant/current";
+import { DEMO } from "@/lib/demo/anonymize";
 
 const tenant = getTenant();
+
+// En modo demo solo se exponen los 9 dashboards elegidos; el resto se oculta del
+// nav (y el middleware bloquea el acceso directo) para no filtrar nombres reales.
+const DEMO_ROUTES = new Set<string>([
+  "/overview",
+  "/salud-marca",
+  "/funnel",
+  "/performance",
+  "/influencia",
+  "/web",
+  "/redes",
+  "/seo-search",
+  "/cuadros-basicos",
+  "/floor-share",
+]);
 
 const NAV = [
   { href: "/overview",    label: "Objetivos Marketing", icon: LayoutDashboard },
@@ -50,7 +66,9 @@ const NAV = [
 export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const nav = NAV.filter((item) => isPathAllowed(item.href, allowed));
+  const nav = NAV.filter(
+    (item) => isPathAllowed(item.href, allowed) && (!DEMO || DEMO_ROUTES.has(item.href)),
+  );
 
   // Cerrar drawer al navegar
   useEffect(() => {
@@ -68,15 +86,19 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
   const navContent = (
     <>
       <div className="border-b px-4 py-4">
-        <Image
-          src={tenant.branding.logoSrc}
-          alt={tenant.displayName}
-          width={tenant.branding.logoWidth}
-          height={tenant.branding.logoHeight}
-          priority
-          className="w-3/5 h-auto"
-        />
-        <p className="mt-2 text-xs text-muted-foreground">{tenant.branding.tagline}</p>
+        {DEMO ? (
+          <div className="text-lg font-bold tracking-tight">Marca A</div>
+        ) : (
+          <Image
+            src={tenant.branding.logoSrc}
+            alt={tenant.displayName}
+            width={tenant.branding.logoWidth}
+            height={tenant.branding.logoHeight}
+            priority
+            className="w-3/5 h-auto"
+          />
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">{DEMO ? "Demo Marketing Management" : tenant.branding.tagline}</p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {nav.map((item) => {
@@ -120,7 +142,11 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Image src={tenant.branding.logoSrc} alt={tenant.displayName} width={tenant.branding.logoWidth} height={tenant.branding.logoHeight} className="h-7 w-auto" />
+        {DEMO ? (
+          <span className="text-base font-bold tracking-tight">Marca A</span>
+        ) : (
+          <Image src={tenant.branding.logoSrc} alt={tenant.displayName} width={tenant.branding.logoWidth} height={tenant.branding.logoHeight} className="h-7 w-auto" />
+        )}
       </div>
 
       {/* Sidebar desktop (md+) */}
