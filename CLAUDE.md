@@ -59,6 +59,13 @@ reporte_existencia/cb_homologos).
   en `global-data-chat.tsx`. El motor NO se toca.
 
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
+- **Mercado (GfK) — carga mensual:** el share de `mercado_share` se actualiza a mano desde
+  exports "Brands Timeseries" de GfK (por REST, es dato no DDL). Set completo = **3 segmentos +
+  Total × 3 KPIs**, por agregación (mensual + MAT). **Verificar la matriz completa ANTES de
+  escribir** (si falta un KPI de un segmento, el clean-replace deja esa métrica en null y pisa lo
+  que había). Mapeos de segmento por categoría + parseo mensual/MAT + gotchas en
+  `docs/mercado-gfk-carga.md`. Ago-2026: el High de Cocción estaba con otra definición y se
+  corrigió a `Width from 57`.
 - **UGC — análisis cualitativo enriquecido:** el cron `app/api/cron/ugc-comments-analysis`
   NO analiza solo el texto de los comentarios: cada pieza entra al prompt con sus señales de
   interacción reales de la pauta (guardados, compartidos, reacciones, VTR, impresiones) de
@@ -96,6 +103,7 @@ reporte_existencia/cb_homologos).
 
 ## Punteros a docs/
 `docs/architecture.md`, `docs/crons-github-actions.md`, `docs/guia-replicacion-y-seguridad.md`,
-`docs/meta-fb-reach-deprecation.md`, y varios `*-sync.md` (dv360, google-ads, etc.). Los
+`docs/meta-fb-reach-deprecation.md`, **`docs/mercado-gfk-carga.md`** (carga mensual de mercado
+GfK → `mercado_share`), y varios `*-sync.md` (dv360, google-ads, etc.). Los
 `handoff-*.md` son notas de sesiones previas.
 </content>
