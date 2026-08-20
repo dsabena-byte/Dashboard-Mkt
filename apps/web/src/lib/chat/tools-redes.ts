@@ -2,6 +2,7 @@ import "server-only";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import { getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
+import { getServerSupabase } from "@/lib/supabase-server";
 import type { ChatTool } from "./types";
 
 // ============================================================================
@@ -91,6 +92,61 @@ export const redesTools: ChatTool[] = [
           url: p.permalink ?? null,
         })),
       };
+    },
+  },
+  {
+    name: "get_engagement_semanal",
+    description:
+      "Evolución SEMANAL del engagement orgánico (agrupa los posts por semana, lunes) por plataforma: Instagram (@dreanargentina) y/o Facebook (Página Drean). Devuelve engagement, alcance, cantidad de posts y engagement rate por semana. Usar para pedidos de 'evolución semanal' del engagement. Requiere rango from/to (YYYY-MM-DD).",
+    parameters: {
+      type: "object",
+      required: ["from", "to"],
+      properties: {
+        from: { type: "string", description: "Fecha desde YYYY-MM-DD" },
+        to: { type: "string", description: "Fecha hasta YYYY-MM-DD" },
+        plataforma: {
+          type: "string",
+          enum: ["instagram", "facebook", "ambas"],
+          description: "Plataforma (default instagram)",
+        },
+      },
+    },
+    run: async (args) => {
+      const r = rangeArg(args);
+      if (!r) return { error: "get_engagement_semanal requiere 'from' y 'to'" };
+      const plataformas =
+        args.plataforma === "facebook"
+          ? ["facebook"]
+          : args.plataforma === "ambas"
+            ? ["instagram", "facebook"]
+            : ["instagram"];
+      const sb = getServerSupabase();
+      const { data, error } = await sb
+        .from("meta_posts")
+        .select("platform, fecha_post, engagement, reach")
+        .in("platform", plataformas)
+        .gte("fecha_post", `${r.from}T00:00:00Z`)
+        .lte("fecha_post", `${r.to}T23:59:59Z`)
+        .limit(5000)
+        .returns<Array<{ platform: string; fecha_post: string; engagement: number | null; reach: number | null }>>();
+      if (error) return { error: error.message };
+      // Agrupar por semana (lunes) en UTC.
+      const wk = new Map<string, { semana: string; engagement: number; alcance: number; posts: number }>();
+      for (const p of data ?? []) {
+        const d = new Date(p.fecha_post);
+        const dow = (d.getUTCDay() + 6) % 7; // 0 = lunes
+        const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow));
+        const key = monday.toISOString().slice(0, 10);
+        const m = wk.get(key) ?? { semana: key, engagement: 0, alcance: 0, posts: 0 };
+        m.engagement += p.engagement ?? 0;
+        m.alcance += p.reach ?? 0;
+        m.posts += 1;
+        wk.set(key, m);
+      }
+      const evolucion_semanal = [...wk.values()]
+        .sort((a, b) => a.semana.localeCompare(b.semana))
+        .map((x) => ({ ...x, eng_rate: x.alcance > 0 ? Number(((x.engagement / x.alcance) * 100).toFixed(2)) : null }));
+      return { plataforma: plataformas.join("+"), rango: `${r.from} a ${r.to}`, semanas: evolucion_semanal.length, evolucion_semanal };
     },
   },
   {

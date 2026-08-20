@@ -107,8 +107,18 @@ export async function POST(req: Request) {
     RENDER_POSTS_TOOL,
   ];
 
+  // Fecha de hoy (zona Argentina, UTC-3) para que el modelo resuelva rangos
+  // relativos ("últimos N meses/días", "este mes/año") desde HOY y no desde su
+  // conocimiento previo (cutoff), que devolvía rangos sin data.
+  const nowAr = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const today = nowAr.toISOString().slice(0, 10);
+  const dateCtx =
+    `Fecha de hoy: ${today} (zona horaria Argentina, el año en curso es ${nowAr.getUTCFullYear()}). ` +
+    `Para cualquier rango relativo ("últimos N meses/días", "este mes", "este año", "año pasado"), ` +
+    `calculá las fechas from/to (YYYY-MM-DD) a partir de HOY, nunca de tu conocimiento previo. `;
+
   const messages: OAIMessage[] = [
-    { role: "system", content: dash.context },
+    { role: "system", content: dateCtx + dash.context },
     ...(body.messages ?? []).map((m) => ({ role: m.role, content: m.content })),
   ];
 
