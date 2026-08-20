@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}   # sin esto, `gh run list` no sabe el repo y devuelve vacío ("none")
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       HEALTH_URL: https://dashboard-mkt-seven.vercel.app/api/cron/health
     steps:
