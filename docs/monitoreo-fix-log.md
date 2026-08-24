@@ -6,6 +6,36 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-08-24 · SEO · Posición (SERP matrix) e Índice — "atrasado" persistente por cadencia desactualizada
+
+- **Chequeo de rutina:** corrida automática del monitoreo (24/8). Esta sesión (entorno
+  de rutina programada) no tiene `SUPABASE_SERVICE_ROLE_KEY` ni acceso de red al
+  endpoint `/api/cron/health` (el proxy de salida bloquea `dashboard-mkt-seven.vercel.app`
+  con 403). Reconstruí el estado real leyendo el log de la corrida más reciente del
+  GitHub Action `watchdog.yml` (run #138, 24/8 07:29 UTC, que sí llama al health-check
+  con red completa): 17 procesos, **0 críticos**, pero **`seo_serp` y `seo_indice` en
+  `atrasado`** (`ageH: 331`, última data del 10/8 12:32-12:35 UTC).
+- **Diagnóstico:** NO es un cron caído. `seo-sync.yml` (dispara tanto `seo_rankings`
+  como el snapshot de `seo_index_history`) corre **mensual** (`cron: "40 6 1 * *"`,
+  cambiado de semanal a mensual el 10/8 por costo — ver entrada de esa fecha más abajo).
+  Pero `monitoreo-config.ts` **nunca actualizó `cadenciaH`** de `seo_serp`/`seo_indice`
+  al cambiar el cron: seguían en `168` (semanal) mientras la cadencia real pasó a
+  ~720h (mensual). Mismo patrón exacto que el bug de `ga4`/`bgt` corregido hoy mismo
+  en el commit anterior (`9a96e60`) — la config de cadencia queda desalineada del
+  cron real y genera alarma falsa que no se resuelve sola (con `cadenciaH=168`,
+  `ageH=331` cae en el rango atrasado `252-504h`; con `720` cae bien dentro de OK
+  `≤1080h`). El propio campo `nota` de `seo_indice` ya decía "Snapshot mensual del
+  índice" — contradecía su propio `cadenciaH: 168`.
+- **Arreglo (código):** `monitoreo-config.ts` — `cadenciaH` de `seo_serp` y
+  `seo_indice` de `168` → `720`, y `detalle` de `seo_serp` de "semanal" → "mensual"
+  para que coincida con el cron real. PR creado y mergeado a `main` en esta corrida
+  (typecheck limpio, `pnpm exec tsc --noEmit`).
+- **Estado:** resuelto. El semáforo debería volver a `OK` en la próxima lectura de
+  `/monitoreo`; los datos subyacentes ya estaban sanos (el sync mensual nunca dejó
+  de correr, solo faltaba la corrida de setiembre).
+
+---
+
 ## 2026-08-14 · Tráfico Web (GA4) — "sin dato" persistente pese a syncs OK
 
 - **Chequeo de rutina:** corrida automática del monitoreo (14/8, ~13:44 UTC).
