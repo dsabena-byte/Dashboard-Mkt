@@ -535,6 +535,9 @@ export async function GET(request: Request) {
           new_users: Number(r.metricValues[1]?.value ?? 0),
           sesiones: Number(r.metricValues[2]?.value ?? 0),
           pageviews: Number(r.metricValues[3]?.value ?? 0),
+          // Seteamos updated_at explícito para que sea señal de frescura real:
+          // el upsert por defecto NO lo bumpea en update, y el monitoreo lo usa.
+          updated_at: new Date().toISOString(),
         };
       });
 

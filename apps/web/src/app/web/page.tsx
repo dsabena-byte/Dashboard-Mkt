@@ -13,6 +13,7 @@ import {
   getWebByCategory,
   getWebBySource,
   getWebDailyKpis,
+  getLatestWebDate,
   getAllMonthlyUsers,
   getMonthlyUsers,
   getWebDemographicsSummary,
@@ -105,6 +106,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     googleTrends,
     monthlyUsersRow,
     allMonthlyUsers,
+    latestWebDate,
   ] = await Promise.all([
     safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
     safe(getWebDailyKpis(yoyRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(yoy)"),
@@ -131,6 +133,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       return range.to === expectedTo ? getMonthlyUsers(range.from) : Promise.resolve(null);
     })(), null, "getMonthlyUsers"),
     safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>, "getAllMonthlyUsers"),
+    safe<string | null>(getLatestWebDate(), null, "getLatestWebDate"),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -353,10 +356,11 @@ export default async function WebPage({ searchParams }: PageProps) {
       engagement: v.usuarios,
     }));
 
-  // Última fecha con datos
-  const ultimaFecha = dailyKpis.length > 0
+  // Última actualización = fecha del dato más reciente sincronizado (frontera del
+  // sync), NO el fin del rango seleccionado. Fallback al rango si no hay global.
+  const ultimaFecha = latestWebDate ?? (dailyKpis.length > 0
     ? dailyKpis.reduce((max, r) => r.fecha > max ? r.fecha : max, dailyKpis[0]!.fecha)
-    : null;
+    : null);
 
   return (
     <div className="space-y-6">

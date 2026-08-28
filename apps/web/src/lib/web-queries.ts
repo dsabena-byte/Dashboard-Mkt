@@ -128,6 +128,23 @@ export async function getWebDailyKpis(range: WebRange): Promise<DailyKpiRow[]> {
   return results.flat();
 }
 
+/**
+ * Fecha del dato más reciente sincronizado (frontera del sync), SIN filtrar por
+ * el rango seleccionado. Para mostrar la verdadera "última actualización" en vez
+ * del fin del rango elegido.
+ */
+export async function getLatestWebDate(): Promise<string | null> {
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("vw_drean_web_daily_kpis")
+    .select("fecha")
+    .order("fecha", { ascending: false })
+    .limit(1)
+    .returns<Array<{ fecha: string }>>();
+  if (error) throw new Error(`vw_drean_web_daily_kpis (latest): ${error.message}`);
+  return data?.[0]?.fecha ?? null;
+}
+
 export async function getWebBySource(range: WebRange): Promise<BySourceRow[]> {
   const chunks = splitRangeByMonth(range);
   const results = await Promise.all(chunks.map(async (r) => {

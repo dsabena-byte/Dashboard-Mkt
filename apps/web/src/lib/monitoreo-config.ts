@@ -22,6 +22,7 @@ export interface Proc {
 
 export const PROCS: Proc[] = [
   { id: "ga4", proceso: "Tráfico Web (GA4)", fuente: "Google Analytics 4", conexion: "GitHub Action", detalle: "/api/cron/ga4-web-traffic · cada 12h", cadenciaH: 12, tabla: "web_traffic", col: "created_at", workflow: "ga4-sync.yml" },
+  { id: "ga4_monthly", proceso: "Usuarios/Sesiones mensuales (GA4)", fuente: "Google Analytics 4", conexion: "GitHub Action", detalle: "/api/cron/ga4-web-traffic (REPORT 4) · con ga4-sync", cadenciaH: 24, tabla: "ga4_monthly_users", col: "updated_at", workflow: "ga4-sync.yml", nota: "Alimenta los KPIs y la tendencia mensual del dashboard Web. El upsert mensual va en try/catch (traga su error); esto lo detecta por frescura de updated_at." },
   { id: "bgt", proceso: "BGT Inversión", fuente: "SharePoint", conexion: "GitHub Action", detalle: "/api/cron/bgt-sync · cada 12h", cadenciaH: 12, tabla: "bgt_marketing", workflow: "bgt-sync.yml" },
   { id: "meta_paid", proceso: "Meta Ads (paid)", fuente: "Meta Ads API", conexion: "GitHub Action", detalle: "/api/cron/meta-paid-sync · 1x/día", cadenciaH: 24, tabla: "meta_paid_creatives", col: "fetched_at", workflow: "meta-paid-sync.yml" },
   { id: "influencia", proceso: "Mkt de Influencia (UGC)", fuente: "Meta Ads API (ads UGC)", conexion: "GitHub Action", detalle: "/api/cron/meta-paid-sync (categoría UGC) · 1x/día", cadenciaH: 24, tabla: "meta_paid_creatives", col: "fetched_at", filter: { col: "categoria", val: "UGC" }, workflow: "meta-paid-sync.yml", nota: "Piezas UGC = ads de Meta clasificados 'UGC' por el nombre del ad." },
