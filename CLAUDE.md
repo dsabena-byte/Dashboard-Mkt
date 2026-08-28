@@ -100,6 +100,21 @@ reporte_existencia/cb_homologos).
   Editor) + **chunk semanal** (`splitRangeByWeek` en `lib/web-queries.ts`, no mensual). Causa raíz
   original: disco lleno en free tier → se subió a Pro + 8 GB.
 - **Modelo:** el proyecto usa OpenAI (no Anthropic) para las features de IA existentes.
+- **Monitoreo (Routine "System health check") — auto-fix POR GITHUB, no por Vercel/Supabase:**
+  la tarea programada corre en un entorno cuya **política de red bloquea el egress a
+  `dashboard-mkt-seven.vercel.app` (403 en el proxy/CONNECT)** y es poco confiable hacia Supabase;
+  agregar el host al allowlist del environment **no surtió efecto** (probable policy server-managed
+  de la org que lo pisa). **GitHub SÍ es alcanzable siempre** (proxy aparte). Por eso el Routine
+  trabaja **solo por GitHub**: (A) `gh run list` por cada workflow de sync → re-disparar los
+  fallados (`gh run rerun --failed` / `gh workflow run`); (B) leer el **Issue abierto del
+  watchdog** ("🔴 Watchdog: procesos de datos con desvío") que `watchdog.yml` (cada 6h) arma con
+  la frescura calculada server-side vía `/api/cron/health`. Auto-fix = re-disparar workflows o
+  abrir+mergear PR (`claude/fix-monitoreo-*`, scope chico); Apps Script/manual (DV360, Planning,
+  CB, Floor, GFK) no se pueden tocar desde ahí → anotar en `docs/monitoreo-fix-log.md` como
+  pendiente humano. **No** hacer `curl` a Vercel ni Supabase desde el entorno programado.
+  El `/api/cron/health` está gated por `CRON_SECRET` (solo si esa env var existe en prod);
+  el valor vive en Vercel (proyecto Dashboard-Mkt) + GitHub Actions secrets + el entorno
+  programado, y deben coincidir. Config del environment: claude.ai/code → environment del Routine.
 
 ## Punteros a docs/
 `docs/architecture.md`, `docs/crons-github-actions.md`, `docs/guia-replicacion-y-seguridad.md`,
