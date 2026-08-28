@@ -239,13 +239,13 @@ export default async function WebPage({ searchParams }: PageProps) {
   // 12 meses fijos; meses sin data van como null para que recharts no dibuje barras/líneas en 0.
   const monthlyData: Array<{ mes: string; usuarios_curr: number | null; usuarios_prev: number; sesiones_curr: number | null; sesiones_prev: number }> = [];
   for (let m = 1; m <= 12; m++) {
-    const u = getMonthVal(currYear, m, "sessions");
-    const s = getMonthVal(currYear, m, "users");
+    const usuarios = getMonthVal(currYear, m, "users");
+    const sesiones = getMonthVal(currYear, m, "sessions");
     monthlyData.push({
       mes: MES_SHORT[m - 1]!,
-      usuarios_curr: u > 0 ? u : null,
+      usuarios_curr: usuarios > 0 ? usuarios : null,
       usuarios_prev: 0,
-      sesiones_curr: s > 0 ? s : null,
+      sesiones_curr: sesiones > 0 ? sesiones : null,
       sesiones_prev: 0,
     });
   }
