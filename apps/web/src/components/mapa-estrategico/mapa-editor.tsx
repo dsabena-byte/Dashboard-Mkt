@@ -78,7 +78,13 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
   });
 
   const totalFlow = K.reduce((a, k) => a + k.tot, 0) || 1;
-  const top = 30, unit = Math.min(2.4, 360 / totalFlow);
+  const top = 46, unit = Math.min(2.4, 360 / totalFlow); // top: aire para que las líneas no toquen los títulos
+  // Alto de cada sub-objetivo ∝ su % de composición (40% > 20%). Los ribbons de
+  // KPI se reescalan para llenar la caja.
+  const SCALE = 2.4;
+  const subH: Record<string, number> = {};
+  subLeaves.forEach((l) => (subH[l.id] = Math.max((compById[l.id] ?? 0) * SCALE, 20)));
+  const scaledLeafW = (w: number, id: string) => (leafFlow[id]! > 0 ? (w / leafFlow[id]!) * subH[id]! : 0);
   const viewW = 900;
   // Recuadro de objetivos angosto (etiqueta afuera) → todo el espacio extra va al
   // tramo KPIs → sub-objetivos, que es el que más conexiones y variables tiene.
@@ -87,15 +93,15 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
   // layout KPI (por plan)
   let y = top, gk = 0;
   const brk: [number, number][] = [];
-  planes.forEach((p) => { const b0 = y; p.kpis.forEach((_k, ki) => { const k = K[gk]!; k.y = y; k.h = Math.max(k.tot * unit, 15); y += k.h; if (ki < p.kpis.length - 1) y += 5; gk++; }); brk.push([b0, y]); y += 12; });
+  planes.forEach((p) => { const b0 = y; p.kpis.forEach((_k, ki) => { const k = K[gk]!; k.y = y; k.h = Math.max(k.leafLinks.reduce((a, l) => a + scaledLeafW(l.w, l.id), 0) + k.directLinks.reduce((a, l) => a + l.w * unit, 0), 12); y += k.h; if (ki < p.kpis.length - 1) y += 5; gk++; }); brk.push([b0, y]); y += 12; });
   const kpiBot = y - 12;
 
-  // sub-objetivos: columna, agrupados por objetivo, centrados
-  const Ls = subLeaves.map((l) => ({ ...l, flow: leafFlow[l.id]!, y: 0, h: 0 }));
+  // sub-objetivos: columna, agrupados por objetivo, centrados (alto ∝ % de composición)
+  const Ls = subLeaves.map((l) => ({ ...l, y: 0, h: 0 }));
   { let nat = 0, prev: string | null = null;
-    Ls.forEach((l) => { if (prev !== null) nat += l.objId !== prev ? 24 : 8; nat += Math.max(l.flow * unit, 22); prev = l.objId; });
+    Ls.forEach((l) => { if (prev !== null) nat += l.objId !== prev ? 24 : 8; nat += subH[l.id]!; prev = l.objId; });
     let yy = top + ((kpiBot - top) - nat) / 2; prev = null;
-    Ls.forEach((l) => { if (prev !== null) yy += l.objId !== prev ? 24 : 8; l.y = yy; l.h = Math.max(l.flow * unit, 22); yy += l.h; prev = l.objId; }); }
+    Ls.forEach((l) => { if (prev !== null) yy += l.objId !== prev ? 24 : 8; l.y = yy; l.h = subH[l.id]!; yy += l.h; prev = l.objId; }); }
   const Lpos: Record<string, { y: number; h: number }> = {}; Ls.forEach((l) => (Lpos[l.id] = { y: l.y, h: l.h }));
 
   // objetivos: columna centrada. Su altura = suma de las cajas de sus sub-objetivos
@@ -144,9 +150,10 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
     const links = [...k.leafLinks.map((l) => ({ ...l, leaf: true })), ...k.directLinks.map((l) => ({ ...l, leaf: false }))]
       .sort((a, b) => (a.leaf ? Lpos[a.id]!.y : Opos[a.id]!.y) - (b.leaf ? Lpos[b.id]!.y : Opos[b.id]!.y));
     links.forEach((l) => {
-      if (l.leaf) { const oid = subObj[l.id]!; s += band(xKpiR, kOff[ki]!, xSubL, lIn[l.id]!, l.w * unit, colorOf(oid), 0.3, { objId: oid, ki, leafId: l.id }); lIn[l.id]! += l.w * unit; }
-      else { s += band(xKpiR, kOff[ki]!, xObjL, objIn[l.id]!, l.w * unit, colorOf(l.id), 0.34, { objId: l.id, ki }); objIn[l.id]! += l.w * unit; }
-      kOff[ki]! += l.w * unit;
+      const w = l.leaf ? scaledLeafW(l.w, l.id) : l.w * unit;
+      if (l.leaf) { const oid = subObj[l.id]!; s += band(xKpiR, kOff[ki]!, xSubL, lIn[l.id]!, w, colorOf(oid), 0.3, { objId: oid, ki, leafId: l.id }); lIn[l.id]! += w; }
+      else { s += band(xKpiR, kOff[ki]!, xObjL, objIn[l.id]!, w, colorOf(l.id), 0.34, { objId: l.id, ki }); objIn[l.id]! += w; }
+      kOff[ki]! += w;
     });
   });
   // sub-objetivo → objetivo (grosor = el de la caja del sub-objetivo, nunca lo supera)
