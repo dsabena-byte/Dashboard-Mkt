@@ -76,9 +76,11 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
   });
 
   const totalFlow = K.reduce((a, k) => a + k.tot, 0) || 1;
-  const top = 26, unit = Math.min(2.4, 360 / totalFlow);
-  const viewW = 760;
-  const xBr = 100, xKpiL = 108, xKpiR = 252, xSubL = 336, xSubR = 474, xObjL = 566, xObjR = 728;
+  const top = 30, unit = Math.min(2.4, 360 / totalFlow);
+  const viewW = 900;
+  // Recuadro de objetivos angosto (etiqueta afuera) → todo el espacio extra va al
+  // tramo KPIs → sub-objetivos, que es el que más conexiones y variables tiene.
+  const xBr = 96, xKpiL = 104, xKpiR = 244, xSubL = 448, xSubR = 592, xObjL = 720, xObjR = 764;
 
   // layout KPI (por plan)
   let y = top, gk = 0;
@@ -94,11 +96,15 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
     Ls.forEach((l) => { if (prev !== null) yy += l.objId !== prev ? 24 : 8; l.y = yy; l.h = Math.max(l.flow * unit, 22); yy += l.h; prev = l.objId; }); }
   const Lpos: Record<string, { y: number; h: number }> = {}; Ls.forEach((l) => (Lpos[l.id] = { y: l.y, h: l.h }));
 
-  // objetivos: columna centrada
-  const Os = objs.map((o) => ({ id: o.id, nombre: o.nombre, color: o.color, flow: objFlow[o.id]!, y: 0, h: 0 }));
-  { let nat = 0; Os.forEach((o, i) => { if (i > 0) nat += 28; nat += Math.max(o.flow * unit, 34); });
+  // objetivos: columna centrada. Su altura = suma de las cajas de sus sub-objetivos
+  // (así el ribbon de composición nunca supera la caja del sub-objetivo).
+  const subHSum: Record<string, number> = {};
+  objs.forEach((o) => { if (o.subs && o.subs.length) subHSum[o.id] = Ls.filter((l) => l.objId === o.id).reduce((a, l) => a + l.h, 0); });
+  const objH = (o: Objetivo) => (o.subs && o.subs.length ? Math.max(subHSum[o.id] ?? 0, 34) : Math.max(objFlow[o.id]! * unit, 34));
+  const Os = objs.map((o) => ({ id: o.id, nombre: o.nombre, color: o.color, h: objH(o), y: 0 }));
+  { let nat = 0; Os.forEach((o, i) => { if (i > 0) nat += 30; nat += o.h; });
     let yy = top + ((kpiBot - top) - nat) / 2;
-    Os.forEach((o, i) => { if (i > 0) yy += 28; o.y = yy; o.h = Math.max(o.flow * unit, 34); yy += o.h; }); }
+    Os.forEach((o, i) => { if (i > 0) yy += 30; o.y = yy; yy += o.h; }); }
   const Opos: Record<string, { y: number; h: number }> = {}; Os.forEach((o) => (Opos[o.id] = { y: o.y, h: o.h }));
 
   // conjuntos para resaltado
@@ -141,20 +147,21 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
       kOff[ki]! += l.w * unit;
     });
   });
-  // sub-objetivo → objetivo (grosor = composición, ej. 25% c/u)
+  // sub-objetivo → objetivo (grosor = el de la caja del sub-objetivo, nunca lo supera)
   objs.forEach((o) => {
     if (!o.subs || !o.subs.length) return;
-    const cs = compSum[o.id] || 1, oh = Opos[o.id]!.h;
-    o.subs.forEach((sx) => {
-      const sub = Ls.find((l) => l.id === sx.id); if (!sub) return;
-      const rw = ((compById[sx.id] ?? 0) / cs) * oh;
-      s += band(xSubR, sub.y + sub.h / 2 - rw / 2, xObjL, objIn[o.id]!, rw, o.color, 0.42, { objId: o.id, leafId: sx.id });
-      objIn[o.id]! += rw;
+    Ls.filter((l) => l.objId === o.id).forEach((sub) => {
+      s += band(xSubR, sub.y, xObjL, objIn[o.id]!, sub.h, o.color, 0.42, { objId: o.id, leafId: sub.id });
+      objIn[o.id]! += sub.h;
     });
   });
 
-  // headers
-  s += `<text x="${xKpiL - 6}" y="15" text-anchor="end" class="me-colhead">Planes</text><text x="${xKpiL}" y="15" class="me-colhead">KPIs</text><text x="${xSubL}" y="15" class="me-colhead">Sub-objetivos</text><text x="${xObjL}" y="15" class="me-colhead">Objetivos Estratégicos</text>`;
+  // headers (grandes, mayúscula, centrados sobre cada columna)
+  const hy = 17;
+  s += `<text x="54" y="${hy}" text-anchor="middle" class="me-colhead-big">PLANES</text>` +
+    `<text x="${(xKpiL + xKpiR) / 2}" y="${hy}" text-anchor="middle" class="me-colhead-big">KPIs</text>` +
+    `<text x="${(xSubL + xSubR) / 2}" y="${hy}" text-anchor="middle" class="me-colhead-big">SUB-OBJETIVOS</text>` +
+    `<text x="${(xObjL + viewW) / 2}" y="${hy}" text-anchor="middle" class="me-colhead-big">OBJETIVOS</text>`;
   planes.forEach((p, pi) => { const b = brk[pi]!, cy = (b[0] + b[1]) / 2; s += `<rect class="me-bracket" x="${xBr}" y="${b[0]}" width="3" height="${b[1] - b[0]}" rx="1.5"/><text class="me-plabel" x="${xBr - 4}" y="${cy + 3.3}" text-anchor="end">${clip(shortPlan(p.nombre), 15)}</text>`; });
 
   K.forEach((k, ki) => {
@@ -169,11 +176,11 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
     s += `<g data-leaf="${l.id}" opacity="${dimSub(l.id, l.objId)}" style="cursor:pointer"><rect x="${xSubL}" y="${l.y}" width="${xSubR - xSubL}" height="${l.h}" rx="6" fill="${c}18" stroke="${c}" stroke-opacity=".6"/><rect x="${xSubL}" y="${l.y}" width="3" height="${l.h}" rx="1.5" fill="${c}"/>` +
       `<text class="me-ind-nm" x="${xSubL + 9}" y="${l.y + l.h / 2 + (l.h >= 26 ? -1 : 3.2)}">${clip(l.nombre, 17)}</text>${l.h >= 26 ? `<text class="me-ind-badge" x="${xSubL + 9}" y="${l.y + l.h / 2 + 10}">${comp ?? ""}%</text>` : ""}</g>`;
   });
-  // objetivos estratégicos
+  // objetivos estratégicos (recuadro angosto, etiqueta a la derecha)
   Os.forEach((o) => {
     const c = o.color, cy = o.y + o.h / 2;
-    s += `<g data-obj="${o.id}" opacity="${dimObj(o.id)}" style="cursor:pointer"><rect x="${xObjL}" y="${o.y}" width="${xObjR - xObjL}" height="${o.h}" rx="9" fill="${c}22" stroke="${c}" stroke-opacity=".65"/><rect x="${xObjL}" y="${o.y}" width="3.5" height="${o.h}" rx="2" fill="${c}"/>` +
-      `<text class="me-oname" x="${xObjL + 11}" y="${cy - 2}">${clip(shortObj(o.nombre), 20)}</text><text x="${xObjL + 11}" y="${cy + 12}" class="me-badge" style="fill:${c}">peso ${pesoByObj[o.id]}%</text></g>`;
+    s += `<g data-obj="${o.id}" opacity="${dimObj(o.id)}" style="cursor:pointer"><rect x="${xObjL}" y="${o.y}" width="${xObjR - xObjL}" height="${o.h}" rx="6" fill="${c}26" stroke="${c}" stroke-opacity=".7"/>` +
+      `<text class="me-oname" x="${xObjR + 9}" y="${cy - 2}">${clip(shortObj(o.nombre), 22)}</text><text x="${xObjR + 9}" y="${cy + 12}" class="me-badge" style="fill:${c}">peso ${pesoByObj[o.id]}%</text></g>`;
   });
 
   const viewH = Math.max(kpiBot, ...Ls.map((l) => l.y + l.h), ...Os.map((o) => o.y + o.h)) + 14;
@@ -282,12 +289,12 @@ export function MapaEditor() {
         .mapa-cal input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:hsl(var(--border));cursor:pointer}
         .mapa-cal input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--c,hsl(var(--primary)));border:2px solid hsl(var(--card));box-shadow:0 1px 3px #0003}
         .mapa-cal input[type=range]::-moz-range-thumb{width:12px;height:12px;border:2px solid hsl(var(--card));border-radius:50%;background:var(--c,hsl(var(--primary)))}
-        .mapa-cal .me-colhead{font-size:8.5px;letter-spacing:.05em;text-transform:uppercase;fill:hsl(var(--muted-foreground));font-family:ui-monospace,monospace;pointer-events:none}
-        .mapa-cal .me-plabel{font-weight:600;font-size:9.5px;fill:hsl(var(--foreground));pointer-events:none}
-        .mapa-cal .me-kpi-nm{font-size:9px;fill:hsl(var(--muted-foreground));pointer-events:none}
-        .mapa-cal .me-ind-nm{font-weight:600;font-size:9.5px;fill:hsl(var(--foreground));pointer-events:none}
-        .mapa-cal .me-ind-badge{font-family:ui-monospace,monospace;font-size:7.5px;fill:hsl(var(--muted-foreground));pointer-events:none}
-        .mapa-cal .me-oname{font-weight:700;font-size:11px;fill:hsl(var(--foreground));pointer-events:none}
+        .mapa-cal .me-colhead-big{font-size:11.5px;font-weight:700;letter-spacing:.11em;fill:hsl(var(--muted-foreground));font-family:ui-monospace,monospace;pointer-events:none}
+        .mapa-cal .me-plabel{font-weight:600;font-size:10px;fill:hsl(var(--foreground));pointer-events:none}
+        .mapa-cal .me-kpi-nm{font-size:10px;fill:hsl(var(--muted-foreground));pointer-events:none}
+        .mapa-cal .me-ind-nm{font-weight:600;font-size:10.5px;fill:hsl(var(--foreground));pointer-events:none}
+        .mapa-cal .me-ind-badge{font-family:ui-monospace,monospace;font-size:8px;fill:hsl(var(--muted-foreground));pointer-events:none}
+        .mapa-cal .me-oname{font-weight:700;font-size:12px;fill:hsl(var(--foreground));pointer-events:none}
         .mapa-cal .me-bracket{fill:hsl(var(--muted-foreground));opacity:.35;pointer-events:none}
         .mapa-cal .me-kpibox{fill:hsl(var(--muted));stroke:hsl(var(--border))}
         .mapa-cal .me-badge{font-family:ui-monospace,monospace;font-size:8.5px;font-weight:500;pointer-events:none}
