@@ -16,15 +16,6 @@ export default function MapaEstrategicoPage() {
         </p>
       </header>
 
-      <div className="flex items-start gap-3 rounded-xl border border-primary/40 bg-primary/[0.04] px-4 py-3">
-        <span className="text-base leading-tight">🧭</span>
-        <p className="text-[12.5px] text-muted-foreground">
-          <b className="text-foreground">Está pre-conectado con una hipótesis inicial.</b> Corregí lo que no te cierre:
-          mové los sliders de contribución, sacá o agregá vínculos, renombrá KPIs y planes. Tus cambios se guardan
-          en este navegador. Cuando el mapa te represente, sumamos las metas por KPI y lo conectamos a los datos reales.
-        </p>
-      </div>
-
       <MapaEditor />
     </div>
   );
