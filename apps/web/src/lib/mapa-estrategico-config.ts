@@ -1,15 +1,13 @@
 // Semilla versionada del Mapa Estratégico (Ciclo 1 — hipótesis).
 //
-// Modelo de contribución: cada KPI de un Plan aporta a uno o más objetivos
-// estratégicos con un "peso" 0-100 (% de contribución estimado). En el Ciclo 1
-// los pesos son hipótesis de negocio (sin estadística); en el Ciclo 2 se
-// recalibran contra los datos (correlación/regresión) — ver docs/brujula-salud-marca.md.
-//
-// Esta es la config de arranque. La pantalla de calibración
-// (components/mapa-estrategico/mapa-editor) hidrata desde localStorage si el
-// usuario ya editó, y si no, cae a este seed.
+// Modelo: cada objetivo puede tener sub-indicadores (1 nivel). Los KPIs se
+// conectan a las HOJAS con un "peso" 0-100 (% de contribución estimado):
+//   - Salud de Marca = Top of Mind + Share of Mind + Intención + Poder (25% c/u).
+//   - Facturación e Inv/Fact son planas (la hoja es el objetivo).
+// Ciclo 1 = hipótesis de negocio; Ciclo 2 se recalibra con datos.
+// Ver docs/brujula-salud-marca.md.
 
-export type Vinculos = Record<string, number>; // objId -> peso 0-100
+export type Vinculos = Record<string, number>; // leafId -> peso 0-100
 
 export interface Kpi {
   nombre: string;
@@ -21,16 +19,41 @@ export interface Plan {
   kpis: Kpi[];
 }
 
+export interface SubIndicador {
+  id: string;
+  nombre: string;
+  peso: number; // composición dentro del objetivo (suma ~100)
+}
+
 export interface Objetivo {
   id: string;
   nombre: string;
-  color: string; // hex — color semántico del objetivo en el mapa
+  color: string;
   peso: number; // peso estratégico relativo (se normaliza a 100%)
+  subs?: SubIndicador[];
 }
 
-// Paleta por objetivo (estable, semántica).
+export interface Leaf {
+  id: string; // hoja (sub-indicador, o el objetivo si es plano)
+  nombre: string;
+  objId: string;
+  objNombre: string;
+  color: string;
+}
+
 export const OBJETIVOS_SEED: Objetivo[] = [
-  { id: "o1", nombre: "Salud de Marca", color: "#7a5cf0", peso: 40 },
+  {
+    id: "o1",
+    nombre: "Salud de Marca",
+    color: "#7a5cf0",
+    peso: 40,
+    subs: [
+      { id: "tom", nombre: "Top of Mind", peso: 25 },
+      { id: "som", nombre: "Share of Mind", peso: 25 },
+      { id: "int", nombre: "Intención de compra", peso: 25 },
+      { id: "pod", nombre: "Poder de Marca", peso: 25 },
+    ],
+  },
   { id: "o2", nombre: "Facturación", color: "#159a5b", peso: 40 },
   { id: "o3", nombre: "Inv. Mkt / Facturación", color: "#d08a1e", peso: 20 },
 ];
@@ -39,9 +62,9 @@ export const PLANES_SEED: Plan[] = [
   {
     nombre: "Pauta en Medios",
     kpis: [
-      { nombre: "Alcance / Cobertura", vinculos: { o1: 85, o2: 20 } },
-      { nombre: "VTR (view-through)", vinculos: { o1: 70 } },
-      { nombre: "Share of Voice", vinculos: { o1: 75, o2: 25 } },
+      { nombre: "Alcance / Cobertura", vinculos: { tom: 50, som: 35, o2: 20 } },
+      { nombre: "VTR (view-through)", vinculos: { som: 40, pod: 30 } },
+      { nombre: "Share of Voice", vinculos: { tom: 45, som: 30, o2: 25 } },
     ],
   },
   {
@@ -55,25 +78,25 @@ export const PLANES_SEED: Plan[] = [
   {
     nombre: "Redes Sociales",
     kpis: [
-      { nombre: "Alcance orgánico", vinculos: { o1: 70 } },
-      { nombre: "Engagement rate", vinculos: { o1: 80 } },
-      { nombre: "Sentiment", vinculos: { o1: 55 } },
+      { nombre: "Alcance orgánico", vinculos: { som: 70 } },
+      { nombre: "Engagement rate", vinculos: { pod: 50, int: 30 } },
+      { nombre: "Sentiment", vinculos: { pod: 45, int: 25 } },
     ],
   },
   {
     nombre: "Mkt de Influencia",
     kpis: [
-      { nombre: "Alcance de creadores", vinculos: { o1: 75 } },
-      { nombre: "Afinidad / Engagement", vinculos: { o1: 85 } },
-      { nombre: "Menciones / EMV", vinculos: { o1: 55, o2: 20 } },
+      { nombre: "Alcance de creadores", vinculos: { som: 45, tom: 30 } },
+      { nombre: "Afinidad / Engagement", vinculos: { pod: 55, int: 30 } },
+      { nombre: "Menciones / EMV", vinculos: { som: 40, pod: 20, o2: 20 } },
     ],
   },
   {
     nombre: "SEO / Search",
     kpis: [
-      { nombre: "Share of Search", vinculos: { o1: 60, o2: 45 } },
+      { nombre: "Share of Search", vinculos: { tom: 45, som: 35, o2: 30 } },
       { nombre: "Tráfico orgánico", vinculos: { o2: 30, o3: 55 } },
-      { nombre: "Posición media", vinculos: { o1: 40, o3: 35 } },
+      { nombre: "Posición media", vinculos: { tom: 40, o3: 35 } },
     ],
   },
   {
@@ -88,10 +111,23 @@ export const PLANES_SEED: Plan[] = [
     nombre: "Trade (CB · Floor · Canal)",
     kpis: [
       { nombre: "% Cumplimiento CB", vinculos: { o2: 85 } },
-      { nombre: "Floor Share (exhibición)", vinculos: { o2: 80, o1: 30 } },
-      { nombre: "Sell-out en PDV", vinculos: { o2: 65, o1: 25 } },
+      { nombre: "Floor Share (exhibición)", vinculos: { int: 40, tom: 25, o2: 50 } },
+      { nombre: "Sell-out en PDV", vinculos: { int: 45, o2: 50 } },
     ],
   },
 ];
 
-export const MAPA_STORAGE_KEY = "mapa-estrategico-ciclo1-v1";
+// Hojas aplanadas (columnas de la matriz / nodos hoja del mapa).
+export function leavesOf(objs: Objetivo[]): Leaf[] {
+  const out: Leaf[] = [];
+  for (const o of objs) {
+    if (o.subs && o.subs.length) {
+      for (const s of o.subs) out.push({ id: s.id, nombre: s.nombre, objId: o.id, objNombre: o.nombre, color: o.color });
+    } else {
+      out.push({ id: o.id, nombre: o.nombre, objId: o.id, objNombre: o.nombre, color: o.color });
+    }
+  }
+  return out;
+}
+
+export const MAPA_STORAGE_KEY = "mapa-estrategico-ciclo1-v3";
