@@ -106,7 +106,9 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], mode: Mode): { inner: s
     p.kpis.forEach((_kk, ki) => {
       const k = K[gk]!;
       k.y = y;
-      k.h = Math.max(k.tot * unit, 4);
+      // Altura mínima legible por KPI: aunque su contribución sea baja, la caja
+      // y su etiqueta tienen que verse (los ribbons siguen siendo proporcionales).
+      k.h = Math.max(k.tot * unit, 15);
       y += k.h;
       if (ki < p.kpis.length - 1) y += intra;
       gk++;
