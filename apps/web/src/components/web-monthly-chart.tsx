@@ -38,10 +38,10 @@ export function WebMonthlyChart({
     );
   }
 
-  // Solo mostrar barras del año anterior si hay sesiones cargadas
-  const hasSessionsPrev = data.some((d) => (d.sesiones_prev ?? 0) > 0);
-  const hasSessionsCurr = data.some((d) => (d.sesiones_curr ?? 0) > 0);
+  // Barras = usuarios, línea = sesiones. Las series del año anterior solo se
+  // muestran si hay datos cargados.
   const hasUsersPrev = data.some((d) => (d.usuarios_prev ?? 0) > 0);
+  const hasSessionsPrev = data.some((d) => (d.sesiones_prev ?? 0) > 0);
 
   const formatTick = (v: number) =>
     v >= 1_000_000
@@ -67,19 +67,17 @@ export function WebMonthlyChart({
           }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {/* Barras: usuarios (año anterior en gris, año actual en azul) */}
-        {hasSessionsPrev && (
-          <Bar yAxisId="left" dataKey="sesiones_prev" fill="#cbd5e1" name={`Usuarios ${labels.prev}`} />
-        )}
-        {hasSessionsCurr && (
-          <Bar yAxisId="left" dataKey="sesiones_curr" fill="#2b4dff" name={`Usuarios ${labels.curr}`} />
-        )}
-        {/* Líneas: sesiones (rojo claro año anterior, rojo oscuro año actual) */}
+        {/* Barras = usuarios (año anterior en gris, año actual en azul) */}
         {hasUsersPrev && (
+          <Bar yAxisId="left" dataKey="usuarios_prev" fill="#cbd5e1" name={`Usuarios ${labels.prev}`} />
+        )}
+        <Bar yAxisId="left" dataKey="usuarios_curr" fill="#2b4dff" name={`Usuarios ${labels.curr}`} />
+        {/* Línea = sesiones (rojo claro año anterior, rojo oscuro año actual) */}
+        {hasSessionsPrev && (
           <Line
             yAxisId="right"
             type="monotone"
-            dataKey="usuarios_prev"
+            dataKey="sesiones_prev"
             stroke="#fca5a5"
             strokeWidth={2}
             strokeDasharray="4 2"
@@ -90,7 +88,7 @@ export function WebMonthlyChart({
         <Line
           yAxisId="right"
           type="monotone"
-          dataKey="usuarios_curr"
+          dataKey="sesiones_curr"
           stroke="#dc2626"
           strokeWidth={2.5}
           dot={{ r: 4 }}
