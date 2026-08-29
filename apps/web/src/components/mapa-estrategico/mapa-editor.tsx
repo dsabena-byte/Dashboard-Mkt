@@ -48,7 +48,9 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
   const subLeaves = leaves.filter((l) => l.id !== l.objId); // sub-objetivos
   const subIds = new Set(subLeaves.map((l) => l.id));
   const subObj: Record<string, string> = {}; subLeaves.forEach((l) => (subObj[l.id] = l.objId));
-  const objIds = new Set(objs.map((o) => o.id));
+  // Solo los objetivos SIN sub-objetivos son terminal directo de un KPI. Un
+  // objetivo con sub-objetivos no es hoja: sus vínculos directos viejos se ignoran.
+  const flatObjIds = new Set(objs.filter((o) => !(o.subs && o.subs.length)).map((o) => o.id));
   const colorOf = (oid: string) => objs.find((o) => o.id === oid)?.color ?? "#888";
   const np = normPeso(objs);
   const pesoByObj: Record<string, number> = {}; objs.forEach((o, j) => (pesoByObj[o.id] = np[j]!));
@@ -61,7 +63,7 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
     const leafLinks: { id: string; w: number }[] = [];
     const directLinks: { id: string; w: number }[] = [];
     let tot = 0;
-    for (const id in kk.vinculos) { const w = kk.vinculos[id] || 0; if (!w) continue; if (subIds.has(id)) { leafLinks.push({ id, w }); tot += w; } else if (objIds.has(id)) { directLinks.push({ id, w }); tot += w; } }
+    for (const id in kk.vinculos) { const w = kk.vinculos[id] || 0; if (!w) continue; if (subIds.has(id)) { leafLinks.push({ id, w }); tot += w; } else if (flatObjIds.has(id)) { directLinks.push({ id, w }); tot += w; } }
     const leafSet = new Set(leafLinks.map((l) => l.id));
     const objSet = new Set<string>(); leafLinks.forEach((l) => objSet.add(subObj[l.id]!)); directLinks.forEach((l) => objSet.add(l.id));
     K.push({ name: kk.nombre, leafLinks, directLinks, tot, y: 0, h: 0, leafSet, objSet });
@@ -252,7 +254,12 @@ export function MapaEditor() {
   }
   // --- sub-objetivos (configurables) ---
   const uid = () => `s-${Math.random().toString(36).slice(2, 8)}`;
-  function addSub(oi: number) { patchObjs((d) => { const o = d[oi]!; if (!o.subs) o.subs = []; o.subs.push({ id: uid(), nombre: "Nuevo sub-objetivo", peso: 25 }); }); }
+  function addSub(oi: number) {
+    const oid = objs[oi]!.id;
+    patchObjs((d) => { const o = d[oi]!; if (!o.subs) o.subs = []; o.subs.push({ id: uid(), nombre: "Nuevo sub-objetivo", peso: 25 }); });
+    // Al pasar a tener sub-objetivos, los vínculos directos viejos al objetivo se limpian.
+    patchPlanes((d) => d.forEach((p) => p.kpis.forEach((k) => { delete k.vinculos[oid]; })));
+  }
   function setSubName(oi: number, si: number, v: string) { patchObjs((d) => { d[oi]!.subs![si]!.nombre = v; }); }
   function setSubPeso(oi: number, si: number, v: number) { patchObjs((d) => { d[oi]!.subs![si]!.peso = v; }); }
   function removeSub(oi: number, si: number) {
