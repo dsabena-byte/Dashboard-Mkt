@@ -326,8 +326,8 @@ export function MapaEditor() {
 
             <div className="overflow-hidden rounded-xl border bg-card">
               {/* header */}
-              <div className="grid border-b bg-secondary/40" style={{ gridTemplateColumns: `1fr repeat(${objs.length}, minmax(88px,1fr))` }}>
-                <div className="px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Indicador (KPI)</div>
+              <div className="grid border-b bg-secondary/40" style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${objs.length}, minmax(88px,1fr))` }}>
+                <div className="px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Objetivo Estratégico</div>
                 {objs.map((o) => (
                   <div key={o.id} className="border-l px-1.5 py-2 text-center font-mono text-[10px]" style={{ color: o.color }}>{shortHead(o.nombre)}</div>
                 ))}
@@ -343,7 +343,7 @@ export function MapaEditor() {
                   {p.kpis.map((k, ki) => {
                     const g = gForCell[`${pi}-${ki}`]!;
                     return (
-                      <div key={ki} className="group grid items-center border-b last:border-b-0" style={{ gridTemplateColumns: `1fr repeat(${objs.length}, minmax(88px,1fr))` }}>
+                      <div key={ki} className="group grid items-center border-b last:border-b-0" style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${objs.length}, minmax(88px,1fr))` }}>
                         <div className="flex items-center gap-1.5 py-1.5 pl-3 pr-2">
                           <input value={k.nombre} onChange={(e) => setKpiName(pi, ki, e.target.value)} className="min-w-0 flex-1 bg-transparent text-xs text-muted-foreground outline-none focus:text-foreground" />
                           {p.kpis.length > 1 && <button onClick={() => removeKpi(pi, ki)} title="Quitar KPI" className="text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100">✕</button>}
@@ -414,10 +414,6 @@ export function MapaEditor() {
               ))}
             </div>
           </div>
-
-          <p className="mt-3 text-[11.5px] leading-relaxed text-muted-foreground">
-            El <b className="text-foreground">peso</b> es el % de contribución del KPI al objetivo. En <b className="text-foreground">Hipótesis</b> lo estimás vos (Ciclo 1); en <b className="text-foreground">Medido</b> lo calcularía la plataforma con los datos (a fin de año). El badge <b className="text-foreground">peso X%</b> de cada objetivo es su peso estratégico; en <b style={{ color: "hsl(38 78% 52%)" }}>ámbar ⚠</b> pesa mucho pero recibe poco aporte de KPIs.
-          </p>
         </div>
       </div>
     </div>
