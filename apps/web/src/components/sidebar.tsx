@@ -19,6 +19,7 @@ import {
   Activity,
   Sparkles,
   Search,
+  Compass,
   Menu,
   X,
 } from "lucide-react";
@@ -30,6 +31,7 @@ import { getTenant } from "@/lib/tenant/current";
 const tenant = getTenant();
 
 const NAV = [
+  { href: "/mapa-estrategico", label: "Mapa Estratégico", icon: Compass },
   { href: "/overview",    label: "Objetivos Marketing", icon: LayoutDashboard },
   { href: "/salud-marca", label: "Salud de Marca",      icon: HeartPulse },
   { href: "/mercado",     label: "Análisis de Mercado", icon: TrendingUp },
