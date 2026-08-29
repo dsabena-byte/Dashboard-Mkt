@@ -11,8 +11,9 @@ export default function MapaEstrategicoPage() {
           <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground">Ciclo 1 · Construir</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Cómo cada Plan y sus KPIs empujan los 3 objetivos estratégicos. En el Ciclo 1 los vínculos y pesos
-          son tu <b className="text-foreground">hipótesis</b> de negocio (sin datos históricos); en el Ciclo 2 se recalibran con la evidencia.
+          Definí tus objetivos estratégicos y sus sub-objetivos, conectá los KPIs de cada plan y ajustá los pesos.
+          En el Ciclo 1 los vínculos y pesos son tu <b className="text-foreground">hipótesis</b> de negocio (sin datos históricos);
+          en el Ciclo 2 se recalibran con la evidencia.
         </p>
       </header>
 
