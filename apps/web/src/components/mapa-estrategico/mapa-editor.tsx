@@ -12,7 +12,6 @@ import {
   leavesOf,
   type Objetivo,
   type Plan,
-  type SubIndicador,
 } from "@/lib/mapa-estrategico-config";
 
 const PALETTE = ["#7a5cf0", "#159a5b", "#d08a1e", "#2f7fe0", "#d94a6a", "#0e9aa7"];
@@ -225,6 +224,16 @@ export function MapaEditor() {
     patchObjs((d) => { d.splice(i, 1); });
     patchPlanes((d) => d.forEach((p) => p.kpis.forEach((k) => rem.forEach((id) => { delete k.vinculos[id]; }))));
   }
+  // --- sub-objetivos (configurables) ---
+  const uid = () => `s-${Math.random().toString(36).slice(2, 8)}`;
+  function addSub(oi: number) { patchObjs((d) => { const o = d[oi]!; if (!o.subs) o.subs = []; o.subs.push({ id: uid(), nombre: "Nuevo sub-objetivo", peso: 25 }); }); }
+  function setSubName(oi: number, si: number, v: string) { patchObjs((d) => { d[oi]!.subs![si]!.nombre = v; }); }
+  function setSubPeso(oi: number, si: number, v: number) { patchObjs((d) => { d[oi]!.subs![si]!.peso = v; }); }
+  function removeSub(oi: number, si: number) {
+    const rid = objs[oi]!.subs?.[si]?.id;
+    patchObjs((d) => { d[oi]!.subs!.splice(si, 1); if (d[oi]!.subs!.length === 0) delete d[oi]!.subs; });
+    if (rid) patchPlanes((d) => d.forEach((p) => p.kpis.forEach((k) => { delete k.vinculos[rid]; })));
+  }
   function setLink(pi: number, ki: number, leafId: string, v: number) {
     patchPlanes((d) => { const lnk = d[pi]!.kpis[ki]!.vinculos; if (v) lnk[leafId] = v; else delete lnk[leafId]; });
   }
@@ -265,9 +274,7 @@ export function MapaEditor() {
         .mapa-cal svg g[data-kpi],.mapa-cal svg g[data-obj]{transition:opacity .12s}
       `}</style>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* ---- izquierda: calibración ---- */}
-        <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5">
           {/* Objetivos */}
           <section>
             <div className="mb-2.5 flex items-center gap-2">
@@ -285,17 +292,35 @@ export function MapaEditor() {
                       <input type="range" min={0} max={100} value={o.peso} onChange={(e) => setPeso(i, +e.target.value)} style={{ ["--c" as string]: o.color, flex: 1 }} />
                       <span className="w-8 text-right font-mono text-xs font-semibold tabular-nums">{np[i]}%</span>
                     </div>
-                    {objs.length > 1 && <button onClick={() => removeObj(i)} title="Quitar" className="text-muted-foreground hover:text-destructive">✕</button>}
+                    {objs.length > 1 && <button onClick={() => removeObj(i)} title="Quitar objetivo" className="text-muted-foreground hover:text-destructive">✕</button>}
                   </div>
-                  {o.subs && o.subs.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5 border-t pt-2">
-                      {o.subs.map((s) => <SubChip key={s.id} s={s} color={o.color} />)}
+                  <div className="mt-2 border-t pt-2">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                        Sub-objetivos{o.subs && o.subs.length > 0 ? ` · aporte suma ${o.subs.reduce((a, s) => a + s.peso, 0)}%` : ""}
+                      </span>
+                      <button onClick={() => addSub(i)} className="text-[10.5px] font-semibold text-primary hover:underline">+ sub-objetivo</button>
                     </div>
-                  )}
+                    {(!o.subs || o.subs.length === 0) ? (
+                      <p className="text-[10.5px] text-muted-foreground">Sin sub-objetivos: los KPIs se conectan directo a este objetivo.</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {o.subs.map((s, si) => (
+                          <div key={s.id} className="flex items-center gap-2">
+                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: o.color }} />
+                            <input value={s.nombre} onChange={(e) => setSubName(i, si, e.target.value)} className="min-w-0 flex-1 bg-transparent text-[11.5px] outline-none focus:text-foreground" />
+                            <input type="range" min={0} max={100} value={s.peso} onChange={(e) => setSubPeso(i, si, +e.target.value)} style={{ ["--c" as string]: o.color, flex: "0 0 90px" }} />
+                            <span className="w-8 text-right font-mono text-[10.5px] font-semibold tabular-nums" style={{ color: o.color }}>{s.peso}%</span>
+                            <button onClick={() => removeSub(i, si)} title="Quitar sub-objetivo" className="text-[11px] text-muted-foreground hover:text-destructive">✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-muted-foreground"><b className="text-foreground">Peso estratégico</b> = importancia relativa (suma 100%). Los chips son los <b className="text-foreground">componentes</b> del objetivo.</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground"><b className="text-foreground">Peso estratégico</b> = importancia relativa de cada objetivo (suma 100%). Los <b className="text-foreground">sub-objetivos</b> definen su composición y su <b className="text-foreground">% de aporte</b>; los KPIs se conectan a ellos.</p>
           </section>
 
           {/* Matriz de conexiones */}
@@ -351,19 +376,19 @@ export function MapaEditor() {
               </div>
             </div>
           </section>
-        </div>
 
-        {/* ---- derecha: mapa ---- */}
-        <div className="lg:sticky lg:top-4 lg:self-start">
-          <div className="rounded-2xl border bg-card p-4 shadow-sm">
-            <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3">
+          {/* ---- mapa (debajo de la sección 2, ancho fijo para no deformarse) ---- */}
+          <div className="mx-auto w-full" style={{ maxWidth: svg.viewW + 40 }}>
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">3</span>
               <h3 className="text-sm font-semibold tracking-tight">Mapa de conexiones</h3>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">hover para aislar</span>
+              <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-muted-foreground">hover para aislar</span>
             </div>
-            <div onMouseMove={onHover} onMouseLeave={() => setFocus(null)}>
-              <svg viewBox={`0 0 ${svg.viewW} ${svg.viewH}`} role="img" aria-label="Mapa Plan → KPI → sub-indicador → objetivo" className="block h-auto w-full" dangerouslySetInnerHTML={{ __html: svg.inner }} />
+            <div className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div onMouseMove={onHover} onMouseLeave={() => setFocus(null)}>
+                <svg viewBox={`0 0 ${svg.viewW} ${svg.viewH}`} role="img" aria-label="Mapa Plan → KPI → sub-indicador → objetivo" style={{ width: svg.viewW, maxWidth: "100%" }} className="mx-auto block h-auto" dangerouslySetInnerHTML={{ __html: svg.inner }} />
+              </div>
             </div>
-          </div>
           <div className="mt-3.5 rounded-xl border bg-card px-4 py-3.5">
             <div className="flex items-baseline justify-between">
               <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Vínculos por objetivo</span>
@@ -382,14 +407,5 @@ export function MapaEditor() {
         </div>
       </div>
     </div>
-  );
-}
-
-function SubChip({ s, color }: { s: SubIndicador; color: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10.5px]" style={{ borderColor: `${color}66` }}>
-      <span className="font-medium">{s.nombre}</span>
-      <span className="font-mono text-[9.5px] text-muted-foreground">{s.peso}%</span>
-    </span>
   );
 }
