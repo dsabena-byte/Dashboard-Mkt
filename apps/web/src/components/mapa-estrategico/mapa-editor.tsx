@@ -46,78 +46,48 @@ type Focus = { kind: "kpi"; ki: number } | { kind: "obj"; oid: string } | null;
 
 function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner: string; viewH: number; viewW: number } {
   const leaves = leavesOf(objs);
-  const subLeaves = leaves.filter((l) => l.id !== l.objId);
-  const subLeafIds = new Set(subLeaves.map((l) => l.id));
-  const objIds = new Set(objs.map((o) => o.id));
+  const leafIds = new Set(leaves.map((l) => l.id));
   const colorOf = (oid: string) => objs.find((o) => o.id === oid)?.color ?? "#888";
+  const np = normPeso(objs);
+  const pesoByObj: Record<string, number> = {}; objs.forEach((o, j) => (pesoByObj[o.id] = np[j]!));
+  const compById: Record<string, number> = {}; objs.forEach((o) => (o.subs ?? []).forEach((sx) => (compById[sx.id] = sx.peso)));
 
-  type KpiN = { name: string; leafLinks: { id: string; w: number }[]; directLinks: { id: string; w: number }[]; tot: number; y: number; h: number };
+  type KpiN = { name: string; links: { id: string; w: number }[]; tot: number; y: number; h: number };
   const K: KpiN[] = [];
   planes.forEach((p) => p.kpis.forEach((kk) => {
-    const leafLinks: { id: string; w: number }[] = [];
-    const directLinks: { id: string; w: number }[] = [];
+    const links: { id: string; w: number }[] = [];
     let tot = 0;
-    for (const id in kk.vinculos) {
-      const w = kk.vinculos[id] || 0;
-      if (!w) continue;
-      if (subLeafIds.has(id)) { leafLinks.push({ id, w }); tot += w; }
-      else if (objIds.has(id)) { directLinks.push({ id, w }); tot += w; }
-    }
-    K.push({ name: kk.nombre, leafLinks, directLinks, tot, y: 0, h: 0 });
+    for (const id in kk.vinculos) { const w = kk.vinculos[id] || 0; if (w && leafIds.has(id)) { links.push({ id, w }); tot += w; } }
+    K.push({ name: kk.nombre, links, tot, y: 0, h: 0 });
   }));
 
   const leafFlow: Record<string, number> = {};
-  subLeaves.forEach((l) => (leafFlow[l.id] = 0));
-  K.forEach((k) => k.leafLinks.forEach((l) => (leafFlow[l.id] = (leafFlow[l.id] ?? 0) + l.w)));
-  const objFlow: Record<string, number> = {};
-  objs.forEach((o) => {
-    let f = 0;
-    K.forEach((k) => k.directLinks.forEach((d) => { if (d.id === o.id) f += d.w; }));
-    subLeaves.forEach((l) => { if (l.objId === o.id) f += leafFlow[l.id]!; });
-    objFlow[o.id] = f;
-  });
+  leaves.forEach((l) => (leafFlow[l.id] = 0));
+  K.forEach((k) => k.links.forEach((l) => (leafFlow[l.id] = (leafFlow[l.id] ?? 0) + l.w)));
 
   const totalFlow = K.reduce((a, k) => a + k.tot, 0) || 1;
-  const top = 26, unit = Math.min(3.0, 470 / totalFlow);
-  const viewW = 580;
-  const xBr = 98, xKpiL = 104, xKpiR = 232, xLeafL = 284, xLeafR = 380, xObjL = 470, xObjR = 572;
+  const top = 26, unit = Math.min(3.2, 470 / totalFlow);
+  const viewW = 600;
+  const xBr = 92, xKpiL = 98, xKpiR = 222, xLeafL = 288, xLeafR = 452, xGrpBr = 460;
 
+  // layout KPI (por plan)
   let y = top, gk = 0;
   const brk: [number, number][] = [];
-  planes.forEach((p) => {
-    const b0 = y;
-    p.kpis.forEach((_k, ki) => { const k = K[gk]!; k.y = y; k.h = Math.max(k.tot * unit, 14); y += k.h; if (ki < p.kpis.length - 1) y += 4; gk++; });
-    brk.push([b0, y]); y += 11;
-  });
+  planes.forEach((p) => { const b0 = y; p.kpis.forEach((_k, ki) => { const k = K[gk]!; k.y = y; k.h = Math.max(k.tot * unit, 14); y += k.h; if (ki < p.kpis.length - 1) y += 4; gk++; }); brk.push([b0, y]); y += 11; });
   const kpiBot = y - 11;
 
-  function layoutCol<T extends { flow: number; grp: string; y?: number; h?: number }>(list: T[], gapIn: number, gapGrp: number, minH: number) {
-    let nat = 0, prev: string | null = null;
-    list.forEach((n) => { if (prev !== null) nat += n.grp !== prev ? gapGrp : gapIn; nat += Math.max(n.flow * unit, minH); prev = n.grp; });
-    let yy = top + ((kpiBot - top) - nat) / 2; prev = null;
-    list.forEach((n) => { if (prev !== null) yy += n.grp !== prev ? gapGrp : gapIn; n.y = yy; n.h = Math.max(n.flow * unit, minH); yy += n.h; prev = n.grp; });
-  }
+  // layout hojas: columna única de terminales, agrupadas por objetivo, centradas
+  const Ls = leaves.map((l) => ({ ...l, flow: leafFlow[l.id]!, y: 0, h: 0 }));
+  let nat = 0, prev: string | null = null;
+  Ls.forEach((l) => { if (prev !== null) nat += l.objId !== prev ? 22 : 7; nat += Math.max(l.flow * unit, 26); prev = l.objId; });
+  let yy = top + ((kpiBot - top) - nat) / 2; prev = null;
+  Ls.forEach((l) => { if (prev !== null) yy += l.objId !== prev ? 22 : 7; l.y = yy; l.h = Math.max(l.flow * unit, 26); yy += l.h; prev = l.objId; });
+  const Lpos: Record<string, { y: number; h: number }> = {}; Ls.forEach((l) => (Lpos[l.id] = { y: l.y, h: l.h }));
 
-  const Ls = subLeaves.map((l) => ({ ...l, flow: leafFlow[l.id]!, grp: l.objId, y: 0, h: 0 }));
-  layoutCol(Ls, 8, 22, 17);
-  const Lpos: Record<string, { y: number; h: number }> = {};
-  Ls.forEach((l) => (Lpos[l.id] = { y: l.y, h: l.h }));
-
-  const Os = objs.map((o) => ({ id: o.id, nombre: o.nombre, color: o.color, flow: objFlow[o.id]!, grp: o.id, y: 0, h: 0 }));
-  layoutCol(Os, 0, 26, 32);
-  const Opos: Record<string, { y: number; h: number }> = {};
-  Os.forEach((o) => (Opos[o.id] = { y: o.y, h: o.h }));
-
-  let fLeaf: Set<string> | null = null;
-  if (focus && focus.kind === "kpi") fLeaf = new Set((K[focus.ki]?.leafLinks ?? []).map((l) => l.id));
-  interface Meta { objId?: string; ki?: number; leafId?: string }
+  interface Meta { objId: string; ki?: number }
   function opFor(base: number, m: Meta): number {
     if (!focus) return base;
-    let hl: boolean;
-    if (focus.kind === "obj") hl = m.objId === focus.oid;
-    else if (m.ki != null) hl = m.ki === focus.ki;
-    else if (m.leafId != null) hl = !!fLeaf?.has(m.leafId);
-    else hl = false;
+    const hl = focus.kind === "obj" ? m.objId === focus.oid : m.ki === focus.ki;
     return hl ? 0.6 : 0.05;
   }
   function band(x0: number, y0: number, x1: number, y1: number, w: number, c: string, base: number, m: Meta): string {
@@ -127,32 +97,15 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
 
   let s = "";
   const kOff = K.map((k) => k.y);
-  const lIn: Record<string, number> = {}; subLeaves.forEach((l) => (lIn[l.id] = Lpos[l.id]!.y));
-  const objIn: Record<string, number> = {}; objs.forEach((o) => (objIn[o.id] = Opos[o.id]!.y));
-
-  // KPI → hoja / objetivo directo
+  const lIn: Record<string, number> = {}; leaves.forEach((l) => (lIn[l.id] = Lpos[l.id]!.y));
+  // KPI → terminal (directo, sin columna extra)
   K.forEach((k, ki) => {
-    const dy = (id: string, isLeaf: boolean) => (isLeaf ? Lpos[id]!.y : Opos[id]!.y);
-    const links = [
-      ...k.leafLinks.map((l) => ({ ...l, leaf: true })),
-      ...k.directLinks.map((l) => ({ ...l, leaf: false })),
-    ].sort((a, b) => dy(a.id, a.leaf) - dy(b.id, b.leaf));
+    const links = k.links.slice().sort((a, b) => Lpos[a.id]!.y - Lpos[b.id]!.y);
     links.forEach((l) => {
-      if (l.leaf) {
-        const oid = subLeaves.find((x) => x.id === l.id)!.objId;
-        s += band(xKpiR, kOff[ki]!, xLeafL, lIn[l.id]!, l.w * unit, colorOf(oid), 0.26, { objId: oid, ki, leafId: l.id });
-        lIn[l.id]! += l.w * unit;
-      } else {
-        s += band(xKpiR, kOff[ki]!, xObjL, objIn[l.id]!, l.w * unit, colorOf(l.id), 0.34, { objId: l.id, ki });
-        objIn[l.id]! += l.w * unit;
-      }
-      kOff[ki]! += l.w * unit;
+      const oid = leaves.find((x) => x.id === l.id)!.objId;
+      s += band(xKpiR, kOff[ki]!, xLeafL, lIn[l.id]!, l.w * unit, colorOf(oid), 0.3, { objId: oid, ki });
+      lIn[l.id]! += l.w * unit; kOff[ki]! += l.w * unit;
     });
-  });
-  // hoja → objetivo
-  subLeaves.forEach((l) => {
-    s += band(xLeafR, Lpos[l.id]!.y, xObjL, objIn[l.objId]!, leafFlow[l.id]! * unit, colorOf(l.objId), 0.36, { objId: l.objId, leafId: l.id });
-    objIn[l.objId]! += leafFlow[l.id]! * unit;
   });
 
   const dimNode = (objId: string, ki?: number): number => {
@@ -161,30 +114,32 @@ function computeMapSvg(objs: Objetivo[], planes: Plan[], focus: Focus): { inner:
     return ki != null && ki === focus.ki ? 1 : 0.3;
   };
 
-  s += `<text x="${xKpiL - 6}" y="16" text-anchor="end" class="me-colhead">Planes</text><text x="${xKpiL}" y="16" class="me-colhead">KPIs</text><text x="${xLeafL}" y="16" class="me-colhead">Sub-indicadores</text><text x="${xObjL}" y="16" class="me-colhead">Objetivos</text>`;
+  s += `<text x="${xKpiL - 6}" y="16" text-anchor="end" class="me-colhead">Planes</text><text x="${xKpiL}" y="16" class="me-colhead">KPIs</text><text x="${xLeafL}" y="16" class="me-colhead">Indicadores</text>`;
   planes.forEach((p, pi) => { const b = brk[pi]!, cy = (b[0] + b[1]) / 2; s += `<rect class="me-bracket" x="${xBr}" y="${b[0]}" width="3" height="${b[1] - b[0]}" rx="1.5"/><text class="me-plabel" x="${xBr - 4}" y="${cy + 3.3}" text-anchor="end">${clip(shortPlan(p.nombre), 14)}</text>`; });
 
   K.forEach((k, ki) => {
-    let domC = "hsl(var(--muted-foreground))", mx = 0;
-    k.leafLinks.forEach((l) => { if (l.w > mx) { mx = l.w; domC = colorOf(subLeaves.find((x) => x.id === l.id)!.objId); } });
-    k.directLinks.forEach((l) => { if (l.w > mx) { mx = l.w; domC = colorOf(l.id); } });
-    const objOfKpi = (k.leafLinks[0] && subLeaves.find((x) => x.id === k.leafLinks[0]!.id)?.objId) || k.directLinks[0]?.id || "";
-    s += `<g data-kpi="${ki}" opacity="${dimNode(objOfKpi, ki)}" style="cursor:pointer"><rect class="me-kpibox" x="${xKpiL}" y="${k.y}" width="${xKpiR - xKpiL}" height="${k.h}" rx="${Math.min(5, k.h / 2)}"/><rect x="${xKpiL}" y="${k.y}" width="2.5" height="${k.h}" rx="1.2" fill="${domC}"/>${k.h >= 11 ? `<text class="me-kpi-nm" x="${xKpiL + 8}" y="${k.y + k.h / 2 + 3.2}">${clip(k.name, 18)}</text>` : ""}</g>`;
+    let domC = "hsl(var(--muted-foreground))", mx = 0, objOfKpi = "";
+    k.links.forEach((l) => { const o = leaves.find((x) => x.id === l.id)!.objId; if (l.w > mx) { mx = l.w; domC = colorOf(o); objOfKpi = o; } });
+    s += `<g data-kpi="${ki}" opacity="${dimNode(objOfKpi, ki)}" style="cursor:pointer"><rect class="me-kpibox" x="${xKpiL}" y="${k.y}" width="${xKpiR - xKpiL}" height="${k.h}" rx="${Math.min(5, k.h / 2)}"/><rect x="${xKpiL}" y="${k.y}" width="2.5" height="${k.h}" rx="1.2" fill="${domC}"/>${k.h >= 11 ? `<text class="me-kpi-nm" x="${xKpiL + 8}" y="${k.y + k.h / 2 + 3.2}">${clip(k.name, 17)}</text>` : ""}</g>`;
   });
+  // terminales (sub-indicadores + objetivos planos, todos al mismo nivel)
   Ls.forEach((l) => {
-    const c = l.color, comp = objs.flatMap((o) => o.subs ?? []).find((sx) => sx.id === l.id)?.peso;
-    s += `<g data-obj="${l.objId}" opacity="${dimNode(l.objId)}" style="cursor:pointer"><rect x="${xLeafL}" y="${l.y}" width="${xLeafR - xLeafL}" height="${l.h}" rx="6" fill="${c}1c" stroke="${c}" stroke-opacity=".55"/><rect x="${xLeafL}" y="${l.y}" width="2.5" height="${l.h}" rx="1.2" fill="${c}"/>` +
-      `<text class="me-ind-nm" x="${xLeafL + 8}" y="${l.y + l.h / 2 + (comp ? -1 : 3.2)}">${clip(l.nombre, 14)}</text>${comp ? `<text class="me-ind-badge" x="${xLeafL + 8}" y="${l.y + l.h / 2 + 9}">${comp}% de ${clip(l.objNombre, 9)}</text>` : ""}</g>`;
+    const c = l.color, flat = l.id === l.objId, comp = compById[l.id];
+    const badge = flat ? `peso ${pesoByObj[l.objId]}%` : `${comp ?? ""}%`;
+    s += `<g data-obj="${l.objId}" opacity="${dimNode(l.objId)}" style="cursor:pointer"><rect x="${xLeafL}" y="${l.y}" width="${xLeafR - xLeafL}" height="${l.h}" rx="7" fill="${c}${flat ? "22" : "18"}" stroke="${c}" stroke-opacity=".6"/><rect x="${xLeafL}" y="${l.y}" width="3" height="${l.h}" rx="1.5" fill="${c}"/>` +
+      `<text class="me-ind-nm" x="${xLeafL + 9}" y="${l.y + l.h / 2 + (l.h >= 26 ? -1 : 3.2)}">${clip(flat ? shortObj(l.nombre) : l.nombre, 20)}</text>${l.h >= 26 ? `<text class="me-ind-badge" x="${xLeafL + 9}" y="${l.y + l.h / 2 + 10}">${badge}</text>` : ""}</g>`;
   });
-  const np = normPeso(objs);
-  Os.forEach((o, j) => {
-    const c = o.color;
-    s += `<g data-obj="${o.id}" opacity="${dimNode(o.id)}" style="cursor:pointer"><rect x="${xObjL}" y="${o.y}" width="${xObjR - xObjL}" height="${o.h}" rx="8" fill="${c}22" stroke="${c}" stroke-opacity=".6"/><rect x="${xObjL}" y="${o.y}" width="3.5" height="${o.h}" rx="2" fill="${c}"/>` +
-      `<text class="me-oname" x="${xObjL + 10}" y="${o.y + o.h / 2 + 1}">${shortObj(o.nombre)}</text>` +
-      `<text x="${xObjL + 10}" y="${o.y + o.h / 2 + 13}" class="me-badge" style="fill:${c}">peso ${np[j]}%</text></g>`;
+  // objetivos con sub-indicadores: bracket + label a la derecha ("por detrás")
+  objs.forEach((o) => {
+    if (!o.subs || !o.subs.length) return;
+    const kids = Ls.filter((l) => l.objId === o.id);
+    if (!kids.length) return;
+    const y0 = Math.min(...kids.map((k) => k.y)), y1 = Math.max(...kids.map((k) => k.y + k.h)), cy = (y0 + y1) / 2;
+    s += `<g data-obj="${o.id}" opacity="${dimNode(o.id)}" style="cursor:pointer"><rect x="${xGrpBr}" y="${y0}" width="4" height="${y1 - y0}" rx="2" fill="${o.color}"/>` +
+      `<text class="me-oname" x="${xGrpBr + 10}" y="${cy - 2}">${shortObj(o.nombre)}</text><text x="${xGrpBr + 10}" y="${cy + 11}" class="me-badge" style="fill:${o.color}">peso ${pesoByObj[o.id]}%</text></g>`;
   });
 
-  const viewH = Math.max(kpiBot, Os[Os.length - 1]!.y + Os[Os.length - 1]!.h) + 12;
+  const viewH = Math.max(kpiBot, ...Ls.map((l) => l.y + l.h)) + 12;
   return { inner: s, viewH, viewW };
 }
 
