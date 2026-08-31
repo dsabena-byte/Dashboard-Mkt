@@ -284,7 +284,7 @@ export function MapaEditor() {
   function addPlanFromCat(nombre: string) { patchPlanes((d) => d.push({ nombre, kpis: [] })); }
   function addKpiFromCat(pi: number, nombre: string) { patchPlanes((d) => d[pi]!.kpis.push({ nombre, vinculos: {} })); }
   // Catálogo por plan (match por nombre) y planes/KPIs aún no agregados.
-  const planesDisponibles = CATALOGO_PLANES.filter((c) => !planes.some((p) => p.nombre === c.nombre));
+  const presentPlanes = new Set(planes.map((p) => p.nombre));
   function kpisDisponibles(p: Plan): string[] {
     const cat = CATALOGO_PLANES.find((c) => c.nombre === p.nombre);
     if (!cat) return [];
@@ -428,25 +428,27 @@ export function MapaEditor() {
                   </div>
                   );
                 })}
-                {planesDisponibles.length > 0 && (
-                  <div className="p-2">
-                    <select value="" onChange={(e) => { if (e.target.value) addPlanFromCat(e.target.value); }} className="w-full rounded-lg border border-dashed bg-background py-1.5 text-[11px] font-semibold text-primary outline-none">
-                      <option value="">+ Agregar plan del catálogo…</option>
-                      {(() => {
-                        const nodes: React.ReactNode[] = [];
-                        let i = 0;
-                        while (i < planesDisponibles.length) {
-                          const c = planesDisponibles[i]!;
-                          if (!c.grupo) { nodes.push(<option key={c.nombre} value={c.nombre}>{c.nombre}</option>); i++; continue; }
-                          const g = c.grupo; const arr: typeof planesDisponibles = [];
-                          while (i < planesDisponibles.length && planesDisponibles[i]!.grupo === g) { arr.push(planesDisponibles[i]!); i++; }
-                          nodes.push(<optgroup key={g} label={g}>{arr.map((x) => <option key={x.nombre} value={x.nombre}>{x.nombre}</option>)}</optgroup>);
-                        }
-                        return nodes;
-                      })()}
-                    </select>
-                  </div>
-                )}
+                <div className="p-2">
+                  <select value="" onChange={(e) => { if (e.target.value) addPlanFromCat(e.target.value); }} className="w-full rounded-lg border border-dashed bg-background py-1.5 text-[11px] font-semibold text-primary outline-none">
+                    <option value="">+ Agregar plan del catálogo…</option>
+                    {(() => {
+                      const opt = (x: (typeof CATALOGO_PLANES)[number]) => {
+                        const has = presentPlanes.has(x.nombre);
+                        return <option key={x.nombre} value={x.nombre} disabled={has}>{x.nombre}{has ? " (ya agregado)" : ""}</option>;
+                      };
+                      const nodes: React.ReactNode[] = [];
+                      let i = 0;
+                      while (i < CATALOGO_PLANES.length) {
+                        const c = CATALOGO_PLANES[i]!;
+                        if (!c.grupo) { nodes.push(opt(c)); i++; continue; }
+                        const g = c.grupo; const arr: typeof CATALOGO_PLANES = [];
+                        while (i < CATALOGO_PLANES.length && CATALOGO_PLANES[i]!.grupo === g) { arr.push(CATALOGO_PLANES[i]!); i++; }
+                        nodes.push(<optgroup key={g} label={g}>{arr.map(opt)}</optgroup>);
+                      }
+                      return nodes;
+                    })()}
+                  </select>
+                </div>
               </div>
             </div>
           </section>
