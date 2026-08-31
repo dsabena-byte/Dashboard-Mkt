@@ -15,6 +15,7 @@ import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { InsightsPanel } from "@/components/insights/insights-panel";
 import { TopContentPanel } from "@/components/insights/top-content-panel";
 import { RedesTabs } from "@/components/social/redes-tabs";
+import { MetaPanel } from "@/components/metas/meta-panel";
 import { getInsightsByCategoria, getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
@@ -256,6 +257,20 @@ export default async function RedesPage({ searchParams }: PageProps) {
           </div>
         )}
       </section>
+
+      {/* ===== Metas del plan (KPIs que conectan con el Mapa Estratégico) ===== */}
+      <MetaPanel
+        plan="Redes Sociales"
+        titulo="Metas de Redes Sociales"
+        subtitulo="Metas mensuales de los KPIs que este plan aporta al Mapa Estratégico. El semáforo compara el valor real del período (IG + FB) vs la meta cargada."
+        kpis={[
+          { nombre: "Alcance orgánico", actual: combinedAlcance },
+          { nombre: "Engagement rate", unidad: "%", actual: kpis.engagement_promedio },
+          { nombre: "Sentiment", unidad: "%", actual: kpis.sentimiento_positivo },
+          { nombre: "Seguidores", actual: combinedFollowers },
+          { nombre: "Interacciones", actual: combinedEngagement },
+        ]}
+      />
 
       <OrganicBuildupPanel byPilar={organicBuildup.byPilar} byCategoria={organicBuildup.byCategoria} />
 
