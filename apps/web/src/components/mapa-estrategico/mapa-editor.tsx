@@ -432,7 +432,18 @@ export function MapaEditor() {
                   <div className="p-2">
                     <select value="" onChange={(e) => { if (e.target.value) addPlanFromCat(e.target.value); }} className="w-full rounded-lg border border-dashed bg-background py-1.5 text-[11px] font-semibold text-primary outline-none">
                       <option value="">+ Agregar plan del catálogo…</option>
-                      {planesDisponibles.map((c) => <option key={c.nombre} value={c.nombre}>{c.nombre}</option>)}
+                      {(() => {
+                        const nodes: React.ReactNode[] = [];
+                        let i = 0;
+                        while (i < planesDisponibles.length) {
+                          const c = planesDisponibles[i]!;
+                          if (!c.grupo) { nodes.push(<option key={c.nombre} value={c.nombre}>{c.nombre}</option>); i++; continue; }
+                          const g = c.grupo; const arr: typeof planesDisponibles = [];
+                          while (i < planesDisponibles.length && planesDisponibles[i]!.grupo === g) { arr.push(planesDisponibles[i]!); i++; }
+                          nodes.push(<optgroup key={g} label={g}>{arr.map((x) => <option key={x.nombre} value={x.nombre}>{x.nombre}</option>)}</optgroup>);
+                        }
+                        return nodes;
+                      })()}
                     </select>
                   </div>
                 )}

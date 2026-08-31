@@ -1,28 +1,35 @@
 // Catálogo de Planes (dashboards ya armados) y sus KPIs (indicadores que la
-// plataforma ya recolecta). El Mapa Estratégico solo permite AGREGAR planes y
-// KPIs desde acá — no se inventan a mano. La configuración existente del usuario
-// (nombres + pesos) se preserva; el catálogo solo alimenta el selector de "agregar".
+// plataforma ya recolecta). Los nombres coinciden EXACTAMENTE con el menú de
+// "Planes de Acción" del sidebar (de ahí vienen). Los planes que en el menú
+// tienen sub-planes (Plan de Medios, Trade Mkt) se ofrecen agrupados por `grupo`,
+// así al agregar se elige el sub-plan (Pauta Mkt, Cuadros Básicos, etc.).
 //
-// Los nombres de plan coinciden con los del seed del mapa, para que un plan ya
-// cargado matchee su catálogo por nombre y ofrezca sus KPIs faltantes.
+// El Mapa solo permite AGREGAR desde acá — no se inventan a mano. La config
+// existente del usuario (nombres + pesos) se preserva; el catálogo solo alimenta
+// el selector de "agregar".
 
 export interface CatPlan {
-  nombre: string;
+  nombre: string; // idéntico al ítem del menú
   href: string; // dashboard de origen
+  grupo?: string; // agrupador del menú (Plan de Medios / Trade Mkt) si es sub-plan
   kpis: string[]; // indicadores disponibles
 }
 
 export const CATALOGO_PLANES: CatPlan[] = [
+  // Plan de Medios (agrupador → sub-planes)
   {
-    nombre: "Pauta en Medios",
+    nombre: "Pauta Mkt",
     href: "/performance",
+    grupo: "Plan de Medios",
     kpis: ["Alcance / Cobertura", "VTR (view-through)", "Share of Voice", "Impresiones", "Frecuencia", "CPM", "Inversión"],
   },
   {
     nombre: "Pauta Ecommerce",
     href: "/performance-conversion",
+    grupo: "Plan de Medios",
     kpis: ["ROAS", "Conversiones", "CPA", "Ingresos", "Inversión"],
   },
+  // Planes directos
   {
     nombre: "Redes Sociales",
     href: "/redes",
@@ -34,7 +41,7 @@ export const CATALOGO_PLANES: CatPlan[] = [
     kpis: ["Alcance de creadores", "Afinidad / Engagement", "Menciones / EMV", "Piezas publicadas"],
   },
   {
-    nombre: "Mkt de Canal",
+    nombre: "Mkt Canal Comercial",
     href: "/mkt-canal",
     kpis: ["Acciones ejecutadas", "Inversión en canal", "Sell-in"],
   },
@@ -44,13 +51,21 @@ export const CATALOGO_PLANES: CatPlan[] = [
     kpis: ["Tráfico web (usuarios)", "Sesiones", "Tasa de conversión", "Ingresos ecommerce", "Pageviews"],
   },
   {
-    nombre: "SEO / Search",
+    nombre: "Optimización SEO",
     href: "/seo-search",
     kpis: ["Share of Search", "Tráfico orgánico", "Posición media", "Visibilidad SEO"],
   },
+  // Trade Mkt (agrupador → sub-planes)
   {
-    nombre: "Trade (CB · Floor · Canal)",
+    nombre: "Cuadros Básicos",
     href: "/cuadros-basicos",
-    kpis: ["% Cumplimiento CB", "Infaltables", "Estratégicos", "Floor Share (exhibición)", "Sell-out en PDV"],
+    grupo: "Trade Mkt",
+    kpis: ["% Cumplimiento CB", "Infaltables", "Estratégicos"],
+  },
+  {
+    nombre: "Floor Share",
+    href: "/floor-share",
+    grupo: "Trade Mkt",
+    kpis: ["Floor Share Lavado", "Floor Share Refrigeración", "Floor Share Cocción", "Floor Share (exhibición)"],
   },
 ];
