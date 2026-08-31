@@ -67,7 +67,7 @@ const TREE: NavNode[] = [
     ],
   },
   { type: "link", href: "/salud-marca", label: "Salud de Marca", icon: HeartPulse },
-  { type: "link", href: "/mercado", label: "Análisis de Mercado", icon: TrendingUp },
+  { type: "link", href: "/mercado", label: "Resultados Comerciales", icon: TrendingUp },
   { type: "link", href: "/funnel", label: "Inversión de Marketing", icon: CircleDollarSign },
   { type: "divider" },
   { type: "link", href: "/contenido", label: "Generador de Contenido", icon: Sparkles },

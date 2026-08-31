@@ -13,6 +13,7 @@ import {
   type Objetivo,
   type Plan,
 } from "@/lib/mapa-estrategico-config";
+import { CATALOGO_PLANES } from "@/lib/mapa-catalogo";
 
 const PALETTE = ["#7a5cf0", "#159a5b", "#d08a1e", "#2f7fe0", "#d94a6a", "#0e9aa7"];
 
@@ -277,12 +278,18 @@ export function MapaEditor() {
   function setLink(pi: number, ki: number, leafId: string, v: number) {
     patchPlanes((d) => { const lnk = d[pi]!.kpis[ki]!.vinculos; if (v) lnk[leafId] = v; else delete lnk[leafId]; });
   }
-  function setKpiName(pi: number, ki: number, v: string) { patchPlanes((d) => { d[pi]!.kpis[ki]!.nombre = v; }); }
-  function setPlanName(pi: number, v: string) { patchPlanes((d) => { d[pi]!.nombre = v; }); }
-  function addKpi(pi: number) { patchPlanes((d) => d[pi]!.kpis.push({ nombre: "Nuevo indicador", vinculos: {} })); }
   function removeKpi(pi: number, ki: number) { patchPlanes((d) => d[pi]!.kpis.splice(ki, 1)); }
   function removePlan(pi: number) { patchPlanes((d) => d.splice(pi, 1)); }
-  function addPlan() { patchPlanes((d) => d.push({ nombre: "Nuevo plan", kpis: [{ nombre: "Nuevo indicador", vinculos: {} }] })); }
+  // Agregar desde el catálogo (no hay texto libre).
+  function addPlanFromCat(nombre: string) { patchPlanes((d) => d.push({ nombre, kpis: [] })); }
+  function addKpiFromCat(pi: number, nombre: string) { patchPlanes((d) => d[pi]!.kpis.push({ nombre, vinculos: {} })); }
+  // Catálogo por plan (match por nombre) y planes/KPIs aún no agregados.
+  const planesDisponibles = CATALOGO_PLANES.filter((c) => !planes.some((p) => p.nombre === c.nombre));
+  function kpisDisponibles(p: Plan): string[] {
+    const cat = CATALOGO_PLANES.find((c) => c.nombre === p.nombre);
+    if (!cat) return [];
+    return cat.kpis.filter((kn) => !p.kpis.some((k) => k.nombre === kn));
+  }
 
   function onHover(e: React.MouseEvent<HTMLDivElement>) {
     let el: Element | null = e.target as Element;
@@ -387,18 +394,25 @@ export function MapaEditor() {
                   ))}
                 </div>
                 {/* filas por plan */}
-                {planes.map((p, pi) => (
+                {planes.map((p, pi) => {
+                  const kpisCat = kpisDisponibles(p);
+                  return (
                   <div key={pi}>
                     <div className="flex items-center gap-2 border-b border-t bg-secondary/40 px-2 py-1">
-                      <input value={p.nombre} onChange={(e) => setPlanName(pi, e.target.value)} className="min-w-0 flex-1 bg-transparent text-[11px] font-bold text-muted-foreground outline-none focus:text-foreground" />
-                      <button onClick={() => addKpi(pi)} className="whitespace-nowrap text-[10px] font-semibold text-primary hover:underline">+ KPI</button>
-                      {planes.length > 1 && <button onClick={() => removePlan(pi)} title="Quitar plan" className="text-[11px] text-muted-foreground hover:text-destructive">✕</button>}
+                      <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-muted-foreground" title={p.nombre}>{p.nombre}</span>
+                      {kpisCat.length > 0 && (
+                        <select value="" onChange={(e) => { if (e.target.value) addKpiFromCat(pi, e.target.value); }} className="max-w-[150px] rounded border bg-background px-1 py-0.5 text-[10px] text-primary outline-none">
+                          <option value="">+ KPI…</option>
+                          {kpisCat.map((kn) => <option key={kn} value={kn}>{kn}</option>)}
+                        </select>
+                      )}
+                      <button onClick={() => removePlan(pi)} title="Quitar plan" className="text-[11px] text-muted-foreground hover:text-destructive">✕</button>
                     </div>
                     {p.kpis.map((k, ki) => (
                       <div key={ki} className="group grid items-center border-b last:border-b-0" style={{ gridTemplateColumns: cols }}>
                         <div className="flex items-center gap-1 py-1 pl-2 pr-1">
-                          <input value={k.nombre} onChange={(e) => setKpiName(pi, ki, e.target.value)} className="min-w-0 flex-1 bg-transparent text-[11.5px] outline-none focus:text-foreground" />
-                          {p.kpis.length > 1 && <button onClick={() => removeKpi(pi, ki)} title="Quitar" className="text-[11px] text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100">✕</button>}
+                          <span className="min-w-0 flex-1 truncate text-[11.5px]" title={k.nombre}>{k.nombre}</span>
+                          <button onClick={() => removeKpi(pi, ki)} title="Quitar" className="text-[11px] text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100">✕</button>
                         </div>
                         {leaves.map((l) => {
                           const h = k.vinculos[l.id] || 0;
@@ -412,8 +426,16 @@ export function MapaEditor() {
                       </div>
                     ))}
                   </div>
-                ))}
-                <div className="p-2"><button onClick={addPlan} className="w-full rounded-lg border border-dashed py-1.5 text-[11px] font-semibold text-primary hover:border-primary">+ Agregar plan</button></div>
+                  );
+                })}
+                {planesDisponibles.length > 0 && (
+                  <div className="p-2">
+                    <select value="" onChange={(e) => { if (e.target.value) addPlanFromCat(e.target.value); }} className="w-full rounded-lg border border-dashed bg-background py-1.5 text-[11px] font-semibold text-primary outline-none">
+                      <option value="">+ Agregar plan del catálogo…</option>
+                      {planesDisponibles.map((c) => <option key={c.nombre} value={c.nombre}>{c.nombre}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
           </section>
