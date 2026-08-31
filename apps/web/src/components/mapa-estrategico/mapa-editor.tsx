@@ -433,7 +433,7 @@ export function MapaEditor() {
                     <option value="">+ Agregar plan del catálogo…</option>
                     {(() => {
                       const opt = (x: (typeof CATALOGO_PLANES)[number]) => {
-                        const has = presentPlanes.has(x.nombre);
+                        const has = presentPlanes.has(x.nombre) || (!!x.grupo && presentPlanes.has(x.grupo));
                         return <option key={x.nombre} value={x.nombre} disabled={has}>{x.nombre}{has ? " (ya agregado)" : ""}</option>;
                       };
                       const nodes: React.ReactNode[] = [];
