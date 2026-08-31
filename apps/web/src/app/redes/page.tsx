@@ -177,6 +177,21 @@ export default async function RedesPage({ searchParams }: PageProps) {
   for (const m of igOrganic.monthlyData) bump(m.mes, m.alcance, m.engagement);
   const combinedMonthly = [...monthlyMap.values()];
 
+  // ===== Snapshot del MES EN CURSO para las metas mensuales =====
+  // Las metas son MENSUALES, así que el "real" que compara el semáforo tiene que
+  // ser el valor del mes en curso, NO el acumulado del período (que puede ser YTD).
+  const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const mesIdx = new Date().getMonth(); // 0-11
+  const mesNum = mesIdx + 1;
+  const year2 = String(currentYear).slice(2);
+  const mesLabel = `${MES_SHORT[mesIdx]} ${year2}`; // formato de combinedMonthly ("Ago 26")
+  const mesKeyTrend = `${currentYear}-${String(mesNum).padStart(2, "0")}`; // formato de trend ("2026-08")
+  const mesActual = combinedMonthly.find((m) => m.mes === mesLabel);
+  const alcanceMes = mesActual?.alcance ?? null;
+  const interaccionesMes = mesActual?.engagement ?? null;
+  // Engagement rate mensual de Drean (mismo dato que "Tendencia mensual de engagement").
+  const engRateMes = trend.find((t) => t.mes === mesKeyTrend)?.values[OWN_BRAND] ?? null;
+
   // Construcción orgánica (alcance/views/interacción por pilar y categoría) + fecha de últ. dato.
   const organicPosts = [...igOrganic.topPosts, ...fbOrganic.topPosts];
   const organicBuildup = computeOrganicBuildup(organicPosts);
@@ -262,13 +277,13 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <MetaPanel
         plan="Redes Sociales"
         titulo="Metas de Redes Sociales"
-        subtitulo="Metas mensuales de los KPIs que este plan aporta al Mapa Estratégico. El semáforo compara el valor real del período (IG + FB) vs la meta cargada."
+        subtitulo={`Metas mensuales de los KPIs que este plan aporta al Mapa Estratégico. El semáforo compara el real de ${mesLabel} (IG + FB) vs la meta del mes. Seguidores es el total vigente.`}
         kpis={[
-          { nombre: "Alcance orgánico", actual: combinedAlcance },
-          { nombre: "Engagement rate", unidad: "%", actual: kpis.engagement_promedio },
+          { nombre: "Alcance orgánico", actual: alcanceMes },
+          { nombre: "Engagement rate", unidad: "%", actual: engRateMes },
           { nombre: "Sentiment", unidad: "%", actual: kpis.sentimiento_positivo },
           { nombre: "Seguidores", actual: combinedFollowers },
-          { nombre: "Interacciones", actual: combinedEngagement },
+          { nombre: "Interacciones", actual: interaccionesMes },
         ]}
       />
 
