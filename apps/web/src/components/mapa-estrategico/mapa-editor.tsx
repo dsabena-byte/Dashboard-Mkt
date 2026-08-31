@@ -249,6 +249,33 @@ export function MapaEditor() {
     return { nLinks, kcount, maxK: Math.max(1, ...kcount) };
   }, [objs, planes, leaves]);
 
+  // Estado de fuente: un KPI está "con fuente" si su nombre existe en el catálogo
+  // (= tiene dashboard/dato). Si no, queda "pendiente de instrumentar".
+  const catKpiNames = useMemo(() => new Set(CATALOGO_PLANES.flatMap((c) => c.kpis)), []);
+
+  // Ranking de instrumentación: importancia estratégica de cada KPI =
+  // Σ (peso del vínculo × fracción de composición del sub-objetivo × peso
+  // estratégico del objetivo). Ordena qué tablero construir primero.
+  const ranking = useMemo(() => {
+    const leafById: Record<string, (typeof leaves)[number]> = {}; leaves.forEach((l) => (leafById[l.id] = l));
+    const objPeso: Record<string, number> = {}; objs.forEach((o, i) => (objPeso[o.id] = np[i]! / 100));
+    const compFrac = (leafId: string): number => {
+      const info = leafById[leafId]; if (!info) return 0;
+      if (info.id === info.objId) return 1; // objetivo plano
+      const obj = objs.find((o) => o.id === info.objId); const subs = obj?.subs ?? [];
+      const sum = subs.reduce((a, s) => a + s.peso, 0) || 1;
+      return (subs.find((s) => s.id === leafId)?.peso ?? 0) / sum;
+    };
+    const items: { plan: string; kpi: string; imp: number; fuente: boolean }[] = [];
+    planes.forEach((p) => p.kpis.forEach((k) => {
+      let imp = 0;
+      for (const id in k.vinculos) { const w = k.vinculos[id] || 0; const info = leafById[id]; if (!w || !info) continue; imp += (w / 100) * compFrac(id) * (objPeso[info.objId] ?? 0); }
+      items.push({ plan: p.nombre, kpi: k.nombre, imp, fuente: catKpiNames.has(k.nombre) });
+    }));
+    items.sort((a, b) => b.imp - a.imp);
+    return { items, max: items.length ? (items[0]!.imp || 1) : 1 };
+  }, [objs, planes, np, leaves, catKpiNames]);
+
   const patchObjs = (fn: (d: Objetivo[]) => void) => setObjs((prev) => { const d = structuredClone(prev); fn(d); return d; });
   const patchPlanes = (fn: (d: Plan[]) => void) => setPlanes((prev) => { const d = structuredClone(prev); fn(d); return d; });
 
@@ -280,10 +307,15 @@ export function MapaEditor() {
   }
   function removeKpi(pi: number, ki: number) { patchPlanes((d) => d[pi]!.kpis.splice(ki, 1)); }
   function removePlan(pi: number) { patchPlanes((d) => d.splice(pi, 1)); }
-  // Agregar desde el catálogo (no hay texto libre).
+  // Edición libre: los planes/KPIs se definen desde el plan estratégico (no
+  // dependen de dashboards existentes — el Mapa va primero, los tableros después).
+  function setPlanName(pi: number, v: string) { patchPlanes((d) => { d[pi]!.nombre = v; }); }
+  function setKpiName(pi: number, ki: number, v: string) { patchPlanes((d) => { d[pi]!.kpis[ki]!.nombre = v; }); }
+  function addPlan() { patchPlanes((d) => d.push({ nombre: "Nuevo plan", kpis: [] })); }
+  function addKpi(pi: number) { patchPlanes((d) => d[pi]!.kpis.push({ nombre: "Nuevo indicador", vinculos: {} })); }
+  // Catálogo = REFERENCIA de fuente (atajo opcional + estado "con/sin dato").
   function addPlanFromCat(nombre: string) { patchPlanes((d) => d.push({ nombre, kpis: [] })); }
   function addKpiFromCat(pi: number, nombre: string) { patchPlanes((d) => d[pi]!.kpis.push({ nombre, vinculos: {} })); }
-  // Catálogo por plan (match por nombre) y planes/KPIs aún no agregados.
   const presentPlanes = new Set(planes.map((p) => p.nombre));
   function kpisDisponibles(p: Plan): string[] {
     // Match directo por nombre de plan; si no, por nombre de GRUPO (Plan de
@@ -407,10 +439,11 @@ export function MapaEditor() {
                   return (
                   <div key={pi}>
                     <div className="flex items-center gap-2 border-b border-t bg-secondary/40 px-2 py-1">
-                      <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-muted-foreground" title={p.nombre}>{p.nombre}</span>
+                      <input value={p.nombre} onChange={(e) => setPlanName(pi, e.target.value)} className="min-w-0 flex-1 bg-transparent text-[11px] font-bold text-muted-foreground outline-none focus:text-foreground" />
+                      <button onClick={() => addKpi(pi)} className="whitespace-nowrap text-[10px] font-semibold text-primary hover:underline">+ KPI</button>
                       {kpisCat.length > 0 && (
-                        <select value="" onChange={(e) => { if (e.target.value) addKpiFromCat(pi, e.target.value); }} className="max-w-[150px] rounded border bg-background px-1 py-0.5 text-[10px] text-primary outline-none">
-                          <option value="">+ KPI…</option>
+                        <select value="" onChange={(e) => { if (e.target.value) addKpiFromCat(pi, e.target.value); }} title="Agregar KPI del catálogo (con fuente)" className="max-w-[130px] rounded border bg-background px-1 py-0.5 text-[10px] text-muted-foreground outline-none">
+                          <option value="">del catálogo…</option>
                           {kpisCat.map((kn) => <option key={kn} value={kn}>{kn}</option>)}
                         </select>
                       )}
@@ -419,7 +452,8 @@ export function MapaEditor() {
                     {p.kpis.map((k, ki) => (
                       <div key={ki} className="group grid items-center border-b last:border-b-0" style={{ gridTemplateColumns: cols }}>
                         <div className="flex items-center gap-1 py-1 pl-2 pr-1">
-                          <span className="min-w-0 flex-1 truncate text-[11.5px]" title={k.nombre}>{k.nombre}</span>
+                          <input value={k.nombre} onChange={(e) => setKpiName(pi, ki, e.target.value)} className="min-w-0 flex-1 bg-transparent text-[11.5px] outline-none focus:text-foreground" />
+                          {!catKpiNames.has(k.nombre) && <span title="Sin fuente — pendiente de instrumentar" className="shrink-0 text-[8px]">⏳</span>}
                           <button onClick={() => removeKpi(pi, ki)} title="Quitar" className="text-[11px] text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100">✕</button>
                         </div>
                         {leaves.map((l) => {
@@ -436,9 +470,10 @@ export function MapaEditor() {
                   </div>
                   );
                 })}
-                <div className="p-2">
-                  <select value="" onChange={(e) => { if (e.target.value) addPlanFromCat(e.target.value); }} className="w-full rounded-lg border border-dashed bg-background py-1.5 text-[11px] font-semibold text-primary outline-none">
-                    <option value="">+ Agregar plan del catálogo…</option>
+                <div className="flex items-center gap-2 p-2">
+                  <button onClick={addPlan} className="whitespace-nowrap rounded-lg border border-dashed px-3 py-1.5 text-[11px] font-semibold text-primary hover:border-primary">+ Nuevo plan</button>
+                  <select value="" onChange={(e) => { if (e.target.value) addPlanFromCat(e.target.value); }} className="flex-1 rounded-lg border border-dashed bg-background py-1.5 text-[11px] font-semibold text-muted-foreground outline-none">
+                    <option value="">+ del catálogo (con fuente)…</option>
                     {(() => {
                       const opt = (x: (typeof CATALOGO_PLANES)[number]) => {
                         const has = presentPlanes.has(x.nombre) || (!!x.grupo && presentPlanes.has(x.grupo));
@@ -487,6 +522,26 @@ export function MapaEditor() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Prioridad de instrumentación: ranking de KPIs por importancia estratégica */}
+          <div className="mt-3.5 rounded-xl border bg-card px-4 py-3.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Prioridad de instrumentación</span>
+              <span className="font-mono text-[10px] text-muted-foreground">importancia estratégica · qué tablero armar primero</span>
+            </div>
+            <div className="mt-2.5 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+              {ranking.items.map((it, i) => (
+                <div key={i} className="grid grid-cols-[16px_minmax(0,150px)_1fr_auto] items-center gap-2 text-xs">
+                  <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{i + 1}</span>
+                  <span className="truncate" title={`${it.kpi} · ${it.plan}`}>{it.kpi} <span className="text-[10px] text-muted-foreground">· {it.plan}</span></span>
+                  <span className="h-1.5 overflow-hidden rounded bg-muted"><i className="block h-full rounded" style={{ width: `${Math.round((it.imp / ranking.max) * 100)}%`, background: it.fuente ? "hsl(142 60% 45%)" : "hsl(38 78% 52%)" }} /></span>
+                  <span className="whitespace-nowrap font-mono text-[9.5px]" style={{ color: it.fuente ? "hsl(142 55% 40%)" : "hsl(38 78% 45%)" }}>{it.fuente ? "✓ con fuente" : "⏳ pendiente"}</span>
+                </div>
+              ))}
+              {ranking.items.length === 0 && <p className="text-[11px] text-muted-foreground">Conectá KPIs a los objetivos para ver la prioridad.</p>}
+            </div>
+            <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">Ordenado por impacto en la estrategia (peso del vínculo × composición × peso del objetivo). Los de arriba <b className="text-foreground">sin fuente ⏳</b> son la <b className="text-foreground">prioridad 1</b> para construir su tablero/dato.</p>
           </div>
         </div>
       </div>
