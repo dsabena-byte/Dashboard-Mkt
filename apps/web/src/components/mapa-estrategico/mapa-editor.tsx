@@ -306,6 +306,7 @@ export function MapaEditor() {
     patchPlanes((d) => { const lnk = d[pi]!.kpis[ki]!.vinculos; if (v) lnk[leafId] = v; else delete lnk[leafId]; });
   }
   function removeKpi(pi: number, ki: number) { patchPlanes((d) => d[pi]!.kpis.splice(ki, 1)); }
+  function moveKpi(pi: number, ki: number, dir: -1 | 1) { patchPlanes((d) => { const a = d[pi]!.kpis; const j = ki + dir; if (j < 0 || j >= a.length) return; [a[ki], a[j]] = [a[j]!, a[ki]!]; }); }
   function removePlan(pi: number) { patchPlanes((d) => d.splice(pi, 1)); }
   // Edición libre: los planes/KPIs se definen desde el plan estratégico (no
   // dependen de dashboards existentes — el Mapa va primero, los tableros después).
@@ -454,7 +455,11 @@ export function MapaEditor() {
                         <div className="flex items-center gap-1 py-1 pl-2 pr-1">
                           <input value={k.nombre} onChange={(e) => setKpiName(pi, ki, e.target.value)} className="min-w-0 flex-1 bg-transparent text-[11.5px] outline-none focus:text-foreground" />
                           {!catKpiNames.has(k.nombre) && <span title="Sin fuente — pendiente de instrumentar" className="shrink-0 text-[8px]">⏳</span>}
-                          <button onClick={() => removeKpi(pi, ki)} title="Quitar" className="text-[11px] text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100">✕</button>
+                          <span className="flex shrink-0 items-center opacity-0 group-hover:opacity-100">
+                            <button onClick={() => moveKpi(pi, ki, -1)} disabled={ki === 0} title="Subir" className="px-0.5 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-25">▲</button>
+                            <button onClick={() => moveKpi(pi, ki, 1)} disabled={ki === p.kpis.length - 1} title="Bajar" className="px-0.5 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-25">▼</button>
+                          </span>
+                          <button onClick={() => removeKpi(pi, ki)} title="Quitar" className="shrink-0 text-[11px] text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100">✕</button>
                         </div>
                         {leaves.map((l) => {
                           const h = k.vinculos[l.id] || 0;
