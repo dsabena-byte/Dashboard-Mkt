@@ -55,6 +55,11 @@ export const CATALOGO_PLANES: CatPlan[] = [
     href: "/seo-search",
     kpis: ["Share of Search", "Tráfico orgánico", "Posición media", "Visibilidad SEO"],
   },
+  {
+    nombre: "Resultados Comerciales",
+    href: "/mercado",
+    kpis: ["Share de Mercado (valor)", "Share de Mercado (unidades)", "Share gama alta", "Índice de precio", "Share MAT"],
+  },
   // Trade Mkt (agrupador → sub-planes)
   {
     nombre: "Cuadros Básicos",
