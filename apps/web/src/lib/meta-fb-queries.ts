@@ -300,11 +300,13 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const monthlyMap = new Map<string, { alcance: number; engagement: number }>();
 
-  // Un post BOOSTEADO/pago contamina el gráfico ORGÁNICO: la métrica de reach de Meta
+  // Un post BOOSTEADO/pago contamina las métricas ORGÁNICAS: la métrica de reach de Meta
   // (post_total_media_view_unique) no separa pago de orgánico. Firma del pago: reach
   // fuera de escala (el techo orgánico histórico de la Página es ~8K) con engagement
-  // casi nulo. Ej real: 11-ago-2026 → reach 121.253 con 15 reacciones (0,01%). Se excluye
-  // del orgánico para que un boosteo no infle alcance ni engagement del mes.
+  // casi nulo. Ej real: 11-ago-2026 → reach 188.724 con 23 reacciones y 67.124 video views
+  // (0,01%). Se excluye del orgánico para que un boosteo no infle alcance/engagement/views
+  // ni aparezca como "top post" orgánico. `organicPosts` es la ÚNICA lista que se expone
+  // (topPosts) y con la que se agregan totales: el filtro vale para todo consumidor.
   const isPaidOutlier = (p: FbPostRow) =>
     (p.reach ?? 0) > 20000 && (p.reactions ?? 0) / (p.reach || 1) < 0.01;
   const organicPosts = posts.filter((p: FbPostRow) => !isPaidOutlier(p));
@@ -361,7 +363,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
 
   return {
     totals,
-    topPosts: posts,
+    topPosts: organicPosts,
     fansByAgeGender,
     fansByCountry,
     fansByCity,
