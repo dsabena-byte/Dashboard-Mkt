@@ -286,9 +286,17 @@ export function MapaEditor() {
   // Catálogo por plan (match por nombre) y planes/KPIs aún no agregados.
   const presentPlanes = new Set(planes.map((p) => p.nombre));
   function kpisDisponibles(p: Plan): string[] {
+    // Match directo por nombre de plan; si no, por nombre de GRUPO (Plan de
+    // Medios, Trade Mkt) → unión de los KPIs de sus sub-planes.
     const cat = CATALOGO_PLANES.find((c) => c.nombre === p.nombre);
-    if (!cat) return [];
-    return cat.kpis.filter((kn) => !p.kpis.some((k) => k.nombre === kn));
+    let kpis: string[];
+    if (cat) kpis = cat.kpis;
+    else {
+      const subs = CATALOGO_PLANES.filter((c) => c.grupo === p.nombre);
+      if (!subs.length) return [];
+      kpis = Array.from(new Set(subs.flatMap((c) => c.kpis)));
+    }
+    return kpis.filter((kn) => !p.kpis.some((k) => k.nombre === kn));
   }
 
   function onHover(e: React.MouseEvent<HTMLDivElement>) {

@@ -58,7 +58,11 @@ export const CATALOGO_PLANES: CatPlan[] = [
   {
     nombre: "Resultados Comerciales",
     href: "/mercado",
-    kpis: ["Share de Mercado (valor)", "Share de Mercado (unidades)", "Share gama alta", "Índice de precio", "Share MAT"],
+    kpis: [
+      "Value Share · High", "Value Share · Mid", "Value Share · Low", "Value Share · Total",
+      "Unit Share · High", "Unit Share · Mid", "Unit Share · Low", "Unit Share · Total",
+      "Índice de precio · High", "Índice de precio · Mid", "Índice de precio · Low", "Índice de precio · General",
+    ],
   },
   // Trade Mkt (agrupador → sub-planes)
   {
