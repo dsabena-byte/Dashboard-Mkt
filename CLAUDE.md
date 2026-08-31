@@ -87,8 +87,20 @@ reporte_existencia/cb_homologos).
   posts pagos/boosteados** del gráfico orgánico (firma: reach fuera de escala + engagement casi
   nulo; ver `isPaidOutlier` en `lib/meta-fb-queries.ts`). El mes en curso es acumulativo (arranca
   bajo). Detalle: `docs/meta-fb-reach-deprecation.md`.
-- **Redes FB vs IG:** por post rinden parecido; IG usa `reach` (vivo), FB usa Media Views. Los
-  gráficos de "total" engañan por volumen de posts (IG suma Stories que FB no expone por API).
+- **Redes = SOLO Instagram (dic-2026):** el dashboard de Redes mide **solo IG** (analítica
+  orgánica de Drean). FB quedó fuera: Meta deprecó su reach orgánico (15-jun-2026) y la métrica
+  de reemplazo **no separa pago de orgánico**, así que un boosteo se cuela e infla todo. Se sacó
+  la sección combinada (IG+FB) y la de FB orgánico de `app/redes/page.tsx`; las metas del plan
+  usan valores **IG del mes en curso** (`igOrganic.monthlyData`). El **análisis competitivo**
+  (benchmark de marcas) sí sigue mostrando todas las redes — es otra cosa. La query de FB
+  (`getFbOrganicSummary`) queda por si se usa en otro lado, pero ya **no se muestra en Redes**.
+- **FB — posteo pago se excluía a medias (fix definitivo):** el `isPaidOutlier` de
+  `lib/meta-fb-queries.ts` (reach >20k con engagement <1%) filtraba el boosteo del **gráfico
+  mensual** pero **no de `topPosts`**, que alimentaba los KPI cards e infla­ba Engagement/Video
+  views (ej real: 11-ago-2026 → reach 188.724, 67.124 video views, 23 reacciones). Ahora
+  `topPosts` devuelve `organicPosts` (filtrado) → el pago no contamina **ninguna** vista.
+- **Redes FB vs IG (histórico):** por post rinden parecido; IG usa `reach` (vivo), FB usa Media
+  Views. Los gráficos de "total" engañan por volumen de posts (IG suma Stories que FB no expone).
 - **CB — sugerencias de tiendas:** `reporte_existencia` (proyecto CB) alimenta `vw_cb_suggestions`.
   El sync del Apps Script hace **clean-replace** (borra e inserta) para que cada "Reporte U3"
   reemplace al anterior (no acumular fantasmas). Baseline = últimas 3 semanas de

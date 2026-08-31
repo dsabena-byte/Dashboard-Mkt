@@ -8,16 +8,13 @@ import { SocialSentimentChart } from "@/components/social/social-sentiment-chart
 import { SocialContentTypeChart } from "@/components/social/social-content-type-chart";
 import { CompetenciaPostsPanel } from "@/components/social/competencia-posts-panel";
 import { BrandSentimentSummary } from "@/components/social/brand-sentiment-summary";
-import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { IgOrganicSection } from "@/components/social/ig-organic-section";
 import { OrganicBuildupPanel } from "@/components/social/organic-buildup-panel";
-import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
 import { InsightsPanel } from "@/components/insights/insights-panel";
 import { TopContentPanel } from "@/components/insights/top-content-panel";
 import { RedesTabs } from "@/components/social/redes-tabs";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { getInsightsByCategoria, getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
-import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import {
   BRAND_COLORS,
@@ -80,11 +77,10 @@ export default async function RedesPage({ searchParams }: PageProps) {
   // si el user no corrió la migration 0040 todavía, y getTopPostsLastNDays
   // depende de meta_posts. Los queries originales se dejan tal cual para no
   // cambiar el contrato de tipos del resto del page.
-  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent] = await Promise.all([
+  const [rawPosts, allMarcas, followers, igOrganic, insightsOrganico, topContent] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
-    getFbOrganicSummary({ from: range.from, to: range.to }),
     getIgOrganicSummary({ from: range.from, to: range.to }),
     safe(getInsightsByCategoria("organico_drean", 12), [] as Awaited<ReturnType<typeof getInsightsByCategoria>>, "getInsightsByCategoria"),
     safe(
@@ -146,57 +142,27 @@ export default async function RedesPage({ searchParams }: PageProps) {
   // Sentiment solo aplica para Instagram. Si filtran por FB/TT, lo ocultamos.
   const showSentiment = red === "all" || red === "INSTAGRAM";
 
-  // ===== Resumen combinado IG + FB (orgánico Drean) =====
-  // Para que coincida con cada sección, repetimos exactamente los mismos
-  // agregados que se usan en IgOrganicSection / FbOrganicSection.
-  const fbPosts = fbOrganic.topPosts;
-  const fbReactions = fbPosts.reduce((s, p) => s + (p.reactions ?? 0), 0);
-  const fbCommentsShares = fbPosts.reduce((s, p) => s + (p.engagement ?? 0), 0);
-  const fbClicks = fbPosts.reduce((s, p) => s + (p.clicks ?? 0), 0);
-  const fbVideoViews = fbPosts.reduce((s, p) => s + (p.video_views ?? 0), 0);
-  const fbEngagementTotal = fbReactions + fbCommentsShares + fbClicks + fbVideoViews;
+  // ===== Redes mide SOLO Instagram =====
+  // Facebook deprecó su reach orgánico (Meta, 15-jun-2026) y la métrica de
+  // reemplazo no separa pago de orgánico → dato no confiable. Se excluye FB y el
+  // combinado de la analítica orgánica de Drean; el análisis competitivo (abajo)
+  // sigue mostrando todas las redes porque es otra cosa (benchmark de marcas).
 
-  const combinedAlcance = fbOrganic.totals.impressions_unique + igOrganic.totalReach;
-  const combinedEngagement = fbEngagementTotal + igOrganic.totalEngagement;
-  const combinedReactions = fbReactions + igOrganic.totalReactions;
-  const combinedComments = fbCommentsShares + igOrganic.totalComments;
-  const combinedVideoViews = fbVideoViews + igOrganic.totalVideoViews;
-  const combinedFollowers = (fbOrganic.totals.fans_total ?? 0) + 145_700; // IG: 145.7K hardcoded como en IgOrganicSection
-  const combinedPosts = fbPosts.length + igOrganic.postCount;
-
-  // Sumar mes a mes los monthlyData. Si NINGUNA red tiene data ese mes
-  // (ambas null), queda null para que recharts no dibuje barra/punto.
-  const monthlyMap = new Map<string, { mes: string; alcance: number | null; engagement: number | null }>();
-  function bump(mes: string, alc: number | null | undefined, eng: number | null | undefined) {
-    const acc = monthlyMap.get(mes) ?? { mes, alcance: null, engagement: null };
-    if (alc != null) acc.alcance = (acc.alcance ?? 0) + alc;
-    if (eng != null) acc.engagement = (acc.engagement ?? 0) + eng;
-    monthlyMap.set(mes, acc);
-  }
-  for (const m of fbOrganic.monthlyData) bump(m.mes, m.alcance, m.engagement);
-  for (const m of igOrganic.monthlyData) bump(m.mes, m.alcance, m.engagement);
-  const combinedMonthly = [...monthlyMap.values()];
-
-  // ===== Snapshot del MES EN CURSO para las metas mensuales =====
-  // Las metas son MENSUALES, así que el "real" que compara el semáforo tiene que
-  // ser el valor del mes en curso, NO el acumulado del período (que puede ser YTD).
+  // Snapshot IG del MES EN CURSO para las metas mensuales. Las metas son MENSUALES:
+  // el "real" del semáforo es el valor del mes en curso (no el acumulado del período).
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const mesIdx = new Date().getMonth(); // 0-11
-  const mesNum = mesIdx + 1;
   const year2 = String(currentYear).slice(2);
-  const mesLabel = `${MES_SHORT[mesIdx]} ${year2}`; // formato de combinedMonthly ("Ago 26")
-  const mesKeyTrend = `${currentYear}-${String(mesNum).padStart(2, "0")}`; // formato de trend ("2026-08")
-  const mesActual = combinedMonthly.find((m) => m.mes === mesLabel);
-  const alcanceMes = mesActual?.alcance ?? null;
-  const interaccionesMes = mesActual?.engagement ?? null;
-  // Engagement rate mensual de Drean (mismo dato que "Tendencia mensual de engagement").
-  const engRateMes = trend.find((t) => t.mes === mesKeyTrend)?.values[OWN_BRAND] ?? null;
+  const mesLabel = `${MES_SHORT[mesIdx]} ${year2}`; // formato de igOrganic.monthlyData ("Ago 26")
+  const igMes = igOrganic.monthlyData.find((m) => m.mes === mesLabel);
+  const alcanceMes = igMes?.alcance ?? null;
+  const interaccionesMes = igMes?.engagement ?? null;
+  // Engagement rate IG del mes = interacciones / alcance (mismo par que el gráfico).
+  const engRateMes = alcanceMes && interaccionesMes ? (interaccionesMes / alcanceMes) * 100 : null;
+  const igFollowers = getLatestFollowers(followers, OWN_BRAND, "INSTAGRAM") || 145_700;
 
-  // Construcción orgánica (alcance/views/interacción por pilar y categoría) + fecha de últ. dato.
-  const organicPosts = [...igOrganic.topPosts, ...fbOrganic.topPosts];
-  const organicBuildup = computeOrganicBuildup(organicPosts);
-  const organicDates = organicPosts.map((p) => p.fecha_post).filter(Boolean) as string[];
-  const ultimaActualizacion = organicDates.length ? organicDates.reduce((a, b) => (a > b ? a : b)).slice(0, 10) : null;
+  // Construcción orgánica IG (alcance/views/interacción por pilar y categoría).
+  const organicBuildup = computeOrganicBuildup(igOrganic.topPosts);
 
   return (
     <div className="space-y-4">
@@ -233,65 +199,24 @@ export default async function RedesPage({ searchParams }: PageProps) {
       {tab !== "analitica" ? null : (
         <>
 
-      {/* ===== Resumen combinado Drean en redes (IG + FB) ===== */}
-      <section className="space-y-4 rounded-lg border bg-card p-6">
-        <header className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ background: "linear-gradient(135deg, #1877F2 0%, #dc2743 100%)" }}>★</div>
-          <div>
-            <h3 className="text-base font-semibold tracking-tight">Drean en redes — Instagram + Facebook</h3>
-            <p className="text-xs text-muted-foreground">
-              KPIs sumados de @dreanargentina + Page Drean en el período seleccionado.
-            </p>
-            {ultimaActualizacion && (
-              <p className="text-[11px] text-muted-foreground/70">Actualizado al {ultimaActualizacion}</p>
-            )}
-          </div>
-        </header>
-
-        {/* KPIs principales */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard title="Alcance combinado" value={fmtK(combinedAlcance)} hint={`${combinedPosts} posts entre IG + FB`} />
-          <KpiCard title="Engagement combinado" value={fmtK(combinedEngagement)} hint="Reacciones + comments + clicks + views" />
-          <KpiCard title="Comunidad total" value={fmtK(combinedFollowers)} hint="Followers IG + Fans FB" />
-          <KpiCard title="Posts" value={String(combinedPosts)} hint="IG feed/reels/stories + FB" />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <KpiCard title="Reacciones / Likes" value={fmtK(combinedReactions)} />
-          <KpiCard title="Comentarios" value={fmtK(combinedComments)} />
-          <KpiCard title="Video views" value={fmtK(combinedVideoViews)} />
-        </div>
-
-        {/* Tendencia mensual combinada */}
-        {combinedMonthly.length > 0 && (
-          <div className="rounded-lg border bg-background p-4">
-            <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Evolución mensual combinada — Alcance vs Engagement
-            </h4>
-            <FbMonthlyChart data={combinedMonthly} />
-          </div>
-        )}
-      </section>
+      {/* ===== Instagram orgánico (Drean mide SOLO IG) ===== */}
+      <IgOrganicSection data={igOrganic} />
 
       {/* ===== Metas del plan (KPIs que conectan con el Mapa Estratégico) ===== */}
       <MetaPanel
         plan="Redes Sociales"
         titulo="Metas de Redes Sociales"
-        subtitulo={`Metas mensuales de los KPIs que este plan aporta al Mapa Estratégico. El semáforo compara el real de ${mesLabel} (IG + FB) vs la meta del mes. Seguidores es el total vigente.`}
+        subtitulo={`Metas mensuales de los KPIs que este plan aporta al Mapa Estratégico. El semáforo compara el real de ${mesLabel} en Instagram vs la meta del mes. Seguidores es el total vigente.`}
         kpis={[
           { nombre: "Alcance orgánico", actual: alcanceMes },
           { nombre: "Engagement rate", unidad: "%", actual: engRateMes },
           { nombre: "Sentiment", unidad: "%", actual: kpis.sentimiento_positivo },
-          { nombre: "Seguidores", actual: combinedFollowers },
+          { nombre: "Seguidores", actual: igFollowers },
           { nombre: "Interacciones", actual: interaccionesMes },
         ]}
       />
 
       <OrganicBuildupPanel byPilar={organicBuildup.byPilar} byCategoria={organicBuildup.byCategoria} />
-
-      <IgOrganicSection data={igOrganic} />
-
-      <FbOrganicSection data={fbOrganic} />
 
       {/* Separador visual */}
       <div className="border-t-2 border-muted pt-6">
