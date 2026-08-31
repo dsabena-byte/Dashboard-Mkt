@@ -248,6 +248,45 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["alerts_log"]["Row"]>;
       };
+      kpi_meta_config: {
+        Row: {
+          plan: string;
+          kpi: string;
+          categoria: string;
+          unidad: string | null;
+          direccion: string;
+          referencia: string;
+          frecuencia: string;
+          agregacion: string;
+          umbral_verde: number;
+          umbral_amarillo: number;
+          notas: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["kpi_meta_config"]["Row"]> & {
+          plan: string;
+          kpi: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["kpi_meta_config"]["Row"]>;
+      };
+      kpi_meta_valores: {
+        Row: {
+          plan: string;
+          kpi: string;
+          categoria: string;
+          anio: number;
+          mes: number;
+          valor: number | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["kpi_meta_valores"]["Row"]> & {
+          plan: string;
+          kpi: string;
+          anio: number;
+          mes: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["kpi_meta_valores"]["Row"]>;
+      };
     };
     Views: {
       vw_funnel_diario: {
