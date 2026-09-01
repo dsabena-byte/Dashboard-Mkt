@@ -8,7 +8,7 @@ on:
       days:
         description: "Días hacia atrás a sincronizar (200 = backfill de todo 2026)"
         type: string
-        default: "50"
+        default: "70"
 
 jobs:
   trigger:
@@ -20,14 +20,15 @@ jobs:
           set -euo pipefail
           # Tomamos solo los dígitos del input (tolera "?days=200", "200 días", etc.).
           # OJO: en runs por SCHEDULE, inputs.days viene VACÍO → cae a este fallback.
-          # Tiene que ser ~50 (no 3): el reach de FB (post_total_media_view_unique) es
-          # LIFETIME y madura por semanas. Con ventana de 3 días cada post se congelaba
+          # Tiene que ser ~70 (no 3): el reach de FB (post_total_media_view_unique) es
+          # LIFETIME y madura por ~2 MESES. Con ventana de 3 días cada post se congelaba
           # con el reach INMADURO → los meses recientes salían subestimados (ago-2026 daba
-          # ~5K cuando lo real es ~20-30K). 50 días = cada post se sigue refrescando hasta
-          # madurar (el reach se estabiliza a los ~30 días; 50 da margen). Costo bajo:
-          # ~30 posts × (1 insights call + 1 HEAD idempotente de thumbnail) por corrida.
-          DAYS="$(printf '%s' "${DAYS_INPUT:-50}" | grep -oE '[0-9]+' | head -1)"
-          DAYS="${DAYS:-50}"
+          # ~5K cuando lo real es ~30-35K). Curva de maduración medida (jul, reach al 3-ago
+          # vs a los ~30 días de vida): +25% a +114% por post → NO se estabiliza a los 30,
+          # sigue creciendo hasta ~50-60 días. 70 días = margen para madurar del todo antes
+          # de salir de la ventana. Costo bajo: ~40 posts × (1 insights + 1 HEAD idempotente).
+          DAYS="$(printf '%s' "${DAYS_INPUT:-70}" | grep -oE '[0-9]+' | head -1)"
+          DAYS="${DAYS:-70}"
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/meta-fb-sync?days=${DAYS}"
           echo "GET $URL"
           if [ -n "${CRON_SECRET:-}" ]; then

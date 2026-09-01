@@ -176,11 +176,19 @@ con el reach inmaduro a los ~3 días. Validado con `updated_at`:
   día) → capturados ya maduros → jul suma 28K, jun 33K.
 - Posts de **agosto**: frozen 2-3 días después de `fecha_post`, nunca re-refrescados → suma 5K.
 
-No es que agosto rindiera menos; es que se contó inmaduro. **Fix:** `days` subido a **50** en el
-schedule (el reach se estabiliza a los ~30 días — posts de junio con 38-62 días ≈ julio con
-4-32 días, ~1.850 vs ~1.900; no crece después → 50 da margen). Costo bajo: ~30 posts × (1
-insights + 1 HEAD idempotente) por corrida. **OJO:** en runs por schedule `inputs.days` viene
-vacío → cae al fallback del shell (`${DAYS_INPUT:-50}`), NO al `default` del dispatch → tocar los
+No es que agosto rindiera menos; es que se contó inmaduro. **Fix:** `days` subido a **70** en el
+schedule.
+
+**Curva de maduración MEDIDA** (no supuesta): comparando el reach de cada post de julio al 3-ago
+vs ahora (los que entran en la ventana se refrescan), crecieron **+25% a +114%** — el post del
+30-jul pasó de 792 a 1.691 (+114%) entre los 4 y los 33 días de vida; julio pasó de 28K→35K solo
+por madurar. O sea el reach **sigue creciendo hasta ~50-60 días**, NO se estabiliza a los 30 (eso
+fue una suposición equivocada de una sesión previa — SIEMPRE medir la curva antes de fijar la
+ventana). Por eso **70** (margen para madurar del todo). Consecuencia inevitable: los **últimos
+~2 meses del gráfico siempre se ven bajos** hasta que maduran — es correcto, lo aclara la nota.
+Costo bajo: ~40 posts × (1 insights + 1 HEAD idempotente) por corrida. **OJO:** en runs por
+schedule `inputs.days` viene vacío → cae al fallback del shell (`${DAYS_INPUT:-70}`), NO al
+`default` del dispatch → tocar los
 dos. Backfill puntual: Actions → "Meta FB sync" → Run workflow → days=90/200.
 
 Además se cerró un bug del filtro de pago: `isPaidOutlier` (reach >20k con engagement <1%)
