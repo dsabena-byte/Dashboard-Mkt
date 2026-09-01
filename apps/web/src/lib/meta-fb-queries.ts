@@ -80,7 +80,10 @@ export interface FbKpiTotals {
 export interface FbMonthlyDatum {
   mes: string;
   alcance: number | null;
-  engagement: number | null;
+  engagement: number | null; // interacciones = reacciones + comments&shares + clicks (SIN video views, igual criterio que IG)
+  reacciones: number | null;
+  commentsShares: number | null;
+  clicks: number | null;
 }
 
 export interface FbOrganicSummary {
@@ -298,7 +301,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
 
   // Agregación mensual
   const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-  const monthlyMap = new Map<string, { alcance: number; engagement: number }>();
+  const monthlyMap = new Map<string, { alcance: number; engagement: number; reacciones: number; commentsShares: number; clicks: number }>();
 
   // Un post BOOSTEADO/pago contamina las métricas ORGÁNICAS: la métrica de reach de Meta
   // (post_total_media_view_unique) no separa pago de orgánico. Firma del pago: reach
@@ -318,12 +321,17 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     totals.clicks += p.clicks ?? 0;
   }
 
-  // Todo desde posts para consistencia desde enero (excluye boosteos/pauta)
+  // Todo desde posts para consistencia desde enero (excluye boosteos/pauta).
+  // Engagement = reacciones + comments&shares + clicks (SIN video views, mismo
+  // criterio que IG). Se guardan también los componentes para el gráfico apilado.
   for (const p of organicPosts) {
     const monthKey = p.fecha_post.slice(0, 7);
-    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0 };
+    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, reacciones: 0, commentsShares: 0, clicks: 0 };
     m.alcance += p.reach ?? 0;
-    m.engagement += (p.reactions ?? 0) + (p.engagement ?? 0) + (p.clicks ?? 0) + (p.video_views ?? 0);
+    m.reacciones += p.reactions ?? 0;
+    m.commentsShares += p.engagement ?? 0; // el campo `engagement` del post = comments + shares
+    m.clicks += p.clicks ?? 0;
+    m.engagement += (p.reactions ?? 0) + (p.engagement ?? 0) + (p.clicks ?? 0);
     monthlyMap.set(monthKey, m);
   }
 
@@ -368,6 +376,9 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
       mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
       alcance,
       engagement: v ? v.engagement : null,
+      reacciones: v ? v.reacciones : null,
+      commentsShares: v ? v.commentsShares : null,
+      clicks: v ? v.clicks : null,
     };
   });
 

@@ -2,9 +2,18 @@
 
 import { useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
-import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
+import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
+import { IgAlcanceChart } from "@/components/social/ig-alcance-chart";
+import { SocialEngagementChart, ENG_COLORS } from "@/components/social/social-engagement-chart";
 import { ClasifBadge } from "@/components/social/clasif-badge";
 import type { FbOrganicSummary, FbDemoBreakdown } from "@/lib/meta-fb-queries";
+import type { MetaKpiData } from "@/lib/metas-server";
+
+const FB_ENG_COMPONENTS = [
+  { key: "reacciones", name: "Reacciones", color: ENG_COLORS[0]! },
+  { key: "commentsShares", name: "Comments+Shares", color: ENG_COLORS[1]! },
+  { key: "clicks", name: "Clicks", color: ENG_COLORS[2]! },
+];
 
 function fmtK(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -50,7 +59,7 @@ function HorizontalBars({
   );
 }
 
-export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
+export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSummary; metaAlc?: MetaKpiData; metaEng?: MetaKpiData }) {
   const hasAnyData = data.totals.diasConData > 0 || data.topPosts.length > 0;
   const [showAllPosts, setShowAllPosts] = useState(false);
 
@@ -59,7 +68,37 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
   const totalCommentsShares = posts.reduce((s, p) => s + (p.engagement ?? 0), 0);
   const totalClicks = posts.reduce((s, p) => s + (p.clicks ?? 0), 0);
   const totalVideoViews = posts.reduce((s, p) => s + (p.video_views ?? 0), 0);
-  const engagementTotal = totalReactions + totalCommentsShares + totalClicks + totalVideoViews;
+  const engagementTotal = totalReactions + totalCommentsShares + totalClicks; // sin video views (igual que IG)
+
+  // ===== Alcance / Engagement % con meta (mismo tratamiento que IG) =====
+  const md = data.monthlyData;
+  const alcVals = metaAlc?.valores;
+  const engVals = metaEng?.valores;
+  const engPctMensual = md.map((d) => (d.alcance && d.engagement != null && d.alcance > 0 ? (d.engagement / d.alcance) * 100 : null));
+  let refIdx = -1;
+  for (let i = md.length - 1; i >= 0; i--) { if (md[i]?.alcance != null) { refIdx = i; break; } }
+  const refMes = refIdx >= 0 ? (md[refIdx]?.mes ?? "") : "";
+  const alcRef = refIdx >= 0 ? (md[refIdx]?.alcance ?? null) : null;
+  const engRef = refIdx >= 0 ? (engPctMensual[refIdx] ?? null) : null;
+  const metaAlcRef = refIdx >= 0 ? (alcVals?.[refIdx] ?? null) : null;
+  const metaEngRef = refIdx >= 0 ? (engVals?.[refIdx] ?? null) : null;
+  const sum = (xs: (number | null | undefined)[]) => xs.reduce((a: number, x) => a + (x ?? 0), 0);
+  const upto = refIdx >= 0 ? refIdx : 11;
+  const alcYtd = sum(md.slice(0, upto + 1).map((d) => d.alcance));
+  const metaAlcYtd = sum((alcVals ?? []).slice(0, upto + 1));
+  const engAbsYtd = sum(md.slice(0, upto + 1).map((d) => d.engagement));
+  const engPctYtd = alcYtd > 0 ? (engAbsYtd / alcYtd) * 100 : null;
+  const engMetasYtd = (engVals ?? []).slice(0, upto + 1).filter((v): v is number => v != null);
+  const metaEngYtd = engMetasYtd.length ? engMetasYtd.reduce((a, b) => a + b, 0) / engMetasYtd.length : null;
+  const alcChartData = md.map((d, i) => ({ mes: d.mes, alcance: d.alcance, metaAlcance: alcVals?.[i] ?? null }));
+  const engChartData = md.map((d, i) => ({
+    mes: d.mes,
+    reacciones: d.reacciones,
+    commentsShares: d.commentsShares,
+    clicks: d.clicks,
+    engPct: engPctMensual[i] ?? null,
+    metaEngPct: engVals?.[i] ?? null,
+  }));
 
   const [sortBy, setSortBy] = useState<"engagement" | "fecha">("fecha");
   const [filterType, setFilterType] = useState<"all" | "feed" | "reels" | "stories">("all");
@@ -105,22 +144,40 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
         </div>
       ) : (
         <>
-          {/* KPIs principales */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <KpiCard
-              title="Alcance (personas únicas)"
-              value={fmtK(data.totals.impressions_unique)}
-              hint={`${posts.length} posts · Total Unique Media Views`}
+          {/* KPIs estratégicos con meta (mes de referencia = último con dato) */}
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-3">
+            <MetaKpiCard
+              title="Alcance (personas)"
+              medida="Reach de los posts del mes"
+              headlineActual={alcRef}
+              headlineLabel={refMes}
+              direccion={metaAlc?.direccion}
+              umbralVerde={metaAlc?.umbralVerde}
+              umbralAmarillo={metaAlc?.umbralAmarillo}
+              rows={[
+                { label: `Mes ${refMes}`, actual: alcRef, meta: metaAlcRef },
+                { label: "Acum. YTD", actual: alcYtd, meta: metaAlcYtd },
+              ]}
             />
-            <KpiCard
-              title="Fans (followers)"
-              value={fmtK(data.totals.fans_total)}
-              hint={`${data.totals.fan_delta >= 0 ? "+" : ""}${fmtK(data.totals.fan_delta)} en el período`}
+            <MetaKpiCard
+              title="Engagement %"
+              medida="Interacciones ÷ alcance (sin video views)"
+              headlineActual={engRef}
+              headlineLabel={refMes}
+              unidad="%"
+              direccion={metaEng?.direccion}
+              umbralVerde={metaEng?.umbralVerde}
+              umbralAmarillo={metaEng?.umbralAmarillo}
+              rows={[
+                { label: `Mes ${refMes}`, actual: engRef, meta: metaEngRef },
+                { label: "Acum. YTD", actual: engPctYtd, meta: metaEngYtd },
+              ]}
             />
-            <KpiCard
-              title="Visitas al perfil"
-              value={fmtK(data.totals.page_views)}
-            />
+            <div className="flex flex-col justify-center rounded-xl border bg-card p-4 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fans (followers)</div>
+              <div className="mt-2 text-3xl font-bold tracking-tight tabular-nums">{fmtK(data.totals.fans_total)}</div>
+              <div className="mt-1 text-[10px] text-muted-foreground/70">{`${data.totals.fan_delta >= 0 ? "+" : ""}${fmtK(data.totals.fan_delta)} en el período`}</div>
+            </div>
           </div>
 
           {/* Engagement total como card resaltado + sub-cards */}
@@ -151,21 +208,27 @@ export function FbOrganicSection({ data }: { data: FbOrganicSummary }) {
             />
           </div>
 
-          {/* Gráfico mensual */}
-          {data.monthlyData.length > 0 && (
+          {/* Gráfico 1 — Alcance (real vs meta) */}
+          {md.length > 0 && (
             <div className="rounded-lg border bg-background p-4">
               <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Evolución mensual &mdash; Alcance vs Engagement
+                Alcance mensual &mdash; real vs meta
               </h4>
               <p className="mb-3 text-[10px] leading-relaxed text-muted-foreground">
-                ℹ️ <strong>Alcance = suma del reach de los posts del mes.</strong> Facebook <strong>deprecó el reach clásico</strong>
-                (15-jun-2026) y lo reemplazó por la métrica <strong>“Total Unique Media Views”</strong> (<code>post_total_media_view_unique</code>),
-                que es <strong>ACUMULATIVA</strong>: sigue sumando alcance con el tiempo. Por eso los posts <strong>recientes todavía no
-                sumaron todo su reach</strong> → los <strong>últimos 1-2 meses aparecen subestimados</strong> (la bajada de los meses
-                recientes NO es una caída real; van a subir a medida que maduran). <strong>No incluye Stories</strong>: Meta no expone
-                las Stories de Páginas de FB por API (IG sí). Detalle: <code>docs/meta-fb-reach-deprecation.md</code>.
+                ℹ️ Alcance = suma del reach de los posts del mes (métrica nueva de Meta, ACUMULATIVA). Los <strong>últimos 1-2 meses
+                aparecen subestimados</strong> porque los posts recientes todavía no maduraron su reach; van a subir. No incluye Stories.
               </p>
-              <FbMonthlyChart data={data.monthlyData} />
+              <IgAlcanceChart data={alcChartData} />
+            </div>
+          )}
+
+          {/* Gráfico 2 — Engagement % + interacciones por tipo */}
+          {md.length > 0 && (
+            <div className="rounded-lg border bg-background p-4">
+              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Engagement % (real vs meta) e interacciones mensuales por tipo
+              </h4>
+              <SocialEngagementChart data={engChartData} components={FB_ENG_COMPONENTS} />
             </div>
           )}
 

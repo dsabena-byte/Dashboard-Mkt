@@ -81,7 +81,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
   // depende de meta_posts. Los queries originales se dejan tal cual para no
   // cambiar el contrato de tipos del resto del page.
   const metaFallback: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
-  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent, metaAlc, metaEng] = await Promise.all([
+  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent, metaAlc, metaEng, fbMetaAlc, fbMetaEng] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
@@ -96,6 +96,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
     // Meta mensual de "Alcance orgánico" para pintarla como línea en el gráfico IG.
     safe(getMetaKpi("Redes Sociales", "Alcance orgánico", currentYear), metaFallback, "getMetaKpi(alcance)"),
     safe(getMetaKpi("Redes Sociales", "Engagement rate", currentYear), metaFallback, "getMetaKpi(eng)"),
+    // Metas de FACEBOOK — clave separada de IG (plan "Facebook"), no tocan el objetivo estratégico (IG-only).
+    safe(getMetaKpi("Facebook", "Alcance orgánico", currentYear), metaFallback, "getMetaKpi(fb-alcance)"),
+    safe(getMetaKpi("Facebook", "Engagement rate", currentYear), metaFallback, "getMetaKpi(fb-eng)"),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
@@ -166,6 +169,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const engRateMes = alcanceMes && interaccionesMes ? (interaccionesMes / alcanceMes) * 100 : null;
   const igFollowers = getLatestFollowers(followers, OWN_BRAND, "INSTAGRAM") || 145_700;
 
+  // Snapshot FB del mes en curso (para el semáforo del panel de metas de FB).
+  const fbMes = fbOrganic.monthlyData.find((m) => m.mes === mesLabel);
+  const fbAlcMes = fbMes?.alcance ?? null;
+  const fbEngMes = fbMes && fbMes.alcance && fbMes.engagement != null && fbMes.alcance > 0 ? (fbMes.engagement / fbMes.alcance) * 100 : null;
+
   // Construcción orgánica (alcance/views/interacción por pilar y categoría).
   const organicBuildup = computeOrganicBuildup([...igOrganic.topPosts, ...fbOrganic.topPosts]);
 
@@ -223,7 +231,18 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
       <OrganicBuildupPanel byPilar={organicBuildup.byPilar} byCategoria={organicBuildup.byCategoria} />
 
-      <FbOrganicSection data={fbOrganic} />
+      <FbOrganicSection data={fbOrganic} metaAlc={fbMetaAlc} metaEng={fbMetaEng} />
+
+      {/* Configuración de metas de Facebook (clave separada de IG) */}
+      <MetaPanel
+        plan="Facebook"
+        titulo="Configuración de metas de Facebook"
+        subtitulo={`Metas propias de FB (separadas de IG, no afectan el objetivo estratégico). El semáforo compara el real FB de ${mesLabel} vs la meta del mes.`}
+        kpis={[
+          { nombre: "Alcance orgánico", actual: fbAlcMes },
+          { nombre: "Engagement rate", unidad: "%", actual: fbEngMes },
+        ]}
+      />
 
       {/* Separador visual */}
       <div className="border-t-2 border-muted pt-6">
