@@ -110,9 +110,21 @@ reporte_existencia/cb_homologos).
      **Regla definitiva:** el reach ÚNICO de la Página **no puede superar la suma de reach de
      los posts orgánicos** del mes (dedup: page ≤ Σ posts). Si `pageReach > organicSum*1.1`,
      está inflado/roto → se usa la **suma orgánica de posts** (que ya excluye el pago). Los
-     meses recientes quedan subestimados (métrica lifetime que madura) — es lo esperado, lo
-     aclara la nota del gráfico. **NO vuelvas a confiar en `meta_fb_monthly_reach` sin esa
-     cota.** El día que se arregle: comparar `pageReach` vs `organicSum` con data real primero.
+     meses recientes quedan subestimados por la maduración (ver punto 3). **NO vuelvas a
+     confiar en `meta_fb_monthly_reach` sin esa cota.** Al arreglarse: comparar `pageReach` vs
+     `organicSum` con data real primero.
+  3. **VENTANA DEL SYNC — el reach de posts es LIFETIME y madura por semanas.** El workflow
+     `meta-fb-sync.yml` corre 2x/día y refresca solo los posts de los últimos **N días**
+     (`?days=N`). Estaba en **3** (el default que quedó al CREAR el workflow, `eeced02`; NO una
+     decisión afinada) → cada post se congelaba con el reach inmaduro a los 3 días y los meses
+     recientes salían subestimados (ago-2026 daba ~5K cuando lo real es ~20-30K, como jul 28K /
+     jun 33K). **Subido a 50 días** (el reach se estabiliza a los ~30; 50 da margen). Costo bajo:
+     ~30 posts × (1 insights + 1 HEAD idempotente de thumbnail) por corrida. **OJO:** en runs por
+     SCHEDULE `inputs.days` viene vacío → cae al fallback del shell (`${DAYS_INPUT:-50}`), NO al
+     `default` del `workflow_dispatch` → hay que tocar **los dos**. Backfill puntual de un hueco:
+     Actions → "Meta FB sync" → Run workflow → days=90/200. **Diagnóstico de "mes bajo":** mirar
+     `updated_at` de los posts del mes; si están frozen a los ~3 días de `fecha_post`, es la
+     ventana (no el contenido).
 - **Redes FB vs IG (histórico):** por post rinden parecido; IG usa `reach` (vivo), FB usa Media
   Views. Los gráficos de "total" engañan por volumen de posts (IG suma Stories que FB no expone).
 - **CB — sugerencias de tiendas:** `reporte_existencia` (proyecto CB) alimenta `vw_cb_suggestions`.
