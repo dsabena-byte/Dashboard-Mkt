@@ -19,6 +19,7 @@ import { MetaPanel } from "@/components/metas/meta-panel";
 import { getInsightsByCategoria, getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
+import { getMetaValoresMensuales } from "@/lib/metas-server";
 import {
   BRAND_COLORS,
   BRAND_LABELS,
@@ -80,7 +81,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
   // si el user no corrió la migration 0040 todavía, y getTopPostsLastNDays
   // depende de meta_posts. Los queries originales se dejan tal cual para no
   // cambiar el contrato de tipos del resto del page.
-  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent] = await Promise.all([
+  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent, alcanceMeta] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
@@ -92,6 +93,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
       { instagram: { top: [], bottom: [] }, facebook: { top: [], bottom: [] } } as Awaited<ReturnType<typeof getTopAndBottomPostsLastNDays>>,
       "getTopAndBottomPostsLastNDays",
     ),
+    // Meta mensual de "Alcance orgánico" para pintarla como línea en el gráfico IG.
+    safe(getMetaValoresMensuales("Redes Sociales", "Alcance orgánico", currentYear), Array.from({ length: 12 }, () => null) as (number | null)[], "getMetaValoresMensuales"),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
@@ -290,7 +293,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
       <OrganicBuildupPanel byPilar={organicBuildup.byPilar} byCategoria={organicBuildup.byCategoria} />
 
-      <IgOrganicSection data={igOrganic} />
+      <IgOrganicSection data={igOrganic} alcanceMeta={alcanceMeta} />
 
       <FbOrganicSection data={fbOrganic} />
 

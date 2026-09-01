@@ -50,7 +50,7 @@ function HorizontalBars({
   );
 }
 
-export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
+export function IgOrganicSection({ data, alcanceMeta }: { data: IgOrganicSummary; alcanceMeta?: (number | null)[] }) {
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "fecha">("fecha");
   const [filterType, setFilterType] = useState<"all" | "feed" | "reels" | "stories">("all");
@@ -145,7 +145,9 @@ export function IgOrganicSection({ data }: { data: IgOrganicSummary }) {
           <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Evoluci&oacute;n mensual &mdash; Alcance vs Engagement
           </h4>
-          <FbMonthlyChart data={data.monthlyData} />
+          <FbMonthlyChart
+            data={data.monthlyData.map((d, i) => ({ ...d, meta: alcanceMeta?.[i] ?? null }))}
+          />
         </div>
       )}
 
