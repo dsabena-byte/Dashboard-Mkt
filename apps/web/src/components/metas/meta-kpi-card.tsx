@@ -11,16 +11,17 @@ interface Props {
   medida?: string; // cómo se mide
   headlineActual: number | null; // valor grande (mes de referencia)
   headlineLabel: string; // ej "Ago 26"
-  unidad?: "%" | "";
+  unidad?: "%" | "s" | "";
   direccion?: Direccion;
   umbralVerde?: number;
   umbralAmarillo?: number;
   rows: CmpRow[]; // comparaciones (mes, acumulado)
 }
 
-function fmt(v: number | null, unidad: "%" | ""): string {
+function fmt(v: number | null, unidad: "%" | "s" | ""): string {
   if (v == null || !Number.isFinite(v)) return "—";
   if (unidad === "%") return `${v.toFixed(2)}%`;
+  if (unidad === "s") return `${Math.round(v)}s`;
   const a = Math.abs(v);
   if (a >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
   if (a >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
