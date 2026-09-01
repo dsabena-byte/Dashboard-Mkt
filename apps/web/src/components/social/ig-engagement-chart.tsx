@@ -19,41 +19,43 @@ export function IgEngagementChart({ data }: { data: IgEngagementDatum[] }) {
   const hasMeta = data.some((d) => d.metaEngPct != null);
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
         <YAxis
           yAxisId="left"
-          stroke="#4f46e5"
+          width={56}
+          stroke="#334155"
           fontSize={11}
           tickLine={false}
           tickFormatter={(v: number) => `${v.toFixed(0)}%`}
-          label={{ value: "Engagement %", angle: -90, position: "insideLeft", fontSize: 10, fill: "#4f46e5" }}
+          label={{ value: "Engagement %", angle: -90, position: "insideLeft", fontSize: 10, fill: "#334155" }}
         />
         <YAxis
           yAxisId="right"
+          width={56}
           orientation="right"
-          stroke="#64748b"
+          stroke="#94a3b8"
           fontSize={11}
           tickLine={false}
           tickFormatter={fmtK}
-          label={{ value: "Interacciones", angle: 90, position: "insideRight", fontSize: 10, fill: "#64748b" }}
+          label={{ value: "Interacciones", angle: 90, position: "insideRight", fontSize: 10, fill: "#94a3b8" }}
         />
         <Tooltip
           formatter={(v: number, name: string) => [name.includes("%") ? `${v.toFixed(2)}%` : fmtKfull(v), name]}
           contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
           cursor={{ fill: "rgba(100,116,139,.06)" }}
         />
-        <Legend wrapperStyle={{ fontSize: 11 }} />
-        {/* Interacciones absolutas apiladas (eje derecho) */}
-        <Bar yAxisId="right" dataKey="likes" name="Likes" stackId="int" fill="#ec4899" radius={[0, 0, 0, 0]} />
-        <Bar yAxisId="right" dataKey="comentarios" name="Comentarios" stackId="int" fill="#3b82f6" />
-        <Bar yAxisId="right" dataKey="guardados" name="Guardados" stackId="int" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
+        <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value: string) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
+        {/* Interacciones absolutas apiladas (eje derecho) — rampa azul monocromática */}
+        <Bar yAxisId="right" dataKey="likes" name="Likes" stackId="int" fill="#1e40af" />
+        <Bar yAxisId="right" dataKey="comentarios" name="Comentarios" stackId="int" fill="#60a5fa" />
+        <Bar yAxisId="right" dataKey="guardados" name="Guardados" stackId="int" fill="#bfdbfe" radius={[3, 3, 0, 0]} />
         {/* Engagement % (eje izquierdo): meta + real */}
         {hasMeta && (
-          <Line yAxisId="left" type="linear" dataKey="metaEngPct" name="Meta eng. %" stroke="#64748b" strokeWidth={1.75} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#64748b" }} connectNulls />
+          <Line yAxisId="left" type="linear" dataKey="metaEngPct" name="Meta eng. %" stroke="#94a3b8" strokeWidth={1.75} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#94a3b8" }} connectNulls />
         )}
-        <Line yAxisId="left" type="monotone" dataKey="engPct" name="Engagement %" stroke="#4f46e5" strokeWidth={2.5} dot={{ r: 3.5, fill: "#4f46e5", stroke: "#fff", strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls />
+        <Line yAxisId="left" type="monotone" dataKey="engPct" name="Engagement %" stroke="#0f172a" strokeWidth={2.5} dot={{ r: 3, fill: "#0f172a", stroke: "#fff", strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls />
       </ComposedChart>
     </ResponsiveContainer>
   );

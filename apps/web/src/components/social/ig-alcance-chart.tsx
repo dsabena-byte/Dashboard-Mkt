@@ -17,18 +17,20 @@ export function IgAlcanceChart({ data }: { data: IgAlcanceDatum[] }) {
   const hasMeta = data.some((d) => d.metaAlcance != null);
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }} barGap={2}>
+      <ComposedChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 8 }} barGap={2}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
-        <YAxis stroke="#64748b" fontSize={11} tickLine={false} tickFormatter={fmtK} />
+        <YAxis yAxisId="alc" width={56} stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={fmtK} label={{ value: "Alcance", angle: -90, position: "insideLeft", fontSize: 10, fill: "#94a3b8" }} />
+        {/* Eje derecho fantasma: reserva el mismo ancho que el gráfico de engagement para que los meses queden alineados verticalmente entre ambos. */}
+        <YAxis yAxisId="ghost" orientation="right" width={56} tick={false} axisLine={false} />
         <Tooltip
           formatter={(v: number, name: string) => [fmtKfull(v), name]}
           contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
           cursor={{ fill: "rgba(100,116,139,.06)" }}
         />
-        <Legend wrapperStyle={{ fontSize: 11 }} />
-        {hasMeta && <Bar dataKey="metaAlcance" name="Meta alcance" fill="#cbd5e1" stroke="#64748b" strokeWidth={1.25} radius={[3, 3, 0, 0]} />}
-        <Bar dataKey="alcance" name="Alcance (real)" radius={[3, 3, 0, 0]}>
+        <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value: string) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
+        {hasMeta && <Bar yAxisId="alc" dataKey="metaAlcance" name="Meta alcance" fill="#cbd5e1" stroke="#64748b" strokeWidth={1.25} radius={[3, 3, 0, 0]} />}
+        <Bar yAxisId="alc" dataKey="alcance" name="Alcance (real)" radius={[3, 3, 0, 0]}>
           {data.map((d, i) => (
             <Cell key={i} fill={d.alcColor} />
           ))}
