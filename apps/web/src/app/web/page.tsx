@@ -33,6 +33,7 @@ import {
 import { lastClosedMonthRange, parseDateRange } from "@/lib/dates";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
+import { MetaPanel } from "@/components/metas/meta-panel";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -447,6 +448,22 @@ export default async function WebPage({ searchParams }: PageProps) {
           <WebMonthlyChart data={monthlyData} labels={yearLabels} />
         </div>
       </section>
+
+      {/* Configuración de metas de Web / Ecommerce */}
+      <MetaPanel
+        plan="Web / Ecommerce"
+        titulo="Configuración de metas de Web / Ecommerce"
+        subtitulo="Metas mensuales de los KPIs de Web. El real que se muestra es el del período filtrado."
+        kpis={[
+          { nombre: "Tráfico web (usuarios)", actual: totals.usuarios },
+          { nombre: "Sesiones", actual: totals.sesiones },
+          { nombre: "Avg Sesión (segundos)", unidad: "s", actual: totals.avg_session_duration },
+          { nombre: "Bounce rate", unidad: "%", actual: totals.bounce_rate != null ? totals.bounce_rate * 100 : null },
+          { nombre: "Tasa de conversión", unidad: "%", actual: totals.conversion_rate != null ? totals.conversion_rate * 100 : null },
+          { nombre: "Ingresos ecommerce", unidad: "$" },
+          { nombre: "Pageviews", actual: totals.pageviews },
+        ]}
+      />
 
       {/* Categoría: tabla + tendencia side-by-side */}
       <section className="grid gap-4 lg:grid-cols-2">
