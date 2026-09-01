@@ -34,9 +34,13 @@ import { lastClosedMonthRange, parseDateRange } from "@/lib/dates";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 import { MetaPanel } from "@/components/metas/meta-panel";
+import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
+import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
+
+const META_FALLBACK: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
 
 interface PageProps {
   searchParams: Record<string, string | string[] | undefined>;
@@ -108,6 +112,8 @@ export default async function WebPage({ searchParams }: PageProps) {
     monthlyUsersRow,
     allMonthlyUsers,
     latestWebDate,
+    webMetaUsers,
+    webMetaSessions,
   ] = await Promise.all([
     safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
     safe(getWebDailyKpis(yoyRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(yoy)"),
@@ -135,6 +141,8 @@ export default async function WebPage({ searchParams }: PageProps) {
     })(), null, "getMonthlyUsers"),
     safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>, "getAllMonthlyUsers"),
     safe<string | null>(getLatestWebDate(), null, "getLatestWebDate"),
+    safe(getMetaKpi("Web / Ecommerce", "Tráfico web (usuarios)", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-users)"),
+    safe(getMetaKpi("Web / Ecommerce", "Sesiones", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-sessions)"),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -241,7 +249,7 @@ export default async function WebPage({ searchParams }: PageProps) {
   const prevYear = currYear - 1;
   const MES_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   // 12 meses fijos; meses sin data van como null para que recharts no dibuje barras/líneas en 0.
-  const monthlyData: Array<{ mes: string; usuarios_curr: number | null; usuarios_prev: number; sesiones_curr: number | null; sesiones_prev: number }> = [];
+  const monthlyData: Array<{ mes: string; usuarios_curr: number | null; usuarios_prev: number; sesiones_curr: number | null; sesiones_prev: number; usuarios_meta: number | null; sesiones_meta: number | null }> = [];
   for (let m = 1; m <= 12; m++) {
     const usuarios = getMonthVal(currYear, m, "users");
     const sesiones = getMonthVal(currYear, m, "sessions");
@@ -251,8 +259,24 @@ export default async function WebPage({ searchParams }: PageProps) {
       usuarios_prev: 0,
       sesiones_curr: sesiones > 0 ? sesiones : null,
       sesiones_prev: 0,
+      usuarios_meta: webMetaUsers.valores[m - 1] ?? null,
+      sesiones_meta: webMetaSessions.valores[m - 1] ?? null,
     });
   }
+  // Datos de los cards con meta (mismo tratamiento que IG: mes de referencia = último con dato + acumulado YTD).
+  const webSum = (xs: (number | null)[]) => xs.reduce((a: number, x) => a + (x ?? 0), 0);
+  let webRefIdx = -1;
+  for (let i = monthlyData.length - 1; i >= 0; i--) { if (monthlyData[i]!.usuarios_curr != null) { webRefIdx = i; break; } }
+  const webRefMes = webRefIdx >= 0 ? monthlyData[webRefIdx]!.mes : "";
+  const webUpto = webRefIdx >= 0 ? webRefIdx : 11;
+  const usersRef = webRefIdx >= 0 ? monthlyData[webRefIdx]!.usuarios_curr : null;
+  const sesRef = webRefIdx >= 0 ? monthlyData[webRefIdx]!.sesiones_curr : null;
+  const usersRefMeta = webRefIdx >= 0 ? (webMetaUsers.valores[webRefIdx] ?? null) : null;
+  const sesRefMeta = webRefIdx >= 0 ? (webMetaSessions.valores[webRefIdx] ?? null) : null;
+  const usersYtd = webSum(monthlyData.slice(0, webUpto + 1).map((d) => d.usuarios_curr));
+  const sesYtd = webSum(monthlyData.slice(0, webUpto + 1).map((d) => d.sesiones_curr));
+  const usersMetaYtd = webSum(webMetaUsers.valores.slice(0, webUpto + 1));
+  const sesMetaYtd = webSum(webMetaSessions.valores.slice(0, webUpto + 1));
   const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
   // Estrategia de agregación según el largo del rango:
@@ -438,11 +462,41 @@ export default async function WebPage({ searchParams }: PageProps) {
         />
       </section>
 
+      {/* Cards estratégicos con meta (mes de referencia + acumulado YTD) */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MetaKpiCard
+          title="Tráfico web (usuarios)"
+          medida="Usuarios del mes"
+          headlineActual={usersRef}
+          headlineLabel={webRefMes}
+          direccion={webMetaUsers.direccion}
+          umbralVerde={webMetaUsers.umbralVerde}
+          umbralAmarillo={webMetaUsers.umbralAmarillo}
+          rows={[
+            { label: `Mes ${webRefMes}`, actual: usersRef, meta: usersRefMeta },
+            { label: "Acum. YTD", actual: usersYtd, meta: usersMetaYtd },
+          ]}
+        />
+        <MetaKpiCard
+          title="Sesiones"
+          medida="Sesiones del mes"
+          headlineActual={sesRef}
+          headlineLabel={webRefMes}
+          direccion={webMetaSessions.direccion}
+          umbralVerde={webMetaSessions.umbralVerde}
+          umbralAmarillo={webMetaSessions.umbralAmarillo}
+          rows={[
+            { label: `Mes ${webRefMes}`, actual: sesRef, meta: sesRefMeta },
+            { label: "Acum. YTD", actual: sesYtd, meta: sesMetaYtd },
+          ]}
+        />
+      </div>
+
       {/* Tendencia mensual — últimos 12 meses */}
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios (real vs meta)</h3>
         <p className="text-xs text-muted-foreground">
-          Barras = usuarios, línea = sesiones. Año actual (no afectado por el filtro).
+          Barras = usuarios (azul real · gris meta), línea = sesiones (tinta real · gris punteada meta). Año actual.
         </p>
         <div className="mt-4">
           <WebMonthlyChart data={monthlyData} labels={yearLabels} />
