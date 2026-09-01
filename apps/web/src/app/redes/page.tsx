@@ -81,7 +81,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
   // si el user no corrió la migration 0040 todavía, y getTopPostsLastNDays
   // depende de meta_posts. Los queries originales se dejan tal cual para no
   // cambiar el contrato de tipos del resto del page.
-  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent, alcanceMeta] = await Promise.all([
+  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent, alcanceMeta, engMeta] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
@@ -94,7 +94,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
       "getTopAndBottomPostsLastNDays",
     ),
     // Meta mensual de "Alcance orgánico" para pintarla como línea en el gráfico IG.
-    safe(getMetaValoresMensuales("Redes Sociales", "Alcance orgánico", currentYear), Array.from({ length: 12 }, () => null) as (number | null)[], "getMetaValoresMensuales"),
+    safe(getMetaValoresMensuales("Redes Sociales", "Alcance orgánico", currentYear), Array.from({ length: 12 }, () => null) as (number | null)[], "getMetaValoresMensuales(alcance)"),
+    safe(getMetaValoresMensuales("Redes Sociales", "Engagement rate", currentYear), Array.from({ length: 12 }, () => null) as (number | null)[], "getMetaValoresMensuales(eng)"),
   ]);
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
@@ -293,7 +294,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
       <OrganicBuildupPanel byPilar={organicBuildup.byPilar} byCategoria={organicBuildup.byCategoria} />
 
-      <IgOrganicSection data={igOrganic} alcanceMeta={alcanceMeta} />
+      <IgOrganicSection data={igOrganic} alcanceMeta={alcanceMeta} engMeta={engMeta} mesIdx={mesIdx} />
 
       <FbOrganicSection data={fbOrganic} />
 

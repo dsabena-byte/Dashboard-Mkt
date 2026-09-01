@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
-import { FbMonthlyChart } from "@/components/social/fb-monthly-chart";
+import { IgEvolutionChart } from "@/components/social/ig-evolution-chart";
 import { ClasifBadge } from "@/components/social/clasif-badge";
 import type { IgOrganicSummary, IgDemoBreakdown } from "@/lib/meta-ig-queries";
 
@@ -50,7 +50,19 @@ function HorizontalBars({
   );
 }
 
-export function IgOrganicSection({ data, alcanceMeta }: { data: IgOrganicSummary; alcanceMeta?: (number | null)[] }) {
+const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+export function IgOrganicSection({
+  data,
+  alcanceMeta,
+  engMeta,
+  mesIdx,
+}: {
+  data: IgOrganicSummary;
+  alcanceMeta?: (number | null)[];
+  engMeta?: (number | null)[]; // meta de engagement rate (%) por mes
+  mesIdx?: number; // 0-11, mes en curso (para el desvío de los cards)
+}) {
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [sortBy, setSortBy] = useState<"engagement" | "fecha">("fecha");
   const [filterType, setFilterType] = useState<"all" | "feed" | "reels" | "stories">("all");
@@ -84,6 +96,27 @@ export function IgOrganicSection({ data, alcanceMeta }: { data: IgOrganicSummary
     );
   }
 
+  // Engagement como % (interacciones / alcance) del período, para el card.
+  const engPctPeriodo = data.totalReach > 0 ? (data.totalEngagement / data.totalReach) * 100 : null;
+  // Valores del mes en curso + metas, para los desvíos de los cards.
+  const m = mesIdx ?? new Date().getMonth();
+  const mesLabel = MES_SHORT[m] ?? "";
+  const md = data.monthlyData[m];
+  const alcMes = md?.alcance ?? null;
+  const engMesAbs = md?.engagement ?? null;
+  const engPctMes = alcMes && engMesAbs ? (engMesAbs / alcMes) * 100 : null;
+  const metaAlcMes = alcanceMeta?.[m] ?? null;
+  const metaEngMes = engMeta?.[m] ?? null;
+  const desvio = (real: number | null, meta: number | null) =>
+    real != null && meta != null && meta !== 0 ? { value: ((real - meta) / meta) * 100, label: `vs meta ${mesLabel}` } : null;
+  const desvioAlc = desvio(alcMes, metaAlcMes);
+  const desvioEng = desvio(engPctMes, metaEngMes);
+  // Datos del gráfico: alcance real + meta (barras) y engagement % real + meta (líneas).
+  const chartData = data.monthlyData.map((d, i) => {
+    const engPct = d.alcance && d.engagement != null && d.alcance > 0 ? (d.engagement / d.alcance) * 100 : null;
+    return { mes: d.mes, alcance: d.alcance, metaAlcance: alcanceMeta?.[i] ?? null, engPct, metaEngPct: engMeta?.[i] ?? null };
+  });
+
   return (
     <section className="space-y-4 rounded-lg border bg-card p-6">
       <header className="flex items-center gap-3">
@@ -99,11 +132,18 @@ export function IgOrganicSection({ data, alcanceMeta }: { data: IgOrganicSummary
       </header>
 
       {/* KPIs principales (por post, respeta el filtro de fecha) */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-3">
         <KpiCard
           title="Alcance (personas)"
           value={fmtK(data.totalReach)}
-          hint={`Suma reach de ${data.postCount} posts del período`}
+          delta={desvioAlc}
+          hint={metaAlcMes != null ? `Meta ${mesLabel}: ${fmtK(metaAlcMes)}` : `Suma reach de ${data.postCount} posts del período`}
+        />
+        <KpiCard
+          title="Engagement %"
+          value={engPctPeriodo != null ? `${engPctPeriodo.toFixed(2)}%` : "—"}
+          delta={desvioEng}
+          hint={metaEngMes != null ? `Meta ${mesLabel}: ${metaEngMes.toFixed(1)}%` : "Interacciones / alcance"}
         />
         <KpiCard
           title="Followers"
@@ -143,11 +183,9 @@ export function IgOrganicSection({ data, alcanceMeta }: { data: IgOrganicSummary
       {data.monthlyData.length > 0 && (
         <div className="rounded-lg border bg-background p-4">
           <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Evoluci&oacute;n mensual &mdash; Alcance vs Engagement
+            Evoluci&oacute;n mensual &mdash; Alcance (real vs meta) y Engagement % (real vs meta)
           </h4>
-          <FbMonthlyChart
-            data={data.monthlyData.map((d, i) => ({ ...d, meta: alcanceMeta?.[i] ?? null }))}
-          />
+          <IgEvolutionChart data={chartData} />
         </div>
       )}
 
