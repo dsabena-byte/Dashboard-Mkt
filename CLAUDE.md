@@ -117,9 +117,12 @@ reporte_existencia/cb_homologos).
      `meta-fb-sync.yml` corre 2x/día y refresca solo los posts de los últimos **N días**
      (`?days=N`). Estaba en **3** (el default que quedó al CREAR el workflow, `eeced02`; NO una
      decisión afinada) → cada post se congelaba con el reach inmaduro a los 3 días y los meses
-     recientes salían subestimados (ago-2026 daba ~5K cuando lo real es ~20-30K, como jul 28K /
-     jun 33K). **Subido a 50 días** (el reach se estabiliza a los ~30; 50 da margen). Costo bajo:
-     ~30 posts × (1 insights + 1 HEAD idempotente de thumbnail) por corrida. **OJO:** en runs por
+     recientes salían subestimados (ago-2026 daba ~5K cuando lo real es ~30-35K, como jul / jun).
+     **Curva de maduración MEDIDA** (posts de jul, reach al 3-ago vs a los ~30 días de vida):
+     +25% a +114% por post; jul pasó de 28K→35K solo por madurar. O sea **NO se estabiliza a los
+     30 días** (eso fue una suposición equivocada de una sesión previa) — sigue creciendo hasta
+     ~50-60. **Ventana en 70 días** para captar la maduración completa. Costo bajo: ~40 posts ×
+     (1 insights + 1 HEAD idempotente) por corrida. **OJO:** en runs por
      SCHEDULE `inputs.days` viene vacío → cae al fallback del shell (`${DAYS_INPUT:-50}`), NO al
      `default` del `workflow_dispatch` → hay que tocar **los dos**. Backfill puntual de un hueco:
      Actions → "Meta FB sync" → Run workflow → days=90/200. **Diagnóstico de "mes bajo":** mirar
