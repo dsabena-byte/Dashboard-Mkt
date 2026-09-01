@@ -84,6 +84,25 @@ reporte_existencia/cb_homologos).
   decir que las metas están "listas".**
 
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
+- **Pauta Mkt (`/performance`) — inversión: fuente de verdad POR MEDIO (dic-2026).** El dash
+  brand **no mezcla ecommerce** (conversión/PMax/shopping va aparte, en `/performance-conversion`
+  vía `pauta-conversion-queries`; **Performance Max se EXCLUYE** de Pauta Mkt). Fuente por medio:
+  - **API (plataforma = fuente de verdad):** Meta → `meta_paid_creatives`; YouTube + Programmatic
+    → `dv360_creatives` (por `canal`: DV360 tiene canales **YouTube / Programmatic / Marketplace**);
+    Google Search + Demand Gen → `google_ads_creatives` (campaign_type SEARCH/DEMAND_GEN).
+    **Google Ads NO tiene YouTube** (solo Search/DemandGen/PMax) — el YouTube corre por DV360.
+  - **Carga manual en `pauta_performance`** (de los reportes mensuales de **OMD**, PDF): medios
+    **sin API** → **TikTok, Mercado Ads (=Mercado Libre), Geo Mobile (=TapTap, pauta geolocalizada)**.
+    Y los **tradicionales/offline** (TV Cable, OOH, DOOH) = **plan de medios aparte**, también manual.
+  - **OJO 1:** en `pauta_performance` hay filas de **Meta manuales que NO coinciden con la API**
+    (ej ago: pauta 13,4M vs `meta_paid_creatives` 62,7M). Para "plataforma = fuente de verdad" el
+    dash debe leer Meta/Google/DV360 de la **API**, no de pauta → **dedup pendiente** (no sumar
+    ambas fuentes para el mismo medio).
+  - **OJO 2:** `pauta_performance.tipo_compra` es **NOT NULL** (usar "CPM"). Categorías válidas:
+    Brand/Cocción/Lavado/Refrigeración/UGC/Promoción. Objetivos: Awareness/Consideración/Build.
+  - Cargado **jun+jul 2026** (TikTok por categoría; Mercado/Geo como total del mes en categoría
+    "Brand" — los reportes OMD no los abren por categoría). En jun/jul **no corrieron** DOOH ni
+    Geo Mobile (jun) ni TV Cable (offline) — no son huecos de carga, no hubo pauta.
 - **Mercado (GfK) — carga mensual:** el share de `mercado_share` se actualiza a mano desde
   exports "Brands Timeseries" de GfK (por REST, es dato no DDL). Set completo = **3 segmentos +
   Total × 3 KPIs**, por agregación (mensual + MAT). **Verificar la matriz completa ANTES de
