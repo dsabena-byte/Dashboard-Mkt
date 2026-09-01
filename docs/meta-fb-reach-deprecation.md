@@ -137,6 +137,35 @@ El dashboard **sigue mostrando todo** (IG orgánico, FB orgánico, el combinado 
 competitivo) — no se sacó ninguna sección. Solo el `MetaPanel` usa valores **IG del mes en
 curso** (`igOrganic.monthlyData` + seguidores IG) para el semáforo.
 
+### ⚠️ El reach de FB se ensucia por DOS lados (los dos ya tapados — no destapar)
+
+Validado con la DB (sep-2026), por si vuelve a aparecer un pico:
+
+**1. Post pago/boosteado (nivel post).** Meta mete el pago dentro del reach del post y no lo
+separa. Firma: reach fuera de escala con engagement casi nulo. `isPaidOutlier`
+(reach>20k && reac/reach<1%) lo excluye, y `getFbOrganicSummary` devuelve
+`topPosts: organicPosts` → no contamina ninguna vista.
+
+**2. Tabla `meta_fb_monthly_reach` (reach mensual de Página) ROTA.** La métrica nueva devuelve
+basura. Data real:
+
+| mes | pageReach (tabla) | suma orgánica posts | veredicto |
+|---|---|---|---|
+| 2026-08 | 144.014 | 5.204 | inflado por pauta (boost 11-ago) |
+| 2026-07 | 10.448.270 | 28.494 | roto (millones) |
+| 2026-06 | 5.824.349 | 33.273 | roto |
+| 2026-05 | 10.108.259 | 41.943 | roto |
+| 2026-04 | 7.951.428 | 33.101 | roto |
+| 2026-03 | 8.268 | 22.227 | OK (page ≤ Σ posts) |
+| 2026-02 | 6.293 | 6.681 | OK |
+| 2026-01 | 6.603 | 11.594 | OK |
+
+El corte viejo `REACH_SANE_MAX=2M` tapaba los de millones **pero no ago (144k)**. **Regla
+definitiva** en `monthlyData`: `pageReach` solo se usa si `pageReach ≤ organicSum*1.1`
+(la reach única de la Página no puede superar la suma de reach de los posts orgánicos por
+dedup). Si la supera → pauta o dato roto → se usa la suma orgánica (ya sin pago). Meses
+recientes quedan subestimados (métrica lifetime madura) — esperado, lo aclara la nota.
+
 Además se cerró un bug del filtro de pago: `isPaidOutlier` (reach >20k con engagement <1%)
 excluía el boosteo del **gráfico mensual** pero **no de `topPosts`** (la lista que expone el
 query). Por eso los KPI cards que sumaban desde `topPosts` (Engagement combinado, Video views)

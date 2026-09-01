@@ -351,9 +351,19 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     // cuando el valor es de escala reach; si no, suma de posts (fallback).
     // Solo meses YA CERRADos usan el reach de Página.
     const pageReach = monthlyReach.get(key);
+    const organicSum = v && v.alcance > 0 ? v.alcance : null;
     const cerrado = key < currentKey;
-    const usePage = cerrado && pageReach != null && pageReach > 0 && pageReach < REACH_SANE_MAX;
-    const alcance = usePage ? pageReach : v && v.alcance > 0 ? v.alcance : null;
+    // La reach ÚNICA de la Página NO puede superar la suma de reach de los posts
+    // orgánicos del mes (una persona alcanzada por varios posts se cuenta 1 vez a
+    // nivel Página → page ≤ Σ posts). Si la supera, el valor está inflado por
+    // pauta/boosteo o es un dato roto de la métrica nueva (que a veces devuelve
+    // millones). Ej real: ago-2026 pageReach 144.014 vs suma orgánica 5.204 (un
+    // boosteo). En esos casos usamos la suma orgánica (que ya excluye el pago).
+    // Margen 10% por diferencias menores de medición post vs página.
+    const usePage =
+      cerrado && pageReach != null && pageReach > 0 && pageReach < REACH_SANE_MAX &&
+      organicSum != null && pageReach <= organicSum * 1.1;
+    const alcance = usePage ? pageReach : organicSum;
     return {
       mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
       alcance,

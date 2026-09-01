@@ -94,11 +94,25 @@ reporte_existencia/cb_homologos).
   y el reemplazo **no separa pago de orgánico** → no sirve para fijar/medir una meta. El
   `MetaPanel` de `app/redes/page.tsx` recibe `alcanceMes`/`interaccionesMes`/`engRateMes` (IG) y
   `igFollowers`. **No se sacó ninguna sección** del dashboard (el user lo pidió explícito).
-- **FB — posteo pago se excluía a medias (fix definitivo):** el `isPaidOutlier` de
-  `lib/meta-fb-queries.ts` (reach >20k con engagement <1%) filtraba el boosteo del **gráfico
-  mensual** pero **no de `topPosts`**, que alimentaba los KPI cards e infla­ba Engagement/Video
-  views (ej real: 11-ago-2026 → reach 188.724, 67.124 video views, 23 reacciones). Ahora
-  `topPosts` devuelve `organicPosts` (filtrado) → el pago no contamina **ninguna** vista.
+- **FB REACH = DATO NO CONFIABLE — dos fuentes de contaminación (LEER antes de tocar el
+  gráfico de FB).** El alcance de FB en `lib/meta-fb-queries.ts` se ensucia por DOS lados y
+  las dos ya están tapadas — **no las destapes**:
+  1. **Posteos pagos/boosteados a nivel post:** Meta cuenta el pago dentro del reach del post
+     y NO lo separa del orgánico. Firma: reach fuera de escala (techo orgánico de la Página
+     ~8K) con engagement casi nulo. Ej real 11-ago-2026: reach **188.724**, **67.124** video
+     views, 23 reacciones (0,01%). Lo filtra `isPaidOutlier` (reach>20k && reac/reach<1%) y
+     `getFbOrganicSummary` expone **`topPosts: organicPosts`** (ya filtrado) → no contamina
+     cards, totales ni "top posts".
+  2. **Tabla `meta_fb_monthly_reach` (reach mensual de la Página) ESTÁ ROTA:** la métrica
+     nueva de Meta devuelve valores absurdos — **millones** (jul-2026 10,4M, may 10,1M) o
+     inflados por pauta (ago-2026 **144.014** vs suma orgánica real **5.204**). El corte
+     `REACH_SANE_MAX=2M` tapa los de millones pero NO los inflados por pauta (144k pasa).
+     **Regla definitiva:** el reach ÚNICO de la Página **no puede superar la suma de reach de
+     los posts orgánicos** del mes (dedup: page ≤ Σ posts). Si `pageReach > organicSum*1.1`,
+     está inflado/roto → se usa la **suma orgánica de posts** (que ya excluye el pago). Los
+     meses recientes quedan subestimados (métrica lifetime que madura) — es lo esperado, lo
+     aclara la nota del gráfico. **NO vuelvas a confiar en `meta_fb_monthly_reach` sin esa
+     cota.** El día que se arregle: comparar `pageReach` vs `organicSum` con data real primero.
 - **Redes FB vs IG (histórico):** por post rinden parecido; IG usa `reach` (vivo), FB usa Media
   Views. Los gráficos de "total" engañan por volumen de posts (IG suma Stories que FB no expone).
 - **CB — sugerencias de tiendas:** `reporte_existencia` (proyecto CB) alimenta `vw_cb_suggestions`.
