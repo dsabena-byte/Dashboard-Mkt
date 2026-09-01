@@ -87,7 +87,7 @@ export function WebMonthlyChart({
           <Line yAxisId="right" type="monotone" dataKey="sesiones_prev" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 3 }} name={`Sesiones ${labels.prev}`} />
         )}
         {hasSessionsMeta && (
-          <Line yAxisId="right" type="linear" dataKey="sesiones_meta" stroke="#64748b" strokeWidth={1.75} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#64748b" }} connectNulls name="Meta sesiones" />
+          <Line yAxisId="right" type="monotone" dataKey="sesiones_meta" stroke="#64748b" strokeWidth={1.75} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#64748b" }} connectNulls name="Meta sesiones" />
         )}
         <Line
           yAxisId="right"

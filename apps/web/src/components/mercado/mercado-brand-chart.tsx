@@ -53,7 +53,7 @@ export function MercadoBrandChart({
         {others.map((b, i) => (
           <Line
             key={b}
-            type="linear"
+            type="monotone"
             dataKey={b}
             stroke={colors?.[b] ?? PALETTE[i % PALETTE.length]}
             strokeWidth={1.5}
@@ -62,7 +62,7 @@ export function MercadoBrandChart({
           />
         ))}
         {brands.includes(highlight) && (
-          <Line type="linear" dataKey={highlight} stroke={colors?.[highlight] ?? HIGHLIGHT} strokeWidth={3} dot={long ? false : { r: 2.5 }} connectNulls />
+          <Line type="monotone" dataKey={highlight} stroke={colors?.[highlight] ?? HIGHLIGHT} strokeWidth={3} dot={long ? false : { r: 2.5 }} connectNulls />
         )}
       </LineChart>
     </ResponsiveContainer>

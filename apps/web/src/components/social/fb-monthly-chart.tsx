@@ -89,7 +89,7 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
         {hasMeta && (
           <Line
             yAxisId="right"
-            type="linear"
+            type="monotone"
             dataKey="meta"
             stroke="#16a34a"
             strokeWidth={2}

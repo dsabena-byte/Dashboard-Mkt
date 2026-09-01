@@ -36,6 +36,7 @@ import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
+import { WebConvAvgChart } from "@/components/web-conv-avg-chart";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -212,13 +213,14 @@ export default async function WebPage({ searchParams }: PageProps) {
 
   // Agregación mensual con comparativa YoY (mismo mes año anterior)
   // monthlyDailyKpis ahora trae 24 meses → splitamos por año
-  const monthlyAll = new Map<string, { sesiones: number; usuarios: number; conversiones: number }>();
+  const monthlyAll = new Map<string, { sesiones: number; usuarios: number; conversiones: number; avgWSum: number }>();
   for (const r of monthlyDailyKpis) {
     const mes = r.fecha.slice(0, 7) + "-01";
-    const acc = monthlyAll.get(mes) ?? { sesiones: 0, usuarios: 0, conversiones: 0 };
+    const acc = monthlyAll.get(mes) ?? { sesiones: 0, usuarios: 0, conversiones: 0, avgWSum: 0 };
     acc.sesiones += r.sesiones;
     acc.usuarios += r.usuarios;
     acc.conversiones += r.conversiones;
+    acc.avgWSum += (r.avg_session_duration ?? 0) * r.sesiones; // avg session ponderado por sesiones
     monthlyAll.set(mes, acc);
   }
   // Para el chart YoY:
@@ -292,6 +294,17 @@ export default async function WebPage({ searchParams }: PageProps) {
   const avgRefMeta = webRefIdx >= 0 ? (webMetaAvg.valores[webRefIdx] ?? null) : null;
   const avgMetasYtd = webMetaAvg.valores.slice(0, webUpto + 1).filter((v): v is number => v != null);
   const avgMetaYtd = avgMetasYtd.length ? avgMetasYtd.reduce((a, b) => a + b, 0) / avgMetasYtd.length : null;
+  // Data del gráfico Conversión (líneas) + Avg session (barras) real vs meta.
+  const convAvgData = Array.from({ length: 12 }, (_, i) => {
+    const v = monthlyAll.get(`${currYear}-${String(i + 1).padStart(2, "0")}-01`);
+    return {
+      mes: MES_SHORT[i]!,
+      convPct: v && v.sesiones > 0 ? (v.conversiones / v.sesiones) * 100 : null,
+      convMeta: webMetaConv.valores[i] ?? null,
+      avgReal: v && v.sesiones > 0 && v.avgWSum > 0 ? v.avgWSum / v.sesiones : null,
+      avgMeta: webMetaAvg.valores[i] ?? null,
+    };
+  });
   const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
   // Estrategia de agregación según el largo del rango:
@@ -488,6 +501,17 @@ export default async function WebPage({ searchParams }: PageProps) {
         </p>
         <div className="mt-4">
           <WebMonthlyChart data={monthlyData} labels={yearLabels} />
+        </div>
+      </section>
+
+      {/* Tendencia mensual — Conversión (líneas) + Avg session (barras), real vs meta */}
+      <section className="rounded-lg border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: Conversion rate + Avg session (real vs meta)</h3>
+        <p className="text-xs text-muted-foreground">
+          Líneas = conversion rate (tinta real · gris punteada meta). Barras = avg session (azul real · gris meta). Año actual.
+        </p>
+        <div className="mt-4">
+          <WebConvAvgChart data={convAvgData} />
         </div>
       </section>
 
