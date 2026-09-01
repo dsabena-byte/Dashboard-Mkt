@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, LabelList, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export interface IgEngagementDatum {
   mes: string;
@@ -55,7 +55,9 @@ export function IgEngagementChart({ data }: { data: IgEngagementDatum[] }) {
         {hasMeta && (
           <Line yAxisId="left" type="linear" dataKey="metaEngPct" name="Meta eng. %" stroke="#94a3b8" strokeWidth={1.75} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#94a3b8" }} connectNulls />
         )}
-        <Line yAxisId="left" type="monotone" dataKey="engPct" name="Engagement %" stroke="#0f172a" strokeWidth={2.5} dot={{ r: 3, fill: "#0f172a", stroke: "#fff", strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls />
+        <Line yAxisId="left" type="monotone" dataKey="engPct" name="Engagement %" stroke="#0f172a" strokeWidth={2.5} dot={{ r: 3, fill: "#0f172a", stroke: "#fff", strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls>
+          <LabelList dataKey="engPct" position="top" offset={10} fontSize={9} fontWeight={600} fill="#0f172a" formatter={(v: number) => (v != null ? `${v.toFixed(1)}%` : "")} />
+        </Line>
       </ComposedChart>
     </ResponsiveContainer>
   );
