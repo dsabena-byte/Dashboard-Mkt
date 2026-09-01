@@ -1,6 +1,7 @@
 "use client";
 
 import { Bar, CartesianGrid, ComposedChart, LabelList, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartTooltip } from "@/components/chart-tooltip";
 
 export interface WebConvAvgDatum {
   mes: string;
@@ -24,26 +25,25 @@ export function WebConvAvgChart({ data }: { data: WebConvAvgDatum[] }) {
         <YAxis
           yAxisId="left"
           width={56}
-          stroke="#334155"
+          stroke="#0f172a"
           fontSize={11}
           tickLine={false}
           tickFormatter={(v: number) => `${v.toFixed(1)}%`}
-          label={{ value: "Conversion %", angle: -90, position: "insideLeft", fontSize: 10, fill: "#334155" }}
+          label={{ value: "Conversion %", angle: -90, position: "insideLeft", fontSize: 10, fill: "#0f172a" }}
         />
         {/* Derecha: Avg session en segundos (barras) */}
         <YAxis
           yAxisId="right"
           width={56}
           orientation="right"
-          stroke="#94a3b8"
+          stroke="#1e40af"
           fontSize={11}
           tickLine={false}
           tickFormatter={(v: number) => `${Math.round(v)}s`}
-          label={{ value: "Avg session (s)", angle: 90, position: "insideRight", fontSize: 10, fill: "#94a3b8" }}
+          label={{ value: "Avg session (s)", angle: 90, position: "insideRight", fontSize: 10, fill: "#1e40af" }}
         />
         <Tooltip
-          formatter={(v: number, name: string) => [name.includes("%") ? `${v.toFixed(2)}%` : `${Math.round(v)}s`, name]}
-          contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+          content={<ChartTooltip format={(v, name) => (name.includes("%") ? `${v.toFixed(2)}%` : `${Math.round(v)}s`)} />}
           cursor={{ fill: "rgba(100,116,139,.06)" }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value: string) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
