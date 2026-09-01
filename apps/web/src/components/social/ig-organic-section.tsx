@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
 import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
-import { IgEvolutionChart } from "@/components/social/ig-evolution-chart";
+import { IgAlcanceChart } from "@/components/social/ig-alcance-chart";
+import { IgEngagementChart } from "@/components/social/ig-engagement-chart";
 import { ClasifBadge } from "@/components/social/clasif-badge";
 import type { IgOrganicSummary, IgDemoBreakdown } from "@/lib/meta-ig-queries";
 import type { MetaKpiData } from "@/lib/metas-server";
@@ -115,8 +116,17 @@ export function IgOrganicSection({
   const metaAlcRef = refIdx >= 0 ? (alcVals?.[refIdx] ?? null) : null;
   const metaEngRef = refIdx >= 0 ? (engVals?.[refIdx] ?? null) : null;
 
-  // Engagement % del período (para el hint YTD del card).
-  const engPctPeriodo = data.totalReach > 0 ? (data.totalEngagement / data.totalReach) * 100 : null;
+  // ===== Acumulado ANUAL (YTD): meses [0..refIdx] =====
+  const sum = (xs: (number | null | undefined)[]) => xs.reduce((a: number, x) => a + (x ?? 0), 0);
+  const upto = refIdx >= 0 ? refIdx : 11;
+  const alcYtd = sum(data.monthlyData.slice(0, upto + 1).map((d) => d.alcance));
+  const metaAlcYtd = sum((alcVals ?? []).slice(0, upto + 1));
+  // Engagement % acumulado = interacciones YTD / alcance YTD (rate ponderado).
+  const engAbsYtd = sum(data.monthlyData.slice(0, upto + 1).map((d) => d.engagement));
+  const engPctYtd = alcYtd > 0 ? (engAbsYtd / alcYtd) * 100 : null;
+  // Meta eng% acumulada = promedio de las metas mensuales definidas hasta el mes ref.
+  const engMetasYtd = (engVals ?? []).slice(0, upto + 1).filter((v): v is number => v != null);
+  const metaEngYtd = engMetasYtd.length ? engMetasYtd.reduce((a, b) => a + b, 0) / engMetasYtd.length : null;
 
   // Color semáforo de la barra de alcance de cada mes (vs su meta).
   const semColorAlc = (i: number): string => {
@@ -127,11 +137,17 @@ export function IgOrganicSection({
     return SEMAFORO_COLOR[semaforoDe(c, { umbralVerde: metaAlc?.umbralVerde ?? 100, umbralAmarillo: metaAlc?.umbralAmarillo ?? 90 })];
   };
 
-  const chartData = data.monthlyData.map((d, i) => ({
+  const alcChartData = data.monthlyData.map((d, i) => ({
     mes: d.mes,
     alcance: d.alcance,
     metaAlcance: alcVals?.[i] ?? null,
     alcColor: semColorAlc(i),
+  }));
+  const engChartData = data.monthlyData.map((d, i) => ({
+    mes: d.mes,
+    likes: d.likes,
+    comentarios: d.comentarios,
+    guardados: d.guardados,
     engPct: engPctMensual[i] ?? null,
     metaEngPct: engVals?.[i] ?? null,
   }));
@@ -155,25 +171,29 @@ export function IgOrganicSection({
         <MetaKpiCard
           title="Alcance (personas)"
           medida="Suma del reach de los posts del mes"
-          actual={alcRef}
-          meta={metaAlcRef}
-          mesLabel={refMes}
+          headlineActual={alcRef}
+          headlineLabel={refMes}
           direccion={metaAlc?.direccion}
           umbralVerde={metaAlc?.umbralVerde}
           umbralAmarillo={metaAlc?.umbralAmarillo}
-          periodoHint={`YTD ${fmtK(data.totalReach)} · ${data.postCount} posts`}
+          rows={[
+            { label: `Mes ${refMes}`, actual: alcRef, meta: metaAlcRef },
+            { label: "Acum. YTD", actual: alcYtd, meta: metaAlcYtd },
+          ]}
         />
         <MetaKpiCard
           title="Engagement %"
           medida="Interacciones ÷ alcance"
-          actual={engRef}
-          meta={metaEngRef}
-          mesLabel={refMes}
+          headlineActual={engRef}
+          headlineLabel={refMes}
           unidad="%"
           direccion={metaEng?.direccion}
           umbralVerde={metaEng?.umbralVerde}
           umbralAmarillo={metaEng?.umbralAmarillo}
-          periodoHint={engPctPeriodo != null ? `YTD ${engPctPeriodo.toFixed(2)}%` : undefined}
+          rows={[
+            { label: `Mes ${refMes}`, actual: engRef, meta: metaEngRef },
+            { label: "Acum. YTD", actual: engPctYtd, meta: metaEngYtd },
+          ]}
         />
         <div className="flex flex-col justify-center rounded-xl border bg-card p-4 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Followers</div>
@@ -210,12 +230,12 @@ export function IgOrganicSection({
         />
       </div>
 
-      {/* Gr&aacute;fico mensual */}
+      {/* Gráfico 1 — Alcance (real vs meta) */}
       {data.monthlyData.length > 0 && (
         <div className="rounded-lg border bg-background p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Evoluci&oacute;n mensual &mdash; Alcance y Engagement % (real vs meta)
+              Alcance mensual &mdash; real vs meta
             </h4>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
               <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: SEMAFORO_COLOR.verde }} />Cumple</span>
@@ -224,7 +244,17 @@ export function IgOrganicSection({
               <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-slate-500 bg-slate-300" />Meta</span>
             </div>
           </div>
-          <IgEvolutionChart data={chartData} />
+          <IgAlcanceChart data={alcChartData} />
+        </div>
+      )}
+
+      {/* Gráfico 2 — Engagement % (líneas real/meta) + interacciones absolutas (barras apiladas) */}
+      {data.monthlyData.length > 0 && (
+        <div className="rounded-lg border bg-background p-4">
+          <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Engagement % (real vs meta) e interacciones mensuales por tipo
+          </h4>
+          <IgEngagementChart data={engChartData} />
         </div>
       )}
 

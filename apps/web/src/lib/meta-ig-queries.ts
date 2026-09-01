@@ -28,7 +28,10 @@ export interface IgDemoBreakdown {
 export interface IgMonthlyDatum {
   mes: string;
   alcance: number | null;
-  engagement: number | null;
+  engagement: number | null; // total interacciones = likes + comentarios + guardados
+  likes: number | null;
+  comentarios: number | null;
+  guardados: number | null;
 }
 
 export interface IgOrganicSummary {
@@ -126,7 +129,7 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
   let totalSaves = 0;
   let totalVideoViews = 0;
 
-  const monthlyMap = new Map<string, { alcance: number; engagement: number }>();
+  const monthlyMap = new Map<string, { alcance: number; engagement: number; likes: number; guardados: number }>();
 
   for (const p of posts) {
     totalReach += p.reach ?? 0;
@@ -136,9 +139,11 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
     totalVideoViews += p.video_views ?? 0;
 
     const monthKey = p.fecha_post.slice(0, 7);
-    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0 };
+    const m = monthlyMap.get(monthKey) ?? { alcance: 0, engagement: 0, likes: 0, guardados: 0 };
     m.alcance += p.reach ?? 0;
     m.engagement += p.engagement ?? 0;
+    m.likes += p.reactions ?? 0;
+    m.guardados += p.clicks ?? 0; // guardados = columna clicks (mismo mapeo que totalSaves)
     monthlyMap.set(monthKey, m);
   }
 
@@ -150,10 +155,15 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
   const monthlyData: IgMonthlyDatum[] = Array.from({ length: 12 }, (_, i) => {
     const key = `${targetYear}-${String(i + 1).padStart(2, "0")}`;
     const v = monthlyMap.get(key);
+    // comentarios = residual (engagement - likes - guardados), mismo criterio que totalComments.
+    const comentarios = v ? Math.max(0, v.engagement - v.likes - v.guardados) : null;
     return {
       mes: `${MES_SHORT[i]} ${targetYear.slice(2)}`,
       alcance: v ? v.alcance : null,
       engagement: v ? v.engagement : null,
+      likes: v ? v.likes : null,
+      comentarios,
+      guardados: v ? v.guardados : null,
     };
   });
 
