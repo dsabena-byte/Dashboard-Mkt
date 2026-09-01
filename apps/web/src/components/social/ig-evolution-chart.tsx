@@ -81,7 +81,7 @@ export function IgEvolutionChart({ data }: { data: IgEvolutionDatum[] }) {
         </Bar>
         {/* Meta engagement % = línea punteada neutra */}
         {hasMetaEng && (
-          <Line yAxisId="left" type="linear" dataKey="metaEngPct" name="Meta eng. %" stroke="#94a3b8" strokeWidth={1.75} strokeDasharray="5 4" dot={false} connectNulls />
+          <Line yAxisId="left" type="linear" dataKey="metaEngPct" name="Meta eng. %" stroke="#64748b" strokeWidth={1.75} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#64748b" }} connectNulls />
         )}
         {/* Engagement % real = línea índigo con puntos */}
         <Line yAxisId="left" type="monotone" dataKey="engPct" name="Engagement %" stroke="#4f46e5" strokeWidth={2.5} dot={<EngDot />} activeDot={{ r: 5 }} connectNulls />
