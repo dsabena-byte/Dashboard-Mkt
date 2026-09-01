@@ -163,8 +163,25 @@ basura. Data real:
 El corte viejo `REACH_SANE_MAX=2M` tapaba los de millones **pero no ago (144k)**. **Regla
 definitiva** en `monthlyData`: `pageReach` solo se usa si `pageReach ≤ organicSum*1.1`
 (la reach única de la Página no puede superar la suma de reach de los posts orgánicos por
-dedup). Si la supera → pauta o dato roto → se usa la suma orgánica (ya sin pago). Meses
-recientes quedan subestimados (métrica lifetime madura) — esperado, lo aclara la nota.
+dedup). Si la supera → pauta o dato roto → se usa la suma orgánica (ya sin pago).
+
+### La ventana del sync (`days`) — por qué agosto salía en 5K
+
+El reach de un post (`post_total_media_view_unique`) es **lifetime**: sigue sumando por semanas.
+El workflow `meta-fb-sync.yml` refresca solo los posts de los últimos `days` y estaba en **3**
+(default puesto al crear el workflow, no una decisión afinada). Efecto: cada post se congelaba
+con el reach inmaduro a los ~3 días. Validado con `updated_at`:
+
+- Posts de **jun/jul**: todos con `updated_at = 2026-08-03` (un backfill amplio manual de ese
+  día) → capturados ya maduros → jul suma 28K, jun 33K.
+- Posts de **agosto**: frozen 2-3 días después de `fecha_post`, nunca re-refrescados → suma 5K.
+
+No es que agosto rindiera menos; es que se contó inmaduro. **Fix:** `days` subido a **50** en el
+schedule (el reach se estabiliza a los ~30 días — posts de junio con 38-62 días ≈ julio con
+4-32 días, ~1.850 vs ~1.900; no crece después → 50 da margen). Costo bajo: ~30 posts × (1
+insights + 1 HEAD idempotente) por corrida. **OJO:** en runs por schedule `inputs.days` viene
+vacío → cae al fallback del shell (`${DAYS_INPUT:-50}`), NO al `default` del dispatch → tocar los
+dos. Backfill puntual: Actions → "Meta FB sync" → Run workflow → days=90/200.
 
 Además se cerró un bug del filtro de pago: `isPaidOutlier` (reach >20k con engagement <1%)
 excluía el boosteo del **gráfico mensual** pero **no de `topPosts`** (la lista que expone el

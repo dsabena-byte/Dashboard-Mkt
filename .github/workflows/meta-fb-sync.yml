@@ -8,7 +8,7 @@ on:
       days:
         description: "Días hacia atrás a sincronizar (200 = backfill de todo 2026)"
         type: string
-        default: "3"
+        default: "50"
 
 jobs:
   trigger:
@@ -19,8 +19,15 @@ jobs:
         run: |
           set -euo pipefail
           # Tomamos solo los dígitos del input (tolera "?days=200", "200 días", etc.).
-          DAYS="$(printf '%s' "${DAYS_INPUT:-3}" | grep -oE '[0-9]+' | head -1)"
-          DAYS="${DAYS:-3}"
+          # OJO: en runs por SCHEDULE, inputs.days viene VACÍO → cae a este fallback.
+          # Tiene que ser ~50 (no 3): el reach de FB (post_total_media_view_unique) es
+          # LIFETIME y madura por semanas. Con ventana de 3 días cada post se congelaba
+          # con el reach INMADURO → los meses recientes salían subestimados (ago-2026 daba
+          # ~5K cuando lo real es ~20-30K). 50 días = cada post se sigue refrescando hasta
+          # madurar (el reach se estabiliza a los ~30 días; 50 da margen). Costo bajo:
+          # ~30 posts × (1 insights call + 1 HEAD idempotente de thumbnail) por corrida.
+          DAYS="$(printf '%s' "${DAYS_INPUT:-50}" | grep -oE '[0-9]+' | head -1)"
+          DAYS="${DAYS:-50}"
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/meta-fb-sync?days=${DAYS}"
           echo "GET $URL"
           if [ -n "${CRON_SECRET:-}" ]; then
