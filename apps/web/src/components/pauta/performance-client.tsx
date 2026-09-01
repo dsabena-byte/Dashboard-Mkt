@@ -82,6 +82,16 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
   return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
 }
 
+// VTR y CPM efectivo son métricas de VIDEO: solo tienen sentido si el video es una
+// parte real del medio. Si el video es residual (ej. Programmatic que pasó a display en
+// julio: 0,03% de las impresiones), calcularlas da VTR >100% o CPM efectivo absurdo
+// (divide la inversión TOTAL por unos pocos views completos → $9M "por view"). Guard:
+// el video tiene que ser ≥30% de las impresiones y las completions ≤ video-impresiones.
+function videoMetrics(comp: number, vimpr: number, impr: number, inv: number): { vtr: number; cpmEf: number } {
+  const esVideo = vimpr > 0 && impr > 0 && vimpr >= impr * 0.3 && comp <= vimpr;
+  return { vtr: esVideo ? (comp / vimpr) * 100 : 0, cpmEf: esVideo && comp > 0 ? (inv / comp) * 1000 : 0 };
+}
+
 // Agrega por dimensión (categoría o rol) con la MISMA estructura/fuentes que la tabla
 // maestra: VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD; EFECTIVO
 // (VTR, completions) desde DV360 + Meta/TikTok automáticos.
@@ -882,8 +892,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         vimpr,
         cpm: m.cpm, // GENERAL
         ctr: m.impresiones > 0 ? (m.clics / m.impresiones) * 100 : 0,
-        vtr: vimpr > 0 ? (comp / vimpr) * 100 : 0, // efectivo (% completions reales)
-        cpmEf: comp > 0 ? (m.inversion / comp) * 1000 : 0, // costo real por mil views completos (inversión OMD)
+        ...videoMetrics(comp, vimpr, m.impresiones, m.inversion), // vtr + cpmEf (solo si es video real)
       };
     };
     const fromOmd = byMedio.filter((m) => m.impresiones > 0).map(mk);
@@ -907,8 +916,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           vimpr,
           cpm: vol.impresiones > 0 ? (vol.inversion / vol.impresiones) * 1000 : 0,
           ctr: vol.impresiones > 0 ? (vol.clics / vol.impresiones) * 100 : 0,
-          vtr: vimpr > 0 ? (comp / vimpr) * 100 : 0,
-          cpmEf: comp > 0 ? (vol.inversion / comp) * 1000 : 0,
+          ...videoMetrics(comp, vimpr, vol.impresiones, vol.inversion), // vtr + cpmEf (solo si es video real)
         };
       });
     const all = [...fromOmd, ...autoItems].sort((a, b) => b.inversion - a.inversion);
