@@ -71,7 +71,7 @@ export function IgEvolutionChart({ data }: { data: IgEvolutionDatum[] }) {
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {/* Meta alcance = barra neutra hueca (referencia del plan) */}
         {hasMetaAlc && (
-          <Bar yAxisId="right" dataKey="metaAlcance" name="Meta alcance" fill="#f1f5f9" stroke="#94a3b8" strokeWidth={1.25} radius={[3, 3, 0, 0]} />
+          <Bar yAxisId="right" dataKey="metaAlcance" name="Meta alcance" fill="#cbd5e1" stroke="#64748b" strokeWidth={1.25} radius={[3, 3, 0, 0]} />
         )}
         {/* Alcance real = barra coloreada por semáforo vs su meta */}
         <Bar yAxisId="right" dataKey="alcance" name="Alcance (real)" radius={[3, 3, 0, 0]}>

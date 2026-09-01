@@ -221,7 +221,7 @@ export function IgOrganicSection({
               <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: SEMAFORO_COLOR.verde }} />Cumple</span>
               <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: SEMAFORO_COLOR.amarillo }} />Cerca</span>
               <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: SEMAFORO_COLOR.rojo }} />Debajo</span>
-              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-slate-400 bg-slate-100" />Meta</span>
+              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-slate-500 bg-slate-300" />Meta</span>
             </div>
           </div>
           <IgEvolutionChart data={chartData} />
