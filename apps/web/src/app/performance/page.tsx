@@ -68,8 +68,8 @@ async function getPlanningMonthly(): Promise<PlanningByMes> {
 
 export default async function PerformancePautaPage() {
   const [data, metaPaid, dv360, dv360Reach, fxRates, planningMonthly, googleAdsOmd, googleAdsCreatives, fDv360, fMeta, fOmd, fGads] = await Promise.all([
-    getPautaPerformance(),
-    safe(getMetaPaidCreatives(), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
+    getPautaPerformance(true), // Pauta Mkt incluye UGC como una categoría más
+    safe(getMetaPaidCreatives(true), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
     safe(getDv360Creatives(), [] as Awaited<ReturnType<typeof getDv360Creatives>>),
     safe(getDv360Reach(), [] as Awaited<ReturnType<typeof getDv360Reach>>),
     safe(getFxRates(), {} as Record<string, number>),

@@ -22,7 +22,7 @@ export function SocialEngagementChart({ data, components }: { data: SocialEngDat
 
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <ComposedChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 8 }}>
+      <ComposedChart data={data} margin={{ top: 24, right: 12, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
         <YAxis

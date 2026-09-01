@@ -149,16 +149,17 @@ function mapRow(r: DbRow): MetaPaidCreativeRow {
   };
 }
 
-export async function getMetaPaidCreatives(): Promise<MetaPaidCreativeRow[]> {
+// includeUgc=true suma la categoría UGC (Pauta Mkt la incluye como un medio/categoría
+// más). Por defecto la excluye (UGC vive en /influencia).
+export async function getMetaPaidCreatives(includeUgc = false): Promise<MetaPaidCreativeRow[]> {
   const supabase = getServerSupabase();
-  const { data, error } = await supabase
+  let q = supabase
     .from("meta_paid_creatives")
     .select(
       "ad_id, creative_id, mes, plataforma, campaign_name, adset_name, ad_name, objective, categoria, tipo_compra, source, thumbnail_url, image_url, body, permalink_url, instagram_permalink_url, impresiones, alcance, frecuencia, clicks, spend, ctr, cpm, cpc, views_total, views_completed, vtr, video_plays, video_p25, video_p50, video_p75, video_p100, video_thruplay, vtr_p25, vtr_p50, vtr_p75, vtr_p100, reactions, comments, shares, saves, post_engagement, dias_activos, effective_status",
-    )
-    .neq("categoria", "UGC")
-    .order("spend", { ascending: false })
-    .returns<DbRow[]>();
+    );
+  if (!includeUgc) q = q.neq("categoria", "UGC");
+  const { data, error } = await q.order("spend", { ascending: false }).returns<DbRow[]>();
   if (error) throw new Error(`meta_paid_creatives: ${error.message}`);
   return (data ?? []).map(mapRow);
 }
