@@ -57,6 +57,31 @@ reporte_existencia/cb_homologos).
   (loop de function-calling OpenAI). Extender a un dashboard = escribir `lib/chat/tools-<dash>.ts`
   (envolver query functions existentes) + registrarlo en `lib/chat/registry.ts` + sumar entrada
   en `global-data-chat.tsx`. El motor NO se toca.
+- **Metas por KPI + sistema visual (SEGUIR SIEMPRE, valida ANTES de ejecutar — error recurrente):**
+  Cuando se agregan metas a un dashboard NO alcanza con poner el `MetaPanel` (configurador):
+  hay que **cablear la meta al gráfico y a los cards**, si no el usuario guarda y no cambia nada.
+  Checklist obligatorio por dashboard:
+  1. **Leer las metas server-side** en el `page.tsx` con `getMetaKpi(plan, kpi, anio)` de
+     `lib/metas-server.ts` (trae valores mensuales `[12]` + config: dirección/umbrales/unidad).
+     El `plan` = nombre del menú/catálogo (ej "Web / Ecommerce", "Facebook"). FB va con plan
+     propio separado de IG.
+  2. **Cards con `MetaKpiCard`** (`components/metas/meta-kpi-card.tsx`): headline = valor del
+     **último mes con dato** (no el calendario) + dos filas de comparación **Mes** y **Acum. YTD**,
+     cada una con semáforo + barra de avance. Alcance YTD = suma de meses; rate YTD =
+     acumulado/acumulado vs promedio de metas.
+  3. **Gráfico con meta**: barras reales + **barra de meta gris pizarra** (`IgAlcanceChart`) y/o
+     líneas real+meta (`SocialEngagementChart`, componentes por prop). Etiquetas numéricas en las
+     series reales. Ejes de ancho fijo (56px) para que los meses queden **alineados** entre
+     gráficos apilados.
+  4. **Paleta SOBRIA (respetar el sistema de IG):** datos reales en **azul** (`#1e40af`),
+     meta en **gris pizarra** (`#cbd5e1`/`#64748b`), líneas en tinta (`#0f172a`); el
+     **verde/amarillo/rojo (`SEMAFORO_COLOR`) es SOLO semáforo/estado**, nunca decorativo ni color
+     de meta. Interacciones apiladas = rampa azul monocromática (`ENG_COLORS`).
+  5. El guardado del `MetaPanel` ya hace **`router.refresh()`** → los server components toman la
+     meta nueva sin recargar. El `MetaPanel` arranca **colapsable/cerrado**.
+  Referencia canónica = `IgOrganicSection` + `FbOrganicSection`. Replicar SIEMPRE ese sistema
+  (cards, gráficos, colores, método) en cada dashboard nuevo. **Validar este checklist antes de
+  decir que las metas están "listas".**
 
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
 - **Mercado (GfK) — carga mensual:** el share de `mercado_share` se actualiza a mano desde
