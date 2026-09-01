@@ -89,12 +89,12 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
         {hasMeta && (
           <Line
             yAxisId="right"
-            type="monotone"
+            type="linear"
             dataKey="meta"
             stroke="#16a34a"
             strokeWidth={2}
             strokeDasharray="5 4"
-            dot={false}
+            dot={{ r: 2.5, fill: "#16a34a" }}
             connectNulls
             name="Meta alcance"
           />
