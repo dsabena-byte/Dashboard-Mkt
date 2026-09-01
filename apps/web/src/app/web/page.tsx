@@ -114,6 +114,8 @@ export default async function WebPage({ searchParams }: PageProps) {
     latestWebDate,
     webMetaUsers,
     webMetaSessions,
+    webMetaAvg,
+    webMetaConv,
   ] = await Promise.all([
     safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
     safe(getWebDailyKpis(yoyRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(yoy)"),
@@ -143,6 +145,8 @@ export default async function WebPage({ searchParams }: PageProps) {
     safe<string | null>(getLatestWebDate(), null, "getLatestWebDate"),
     safe(getMetaKpi("Web / Ecommerce", "Tráfico web (usuarios)", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-users)"),
     safe(getMetaKpi("Web / Ecommerce", "Sesiones", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-sessions)"),
+    safe(getMetaKpi("Web / Ecommerce", "Avg Sesión (segundos)", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-avg)"),
+    safe(getMetaKpi("Web / Ecommerce", "Tasa de conversión", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-conv)"),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -270,13 +274,24 @@ export default async function WebPage({ searchParams }: PageProps) {
   const webRefMes = webRefIdx >= 0 ? monthlyData[webRefIdx]!.mes : "";
   const webUpto = webRefIdx >= 0 ? webRefIdx : 11;
   const usersRef = webRefIdx >= 0 ? monthlyData[webRefIdx]!.usuarios_curr : null;
-  const sesRef = webRefIdx >= 0 ? monthlyData[webRefIdx]!.sesiones_curr : null;
   const usersRefMeta = webRefIdx >= 0 ? (webMetaUsers.valores[webRefIdx] ?? null) : null;
-  const sesRefMeta = webRefIdx >= 0 ? (webMetaSessions.valores[webRefIdx] ?? null) : null;
   const usersYtd = webSum(monthlyData.slice(0, webUpto + 1).map((d) => d.usuarios_curr));
-  const sesYtd = webSum(monthlyData.slice(0, webUpto + 1).map((d) => d.sesiones_curr));
   const usersMetaYtd = webSum(webMetaUsers.valores.slice(0, webUpto + 1));
-  const sesMetaYtd = webSum(webMetaSessions.valores.slice(0, webUpto + 1));
+  // Conversión rate mensual (conversiones/sesiones) desde monthlyAll — para el card principal.
+  const convMes = (i: number) => monthlyAll.get(`${currYear}-${String(i + 1).padStart(2, "0")}-01`);
+  const convRefV = webRefIdx >= 0 ? convMes(webRefIdx) : undefined;
+  const convRef = convRefV && convRefV.sesiones > 0 ? (convRefV.conversiones / convRefV.sesiones) * 100 : null;
+  const convRefMeta = webRefIdx >= 0 ? (webMetaConv.valores[webRefIdx] ?? null) : null;
+  let convYtdC = 0, convYtdS = 0;
+  for (let i = 0; i <= webUpto; i++) { const v = convMes(i); if (v) { convYtdC += v.conversiones; convYtdS += v.sesiones; } }
+  const convYtd = convYtdS > 0 ? (convYtdC / convYtdS) * 100 : null;
+  const convMetasYtd = webMetaConv.valores.slice(0, webUpto + 1).filter((v): v is number => v != null);
+  const convMetaYtd = convMetasYtd.length ? convMetasYtd.reduce((a, b) => a + b, 0) / convMetasYtd.length : null;
+  // Avg session (segundos) — solo hay total del período (no mensual).
+  const avgSessionActual = totals.avg_session_duration;
+  const avgRefMeta = webRefIdx >= 0 ? (webMetaAvg.valores[webRefIdx] ?? null) : null;
+  const avgMetasYtd = webMetaAvg.valores.slice(0, webUpto + 1).filter((v): v is number => v != null);
+  const avgMetaYtd = avgMetasYtd.length ? avgMetasYtd.reduce((a, b) => a + b, 0) / avgMetasYtd.length : null;
   const yearLabels = { curr: String(currYear), prev: String(prevYear) };
 
   // Estrategia de agregación según el largo del rango:
@@ -355,12 +370,8 @@ export default async function WebPage({ searchParams }: PageProps) {
     ...PALETA_CATEGORIA,
   };
 
-  const deltaUsuarios = pctChange(totals.usuarios, totalsPrev.usuarios);
   const deltaSesiones = pctChange(totals.sesiones, totalsPrev.sesiones);
   const deltaConversiones = pctChange(totals.conversiones, totalsPrev.conversiones);
-  const deltaCR = (totals.conversion_rate !== null && totalsPrev.conversion_rate !== null && totalsPrev.conversion_rate > 0)
-    ? (totals.conversion_rate - totalsPrev.conversion_rate) / totalsPrev.conversion_rate
-    : null;
 
   const hasData = dailyKpis.length > 0;
 
@@ -411,59 +422,8 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* KPIs principales — Usuarios únicos como KPI principal */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title={monthlyUsersRow ? "Usuarios únicos (mes)" : "Usuarios únicos"}
-          value={formatNumber(monthlyUsersRow ? monthlyUsersRow.total_users : totals.usuarios)}
-          hint={
-            monthlyUsersRow
-              ? `${formatNumber(monthlyUsersRow.new_users)} nuevos · ${formatDelta(deltaUsuarios)}`
-              : formatDelta(deltaUsuarios)
-          }
-        />
-        <KpiCard
-          title={chartSesiones ? "Sesiones (mes)" : "Sesiones"}
-          value={formatNumber(chartSesiones ?? totals.sesiones)}
-          hint={formatDelta(deltaSesiones)}
-        />
-        <KpiCard
-          title="Conversiones"
-          value={formatNumber(totals.conversiones)}
-          hint={formatDelta(deltaConversiones)}
-        />
-        <KpiCard
-          title="Conversion rate"
-          value={totals.conversion_rate !== null ? `${(totals.conversion_rate * 100).toFixed(2)}%` : "—"}
-          hint={formatDelta(deltaCR)}
-        />
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title="Pageviews"
-          value={formatNumber(totals.pageviews)}
-          hint={`${totals.pages_per_session?.toFixed(2) ?? "—"} pages/session`}
-        />
-        <KpiCard
-          title="Bounce rate"
-          value={totals.bounce_rate !== null ? formatPct(totals.bounce_rate * 100, 1) : "—"}
-          hint="GA4 engaged-sessions def"
-        />
-        <KpiCard
-          title="Avg session"
-          value={totals.avg_session_duration !== null ? `${Math.round(totals.avg_session_duration)}s` : "—"}
-          hint="duración media"
-        />
-        <KpiCard
-          title="Top canal"
-          value={channels[0]?.canal ?? "—"}
-          hint={channels[0] ? `${formatNumber(channels[0].sesiones)} sesiones` : ""}
-        />
-      </section>
-
-      {/* Cards estratégicos con meta (mes de referencia + acumulado YTD) */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* Cards PRINCIPALES con meta (los KPIs del Mapa Estratégico: Tráfico, Avg Session, Conversión) */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <MetaKpiCard
           title="Tráfico web (usuarios)"
           medida="Usuarios del mes"
@@ -478,19 +438,47 @@ export default async function WebPage({ searchParams }: PageProps) {
           ]}
         />
         <MetaKpiCard
-          title="Sesiones"
-          medida="Sesiones del mes"
-          headlineActual={sesRef}
-          headlineLabel={webRefMes}
-          direccion={webMetaSessions.direccion}
-          umbralVerde={webMetaSessions.umbralVerde}
-          umbralAmarillo={webMetaSessions.umbralAmarillo}
+          title="Avg Session (segundos)"
+          medida="Duración media de sesión (período)"
+          headlineActual={avgSessionActual}
+          headlineLabel="Período"
+          unidad="s"
+          direccion={webMetaAvg.direccion}
+          umbralVerde={webMetaAvg.umbralVerde}
+          umbralAmarillo={webMetaAvg.umbralAmarillo}
           rows={[
-            { label: `Mes ${webRefMes}`, actual: sesRef, meta: sesRefMeta },
-            { label: "Acum. YTD", actual: sesYtd, meta: sesMetaYtd },
+            { label: `Mes ${webRefMes}`, actual: avgSessionActual, meta: avgRefMeta },
+            { label: "Prom. YTD (meta)", actual: avgSessionActual, meta: avgMetaYtd },
           ]}
         />
-      </div>
+        <MetaKpiCard
+          title="Conversion rate"
+          medida="Conversiones ÷ sesiones"
+          headlineActual={convRef}
+          headlineLabel={webRefMes}
+          unidad="%"
+          direccion={webMetaConv.direccion}
+          umbralVerde={webMetaConv.umbralVerde}
+          umbralAmarillo={webMetaConv.umbralAmarillo}
+          rows={[
+            { label: `Mes ${webRefMes}`, actual: convRef, meta: convRefMeta },
+            { label: "Acum. YTD", actual: convYtd, meta: convMetaYtd },
+          ]}
+        />
+      </section>
+
+      {/* Cards secundarios (chicos, sin meta) */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <KpiCard
+          title={chartSesiones ? "Sesiones (mes)" : "Sesiones"}
+          value={formatNumber(chartSesiones ?? totals.sesiones)}
+          hint={formatDelta(deltaSesiones)}
+        />
+        <KpiCard title="Conversiones" value={formatNumber(totals.conversiones)} hint={formatDelta(deltaConversiones)} />
+        <KpiCard title="Pageviews" value={formatNumber(totals.pageviews)} hint={`${totals.pages_per_session?.toFixed(2) ?? "—"} pages/session`} />
+        <KpiCard title="Bounce rate" value={totals.bounce_rate !== null ? formatPct(totals.bounce_rate * 100, 1) : "—"} hint="GA4 engaged-sessions def" />
+        <KpiCard title="Top canal" value={channels[0]?.canal ?? "—"} hint={channels[0] ? `${formatNumber(channels[0].sesiones)} sesiones` : ""} />
+      </section>
 
       {/* Tendencia mensual — últimos 12 meses */}
       <section className="rounded-lg border bg-card p-6">
