@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatNumber } from "@/lib/utils";
+import { ChartTooltip } from "@/components/chart-tooltip";
 
 interface MonthlyDatum {
   mes: string;
@@ -60,17 +61,9 @@ export function WebMonthlyChart({
       <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-        <YAxis yAxisId="left" stroke="#2b4dff" fontSize={11} tickFormatter={formatTick} />
-        <YAxis yAxisId="right" orientation="right" stroke="#dc2626" fontSize={11} tickFormatter={formatTick} />
-        <Tooltip
-          formatter={(v: number) => formatNumber(v)}
-          contentStyle={{
-            backgroundColor: "hsl(var(--card))",
-            border: "1px solid hsl(var(--border))",
-            borderRadius: 6,
-            fontSize: 12,
-          }}
-        />
+        <YAxis yAxisId="left" stroke="#1e40af" fontSize={11} tickFormatter={formatTick} />
+        <YAxis yAxisId="right" orientation="right" stroke="#0f172a" fontSize={11} tickFormatter={formatTick} />
+        <Tooltip content={<ChartTooltip format={(v) => formatNumber(v)} />} cursor={{ fill: "rgba(100,116,139,.06)" }} />
         <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value: string) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
         {/* Barras = usuarios: meta (gris pizarra) + real (azul, con etiqueta) */}
         {hasUsersPrev && (
