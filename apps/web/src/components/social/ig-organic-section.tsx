@@ -8,7 +8,6 @@ import { IgEngagementChart } from "@/components/social/ig-engagement-chart";
 import { ClasifBadge } from "@/components/social/clasif-badge";
 import type { IgOrganicSummary, IgDemoBreakdown } from "@/lib/meta-ig-queries";
 import type { MetaKpiData } from "@/lib/metas-server";
-import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR } from "@/lib/metas";
 
 function fmtK(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -128,20 +127,10 @@ export function IgOrganicSection({
   const engMetasYtd = (engVals ?? []).slice(0, upto + 1).filter((v): v is number => v != null);
   const metaEngYtd = engMetasYtd.length ? engMetasYtd.reduce((a, b) => a + b, 0) / engMetasYtd.length : null;
 
-  // Color semáforo de la barra de alcance de cada mes (vs su meta).
-  const semColorAlc = (i: number): string => {
-    const meta = alcVals?.[i] ?? null;
-    const real = data.monthlyData[i]?.alcance ?? null;
-    if (real == null || meta == null) return "#2b4dff"; // sin meta → azul marca
-    const c = cumplimientoPct(real, meta, metaAlc?.direccion ?? "up");
-    return SEMAFORO_COLOR[semaforoDe(c, { umbralVerde: metaAlc?.umbralVerde ?? 100, umbralAmarillo: metaAlc?.umbralAmarillo ?? 90 })];
-  };
-
   const alcChartData = data.monthlyData.map((d, i) => ({
     mes: d.mes,
     alcance: d.alcance,
     metaAlcance: alcVals?.[i] ?? null,
-    alcColor: semColorAlc(i),
   }));
   const engChartData = data.monthlyData.map((d, i) => ({
     mes: d.mes,
@@ -233,17 +222,9 @@ export function IgOrganicSection({
       {/* Gráfico 1 — Alcance (real vs meta) */}
       {data.monthlyData.length > 0 && (
         <div className="rounded-lg border bg-background p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Alcance mensual &mdash; real vs meta
-            </h4>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: SEMAFORO_COLOR.verde }} />Cumple</span>
-              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: SEMAFORO_COLOR.amarillo }} />Cerca</span>
-              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: SEMAFORO_COLOR.rojo }} />Debajo</span>
-              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-slate-500 bg-slate-300" />Meta</span>
-            </div>
-          </div>
+          <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Alcance mensual &mdash; real vs meta
+          </h4>
           <IgAlcanceChart data={alcChartData} />
         </div>
       )}
