@@ -16,6 +16,7 @@ interface FbMonthlyDatum {
   mes: string;
   alcance: number | null;
   engagement: number | null;
+  meta?: number | null; // meta mensual de alcance (línea de referencia, eje derecho)
 }
 
 const formatTick = (v: number) =>
@@ -40,6 +41,8 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
       </div>
     );
   }
+
+  const hasMeta = data.some((d) => d.meta != null);
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -83,6 +86,19 @@ export function FbMonthlyChart({ data }: { data: FbMonthlyDatum[] }) {
           activeDot={{ r: 6 }}
           name="Engagement"
         />
+        {hasMeta && (
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="meta"
+            stroke="#16a34a"
+            strokeWidth={2}
+            strokeDasharray="5 4"
+            dot={false}
+            connectNulls
+            name="Meta alcance"
+          />
+        )}
       </ComposedChart>
     </ResponsiveContainer>
   );
