@@ -129,12 +129,13 @@ que **Meta NO expone para Páginas de FB** por API (el endpoint de FB Page Stori
 Stories. Por eso el total de FB se ve más bajo que IG (IG suma Stories, FB no). El dashboard
 lo aclara en la nota del gráfico de FB.
 
-## Actualización dic-2026: Redes pasa a medir SOLO Instagram + fix del posteo pago
+## Actualización dic-2026: la META de Redes se mide solo con Instagram + fix del posteo pago
 
 Dado que el reach de FB quedó estructuralmente roto (métrica de reemplazo que **no separa
-pago de orgánico**), se tomó la decisión de producto: **Redes mide solo Instagram**. Se sacó
-de `app/redes/page.tsx` la sección combinada (IG+FB) y la de FB orgánico; las metas del plan
-usan valores **IG del mes en curso**. El análisis competitivo sigue con todas las redes.
+pago de orgánico**), la **meta/objetivo estratégico del plan Redes se mide solo con Instagram**.
+El dashboard **sigue mostrando todo** (IG orgánico, FB orgánico, el combinado IG+FB y el
+competitivo) — no se sacó ninguna sección. Solo el `MetaPanel` usa valores **IG del mes en
+curso** (`igOrganic.monthlyData` + seguidores IG) para el semáforo.
 
 Además se cerró un bug del filtro de pago: `isPaidOutlier` (reach >20k con engagement <1%)
 excluía el boosteo del **gráfico mensual** pero **no de `topPosts`** (la lista que expone el

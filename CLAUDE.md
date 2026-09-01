@@ -87,13 +87,13 @@ reporte_existencia/cb_homologos).
   posts pagos/boosteados** del gráfico orgánico (firma: reach fuera de escala + engagement casi
   nulo; ver `isPaidOutlier` en `lib/meta-fb-queries.ts`). El mes en curso es acumulativo (arranca
   bajo). Detalle: `docs/meta-fb-reach-deprecation.md`.
-- **Redes = SOLO Instagram (dic-2026):** el dashboard de Redes mide **solo IG** (analítica
-  orgánica de Drean). FB quedó fuera: Meta deprecó su reach orgánico (15-jun-2026) y la métrica
-  de reemplazo **no separa pago de orgánico**, así que un boosteo se cuela e infla todo. Se sacó
-  la sección combinada (IG+FB) y la de FB orgánico de `app/redes/page.tsx`; las metas del plan
-  usan valores **IG del mes en curso** (`igOrganic.monthlyData`). El **análisis competitivo**
-  (benchmark de marcas) sí sigue mostrando todas las redes — es otra cosa. La query de FB
-  (`getFbOrganicSummary`) queda por si se usa en otro lado, pero ya **no se muestra en Redes**.
+- **Redes — el OBJETIVO estratégico se mide solo con Instagram (dic-2026):** el dashboard
+  sigue mostrando **todo** (IG orgánico, FB orgánico, el combinado IG+FB y el competitivo), pero
+  la **meta del plan Redes en el Mapa** usa **solo valores IG del mes en curso**
+  (`igOrganic.monthlyData` + seguidores IG). Motivo: FB deprecó su reach orgánico (15-jun-2026)
+  y el reemplazo **no separa pago de orgánico** → no sirve para fijar/medir una meta. El
+  `MetaPanel` de `app/redes/page.tsx` recibe `alcanceMes`/`interaccionesMes`/`engRateMes` (IG) y
+  `igFollowers`. **No se sacó ninguna sección** del dashboard (el user lo pidió explícito).
 - **FB — posteo pago se excluía a medias (fix definitivo):** el `isPaidOutlier` de
   `lib/meta-fb-queries.ts` (reach >20k con engagement <1%) filtraba el boosteo del **gráfico
   mensual** pero **no de `topPosts`**, que alimentaba los KPI cards e infla­ba Engagement/Video
