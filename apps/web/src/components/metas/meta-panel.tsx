@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Settings2, ChevronDown, Check, Loader2 } from "lucide-react";
 import {
   CAT_GENERAL,
@@ -111,6 +112,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo }: Props) {
   };
 
   const dirty = touchedCfg.size > 0 || touchedVal.size > 0;
+  const router = useRouter();
 
   async function save() {
     setSaving(true);
@@ -135,6 +137,8 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo }: Props) {
         setTouchedCfg(new Set());
         setTouchedVal(new Set());
         setSavedAt(Date.now());
+        // Re-renderiza los server components (gráficos/cards) para que tomen la meta nueva.
+        router.refresh();
       }
     } finally {
       setSaving(false);
