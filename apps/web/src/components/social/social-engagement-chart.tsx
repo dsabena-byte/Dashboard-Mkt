@@ -53,7 +53,7 @@ export function SocialEngagementChart({ data, components }: { data: SocialEngDat
           <Bar key={c.key} yAxisId="right" dataKey={c.key} name={c.name} stackId="int" fill={c.color} radius={c.key === lastKey ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
         ))}
         {hasMeta && (
-          <Line yAxisId="left" type="linear" dataKey="metaEngPct" name="Meta eng. %" stroke="#94a3b8" strokeWidth={1.75} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#94a3b8" }} connectNulls />
+          <Line yAxisId="left" type="monotone" dataKey="metaEngPct" name="Meta eng. %" stroke="#94a3b8" strokeWidth={1.75} strokeDasharray="5 4" dot={{ r: 2.5, fill: "#94a3b8" }} connectNulls />
         )}
         <Line yAxisId="left" type="monotone" dataKey="engPct" name="Engagement %" stroke="#0f172a" strokeWidth={2.5} dot={{ r: 3, fill: "#0f172a", stroke: "#fff", strokeWidth: 1 }} activeDot={{ r: 5 }} connectNulls>
           <LabelList dataKey="engPct" position="top" offset={10} fontSize={9} fontWeight={600} fill="#0f172a" formatter={(v: number) => (v != null ? `${v.toFixed(1)}%` : "")} />
