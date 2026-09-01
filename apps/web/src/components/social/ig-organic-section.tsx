@@ -4,7 +4,13 @@ import { useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
 import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { IgAlcanceChart } from "@/components/social/ig-alcance-chart";
-import { IgEngagementChart } from "@/components/social/ig-engagement-chart";
+import { SocialEngagementChart, ENG_COLORS } from "@/components/social/social-engagement-chart";
+
+const IG_ENG_COMPONENTS = [
+  { key: "likes", name: "Likes", color: ENG_COLORS[0]! },
+  { key: "comentarios", name: "Comentarios", color: ENG_COLORS[1]! },
+  { key: "guardados", name: "Guardados", color: ENG_COLORS[2]! },
+];
 import { ClasifBadge } from "@/components/social/clasif-badge";
 import type { IgOrganicSummary, IgDemoBreakdown } from "@/lib/meta-ig-queries";
 import type { MetaKpiData } from "@/lib/metas-server";
@@ -235,7 +241,7 @@ export function IgOrganicSection({
           <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Engagement % (real vs meta) e interacciones mensuales por tipo
           </h4>
-          <IgEngagementChart data={engChartData} />
+          <SocialEngagementChart data={engChartData} components={IG_ENG_COMPONENTS} />
         </div>
       )}
 
