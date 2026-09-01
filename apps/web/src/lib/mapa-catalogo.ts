@@ -48,7 +48,7 @@ export const CATALOGO_PLANES: CatPlan[] = [
   {
     nombre: "Web / Ecommerce",
     href: "/web",
-    kpis: ["Tráfico web (usuarios)", "Sesiones", "Tasa de conversión", "Ingresos ecommerce", "Pageviews"],
+    kpis: ["Tráfico web (usuarios)", "Sesiones", "Avg Sesión (segundos)", "Bounce rate", "Tasa de conversión", "Ingresos ecommerce", "Pageviews"],
   },
   {
     nombre: "Optimización SEO",
