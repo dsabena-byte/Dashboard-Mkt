@@ -113,6 +113,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo }: Props) {
 
   const dirty = touchedCfg.size > 0 || touchedVal.size > 0;
   const router = useRouter();
+  const [collapsed, setCollapsed] = useState(true); // arranca colapsado para no ocupar espacio
 
   async function save() {
     setSaving(true);
@@ -147,28 +148,35 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo }: Props) {
 
   return (
     <div className="rounded-lg border bg-card p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold tracking-tight">{titulo ?? "Metas del mes"}</h3>
-          <p className="text-[11px] text-muted-foreground">
-            {subtitulo ?? `Cargá la meta mensual de cada KPI. El semáforo compara el valor real de ${MESES[month - 1]} vs la meta.`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {savedAt && !dirty && <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600"><Check className="h-3.5 w-3.5" />Guardado</span>}
-          <button
-            type="button"
-            onClick={save}
-            disabled={!dirty || saving}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-40"
-          >
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            Guardar
-          </button>
-        </div>
+      <div className={`flex flex-wrap items-center justify-between gap-2 ${collapsed ? "" : "mb-3"}`}>
+        <button type="button" onClick={() => setCollapsed((c) => !c)} className="flex flex-1 items-start gap-2 text-left">
+          <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition ${collapsed ? "-rotate-90" : ""}`} />
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight">{titulo ?? "Metas del mes"}</h3>
+            {!collapsed && (
+              <p className="text-[11px] text-muted-foreground">
+                {subtitulo ?? `Cargá la meta mensual de cada KPI. El semáforo compara el valor real de ${MESES[month - 1]} vs la meta.`}
+              </p>
+            )}
+          </div>
+        </button>
+        {!collapsed && (
+          <div className="flex items-center gap-2">
+            {savedAt && !dirty && <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600"><Check className="h-3.5 w-3.5" />Guardado</span>}
+            <button
+              type="button"
+              onClick={save}
+              disabled={!dirty || saving}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Guardar
+            </button>
+          </div>
+        )}
       </div>
 
-      {loading ? (
+      {collapsed ? null : loading ? (
         <div className="py-8 text-center text-xs text-muted-foreground">Cargando metas…</div>
       ) : (
         <div className="divide-y">
