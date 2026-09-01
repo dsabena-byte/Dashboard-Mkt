@@ -58,7 +58,7 @@ export function WebMonthlyChart({
 
   return (
     <ResponsiveContainer width="100%" height={340}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+      <ComposedChart data={data} margin={{ top: 22, right: 16, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} />
         <YAxis yAxisId="left" stroke="#1e40af" fontSize={11} tickFormatter={formatTick} />

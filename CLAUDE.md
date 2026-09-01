@@ -100,6 +100,10 @@ reporte_existencia/cb_homologos).
     ambas fuentes para el mismo medio).
   - **OJO 2:** `pauta_performance.tipo_compra` es **NOT NULL** (usar "CPM"). Categorías válidas:
     Brand/Cocción/Lavado/Refrigeración/UGC/Promoción. Objetivos: Awareness/Consideración/Build.
+  - **UGC:** el dash de Pauta Mkt **INCLUYE UGC** como una categoría más (`getPautaPerformance(true)`
+    + `getMetaPaidCreatives(true)`, param `includeUgc`). UGC **también** sigue en `/influencia`
+    (`getInfluenciaPerformance`/`getMetaUgcCreatives`) — se muestra en los dos. `brand-build-queries`
+    NO incluye UGC (usa el default `includeUgc=false`) para no cambiar el overview estratégico.
   - Cargado **jun+jul 2026** (TikTok por categoría; Mercado/Geo como total del mes en categoría
     "Brand" — los reportes OMD no los abren por categoría). En jun/jul **no corrieron** DOOH ni
     Geo Mobile (jun) ni TV Cable (offline) — no son huecos de carga, no hubo pauta.

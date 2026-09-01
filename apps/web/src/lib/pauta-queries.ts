@@ -59,15 +59,15 @@ function mapRow(r: DbPautaRow): PautaRow {
 const SELECT_COLUMNS =
   "mes, categoria, medio, objetivo, tipo_compra, alcance_plan, alcance, frecuencia_plan, frecuencia, impresiones_plan, impresiones, clics_plan, clics, views_plan, views, inversion_plan, inversion, costo_plan, costo, ctr_plan, ctr";
 
-// Performance Pauta tradicional: excluye UGC, que vive en /influencia.
-export async function getPautaPerformance(): Promise<PautaRow[]> {
+// Performance Pauta. Por defecto excluye UGC (vive en /influencia); con
+// includeUgc=true lo suma como una categoría más (Pauta Mkt lo incluye).
+export async function getPautaPerformance(includeUgc = false): Promise<PautaRow[]> {
   const supabase = getServerSupabase();
-  const { data, error } = await supabase
+  let q = supabase
     .from("pauta_performance")
-    .select(SELECT_COLUMNS)
-    .neq("categoria", "UGC")
-    .order("id", { ascending: true })
-    .returns<DbPautaRow[]>();
+    .select(SELECT_COLUMNS);
+  if (!includeUgc) q = q.neq("categoria", "UGC");
+  const { data, error } = await q.order("id", { ascending: true }).returns<DbPautaRow[]>();
   if (error) throw new Error(`pauta_performance: ${error.message}`);
   return (data ?? []).map(mapRow);
 }

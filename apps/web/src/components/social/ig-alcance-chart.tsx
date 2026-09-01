@@ -17,7 +17,7 @@ export function IgAlcanceChart({ data }: { data: IgAlcanceDatum[] }) {
   const hasMeta = data.some((d) => d.metaAlcance != null);
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <ComposedChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 8 }} barGap={2}>
+      <ComposedChart data={data} margin={{ top: 22, right: 12, left: 8, bottom: 8 }} barGap={2}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
         <YAxis yAxisId="alc" width={56} stroke="#1e40af" fontSize={11} tickLine={false} tickFormatter={fmtK} label={{ value: "Alcance", angle: -90, position: "insideLeft", fontSize: 10, fill: "#1e40af" }} />
