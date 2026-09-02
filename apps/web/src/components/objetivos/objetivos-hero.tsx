@@ -1,6 +1,6 @@
 // Hero-cards del Seguimiento: Salud de Marca (destacada) + los objetivos del Mapa.
 // Cada objetivo muestra su cumplimiento por ROLLUP de KPIs (Σ aporte × min(cumpl,100)),
-// la meta de negocio (Kantar, General = Σ cat × peso) y los KPIs que lo alimentan.
+// la meta de negocio (General = Σ cat × peso) y los KPIs que lo alimentan.
 // Server component.
 
 import { Fragment } from "react";
@@ -24,7 +24,7 @@ function Barra({ v }: { v: number | null }) {
   );
 }
 
-// Desglose por categoría (capa Kantar): resultado vs meta por Lav/Refri/Cocc + General.
+// Desglose por categoría: resultado (derivado del cumplimiento de KPIs) vs meta por Lav/Refri/Cocc + General.
 function PorCategoria({ items }: { items: CatDesglose[] }) {
   if (!items.length || items.every((i) => i.resultado == null && i.meta == null)) return null;
   const genRes = generalPonderado(Object.fromEntries(items.map((i) => [i.categoria, i.resultado])));
@@ -33,7 +33,7 @@ function PorCategoria({ items }: { items: CatDesglose[] }) {
   return (
     <details className="mt-2.5 border-t pt-2">
       <summary className="cursor-pointer select-none text-[9px] font-semibold uppercase tracking-wide text-primary [&::-webkit-details-marker]:hidden">
-        Por categoría (Kantar) · resultado vs meta
+        Por categoría · resultado (derivado de KPIs) vs meta
       </summary>
       <div className="mt-1.5 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2.5 gap-y-1 text-[11px]">
         <span className="text-[8px] uppercase tracking-wide text-muted-foreground/60" />
@@ -102,7 +102,7 @@ function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
       <div className="mt-2"><Barra v={o.cumplMes} /></div>
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
         <span>YTD <span className="font-semibold tabular-nums text-foreground">{pct(o.cumplYtd)}</span></span>
-        <span title="Target de negocio (Kantar) = Σ meta por categoría × peso">Meta neg. (Kantar) <span className="font-semibold tabular-nums text-foreground">{o.metaNegMes == null ? "—" : o.metaNegMes.toFixed(1)}</span></span>
+        <span title="Target de negocio = Σ meta por categoría × peso (mix nov-25)">Meta neg. <span className="font-semibold tabular-nums text-foreground">{o.metaNegMes == null ? "—" : o.metaNegMes.toFixed(1)}</span></span>
       </div>
       {o.cobertura < 99.5 && (
         <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>

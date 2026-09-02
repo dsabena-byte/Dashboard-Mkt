@@ -1,25 +1,29 @@
 import "server-only";
 
-// Fase 2 — Rollup del Mapa Estratégico:
+// Fase 3 — Rollup del Mapa Estratégico:
 //   cumplimiento(KPI)      = min( real/meta , 100% )   (según dirección)
 //   cumplimiento(objetivo) = Σ aporteKPI × cumpl(KPI) / Σ aporteKPI  (solo KPIs con dato)
 //   Salud de Marca         = Σ pesoEstratégico × cumpl(objetivo)     (normalizado)
 // El "aporte" es el peso inbound del Mapa (suma 100% por objetivo). Se renormaliza
 // sobre los KPIs con dato → `cobertura` dice qué fracción del objetivo está instrumentada.
 // La META de negocio del objetivo = Σ (meta por categoría × peso categoría) [mix nov-25].
+//
+// Desglose POR CATEGORÍA (reemplaza la capa Kantar): cada KPI tiene un mix por categoría
+// (Brand/Lav/Refri/Cocc) definido en el Mapa. La meta por categoría de un KPI SUM =
+// metaTotal × (mix[cat] + mix[Brand]); el real por categoría sale de `realCatM`. Para KPIs
+// de tasa la meta es igual en las 3 categorías y el real es el genuino por categoría.
+//   cumpl(objetivo, cat) = Σ peso × cumpl(KPI, cat)
+//   resultado(objetivo, cat) = meta(objetivo, cat) × cumpl(objetivo, cat) / 100
+// Así, si se cumplen los KPIs al 100% en una categoría, el resultado iguala la meta.
 
-import { getSeguimientoKpis } from "./objetivos-kpis";
+import { getSeguimientoKpis, type KpiSeguimiento } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
 import { CATEGORIAS_CORE, generalPonderado } from "./categorias";
-import { getDreanSerie, type DreanMesSeg } from "./salud-marca-queries";
-import { computeDreanConsolidado, type SMRow } from "./salud-marca-model";
 
 const CAP = 100;
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-// Categoría (label en metas) → key del modelo Kantar.
-const CAT_KEY: Record<string, "lav" | "ref" | "coc"> = { Lavado: "lav", "Refrigeración": "ref", "Cocción": "coc" };
-// Objetivo (nombre) → dimensión Kantar. Tolerante a variaciones de nombre.
+// Objetivo (nombre) → dimensión de marca (para agregar la Salud de Marca = 0.25·Σ dims).
 function dimKey(nombre: string): "tom" | "som" | "int" | "poder" | null {
   const n = nombre.toLowerCase();
   if (n.includes("tom") || n.includes("top of mind")) return "tom";
@@ -30,7 +34,7 @@ function dimKey(nombre: string): "tom" | "som" | "int" | "poder" | null {
 }
 
 export interface ObjAporte { kpi: string; peso: number; cumpl: number | null }
-// Desglose por categoría (capa Kantar): resultado (última ola) vs meta.
+// Desglose por categoría: resultado (derivado del cumplimiento de KPIs) vs meta.
 export interface CatDesglose { categoria: string; resultado: number | null; meta: number | null }
 export interface ObjetivoRollup {
   id: string;
@@ -101,26 +105,42 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
   const refIdx = Math.max(0, Math.min(11, currentMonth - 2)); // último mes cerrado (0-based)
   const refMes = MES[refIdx] ?? "";
 
-  const safeP = async <T>(p: Promise<T>, f: T): Promise<T> => { try { return await p; } catch { return f; } };
-  const [kpis, mapa, objMetas, serLav, serRef, serCoc] = await Promise.all([
+  const [kpis, mapa, objMetas] = await Promise.all([
     getSeguimientoKpis(anio),
     getMapaConfig(),
     getObjetivoMetas(anio),
-    safeP(getDreanSerie("Lavado", "MAT"), new Map<string, DreanMesSeg>()),
-    safeP(getDreanSerie("Refrigeración", "MAT"), new Map<string, DreanMesSeg>()),
-    safeP(getDreanSerie("Cocción", "MAT"), new Map<string, DreanMesSeg>()),
   ]);
 
-  // Resultado de marca por categoría (Kantar): última ola con dato real (ej. nov-25).
-  let wave: SMRow | null = null;
-  try {
-    const rows = computeDreanConsolidado({ lav: serLav, ref: serRef, coc: serCoc });
-    wave = rows.find((r) => r.w === "nov-25") ?? rows.find((r) => r.lav.tom.s === "real") ?? rows[rows.length - 1] ?? null;
-  } catch { wave = null; }
-  const waveKantar = wave?.w ?? null;
-
-  const empty: SeguimientoObjetivos = { disponible: false, refMes, waveKantar, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [], porCategoria: [] } };
+  const empty: SeguimientoObjetivos = { disponible: false, refMes, waveKantar: null, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [], porCategoria: [] } };
   if (!mapa || mapa.objetivos.length === 0) return empty;
+
+  // Lookup de KPI (serie real + real por categoría) y del mix por categoría (del Mapa).
+  const kpiByName = new Map<string, KpiSeguimiento>(kpis.map((k) => [k.kpi, k]));
+  const mixByKpi = new Map<string, Record<string, number>>();
+  for (const p of mapa.planes) for (const k of p.kpis) if (k.mix) mixByKpi.set(k.nombre, k.mix);
+
+  // Cumplimiento de un KPI EN UNA CATEGORÍA (mes mesIdx), capado a 100%.
+  // SUM: meta_cat = metaTotal × (mix[cat] + mix[Brand]); real_cat = realCatM[cat] + realCatM[Brand].
+  // Rate: meta igual en las 3 cats; real = realCatM[cat] genuino (o total si el KPI no se desglosa).
+  const cumplKpiCat = (kName: string, cat: string, mesIdx: number): number | null => {
+    const k = kpiByName.get(kName);
+    if (!k) return null;
+    const metaTot = k.metaM[mesIdx] ?? null;
+    if (metaTot == null) return null;
+    if (k.tipo === "sum") {
+      const mix = mixByKpi.get(kName);
+      const rc = k.realCatM;
+      if (!mix || !rc) return cap(cumplimientoPct(k.realM[mesIdx] ?? null, metaTot, k.direccion));
+      const brandMix = mix["Brand"] ?? 0;
+      const catMix = (mix[cat] ?? 0) + brandMix;
+      const metaCat = metaTot * (catMix / 100);
+      if (metaCat <= 0) return null;
+      const realCat = (rc[cat]?.[mesIdx] ?? 0) + (rc["Brand"]?.[mesIdx] ?? 0);
+      return cap(cumplimientoPct(realCat, metaCat, k.direccion));
+    }
+    const realCat = k.realCatM?.[cat]?.[mesIdx] ?? k.realM[mesIdx] ?? null;
+    return cap(cumplimientoPct(realCat, metaTot, k.direccion));
+  };
 
   // Cumplimiento de cada KPI (mes ref = su último mes con dato; capado a 100%).
   const kpiCumpl = new Map<string, { mes: number | null; ytd: number | null; serie: (number | null)[] }>();
@@ -162,13 +182,12 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
     // Cumplimiento por mes = ponderado del cumplimiento de los KPIs en ese mes.
     const cumplSerie = Array.from({ length: 12 }, (_, m) => ponderado(conexiones.map((c) => ({ w: c.peso, c: c.serie[m] ?? null }))).val);
     conexiones.sort((a, b) => b.peso - a.peso);
-    // Desglose por categoría (Kantar resultado vs meta cargada).
-    const dk = dimKey(o.nombre);
-    const porCategoria: CatDesglose[] = CATEGORIAS_CORE.map((cat) => ({
-      categoria: cat,
-      resultado: dk && wave ? (wave[CAT_KEY[cat]!]![dk]?.v ?? null) : null,
-      meta: objMetas[o.nombre]?.[cat]?.[refIdx] ?? null,
-    }));
+    // Desglose por categoría: cumplimiento derivado de los KPIs → resultado = meta × cumpl/100.
+    const porCategoria: CatDesglose[] = CATEGORIAS_CORE.map((cat) => {
+      const cumplCat = ponderado(conexiones.map((c) => ({ w: c.peso, c: cumplKpiCat(c.kpi, cat, refIdx) }))).val;
+      const meta = objMetas[o.nombre]?.[cat]?.[refIdx] ?? null;
+      return { categoria: cat, resultado: meta != null && cumplCat != null ? (meta * cumplCat) / 100 : null, meta };
+    });
     return {
       id: o.id,
       nombre: o.nombre,
@@ -190,15 +209,20 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
   const smMetaNeg = ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.metaNegMes }))).val;
   const smSerie = Array.from({ length: 12 }, (_, m) => ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.cumplSerie[m] ?? null }))).val);
 
-  // Salud de Marca por categoría: resultado Kantar (0.25·dims) + meta = 0.25·Σ metas de
-  // las dimensiones de marca (objetivos que mapean a una dimensión Kantar).
-  const dimObjs = mapa.objetivos.filter((o) => dimKey(o.nombre) != null);
+  // Salud de Marca por categoría = 0.25·Σ (dimensiones de marca), tanto la meta como el
+  // resultado derivado (resultado(dim,cat) = meta × cumpl/100). Si todos los KPIs se cumplen
+  // al 100%, el resultado iguala la meta de marca.
+  const dimObjNames = new Set(mapa.objetivos.filter((o) => dimKey(o.nombre) != null).map((o) => o.nombre));
+  const dimCards = objetivos.filter((o) => dimObjNames.has(o.nombre));
   const smPorCat: CatDesglose[] = CATEGORIAS_CORE.map((cat) => {
-    const metas = dimObjs.map((o) => objMetas[o.nombre]?.[cat]?.[refIdx] ?? null);
+    const cells = dimCards.map((o) => o.porCategoria.find((pc) => pc.categoria === cat));
+    const metas = cells.map((c) => c?.meta ?? null);
+    const ress = cells.map((c) => c?.resultado ?? null);
     const allMeta = metas.length > 0 && metas.every((m) => m != null);
+    const allRes = ress.length > 0 && ress.every((r) => r != null);
     return {
       categoria: cat,
-      resultado: wave ? (wave[CAT_KEY[cat]!]!.sm?.v ?? null) : null,
+      resultado: allRes ? 0.25 * (ress as number[]).reduce((a, b) => a + b, 0) : null,
       meta: allMeta ? 0.25 * (metas as number[]).reduce((a, b) => a + b, 0) : null,
     };
   });
@@ -206,7 +230,7 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
   return {
     disponible: true,
     refMes,
-    waveKantar,
+    waveKantar: null,
     objetivos,
     saludMarca: { cumplMes: smMes.val, cumplYtd: smYtd.val, metaNegMes: smMetaNeg, cumplSerie: smSerie, porCategoria: smPorCat },
   };

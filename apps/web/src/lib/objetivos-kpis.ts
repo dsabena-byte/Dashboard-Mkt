@@ -31,12 +31,74 @@ export interface KpiSeguimiento {
   direccion: "up" | "down";
   umbralVerde: number;
   umbralAmarillo: number;
+  // Real por categoría (Brand/Lavado/Refrigeración/Cocción). Undefined = KPI sin
+  // desglose (usa el total para las 3). Cada valor = realM × share de la categoría.
+  realCatM?: Record<string, (number | null)[]>;
+}
+
+// Categorías del desglose (deben matchear MIX_CATEGORIAS del mapa).
+const CATS4 = ["Brand", "Lavado", "Refrigeración", "Cocción"] as const;
+// Normaliza el valor de categoría de la data cruda a una de CATS4 (o null = ignorar).
+// Cocinas = Cocción; Promoción/UGC/Home se doblan a Brand; Lavavajillas/Otros/null se ignoran.
+function normCat(raw: string | null | undefined): (typeof CATS4)[number] | null {
+  const c = (raw ?? "").toLowerCase();
+  if (c.includes("lavado")) return "Lavado";
+  if (c.includes("refri")) return "Refrigeración";
+  if (c.includes("cocc") || c.includes("cocin")) return "Cocción";
+  if (c.includes("brand") || c.includes("promo") || c.includes("ugc") || c === "home") return "Brand";
+  return null;
+}
+// share por mes: acc[mes][cat] / Σcat. Devuelve Record<cat, share[12]>.
+function sharesFromTotals(acc: Array<Record<string, number>>): Record<string, (number | null)[]> {
+  const out: Record<string, (number | null)[]> = {};
+  for (const c of CATS4) out[c] = Array.from({ length: 12 }, () => null);
+  acc.forEach((byCat, m) => {
+    const tot = CATS4.reduce((a, c) => a + (byCat[c] ?? 0), 0);
+    if (tot <= 0) return;
+    for (const c of CATS4) out[c]![m] = (byCat[c] ?? 0) / tot;
+  });
+  return out;
+}
+const applyShare = (realM: (number | null)[], share: Record<string, (number | null)[]>): Record<string, (number | null)[]> => {
+  const out: Record<string, (number | null)[]> = {};
+  for (const c of CATS4) out[c] = realM.map((r, m) => (r == null || share[c]![m] == null ? null : r * share[c]![m]!));
+  return out;
+};
+// Real por categoría de un KPI de tasa: num[mes][cat]/den[mes][cat] × scale (solo meses cerrados).
+function rateFromAcc(
+  num: Array<Record<string, number>>,
+  den: Array<Record<string, number>>,
+  scale: number,
+  closed: (i: number) => boolean,
+): Record<string, (number | null)[]> {
+  const out: Record<string, (number | null)[]> = {};
+  for (const c of CATS4) {
+    out[c] = Array.from({ length: 12 }, (_, m) => {
+      if (!closed(m)) return null;
+      const d = den[m]![c] ?? 0;
+      return d > 0 ? ((num[m]![c] ?? 0) / d) * scale : null;
+    });
+  }
+  return out;
 }
 
 const MES_FULL = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try { return await p; } catch { return fallback; }
+}
+
+// Fetch REST directo (service key) para vistas/tablas sin helper propio.
+async function fetchRows<T>(query: string): Promise<T[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return [];
+  const res = await fetch(`${url}/rest/v1/${query}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return [];
+  return (await res.json()) as T[];
 }
 
 // ===== Pauta Mkt: mismo modelo gap-fill que impactoMensual (performance-client) =====
@@ -208,31 +270,84 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
   );
   const mFs: MetaKpiData = { valores: fsMetaM, direccion: mFsLav.direccion, umbralVerde: mFsLav.umbralVerde, umbralAmarillo: mFsLav.umbralAmarillo, unidad: "%" };
 
-  const mk = (
-    plan: string, kpi: string, medida: string, unit: KpiUnit, tipo: "sum" | "rate",
-    realM: (number | null)[], meta: MetaKpiData,
-  ): KpiSeguimiento => ({
-    plan, kpi, medida, unit, tipo, realM, metaM: meta.valores,
-    direccion: meta.direccion, umbralVerde: meta.umbralVerde, umbralAmarillo: meta.umbralAmarillo,
+  // ===== Shares por categoría por plan (para el real por categoría) =====
+  const mesIdxFull = (label: string) => MES_FULL.indexOf(label.split(" ")[0] ?? "");
+  const emptyAcc = () => Array.from({ length: 12 }, () => ({}) as Record<string, number>);
+  // Pauta: distribución por impresiones (pauta_performance + meta_paid).
+  const pautaAcc = emptyAcc();
+  for (const r of pauta) { const mi = mesIdxFull(r.mes); const c = normCat(r.categoria); if (mi >= 0 && c) pautaAcc[mi]![c] = (pautaAcc[mi]![c] ?? 0) + (r.impresiones ?? 0); }
+  for (const r of metaPaid) { const mi = mesIdxFull(r.mes); const c = normCat(r.categoria); if (mi >= 0 && c) pautaAcc[mi]![c] = (pautaAcc[mi]![c] ?? 0) + (r.impresiones ?? 0); }
+  const pautaShare = sharesFromTotals(pautaAcc);
+  // Web + IG: por categoría (vw_drean_web_by_category; meta_posts IG).
+  const [webCatRows, igCatRows] = await Promise.all([
+    safe(fetchRows<{ fecha: string; categoria: string | null; usuarios: number | null; sesiones: number | null; conversiones: number | null }>(`vw_drean_web_by_category?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,categoria,usuarios,sesiones,conversiones`), []),
+    safe(fetchRows<{ fecha_post: string; categoria: string | null; reach: number | null; engagement: number | null }>(`meta_posts?platform=eq.instagram&fecha_post=gte.${anio}-01-01&fecha_post=lt.${anio + 1}-01-01&select=fecha_post,categoria,reach,engagement`), []),
+  ]);
+  // Tráfico web = SUM → share por usuarios. Conversión = rate → real por categoría genuino (conv÷ses).
+  const webAcc = emptyAcc();
+  const webConvNum = emptyAcc(); const webConvDen = emptyAcc();
+  for (const r of webCatRows) {
+    const mi = Number(r.fecha?.slice(5, 7)) - 1; const c = normCat(r.categoria);
+    if (mi >= 0 && mi < 12 && c) {
+      webAcc[mi]![c] = (webAcc[mi]![c] ?? 0) + (r.usuarios ?? 0);
+      webConvNum[mi]![c] = (webConvNum[mi]![c] ?? 0) + (r.conversiones ?? 0);
+      webConvDen[mi]![c] = (webConvDen[mi]![c] ?? 0) + (r.sesiones ?? 0);
+    }
+  }
+  const webShare = sharesFromTotals(webAcc);
+  const webConvCatReal = rateFromAcc(webConvNum, webConvDen, 100, closed);
+  // Alcance IG = SUM → share por reach. Engagement = rate → real por categoría genuino (eng÷reach).
+  const igAcc = emptyAcc();
+  const igEngNum = emptyAcc(); const igEngDen = emptyAcc();
+  for (const r of igCatRows) {
+    const mi = Number(r.fecha_post?.slice(5, 7)) - 1; const c = normCat(r.categoria);
+    if (mi >= 0 && mi < 12 && c) {
+      igAcc[mi]![c] = (igAcc[mi]![c] ?? 0) + (r.reach ?? 0);
+      igEngNum[mi]![c] = (igEngNum[mi]![c] ?? 0) + (r.engagement ?? 0);
+      igEngDen[mi]![c] = (igEngDen[mi]![c] ?? 0) + (r.reach ?? 0);
+    }
+  }
+  const igShare = sharesFromTotals(igAcc);
+  const igEngCatReal = rateFromAcc(igEngNum, igEngDen, 100, closed);
+  // Floor Share: real POR categoría directo (share Drean por góndola), no vía total.
+  const fsCatReal: Record<string, (number | null)[]> = { Brand: Array(12).fill(null), Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null) };
+  MES_SHORT.forEach((short, i) => {
+    if (!closed(i)) return;
+    const rows = fsRows.filter((r) => isoWeekToMes(r.semana, anio) === short);
+    if (!rows.length) return;
+    const o = computeOverall(rows);
+    fsCatReal.Lavado![i] = o.lavado.share; fsCatReal["Refrigeración"]![i] = o.refri.share; fsCatReal["Cocción"]![i] = o.coccion.share;
   });
 
+  const mk = (
+    plan: string, kpi: string, medida: string, unit: KpiUnit, tipo: "sum" | "rate",
+    realM: (number | null)[], meta: MetaKpiData, realCatM?: Record<string, (number | null)[]>,
+  ): KpiSeguimiento => ({
+    plan, kpi, medida, unit, tipo, realM, metaM: meta.valores,
+    direccion: meta.direccion, umbralVerde: meta.umbralVerde, umbralAmarillo: meta.umbralAmarillo, realCatM,
+  });
+
+  const pautaAlcM = serieSum(pm, (m) => m.alc);
+  const pautaImprM = serieSum(pm, (m) => m.impr);
+  const pautaClicM = serieSum(pm, (m) => m.clic);
+
   return [
-    // Pauta Mkt
+    // Pauta Mkt (share por impresiones). Inversión/Frecuencia/VTR no se desglosan por categoría.
     mk("Pauta Mkt", "Inversión", "Inversión ejecutada (ARS)", "$", "sum", serieSum(pm, (m) => m.inv), mInv),
-    mk("Pauta Mkt", "Alcance único", "Personas alcanzadas", "", "sum", serieSum(pm, (m) => m.alc), mAlc),
+    mk("Pauta Mkt", "Alcance único", "Personas alcanzadas", "", "sum", pautaAlcM, mAlc, applyShare(pautaAlcM, pautaShare)),
     mk("Pauta Mkt", "Frecuencia", "Impresiones ÷ alcance", "x", "rate", serieRate(pm, (m) => m.impr, (m) => m.alc), mFrec),
-    mk("Pauta Mkt", "Impresiones", "Impresiones totales", "", "sum", serieSum(pm, (m) => m.impr), mImpr),
+    mk("Pauta Mkt", "Impresiones", "Impresiones totales", "", "sum", pautaImprM, mImpr, applyShare(pautaImprM, pautaShare)),
     mk("Pauta Mkt", "VTR (≥50%)", "Vistas 50% ÷ impr. de video", "%", "rate", serieRate(pm, (m) => m.v50, (m) => m.vbase, 100), mVtr),
-    mk("Pauta Mkt", "Clicks", "Clicks totales", "", "sum", serieSum(pm, (m) => m.clic), mClicks),
-    // Web / Ecommerce
-    mk("Web / Ecommerce", "Tráfico web (usuarios)", "Usuarios únicos del mes", "", "sum", webUsersM, mWebUsers),
+    mk("Pauta Mkt", "Clicks", "Clicks totales", "", "sum", pautaClicM, mClicks, applyShare(pautaClicM, pautaShare)),
+    // Web / Ecommerce (share por usuarios). Avg Sesión = total, mismo valor a las 3 categorías.
+    mk("Web / Ecommerce", "Tráfico web (usuarios)", "Usuarios únicos del mes", "", "sum", webUsersM, mWebUsers, applyShare(webUsersM, webShare)),
     mk("Web / Ecommerce", "Avg Sesión (segundos)", "Duración media de sesión", "s", "rate", webAvgM, mWebAvg),
-    mk("Web / Ecommerce", "Tasa de conversión", "Conversiones ÷ sesiones", "%", "rate", webConvM, mWebConv),
-    // Instagram (el objetivo de Redes se mide solo con IG)
-    mk("Instagram", "Alcance orgánico", "Alcance IG del mes", "", "sum", igAlcM, mIgAlc),
-    mk("Instagram", "Engagement rate", "Interacciones ÷ alcance", "%", "rate", igEngM, mIgEng),
-    // Trade Mkt
+    mk("Web / Ecommerce", "Tasa de conversión", "Conversiones ÷ sesiones", "%", "rate", webConvM, mWebConv, webConvCatReal),
+    // Instagram (el objetivo de Redes se mide solo con IG; share por reach de posts)
+    mk("Instagram", "Alcance orgánico", "Alcance IG del mes", "", "sum", igAlcM, mIgAlc, applyShare(igAlcM, igShare)),
+    mk("Instagram", "Engagement rate", "Interacciones ÷ alcance", "%", "rate", igEngM, mIgEng, igEngCatReal),
+    // Trade Mkt (Floor Share = real POR categoría directo; CB total-only)
     mk("Cuadros Básicos", "% Cumplimiento CB", "% CB del mes", "%", "rate", cbRealM, mCb),
-    mk("Floor Share", "Floor Share (exhibición)", "Share Drean góndola (Σ cat × peso)", "%", "rate", fsRealM, mFs),
+    mk("Floor Share", "Floor Share (exhibición)", "Share Drean góndola (Σ cat × peso)", "%", "rate", fsRealM, mFs, fsCatReal),
   ];
 }
