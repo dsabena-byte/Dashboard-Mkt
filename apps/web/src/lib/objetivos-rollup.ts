@@ -40,7 +40,12 @@ export function makeCatRealMeta(kpis: KpiSeguimiento[], mapa: MapaConfig) {
       const rc = k.realCatM;
       if (mix && rc && metaTot != null) {
         const catMix = (mix[cat] ?? 0) + (mix["Brand"] ?? 0);
-        return { real: (rc[cat]?.[m] ?? 0) + (rc["Brand"]?.[m] ?? 0), meta: metaTot * (catMix / 100) };
+        const rCat = rc[cat]?.[m];
+        const rBrand = rc["Brand"]?.[m];
+        // Si NO hay dato de la categoría ese mes (ambos null), real = null (sin dato),
+        // no 0 — así no toma meses sin data como 0% de cumplimiento.
+        const real = rCat == null && rBrand == null ? null : (rCat ?? 0) + (rBrand ?? 0);
+        return { real, meta: metaTot * (catMix / 100) };
       }
       return { real: k.realM[m] ?? null, meta: metaTot }; // SUM sin mix → total
     }
