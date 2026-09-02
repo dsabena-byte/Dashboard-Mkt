@@ -3,9 +3,11 @@
 // la meta de negocio (Kantar, General = Σ cat × peso) y los KPIs que lo alimentan.
 // Server component.
 
+import { Fragment } from "react";
 import Link from "next/link";
-import { semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
-import type { SeguimientoObjetivos, ObjetivoRollup, ObjAporte } from "@/lib/objetivos-rollup";
+import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
+import { generalPonderado } from "@/lib/categorias";
+import type { SeguimientoObjetivos, ObjetivoRollup, ObjAporte, CatDesglose } from "@/lib/objetivos-rollup";
 
 const UMBRAL = { umbralVerde: 100, umbralAmarillo: 90 };
 const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(0)}%`);
@@ -19,6 +21,43 @@ function Barra({ v }: { v: number | null }) {
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
       <div className="h-full rounded-full transition-all" style={{ width: `${w}%`, background: color }} />
     </div>
+  );
+}
+
+// Desglose por categoría (capa Kantar): resultado vs meta por Lav/Refri/Cocc + General.
+function PorCategoria({ items }: { items: CatDesglose[] }) {
+  if (!items.length || items.every((i) => i.resultado == null && i.meta == null)) return null;
+  const genRes = generalPonderado(Object.fromEntries(items.map((i) => [i.categoria, i.resultado])));
+  const genMeta = generalPonderado(Object.fromEntries(items.map((i) => [i.categoria, i.meta])));
+  const rows: (CatDesglose & { gen?: boolean })[] = [...items, { categoria: "General", resultado: genRes, meta: genMeta, gen: true }];
+  return (
+    <details className="mt-2.5 border-t pt-2">
+      <summary className="cursor-pointer select-none text-[9px] font-semibold uppercase tracking-wide text-primary [&::-webkit-details-marker]:hidden">
+        Por categoría (Kantar) · resultado vs meta
+      </summary>
+      <div className="mt-1.5 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2.5 gap-y-1 text-[11px]">
+        <span className="text-[8px] uppercase tracking-wide text-muted-foreground/60" />
+        <span className="text-right text-[8px] uppercase tracking-wide text-muted-foreground/60">Result.</span>
+        <span className="text-right text-[8px] uppercase tracking-wide text-muted-foreground/60">Meta</span>
+        <span className="text-right text-[8px] uppercase tracking-wide text-muted-foreground/60">Desv.</span>
+        {rows.map((r) => {
+          const cumpl = cumplimientoPct(r.resultado, r.meta, "up");
+          const s = semaforoDe(cumpl, UMBRAL);
+          const color = SEMAFORO_COLOR[s];
+          const desvio = r.resultado != null && r.meta != null && r.meta !== 0 ? ((r.resultado - r.meta) / r.meta) * 100 : null;
+          return (
+            <Fragment key={r.categoria}>
+              <span className={`truncate ${r.gen ? "mt-0.5 border-t pt-0.5 font-semibold text-foreground" : "text-muted-foreground"}`}>{r.categoria}</span>
+              <span className={`text-right font-semibold tabular-nums ${r.gen ? "mt-0.5 border-t pt-0.5" : ""}`} style={{ color }}>{r.resultado == null ? "—" : r.resultado.toFixed(1)}</span>
+              <span className={`text-right tabular-nums text-muted-foreground/70 ${r.gen ? "mt-0.5 border-t pt-0.5" : ""}`}>{r.meta == null ? "—" : r.meta.toFixed(1)}</span>
+              <span className={`text-right ${r.gen ? "mt-0.5 border-t pt-0.5" : ""}`}>
+                {desvio == null ? <span className="text-muted-foreground/50">—</span> : <span className="text-[10px] font-semibold" style={{ color }}>{desvio >= 0 ? "▲" : "▼"}{Math.abs(desvio).toFixed(0)}%</span>}
+              </span>
+            </Fragment>
+          );
+        })}
+      </div>
+    </details>
   );
 }
 
@@ -68,6 +107,7 @@ function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
       {o.cobertura < 99.5 && (
         <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>
       )}
+      <PorCategoria items={o.porCategoria} />
       <div className="mt-2.5 border-t pt-2">
         <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70">Aporte de KPIs · peso × cumpl</div>
         <div className="space-y-1">
@@ -125,6 +165,7 @@ export function ObjetivosHero({ data }: { data: SeguimientoObjetivos }) {
           </div>
         </div>
         <div className="mt-3"><Barra v={sm.cumplMes} /></div>
+        <div className="max-w-md"><PorCategoria items={sm.porCategoria} /></div>
       </div>
 
       {/* Objetivos que la componen */}

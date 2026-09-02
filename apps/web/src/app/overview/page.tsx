@@ -325,7 +325,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   if (tab === "estado") {
     const [kpis, objetivos] = await Promise.all([
       safe(getSeguimientoKpis(curYear), []),
-      safe(getSeguimientoObjetivos(curYear), { disponible: false, refMes: "", objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [] } }),
+      safe(getSeguimientoObjetivos(curYear), { disponible: false, refMes: "", waveKantar: null, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [], porCategoria: [] } }),
     ]);
     // El scorecard muestra solo los KPIs que alimentan objetivos (conectados en el
     // Mapa). Los que no están vinculados (ej. Inversión) no cuentan → se ocultan.
