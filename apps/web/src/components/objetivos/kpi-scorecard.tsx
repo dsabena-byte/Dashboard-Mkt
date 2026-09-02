@@ -6,7 +6,7 @@ import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/li
 import type { KpiSeguimiento, KpiUnit } from "@/lib/objetivos-kpis";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const PLAN_ORDER = ["Pauta Mkt", "Web / Ecommerce", "Instagram"];
+const PLAN_ORDER = ["Pauta Mkt", "Web / Ecommerce", "Instagram", "Cuadros Básicos", "Floor Share"];
 
 const SEM_BG: Record<Semaforo, string> = {
   verde: "rgba(22,163,74,.12)",

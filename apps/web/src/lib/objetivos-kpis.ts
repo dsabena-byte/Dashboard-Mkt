@@ -13,6 +13,10 @@ import { getGoogleAdsOmd } from "./google-ads-omd-queries";
 import { getFxRates } from "./fx-queries";
 import { getWebDailyKpis, getAllMonthlyUsers } from "./web-queries";
 import { getIgOrganicSummary } from "./meta-ig-queries";
+import { getCbRows, computeTotals, isoWeekToMes } from "./cb-queries";
+import { getFloorShareRows, computeOverall } from "./floor-share-queries";
+import { generalPonderado } from "./categorias";
+import type { MetaKpiData } from "./metas-server";
 
 export type KpiUnit = "$" | "" | "x" | "%" | "s";
 
@@ -116,6 +120,7 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
     mInv, mAlc, mFrec, mImpr, mVtr, mClicks,
     mWebUsers, mWebAvg, mWebConv,
     mIgAlc, mIgEng,
+    cbRows, fsRows, mCb, mFsLav, mFsRef, mFsCoc,
   ] = await Promise.all([
     safe(getPautaPerformance(true), [] as Awaited<ReturnType<typeof getPautaPerformance>>),
     safe(getMetaPaidCreatives(true), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
@@ -137,6 +142,13 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
     getMetaKpi("Web / Ecommerce", "Tasa de conversión", anio),
     getMetaKpi("Redes Sociales", "Alcance orgánico", anio),
     getMetaKpi("Redes Sociales", "Engagement rate", anio),
+    // Trade (proyecto CB): filas crudas para agregar por mes + metas.
+    safe(getCbRows({}), [] as Awaited<ReturnType<typeof getCbRows>>),
+    safe(getFloorShareRows({}), [] as Awaited<ReturnType<typeof getFloorShareRows>>),
+    getMetaKpi("Cuadros Básicos", "% Cumplimiento CB", anio),
+    getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Lavado"),
+    getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Refrigeración"),
+    getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Cocción"),
   ]);
 
   // ---- Pauta (6) ----
@@ -174,9 +186,30 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
     });
   }
 
+  // ---- Trade: Cuadros Básicos (% CB por mes) y Floor Share (Drean por categoría → General) ----
+  const MES_FULL = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const cbRealM = MES_FULL.map((full, i) => {
+    if (!closed(i)) return null;
+    const rows = cbRows.filter((r) => isoWeekToMes(r.semana, anio) === full);
+    return rows.length ? computeTotals(rows).cb_pct : null;
+  });
+  const fsRealM = MES_FULL.map((full, i) => {
+    if (!closed(i)) return null;
+    const rows = fsRows.filter((r) => isoWeekToMes(r.semana, anio) === full);
+    if (!rows.length) return null;
+    const o = computeOverall(rows);
+    return generalPonderado({ Lavado: o.lavado.share, Refrigeración: o.refri.share, Cocción: o.coccion.share });
+  });
+  // Meta General de Floor Share = Σ (meta por categoría × peso). Se construye una
+  // MetaKpiData sintética (dirección/umbrales de la config por categoría).
+  const fsMetaM = Array.from({ length: 12 }, (_, i) =>
+    generalPonderado({ Lavado: mFsLav.valores[i], Refrigeración: mFsRef.valores[i], Cocción: mFsCoc.valores[i] }),
+  );
+  const mFs: MetaKpiData = { valores: fsMetaM, direccion: mFsLav.direccion, umbralVerde: mFsLav.umbralVerde, umbralAmarillo: mFsLav.umbralAmarillo, unidad: "%" };
+
   const mk = (
     plan: string, kpi: string, medida: string, unit: KpiUnit, tipo: "sum" | "rate",
-    realM: (number | null)[], meta: Awaited<ReturnType<typeof getMetaKpi>>,
+    realM: (number | null)[], meta: MetaKpiData,
   ): KpiSeguimiento => ({
     plan, kpi, medida, unit, tipo, realM, metaM: meta.valores,
     direccion: meta.direccion, umbralVerde: meta.umbralVerde, umbralAmarillo: meta.umbralAmarillo,
@@ -197,5 +230,8 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
     // Instagram (el objetivo de Redes se mide solo con IG)
     mk("Instagram", "Alcance orgánico", "Alcance IG del mes", "", "sum", igAlcM, mIgAlc),
     mk("Instagram", "Engagement rate", "Interacciones ÷ alcance", "%", "rate", igEngM, mIgEng),
+    // Trade Mkt
+    mk("Cuadros Básicos", "% Cumplimiento CB", "% CB del mes", "%", "rate", cbRealM, mCb),
+    mk("Floor Share", "Floor Share (exhibición)", "Share Drean góndola (Σ cat × peso)", "%", "rate", fsRealM, mFs),
   ];
 }

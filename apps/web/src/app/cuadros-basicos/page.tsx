@@ -5,6 +5,7 @@ import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
 import { CbCategoryChart } from "@/components/cb/cb-category-chart";
 import { CbTabsNav } from "@/components/cb/cb-tabs-nav";
 import { CbSuggestionsTab } from "@/components/cb/cb-suggestions-tab";
+import { MetaPanel } from "@/components/metas/meta-panel";
 import {
   computeTotals,
   computeWeeklyEvolution,
@@ -170,6 +171,13 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       </header>
 
       <CbTabsNav />
+
+      <MetaPanel
+        plan="Cuadros Básicos"
+        titulo="Metas de Cuadros Básicos"
+        subtitulo="Cargá la meta mensual de % Cumplimiento CB. Alimenta el rollup de objetivos del Seguimiento."
+        kpis={[{ nombre: "% Cumplimiento CB", unidad: "%", actual: totals.cb_pct }]}
+      />
 
       <CbFiltersBar current={filter} options={options} />
 

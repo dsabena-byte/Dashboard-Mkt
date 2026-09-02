@@ -11,9 +11,9 @@ import "server-only";
 import { getSeguimientoKpis } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
+import { generalPonderado } from "./categorias";
 
 const CAP = 100;
-const CATEGORIA_PESOS: Record<string, number> = { Lavado: 62, Refrigeración: 35, Cocción: 3 };
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 export interface ObjAporte { kpi: string; peso: number; cumpl: number | null }
@@ -74,13 +74,7 @@ async function getObjetivoMetas(anio: number): Promise<Record<string, Record<str
 // Meta de negocio General (Σ categoría × peso) de un objetivo en un mes (índice 0-11).
 function metaGeneral(byCat: Record<string, (number | null)[]> | undefined, mesIdx: number): number | null {
   if (!byCat) return null;
-  const t = Object.values(CATEGORIA_PESOS).reduce((a, b) => a + b, 0) || 1;
-  let sum = 0, any = false;
-  for (const [cat, peso] of Object.entries(CATEGORIA_PESOS)) {
-    const v = byCat[cat]?.[mesIdx];
-    if (v != null) { sum += v * (peso / t); any = true; }
-  }
-  return any ? sum : null;
+  return generalPonderado(Object.fromEntries(Object.entries(byCat).map(([cat, arr]) => [cat, arr[mesIdx] ?? null])));
 }
 
 export async function getSeguimientoObjetivos(anio: number): Promise<SeguimientoObjetivos> {

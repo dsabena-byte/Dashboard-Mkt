@@ -14,13 +14,10 @@ import {
   type Plan,
 } from "@/lib/mapa-estrategico-config";
 import { CATALOGO_PLANES } from "@/lib/mapa-catalogo";
+import { CATEGORIAS_CORE, CATEGORIA_PESOS } from "@/lib/categorias";
 import { MetaPanel } from "@/components/metas/meta-panel";
 
 const PALETTE = ["#7a5cf0", "#159a5b", "#d08a1e", "#2f7fe0", "#d94a6a", "#0e9aa7"];
-const CATEGORIAS_CORE = ["Lavado", "Refrigeración", "Cocción"];
-// Mix de categorías (peso ponderado) para agregar métricas por categoría → General.
-// Fuente: Salud de Marca Kantar, ola nov-25 (LAV 62% · REFRI 35% · COCC 3%).
-const CATEGORIA_PESOS: Record<string, number> = { Lavado: 62, Refrigeración: 35, Cocción: 3 };
 const DRAFT_KEY = "mapa-estrategico-draft-v1"; // cache local (red de seguridad hasta guardar en DB)
 
 function shortObj(n: string): string {
@@ -179,7 +176,7 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
   // Los objetivos de marca (TOM/SOM/Intención/Poder) se miden por categoría core.
   // Habilitamos el desglose por categoría en el MetaPanel; para un objetivo total
   // (ej. Facturación) se usa la pestaña "General".
-  const objMetaKpis = useMemo(() => objs.map((o) => ({ nombre: o.nombre, categorias: CATEGORIAS_CORE })), [objs]);
+  const objMetaKpis = useMemo(() => objs.map((o) => ({ nombre: o.nombre, categorias: [...CATEGORIAS_CORE] })), [objs]);
 
   const cols = `minmax(0,1.3fr) repeat(${objs.length}, minmax(64px,1fr))`;
 
