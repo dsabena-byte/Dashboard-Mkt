@@ -1,8 +1,12 @@
 import { MapaEditor } from "@/components/mapa-estrategico/mapa-editor";
+import { getMapaConfig } from "@/lib/mapa-server";
 
 export const metadata = { title: "Mapa Estratégico" };
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
-export default function MapaEstrategicoPage() {
+export default async function MapaEstrategicoPage() {
+  const initial = await getMapaConfig(); // config desde la DB (SSR) → sin spinner de carga
   return (
     <div className="space-y-5">
       <header>
@@ -18,7 +22,7 @@ export default function MapaEstrategicoPage() {
         </p>
       </header>
 
-      <MapaEditor />
+      <MapaEditor initial={initial} />
     </div>
   );
 }

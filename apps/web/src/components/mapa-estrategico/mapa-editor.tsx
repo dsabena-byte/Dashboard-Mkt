@@ -4,11 +4,12 @@
 // Plan → KPI → Objetivo. Cada KPI aporta un % a un objetivo; la suma por objetivo
 // se capa en 100%. La config se guarda en la tabla `mapa_estrategico`.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import {
   MAPA_CONFIG_SEED,
   pesoAsignado,
+  type MapaConfig,
   type Objetivo,
   type Plan,
 } from "@/lib/mapa-estrategico-config";
@@ -38,54 +39,39 @@ function to100(list: Objetivo[]): Objetivo[] {
   return scaled;
 }
 
-export function MapaEditor() {
-  const [objs, setObjs] = useState<Objetivo[]>(MAPA_CONFIG_SEED.objetivos);
-  const [planes, setPlanes] = useState<Plan[]>(MAPA_CONFIG_SEED.planes);
-  const [loaded, setLoaded] = useState(false);
+export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
+  // La config llega SSR desde la DB (sin fetch cliente ni spinner). Si la DB está
+  // vacía (initial null), arranca con el seed y el draft local es fallback.
+  const [objs, setObjs] = useState<Objetivo[]>(() => (initial?.objetivos.length ? to100(initial.objetivos) : MAPA_CONFIG_SEED.objetivos));
+  const [planes, setPlanes] = useState<Plan[]>(() => initial?.planes ?? MAPA_CONFIG_SEED.planes);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [nextO, setNextO] = useState(1);
+  const [nextO, setNextO] = useState((initial?.objetivos.length ?? MAPA_CONFIG_SEED.objetivos.length) + 1);
 
-  // Carga: DB (fuente de verdad) → si la DB está vacía (migración sin correr),
-  // preferimos el DRAFT local (config sin guardar) antes que el seed, para no perder
-  // lo que el usuario cargó. Solo la config real de la DB pisa al draft.
+  // Fallback: si la DB vino vacía, intentar recuperar un draft local (una vez).
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/mapa-estrategico", { cache: "no-store" });
-        if (!alive) return;
-        const data = res.ok ? ((await res.json()) as { objetivos: Objetivo[]; planes: Plan[]; source?: string }) : null;
-        if (data && data.source === "db" && Array.isArray(data.objetivos) && data.objetivos.length) {
-          setObjs(to100(data.objetivos));
-          setPlanes(data.planes ?? []);
-          setNextO(data.objetivos.length + 1);
-        } else {
-          // DB vacía → intentar draft local
-          const raw = localStorage.getItem(DRAFT_KEY);
-          const draft = raw ? (JSON.parse(raw) as { objetivos?: Objetivo[]; planes?: Plan[] }) : null;
-          if (draft?.objetivos?.length) {
-            setObjs(to100(draft.objetivos));
-            setPlanes(draft.planes ?? []);
-            setNextO(draft.objetivos.length + 1);
-            setDirty(true); // hay cambios sin guardar en la DB
-          }
-        }
-      } catch { /* seed */ } finally {
-        if (alive) setLoaded(true);
+    if (initial?.objetivos.length) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      const draft = raw ? (JSON.parse(raw) as { objetivos?: Objetivo[]; planes?: Plan[] }) : null;
+      if (draft?.objetivos?.length) {
+        setObjs(to100(draft.objetivos));
+        setPlanes(draft.planes ?? []);
+        setNextO(draft.objetivos.length + 1);
+        setDirty(true);
       }
-    })();
-    return () => { alive = false; };
+    } catch { /* seed */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Draft local: cada cambio se cachea en localStorage (red de seguridad hasta que
-  // Guardar persista en la DB). Sobrevive recargas aunque la migración no esté corrida.
+  // Draft local de backup: cachea cada cambio (salteando el primer render).
+  const firstWrite = useRef(true);
   useEffect(() => {
-    if (!loaded) return;
+    if (firstWrite.current) { firstWrite.current = false; return; }
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ objetivos: objs, planes })); } catch { /* ignore */ }
-  }, [objs, planes, loaded]);
+  }, [objs, planes]);
 
   const catKpiNames = useMemo(() => new Set(CATALOGO_PLANES.flatMap((c) => c.kpis)), []);
 
@@ -197,16 +183,6 @@ export function MapaEditor() {
 
   const cols = `minmax(0,1.3fr) repeat(${objs.length}, minmax(64px,1fr))`;
 
-  // No mostrar el seed antes de resolver la carga desde la DB: evita el "flash" que
-  // parece pérdida de datos cuando un router.refresh() (ej. al guardar una meta) remonta.
-  if (!loaded) {
-    return (
-      <div className="flex items-center justify-center gap-2 rounded-xl border bg-card px-4 py-10 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Cargando el Mapa…
-      </div>
-    );
-  }
-
   return (
     <div className="mapa-cal space-y-5">
       <style>{`
@@ -219,7 +195,7 @@ export function MapaEditor() {
       <div className="rounded-xl border bg-card px-4 py-2.5">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[11px] text-muted-foreground">
-            {loaded ? "Config cargada." : "Cargando…"} La fuente de verdad es la DB — <b className="text-foreground">Guardá</b> para que el tablero de Seguimiento la lea. {dirty && <span className="text-amber-600">Cambios sin guardar.</span>}
+            La fuente de verdad es la DB — <b className="text-foreground">Guardá</b> para que el tablero de Seguimiento la lea. {dirty && <span className="text-amber-600">Cambios sin guardar.</span>}
           </span>
           <div className="flex items-center gap-2">
             {savedAt && !dirty && <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600"><Check className="h-3.5 w-3.5" />Guardado</span>}
