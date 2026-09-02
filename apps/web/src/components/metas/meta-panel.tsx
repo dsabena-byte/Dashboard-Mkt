@@ -36,6 +36,10 @@ interface Props {
   mes?: number; // 1-12, mes en curso
   titulo?: string;
   subtitulo?: string;
+  /** Si true, no hace router.refresh() al guardar (para contextos sin server
+   * components que dependan de la meta, ej. dentro del editor del Mapa: el refresh
+   * remontaría el editor cliente y haría flash). */
+  skipRefresh?: boolean;
 }
 
 const keyCfg = (kpi: string, cat: string) => `${kpi}|${cat}`;
@@ -51,7 +55,7 @@ function fmt(n: number | null | undefined, unidad?: string | null): string {
   return unidad === "%" ? `${s}%` : unidad === "$" ? `$${s}` : s;
 }
 
-export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo }: Props) {
+export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefresh }: Props) {
   const now = new Date();
   const year = anio ?? now.getFullYear();
   const month = mes ?? now.getMonth() + 1;
@@ -139,7 +143,8 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo }: Props) {
         setTouchedVal(new Set());
         setSavedAt(Date.now());
         // Re-renderiza los server components (gráficos/cards) para que tomen la meta nueva.
-        router.refresh();
+        // En el editor del Mapa (skipRefresh) NO: el refresh remontaría el editor cliente.
+        if (!skipRefresh) router.refresh();
       }
     } finally {
       setSaving(false);

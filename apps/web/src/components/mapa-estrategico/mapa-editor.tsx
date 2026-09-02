@@ -194,6 +194,16 @@ export function MapaEditor() {
 
   const cols = `minmax(0,1.3fr) repeat(${objs.length}, minmax(64px,1fr))`;
 
+  // No mostrar el seed antes de resolver la carga desde la DB: evita el "flash" que
+  // parece pérdida de datos cuando un router.refresh() (ej. al guardar una meta) remonta.
+  if (!loaded) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl border bg-card px-4 py-10 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Cargando el Mapa…
+      </div>
+    );
+  }
+
   return (
     <div className="mapa-cal space-y-5">
       <style>{`
@@ -404,6 +414,7 @@ export function MapaEditor() {
         </div>
         <MetaPanel
           plan="Objetivos Estratégicos"
+          skipRefresh
           titulo="Configuración de metas de los Objetivos Estratégicos"
           subtitulo="Cargá la meta de negocio MENSUAL de cada objetivo (su propio target, aparte del rollup de KPIs). Guardá arriba los cambios de objetivos antes para que la lista quede firme."
           kpis={objMetaKpis}
