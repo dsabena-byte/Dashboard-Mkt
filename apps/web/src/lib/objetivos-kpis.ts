@@ -64,24 +64,6 @@ const applyShare = (realM: (number | null)[], share: Record<string, (number | nu
   for (const c of CATS4) out[c] = realM.map((r, m) => (r == null || share[c]![m] == null ? null : r * share[c]![m]!));
   return out;
 };
-// Real por categoría de un KPI de tasa: num[mes][cat]/den[mes][cat] × scale (solo meses cerrados).
-function rateFromAcc(
-  num: Array<Record<string, number>>,
-  den: Array<Record<string, number>>,
-  scale: number,
-  closed: (i: number) => boolean,
-): Record<string, (number | null)[]> {
-  const out: Record<string, (number | null)[]> = {};
-  for (const c of CATS4) {
-    out[c] = Array.from({ length: 12 }, (_, m) => {
-      if (!closed(m)) return null;
-      const d = den[m]![c] ?? 0;
-      return d > 0 ? ((num[m]![c] ?? 0) / d) * scale : null;
-    });
-  }
-  return out;
-}
-
 const MES_FULL = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
@@ -281,7 +263,7 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
   // Web + IG: por categoría (vw_drean_web_by_category; meta_posts IG).
   const [webCatRows, igCatRows] = await Promise.all([
     safe(fetchRows<{ fecha: string; categoria: string | null; usuarios: number | null }>(`vw_drean_web_by_category?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,categoria,usuarios`), []),
-    safe(fetchRows<{ fecha_post: string; categoria: string | null; reach: number | null; engagement: number | null }>(`meta_posts?platform=eq.instagram&fecha_post=gte.${anio}-01-01&fecha_post=lt.${anio + 1}-01-01&select=fecha_post,categoria,reach,engagement`), []),
+    safe(fetchRows<{ fecha_post: string; categoria: string | null; reach: number | null }>(`meta_posts?platform=eq.instagram&fecha_post=gte.${anio}-01-01&fecha_post=lt.${anio + 1}-01-01&select=fecha_post,categoria,reach`), []),
   ]);
   // Tráfico web = SUM → share por usuarios. (Conversión NO se desglosa: la vista
   // vw_drean_web_by_category trae conversiones=0 por categoría — el dato de conversión
@@ -292,19 +274,13 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
     if (mi >= 0 && mi < 12 && c) webAcc[mi]![c] = (webAcc[mi]![c] ?? 0) + (r.usuarios ?? 0);
   }
   const webShare = sharesFromTotals(webAcc);
-  // Alcance IG = SUM → share por reach. Engagement = rate → real por categoría genuino (eng÷reach).
+  // Alcance IG = SUM → share por reach. (Engagement queda total-only: es un KPI "general".)
   const igAcc = emptyAcc();
-  const igEngNum = emptyAcc(); const igEngDen = emptyAcc();
   for (const r of igCatRows) {
     const mi = Number(r.fecha_post?.slice(5, 7)) - 1; const c = normCat(r.categoria);
-    if (mi >= 0 && mi < 12 && c) {
-      igAcc[mi]![c] = (igAcc[mi]![c] ?? 0) + (r.reach ?? 0);
-      igEngNum[mi]![c] = (igEngNum[mi]![c] ?? 0) + (r.engagement ?? 0);
-      igEngDen[mi]![c] = (igEngDen[mi]![c] ?? 0) + (r.reach ?? 0);
-    }
+    if (mi >= 0 && mi < 12 && c) igAcc[mi]![c] = (igAcc[mi]![c] ?? 0) + (r.reach ?? 0);
   }
   const igShare = sharesFromTotals(igAcc);
-  const igEngCatReal = rateFromAcc(igEngNum, igEngDen, 100, closed);
   // Floor Share: real POR categoría directo (share Drean por góndola), no vía total.
   const fsCatReal: Record<string, (number | null)[]> = { Brand: Array(12).fill(null), Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null) };
   MES_SHORT.forEach((short, i) => {
@@ -341,7 +317,7 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
     mk("Web / Ecommerce", "Tasa de conversión", "Conversiones ÷ sesiones", "%", "rate", webConvM, mWebConv),
     // Instagram (el objetivo de Redes se mide solo con IG; share por reach de posts)
     mk("Instagram", "Alcance orgánico", "Alcance IG del mes", "", "sum", igAlcM, mIgAlc, applyShare(igAlcM, igShare)),
-    mk("Instagram", "Engagement rate", "Interacciones ÷ alcance", "%", "rate", igEngM, mIgEng, igEngCatReal),
+    mk("Instagram", "Engagement rate", "Interacciones ÷ alcance", "%", "rate", igEngM, mIgEng),
     // Trade Mkt (Floor Share = real POR categoría directo; CB total-only)
     mk("Cuadros Básicos", "% Cumplimiento CB", "% CB del mes", "%", "rate", cbRealM, mCb),
     mk("Floor Share", "Floor Share (exhibición)", "Share Drean góndola (Σ cat × peso)", "%", "rate", fsRealM, mFs, fsCatReal),
