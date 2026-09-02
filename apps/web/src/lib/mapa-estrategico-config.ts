@@ -1,13 +1,15 @@
-// Semilla versionada del Mapa Estratégico (Ciclo 1 — hipótesis).
+// Modelo del Mapa Estratégico (aplanado, dic-2026).
 //
-// Modelo: cada objetivo puede tener sub-indicadores (1 nivel). Los KPIs se
-// conectan a las HOJAS con un "peso" 0-100 (% de contribución estimado):
-//   - Salud de Marca = Top of Mind + Share of Mind + Intención + Poder (25% c/u).
-//   - Facturación e Inv/Fact son planas (la hoja es el objetivo).
-// Ciclo 1 = hipótesis de negocio; Ciclo 2 se recalibra con datos.
-// Ver docs/brujula-salud-marca.md.
+// Cada KPI aporta un % ("peso inbound") a uno o varios objetivos. La regla clave:
+// **por objetivo, la suma de los pesos de sus KPIs se capa en 100%** — así el peso
+// es "qué fracción del objetivo explica ese KPI" y se puede hacer el rollup:
+//   cumplimiento(objetivo) = Σ  pesoKPI × min(cumplimiento(KPI), 100%)
+// Un mismo KPI puede aportar a varios objetivos; lo que se restringe es la suma
+// por objetivo, no el total del KPI. Sin sub-objetivos (aplanado).
+//
+// La config se persiste en la tabla `mapa_estrategico` (antes: localStorage).
 
-export type Vinculos = Record<string, number>; // leafId -> peso 0-100
+export type Vinculos = Record<string, number>; // objId -> peso inbound 0-100
 
 export interface Kpi {
   nombre: string;
@@ -19,115 +21,70 @@ export interface Plan {
   kpis: Kpi[];
 }
 
-export interface SubIndicador {
-  id: string;
-  nombre: string;
-  peso: number; // composición dentro del objetivo (suma ~100)
-}
-
 export interface Objetivo {
   id: string;
   nombre: string;
   color: string;
-  peso: number; // peso estratégico relativo (se normaliza a 100%)
-  subs?: SubIndicador[];
+  peso: number; // peso estratégico relativo (se normaliza a 100% entre objetivos)
 }
 
-export interface Leaf {
-  id: string; // hoja (sub-indicador, o el objetivo si es plano)
-  nombre: string;
-  objId: string;
-  objNombre: string;
-  color: string;
+export interface MapaConfig {
+  objetivos: Objetivo[];
+  planes: Plan[];
 }
 
+// Seed inicial (fallback para DB vacía). Objetivos = embudo de marca; KPIs = los que
+// YA tienen meta cargada (Pauta Mkt / Web / Instagram), con pesos inbound que suman
+// 100% por objetivo. Es una hipótesis: el usuario la ajusta y guarda.
 export const OBJETIVOS_SEED: Objetivo[] = [
-  {
-    id: "o1",
-    nombre: "Salud de Marca",
-    color: "#7a5cf0",
-    peso: 40,
-    subs: [
-      { id: "tom", nombre: "Top of Mind", peso: 25 },
-      { id: "som", nombre: "Share of Mind", peso: 25 },
-      { id: "int", nombre: "Intención de compra", peso: 25 },
-      { id: "pod", nombre: "Poder de Marca", peso: 25 },
-    ],
-  },
-  { id: "o2", nombre: "Facturación", color: "#159a5b", peso: 40 },
-  { id: "o3", nombre: "Inv. Mkt / Facturación", color: "#d08a1e", peso: 20 },
+  { id: "awareness", nombre: "Awareness", color: "#7a5cf0", peso: 50 },
+  { id: "poder", nombre: "Poder de Marca", color: "#159a5b", peso: 25 },
+  { id: "impacto", nombre: "Impacto Negocio", color: "#d08a1e", peso: 25 },
 ];
 
 export const PLANES_SEED: Plan[] = [
   {
-    nombre: "Pauta en Medios",
+    nombre: "Pauta Mkt",
     kpis: [
-      { nombre: "Alcance / Cobertura", vinculos: { tom: 50, som: 35, o2: 20 } },
-      { nombre: "VTR (view-through)", vinculos: { som: 40, pod: 30 } },
-      { nombre: "Share of Voice", vinculos: { tom: 45, som: 30, o2: 25 } },
-    ],
-  },
-  {
-    nombre: "Pauta Ecommerce",
-    kpis: [
-      { nombre: "ROAS", vinculos: { o3: 90 } },
-      { nombre: "Conversiones", vinculos: { o2: 55, o3: 60 } },
-      { nombre: "CPA", vinculos: { o3: 65 } },
-    ],
-  },
-  {
-    nombre: "Redes Sociales",
-    kpis: [
-      { nombre: "Alcance orgánico", vinculos: { som: 70 } },
-      { nombre: "Engagement rate", vinculos: { pod: 50, int: 30 } },
-      { nombre: "Sentiment", vinculos: { pod: 45, int: 25 } },
-    ],
-  },
-  {
-    nombre: "Mkt de Influencia",
-    kpis: [
-      { nombre: "Alcance de creadores", vinculos: { som: 45, tom: 30 } },
-      { nombre: "Afinidad / Engagement", vinculos: { pod: 55, int: 30 } },
-      { nombre: "Menciones / EMV", vinculos: { som: 40, pod: 20, o2: 20 } },
-    ],
-  },
-  {
-    nombre: "SEO / Search",
-    kpis: [
-      { nombre: "Share of Search", vinculos: { tom: 45, som: 35, o2: 30 } },
-      { nombre: "Tráfico orgánico", vinculos: { o2: 30, o3: 55 } },
-      { nombre: "Posición media", vinculos: { tom: 40, o3: 35 } },
+      { nombre: "Inversión", vinculos: {} },
+      { nombre: "Alcance único", vinculos: { awareness: 35 } },
+      { nombre: "Frecuencia", vinculos: { poder: 20 } },
+      { nombre: "Impresiones", vinculos: { awareness: 25 } },
+      { nombre: "VTR (≥50%)", vinculos: { poder: 35 } },
+      { nombre: "Clicks", vinculos: { impacto: 20 } },
     ],
   },
   {
     nombre: "Web / Ecommerce",
     kpis: [
-      { nombre: "Tráfico web (usuarios)", vinculos: { o2: 35, o3: 55 } },
-      { nombre: "Tasa de conversión", vinculos: { o3: 85 } },
-      { nombre: "Ingresos ecommerce", vinculos: { o2: 40, o3: 75 } },
+      { nombre: "Tráfico web (usuarios)", vinculos: { impacto: 30 } },
+      { nombre: "Avg Sesión (segundos)", vinculos: { impacto: 10 } },
+      { nombre: "Tasa de conversión", vinculos: { impacto: 40 } },
     ],
   },
   {
-    nombre: "Trade (CB · Floor · Canal)",
+    nombre: "Instagram",
     kpis: [
-      { nombre: "% Cumplimiento CB", vinculos: { o2: 85 } },
-      { nombre: "Floor Share (exhibición)", vinculos: { int: 40, tom: 25, o2: 50 } },
-      { nombre: "Sell-out en PDV", vinculos: { int: 45, o2: 50 } },
+      { nombre: "Alcance orgánico", vinculos: { awareness: 40 } },
+      { nombre: "Engagement rate", vinculos: { poder: 45 } },
     ],
   },
 ];
 
-// Hojas aplanadas (columnas de la matriz / nodos hoja del mapa).
-export function leavesOf(objs: Objetivo[]): Leaf[] {
-  const out: Leaf[] = [];
-  for (const o of objs) {
-    if (o.subs && o.subs.length) {
-      for (const s of o.subs) out.push({ id: s.id, nombre: s.nombre, objId: o.id, objNombre: o.nombre, color: o.color });
-    } else {
-      out.push({ id: o.id, nombre: o.nombre, objId: o.id, objNombre: o.nombre, color: o.color });
-    }
-  }
-  return out;
+export const MAPA_CONFIG_SEED: MapaConfig = { objetivos: OBJETIVOS_SEED, planes: PLANES_SEED };
+
+// Peso estratégico normalizado a 100% (para mostrar y para el rollup global).
+export function normPeso(objs: Objetivo[]): number[] {
+  const t = objs.reduce((a, o) => a + o.peso, 0) || 1;
+  return objs.map((o) => Math.round((o.peso / t) * 100));
 }
 
+// Suma de pesos inbound asignados a un objetivo (across todos los KPIs). Debe ser ≤100.
+export function pesoAsignado(planes: Plan[], objId: string): number {
+  let s = 0;
+  for (const p of planes) for (const k of p.kpis) s += k.vinculos[objId] ?? 0;
+  return s;
+}
+
+// Plave de localStorage legacy (draft offline). La fuente de verdad es la DB.
 export const MAPA_STORAGE_KEY = "mapa-estrategico-ciclo1-v3";
