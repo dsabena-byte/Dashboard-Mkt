@@ -4,10 +4,11 @@
 // Plan → KPI → Objetivo. Cada KPI aporta un % a un objetivo; la suma por objetivo
 // se capa en 100%. La config se guarda en la tabla `mapa_estrategico`.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import {
   MAPA_CONFIG_SEED,
+  MIX_CATEGORIAS,
   pesoAsignado,
   type MapaConfig,
   type Objetivo,
@@ -124,6 +125,17 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
     });
     patchPlanes((d) => d.forEach((p) => p.kpis.forEach((k) => { delete k.vinculos[oid]; })));
   }
+
+  // --- mix por categoría (Brand/Lav/Refri/Cocc, suma libre pero se avisa si ≠100) ---
+  function setMix(pi: number, ki: number, cat: string, v: number) {
+    patchPlanes((d) => {
+      const k = d[pi]!.kpis[ki]!;
+      if (!k.mix) k.mix = {};
+      if (v > 0) k.mix[cat] = v; else delete k.mix[cat];
+      if (Object.keys(k.mix).length === 0) delete k.mix;
+    });
+  }
+  const mixSum = (k: Plan["kpis"][number]) => MIX_CATEGORIAS.reduce((a, c) => a + (k.mix?.[c] ?? 0), 0);
 
   // --- vínculos inbound (clamp ≤100 por objetivo) ---
   function setLink(pi: number, ki: number, objId: string, v: number) {
@@ -318,10 +330,53 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
         <p className="mt-1.5 text-[11px] text-muted-foreground">El <b className="text-foreground">aporte</b> = qué fracción del objetivo explica ese KPI. Por objetivo <b className="text-foreground">no puede pasar de 100%</b> (el slider se frena en lo que queda libre). Un KPI puede aportar a varios objetivos.</p>
       </section>
 
-      {/* 3. Composición por objetivo */}
+      {/* 3. Mix por categoría de cada KPI */}
       <section>
         <div className="mb-2.5 flex items-center gap-2">
           <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">3</span>
+          <h3 className="text-sm font-semibold tracking-tight">Mix por categoría de cada KPI</h3>
+          <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">suma 100%</span>
+        </div>
+        <div className="overflow-x-auto rounded-xl border bg-card">
+          <table className="w-full min-w-[560px] text-xs">
+            <thead>
+              <tr className="border-b bg-secondary/40 text-[9px] uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2 text-left font-semibold">KPI</th>
+                {MIX_CATEGORIAS.map((c) => <th key={c} className="border-l px-2 py-2 text-center font-semibold">{c === "Cocción" ? "Cocción" : c}</th>)}
+                <th className="border-l px-2 py-2 text-center font-semibold">Suma</th>
+              </tr>
+            </thead>
+            <tbody>
+              {planes.map((p, pi) => (
+                <Fragment key={pi}>
+                  <tr className="border-b border-t bg-secondary/30"><td colSpan={MIX_CATEGORIAS.length + 2} className="px-3 py-1 text-[11px] font-bold text-muted-foreground">{p.nombre}</td></tr>
+                  {p.kpis.map((k, ki) => {
+                    const s = mixSum(k);
+                    return (
+                      <tr key={ki} className="border-b last:border-0">
+                        <td className="px-3 py-1.5">{k.nombre}</td>
+                        {MIX_CATEGORIAS.map((c) => (
+                          <td key={c} className="border-l px-1 py-1 text-center">
+                            <input type="number" inputMode="decimal" min={0} max={100} value={k.mix?.[c] ?? ""} onChange={(e) => setMix(pi, ki, c, +e.target.value)}
+                              className="w-14 rounded border bg-background px-1 py-0.5 text-center text-[11px] tabular-nums" placeholder="—" />
+                          </td>
+                        ))}
+                        <td className="border-l px-2 py-1.5 text-center font-mono text-[11px] font-semibold tabular-nums" style={{ color: s === 0 ? "hsl(var(--muted-foreground))" : s === 100 ? "hsl(142 60% 40%)" : "#dc2626" }}>{s}%</td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">La <b className="text-foreground">meta por categoría</b> de cada KPI = meta total × mix. <b className="text-foreground">Brand</b> se suma a las 3 categorías. Los KPIs sin mix quedan solo con el total (no se desglosan).</p>
+      </section>
+
+      {/* 4. Composición por objetivo */}
+      <section>
+        <div className="mb-2.5 flex items-center gap-2">
+          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">4</span>
           <h3 className="text-sm font-semibold tracking-tight">Composición de cada objetivo</h3>
         </div>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -365,7 +420,7 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
       {/* 4. Prioridad de instrumentación */}
       <section>
         <div className="mb-2.5 flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">4</span>
+          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">5</span>
           <h3 className="text-sm font-semibold tracking-tight">Prioridad de instrumentación</h3>
           <span className="ml-auto font-mono text-[10px] text-muted-foreground">importancia estratégica</span>
         </div>
@@ -385,7 +440,7 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
       {/* 5. Metas de negocio mensuales de los objetivos */}
       <section>
         <div className="mb-2.5 flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">5</span>
+          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">6</span>
           <h3 className="text-sm font-semibold tracking-tight">Metas de negocio de los objetivos</h3>
         </div>
         <MetaPanel
