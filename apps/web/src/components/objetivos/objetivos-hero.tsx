@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
-import type { SeguimientoObjetivos, ObjetivoRollup } from "@/lib/objetivos-rollup";
+import type { SeguimientoObjetivos, ObjetivoRollup, ObjAporte } from "@/lib/objetivos-rollup";
 
 const UMBRAL = { umbralVerde: 100, umbralAmarillo: 90 };
 const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(0)}%`);
@@ -22,10 +22,29 @@ function Barra({ v }: { v: number | null }) {
   );
 }
 
+function AporteRow({ a }: { a: ObjAporte }) {
+  const s = semOf(a.cumpl);
+  return (
+    <div className="flex items-center justify-between text-[11px]">
+      <span className="flex items-center gap-1.5 truncate text-muted-foreground" title={a.kpi}>
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: SEMAFORO_COLOR[s] }} />
+        {a.kpi}
+      </span>
+      <span className="flex shrink-0 items-center gap-2 tabular-nums">
+        <span className="text-muted-foreground/60">{a.peso}%</span>
+        <span className="font-semibold" style={{ color: SEMAFORO_COLOR[s] }}>{pct(a.cumpl)}</span>
+      </span>
+    </div>
+  );
+}
+
+const TOP_APORTES = 3;
 function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
   const sem = semOf(o.cumplMes);
   const color = SEMAFORO_COLOR[sem];
-  const top = o.aportes.filter((a) => a.peso > 0).slice(0, 4);
+  const aportes = o.aportes.filter((a) => a.peso > 0);
+  const primeros = aportes.slice(0, TOP_APORTES);
+  const resto = aportes.slice(TOP_APORTES);
   return (
     <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -38,32 +57,33 @@ function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
       </div>
       <div className="mt-2 flex items-baseline gap-2">
         <span className="text-3xl font-bold tabular-nums" style={{ color }}>{pct(o.cumplMes)}</span>
-        <span className="text-[11px] text-muted-foreground">cumplimiento · rollup KPIs</span>
+        <span className="text-[11px] text-muted-foreground">cumplimiento</span>
       </div>
+      <div className="text-[10px] text-muted-foreground/70">= Σ (peso × cumpl KPI, capado 100%)</div>
       <div className="mt-2"><Barra v={o.cumplMes} /></div>
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
         <span>YTD <span className="font-semibold tabular-nums text-foreground">{pct(o.cumplYtd)}</span></span>
-        <span>Meta negocio <span className="font-semibold tabular-nums text-foreground">{o.metaNegMes == null ? "—" : o.metaNegMes.toFixed(1)}</span></span>
+        <span title="Target de negocio (Kantar) = Σ meta por categoría × peso">Meta neg. (Kantar) <span className="font-semibold tabular-nums text-foreground">{o.metaNegMes == null ? "—" : o.metaNegMes.toFixed(1)}</span></span>
       </div>
       {o.cobertura < 99.5 && (
         <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>
       )}
-      <div className="mt-2.5 space-y-1 border-t pt-2">
-        {top.map((a) => {
-          const s = semOf(a.cumpl);
-          return (
-            <div key={a.kpi} className="flex items-center justify-between text-[11px]">
-              <span className="flex items-center gap-1.5 truncate text-muted-foreground" title={a.kpi}>
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: SEMAFORO_COLOR[s] }} />
-                {a.kpi}
-              </span>
-              <span className="flex shrink-0 items-center gap-2 tabular-nums">
-                <span className="text-muted-foreground/60">{a.peso}%</span>
-                <span className="font-semibold" style={{ color: SEMAFORO_COLOR[s] }}>{pct(a.cumpl)}</span>
-              </span>
-            </div>
-          );
-        })}
+      <div className="mt-2.5 border-t pt-2">
+        <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70">Aporte de KPIs · peso × cumpl</div>
+        <div className="space-y-1">
+          {primeros.map((a) => <AporteRow key={a.kpi} a={a} />)}
+          {resto.length > 0 && (
+            <details className="group">
+              <summary className="cursor-pointer list-none text-[10px] font-medium text-primary marker:content-none hover:underline">
+                <span className="group-open:hidden">+ Ver {resto.length} más</span>
+                <span className="hidden group-open:inline">Ver menos</span>
+              </summary>
+              <div className="mt-1 space-y-1">
+                {resto.map((a) => <AporteRow key={a.kpi} a={a} />)}
+              </div>
+            </details>
+          )}
+        </div>
       </div>
     </div>
   );
