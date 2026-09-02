@@ -293,7 +293,7 @@ function SeguimientoHeader({ tab }: { tab: SegTab }) {
       <h2 className="text-2xl font-semibold tracking-tight">Seguimiento Objetivos</h2>
       <p className="text-sm text-muted-foreground">
         {tab === "estado"
-          ? "Estado de cumplimiento de los KPIs estratégicos vs sus metas mensuales — desvío del mes y acumulado del año."
+          ? "Estado de cumplimiento de Objetivos y KPIs vs sus metas mensuales — desvío del mes y acumulado del año."
           : "Seguimiento de los objetivos del área (OKR) — Presupuesto, Floor Share, Cuadro Básico y Salud de Marca."}
       </p>
       <div className="mt-4 flex gap-1 border-b">
