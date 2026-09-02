@@ -14,6 +14,8 @@ import {
 import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
 import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
 import { computeDreanConsolidado, SM_DIMS, type SMRow, type SMState } from "@/lib/salud-marca-model";
+import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
+import { KpiScorecard } from "@/components/objetivos/kpi-scorecard";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -273,10 +275,60 @@ function buildSaludMarca(rows: SMRow[], target: number) {
 const f1 = (v: number | null) => (v == null ? "—" : v.toFixed(1).replace(".", ","));
 const smCls = (s: SMState) => (s === "proj" ? "text-blue-600" : s === "carry" ? "text-amber-600" : "text-foreground");
 
-export default async function OverviewPage() {
+type SegTab = "estado" | "okr";
+function getTab(searchParams: Record<string, string | string[] | undefined>): SegTab {
+  const v = searchParams.tab;
+  const s = Array.isArray(v) ? v[0] : v;
+  return s === "okr" ? "okr" : "estado";
+}
+
+// Header + navegación de tabs, compartido por ambas vistas.
+function SeguimientoHeader({ tab }: { tab: SegTab }) {
+  const tabs: { key: SegTab; label: string }[] = [
+    { key: "estado", label: "Estado de KPIs" },
+    { key: "okr", label: "OKR Mkt" },
+  ];
+  return (
+    <header>
+      <h2 className="text-2xl font-semibold tracking-tight">Seguimiento Objetivos</h2>
+      <p className="text-sm text-muted-foreground">
+        {tab === "estado"
+          ? "Estado de cumplimiento de los KPIs estratégicos vs sus metas mensuales — desvío del mes y acumulado del año."
+          : "Seguimiento de los objetivos del área (OKR) — Presupuesto, Floor Share, Cuadro Básico y Salud de Marca."}
+      </p>
+      <div className="mt-4 flex gap-1 border-b">
+        {tabs.map((t) => (
+          <Link
+            key={t.key}
+            href={`/overview?tab=${t.key}`}
+            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              tab === t.key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+    </header>
+  );
+}
+
+export default async function OverviewPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const tab = getTab(searchParams);
   const now = new Date();
   const curYear = now.getUTCFullYear();
   const curMonth = now.getUTCMonth() + 1;
+
+  // ===== Tab "Estado de KPIs": scorecard de metas (no corre los pipelines de OKR) =====
+  if (tab === "estado") {
+    const kpis = await safe(getSeguimientoKpis(curYear), []);
+    return (
+      <div className="space-y-5">
+        <SeguimientoHeader tab="estado" />
+        <KpiScorecard kpis={kpis} />
+      </div>
+    );
+  }
 
   const [bgt, factRows, floorShareRes, cbRes] = await Promise.all([
     safe(getBgtData(), { rows: [], syncedAt: null }),
@@ -341,12 +393,10 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Objetivos de Marketing {YEAR}</h2>
-        <p className="text-sm text-muted-foreground">
-          Seguimiento descriptivo de los objetivos del área · Fuente BGT: SharePoint → Supabase · Última sincronización: {syncLabel}
-        </p>
-      </header>
+      <SeguimientoHeader tab="okr" />
+      <p className="-mt-1 text-xs text-muted-foreground">
+        Seguimiento descriptivo de los objetivos del área · Fuente BGT: SharePoint → Supabase · Última sincronización: {syncLabel}
+      </p>
 
       {/* ===== OBJETIVO 1 ===== */}
       <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
