@@ -16,6 +16,7 @@ import { CATALOGO_PLANES } from "@/lib/mapa-catalogo";
 import { MetaPanel } from "@/components/metas/meta-panel";
 
 const PALETTE = ["#7a5cf0", "#159a5b", "#d08a1e", "#2f7fe0", "#d94a6a", "#0e9aa7"];
+const CATEGORIAS_CORE = ["Lavado", "Refrigeración", "Cocción"];
 
 function shortObj(n: string): string {
   return n.length > 18 ? n.slice(0, 17) + "…" : n;
@@ -157,7 +158,10 @@ export function MapaEditor() {
     return { items, max: items.length ? (items[0]!.imp || 1) : 1 };
   }, [objs, planes, catKpiNames]);
 
-  const objMetaKpis = useMemo(() => objs.map((o) => ({ nombre: o.nombre })), [objs]);
+  // Los objetivos de marca (TOM/SOM/Intención/Poder) se miden por categoría core.
+  // Habilitamos el desglose por categoría en el MetaPanel; para un objetivo total
+  // (ej. Facturación) se usa la pestaña "General".
+  const objMetaKpis = useMemo(() => objs.map((o) => ({ nombre: o.nombre, categorias: CATEGORIAS_CORE })), [objs]);
 
   const cols = `minmax(0,1.3fr) repeat(${objs.length}, minmax(64px,1fr))`;
 
