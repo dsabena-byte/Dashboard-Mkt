@@ -85,10 +85,13 @@ reporte_existencia/cb_homologos).
   (cards, gráficos, colores, método) en cada dashboard nuevo. **Validar este checklist antes de
   decir que las metas están "listas".**
 - **Seguimiento Objetivos (`/overview`) — Mapa Estratégico → cumplimiento por categoría:**
-  el índice se llama **"Seguimiento Objetivos"** y tiene 2 tabs: **"Estado de KPIs"**
-  (`ObjetivosHero` hero-cards arriba + `KpiScorecard` abajo) y **"OKR Mkt"** (los objetivos
-  viejos). Idea central: *si cumplís el 100% de las metas de los KPIs, cumplís el 100% de los
-  objetivos estratégicos.* Piezas:
+  el índice se llama **"Seguimiento Objetivos"** y tiene 3 tabs: **"Estado de KPIs"**
+  (`ObjetivosHero` hero-cards arriba + `KpiScorecard` abajo), **"Gaps × Categoría"**
+  (`objetivos-gaps.ts` → `getGapKpiCategoria` + `components/objetivos/gap-matrix.tsx`: matriz
+  KPI×categoría con cumplimiento real/meta + color semáforo, toggle Mes/YTD, + ranking "Top
+  oportunidades" ordenado por gap; es la vista accionable que expone el cálculo por categoría que
+  las cards agregan y esconden) y **"OKR Mkt"** (los objetivos viejos). Idea central: *si cumplís
+  el 100% de las metas de los KPIs, cumplís el 100% de los objetivos estratégicos.* Piezas:
   - **Mapa** (`/mapa-estrategico`): modelo **aplanado** (`mapa-estrategico-config.ts`).
     Objetivo `{id,nombre,color,peso}` (peso estratégico, se normaliza a 100% entre objetivos).
     KPI `{nombre, vinculos:Record<objId,pesoInbound>, mix?:Record<cat,%>}`. Regla: **la suma de
