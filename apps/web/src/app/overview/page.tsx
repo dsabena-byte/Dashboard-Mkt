@@ -18,6 +18,7 @@ import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
 import { getSeguimientoObjetivos } from "@/lib/objetivos-rollup";
 import { KpiScorecard } from "@/components/objetivos/kpi-scorecard";
 import { ObjetivosHero } from "@/components/objetivos/objetivos-hero";
+import { ObjetivosEvolChart } from "@/components/objetivos/objetivos-evol-chart";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -325,7 +326,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   if (tab === "estado") {
     const [kpis, objetivos] = await Promise.all([
       safe(getSeguimientoKpis(curYear), []),
-      safe(getSeguimientoObjetivos(curYear), { disponible: false, refMes: "", objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null } }),
+      safe(getSeguimientoObjetivos(curYear), { disponible: false, refMes: "", objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [] } }),
     ]);
     return (
       <div className="space-y-5">
@@ -338,6 +339,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
           <div className="mb-2.5 text-sm font-bold tracking-tight">KPIs por plan <span className="text-[11px] font-normal text-muted-foreground">· indicadores que alimentan los objetivos</span></div>
           <KpiScorecard kpis={kpis} />
         </div>
+        <ObjetivosEvolChart data={objetivos} />
       </div>
     );
   }
