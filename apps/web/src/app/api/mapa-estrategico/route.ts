@@ -21,18 +21,20 @@ function rest(path: string) {
 
 interface Row { objetivos: Objetivo[]; planes: Plan[] }
 
-// GET /api/mapa-estrategico → { objetivos, planes }. Si la tabla está vacía, devuelve el seed.
+// GET /api/mapa-estrategico → { objetivos, planes, source }.
+// source="db" = config real guardada; "seed" = tabla vacía o inexistente (migración
+// sin correr) → el cliente puede preferir su draft local antes de pisar con el seed.
 export async function GET() {
+  const seed = { ...MAPA_CONFIG_SEED, source: "seed" as const };
   const req = rest("mapa_estrategico?id=eq.1&select=objetivos,planes");
   const res = await fetch(req.href, { headers: req.headers, cache: "no-store" });
-  // Si la tabla aún no existe (migración sin correr) o falla, caemos al seed.
-  if (!res.ok) return NextResponse.json(MAPA_CONFIG_SEED satisfies MapaConfig);
+  if (!res.ok) return NextResponse.json(seed);
   const rows = (await res.json()) as Row[];
   const row = rows[0];
   if (!row || !Array.isArray(row.objetivos) || row.objetivos.length === 0) {
-    return NextResponse.json(MAPA_CONFIG_SEED satisfies MapaConfig);
+    return NextResponse.json(seed);
   }
-  return NextResponse.json({ objetivos: row.objetivos, planes: row.planes ?? [] } satisfies MapaConfig);
+  return NextResponse.json({ objetivos: row.objetivos, planes: row.planes ?? [], source: "db" as const });
 }
 
 // POST /api/mapa-estrategico → upsert de la config (singleton id=1).

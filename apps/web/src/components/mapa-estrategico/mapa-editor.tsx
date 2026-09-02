@@ -17,6 +17,7 @@ import { MetaPanel } from "@/components/metas/meta-panel";
 
 const PALETTE = ["#7a5cf0", "#159a5b", "#d08a1e", "#2f7fe0", "#d94a6a", "#0e9aa7"];
 const CATEGORIAS_CORE = ["Lavado", "Refrigeración", "Cocción"];
+const DRAFT_KEY = "mapa-estrategico-draft-v1"; // cache local (red de seguridad hasta guardar en DB)
 
 function shortObj(n: string): string {
   return n.length > 18 ? n.slice(0, 17) + "…" : n;
@@ -41,28 +42,47 @@ export function MapaEditor() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [nextO, setNextO] = useState(1);
 
-  // Carga desde la DB (fuente de verdad). Fallback: seed.
+  // Carga: DB (fuente de verdad) → si la DB está vacía (migración sin correr),
+  // preferimos el DRAFT local (config sin guardar) antes que el seed, para no perder
+  // lo que el usuario cargó. Solo la config real de la DB pisa al draft.
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const res = await fetch("/api/mapa-estrategico", { cache: "no-store" });
-        if (res.ok && alive) {
-          const data = (await res.json()) as { objetivos: Objetivo[]; planes: Plan[] };
-          if (Array.isArray(data.objetivos) && data.objetivos.length) {
-            setObjs(to100(data.objetivos)); // pesos como % directos sumando 100
-            setPlanes(data.planes ?? []);
-            setNextO(data.objetivos.length + 1);
+        if (!alive) return;
+        const data = res.ok ? ((await res.json()) as { objetivos: Objetivo[]; planes: Plan[]; source?: string }) : null;
+        if (data && data.source === "db" && Array.isArray(data.objetivos) && data.objetivos.length) {
+          setObjs(to100(data.objetivos));
+          setPlanes(data.planes ?? []);
+          setNextO(data.objetivos.length + 1);
+        } else {
+          // DB vacía → intentar draft local
+          const raw = localStorage.getItem(DRAFT_KEY);
+          const draft = raw ? (JSON.parse(raw) as { objetivos?: Objetivo[]; planes?: Plan[] }) : null;
+          if (draft?.objetivos?.length) {
+            setObjs(to100(draft.objetivos));
+            setPlanes(draft.planes ?? []);
+            setNextO(draft.objetivos.length + 1);
+            setDirty(true); // hay cambios sin guardar en la DB
           }
         }
-      } finally {
+      } catch { /* seed */ } finally {
         if (alive) setLoaded(true);
       }
     })();
     return () => { alive = false; };
   }, []);
+
+  // Draft local: cada cambio se cachea en localStorage (red de seguridad hasta que
+  // Guardar persista en la DB). Sobrevive recargas aunque la migración no esté corrida.
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ objetivos: objs, planes })); } catch { /* ignore */ }
+  }, [objs, planes, loaded]);
 
   const catKpiNames = useMemo(() => new Set(CATALOGO_PLANES.flatMap((c) => c.kpis)), []);
 
@@ -71,6 +91,7 @@ export function MapaEditor() {
 
   async function save() {
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch("/api/mapa-estrategico", {
         method: "POST",
@@ -78,6 +99,14 @@ export function MapaEditor() {
         body: JSON.stringify({ objetivos: objs, planes }),
       });
       if (res.ok) { setDirty(false); setSavedAt(Date.now()); }
+      else {
+        const txt = await res.text();
+        setSaveError(/relation .* does not exist|PGRST205|could not find the table/i.test(txt)
+          ? "No se pudo guardar: falta correr la migración 0100 (tabla mapa_estrategico). Tu config quedó guardada en este navegador; corré la migración y volvé a Guardar."
+          : `No se pudo guardar: ${txt.slice(0, 140)}`);
+      }
+    } catch (e) {
+      setSaveError(`No se pudo guardar: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -174,17 +203,20 @@ export function MapaEditor() {
       `}</style>
 
       {/* Barra de guardado */}
-      <div className="flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-2.5">
-        <span className="text-[11px] text-muted-foreground">
-          {loaded ? "Config cargada desde la base." : "Cargando…"} La fuente de verdad es la DB — <b className="text-foreground">Guardá</b> para que el tablero de Seguimiento la lea.
-        </span>
-        <div className="flex items-center gap-2">
-          {savedAt && !dirty && <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600"><Check className="h-3.5 w-3.5" />Guardado</span>}
-          <button type="button" onClick={save} disabled={!dirty || saving} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-40">
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            Guardar
-          </button>
+      <div className="rounded-xl border bg-card px-4 py-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[11px] text-muted-foreground">
+            {loaded ? "Config cargada." : "Cargando…"} La fuente de verdad es la DB — <b className="text-foreground">Guardá</b> para que el tablero de Seguimiento la lea. {dirty && <span className="text-amber-600">Cambios sin guardar.</span>}
+          </span>
+          <div className="flex items-center gap-2">
+            {savedAt && !dirty && <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600"><Check className="h-3.5 w-3.5" />Guardado</span>}
+            <button type="button" onClick={save} disabled={!dirty || saving} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-40">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Guardar
+            </button>
+          </div>
         </div>
+        {saveError && <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">{saveError}</p>}
       </div>
 
       {/* 1. Objetivos */}
