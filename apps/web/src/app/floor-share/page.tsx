@@ -22,6 +22,8 @@ import {
   type FloorShareRow,
 } from "@/lib/floor-share-queries";
 import { isoWeekToMes } from "@/lib/cb-queries";
+import { MetaPanel } from "@/components/metas/meta-panel";
+import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -182,6 +184,14 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         </p>
         <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
+
+      <MetaPanel
+        plan="Floor Share"
+        catPesos={CATEGORIA_PESOS}
+        titulo="Metas de Floor Share"
+        subtitulo="Cargá la meta mensual POR CATEGORÍA (Lavado/Refrigeración/Cocción). El Floor Share general se calcula solo (Σ categoría × peso). Alimenta el rollup de objetivos del Seguimiento."
+        kpis={[{ nombre: "Floor Share (exhibición)", unidad: "%", categorias: [...CATEGORIAS_CORE] }]}
+      />
 
       <FloorShareFilters current={filter} options={options} />
 
