@@ -187,15 +187,16 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
   }
 
   // ---- Trade: Cuadros Básicos (% CB por mes) y Floor Share (Drean por categoría → General) ----
-  const MES_FULL = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-  const cbRealM = MES_FULL.map((full, i) => {
+  // OJO: isoWeekToMes devuelve el mes CORTO ("Ene".."Dic"), no el completo.
+  const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const cbRealM = MES_SHORT.map((short, i) => {
     if (!closed(i)) return null;
-    const rows = cbRows.filter((r) => isoWeekToMes(r.semana, anio) === full);
+    const rows = cbRows.filter((r) => isoWeekToMes(r.semana, anio) === short);
     return rows.length ? computeTotals(rows).cb_pct : null;
   });
-  const fsRealM = MES_FULL.map((full, i) => {
+  const fsRealM = MES_SHORT.map((short, i) => {
     if (!closed(i)) return null;
-    const rows = fsRows.filter((r) => isoWeekToMes(r.semana, anio) === full);
+    const rows = fsRows.filter((r) => isoWeekToMes(r.semana, anio) === short);
     if (!rows.length) return null;
     const o = computeOverall(rows);
     return generalPonderado({ Lavado: o.lavado.share, Refrigeración: o.refri.share, Cocción: o.coccion.share });
