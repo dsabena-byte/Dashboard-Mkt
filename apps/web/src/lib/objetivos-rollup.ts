@@ -11,12 +11,27 @@ import "server-only";
 import { getSeguimientoKpis } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
-import { generalPonderado } from "./categorias";
+import { CATEGORIAS_CORE, generalPonderado } from "./categorias";
+import { getDreanSerie, type DreanMesSeg } from "./salud-marca-queries";
+import { computeDreanConsolidado, type SMRow } from "./salud-marca-model";
 
 const CAP = 100;
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+// Categoría (label en metas) → key del modelo Kantar.
+const CAT_KEY: Record<string, "lav" | "ref" | "coc"> = { Lavado: "lav", "Refrigeración": "ref", "Cocción": "coc" };
+// Objetivo (nombre) → dimensión Kantar. Tolerante a variaciones de nombre.
+function dimKey(nombre: string): "tom" | "som" | "int" | "poder" | null {
+  const n = nombre.toLowerCase();
+  if (n.includes("tom") || n.includes("top of mind")) return "tom";
+  if (n.includes("som") || n.includes("share of mind")) return "som";
+  if (n.includes("inten")) return "int";
+  if (n.includes("poder")) return "poder";
+  return null;
+}
 
 export interface ObjAporte { kpi: string; peso: number; cumpl: number | null }
+// Desglose por categoría (capa Kantar): resultado (última ola) vs meta.
+export interface CatDesglose { categoria: string; resultado: number | null; meta: number | null }
 export interface ObjetivoRollup {
   id: string;
   nombre: string;
@@ -27,13 +42,15 @@ export interface ObjetivoRollup {
   cobertura: number; // % del peso del objetivo que tiene KPI con dato
   metaNegMes: number | null; // meta de negocio (General = Σ cat × peso) del mes ref
   cumplSerie: (number | null)[]; // cumplimiento por mes (12) — para el chart de evolución
+  porCategoria: CatDesglose[]; // Kantar resultado vs meta, por categoría (Lav/Refri/Cocc)
   aportes: ObjAporte[];
 }
 export interface SeguimientoObjetivos {
   disponible: boolean; // false = no hay Mapa guardado en la DB
   refMes: string;
+  waveKantar: string | null; // ola Kantar del resultado por categoría (ej. "nov-25")
   objetivos: ObjetivoRollup[];
-  saludMarca: { cumplMes: number | null; cumplYtd: number | null; metaNegMes: number | null; cumplSerie: (number | null)[] };
+  saludMarca: { cumplMes: number | null; cumplYtd: number | null; metaNegMes: number | null; cumplSerie: (number | null)[]; porCategoria: CatDesglose[] };
 }
 
 const cap = (v: number | null): number | null => (v == null ? null : Math.min(v, CAP));
@@ -84,13 +101,25 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
   const refIdx = Math.max(0, Math.min(11, currentMonth - 2)); // último mes cerrado (0-based)
   const refMes = MES[refIdx] ?? "";
 
-  const [kpis, mapa, objMetas] = await Promise.all([
+  const safeP = async <T>(p: Promise<T>, f: T): Promise<T> => { try { return await p; } catch { return f; } };
+  const [kpis, mapa, objMetas, serLav, serRef, serCoc] = await Promise.all([
     getSeguimientoKpis(anio),
     getMapaConfig(),
     getObjetivoMetas(anio),
+    safeP(getDreanSerie("Lavado", "MAT"), new Map<string, DreanMesSeg>()),
+    safeP(getDreanSerie("Refrigeración", "MAT"), new Map<string, DreanMesSeg>()),
+    safeP(getDreanSerie("Cocción", "MAT"), new Map<string, DreanMesSeg>()),
   ]);
 
-  const empty: SeguimientoObjetivos = { disponible: false, refMes, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [] } };
+  // Resultado de marca por categoría (Kantar): última ola con dato real (ej. nov-25).
+  let wave: SMRow | null = null;
+  try {
+    const rows = computeDreanConsolidado({ lav: serLav, ref: serRef, coc: serCoc });
+    wave = rows.find((r) => r.w === "nov-25") ?? rows.find((r) => r.lav.tom.s === "real") ?? rows[rows.length - 1] ?? null;
+  } catch { wave = null; }
+  const waveKantar = wave?.w ?? null;
+
+  const empty: SeguimientoObjetivos = { disponible: false, refMes, waveKantar, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [], porCategoria: [] } };
   if (!mapa || mapa.objetivos.length === 0) return empty;
 
   // Cumplimiento de cada KPI (mes ref = su último mes con dato; capado a 100%).
@@ -133,6 +162,13 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
     // Cumplimiento por mes = ponderado del cumplimiento de los KPIs en ese mes.
     const cumplSerie = Array.from({ length: 12 }, (_, m) => ponderado(conexiones.map((c) => ({ w: c.peso, c: c.serie[m] ?? null }))).val);
     conexiones.sort((a, b) => b.peso - a.peso);
+    // Desglose por categoría (Kantar resultado vs meta cargada).
+    const dk = dimKey(o.nombre);
+    const porCategoria: CatDesglose[] = CATEGORIAS_CORE.map((cat) => ({
+      categoria: cat,
+      resultado: dk && wave ? (wave[CAT_KEY[cat]!]![dk]?.v ?? null) : null,
+      meta: objMetas[o.nombre]?.[cat]?.[refIdx] ?? null,
+    }));
     return {
       id: o.id,
       nombre: o.nombre,
@@ -143,6 +179,7 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
       cobertura: rMes.cobertura,
       metaNegMes: metaGeneral(objMetas[o.nombre], refIdx),
       cumplSerie,
+      porCategoria,
       aportes: conexiones.map((c) => ({ kpi: c.kpi, peso: c.peso, cumpl: c.cumplMes })),
     };
   });
@@ -153,10 +190,24 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
   const smMetaNeg = ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.metaNegMes }))).val;
   const smSerie = Array.from({ length: 12 }, (_, m) => ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.cumplSerie[m] ?? null }))).val);
 
+  // Salud de Marca por categoría: resultado Kantar (0.25·dims) + meta = 0.25·Σ metas de
+  // las dimensiones de marca (objetivos que mapean a una dimensión Kantar).
+  const dimObjs = mapa.objetivos.filter((o) => dimKey(o.nombre) != null);
+  const smPorCat: CatDesglose[] = CATEGORIAS_CORE.map((cat) => {
+    const metas = dimObjs.map((o) => objMetas[o.nombre]?.[cat]?.[refIdx] ?? null);
+    const allMeta = metas.length > 0 && metas.every((m) => m != null);
+    return {
+      categoria: cat,
+      resultado: wave ? (wave[CAT_KEY[cat]!]!.sm?.v ?? null) : null,
+      meta: allMeta ? 0.25 * (metas as number[]).reduce((a, b) => a + b, 0) : null,
+    };
+  });
+
   return {
     disponible: true,
     refMes,
+    waveKantar,
     objetivos,
-    saludMarca: { cumplMes: smMes.val, cumplYtd: smYtd.val, metaNegMes: smMetaNeg, cumplSerie: smSerie },
+    saludMarca: { cumplMes: smMes.val, cumplYtd: smYtd.val, metaNegMes: smMetaNeg, cumplSerie: smSerie, porCategoria: smPorCat },
   };
 }
