@@ -16,10 +16,10 @@ import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
 import { computeDreanConsolidado, SM_DIMS, type SMRow, type SMState } from "@/lib/salud-marca-model";
 import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
 import { getSeguimientoObjetivos } from "@/lib/objetivos-rollup";
-import { getGapKpiCategoria } from "@/lib/objetivos-gaps";
+import { getSeguimientoPorCategoria } from "@/lib/objetivos-por-categoria";
 import { KpiScorecard } from "@/components/objetivos/kpi-scorecard";
 import { ObjetivosHero } from "@/components/objetivos/objetivos-hero";
-import { GapMatrix } from "@/components/objetivos/gap-matrix";
+import { CategoriaView } from "@/components/objetivos/categoria-view";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -290,12 +290,12 @@ function getTab(searchParams: Record<string, string | string[] | undefined>): Se
 function SeguimientoHeader({ tab }: { tab: SegTab }) {
   const tabs: { key: SegTab; label: string }[] = [
     { key: "estado", label: "Estado de KPIs" },
-    { key: "gaps", label: "Gaps × Categoría" },
+    { key: "gaps", label: "Por Categoría" },
     { key: "okr", label: "OKR Mkt" },
   ];
   const subt: Record<SegTab, string> = {
     estado: "Estado de cumplimiento de Objetivos y KPIs vs sus metas mensuales — desvío del mes y acumulado del año.",
-    gaps: "Cumplimiento por KPI y categoría (Lavado / Refrigeración / Cocción) — dónde estás más lejos de la meta.",
+    gaps: "El mismo estado de Objetivos y KPIs, calculado para la categoría que elijas (Lavado / Refrigeración / Cocción).",
     okr: "Seguimiento de los objetivos del área (OKR) — Presupuesto, Floor Share, Cuadro Básico y Salud de Marca.",
   };
   return (
@@ -350,13 +350,13 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     );
   }
 
-  // ===== Tab "Gaps × Categoría": matriz KPI × categoría + ranking de oportunidades =====
+  // ===== Tab "Por Categoría": mismo estado (objetivos + KPIs) recalculado por categoría =====
   if (tab === "gaps") {
-    const gaps = await safe(getGapKpiCategoria(curYear), { disponible: false, refMes: "", kpis: [], oportunidades: [] });
+    const porCat = await safe(getSeguimientoPorCategoria(curYear), { disponible: false, refMes: "", categorias: [] });
     return (
       <div className="space-y-5">
         <SeguimientoHeader tab="gaps" />
-        <GapMatrix data={gaps} />
+        <CategoriaView data={porCat} />
       </div>
     );
   }

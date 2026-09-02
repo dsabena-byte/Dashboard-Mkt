@@ -1,6 +1,9 @@
+"use client";
+
 // Scorecard ejecutivo: estado de cumplimiento de cada KPI vs su meta — desvío del
 // mes de referencia + acumulado YTD + mini evolución (línea real vs meta).
-// Server component: sin interactividad, todo se deriva de las series server-side.
+// Presentacional (client-safe): lo usan el tab "Estado" (server) y el selector por
+// categoría (client). Todo se deriva de las series recibidas por props.
 
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
 import type { KpiSeguimiento, KpiUnit } from "@/lib/objetivos-kpis";

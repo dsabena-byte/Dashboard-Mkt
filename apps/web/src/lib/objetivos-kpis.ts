@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 
 // Serie real mensual (año completo) + meta de cada KPI estratégico con meta cargada.
 // Centraliza acá lo que hoy vive disperso en cada dashboard, para el tab "Estado de
@@ -85,6 +86,23 @@ async function fetchRows<T>(query: string): Promise<T[]> {
   if (!res.ok) return [];
   return (await res.json()) as T[];
 }
+
+type WebCatRow = { fecha: string; categoria: string | null; usuarios: number | null };
+type IgCatRow = { fecha_post: string; categoria: string | null; reach: number | null };
+// Distribución por categoría (Web usuarios · IG reach) para el real por categoría.
+// CACHE 30 min: es data de fuente (sin metas → no afecta el guardado de metas) y el
+// view vw_drean_web_by_category es LENTO (~6s). Cachearlo evita pagarlo en cada carga.
+const getWebIgCatRows = unstable_cache(
+  async (anio: number): Promise<{ web: WebCatRow[]; ig: IgCatRow[] }> => {
+    const [web, ig] = await Promise.all([
+      safe(fetchRows<WebCatRow>(`vw_drean_web_by_category?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,categoria,usuarios`), []),
+      safe(fetchRows<IgCatRow>(`meta_posts?platform=eq.instagram&fecha_post=gte.${anio}-01-01&fecha_post=lt.${anio + 1}-01-01&select=fecha_post,categoria,reach`), []),
+    ]);
+    return { web, ig };
+  },
+  ["objetivos-webig-cat-rows-v1"],
+  { revalidate: 1800 },
+);
 
 // ===== Pauta Mkt: mismo modelo gap-fill que impactoMensual (performance-client) =====
 interface PautaMes { inv: number; alc: number; impr: number; clic: number; v50: number; vbase: number }
@@ -263,11 +281,8 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
   for (const r of pauta) { const mi = mesIdxFull(r.mes); const c = normCat(r.categoria); if (mi >= 0 && c) pautaAcc[mi]![c] = (pautaAcc[mi]![c] ?? 0) + (r.impresiones ?? 0); }
   for (const r of metaPaid) { const mi = mesIdxFull(r.mes); const c = normCat(r.categoria); if (mi >= 0 && c) pautaAcc[mi]![c] = (pautaAcc[mi]![c] ?? 0) + (r.impresiones ?? 0); }
   const pautaShare = sharesFromTotals(pautaAcc);
-  // Web + IG: por categoría (vw_drean_web_by_category; meta_posts IG).
-  const [webCatRows, igCatRows] = await Promise.all([
-    safe(fetchRows<{ fecha: string; categoria: string | null; usuarios: number | null }>(`vw_drean_web_by_category?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,categoria,usuarios`), []),
-    safe(fetchRows<{ fecha_post: string; categoria: string | null; reach: number | null }>(`meta_posts?platform=eq.instagram&fecha_post=gte.${anio}-01-01&fecha_post=lt.${anio + 1}-01-01&select=fecha_post,categoria,reach`), []),
-  ]);
+  // Web + IG: por categoría (vw_drean_web_by_category; meta_posts IG) — cacheado 30 min.
+  const { web: webCatRows, ig: igCatRows } = await getWebIgCatRows(anio);
   // Tráfico web = SUM → share por usuarios. (Conversión NO se desglosa: la vista
   // vw_drean_web_by_category trae conversiones=0 por categoría — el dato de conversión
   // solo existe a nivel total en vw_drean_web_daily_kpis. → Conversión queda total-only.)

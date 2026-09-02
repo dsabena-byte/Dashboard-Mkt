@@ -20,6 +20,33 @@ import { getSeguimientoKpis, type KpiSeguimiento } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
 import { CATEGORIAS_CORE, generalPonderado } from "./categorias";
+import type { MapaConfig } from "./mapa-estrategico-config";
+
+// Real + meta de un KPI EN UNA CATEGORÍA (mes m). Núcleo compartido del desglose por
+// categoría (lo usan el rollup y la vista por categoría). SUM con mix → meta_cat =
+// metaTotal × (mix[cat]+mix[Brand]), real_cat = realCatM[cat]+realCatM[Brand]. Floor
+// Share → meta y real propios por cat. Resto → total (mismo valor a las 3).
+export function makeCatRealMeta(kpis: KpiSeguimiento[], mapa: MapaConfig) {
+  const byName = new Map<string, KpiSeguimiento>(kpis.map((k) => [k.kpi, k]));
+  const mixByKpi = new Map<string, Record<string, number>>();
+  for (const p of mapa.planes) for (const k of p.kpis) if (k.mix) mixByKpi.set(k.nombre, k.mix);
+  return (kName: string, cat: string, m: number): { real: number | null; meta: number | null } => {
+    const k = byName.get(kName);
+    if (!k) return { real: null, meta: null };
+    if (k.metaCatM) return { real: k.realCatM?.[cat]?.[m] ?? null, meta: k.metaCatM[cat]?.[m] ?? null };
+    const metaTot = k.metaM[m] ?? null;
+    if (k.tipo === "sum") {
+      const mix = mixByKpi.get(kName);
+      const rc = k.realCatM;
+      if (mix && rc && metaTot != null) {
+        const catMix = (mix[cat] ?? 0) + (mix["Brand"] ?? 0);
+        return { real: (rc[cat]?.[m] ?? 0) + (rc["Brand"]?.[m] ?? 0), meta: metaTot * (catMix / 100) };
+      }
+      return { real: k.realM[m] ?? null, meta: metaTot }; // SUM sin mix → total
+    }
+    return { real: k.realCatM?.[cat]?.[m] ?? k.realM[m] ?? null, meta: metaTot }; // rate
+  };
+}
 
 const CAP = 100;
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -60,7 +87,7 @@ export interface SeguimientoObjetivos {
 const cap = (v: number | null): number | null => (v == null ? null : Math.min(v, CAP));
 
 // Media ponderada, ignorando los aportes sin dato. Devuelve {val, cobertura}.
-function ponderado(pares: Array<{ w: number; c: number | null }>): { val: number | null; cobertura: number } {
+export function ponderado(pares: Array<{ w: number; c: number | null }>): { val: number | null; cobertura: number } {
   let sumW = 0, sumWC = 0, sumWData = 0;
   for (const { w, c } of pares) {
     sumW += w;
@@ -72,7 +99,7 @@ function ponderado(pares: Array<{ w: number; c: number | null }>): { val: number
   };
 }
 
-async function getObjetivoMetas(anio: number): Promise<Record<string, Record<string, (number | null)[]>>> {
+export async function getObjetivoMetas(anio: number): Promise<Record<string, Record<string, (number | null)[]>>> {
   // { objetivoNombre: { categoria: [12 valores] } }
   const out: Record<string, Record<string, (number | null)[]>> = {};
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -114,38 +141,16 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
   const empty: SeguimientoObjetivos = { disponible: false, refMes, waveKantar: null, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [], porCategoria: [] } };
   if (!mapa || mapa.objetivos.length === 0) return empty;
 
-  // Lookup de KPI (serie real + real por categoría) y del mix por categoría (del Mapa).
+  // Lookup de KPI + cálculo real/meta por categoría (núcleo compartido).
   const kpiByName = new Map<string, KpiSeguimiento>(kpis.map((k) => [k.kpi, k]));
-  const mixByKpi = new Map<string, Record<string, number>>();
-  for (const p of mapa.planes) for (const k of p.kpis) if (k.mix) mixByKpi.set(k.nombre, k.mix);
-
+  const catRM = makeCatRealMeta(kpis, mapa);
   // Cumplimiento de un KPI EN UNA CATEGORÍA (mes mesIdx), capado a 100%.
-  // SUM: meta_cat = metaTotal × (mix[cat] + mix[Brand]); real_cat = realCatM[cat] + realCatM[Brand].
-  // Rate: meta igual en las 3 cats; real = realCatM[cat] genuino (o total si el KPI no se desglosa).
   const cumplKpiCat = (kName: string, cat: string, mesIdx: number): number | null => {
     const k = kpiByName.get(kName);
     if (!k) return null;
-    const metaTot = k.metaM[mesIdx] ?? null;
-    // Meta propia por categoría (Floor Share): real por cat directo vs meta por cat.
-    if (k.metaCatM) {
-      const metaCat = k.metaCatM[cat]?.[mesIdx] ?? null;
-      if (metaCat == null) return null;
-      return cap(cumplimientoPct(k.realCatM?.[cat]?.[mesIdx] ?? null, metaCat, k.direccion));
-    }
-    if (metaTot == null) return null;
-    if (k.tipo === "sum") {
-      const mix = mixByKpi.get(kName);
-      const rc = k.realCatM;
-      if (!mix || !rc) return cap(cumplimientoPct(k.realM[mesIdx] ?? null, metaTot, k.direccion));
-      const brandMix = mix["Brand"] ?? 0;
-      const catMix = (mix[cat] ?? 0) + brandMix;
-      const metaCat = metaTot * (catMix / 100);
-      if (metaCat <= 0) return null;
-      const realCat = (rc[cat]?.[mesIdx] ?? 0) + (rc["Brand"]?.[mesIdx] ?? 0);
-      return cap(cumplimientoPct(realCat, metaCat, k.direccion));
-    }
-    const realCat = k.realCatM?.[cat]?.[mesIdx] ?? k.realM[mesIdx] ?? null;
-    return cap(cumplimientoPct(realCat, metaTot, k.direccion));
+    const { real, meta } = catRM(kName, cat, mesIdx);
+    if (meta == null || meta <= 0) return null;
+    return cap(cumplimientoPct(real, meta, k.direccion));
   };
 
   // Cumplimiento de cada KPI (mes ref = su último mes con dato; capado a 100%).

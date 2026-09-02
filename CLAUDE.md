@@ -86,12 +86,14 @@ reporte_existencia/cb_homologos).
   decir que las metas están "listas".**
 - **Seguimiento Objetivos (`/overview`) — Mapa Estratégico → cumplimiento por categoría:**
   el índice se llama **"Seguimiento Objetivos"** y tiene 3 tabs: **"Estado de KPIs"**
-  (`ObjetivosHero` hero-cards arriba + `KpiScorecard` abajo), **"Gaps × Categoría"**
-  (`objetivos-gaps.ts` → `getGapKpiCategoria` + `components/objetivos/gap-matrix.tsx`: matriz
-  KPI×categoría con cumplimiento real/meta + color semáforo, toggle Mes/YTD, + ranking "Top
-  oportunidades" ordenado por gap; es la vista accionable que expone el cálculo por categoría que
-  las cards agregan y esconden) y **"OKR Mkt"** (los objetivos viejos). Idea central: *si cumplís
-  el 100% de las metas de los KPIs, cumplís el 100% de los objetivos estratégicos.* Piezas:
+  (`ObjetivosHero` hero-cards arriba + `KpiScorecard` abajo), **"Por Categoría"** (`?tab=gaps`:
+  `objetivos-por-categoria.ts` → `getSeguimientoPorCategoria` + `components/objetivos/categoria-view.tsx`:
+  **la misma interfaz que "Estado de KPIs"** — cards de objetivos + scorecard — con un selector
+  Lavado/Refri/Cocción arriba que recalcula todo para la categoría elegida; las 3 se precomputan
+  server-side en una pasada, el selector cliente cambia al instante. `ObjetivosHero`/`KpiScorecard`
+  son `"use client"` para poder montarse en el selector) y **"OKR Mkt"** (los objetivos viejos).
+  Idea central: *si cumplís el 100% de las metas de los KPIs, cumplís el 100% de los objetivos
+  estratégicos.* Piezas:
   - **Mapa** (`/mapa-estrategico`): modelo **aplanado** (`mapa-estrategico-config.ts`).
     Objetivo `{id,nombre,color,peso}` (peso estratégico, se normaliza a 100% entre objetivos).
     KPI `{nombre, vinculos:Record<objId,pesoInbound>, mix?:Record<cat,%>}`. Regla: **la suma de
