@@ -11,7 +11,7 @@ import {
   extractMeses,
   defaultMes,
 } from "@/lib/pauta-data";
-import { InvestmentDonut, HBarChart, ReachImpressionsChart, MonthlyInvestmentChart } from "@/components/pauta/pauta-charts";
+import { InvestmentDonut, HBarChart, ReachImpressionsChart } from "@/components/pauta/pauta-charts";
 import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
@@ -33,6 +33,7 @@ import type { GoogleAdsCreativeRow } from "@/lib/google-ads-creatives-queries";
 import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { MetaEvolChart, type MetaEvolUnidad } from "@/components/pauta/meta-evol-chart";
+import { InversionToggleChart } from "@/components/pauta/inversion-toggle-chart";
 import type { MetaKpiData } from "@/lib/metas-server";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -939,6 +940,13 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [impactoMensual, refIdxImp, metas]);
 
+  // Evolución ON/OFF SOLO de meses ejecutados (cerrados) — para el toggle de la card
+  // de Inversión: hasta el último mes completo (ej. Agosto), sin los meses plan.
+  const inversionEjecutada = useMemo(
+    () => inversionMensual.filter((r) => !r.isPlanned && r.total != null),
+    [inversionMensual],
+  );
+
   // ===== Modelo de medios =====
   // VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD = la fuente oficial
   // del plan, misma que el Overview → todo cuadra. EFECTIVO (VTR, completions, CPM
@@ -1252,12 +1260,17 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
             Solo meses cerrados; el mes en curso arranca vacío. Cargá las metas en el configurador de abajo.
           </p>
           <section className="grid gap-4 lg:grid-cols-2">
-            {impactoCards.map((c) => (
-              <div key={c.key} className="rounded-lg border bg-background p-4">
-                <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">{c.title} &mdash; real vs meta</h4>
-                <MetaEvolChart data={c.chartData} mode={c.mode} unidad={c.unidad as MetaEvolUnidad} color={c.color} realName={c.title} metaName={`Meta ${c.title.toLowerCase()}`} />
-              </div>
-            ))}
+            {impactoCards.map((c) =>
+              c.key === "Inversión" ? (
+                // La Inversión alterna real-vs-meta ↔ Evolución ON/OFF (ejecutada) con un botón.
+                <InversionToggleChart key={c.key} metaData={c.chartData} onOffData={inversionEjecutada} />
+              ) : (
+                <div key={c.key} className="rounded-lg border bg-background p-4">
+                  <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">{c.title} &mdash; real vs meta</h4>
+                  <MetaEvolChart data={c.chartData} mode={c.mode} unidad={c.unidad as MetaEvolUnidad} color={c.color} realName={c.title} metaName={`Meta ${c.title.toLowerCase()}`} />
+                </div>
+              ),
+            )}
           </section>
 
           <div className="mt-4">
@@ -1295,17 +1308,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               <h3 className="mb-2 text-sm font-bold">Inversión por categoría</h3>
               <InvestmentDonut data={catDonutData} />
             </div>
-          </div>
-
-          <SectionTitle>Evolución mensual · Inversión ON / OFF</SectionTitle>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="mb-2 text-[10px] text-muted-foreground">
-              Año completo 2026 (no responde a los filtros). Barras apiladas por tipo de medio.
-              Meses ejecutados usan la inversión REAL del mes (OMD + ejecución de Meta/DV360/Google,
-              igual que los KPIs de arriba); meses futuros usan el plan de OMD (planning_media) en tonos
-              más suaves. El % arriba de cada barra es el peso del mes sobre el total anual.
-            </p>
-            <MonthlyInvestmentChart data={inversionMensual} />
           </div>
 
           {/* ===== 2. DESEMPEÑO · volumen + impacto real ===== */}
