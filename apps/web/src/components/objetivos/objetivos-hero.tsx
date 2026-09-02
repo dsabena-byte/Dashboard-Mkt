@@ -1,0 +1,116 @@
+// Hero-cards del Seguimiento: Salud de Marca (destacada) + los objetivos del Mapa.
+// Cada objetivo muestra su cumplimiento por ROLLUP de KPIs (Σ aporte × min(cumpl,100)),
+// la meta de negocio (Kantar, General = Σ cat × peso) y los KPIs que lo alimentan.
+// Server component.
+
+import Link from "next/link";
+import { semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
+import type { SeguimientoObjetivos, ObjetivoRollup } from "@/lib/objetivos-rollup";
+
+const UMBRAL = { umbralVerde: 100, umbralAmarillo: 90 };
+const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(0)}%`);
+const semOf = (v: number | null): Semaforo => semaforoDe(v, UMBRAL);
+
+function Barra({ v }: { v: number | null }) {
+  const sem = semOf(v);
+  const color = SEMAFORO_COLOR[sem];
+  const w = v == null ? 0 : Math.max(0, Math.min(v, 100));
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div className="h-full rounded-full transition-all" style={{ width: `${w}%`, background: color }} />
+    </div>
+  );
+}
+
+function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
+  const sem = semOf(o.cumplMes);
+  const color = SEMAFORO_COLOR[sem];
+  const top = o.aportes.filter((a) => a.peso > 0).slice(0, 4);
+  return (
+    <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <span className="h-2.5 w-2.5 rounded" style={{ background: o.color }} />{o.nombre}
+          </div>
+          <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">peso estratégico {o.pesoEstrategico}%</div>
+        </div>
+      </div>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className="text-3xl font-bold tabular-nums" style={{ color }}>{pct(o.cumplMes)}</span>
+        <span className="text-[11px] text-muted-foreground">cumplimiento · rollup KPIs</span>
+      </div>
+      <div className="mt-2"><Barra v={o.cumplMes} /></div>
+      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>YTD <span className="font-semibold tabular-nums text-foreground">{pct(o.cumplYtd)}</span></span>
+        <span>Meta negocio <span className="font-semibold tabular-nums text-foreground">{o.metaNegMes == null ? "—" : o.metaNegMes.toFixed(1)}</span></span>
+      </div>
+      {o.cobertura < 99.5 && (
+        <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>
+      )}
+      <div className="mt-2.5 space-y-1 border-t pt-2">
+        {top.map((a) => {
+          const s = semOf(a.cumpl);
+          return (
+            <div key={a.kpi} className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1.5 truncate text-muted-foreground" title={a.kpi}>
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: SEMAFORO_COLOR[s] }} />
+                {a.kpi}
+              </span>
+              <span className="flex shrink-0 items-center gap-2 tabular-nums">
+                <span className="text-muted-foreground/60">{a.peso}%</span>
+                <span className="font-semibold" style={{ color: SEMAFORO_COLOR[s] }}>{pct(a.cumpl)}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function ObjetivosHero({ data }: { data: SeguimientoObjetivos }) {
+  if (!data.disponible) {
+    return (
+      <div className="rounded-xl border border-dashed bg-card p-5 text-sm text-muted-foreground">
+        Todavía no hay un <b className="text-foreground">Mapa Estratégico</b> guardado. Andá al{" "}
+        <Link href="/mapa-estrategico" className="font-medium text-primary hover:underline">Mapa Estratégico</Link>, conectá los KPIs a los objetivos y <b className="text-foreground">Guardá</b> para ver acá el cumplimiento de los objetivos.
+      </div>
+    );
+  }
+  const sm = data.saludMarca;
+  const smSem = semOf(sm.cumplMes);
+  const smColor = SEMAFORO_COLOR[smSem];
+  return (
+    <div className="space-y-3">
+      {/* Salud de Marca — destacada */}
+      <div className="rounded-2xl border-2 bg-card p-5 shadow-sm" style={{ borderColor: smColor }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-bold tracking-tight">
+              <span className="grid h-7 w-7 place-items-center rounded-lg text-white" style={{ background: smColor }}>★</span>
+              Salud de Marca
+            </div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">Σ peso estratégico × cumplimiento de cada objetivo · a {data.refMes}</div>
+          </div>
+          <div className="flex items-baseline gap-3">
+            <div className="text-right">
+              <div className="text-4xl font-bold tabular-nums" style={{ color: smColor }}>{pct(sm.cumplMes)}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">cumplimiento</div>
+            </div>
+            <div className="text-right text-[11px] text-muted-foreground">
+              <div>YTD <span className="font-semibold tabular-nums text-foreground">{pct(sm.cumplYtd)}</span></div>
+              <div>Meta neg. <span className="font-semibold tabular-nums text-foreground">{sm.metaNegMes == null ? "—" : sm.metaNegMes.toFixed(1)}</span></div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3"><Barra v={sm.cumplMes} /></div>
+      </div>
+
+      {/* Objetivos que la componen */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {data.objetivos.map((o) => <ObjetivoCard key={o.id} o={o} />)}
+      </div>
+    </div>
+  );
+}
