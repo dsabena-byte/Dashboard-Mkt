@@ -17,6 +17,9 @@ import { MetaPanel } from "@/components/metas/meta-panel";
 
 const PALETTE = ["#7a5cf0", "#159a5b", "#d08a1e", "#2f7fe0", "#d94a6a", "#0e9aa7"];
 const CATEGORIAS_CORE = ["Lavado", "Refrigeración", "Cocción"];
+// Mix de categorías (peso ponderado) para agregar métricas por categoría → General.
+// Fuente: Salud de Marca Kantar, ola nov-25 (LAV 62% · REFRI 35% · COCC 3%).
+const CATEGORIA_PESOS: Record<string, number> = { Lavado: 62, Refrigeración: 35, Cocción: 3 };
 const DRAFT_KEY = "mapa-estrategico-draft-v1"; // cache local (red de seguridad hasta guardar en DB)
 
 function shortObj(n: string): string {
@@ -415,8 +418,9 @@ export function MapaEditor() {
         <MetaPanel
           plan="Objetivos Estratégicos"
           skipRefresh
+          catPesos={CATEGORIA_PESOS}
           titulo="Configuración de metas de los Objetivos Estratégicos"
-          subtitulo="Cargá la meta de negocio MENSUAL de cada objetivo (su propio target, aparte del rollup de KPIs). Guardá arriba los cambios de objetivos antes para que la lista quede firme."
+          subtitulo="Cargá la meta MENSUAL de cada objetivo POR CATEGORÍA (Lavado/Refrigeración/Cocción). El valor General se calcula solo (Σ categoría × peso nov-25). Guardá arriba los cambios de objetivos antes para que la lista quede firme."
           kpis={objMetaKpis}
         />
       </section>

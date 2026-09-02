@@ -40,6 +40,10 @@ interface Props {
    * components que dependan de la meta, ej. dentro del editor del Mapa: el refresh
    * remontaría el editor cliente y haría flash). */
   skipRefresh?: boolean;
+  /** Peso de cada categoría (categoría → peso). Si viene, el KPI se carga SOLO por
+   * categoría y el valor "General" se CALCULA como Σ (categoría × peso) (read-only),
+   * en vez de cargarse a mano. El tab General va último. */
+  catPesos?: Record<string, number>;
 }
 
 const keyCfg = (kpi: string, cat: string) => `${kpi}|${cat}`;
@@ -55,7 +59,7 @@ function fmt(n: number | null | undefined, unidad?: string | null): string {
   return unidad === "%" ? `${s}%` : unidad === "$" ? `$${s}` : s;
 }
 
-export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefresh }: Props) {
+export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefresh, catPesos }: Props) {
   const now = new Date();
   const year = anio ?? now.getFullYear();
   const month = mes ?? now.getMonth() + 1;
@@ -113,6 +117,25 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
     // Asegura que exista config (para que el semáforo tenga umbrales) al cargar un valor.
     const ckey = keyCfg(kpi, cat);
     if (!cfgMap[ckey]) setCfg(kpi, cat, {});
+  };
+
+  // Modo por categoría (catPesos): el "General" NO se carga a mano, se calcula como
+  // Σ (valor de categoría × peso normalizado de la categoría). Read-only.
+  const catPesoNorm: Record<string, number> | null = (() => {
+    if (!catPesos) return null;
+    const t = Object.values(catPesos).reduce((a, b) => a + b, 0) || 1;
+    const out: Record<string, number> = {};
+    for (const [c, w] of Object.entries(catPesos)) out[c] = w / t;
+    return out;
+  })();
+  const computedGeneral = (kpi: string, m: number): number | null => {
+    if (!catPesoNorm) return null;
+    let sum = 0, any = false;
+    for (const [cat, w] of Object.entries(catPesoNorm)) {
+      const v = valMap[keyVal(kpi, cat, m)];
+      if (v != null) { sum += v * w; any = true; }
+    }
+    return any ? sum : null;
   };
 
   const dirty = touchedCfg.size > 0 || touchedVal.size > 0;
@@ -187,7 +210,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
         <div className="divide-y">
           {kpis.map((k) => {
             const cfg = getCfg(k.nombre, CAT_GENERAL, k.unidad);
-            const metaMes = valMap[keyVal(k.nombre, CAT_GENERAL, month)] ?? null;
+            const metaMes = catPesos ? computedGeneral(k.nombre, month) : (valMap[keyVal(k.nombre, CAT_GENERAL, month)] ?? null);
             const cumpl = cumplimientoPct(k.actual, metaMes, cfg.direccion);
             const sem = semaforoDe(cumpl, cfg);
             const isOpen = open === k.nombre;
@@ -202,14 +225,20 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
 
                   <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                     Meta {MESES[month - 1]}
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      value={metaMes ?? ""}
-                      onChange={(e) => setVal(k.nombre, CAT_GENERAL, month, e.target.value)}
-                      className="w-24 rounded-md border bg-background px-2 py-1 text-right text-xs tabular-nums"
-                      placeholder="—"
-                    />
+                    {catPesos ? (
+                      <span className="w-24 rounded-md border border-transparent bg-muted/50 px-2 py-1 text-right text-xs font-medium tabular-nums" title="Calculado desde las categorías">
+                        {fmt(metaMes, cfg.unidad)}
+                      </span>
+                    ) : (
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={metaMes ?? ""}
+                        onChange={(e) => setVal(k.nombre, CAT_GENERAL, month, e.target.value)}
+                        className="w-24 rounded-md border bg-background px-2 py-1 text-right text-xs tabular-nums"
+                        placeholder="—"
+                      />
+                    )}
                     {cfg.unidad && <span className="text-muted-foreground/70">{cfg.unidad}</span>}
                   </label>
 
@@ -233,7 +262,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
                   <div className="mt-3 space-y-3 rounded-md border bg-muted/30 p-3">
                     {cats.length > 0 && (
                       <div className="flex flex-wrap gap-1">
-                        {[CAT_GENERAL, ...cats].map((c) => (
+                        {(catPesos ? [...cats, CAT_GENERAL] : [CAT_GENERAL, ...cats]).map((c) => (
                           <button
                             key={c}
                             type="button"
@@ -251,30 +280,48 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
                       onChange={(patch) => setCfg(k.nombre, activeCat, patch, k.unidad)}
                     />
 
-                    <div>
-                      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Meta mensual {year}{activeCat !== CAT_GENERAL ? ` · ${activeCat}` : ""}
-                      </div>
-                      <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-12">
-                        {MESES.map((mLabel, i) => {
-                          const m = i + 1;
-                          const v = valMap[keyVal(k.nombre, activeCat, m)] ?? null;
-                          return (
-                            <label key={m} className="flex flex-col gap-0.5">
-                              <span className={`text-center text-[9px] uppercase ${m === month ? "font-bold text-foreground" : "text-muted-foreground"}`}>{mLabel}</span>
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                value={v ?? ""}
-                                onChange={(e) => setVal(k.nombre, activeCat, m, e.target.value)}
-                                className={`w-full rounded border bg-background px-1 py-1 text-center text-[11px] tabular-nums ${m === month ? "border-primary/60" : ""}`}
-                                placeholder="—"
-                              />
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    {(() => {
+                      const computedTab = catPesos != null && activeCat === CAT_GENERAL; // General calculado, read-only
+                      return (
+                        <div>
+                          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Meta mensual {year}{activeCat !== CAT_GENERAL ? ` · ${activeCat}` : computedTab ? " · General (calculado)" : ""}
+                          </div>
+                          {computedTab && (
+                            <p className="mb-1.5 text-[10px] text-muted-foreground/80">= Σ (categoría × peso): {Object.entries(catPesos!).map(([c, w]) => `${c} ${w}%`).join(" · ")}. Se carga por categoría, no acá.</p>
+                          )}
+                          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-12">
+                            {MESES.map((mLabel, i) => {
+                              const m = i + 1;
+                              if (computedTab) {
+                                return (
+                                  <div key={m} className="flex flex-col gap-0.5">
+                                    <span className={`text-center text-[9px] uppercase ${m === month ? "font-bold text-foreground" : "text-muted-foreground"}`}>{mLabel}</span>
+                                    <span className="w-full rounded border border-transparent bg-muted/50 px-1 py-1 text-center text-[11px] font-medium tabular-nums" title="Calculado desde las categorías">
+                                      {(() => { const g = computedGeneral(k.nombre, m); return g == null ? "—" : Number.isInteger(g) ? String(g) : g.toFixed(1); })()}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              const v = valMap[keyVal(k.nombre, activeCat, m)] ?? null;
+                              return (
+                                <label key={m} className="flex flex-col gap-0.5">
+                                  <span className={`text-center text-[9px] uppercase ${m === month ? "font-bold text-foreground" : "text-muted-foreground"}`}>{mLabel}</span>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={v ?? ""}
+                                    onChange={(e) => setVal(k.nombre, activeCat, m, e.target.value)}
+                                    className={`w-full rounded border bg-background px-1 py-1 text-center text-[11px] tabular-nums ${m === month ? "border-primary/60" : ""}`}
+                                    placeholder="—"
+                                  />
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
