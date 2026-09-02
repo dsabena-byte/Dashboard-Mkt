@@ -32,7 +32,7 @@ type NavNode =
 
 const TREE: NavNode[] = [
   { type: "link", href: "/mapa-estrategico", label: "Mapa Estratégico", icon: Compass },
-  { type: "link", href: "/overview", label: "Objetivos Estratégicos", icon: Target },
+  { type: "link", href: "/overview", label: "Seguimiento Objetivos", icon: Target },
   {
     type: "group",
     id: "planes",
