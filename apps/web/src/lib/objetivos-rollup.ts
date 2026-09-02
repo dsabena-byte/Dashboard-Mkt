@@ -26,13 +26,14 @@ export interface ObjetivoRollup {
   cumplYtd: number | null;
   cobertura: number; // % del peso del objetivo que tiene KPI con dato
   metaNegMes: number | null; // meta de negocio (General = Σ cat × peso) del mes ref
+  cumplSerie: (number | null)[]; // cumplimiento por mes (12) — para el chart de evolución
   aportes: ObjAporte[];
 }
 export interface SeguimientoObjetivos {
   disponible: boolean; // false = no hay Mapa guardado en la DB
   refMes: string;
   objetivos: ObjetivoRollup[];
-  saludMarca: { cumplMes: number | null; cumplYtd: number | null; metaNegMes: number | null };
+  saludMarca: { cumplMes: number | null; cumplYtd: number | null; metaNegMes: number | null; cumplSerie: (number | null)[] };
 }
 
 const cap = (v: number | null): number | null => (v == null ? null : Math.min(v, CAP));
@@ -89,11 +90,11 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
     getObjetivoMetas(anio),
   ]);
 
-  const empty: SeguimientoObjetivos = { disponible: false, refMes, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null } };
+  const empty: SeguimientoObjetivos = { disponible: false, refMes, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [] } };
   if (!mapa || mapa.objetivos.length === 0) return empty;
 
   // Cumplimiento de cada KPI (mes ref = su último mes con dato; capado a 100%).
-  const kpiCumpl = new Map<string, { mes: number | null; ytd: number | null }>();
+  const kpiCumpl = new Map<string, { mes: number | null; ytd: number | null; serie: (number | null)[] }>();
   const sum = (xs: (number | null)[]) => xs.reduce((a: number, x) => a + (x ?? 0), 0);
   const avg = (xs: (number | null)[]) => { const d = xs.filter((x): x is number => x != null); return d.length ? d.reduce((a, b) => a + b, 0) / d.length : null; };
   for (const k of kpis) {
@@ -105,9 +106,11 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
     const isSum = k.tipo === "sum";
     const realYtd = isSum ? sum(k.realM.slice(0, upto + 1)) : avg(k.realM.slice(0, upto + 1));
     const metaYtd = isSum ? sum(k.metaM.slice(0, upto + 1)) : avg(k.metaM.slice(0, upto + 1));
+    const serie = k.realM.map((r, i) => cap(cumplimientoPct(r, k.metaM[i] ?? null, k.direccion))); // cumpl por mes
     kpiCumpl.set(k.kpi, {
       mes: cap(cumplimientoPct(realMes, metaMes, k.direccion)),
       ytd: cap(cumplimientoPct(realYtd, metaYtd, k.direccion)),
+      serie,
     });
   }
 
@@ -116,17 +119,19 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
 
   const objetivos: ObjetivoRollup[] = mapa.objetivos.map((o) => {
     // KPIs conectados a este objetivo con su aporte inbound.
-    const conexiones: Array<{ kpi: string; peso: number; cumplMes: number | null; cumplYtd: number | null }> = [];
+    const conexiones: Array<{ kpi: string; peso: number; cumplMes: number | null; cumplYtd: number | null; serie: (number | null)[] }> = [];
     for (const p of mapa.planes) {
       for (const k of p.kpis) {
         const peso = k.vinculos?.[o.id] ?? 0;
         if (peso <= 0) continue;
         const c = kpiCumpl.get(k.nombre);
-        conexiones.push({ kpi: k.nombre, peso, cumplMes: c?.mes ?? null, cumplYtd: c?.ytd ?? null });
+        conexiones.push({ kpi: k.nombre, peso, cumplMes: c?.mes ?? null, cumplYtd: c?.ytd ?? null, serie: c?.serie ?? Array.from({ length: 12 }, () => null) });
       }
     }
     const rMes = ponderado(conexiones.map((c) => ({ w: c.peso, c: c.cumplMes })));
     const rYtd = ponderado(conexiones.map((c) => ({ w: c.peso, c: c.cumplYtd })));
+    // Cumplimiento por mes = ponderado del cumplimiento de los KPIs en ese mes.
+    const cumplSerie = Array.from({ length: 12 }, (_, m) => ponderado(conexiones.map((c) => ({ w: c.peso, c: c.serie[m] ?? null }))).val);
     conexiones.sort((a, b) => b.peso - a.peso);
     return {
       id: o.id,
@@ -137,6 +142,7 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
       cumplYtd: rYtd.val,
       cobertura: rMes.cobertura,
       metaNegMes: metaGeneral(objMetas[o.nombre], refIdx),
+      cumplSerie,
       aportes: conexiones.map((c) => ({ kpi: c.kpi, peso: c.peso, cumpl: c.cumplMes })),
     };
   });
@@ -145,11 +151,12 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
   const smMes = ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.cumplMes })));
   const smYtd = ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.cumplYtd })));
   const smMetaNeg = ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.metaNegMes }))).val;
+  const smSerie = Array.from({ length: 12 }, (_, m) => ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.cumplSerie[m] ?? null }))).val);
 
   return {
     disponible: true,
     refMes,
     objetivos,
-    saludMarca: { cumplMes: smMes.val, cumplYtd: smYtd.val, metaNegMes: smMetaNeg },
+    saludMarca: { cumplMes: smMes.val, cumplYtd: smYtd.val, metaNegMes: smMetaNeg, cumplSerie: smSerie },
   };
 }
