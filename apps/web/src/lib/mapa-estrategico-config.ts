@@ -11,9 +11,16 @@
 
 export type Vinculos = Record<string, number>; // objId -> peso inbound 0-100
 
+// Categorías del mix de cada KPI (para desglosar la meta total por categoría).
+// Brand suma a las 3 categorías core; Cocción = "Cocinas" en la data de Web.
+export const MIX_CATEGORIAS = ["Brand", "Lavado", "Refrigeración", "Cocción"] as const;
+
 export interface Kpi {
   nombre: string;
   vinculos: Vinculos;
+  // Mix por categoría (categoría → % que suma 100). La meta por categoría =
+  // meta total × mix. Opcional: si falta, el KPI no se desglosa por categoría.
+  mix?: Record<string, number>;
 }
 
 export interface Plan {
