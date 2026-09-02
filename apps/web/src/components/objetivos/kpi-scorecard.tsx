@@ -105,7 +105,7 @@ function Group({ plan, kpis }: { plan: string; kpis: KpiSeguimiento[] }) {
               <th className="px-3 py-2.5 text-left font-semibold" rowSpan={2}>Mes</th>
               <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Desvío del mes</th>
               <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Acumulado YTD</th>
-              <th className="border-l px-3 py-2.5 text-right font-semibold" rowSpan={2}>Evolución (real vs meta)</th>
+              <th className="border-l px-3 py-2.5 text-center font-semibold" rowSpan={2}>Evolución (real vs meta)</th>
             </tr>
             <tr className="text-[9px] uppercase tracking-wide text-muted-foreground/70">
               <th className="border-l px-3 py-1.5 text-right font-normal">Real</th>
@@ -137,7 +137,7 @@ function Group({ plan, kpis }: { plan: string; kpis: KpiSeguimiento[] }) {
                   <td className="border-l px-3 py-2.5 text-right font-semibold tabular-nums">{fmt(realYtd, k.unit)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{fmt(metaYtd, k.unit)}</td>
                   <td className="px-3 py-2.5 text-right"><Chip actual={realYtd} meta={metaYtd} direccion={k.direccion} umbralVerde={k.umbralVerde} umbralAmarillo={k.umbralAmarillo} /></td>
-                  <td className="border-l px-3 py-2 text-right"><div className="flex justify-end"><Spark realM={k.realM} metaM={k.metaM} /></div></td>
+                  <td className="border-l px-3 py-2"><div className="flex justify-center"><Spark realM={k.realM} metaM={k.metaM} /></div></td>
                 </tr>
               );
             })}
