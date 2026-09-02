@@ -8,7 +8,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import {
   MAPA_CONFIG_SEED,
-  normPeso,
   pesoAsignado,
   type Objetivo,
   type Plan,
@@ -23,6 +22,15 @@ function shortObj(n: string): string {
 }
 function clip(n: string, mx: number): string {
   return n.length > mx ? n.slice(0, mx - 1) + "…" : n;
+}
+// Los pesos estratégicos son % DIRECTOS que suman 100. Normaliza una lista a 100
+// (por si viene de data vieja/cruda), absorbiendo el redondeo en el último.
+function to100(list: Objetivo[]): Objetivo[] {
+  if (!list.length) return list;
+  const t = list.reduce((a, o) => a + (o.peso || 0), 0) || 1;
+  const scaled = list.map((o) => ({ ...o, peso: Math.round(((o.peso || 0) / t) * 100) }));
+  scaled[scaled.length - 1]!.peso += 100 - scaled.reduce((a, o) => a + o.peso, 0);
+  return scaled;
 }
 
 export function MapaEditor() {
@@ -43,7 +51,7 @@ export function MapaEditor() {
         if (res.ok && alive) {
           const data = (await res.json()) as { objetivos: Objetivo[]; planes: Plan[] };
           if (Array.isArray(data.objetivos) && data.objetivos.length) {
-            setObjs(data.objetivos);
+            setObjs(to100(data.objetivos)); // pesos como % directos sumando 100
             setPlanes(data.planes ?? []);
             setNextO(data.objetivos.length + 1);
           }
@@ -55,7 +63,6 @@ export function MapaEditor() {
     return () => { alive = false; };
   }, []);
 
-  const np = useMemo(() => normPeso(objs), [objs]);
   const catKpiNames = useMemo(() => new Set(CATALOGO_PLANES.flatMap((c) => c.kpis)), []);
 
   const patchObjs = (fn: (d: Objetivo[]) => void) => { setObjs((prev) => { const d = structuredClone(prev); fn(d); return d; }); setDirty(true); };
@@ -76,12 +83,29 @@ export function MapaEditor() {
   }
 
   // --- objetivos ---
-  function setPeso(i: number, v: number) { patchObjs((d) => { d[i]!.peso = v; }); }
+  // El peso es % directo (suma 100). Al mover uno, SOLO el de más abajo se ajusta
+  // para cerrar en 100 (si movés el último, se ajusta el de arriba). El resto queda fijo.
+  function setPeso(i: number, v: number) {
+    patchObjs((d) => {
+      const n = d.length;
+      if (n === 1) { d[0]!.peso = 100; return; }
+      const bal = i === n - 1 ? n - 2 : n - 1;
+      let fixed = 0;
+      d.forEach((o, j) => { if (j !== i && j !== bal) fixed += o.peso; });
+      const vv = Math.max(0, Math.min(v, 100 - fixed));
+      d[i]!.peso = vv;
+      d[bal]!.peso = 100 - fixed - vv;
+    });
+  }
   function setObjName(i: number, v: string) { patchObjs((d) => { d[i]!.nombre = v; }); }
-  function addObj() { patchObjs((d) => d.push({ id: `o${nextO}`, nombre: "Nuevo objetivo", color: PALETTE[d.length % PALETTE.length]!, peso: 20 })); setNextO((n) => n + 1); }
+  function addObj() { patchObjs((d) => d.push({ id: `o${nextO}`, nombre: "Nuevo objetivo", color: PALETTE[d.length % PALETTE.length]!, peso: 0 })); setNextO((n) => n + 1); }
   function removeObj(i: number) {
     const oid = objs[i]!.id;
-    patchObjs((d) => { d.splice(i, 1); });
+    patchObjs((d) => {
+      d.splice(i, 1);
+      const norm = to100(d);
+      d.forEach((o, j) => { o.peso = norm[j]!.peso; });
+    });
     patchPlanes((d) => d.forEach((p) => p.kpis.forEach((k) => { delete k.vinculos[oid]; })));
   }
 
@@ -122,7 +146,7 @@ export function MapaEditor() {
 
   // Ranking de importancia estratégica: Σ (peso vínculo/100 × peso estratégico objetivo).
   const ranking = useMemo(() => {
-    const objPeso: Record<string, number> = {}; objs.forEach((o, i) => (objPeso[o.id] = np[i]! / 100));
+    const objPeso: Record<string, number> = {}; objs.forEach((o) => (objPeso[o.id] = o.peso / 100));
     const items: { plan: string; kpi: string; imp: number; fuente: boolean }[] = [];
     planes.forEach((p) => p.kpis.forEach((k) => {
       let imp = 0;
@@ -131,7 +155,7 @@ export function MapaEditor() {
     }));
     items.sort((a, b) => b.imp - a.imp);
     return { items, max: items.length ? (items[0]!.imp || 1) : 1 };
-  }, [objs, planes, np, catKpiNames]);
+  }, [objs, planes, catKpiNames]);
 
   const objMetaKpis = useMemo(() => objs.map((o) => ({ nombre: o.nombre })), [objs]);
 
@@ -174,7 +198,7 @@ export function MapaEditor() {
               <span className="hidden shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground sm:inline">peso estratégico</span>
               <div className="flex flex-[0_0_130px] items-center gap-2">
                 <input type="range" min={0} max={100} value={o.peso} onChange={(e) => setPeso(i, +e.target.value)} style={{ ["--c" as string]: o.color, flex: 1 }} />
-                <span className="w-8 text-right font-mono text-xs font-semibold tabular-nums">{np[i]}%</span>
+                <span className="w-8 text-right font-mono text-xs font-semibold tabular-nums">{o.peso}%</span>
               </div>
               {objs.length > 1 && <button onClick={() => removeObj(i)} title="Quitar objetivo" className="text-muted-foreground hover:text-destructive">✕</button>}
             </div>
@@ -279,7 +303,7 @@ export function MapaEditor() {
           <h3 className="text-sm font-semibold tracking-tight">Composición de cada objetivo</h3>
         </div>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {objs.map((o, i) => {
+          {objs.map((o) => {
             const parts = planes.flatMap((p) => p.kpis.filter((k) => (k.vinculos[o.id] ?? 0) > 0).map((k) => ({ nombre: k.nombre, w: k.vinculos[o.id]! })));
             parts.sort((a, b) => b.w - a.w);
             const asg = parts.reduce((a, b) => a + b.w, 0);
@@ -288,7 +312,7 @@ export function MapaEditor() {
               <div key={o.id} className="rounded-xl border bg-card p-3.5">
                 <div className="flex items-baseline justify-between">
                   <span className="flex items-center gap-2 text-sm font-semibold"><span className="h-2.5 w-2.5 rounded" style={{ background: o.color }} />{o.nombre}</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">peso {np[i]}%</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">peso {o.peso}%</span>
                 </div>
                 <div className="mt-2.5 flex h-3 w-full overflow-hidden rounded bg-muted">
                   {parts.map((pt, j) => (
