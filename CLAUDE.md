@@ -107,24 +107,24 @@ reporte_existencia/cb_homologos).
     `kpi_meta_valores` (por categoría Lavado/Refrigeración/Cocción).
   - **Desglose por categoría (reemplazó la capa Kantar):** cada KPI trae `realM` + **`realCatM`**
     (real por Brand/Lav/Refri/Cocc) desde `objetivos-kpis.ts`. SUM (alcance/impr/clicks/usuarios/
-    alcance IG) = share de la fuente; tasa con dato genuino (engagement IG) = Σeng÷Σreach por
-    categoría; Floor Share directo por góndola; **Avg Sesión/Frecuencia/VTR/CB/Tasa de conversión
-    = total** (mismo valor a las 3). OJO: **Conversión queda total-only** porque
+    alcance IG) = share de la fuente; Floor Share directo por góndola; **Avg Sesión/Frecuencia/
+    VTR/CB/Tasa de conversión/Engagement = total** (mismo valor a las 3 — son KPIs "generales"
+    por decisión del usuario). OJO: **Conversión queda total-only** porque
     `vw_drean_web_by_category` trae `conversiones=0` por categoría (el dato de conversión solo
     existe a nivel total en `vw_drean_web_daily_kpis`). El rollup usa el **mix del Mapa**: `meta_cat = metaTotal ×
     (mix[cat]+mix[Brand])` para SUM (meta igual en las 3 para tasas); **Brand suma a las 3
     categorías** (meta y real). `cumpl(objetivo,cat)=Σ peso×cumpl(KPI,cat)` y **`resultado =
     meta × cumpl/100`** → si los KPIs se cumplen al 100%, el resultado iguala la meta. Salud de
     Marca por cat = 0.25·Σ(TOM+SOM+IC+Poder). **Ya NO se usa `getDreanSerie`/Kantar en el rollup.**
-  - **PENDIENTE del usuario (validado sep-2026):** hoy **ningún KPI tiene `mix` cargado** en el
-    Mapa. Sin mix, un KPI SUM cae al fallback = cumpl total repetido a las 3 categorías (no
-    discrimina). Para que el desglose por categoría de los SUM tenga sentido, el usuario debe
-    **cargar el mix por KPI** en la sección "Mix por categoría" del editor. Tasas genuinas
-    (engagement IG) y Floor Share ya varían por categoría sin mix. Estado DB validado: metas de
-    objetivos completas (plan "Objetivos Estratégicos", 4 obj × 3 cat × 12 = 144 filas); objetivos
-    = TOM/SOM/Intención/Poder (ids legacy `awareness/poder/impacto/o4` respectivamente, los 4
-    conectados). Shares reales OK (Pauta jul Brand 42/Refri 28/Cocc 22/Lav 7; Web usuarios Lav 38/
-    Cocc 28/Refri 28/Brand 5; IG reach Lav 39/Refri 28/Cocc 17/Brand 16).
+  - **Mix cargado (sep-2026):** el usuario definió un mix **único** `Brand 30/Lavado 35/Refri 20/
+    Cocción 15` aplicado a los 5 KPIs de suma (Alcance único, Impresiones, Clicks, Tráfico web
+    usuarios, Alcance orgánico) — escrito en `mapa_estrategico`. Los demás (engagement, conversión,
+    avg sesión, frecuencia, VTR, CB) son **generales** (total, sin mix). Estado DB validado: metas
+    de objetivos completas (plan "Objetivos Estratégicos", 4 obj × 3 cat × 12 = 144 filas);
+    objetivos = TOM/SOM/Intención/Poder (ids legacy `awareness/poder/impacto/o4` respectivamente,
+    los 4 conectados). Shares reales OK (Pauta jul Brand 42/Refri 28/Cocc 22/Lav 7; Web usuarios
+    Lav 38/Cocc 28/Refri 28/Brand 5; IG reach Lav 39/Refri 28/Cocc 17/Brand 16). **OJO:** como el
+    mix se guarda en la config del Mapa, si el usuario re-guarda desde el editor debe conservarlo.
   - **Ojo:** Inversión (Pauta) NO va en el Mapa (no aporta a ningún objetivo) → se excluye del
     scorecard filtrado del hero. KPIs del scorecard: solo los mapeados en el Mapa. CB queda
     **total-only** (el proyecto CB no es alcanzable desde el sandbox; para CB por categoría hay que
