@@ -30,6 +30,10 @@ import {
 import type { GoogleAdsOmdRow } from "@/lib/google-ads-omd-queries";
 import { GoogleAdsCreativesGrid } from "@/components/pauta/google-ads-creatives-grid";
 import type { GoogleAdsCreativeRow } from "@/lib/google-ads-creatives-queries";
+import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
+import { MetaPanel } from "@/components/metas/meta-panel";
+import { MetaEvolChart, type MetaEvolUnidad } from "@/components/pauta/meta-evol-chart";
+import type { MetaKpiData } from "@/lib/metas-server";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const fmtUSD = (n: number): string =>
@@ -41,8 +45,12 @@ function fmtNum(n: number): string {
 }
 const fmtARS = formatCurrency;
 
-const TABS = ["Overview", "Por Medio", "Insights Pauta"] as const;
+const TABS = ["Impacto Campaña", "Eficiencia Medios", "Insights Pauta"] as const;
 type Tab = (typeof TABS)[number];
+
+// Los 6 KPIs estratégicos de Impacto Campaña (claves = MetaPanel plan "Pauta Mkt").
+type MetasPauta = Record<string, MetaKpiData>;
+const META_FALLBACK: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
 
 type TipoMedio = "Digital" | "TV Cable" | "DOOH" | "OOH";
 function tipoMedio(m: string): TipoMedio {
@@ -287,7 +295,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null } }) {
+export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta }) {
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -297,7 +305,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const [selCats, setSelCats] = useState<string[]>([]);
   const [selRoles, setSelRoles] = useState<string[]>([]);
   const [selPlats, setSelPlats] = useState<string[]>([]);
-  const [tab, setTab] = useState<Tab>("Overview");
+  const [tab, setTab] = useState<Tab>("Impacto Campaña");
 
   const opMedios: TipoMedio[] = ["Digital", "TV Cable", "DOOH", "OOH"];
   const opCats = useMemo(() => [...new Set(data.map((r) => r.categoria))].sort(), [data]);
@@ -821,6 +829,116 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     return { ref: calc(refMeses), prev: prevMes ? calc([prevMes]) : null };
   }, [rowsNoMes, refMeses, prevMes, metaPaid, dv360, dv360Reach, selCats, selRoles, digitalOk]);
 
+  // ===== Impacto de campaña · serie mensual para metas (año completo, SIN filtros) =====
+  // Mismo modelo gap-fill que el Embudo/Volumetría: VOLUMEN oficial de OMD +
+  // ejecución real (Meta/DV360/Google Ads) SOLO para los medios sin plan OMD ese
+  // mes (no duplica). Inversión: DV360 (USD) → ARS por el fx del mes. VTR ≥50% =
+  // vistas al 50% ÷ impresiones de video (Meta p50 + DV360 q50; sin gap-fill, es
+  // una tasa de calidad). Solo meses CERRADOS (< mes corriente); el resto = null.
+  const impactoMensual = useMemo(() => {
+    const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
+    return HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
+      const cerrado = i + 1 < currentMonth; // mes ya terminado (el corriente arranca vacío)
+      const nulo = { mes: short, inv: null as number | null, alc: null as number | null, impr: null as number | null, clic: null as number | null, v50: 0, vbase: 0 };
+      if (!cerrado) return nulo;
+      const mesLabel = `${full} 2026`;
+      const iso = `2026-${String(i + 1).padStart(2, "0")}-01`;
+      const fx = fxRates[iso] ?? fxFallback;
+      // OMD (todos los objetivos/medios), por medio.
+      const omd = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
+      for (const r of data) {
+        if (r.mes !== mesLabel) continue;
+        const e = omd.get(r.medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
+        e.impr += r.impresiones ?? 0; e.alc += r.alcance ?? 0; e.clic += r.clics ?? 0; e.inv += r.inversion ?? 0;
+        omd.set(r.medio, e);
+      }
+      let inv = 0, impr = 0, alc = 0, clic = 0;
+      for (const e of omd.values()) { inv += e.inv; impr += e.impr; alc += e.alc; clic += e.clic; }
+      const present = new Set([...omd].filter(([, e]) => e.impr > 0).map(([m]) => m));
+      // Ejecución real por medio (gap-fill).
+      const auto = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
+      const addAuto = (medio: string, im: number, al: number, cl: number, iv: number) => {
+        const e = auto.get(medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
+        e.impr += im; e.alc += al; e.clic += cl; e.inv += iv; auto.set(medio, e);
+      };
+      for (const r of dv360) { if (r.mes === iso) addAuto(DVMED[r.canal] ?? r.canal, r.impresiones, 0, r.clicks, (r.revenue_usd ?? 0) * (arsMode ? fx : 1)); }
+      for (const r of dv360Reach) { if (r.mes === iso) { const e = auto.get(DVMED[r.canal] ?? r.canal); if (e) e.alc += r.reach ?? 0; } }
+      for (const r of metaPaid) {
+        if (r.mes !== mesLabel) continue;
+        const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
+        if (!medio) continue;
+        addAuto(medio, r.impresiones ?? 0, r.alcance ?? 0, r.clicks ?? 0, r.spend ?? 0);
+      }
+      for (const r of googleAdsOmd) { if (r.mes === mesLabel) addAuto(r.canal, r.impresiones, 0, r.clicks, r.costo); }
+      for (const [medio, e] of auto) { if (!present.has(medio) && e.impr > 0) { impr += e.impr; alc += e.alc; clic += e.clic; inv += e.inv; } }
+      // VTR ≥50% (tasa de calidad de video; sin gap-fill).
+      let v50 = 0, vbase = 0;
+      for (const r of metaPaid) {
+        if (r.mes !== mesLabel) continue;
+        if ((r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0) > 0) { vbase += r.impresiones ?? 0; v50 += r.video_p50 ?? 0; }
+      }
+      for (const r of dv360) { if (r.mes === iso && (r.starts ?? 0) > 0) { vbase += r.impresiones; v50 += r.q50 ?? 0; } }
+      // Mes cerrado sin ejecución alguna → null (gap en el gráfico, ej. Ene-Mar).
+      if (impr === 0 && inv === 0) return nulo;
+      return { mes: short, inv, alc, impr, clic, v50, vbase };
+    });
+  }, [data, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, arsMode, fxFallback, currentMonth]);
+
+  // Mes de REFERENCIA para las cards = último mes cerrado con ejecución real.
+  const refIdxImp = useMemo(() => {
+    for (let i = impactoMensual.length - 1; i >= 0; i--) { if (impactoMensual[i]?.impr != null) return i; }
+    return -1;
+  }, [impactoMensual]);
+  const refMesImp = refIdxImp >= 0 ? (impactoMensual[refIdxImp]?.mes ?? "") : "";
+
+  // Descriptores de los 6 KPIs de Impacto Campaña (real + meta + tipo de agregación YTD).
+  type ImpactoMes = (typeof impactoMensual)[number];
+  const IMPACTO_KPIS: Array<{
+    key: string; title: string; medida: string; unidad: "%" | "x" | "$" | ""; mode: "bar" | "line"; color: string;
+    tipo: "sum" | "rate"; scale?: number; serie?: (m: ImpactoMes) => number | null; num?: (m: ImpactoMes) => number; den?: (m: ImpactoMes) => number;
+  }> = [
+    { key: "Inversión", title: "Inversión", medida: "Inversión total ejecutada (ARS)", unidad: "$", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.inv },
+    { key: "Alcance único", title: "Alcance único", medida: "Personas alcanzadas (dato de reportes)", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.alc },
+    { key: "Frecuencia", title: "Frecuencia", medida: "Impresiones ÷ alcance (dato de reportes)", unidad: "x", mode: "line", color: "#0f172a", tipo: "rate", num: (m) => m.impr ?? 0, den: (m) => m.alc ?? 0 },
+    { key: "Impresiones", title: "Impresiones", medida: "Impresiones totales del período", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.impr },
+    { key: "VTR (≥50%)", title: "VTR ≥50%", medida: "Vistas al 50% ÷ impresiones de video", unidad: "%", mode: "line", color: "#0f172a", tipo: "rate", scale: 100, num: (m) => m.v50, den: (m) => m.vbase },
+    { key: "Clicks", title: "Clicks", medida: "Clicks totales del período", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.clic },
+  ];
+
+  // Arma card + chart de un KPI: headline (mes ref), filas Mes + Acum. YTD, serie real vs meta.
+  const impactoCards = useMemo(() => {
+    const sum = (xs: (number | null | undefined)[]) => xs.reduce((a: number, x) => a + (x ?? 0), 0);
+    const upto = refIdxImp >= 0 ? refIdxImp : impactoMensual.length - 1;
+    return IMPACTO_KPIS.map((k) => {
+      const md = metas[k.key] ?? META_FALLBACK;
+      const vals = md.valores;
+      const scale = k.scale ?? 1;
+      // Serie real mensual.
+      const realSerie: (number | null)[] = impactoMensual.map((m) => {
+        if (m.impr == null) return null; // mes sin ejecución
+        if (k.tipo === "sum") return k.serie!(m);
+        const d = k.den!(m); return d > 0 ? (k.num!(m) / d) * scale : null;
+      });
+      const headlineActual = refIdxImp >= 0 ? realSerie[refIdxImp] ?? null : null;
+      const metaRef = refIdxImp >= 0 ? vals[refIdxImp] ?? null : null;
+      // Acumulado YTD.
+      let realYtd: number | null, metaYtd: number | null;
+      if (k.tipo === "sum") {
+        realYtd = sum(realSerie.slice(0, upto + 1));
+        metaYtd = sum(vals.slice(0, upto + 1));
+      } else {
+        const numYtd = sum(impactoMensual.slice(0, upto + 1).map((m) => (m.impr == null ? 0 : k.num!(m))));
+        const denYtd = sum(impactoMensual.slice(0, upto + 1).map((m) => (m.impr == null ? 0 : k.den!(m))));
+        realYtd = denYtd > 0 ? (numYtd / denYtd) * scale : null;
+        const metasDef = vals.slice(0, upto + 1).filter((v): v is number => v != null);
+        metaYtd = metasDef.length ? metasDef.reduce((a, b) => a + b, 0) / metasDef.length : null;
+      }
+      const chartData = impactoMensual.map((m, i) => ({ mes: m.mes, real: realSerie[i] ?? null, meta: vals[i] ?? null }));
+      return { ...k, md, headlineActual, metaRef, realYtd, metaYtd, chartData };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [impactoMensual, refIdxImp, metas]);
+
   // ===== Modelo de medios =====
   // VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD = la fuente oficial
   // del plan, misma que el Overview → todo cuadra. EFECTIVO (VTR, completions, CPM
@@ -1100,9 +1218,59 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         ))}
       </div>
 
-      {/* ===== OVERVIEW ===== */}
-      {tab === "Overview" && (
+      {/* ===== IMPACTO CAMPAÑA ===== */}
+      {tab === "Impacto Campaña" && (
         <div>
+          {/* ===== 0. KPIs ESTRATÉGICOS · metas del plan (año completo, sin filtros) ===== */}
+          <SectionTitle>
+            Impacto de campaña · metas del plan
+            {refMesImp && <span className="ml-1 font-normal normal-case text-muted-foreground/70">(mes ref: {refMesImp} 2026)</span>}
+          </SectionTitle>
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {impactoCards.map((c) => (
+              <MetaKpiCard
+                key={c.key}
+                title={c.title}
+                medida={c.medida}
+                headlineActual={c.headlineActual}
+                headlineLabel={refMesImp}
+                unidad={c.unidad}
+                direccion={c.md.direccion}
+                umbralVerde={c.md.umbralVerde}
+                umbralAmarillo={c.md.umbralAmarillo}
+                rows={[
+                  { label: `Mes ${refMesImp}`, actual: c.headlineActual, meta: c.metaRef },
+                  { label: "Acum. YTD", actual: c.realYtd, meta: c.metaYtd },
+                ]}
+              />
+            ))}
+          </section>
+
+          <SectionTitle>Evolución mensual · real vs meta</SectionTitle>
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            Año completo 2026 (no responde a los filtros). Real en azul/tinta, meta en gris pizarra.
+            Solo meses cerrados; el mes en curso arranca vacío. Cargá las metas en el configurador de abajo.
+          </p>
+          <section className="grid gap-4 lg:grid-cols-2">
+            {impactoCards.map((c) => (
+              <div key={c.key} className="rounded-lg border bg-background p-4">
+                <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">{c.title} &mdash; real vs meta</h4>
+                <MetaEvolChart data={c.chartData} mode={c.mode} unidad={c.unidad as MetaEvolUnidad} color={c.color} realName={c.title} metaName={`Meta ${c.title.toLowerCase()}`} />
+              </div>
+            ))}
+          </section>
+
+          <div className="mt-4">
+            <MetaPanel
+              plan="Pauta Mkt"
+              anio={2026}
+              mes={refIdxImp >= 0 ? refIdxImp + 1 : undefined}
+              titulo="Configuración de metas de Pauta Mkt"
+              subtitulo={`Cargá la meta mensual de cada KPI de impacto. El semáforo compara el real de ${refMesImp || "el último mes cerrado"} vs la meta del mes. El gráfico se actualiza al guardar.`}
+              kpis={impactoCards.map((c) => ({ nombre: c.key, unidad: c.unidad === "" ? "u" : c.unidad, actual: c.headlineActual }))}
+            />
+          </div>
+
           {/* ===== 1. GENERAL · Distribución de inversión ===== */}
           <SectionTitle>Inversión del período</SectionTitle>
           <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
@@ -1245,7 +1413,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       )}
 
       {/* ===== POR MEDIO · arranca con el marco transversal de Calidad/Impacto ===== */}
-      {tab === "Por Medio" && (
+      {tab === "Eficiencia Medios" && (
         <div>
           <SectionTitle>Tabla maestra · medios digitales · general + efectivo</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
@@ -1514,7 +1682,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       )}
 
       {/* ===== POR MEDIO ===== */}
-      {tab === "Por Medio" && (
+      {tab === "Eficiencia Medios" && (
         <div>
               {dv360Channels.length > 0 && (
                 <>
