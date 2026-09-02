@@ -34,6 +34,9 @@ export interface KpiSeguimiento {
   // Real por categoría (Brand/Lavado/Refrigeración/Cocción). Undefined = KPI sin
   // desglose (usa el total para las 3). Cada valor = realM × share de la categoría.
   realCatM?: Record<string, (number | null)[]>;
+  // Meta POR categoría (solo KPIs con meta propia por categoría, ej. Floor Share).
+  // Undefined = la meta por categoría se deriva del mix del Mapa (SUM) o es total (rate).
+  metaCatM?: Record<string, (number | null)[]>;
 }
 
 // Categorías del desglose (deben matchear MIX_CATEGORIAS del mapa).
@@ -293,11 +296,17 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
 
   const mk = (
     plan: string, kpi: string, medida: string, unit: KpiUnit, tipo: "sum" | "rate",
-    realM: (number | null)[], meta: MetaKpiData, realCatM?: Record<string, (number | null)[]>,
+    realM: (number | null)[], meta: MetaKpiData,
+    realCatM?: Record<string, (number | null)[]>, metaCatM?: Record<string, (number | null)[]>,
   ): KpiSeguimiento => ({
     plan, kpi, medida, unit, tipo, realM, metaM: meta.valores,
-    direccion: meta.direccion, umbralVerde: meta.umbralVerde, umbralAmarillo: meta.umbralAmarillo, realCatM,
+    direccion: meta.direccion, umbralVerde: meta.umbralVerde, umbralAmarillo: meta.umbralAmarillo, realCatM, metaCatM,
   });
+
+  // Floor Share tiene meta por categoría propia (Lav/Refri/Cocc), no derivada del mix.
+  const fsMetaCat: Record<string, (number | null)[]> = {
+    Lavado: mFsLav.valores, Refrigeración: mFsRef.valores, Cocción: mFsCoc.valores,
+  };
 
   const pautaAlcM = serieSum(pm, (m) => m.alc);
   const pautaImprM = serieSum(pm, (m) => m.impr);
@@ -320,6 +329,6 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
     mk("Instagram", "Engagement rate", "Interacciones ÷ alcance", "%", "rate", igEngM, mIgEng),
     // Trade Mkt (Floor Share = real POR categoría directo; CB total-only)
     mk("Cuadros Básicos", "% Cumplimiento CB", "% CB del mes", "%", "rate", cbRealM, mCb),
-    mk("Floor Share", "Floor Share (exhibición)", "Share Drean góndola (Σ cat × peso)", "%", "rate", fsRealM, mFs, fsCatReal),
+    mk("Floor Share", "Floor Share (exhibición)", "Share Drean góndola (Σ cat × peso)", "%", "rate", fsRealM, mFs, fsCatReal, fsMetaCat),
   ];
 }

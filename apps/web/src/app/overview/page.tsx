@@ -16,8 +16,10 @@ import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
 import { computeDreanConsolidado, SM_DIMS, type SMRow, type SMState } from "@/lib/salud-marca-model";
 import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
 import { getSeguimientoObjetivos } from "@/lib/objetivos-rollup";
+import { getGapKpiCategoria } from "@/lib/objetivos-gaps";
 import { KpiScorecard } from "@/components/objetivos/kpi-scorecard";
 import { ObjetivosHero } from "@/components/objetivos/objetivos-hero";
+import { GapMatrix } from "@/components/objetivos/gap-matrix";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -277,27 +279,29 @@ function buildSaludMarca(rows: SMRow[], target: number) {
 const f1 = (v: number | null) => (v == null ? "—" : v.toFixed(1).replace(".", ","));
 const smCls = (s: SMState) => (s === "proj" ? "text-blue-600" : s === "carry" ? "text-amber-600" : "text-foreground");
 
-type SegTab = "estado" | "okr";
+type SegTab = "estado" | "gaps" | "okr";
 function getTab(searchParams: Record<string, string | string[] | undefined>): SegTab {
   const v = searchParams.tab;
   const s = Array.isArray(v) ? v[0] : v;
-  return s === "okr" ? "okr" : "estado";
+  return s === "okr" ? "okr" : s === "gaps" ? "gaps" : "estado";
 }
 
-// Header + navegación de tabs, compartido por ambas vistas.
+// Header + navegación de tabs, compartido por las vistas.
 function SeguimientoHeader({ tab }: { tab: SegTab }) {
   const tabs: { key: SegTab; label: string }[] = [
     { key: "estado", label: "Estado de KPIs" },
+    { key: "gaps", label: "Gaps × Categoría" },
     { key: "okr", label: "OKR Mkt" },
   ];
+  const subt: Record<SegTab, string> = {
+    estado: "Estado de cumplimiento de Objetivos y KPIs vs sus metas mensuales — desvío del mes y acumulado del año.",
+    gaps: "Cumplimiento por KPI y categoría (Lavado / Refrigeración / Cocción) — dónde estás más lejos de la meta.",
+    okr: "Seguimiento de los objetivos del área (OKR) — Presupuesto, Floor Share, Cuadro Básico y Salud de Marca.",
+  };
   return (
     <header>
       <h2 className="text-2xl font-semibold tracking-tight">Seguimiento Objetivos</h2>
-      <p className="text-sm text-muted-foreground">
-        {tab === "estado"
-          ? "Estado de cumplimiento de Objetivos y KPIs vs sus metas mensuales — desvío del mes y acumulado del año."
-          : "Seguimiento de los objetivos del área (OKR) — Presupuesto, Floor Share, Cuadro Básico y Salud de Marca."}
-      </p>
+      <p className="text-sm text-muted-foreground">{subt[tab]}</p>
       <div className="mt-4 flex gap-1 border-b">
         {tabs.map((t) => (
           <Link
@@ -342,6 +346,17 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
           <div className="mb-2.5 text-sm font-bold tracking-tight">KPIs por plan <span className="text-[11px] font-normal text-muted-foreground">· indicadores que alimentan los objetivos</span></div>
           <KpiScorecard kpis={kpisScorecard} />
         </div>
+      </div>
+    );
+  }
+
+  // ===== Tab "Gaps × Categoría": matriz KPI × categoría + ranking de oportunidades =====
+  if (tab === "gaps") {
+    const gaps = await safe(getGapKpiCategoria(curYear), { disponible: false, refMes: "", kpis: [], oportunidades: [] });
+    return (
+      <div className="space-y-5">
+        <SeguimientoHeader tab="gaps" />
+        <GapMatrix data={gaps} />
       </div>
     );
   }

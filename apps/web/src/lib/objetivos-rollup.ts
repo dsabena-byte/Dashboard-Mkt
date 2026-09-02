@@ -126,6 +126,12 @@ export async function getSeguimientoObjetivos(anio: number): Promise<Seguimiento
     const k = kpiByName.get(kName);
     if (!k) return null;
     const metaTot = k.metaM[mesIdx] ?? null;
+    // Meta propia por categoría (Floor Share): real por cat directo vs meta por cat.
+    if (k.metaCatM) {
+      const metaCat = k.metaCatM[cat]?.[mesIdx] ?? null;
+      if (metaCat == null) return null;
+      return cap(cumplimientoPct(k.realCatM?.[cat]?.[mesIdx] ?? null, metaCat, k.direccion));
+    }
     if (metaTot == null) return null;
     if (k.tipo === "sum") {
       const mix = mixByKpi.get(kName);
