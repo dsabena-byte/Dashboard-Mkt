@@ -280,22 +280,18 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
   const pautaShare = sharesFromTotals(pautaAcc);
   // Web + IG: por categoría (vw_drean_web_by_category; meta_posts IG).
   const [webCatRows, igCatRows] = await Promise.all([
-    safe(fetchRows<{ fecha: string; categoria: string | null; usuarios: number | null; sesiones: number | null; conversiones: number | null }>(`vw_drean_web_by_category?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,categoria,usuarios,sesiones,conversiones`), []),
+    safe(fetchRows<{ fecha: string; categoria: string | null; usuarios: number | null }>(`vw_drean_web_by_category?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,categoria,usuarios`), []),
     safe(fetchRows<{ fecha_post: string; categoria: string | null; reach: number | null; engagement: number | null }>(`meta_posts?platform=eq.instagram&fecha_post=gte.${anio}-01-01&fecha_post=lt.${anio + 1}-01-01&select=fecha_post,categoria,reach,engagement`), []),
   ]);
-  // Tráfico web = SUM → share por usuarios. Conversión = rate → real por categoría genuino (conv÷ses).
+  // Tráfico web = SUM → share por usuarios. (Conversión NO se desglosa: la vista
+  // vw_drean_web_by_category trae conversiones=0 por categoría — el dato de conversión
+  // solo existe a nivel total en vw_drean_web_daily_kpis. → Conversión queda total-only.)
   const webAcc = emptyAcc();
-  const webConvNum = emptyAcc(); const webConvDen = emptyAcc();
   for (const r of webCatRows) {
     const mi = Number(r.fecha?.slice(5, 7)) - 1; const c = normCat(r.categoria);
-    if (mi >= 0 && mi < 12 && c) {
-      webAcc[mi]![c] = (webAcc[mi]![c] ?? 0) + (r.usuarios ?? 0);
-      webConvNum[mi]![c] = (webConvNum[mi]![c] ?? 0) + (r.conversiones ?? 0);
-      webConvDen[mi]![c] = (webConvDen[mi]![c] ?? 0) + (r.sesiones ?? 0);
-    }
+    if (mi >= 0 && mi < 12 && c) webAcc[mi]![c] = (webAcc[mi]![c] ?? 0) + (r.usuarios ?? 0);
   }
   const webShare = sharesFromTotals(webAcc);
-  const webConvCatReal = rateFromAcc(webConvNum, webConvDen, 100, closed);
   // Alcance IG = SUM → share por reach. Engagement = rate → real por categoría genuino (eng÷reach).
   const igAcc = emptyAcc();
   const igEngNum = emptyAcc(); const igEngDen = emptyAcc();
@@ -342,7 +338,7 @@ export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]
     // Web / Ecommerce (share por usuarios). Avg Sesión = total, mismo valor a las 3 categorías.
     mk("Web / Ecommerce", "Tráfico web (usuarios)", "Usuarios únicos del mes", "", "sum", webUsersM, mWebUsers, applyShare(webUsersM, webShare)),
     mk("Web / Ecommerce", "Avg Sesión (segundos)", "Duración media de sesión", "s", "rate", webAvgM, mWebAvg),
-    mk("Web / Ecommerce", "Tasa de conversión", "Conversiones ÷ sesiones", "%", "rate", webConvM, mWebConv, webConvCatReal),
+    mk("Web / Ecommerce", "Tasa de conversión", "Conversiones ÷ sesiones", "%", "rate", webConvM, mWebConv),
     // Instagram (el objetivo de Redes se mide solo con IG; share por reach de posts)
     mk("Instagram", "Alcance orgánico", "Alcance IG del mes", "", "sum", igAlcM, mIgAlc, applyShare(igAlcM, igShare)),
     mk("Instagram", "Engagement rate", "Interacciones ÷ alcance", "%", "rate", igEngM, mIgEng, igEngCatReal),
