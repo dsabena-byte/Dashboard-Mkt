@@ -1099,6 +1099,51 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         ? selMeses[0]!
         : `${selMeses.length} meses`;
 
+  // Filtros (Mes/Medio/Categoría/Rol/Plataforma). NO afectan el bloque de metas
+  // (año completo) — solo los indicadores analíticos de abajo → se muestran debajo
+  // del configurador de metas (Impacto Campaña) y arriba de Eficiencia Medios.
+  const filtros = (
+    <div className="rounded-xl border bg-card p-3">
+      <div className="flex flex-wrap gap-3">
+        <MultiDropdown
+          label="Mes"
+          placeholder="Todos"
+          selected={selMeses}
+          options={meses.map((m) => ({ value: m, label: m }))}
+          onChange={setSelMeses}
+        />
+        <MultiDropdown
+          label="Medio"
+          placeholder="Todos"
+          selected={selMedios}
+          options={opMedios.map((m) => ({ value: m, label: m }))}
+          onChange={setSelMedios}
+        />
+        <MultiDropdown
+          label="Categoría"
+          placeholder="Todas"
+          selected={selCats}
+          options={opCats.map((c) => ({ value: c, label: c }))}
+          onChange={setSelCats}
+        />
+        <MultiDropdown
+          label="Rol"
+          placeholder="Todos"
+          selected={selRoles}
+          options={opRoles.map((r) => ({ value: r, label: r }))}
+          onChange={setSelRoles}
+        />
+        <MultiDropdown
+          label="Plataforma"
+          placeholder="Todas"
+          selected={selPlats}
+          options={opPlats.map((p) => ({ value: p, label: p }))}
+          onChange={setSelPlats}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -1117,47 +1162,6 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           )}
         </div>
       </header>
-
-      {/* ===== Filtros ===== */}
-      <div className="rounded-xl border bg-card p-3">
-        <div className="flex flex-wrap gap-3">
-          <MultiDropdown
-            label="Mes"
-            placeholder="Todos"
-            selected={selMeses}
-            options={meses.map((m) => ({ value: m, label: m }))}
-            onChange={setSelMeses}
-          />
-          <MultiDropdown
-            label="Medio"
-            placeholder="Todos"
-            selected={selMedios}
-            options={opMedios.map((m) => ({ value: m, label: m }))}
-            onChange={setSelMedios}
-          />
-          <MultiDropdown
-            label="Categoría"
-            placeholder="Todas"
-            selected={selCats}
-            options={opCats.map((c) => ({ value: c, label: c }))}
-            onChange={setSelCats}
-          />
-          <MultiDropdown
-            label="Rol"
-            placeholder="Todos"
-            selected={selRoles}
-            options={opRoles.map((r) => ({ value: r, label: r }))}
-            onChange={setSelRoles}
-          />
-          <MultiDropdown
-            label="Plataforma"
-            placeholder="Todas"
-            selected={selPlats}
-            options={opPlats.map((p) => ({ value: p, label: p }))}
-            onChange={setSelPlats}
-          />
-        </div>
-      </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">
@@ -1231,6 +1235,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               kpis={impactoCards.map((c) => ({ nombre: c.key, unidad: c.unidad === "" ? "u" : c.unidad, actual: c.headlineActual }))}
             />
           </div>
+
+          {/* Filtros — de acá para abajo los indicadores responden a la selección. */}
+          <div className="mt-4">{filtros}</div>
 
           {/* ===== 1. GENERAL · Distribución de inversión ===== */}
           <SectionTitle>Inversión del período</SectionTitle>
@@ -1359,6 +1366,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== POR MEDIO · arranca con el marco transversal de Calidad/Impacto ===== */}
       {tab === "Eficiencia Medios" && (
         <div>
+          <div className="mb-4">{filtros}</div>
           <SectionTitle>Tabla maestra · medios digitales · general + efectivo</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
             <strong>Fuente: procesos automáticos de DV360 + Meta API + Google Ads (OMD, vía GA4)</strong> (responde a los filtros de arriba).
@@ -1836,6 +1844,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== INSIGHTS PAUTA ===== */}
       {tab === "Insights Pauta" && (
         <div>
+          <div className="mb-4">{filtros}</div>
           <SectionTitle>Insights de pauta · qué optimizar, dónde hay oportunidad, qué funciona</SectionTitle>
           <p className="mb-4 text-xs text-muted-foreground">
             Análisis automático sobre los datos de <strong>Meta + DV360</strong> (responde a los filtros). Lee el impacto{" "}
