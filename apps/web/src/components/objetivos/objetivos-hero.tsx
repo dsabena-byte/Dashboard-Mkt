@@ -1,7 +1,10 @@
+"use client";
+
 // Hero-cards del Seguimiento: Salud de Marca (destacada) + los objetivos del Mapa.
 // Cada objetivo muestra su cumplimiento por ROLLUP de KPIs (Σ aporte × min(cumpl,100)),
 // la meta de negocio (General = Σ cat × peso) y los KPIs que lo alimentan.
-// Server component.
+// Presentacional (client-safe): lo usan el tab "Estado" (server) y el selector por
+// categoría (client). Sin dependencias server-only.
 
 import { Fragment } from "react";
 import Link from "next/link";
