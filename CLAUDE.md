@@ -107,6 +107,21 @@ reporte_existencia/cb_homologos).
   - Cargado **jun+jul 2026** (TikTok por categoría; Mercado/Geo como total del mes en categoría
     "Brand" — los reportes OMD no los abren por categoría). En jun/jul **no corrieron** DOOH ni
     Geo Mobile (jun) ni TV Cable (offline) — no son huecos de carga, no hubo pauta.
+  - **Metas de Pauta Mkt (Impacto Campaña, dic-2026):** los tabs del dash se renombraron
+    **Overview → "Impacto Campaña"** y **Por Medio → "Eficiencia Medios"** (las métricas de
+    eficiencia se definen después). El tab Impacto Campaña arranca con **6 MetaKpiCards + 6 gráficos
+    real vs meta + MetaPanel colapsable** (plan **"Pauta Mkt"**, sistema visual de IG). KPIs (claves
+    exactas en `mapa-catalogo.ts` + `page.tsx` `PAUTA_KPIS` + MetaPanel): **Inversión** ($, suma),
+    **Alcance único** (suma), **Frecuencia** (x, rate impr÷alc), **Impresiones** (suma), **VTR (≥50%)**
+    (%, rate = video_p50/q50 ÷ impresiones de video), **Clicks** (suma). El "real" sale de
+    `impactoMensual` en `performance-client.tsx` = **mismo modelo gap-fill que el Embudo/Volumetría**
+    (OMD oficial + ejecución real de Meta/DV360/Google SOLO para medios sin plan OMD ese mes; DV360
+    USD→ARS por fx del mes). **Año completo, SIN filtros**; solo meses **cerrados** (`i+1 < currentMonth`)
+    → así se excluyen las filas plan de sep-nov (frec 7.0, clics 0) que hay cargadas en
+    `pauta_performance`. Mes ref = último cerrado con ejecución. VTR≥50% NO se gap-fillea (es tasa de
+    calidad). **OJO:** `Alcance único` es **suma de alcance por medio** (no dedup cross-media) — coincide
+    con lo que el dash ya mostraba en las MoMStat; si algún día se quiere reach de-duplicado, hay que
+    traerlo del consolidado del reporte OMD (hoy no está guardado por mes).
 - **Mercado (GfK) — carga mensual:** el share de `mercado_share` se actualiza a mano desde
   exports "Brands Timeseries" de GfK (por REST, es dato no DDL). Set completo = **3 segmentos +
   Total × 3 KPIs**, por agregación (mensual + MAT). **Verificar la matriz completa ANTES de

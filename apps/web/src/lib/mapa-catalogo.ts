@@ -21,7 +21,8 @@ export const CATALOGO_PLANES: CatPlan[] = [
     nombre: "Pauta Mkt",
     href: "/performance",
     grupo: "Plan de Medios",
-    kpis: ["Alcance / Cobertura", "VTR (view-through)", "Share of Voice", "Impresiones", "Frecuencia", "CPM", "Inversión"],
+    // Impacto Campaña (6 principales, cableadas al dashboard) + eficiencia (CPM/SOV).
+    kpis: ["Inversión", "Alcance único", "Frecuencia", "Impresiones", "VTR (≥50%)", "Clicks", "CPM", "Share of Voice"],
   },
   {
     nombre: "Pauta Ecommerce",
