@@ -18,7 +18,6 @@ import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
 import { getSeguimientoObjetivos } from "@/lib/objetivos-rollup";
 import { KpiScorecard } from "@/components/objetivos/kpi-scorecard";
 import { ObjetivosHero } from "@/components/objetivos/objetivos-hero";
-import { ObjetivosEvolChart } from "@/components/objetivos/objetivos-evol-chart";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -328,6 +327,10 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
       safe(getSeguimientoKpis(curYear), []),
       safe(getSeguimientoObjetivos(curYear), { disponible: false, refMes: "", objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [] } }),
     ]);
+    // El scorecard muestra solo los KPIs que alimentan objetivos (conectados en el
+    // Mapa). Los que no están vinculados (ej. Inversión) no cuentan → se ocultan.
+    const mapeados = new Set(objetivos.objetivos.flatMap((o) => o.aportes.map((a) => a.kpi)));
+    const kpisScorecard = objetivos.disponible && mapeados.size > 0 ? kpis.filter((k) => mapeados.has(k.kpi)) : kpis;
     return (
       <div className="space-y-5">
         <SeguimientoHeader tab="estado" />
@@ -337,9 +340,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         </div>
         <div>
           <div className="mb-2.5 text-sm font-bold tracking-tight">KPIs por plan <span className="text-[11px] font-normal text-muted-foreground">· indicadores que alimentan los objetivos</span></div>
-          <KpiScorecard kpis={kpis} />
+          <KpiScorecard kpis={kpisScorecard} />
         </div>
-        <ObjetivosEvolChart data={objetivos} />
       </div>
     );
   }
