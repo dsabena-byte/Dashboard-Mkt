@@ -888,10 +888,15 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [impactoMensual, refIdxImp, metas]);
 
-  // Evolución ON/OFF SOLO de meses ejecutados (cerrados) — para el toggle de la card
-  // de Inversión: hasta el último mes completo (ej. Agosto), sin los meses plan.
+  // Evolución ON/OFF para el toggle de la card de Inversión: el año COMPLETO
+  // (Ene–Dic) en el eje, aunque no haya info. Solo se dibujan barras en los meses
+  // ejecutados (cerrados); los meses plan/futuros se vacían (sin barra), y los
+  // meses aún sin ejecución quedan vacíos también.
   const inversionEjecutada = useMemo(
-    () => inversionMensual.filter((r) => !r.isPlanned && r.total != null),
+    () =>
+      inversionMensual.map((r) =>
+        r.isPlanned ? { ...r, digital: null, tvCable: null, dooh: null, ooh: null, total: null } : r,
+      ),
     [inversionMensual],
   );
 
