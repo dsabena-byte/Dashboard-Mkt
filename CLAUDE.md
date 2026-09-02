@@ -12,6 +12,8 @@
   resultó mal.
 - **Compilá antes de pushear:** `cd apps/web && pnpm exec tsc --noEmit` (hay `node_modules`).
 - **Deploy:** commit + `git push origin HEAD:main` (Vercel deploya solo; rebasar si main avanzó).
+- **Mergeá siempre sin preguntar:** cuando termina un cambio validado (tsc OK), abrí el PR y
+  **mergealo directo** (squash a `main`) — no preguntes "¿lo mergeo?". Preferencia explícita del user.
 - **Mantené esta memoria al día:** después de cualquier decisión/fix importante, actualizá este
   `CLAUDE.md` y/o `docs/` **proactivamente**, sin que te lo pidan.
 - **Seguridad:** hay credenciales de producción en el entorno (service-role key, API keys). No
