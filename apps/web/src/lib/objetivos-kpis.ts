@@ -129,6 +129,49 @@ const getWebMonthlySeguimiento = unstable_cache(
   { revalidate: 1800 },
 );
 
+// ===== Trade (CB / Floor Share): agregado MENSUAL cacheado =====
+// getCbRows({}) y getFloorShareRows({}) paginan la tabla CB ENTERA (decenas de
+// miles de filas, N round-trips seriales contra el proyecto CB, que responde
+// lento) → hacían el Seguimiento tardar ~25s EN CADA render. Acá se pagina una
+// sola vez por hora (unstable_cache; getCbSupabase es service-key SIN cookies →
+// seguro para cachear) y se devuelve solo lo que el Seguimiento necesita: el %
+// mensual y el share por categoría. El filtro "mes cerrado" se aplica AFUERA
+// (depende de hoy) para no envenenar la cache.
+const MES_SHORT_TRADE = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+const getCbMonthlyPct = unstable_cache(
+  async (anio: number): Promise<(number | null)[]> => {
+    const rows = await safe(getCbRows({}), [] as Awaited<ReturnType<typeof getCbRows>>);
+    return MES_SHORT_TRADE.map((short) => {
+      const rs = rows.filter((r) => isoWeekToMes(r.semana, anio) === short);
+      return rs.length ? computeTotals(rs).cb_pct : null;
+    });
+  },
+  ["objetivos-cb-monthly-v1"],
+  { revalidate: 3600 }, // 1 h
+);
+
+interface FloorMonthly { general: (number | null)[]; cat: Record<string, (number | null)[]> }
+const getFloorMonthly = unstable_cache(
+  async (anio: number): Promise<FloorMonthly> => {
+    const rows = await safe(getFloorShareRows({}), [] as Awaited<ReturnType<typeof getFloorShareRows>>);
+    const general: (number | null)[] = Array(12).fill(null);
+    const cat: Record<string, (number | null)[]> = {
+      Brand: Array(12).fill(null), Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null),
+    };
+    MES_SHORT_TRADE.forEach((short, i) => {
+      const rs = rows.filter((r) => isoWeekToMes(r.semana, anio) === short);
+      if (!rs.length) return;
+      const o = computeOverall(rs);
+      general[i] = generalPonderado({ Lavado: o.lavado.share, Refrigeración: o.refri.share, Cocción: o.coccion.share });
+      cat.Lavado![i] = o.lavado.share; cat["Refrigeración"]![i] = o.refri.share; cat["Cocción"]![i] = o.coccion.share;
+    });
+    return { general, cat };
+  },
+  ["objetivos-floor-monthly-v1"],
+  { revalidate: 3600 }, // 1 h
+);
+
 // ===== Pauta Mkt: mismo modelo gap-fill que impactoMensual (performance-client) =====
 interface PautaMes { inv: number; alc: number; impr: number; clic: number; v50: number; vbase: number }
 
@@ -253,7 +296,7 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
     mInv, mAlc, mFrec, mImpr, mVtr, mClicks,
     mWebUsers, mWebAvg, mWebConv,
     mIgAlc, mIgEng,
-    cbRows, fsRows, mCb, mFsLav, mFsRef, mFsCoc,
+    cbMonthly, fsMonthly, mCb, mFsLav, mFsRef, mFsCoc,
   ] = await Promise.all([
     safe(T("pauta", getPautaPerformance(true)), [] as Awaited<ReturnType<typeof getPautaPerformance>>),
     safe(T("metaPaid", getMetaPaidCreatives(true)), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
@@ -275,9 +318,10 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
     T("metas", getMetaKpi("Web / Ecommerce", "Tasa de conversión", anio)),
     T("metas", getMetaKpi("Redes Sociales", "Alcance orgánico", anio)),
     T("metas", getMetaKpi("Redes Sociales", "Engagement rate", anio)),
-    // Trade (proyecto CB): filas crudas para agregar por mes + metas.
-    safe(T("cb", getCbRows({})), [] as Awaited<ReturnType<typeof getCbRows>>),
-    safe(T("floorShare", getFloorShareRows({})), [] as Awaited<ReturnType<typeof getFloorShareRows>>),
+    // Trade (proyecto CB): agregado MENSUAL cacheado 1h (antes paginaba la tabla
+    // entera en cada render → ~25s). El filtro "mes cerrado" se aplica afuera.
+    T("cb", getCbMonthlyPct(anio)),
+    T("floorShare", getFloorMonthly(anio)),
     T("metas", getMetaKpi("Cuadros Básicos", "% Cumplimiento CB", anio)),
     T("metas", getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Lavado")),
     T("metas", getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Refrigeración")),
@@ -311,20 +355,10 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
   }
 
   // ---- Trade: Cuadros Básicos (% CB por mes) y Floor Share (Drean por categoría → General) ----
-  // OJO: isoWeekToMes devuelve el mes CORTO ("Ene".."Dic"), no el completo.
-  const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-  const cbRealM = MES_SHORT.map((short, i) => {
-    if (!closed(i)) return null;
-    const rows = cbRows.filter((r) => isoWeekToMes(r.semana, anio) === short);
-    return rows.length ? computeTotals(rows).cb_pct : null;
-  });
-  const fsRealM = MES_SHORT.map((short, i) => {
-    if (!closed(i)) return null;
-    const rows = fsRows.filter((r) => isoWeekToMes(r.semana, anio) === short);
-    if (!rows.length) return null;
-    const o = computeOverall(rows);
-    return generalPonderado({ Lavado: o.lavado.share, Refrigeración: o.refri.share, Cocción: o.coccion.share });
-  });
+  // Agregados mensuales cacheados (getCbMonthlyPct / getFloorMonthly); acá solo se
+  // aplica el filtro de mes cerrado (depende de hoy, por eso queda fuera de la cache).
+  const cbRealM = cbMonthly.map((v, i) => (closed(i) ? v : null));
+  const fsRealM = fsMonthly.general.map((v, i) => (closed(i) ? v : null));
   // Meta General de Floor Share = Σ (meta por categoría × peso). Se construye una
   // MetaKpiData sintética (dirección/umbrales de la config por categoría).
   const fsMetaM = Array.from({ length: 12 }, (_, i) =>
@@ -358,15 +392,11 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
     if (mi >= 0 && mi < 12 && c) igAcc[mi]![c] = (igAcc[mi]![c] ?? 0) + (r.reach ?? 0);
   }
   const igShare = sharesFromTotals(igAcc);
-  // Floor Share: real POR categoría directo (share Drean por góndola), no vía total.
+  // Floor Share: real POR categoría directo (del agregado mensual cacheado), solo meses cerrados.
   const fsCatReal: Record<string, (number | null)[]> = { Brand: Array(12).fill(null), Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null) };
-  MES_SHORT.forEach((short, i) => {
-    if (!closed(i)) return;
-    const rows = fsRows.filter((r) => isoWeekToMes(r.semana, anio) === short);
-    if (!rows.length) return;
-    const o = computeOverall(rows);
-    fsCatReal.Lavado![i] = o.lavado.share; fsCatReal["Refrigeración"]![i] = o.refri.share; fsCatReal["Cocción"]![i] = o.coccion.share;
-  });
+  for (const c of ["Lavado", "Refrigeración", "Cocción"]) {
+    fsCatReal[c] = (fsMonthly.cat[c] ?? Array(12).fill(null)).map((v, i) => (closed(i) ? v : null));
+  }
 
   const mk = (
     plan: string, kpi: string, medida: string, unit: KpiUnit, tipo: "sum" | "rate",
