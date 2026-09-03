@@ -49,6 +49,16 @@ const fmtARS = formatCurrency;
 const TABS = ["Impacto Campaña", "Eficiencia Medios", "Insights Pauta"] as const;
 type Tab = (typeof TABS)[number];
 
+// Vista por categoría del Impacto Campaña (label "Cocinas" = categoría "Cocción").
+const IMPACTO_CATS: Array<{ key: string; label: string }> = [
+  { key: "General", label: "General" },
+  { key: "Lavado", label: "Lavado" },
+  { key: "Refrigeración", label: "Refrigeración" },
+  { key: "Cocción", label: "Cocinas" },
+];
+// Mix de meta por categoría (mismo del Mapa): Lav 35 / Refri 20 / Cocc 15. Brand 30 solo en General.
+const CAT_META_MIX: Record<string, number> = { Lavado: 35, "Refrigeración": 20, "Cocción": 15 };
+
 // Los 6 KPIs estratégicos de Impacto Campaña (claves = MetaPanel plan "Pauta Mkt").
 type MetasPauta = Record<string, MetaKpiData>;
 const META_FALLBACK: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
@@ -307,6 +317,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const [selRoles, setSelRoles] = useState<string[]>([]);
   const [selPlats, setSelPlats] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>("Impacto Campaña");
+  // Vista por categoría del tab Impacto Campaña (General o una categoría core).
+  const [catImp, setCatImp] = useState<string>("General");
 
   const opMedios: TipoMedio[] = ["Digital", "TV Cable", "DOOH", "OOH"];
   const opCats = useMemo(() => [...new Set(data.map((r) => r.categoria))].sort(), [data]);
@@ -793,10 +805,12 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       const mesLabel = `${full} 2026`;
       const iso = `2026-${String(i + 1).padStart(2, "0")}-01`;
       const fx = fxRates[iso] ?? fxFallback;
+      // Vista por categoría: filtra cada fuente por categoría (General = todas).
+      const catOk = (c: string | null | undefined) => catImp === "General" || c === catImp;
       // OMD (todos los objetivos/medios), por medio.
       const omd = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
       for (const r of data) {
-        if (r.mes !== mesLabel) continue;
+        if (r.mes !== mesLabel || !catOk(r.categoria)) continue;
         const e = omd.get(r.medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
         e.impr += r.impresiones ?? 0; e.alc += r.alcance ?? 0; e.clic += r.clics ?? 0; e.inv += r.inversion ?? 0;
         omd.set(r.medio, e);
@@ -810,30 +824,31 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         const e = auto.get(medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
         e.impr += im; e.alc += al; e.clic += cl; e.inv += iv; auto.set(medio, e);
       };
-      for (const r of dv360) { if (r.mes === iso) addAuto(DVMED[r.canal] ?? r.canal, r.impresiones, 0, r.clicks, (r.revenue_usd ?? 0) * (arsMode ? fx : 1)); }
-      for (const r of dv360Reach) { if (r.mes === iso) { const e = auto.get(DVMED[r.canal] ?? r.canal); if (e) e.alc += r.reach ?? 0; } }
+      for (const r of dv360) { if (r.mes === iso && catOk(r.categoria)) addAuto(DVMED[r.canal] ?? r.canal, r.impresiones, 0, r.clicks, (r.revenue_usd ?? 0) * (arsMode ? fx : 1)); }
+      // dv360_reach no trae categoría → el alcance de DV360 solo se suma en la vista General.
+      if (catImp === "General") for (const r of dv360Reach) { if (r.mes === iso) { const e = auto.get(DVMED[r.canal] ?? r.canal); if (e) e.alc += r.reach ?? 0; } }
       for (const r of metaPaid) {
-        if (r.mes !== mesLabel) continue;
+        if (r.mes !== mesLabel || !catOk(r.categoria)) continue;
         const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
         if (!medio) continue;
         addAuto(medio, r.impresiones ?? 0, r.alcance ?? 0, r.clicks ?? 0, r.spend ?? 0);
       }
-      for (const r of googleAdsOmd) { if (r.mes === mesLabel) addAuto(r.canal, r.impresiones, 0, r.clicks, r.costo); }
+      for (const r of googleAdsOmd) { if (r.mes === mesLabel && catOk(r.categoria)) addAuto(r.canal, r.impresiones, 0, r.clicks, r.costo); }
       for (const [medio, e] of auto) { if (!present.has(medio) && e.impr > 0) { impr += e.impr; alc += e.alc; clic += e.clic; inv += e.inv; } }
-      // Ecommerce (rol Conversión): suma SOLO a la Inversión (no impresiones/alcance/clicks).
-      inv += ecommerceInv[i] ?? 0;
+      // Ecommerce (rol Conversión): suma SOLO a la Inversión, y solo en General (no es una categoría core).
+      if (catImp === "General") inv += ecommerceInv[i] ?? 0;
       // VTR ≥50% (tasa de calidad de video; sin gap-fill).
       let v50 = 0, vbase = 0;
       for (const r of metaPaid) {
-        if (r.mes !== mesLabel) continue;
+        if (r.mes !== mesLabel || !catOk(r.categoria)) continue;
         if ((r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0) > 0) { vbase += r.impresiones ?? 0; v50 += r.video_p50 ?? 0; }
       }
-      for (const r of dv360) { if (r.mes === iso && (r.starts ?? 0) > 0) { vbase += r.impresiones; v50 += r.q50 ?? 0; } }
+      for (const r of dv360) { if (r.mes === iso && catOk(r.categoria) && (r.starts ?? 0) > 0) { vbase += r.impresiones; v50 += r.q50 ?? 0; } }
       // Mes cerrado sin ejecución alguna → null (gap en el gráfico, ej. Ene-Mar).
       if (impr === 0 && inv === 0) return nulo;
       return { mes: short, inv, alc, impr, clic, v50, vbase };
     });
-  }, [data, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, arsMode, fxFallback, currentMonth, ecommerceInv]);
+  }, [data, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, arsMode, fxFallback, currentMonth, ecommerceInv, catImp]);
 
   // Mes de REFERENCIA para las cards = último mes cerrado con ejecución real.
   const refIdxImp = useMemo(() => {
@@ -860,9 +875,14 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const impactoCards = useMemo(() => {
     const sum = (xs: (number | null | undefined)[]) => xs.reduce((a: number, x) => a + (x ?? 0), 0);
     const upto = refIdxImp >= 0 ? refIdxImp : impactoMensual.length - 1;
+    // Vista por categoría: la meta de los KPIs de SUMA se parte por el mix (Lav 35/Refri 20/
+    // Cocc 15). Las tasas (Frecuencia, VTR) usan la misma meta en todas las categorías.
+    const metaMult = (k: { tipo: "sum" | "rate" }) =>
+      catImp !== "General" && k.tipo === "sum" ? (CAT_META_MIX[catImp] ?? 0) / 100 : 1;
     return IMPACTO_KPIS.map((k) => {
       const md = metas[k.key] ?? META_FALLBACK;
-      const vals = md.valores;
+      const mult = metaMult(k);
+      const vals = mult === 1 ? md.valores : md.valores.map((v) => (v == null ? null : v * mult));
       const scale = k.scale ?? 1;
       // Serie real mensual.
       const realSerie: (number | null)[] = impactoMensual.map((m) => {
@@ -888,7 +908,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       return { ...k, md, headlineActual, metaRef, realYtd, metaYtd, chartData };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [impactoMensual, refIdxImp, metas]);
+  }, [impactoMensual, refIdxImp, metas, catImp]);
 
   // Evolución ON/OFF para el toggle de la card de Inversión: el año COMPLETO
   // (Ene–Dic) en el eje, aunque no haya info. Solo se dibujan barras en los meses
@@ -1188,9 +1208,28 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       {/* ===== IMPACTO CAMPAÑA ===== */}
       {tab === "Impacto Campaña" && (
         <div>
+          {/* Selector de categoría: recalcula cards + gráficos para la categoría elegida. */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Categoría</span>
+            <div className="flex rounded-lg border p-0.5 text-sm font-medium">
+              {IMPACTO_CATS.map((c) => (
+                <button
+                  key={c.key}
+                  onClick={() => setCatImp(c.key)}
+                  className={`rounded-md px-3 py-1 transition-colors ${catImp === c.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            {catImp !== "General" && (
+              <span className="text-[11px] text-muted-foreground">meta = {CAT_META_MIX[catImp]}% del plan (mix); alcance sin DV360</span>
+            )}
+          </div>
           {/* ===== 0. KPIs ESTRATÉGICOS · metas del plan (año completo, sin filtros) ===== */}
           <SectionTitle>
             Impacto de campaña · metas del plan
+            {catImp !== "General" && <span className="ml-1 font-normal normal-case text-primary">· {IMPACTO_CATS.find((c) => c.key === catImp)?.label}</span>}
             {refMesImp && <span className="ml-1 font-normal normal-case text-muted-foreground/70">(mes ref: {refMesImp} 2026)</span>}
           </SectionTitle>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
