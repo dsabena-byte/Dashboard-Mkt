@@ -5,7 +5,7 @@ import "server-only";
 // (Lavado / Refrigeración / Cocción). Se precomputan las 3 en una sola pasada
 // (getSeguimientoKpis corre una vez) y el selector cliente cambia al instante.
 
-import { getSeguimientoKpis, kpiTimings, type KpiSeguimiento } from "./objetivos-kpis";
+import { getSeguimientoKpis, type KpiSeguimiento } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
 import { CATEGORIAS_CORE } from "./categorias";
@@ -123,25 +123,16 @@ export interface SeguimientoCompleto {
   disponible: boolean;
   refMes: string;
   vistas: VistaSeguimiento[];
-  tradePendiente?: boolean; // true = CB/Floor Share todavía no cargados (llegan por fetch)
-  debug?: { kpisMs: number; restMs: number; totalMs: number; breakdown?: Record<string, number> };
 }
 
-// skipTrade=true → primer paint rápido SIN CB/Floor Share (esos paginan la tabla CB
-// entera, ~26s). El cliente pide luego /api/seguimiento (skipTrade=false) y refresca.
-export async function getSeguimientoCompleto(anio: number, skipTrade = false): Promise<SeguimientoCompleto> {
-  const t0 = Date.now();
-  // 1) La parte pesada: fetch + cómputo de KPIs (memoizado por request).
-  await getSeguimientoKpis(anio, skipTrade);
-  const kpisMs = Date.now() - t0;
-  // 2) El resto (rollups) reusa el cache de KPIs → mide solo su costo propio.
-  const t1 = Date.now();
+// Precomputa General + las 3 categorías en una pasada. CB/Floor Share salen de la
+// tabla precalculada trade_monthly (rápido), así que corre todo sincrónico.
+export async function getSeguimientoCompleto(anio: number): Promise<SeguimientoCompleto> {
   const [kpis, general, porCat] = await Promise.all([
-    getSeguimientoKpis(anio, skipTrade),
-    getSeguimientoObjetivos(anio, skipTrade),
-    getSeguimientoPorCategoria(anio, skipTrade),
+    getSeguimientoKpis(anio),
+    getSeguimientoObjetivos(anio),
+    getSeguimientoPorCategoria(anio),
   ]);
-  const restMs = Date.now() - t1;
   // KPIs del scorecard General = solo los conectados a algún objetivo (como en "Estado").
   const mapeados = new Set(general.objetivos.flatMap((o) => o.aportes.map((a) => a.kpi)));
   const kpisGeneral = general.disponible && mapeados.size > 0 ? kpis.filter((k) => mapeados.has(k.kpi)) : kpis;
@@ -153,7 +144,5 @@ export async function getSeguimientoCompleto(anio: number, skipTrade = false): P
     disponible: general.disponible,
     refMes: general.refMes || porCat.refMes,
     vistas,
-    tradePendiente: skipTrade,
-    debug: { kpisMs, restMs, totalMs: Date.now() - t0, breakdown: { ...kpiTimings } },
   };
 }

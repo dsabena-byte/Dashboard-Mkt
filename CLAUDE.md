@@ -96,13 +96,29 @@ reporte_existencia/cb_homologos).
   envolver `getSeguimientoKpis` en `unstable_cache` — sus queries usan `getServerSupabase()` →
   `cookies()`, que explota fuera del scope del request (una vez rompió el dash: quedaba ~98% con
   cobertura 20%, calculado solo con CB/Floor Share que van por REST). Los `unstable_cache` OK son
-  los REST service-key (sin cookies): `getWebIgCatRows`, `getWebMonthlySeguimiento`. **PERF (medido,
-  sep-2026):** el ingreso lo dominaban 2 vistas web lentas que agregan una tabla enorme —
-  `vw_drean_web_daily_kpis` (~6.7s) → reemplazada por `vw_drean_web_monthly` + `..._by_channel`
-  (mensuales, ~10x); y `vw_drean_web_by_category` (~8.8s) → **precalculada** en la tabla
-  `web_monthly_by_category` (migración 0101) por el cron `web-cat-agg` (cada 6h), que `getWebIgCatRows`
-  lee al instante (fallback a la vista si la tabla está vacía). NO consultar esas vistas lentas
-  directo desde el render del Seguimiento. Idea central: *si cumplís el 100% de las
+  los REST service-key (sin cookies): `getWebIgCatRows`, `getWebMonthlySeguimiento`. **PERF (medido
+  sep-2026 con instrumentación en el header del dash — `⏱ real` clic→pantalla + `server` por grupo):
+  server bajó de ~50s a ~3s.** Lo dominaban DOS cosas:
+  1. **Vistas web lentas** (agregan `web_landing_daily`, tabla enorme): `vw_drean_web_daily_kpis`
+     (~6.7s) → reemplazada por `vw_drean_web_monthly` + `..._by_channel` (mensuales, ~10x); y
+     `vw_drean_web_by_category` (~8.8s) → **precalculada** en `web_monthly_by_category` (migración
+     0101) por el cron `web-cat-agg` (cada 6h); `getWebIgCatRows` la lee al instante (fallback a la
+     vista si está vacía).
+  2. **CB / Floor Share = EL CUELLO PRINCIPAL (~26s SOLO Floor Share).** `getCbRows({})` y
+     `getFloorShareRows({})` **paginaban la tabla CB entera** (proyecto CB, lento, N round-trips
+     seriales) **EN CADA render**. **OJO clave:** `unstable_cache` NO lo salvaba porque la página
+     `/overview` tiene `fetchCache = "force-no-store"`, que **desactiva la Data Cache de todo lo que
+     cuelga de ella** → la cache no persistía nunca (se medía el mismo tiempo en cada visita).
+     **Solución (patrón correcto, = web):** el cron `trade-agg` (cada 6h, workflow_dispatch p/backfill)
+     calcula el resultado mensual desde CB en background y lo guarda en la tabla `trade_monthly`
+     (migración 0102, **proyecto PRINCIPAL**: cb_pct + fs_general/lavado/refri/coccion por mes). El
+     render lee esas ~12 filas al instante (`getTradeMonthly` en `lib/trade-monthly.ts`, ~300ms). El
+     cómputo lento (`computeTradeMonthlyFromCb`, mismo módulo) vive SOLO en el cron. NO volver a
+     paginar CB/Floor Share desde el render del Seguimiento. (El `skipTrade` de `getSeguimientoKpis`
+     quedó dormido — se probó un deferral cliente que movía los resultados al llegar; se descartó por
+     el precálculo.)
+  NO consultar esas vistas lentas ni las tablas CB directo desde el render del Seguimiento. Idea
+  central: *si cumplís el 100% de las
   metas de los KPIs, cumplís el 100% de los objetivos estratégicos.* Piezas:
   - **Mapa** (`/mapa-estrategico`): modelo **aplanado** (`mapa-estrategico-config.ts`).
     Objetivo `{id,nombre,color,peso}` (peso estratégico, se normaliza a 100% entre objetivos).

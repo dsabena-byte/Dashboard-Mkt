@@ -327,7 +327,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     return (
       <div className="space-y-5">
         <SeguimientoHeader tab="estado" />
-        <SeguimientoView data={seg} anio={curYear} />
+        <SeguimientoView data={seg} />
       </div>
     );
   }

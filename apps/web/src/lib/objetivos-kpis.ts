@@ -199,16 +199,11 @@ const serieRate = (ms: (PautaMes | null)[], num: (m: PautaMes) => number, den: (
 // NO usar unstable_cache acá: las queries usan getServerSupabase() (cookies()), que
 // EXPLOTA fuera del scope del request → los datos salían vacíos. Se usa React cache()
 // para dedup POR REQUEST (el tab "Estado" lo llama 2x: directo + vía el rollup).
-// skipTrade=true: NO trae CB/Floor Share (paginan la tabla CB entera, ~26s contra
-// el proyecto CB lento). Se usa para el PRIMER paint rápido; el trade llega después
-// por fetch cliente (/api/seguimiento) sin bloquear la vista.
+// skipTrade sobrevive por compatibilidad (ya no se usa en true): CB/Floor Share se
+// leen de la tabla PRECALCULADA trade_monthly (rápido), no se paginan en el render.
 export const getSeguimientoKpis = cache(
   async (anio: number, skipTrade = false): Promise<KpiSeguimiento[]> => computeSeguimientoKpis(anio, skipTrade),
 );
-
-// Breakdown de tiempos por grupo de queries (DIAGNÓSTICO temporal). Se llena en
-// computeSeguimientoKpis y lo lee getSeguimientoCompleto para mostrarlo en el header.
-export let kpiTimings: Record<string, number> = {};
 
 // Inversión TOTAL de medios de Pauta Mkt por mes (gap-fill, todos los objetivos).
 // Es la MISMA inversión que muestra el dashboard de Pauta Mkt (Impacto Campaña).
@@ -236,18 +231,9 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
 
   const yearRange = { from: `${anio}-01-01`, to: `${anio}-12-31` };
 
-  // --- Instrumentación temporal: mide cuánto tarda cada grupo (todas arrancan a la
-  // vez, así que el total ≈ la más lenta). Guarda el máx por etiqueta. ---
-  const timings: Record<string, number> = {};
-  const t0 = Date.now();
-  const T = <R,>(label: string, p: Promise<R>): Promise<R> => {
-    const done = () => { timings[label] = Math.max(timings[label] ?? 0, Date.now() - t0); };
-    return p.then((r) => { done(); return r; }, (e) => { done(); throw e; });
-  };
-
   // Distribución web/IG por categoría: se ARRANCA acá (no se espera) para que corra
   // EN PARALELO con el resto, no serializada después. Se cachea 6h (vista lenta ~8.8s).
-  const webIgCatP = T("webIgCat", getWebIgCatRows(anio));
+  const webIgCatP = getWebIgCatRows(anio);
 
   // Trade (CB/Floor Share): lee la tabla PRECALCULADA trade_monthly (rápido, ~300ms).
   // El cron trade-agg la llena en background → el render nunca pagina la tabla CB.
@@ -263,36 +249,35 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
     mIgAlc, mIgEng,
     cbMonthly, fsMonthly, mCb, mFsLav, mFsRef, mFsCoc,
   ] = await Promise.all([
-    safe(T("pauta", getPautaPerformance(true)), [] as Awaited<ReturnType<typeof getPautaPerformance>>),
-    safe(T("metaPaid", getMetaPaidCreatives(true)), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
-    safe(T("dv360", getDv360Creatives()), [] as Awaited<ReturnType<typeof getDv360Creatives>>),
-    safe(T("dv360Reach", getDv360Reach()), [] as Awaited<ReturnType<typeof getDv360Reach>>),
-    safe(T("gads", getGoogleAdsOmd()), [] as Awaited<ReturnType<typeof getGoogleAdsOmd>>),
-    safe(T("fx", getFxRates()), {} as Record<string, number>),
-    T("webMonthly", getWebMonthlySeguimiento(anio)),
-    safe(T("monthlyUsers", getAllMonthlyUsers()), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>),
-    safe(T("ig", getIgOrganicSummary(yearRange)), null as Awaited<ReturnType<typeof getIgOrganicSummary>> | null),
-    T("metas", getMetaKpi("Pauta Mkt", "Inversión", anio)),
-    T("metas", getMetaKpi("Pauta Mkt", "Alcance único", anio)),
-    T("metas", getMetaKpi("Pauta Mkt", "Frecuencia", anio)),
-    T("metas", getMetaKpi("Pauta Mkt", "Impresiones", anio)),
-    T("metas", getMetaKpi("Pauta Mkt", "VTR (≥50%)", anio)),
-    T("metas", getMetaKpi("Pauta Mkt", "Clicks", anio)),
-    T("metas", getMetaKpi("Web / Ecommerce", "Tráfico web (usuarios)", anio)),
-    T("metas", getMetaKpi("Web / Ecommerce", "Avg Sesión (segundos)", anio)),
-    T("metas", getMetaKpi("Web / Ecommerce", "Tasa de conversión", anio)),
-    T("metas", getMetaKpi("Redes Sociales", "Alcance orgánico", anio)),
-    T("metas", getMetaKpi("Redes Sociales", "Engagement rate", anio)),
-    // Trade (proyecto CB): agregado mensual (o nulls si skipTrade). El filtro "mes
+    safe(getPautaPerformance(true), [] as Awaited<ReturnType<typeof getPautaPerformance>>),
+    safe(getMetaPaidCreatives(true), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
+    safe(getDv360Creatives(), [] as Awaited<ReturnType<typeof getDv360Creatives>>),
+    safe(getDv360Reach(), [] as Awaited<ReturnType<typeof getDv360Reach>>),
+    safe(getGoogleAdsOmd(), [] as Awaited<ReturnType<typeof getGoogleAdsOmd>>),
+    safe(getFxRates(), {} as Record<string, number>),
+    getWebMonthlySeguimiento(anio),
+    safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>),
+    safe(getIgOrganicSummary(yearRange), null as Awaited<ReturnType<typeof getIgOrganicSummary>> | null),
+    getMetaKpi("Pauta Mkt", "Inversión", anio),
+    getMetaKpi("Pauta Mkt", "Alcance único", anio),
+    getMetaKpi("Pauta Mkt", "Frecuencia", anio),
+    getMetaKpi("Pauta Mkt", "Impresiones", anio),
+    getMetaKpi("Pauta Mkt", "VTR (≥50%)", anio),
+    getMetaKpi("Pauta Mkt", "Clicks", anio),
+    getMetaKpi("Web / Ecommerce", "Tráfico web (usuarios)", anio),
+    getMetaKpi("Web / Ecommerce", "Avg Sesión (segundos)", anio),
+    getMetaKpi("Web / Ecommerce", "Tasa de conversión", anio),
+    getMetaKpi("Redes Sociales", "Alcance orgánico", anio),
+    getMetaKpi("Redes Sociales", "Engagement rate", anio),
+    // Trade: agregado mensual precalculado (o nulls si skipTrade). El filtro "mes
     // cerrado" se aplica afuera.
-    T("cb", cbP),
-    T("floorShare", fsP),
-    T("metas", getMetaKpi("Cuadros Básicos", "% Cumplimiento CB", anio)),
-    T("metas", getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Lavado")),
-    T("metas", getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Refrigeración")),
-    T("metas", getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Cocción")),
+    cbP,
+    fsP,
+    getMetaKpi("Cuadros Básicos", "% Cumplimiento CB", anio),
+    getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Lavado"),
+    getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Refrigeración"),
+    getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Cocción"),
   ]);
-  kpiTimings = timings;
 
   // ---- Pauta (6) ----
   const pm = computePautaImpacto(pauta, metaPaid, dv360, dv360Reach, gads, fx, anio, currentMonth);

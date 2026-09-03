@@ -20,7 +20,6 @@ import {
 import { isPathAllowed } from "@/lib/dashboard-access";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { getTenant } from "@/lib/tenant/current";
-import { markNav } from "@/lib/nav-timing";
 
 const tenant = getTenant();
 
@@ -115,7 +114,7 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
 
   // ---- renderers por nivel ----
   const renderLeaf3 = (n: Extract<NavNode, { type: "link" }>) => (
-    <Link key={n.href} href={{ pathname: n.href }} onClick={() => markNav(n.href)} className={`sn-l3 ${isActive(n.href) ? "active" : ""}`}>
+    <Link key={n.href} href={{ pathname: n.href }} className={`sn-l3 ${isActive(n.href) ? "active" : ""}`}>
       <span className="truncate">{n.label}</span>
     </Link>
   );
@@ -124,7 +123,7 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
     if (n.type === "divider") return null;
     if (n.type === "link") {
       return (
-        <Link key={n.href} href={{ pathname: n.href }} onClick={() => markNav(n.href)} className={`sn-l2 ${isActive(n.href) ? "active" : ""}`}>
+        <Link key={n.href} href={{ pathname: n.href }} className={`sn-l2 ${isActive(n.href) ? "active" : ""}`}>
           {n.dot && <span className="sn-dot" style={{ background: n.dot }} />}
           <span className="truncate">{n.label}</span>
         </Link>
@@ -148,7 +147,7 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
     if (n.type === "link") {
       const Ico = n.icon;
       return (
-        <Link key={n.href} href={{ pathname: n.href }} onClick={() => markNav(n.href)} className={`sn-item ${isActive(n.href) ? "active" : ""}`}>
+        <Link key={n.href} href={{ pathname: n.href }} className={`sn-item ${isActive(n.href) ? "active" : ""}`}>
           {Ico && <Ico className="sn-ic" />}
           <span className="truncate">{n.label}</span>
         </Link>
