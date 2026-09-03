@@ -9,7 +9,7 @@ import { getSeguimientoKpis, type KpiSeguimiento } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
 import { CATEGORIAS_CORE } from "./categorias";
-import { getObjetivoMetas, makeCatRealMeta, ponderado, type ObjetivoRollup, type SeguimientoObjetivos } from "./objetivos-rollup";
+import { getObjetivoMetas, getSeguimientoObjetivos, makeCatRealMeta, ponderado, type ObjetivoRollup, type SeguimientoObjetivos } from "./objetivos-rollup";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const cap = (v: number | null): number | null => (v == null ? null : Math.min(v, 100));
@@ -107,4 +107,36 @@ export async function getSeguimientoPorCategoria(anio: number): Promise<Seguimie
   });
 
   return { disponible: true, refMes, categorias };
+}
+
+// ===== Vista combinada: General + las 3 categorías, en UNA sola pasada =====
+// getSeguimientoKpis está memoizado por request (React cache) → aunque lo llamen
+// getSeguimientoObjetivos y getSeguimientoPorCategoria, la parte pesada corre una vez.
+// El cliente cambia entre General/Lavado/Refri/Cocción al instante (sin recargar).
+export interface VistaSeguimiento {
+  key: string;
+  label: string;
+  seg: SeguimientoObjetivos;
+  kpis: KpiSeguimiento[];
+}
+export interface SeguimientoCompleto {
+  disponible: boolean;
+  refMes: string;
+  vistas: VistaSeguimiento[];
+}
+
+export async function getSeguimientoCompleto(anio: number): Promise<SeguimientoCompleto> {
+  const [kpis, general, porCat] = await Promise.all([
+    getSeguimientoKpis(anio),
+    getSeguimientoObjetivos(anio),
+    getSeguimientoPorCategoria(anio),
+  ]);
+  // KPIs del scorecard General = solo los conectados a algún objetivo (como en "Estado").
+  const mapeados = new Set(general.objetivos.flatMap((o) => o.aportes.map((a) => a.kpi)));
+  const kpisGeneral = general.disponible && mapeados.size > 0 ? kpis.filter((k) => mapeados.has(k.kpi)) : kpis;
+  const vistas: VistaSeguimiento[] = [
+    { key: "general", label: "General", seg: general, kpis: kpisGeneral },
+    ...porCat.categorias.map((c) => ({ key: c.categoria, label: c.categoria, seg: c.seg, kpis: c.kpis })),
+  ];
+  return { disponible: general.disponible, refMes: general.refMes || porCat.refMes, vistas };
 }
