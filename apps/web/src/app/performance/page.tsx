@@ -7,6 +7,7 @@ import { getGoogleAdsOmd } from "@/lib/google-ads-omd-queries";
 import { getGoogleAdsCreatives } from "@/lib/google-ads-creatives-queries";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
+import { getEcommerceInversionMensual } from "@/lib/ecommerce-queries";
 import { PerformanceClient } from "@/components/pauta/performance-client";
 
 export const dynamic = "force-dynamic";
@@ -74,7 +75,7 @@ const META_FALLBACK: MetaKpiData = { valores: Array.from({ length: 12 }, () => n
 
 export default async function PerformancePautaPage() {
   const currentYear = new Date().getFullYear();
-  const [data, metaPaid, dv360, dv360Reach, fxRates, planningMonthly, googleAdsOmd, googleAdsCreatives, fDv360, fMeta, fOmd, fGads] = await Promise.all([
+  const [data, metaPaid, dv360, dv360Reach, fxRates, planningMonthly, googleAdsOmd, googleAdsCreatives, fDv360, fMeta, fOmd, fGads, ecomInv] = await Promise.all([
     getPautaPerformance(true), // Pauta Mkt incluye UGC como una categoría más
     safe(getMetaPaidCreatives(true), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
     safe(getDv360Creatives(), [] as Awaited<ReturnType<typeof getDv360Creatives>>),
@@ -88,9 +89,11 @@ export default async function PerformancePautaPage() {
     safe(maxUpdatedAt("meta_paid_creatives", "principal", "fetched_at"), null),
     safe(maxUpdatedAt("pauta_performance"), null),
     safe(maxUpdatedAt("ga4_google_ads_daily", "principal", "updated_at"), null),
+    // Inversión ecommerce (Google Ads inhouse, rol Conversión) → suma a la Inversión total.
+    safe(getEcommerceInversionMensual(new Date().getFullYear()), Array.from({ length: 12 }, () => null) as (number | null)[]),
   ]);
   // Metas mensuales de los 6 KPIs de Impacto Campaña (plan "Pauta Mkt"), en paralelo.
   const metasArr = await Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK)));
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
-  return <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} />;
+  return <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} />;
 }
