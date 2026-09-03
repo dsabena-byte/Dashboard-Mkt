@@ -1155,7 +1155,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Pauta Mkt</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Plan de Medios</h2>
           <p className="text-sm text-muted-foreground">
             Resultados ejecutados (Digital ON + TV + OOH) · Fuente: OMD
           </p>
