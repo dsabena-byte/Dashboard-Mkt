@@ -279,10 +279,12 @@ export default async function WebPage({ searchParams }: PageProps) {
       sesiones_meta: webMetaSessions.valores[m - 1] ?? null,
     });
   }
-  // Datos de los cards con meta (mismo tratamiento que IG: mes de referencia = último con dato + acumulado YTD).
+  // Datos de los cards con meta: mes de referencia = último mes CERRADO con dato
+  // (el mes en curso es parcial → no se toma). Acumulado YTD hasta ese mes.
   const webSum = (xs: (number | null)[]) => xs.reduce((a: number, x) => a + (x ?? 0), 0);
+  const isClosedMonth = (i: number) => currYear < currentYear || (currYear === currentYear && i + 1 < currentMonth);
   let webRefIdx = -1;
-  for (let i = monthlyData.length - 1; i >= 0; i--) { if (monthlyData[i]!.usuarios_curr != null) { webRefIdx = i; break; } }
+  for (let i = monthlyData.length - 1; i >= 0; i--) { if (monthlyData[i]!.usuarios_curr != null && isClosedMonth(i)) { webRefIdx = i; break; } }
   const webRefMes = webRefIdx >= 0 ? monthlyData[webRefIdx]!.mes : "";
   const webUpto = webRefIdx >= 0 ? webRefIdx : 11;
   const usersRef = webRefIdx >= 0 ? monthlyData[webRefIdx]!.usuarios_curr : null;
