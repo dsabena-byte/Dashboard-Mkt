@@ -15,9 +15,8 @@ import { getGoogleAdsOmd } from "./google-ads-omd-queries";
 import { getFxRates } from "./fx-queries";
 import { getAllMonthlyUsers } from "./web-queries";
 import { getIgOrganicSummary } from "./meta-ig-queries";
-import { getCbRows, computeTotals, isoWeekToMes } from "./cb-queries";
-import { getFloorShareRows, computeOverall } from "./floor-share-queries";
 import { generalPonderado } from "./categorias";
+import { getTradeMonthly, emptyTradeMonthly } from "./trade-monthly";
 import type { MetaKpiData } from "./metas-server";
 
 export type KpiUnit = "$" | "" | "x" | "%" | "s";
@@ -127,49 +126,6 @@ const getWebMonthlySeguimiento = unstable_cache(
   },
   ["objetivos-web-monthly-seg-v1"],
   { revalidate: 1800 },
-);
-
-// ===== Trade (CB / Floor Share): agregado MENSUAL cacheado =====
-// getCbRows({}) y getFloorShareRows({}) paginan la tabla CB ENTERA (decenas de
-// miles de filas, N round-trips seriales contra el proyecto CB, que responde
-// lento) → hacían el Seguimiento tardar ~25s EN CADA render. Acá se pagina una
-// sola vez por hora (unstable_cache; getCbSupabase es service-key SIN cookies →
-// seguro para cachear) y se devuelve solo lo que el Seguimiento necesita: el %
-// mensual y el share por categoría. El filtro "mes cerrado" se aplica AFUERA
-// (depende de hoy) para no envenenar la cache.
-const MES_SHORT_TRADE = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
-const getCbMonthlyPct = unstable_cache(
-  async (anio: number): Promise<(number | null)[]> => {
-    const rows = await safe(getCbRows({}), [] as Awaited<ReturnType<typeof getCbRows>>);
-    return MES_SHORT_TRADE.map((short) => {
-      const rs = rows.filter((r) => isoWeekToMes(r.semana, anio) === short);
-      return rs.length ? computeTotals(rs).cb_pct : null;
-    });
-  },
-  ["objetivos-cb-monthly-v1"],
-  { revalidate: 3600 }, // 1 h
-);
-
-interface FloorMonthly { general: (number | null)[]; cat: Record<string, (number | null)[]> }
-const getFloorMonthly = unstable_cache(
-  async (anio: number): Promise<FloorMonthly> => {
-    const rows = await safe(getFloorShareRows({}), [] as Awaited<ReturnType<typeof getFloorShareRows>>);
-    const general: (number | null)[] = Array(12).fill(null);
-    const cat: Record<string, (number | null)[]> = {
-      Brand: Array(12).fill(null), Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null),
-    };
-    MES_SHORT_TRADE.forEach((short, i) => {
-      const rs = rows.filter((r) => isoWeekToMes(r.semana, anio) === short);
-      if (!rs.length) return;
-      const o = computeOverall(rs);
-      general[i] = generalPonderado({ Lavado: o.lavado.share, Refrigeración: o.refri.share, Cocción: o.coccion.share });
-      cat.Lavado![i] = o.lavado.share; cat["Refrigeración"]![i] = o.refri.share; cat["Cocción"]![i] = o.coccion.share;
-    });
-    return { general, cat };
-  },
-  ["objetivos-floor-monthly-v1"],
-  { revalidate: 3600 }, // 1 h
 );
 
 // ===== Pauta Mkt: mismo modelo gap-fill que impactoMensual (performance-client) =====
@@ -293,14 +249,11 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
   // EN PARALELO con el resto, no serializada después. Se cachea 6h (vista lenta ~8.8s).
   const webIgCatP = T("webIgCat", getWebIgCatRows(anio));
 
-  // Trade (CB/Floor Share): en skipTrade se resuelve al instante con nulls (el dato
-  // real llega después por /api/seguimiento). Si no, paga el agregado mensual.
-  const emptyFloor: FloorMonthly = {
-    general: Array(12).fill(null),
-    cat: { Brand: Array(12).fill(null), Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null) },
-  };
-  const cbP = skipTrade ? Promise.resolve<(number | null)[]>(Array(12).fill(null)) : getCbMonthlyPct(anio);
-  const fsP = skipTrade ? Promise.resolve<FloorMonthly>(emptyFloor) : getFloorMonthly(anio);
+  // Trade (CB/Floor Share): lee la tabla PRECALCULADA trade_monthly (rápido, ~300ms).
+  // El cron trade-agg la llena en background → el render nunca pagina la tabla CB.
+  const tradeP = skipTrade ? Promise.resolve(emptyTradeMonthly()) : getTradeMonthly(anio);
+  const cbP = tradeP.then((t) => t.cb);
+  const fsP = tradeP.then((t) => ({ general: t.fsGeneral, cat: t.fsCat }));
 
   const [
     pauta, metaPaid, dv360, dv360Reach, gads, fx,

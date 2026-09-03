@@ -321,8 +321,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
   // ===== Tab "Estado de KPIs": General + categorías en una pasada, selector cliente =====
   if (tab === "estado") {
-    // Primer paint SIN CB/Floor Share (skipTrade) → rápido. El cliente los pide luego.
-    const seg = await safe(getSeguimientoCompleto(curYear, true), { disponible: false, refMes: "", vistas: [] });
+    // Trade (CB/Floor Share) se lee de la tabla PRECALCULADA (rápido) → todo sincrónico,
+    // sin salto de resultados. El cron trade-agg mantiene esa tabla al día.
+    const seg = await safe(getSeguimientoCompleto(curYear), { disponible: false, refMes: "", vistas: [] });
     return (
       <div className="space-y-5">
         <SeguimientoHeader tab="estado" />
