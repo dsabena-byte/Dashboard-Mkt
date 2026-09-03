@@ -14,12 +14,8 @@ import {
 import { getCbU3M, type CbMetricU3M } from "@/lib/cb-queries";
 import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
 import { computeDreanConsolidado, SM_DIMS, type SMRow, type SMState } from "@/lib/salud-marca-model";
-import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
-import { getSeguimientoObjetivos } from "@/lib/objetivos-rollup";
-import { getSeguimientoPorCategoria } from "@/lib/objetivos-por-categoria";
-import { KpiScorecard } from "@/components/objetivos/kpi-scorecard";
-import { ObjetivosHero } from "@/components/objetivos/objetivos-hero";
-import { CategoriaView } from "@/components/objetivos/categoria-view";
+import { getSeguimientoCompleto } from "@/lib/objetivos-por-categoria";
+import { SeguimientoView } from "@/components/objetivos/seguimiento-view";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -279,23 +275,21 @@ function buildSaludMarca(rows: SMRow[], target: number) {
 const f1 = (v: number | null) => (v == null ? "—" : v.toFixed(1).replace(".", ","));
 const smCls = (s: SMState) => (s === "proj" ? "text-blue-600" : s === "carry" ? "text-amber-600" : "text-foreground");
 
-type SegTab = "estado" | "gaps" | "okr";
+type SegTab = "estado" | "okr";
 function getTab(searchParams: Record<string, string | string[] | undefined>): SegTab {
   const v = searchParams.tab;
   const s = Array.isArray(v) ? v[0] : v;
-  return s === "okr" ? "okr" : s === "gaps" ? "gaps" : "estado";
+  return s === "okr" ? "okr" : "estado"; // ?tab=gaps (link viejo) cae en estado
 }
 
 // Header + navegación de tabs, compartido por las vistas.
 function SeguimientoHeader({ tab }: { tab: SegTab }) {
   const tabs: { key: SegTab; label: string }[] = [
     { key: "estado", label: "Estado de KPIs" },
-    { key: "gaps", label: "Por Categoría" },
     { key: "okr", label: "OKR Mkt" },
   ];
   const subt: Record<SegTab, string> = {
-    estado: "Estado de cumplimiento de Objetivos y KPIs vs sus metas mensuales — desvío del mes y acumulado del año.",
-    gaps: "El mismo estado de Objetivos y KPIs, calculado para la categoría que elijas (Lavado / Refrigeración / Cocción).",
+    estado: "Cumplimiento de Objetivos y KPIs vs sus metas mensuales — General o por categoría (selector), desvío del mes y acumulado del año.",
     okr: "Seguimiento de los objetivos del área (OKR) — Presupuesto, Floor Share, Cuadro Básico y Salud de Marca.",
   };
   return (
@@ -325,38 +319,13 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   const curYear = now.getUTCFullYear();
   const curMonth = now.getUTCMonth() + 1;
 
-  // ===== Tab "Estado de KPIs": scorecard de metas (no corre los pipelines de OKR) =====
+  // ===== Tab "Estado de KPIs": General + categorías en una pasada, selector cliente =====
   if (tab === "estado") {
-    const [kpis, objetivos] = await Promise.all([
-      safe(getSeguimientoKpis(curYear), []),
-      safe(getSeguimientoObjetivos(curYear), { disponible: false, refMes: "", waveKantar: null, objetivos: [], saludMarca: { cumplMes: null, cumplYtd: null, metaNegMes: null, cumplSerie: [], porCategoria: [] } }),
-    ]);
-    // El scorecard muestra solo los KPIs que alimentan objetivos (conectados en el
-    // Mapa). Los que no están vinculados (ej. Inversión) no cuentan → se ocultan.
-    const mapeados = new Set(objetivos.objetivos.flatMap((o) => o.aportes.map((a) => a.kpi)));
-    const kpisScorecard = objetivos.disponible && mapeados.size > 0 ? kpis.filter((k) => mapeados.has(k.kpi)) : kpis;
+    const seg = await safe(getSeguimientoCompleto(curYear), { disponible: false, refMes: "", vistas: [] });
     return (
       <div className="space-y-5">
         <SeguimientoHeader tab="estado" />
-        <div>
-          <div className="mb-2.5 text-sm font-bold tracking-tight">Objetivos Estratégicos</div>
-          <ObjetivosHero data={objetivos} />
-        </div>
-        <div>
-          <div className="mb-2.5 text-sm font-bold tracking-tight">KPIs por plan <span className="text-[11px] font-normal text-muted-foreground">· indicadores que alimentan los objetivos</span></div>
-          <KpiScorecard kpis={kpisScorecard} />
-        </div>
-      </div>
-    );
-  }
-
-  // ===== Tab "Por Categoría": mismo estado (objetivos + KPIs) recalculado por categoría =====
-  if (tab === "gaps") {
-    const porCat = await safe(getSeguimientoPorCategoria(curYear), { disponible: false, refMes: "", categorias: [] });
-    return (
-      <div className="space-y-5">
-        <SeguimientoHeader tab="gaps" />
-        <CategoriaView data={porCat} />
+        <SeguimientoView data={seg} />
       </div>
     );
   }
