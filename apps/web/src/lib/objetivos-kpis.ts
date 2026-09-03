@@ -13,7 +13,7 @@ import { getMetaPaidCreatives } from "./meta-paid-queries";
 import { getDv360Creatives, getDv360Reach } from "./dv360-queries";
 import { getGoogleAdsOmd } from "./google-ads-omd-queries";
 import { getFxRates } from "./fx-queries";
-import { getWebDailyKpis, getAllMonthlyUsers } from "./web-queries";
+import { getAllMonthlyUsers } from "./web-queries";
 import { getIgOrganicSummary } from "./meta-ig-queries";
 import { getCbRows, computeTotals, isoWeekToMes } from "./cb-queries";
 import { getFloorShareRows, computeOverall } from "./floor-share-queries";
@@ -102,6 +102,16 @@ const getWebIgCatRows = unstable_cache(
     return { web, ig };
   },
   ["objetivos-webig-cat-rows-v1"],
+  { revalidate: 1800 },
+);
+
+type WebDailyRow = { fecha: string; sesiones: number | null; conversiones: number | null; usuarios: number | null; avg_session_duration: number | null };
+// KPIs diarios de web para el Seguimiento. CACHE 30 min: data de fuente (sin metas)
+// y el view vw_drean_web_daily_kpis es LENTO (~6s, agrega una tabla enorme).
+const getWebDailySeguimiento = unstable_cache(
+  async (anio: number): Promise<WebDailyRow[]> =>
+    safe(fetchRows<WebDailyRow>(`vw_drean_web_daily_kpis?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,sesiones,conversiones,usuarios,avg_session_duration`), []),
+  ["objetivos-webdaily-seg-v1"],
   { revalidate: 1800 },
 );
 
@@ -220,7 +230,7 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
     safe(getDv360Reach(), [] as Awaited<ReturnType<typeof getDv360Reach>>),
     safe(getGoogleAdsOmd(), [] as Awaited<ReturnType<typeof getGoogleAdsOmd>>),
     safe(getFxRates(), {} as Record<string, number>),
-    safe(getWebDailyKpis(yearRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>),
+    safe(getWebDailySeguimiento(anio), [] as WebDailyRow[]),
     safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>),
     safe(getIgOrganicSummary(yearRange), null as Awaited<ReturnType<typeof getIgOrganicSummary>> | null),
     getMetaKpi("Pauta Mkt", "Inversión", anio),
