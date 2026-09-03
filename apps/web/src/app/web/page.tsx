@@ -3,7 +3,7 @@ import { DateRangePicker } from "@/components/date-range-picker";
 
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
 import { CategoryTrendChart } from "@/components/category-trend-chart";
-import { WebMonthlyChart } from "@/components/web-monthly-chart";
+import { MetaEvolChart, type MetaEvolDatum } from "@/components/pauta/meta-evol-chart";
 import { ChannelMonthlyChart } from "@/components/channel-monthly-chart";
 import { KpiBarPanel } from "@/components/kpi-bar-panel";
 import {
@@ -36,7 +36,7 @@ import { EngagementTrendChart } from "@/components/engagement-trend-chart";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
-import { WebConvAvgChart } from "@/components/web-conv-avg-chart";
+import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -117,6 +117,10 @@ export default async function WebPage({ searchParams }: PageProps) {
     webMetaSessions,
     webMetaAvg,
     webMetaConv,
+    webMetaTrans,
+    webMetaIng,
+    webMetaRoas,
+    ecom,
   ] = await Promise.all([
     safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
     safe(getWebDailyKpis(yoyRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(yoy)"),
@@ -148,6 +152,10 @@ export default async function WebPage({ searchParams }: PageProps) {
     safe(getMetaKpi("Web / Ecommerce", "Sesiones", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-sessions)"),
     safe(getMetaKpi("Web / Ecommerce", "Avg Sesión (segundos)", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-avg)"),
     safe(getMetaKpi("Web / Ecommerce", "Tasa de conversión", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-conv)"),
+    safe(getMetaKpi("Web / Ecommerce", "Transacciones", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-trans)"),
+    safe(getMetaKpi("Web / Ecommerce", "Total Ingresos", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-ing)"),
+    safe(getMetaKpi("Web / Ecommerce", "ROAS", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-roas)"),
+    safe(getEcommerceMensual(new Date().getFullYear()), { transacciones: [], ingresos: [], invConversion: [], invConsideracion: [], roas: [] } as Awaited<ReturnType<typeof getEcommerceMensual>>, "getEcommerceMensual"),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -252,7 +260,6 @@ export default async function WebPage({ searchParams }: PageProps) {
     return monthlySessionsMap.get(key) ?? monthlyAll.get(key)?.sesiones ?? 0;
   };
   const currYear = (new Date(`${range.to}T00:00:00Z`)).getUTCFullYear();
-  const prevYear = currYear - 1;
   const MES_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   // 12 meses fijos; meses sin data van como null para que recharts no dibuje barras/líneas en 0.
   const monthlyData: Array<{ mes: string; usuarios_curr: number | null; usuarios_prev: number; sesiones_curr: number | null; sesiones_prev: number; usuarios_meta: number | null; sesiones_meta: number | null }> = [];
@@ -305,7 +312,32 @@ export default async function WebPage({ searchParams }: PageProps) {
       avgMeta: webMetaAvg.valores[i] ?? null,
     };
   });
-  const yearLabels = { curr: String(currYear), prev: String(prevYear) };
+  // ---- Ecommerce: Transacciones, Total Ingresos, ROAS (mismo mes ref/YTD que los otros cards) ----
+  const ecomAt = (arr: (number | null)[]) => (webRefIdx >= 0 ? (arr[webRefIdx] ?? null) : null);
+  const transRef = ecomAt(ecom.transacciones);
+  const transRefMeta = webRefIdx >= 0 ? (webMetaTrans.valores[webRefIdx] ?? null) : null;
+  const transYtd = webSum(ecom.transacciones.slice(0, webUpto + 1));
+  const transMetaYtd = webSum(webMetaTrans.valores.slice(0, webUpto + 1));
+  const ingRef = ecomAt(ecom.ingresos);
+  const ingRefMeta = webRefIdx >= 0 ? (webMetaIng.valores[webRefIdx] ?? null) : null;
+  const ingYtd = webSum(ecom.ingresos.slice(0, webUpto + 1));
+  const ingMetaYtd = webSum(webMetaIng.valores.slice(0, webUpto + 1));
+  const roasRef = ecomAt(ecom.roas);
+  const roasRefMeta = webRefIdx >= 0 ? (webMetaRoas.valores[webRefIdx] ?? null) : null;
+  // ROAS YTD = ingresos acum ÷ (inversión Consideración + Conversión) acum.
+  const considYtd = webSum(ecom.invConsideracion.slice(0, webUpto + 1));
+  const convInvYtd = webSum(ecom.invConversion.slice(0, webUpto + 1));
+  const roasYtd = considYtd + convInvYtd > 0 ? ingYtd / (considYtd + convInvYtd) : null;
+  const roasMetasYtd = webMetaRoas.valores.slice(0, webUpto + 1).filter((v): v is number => v != null);
+  const roasMetaYtd = roasMetasYtd.length ? roasMetasYtd.reduce((a, b) => a + b, 0) / roasMetasYtd.length : null;
+
+  // Series de los 6 gráficos de evolución (real vs meta), 2 por línea.
+  const traficoEvol: MetaEvolDatum[] = monthlyData.map((d) => ({ mes: d.mes, real: d.usuarios_curr, meta: d.usuarios_meta }));
+  const avgEvol: MetaEvolDatum[] = convAvgData.map((d) => ({ mes: d.mes, real: d.avgReal, meta: d.avgMeta }));
+  const convEvol: MetaEvolDatum[] = convAvgData.map((d) => ({ mes: d.mes, real: d.convPct, meta: d.convMeta }));
+  const transEvol: MetaEvolDatum[] = MES_SHORT.map((mes, i) => ({ mes, real: ecom.transacciones[i] ?? null, meta: webMetaTrans.valores[i] ?? null }));
+  const ingEvol: MetaEvolDatum[] = MES_SHORT.map((mes, i) => ({ mes, real: ecom.ingresos[i] ?? null, meta: webMetaIng.valores[i] ?? null }));
+  const roasEvol: MetaEvolDatum[] = MES_SHORT.map((mes, i) => ({ mes, real: ecom.roas[i] ?? null, meta: webMetaRoas.valores[i] ?? null }));
 
   // Estrategia de agregación según el largo del rango:
   //   ≤ 60 días → diaria, > 60 días → semanal (lunes inicio).
@@ -480,6 +512,51 @@ export default async function WebPage({ searchParams }: PageProps) {
         />
       </section>
 
+      {/* Cards ECOMMERCE con meta (misma jerarquía): Transacciones, Total Ingresos, ROAS */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <MetaKpiCard
+          title="Transacciones"
+          medida="Compras del mes (GA4)"
+          headlineActual={transRef}
+          headlineLabel={webRefMes}
+          direccion={webMetaTrans.direccion}
+          umbralVerde={webMetaTrans.umbralVerde}
+          umbralAmarillo={webMetaTrans.umbralAmarillo}
+          rows={[
+            { label: `Mes ${webRefMes}`, actual: transRef, meta: transRefMeta },
+            { label: "Acum. YTD", actual: transYtd, meta: transMetaYtd },
+          ]}
+        />
+        <MetaKpiCard
+          title="Total Ingresos"
+          medida="Ingresos ecommerce del mes (GA4)"
+          headlineActual={ingRef}
+          headlineLabel={webRefMes}
+          unidad="$"
+          direccion={webMetaIng.direccion}
+          umbralVerde={webMetaIng.umbralVerde}
+          umbralAmarillo={webMetaIng.umbralAmarillo}
+          rows={[
+            { label: `Mes ${webRefMes}`, actual: ingRef, meta: ingRefMeta },
+            { label: "Acum. YTD", actual: ingYtd, meta: ingMetaYtd },
+          ]}
+        />
+        <MetaKpiCard
+          title="ROAS"
+          medida="Ingresos ÷ inversión (Consideración + Conversión)"
+          headlineActual={roasRef}
+          headlineLabel={webRefMes}
+          unidad="x"
+          direccion={webMetaRoas.direccion}
+          umbralVerde={webMetaRoas.umbralVerde}
+          umbralAmarillo={webMetaRoas.umbralAmarillo}
+          rows={[
+            { label: `Mes ${webRefMes}`, actual: roasRef, meta: roasRefMeta },
+            { label: "Acum. YTD", actual: roasYtd, meta: roasMetaYtd },
+          ]}
+        />
+      </section>
+
       {/* Cards secundarios (chicos, sin meta) */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
@@ -493,25 +570,24 @@ export default async function WebPage({ searchParams }: PageProps) {
         <KpiCard title="Top canal" value={channels[0]?.canal ?? "—"} hint={channels[0] ? `${formatNumber(channels[0].sesiones)} sesiones` : ""} />
       </section>
 
-      {/* Tendencia mensual — últimos 12 meses */}
+      {/* Evolución mensual de los 6 KPIs principales (real vs meta), 2 por línea */}
       <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: sesiones + usuarios (real vs meta)</h3>
-        <p className="text-xs text-muted-foreground">
-          Barras = usuarios (azul real · gris meta), línea = sesiones (tinta real · gris punteada meta). Año actual.
-        </p>
-        <div className="mt-4">
-          <WebMonthlyChart data={monthlyData} labels={yearLabels} />
-        </div>
-      </section>
-
-      {/* Tendencia mensual — Conversión (líneas) + Avg session (barras), real vs meta */}
-      <section className="rounded-lg border bg-card p-6">
-        <h3 className="text-sm font-medium text-muted-foreground">Tendencia mensual: Conversion rate + Avg session (real vs meta)</h3>
-        <p className="text-xs text-muted-foreground">
-          Líneas = conversion rate (tinta real · gris punteada meta). Barras = avg session (azul real · gris meta). Año actual.
-        </p>
-        <div className="mt-4">
-          <WebConvAvgChart data={convAvgData} />
+        <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual — KPIs principales (real vs meta)</h3>
+        <p className="text-xs text-muted-foreground">Real en color · meta en gris. Año actual. ROAS = Ingresos ÷ (inversión Consideración + Conversión).</p>
+        <div className="mt-4 grid gap-6 lg:grid-cols-2">
+          {[
+            { t: "Tráfico web (usuarios)", d: traficoEvol, mode: "bar" as const, u: "" as const },
+            { t: "Avg Session (segundos)", d: avgEvol, mode: "line" as const, u: "" as const },
+            { t: "Conversion rate", d: convEvol, mode: "line" as const, u: "%" as const },
+            { t: "Transacciones", d: transEvol, mode: "bar" as const, u: "" as const },
+            { t: "Total Ingresos", d: ingEvol, mode: "bar" as const, u: "$" as const },
+            { t: "ROAS", d: roasEvol, mode: "line" as const, u: "x" as const },
+          ].map((c) => (
+            <div key={c.t}>
+              <h4 className="mb-1 text-xs font-medium text-foreground">{c.t}</h4>
+              <MetaEvolChart data={c.d} mode={c.mode} unidad={c.u} realName={c.t} />
+            </div>
+          ))}
         </div>
       </section>
 
@@ -526,7 +602,9 @@ export default async function WebPage({ searchParams }: PageProps) {
           { nombre: "Avg Sesión (segundos)", unidad: "s", actual: totals.avg_session_duration },
           { nombre: "Bounce rate", unidad: "%", actual: totals.bounce_rate != null ? totals.bounce_rate * 100 : null },
           { nombre: "Tasa de conversión", unidad: "%", actual: totals.conversion_rate != null ? totals.conversion_rate * 100 : null },
-          { nombre: "Ingresos ecommerce", unidad: "$" },
+          { nombre: "Transacciones", actual: transRef },
+          { nombre: "Total Ingresos", unidad: "$", actual: ingRef },
+          { nombre: "ROAS", unidad: "x", actual: roasRef },
           { nombre: "Pageviews", actual: totals.pageviews },
         ]}
       />
