@@ -172,19 +172,6 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
     return kpis.filter((kn) => !p.kpis.some((k) => k.nombre === kn));
   }
 
-  // Ranking de importancia estratégica: Σ (peso vínculo/100 × peso estratégico objetivo).
-  const ranking = useMemo(() => {
-    const objPeso: Record<string, number> = {}; objs.forEach((o) => (objPeso[o.id] = o.peso / 100));
-    const items: { plan: string; kpi: string; imp: number; fuente: boolean }[] = [];
-    planes.forEach((p) => p.kpis.forEach((k) => {
-      let imp = 0;
-      for (const id in k.vinculos) imp += ((k.vinculos[id] || 0) / 100) * (objPeso[id] ?? 0);
-      items.push({ plan: p.nombre, kpi: k.nombre, imp, fuente: catKpiNames.has(k.nombre) });
-    }));
-    items.sort((a, b) => b.imp - a.imp);
-    return { items, max: items.length ? (items[0]!.imp || 1) : 1 };
-  }, [objs, planes, catKpiNames]);
-
   // Los objetivos de marca (TOM/SOM/Intención/Poder) se miden por categoría core.
   // Habilitamos el desglose por categoría en el MetaPanel; para un objetivo total
   // (ej. Facturación) se usa la pestaña "General".
@@ -417,30 +404,10 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
         </div>
       </section>
 
-      {/* 4. Prioridad de instrumentación */}
+      {/* 4. Metas de negocio mensuales de los objetivos */}
       <section>
         <div className="mb-2.5 flex items-center gap-2">
           <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">5</span>
-          <h3 className="text-sm font-semibold tracking-tight">Prioridad de instrumentación</h3>
-          <span className="ml-auto font-mono text-[10px] text-muted-foreground">importancia estratégica</span>
-        </div>
-        <div className="max-h-72 space-y-1.5 overflow-y-auto rounded-xl border bg-card px-4 py-3.5">
-          {ranking.items.map((it, i) => (
-            <div key={i} className="grid grid-cols-[16px_minmax(0,150px)_1fr_auto] items-center gap-2 text-xs">
-              <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{i + 1}</span>
-              <span className="truncate" title={`${it.kpi} · ${it.plan}`}>{it.kpi} <span className="text-[10px] text-muted-foreground">· {it.plan}</span></span>
-              <span className="h-1.5 overflow-hidden rounded bg-muted"><i className="block h-full rounded" style={{ width: `${Math.round((it.imp / ranking.max) * 100)}%`, background: it.fuente ? "hsl(142 60% 45%)" : "hsl(38 78% 52%)" }} /></span>
-              <span className="whitespace-nowrap font-mono text-[9.5px]" style={{ color: it.fuente ? "hsl(142 55% 40%)" : "hsl(38 78% 45%)" }}>{it.fuente ? "✓ con fuente" : "⏳ pendiente"}</span>
-            </div>
-          ))}
-          {ranking.items.length === 0 && <p className="text-[11px] text-muted-foreground">Conectá KPIs a los objetivos para ver la prioridad.</p>}
-        </div>
-      </section>
-
-      {/* 5. Metas de negocio mensuales de los objetivos */}
-      <section>
-        <div className="mb-2.5 flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">6</span>
           <h3 className="text-sm font-semibold tracking-tight">Metas de negocio de los objetivos</h3>
         </div>
         <MetaPanel

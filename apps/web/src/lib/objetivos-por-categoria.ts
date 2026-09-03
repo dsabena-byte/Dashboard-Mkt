@@ -123,14 +123,22 @@ export interface SeguimientoCompleto {
   disponible: boolean;
   refMes: string;
   vistas: VistaSeguimiento[];
+  debug?: { kpisMs: number; restMs: number; totalMs: number };
 }
 
 export async function getSeguimientoCompleto(anio: number): Promise<SeguimientoCompleto> {
+  const t0 = Date.now();
+  // 1) La parte pesada: fetch + cómputo de KPIs (memoizado por request).
+  await getSeguimientoKpis(anio);
+  const kpisMs = Date.now() - t0;
+  // 2) El resto (rollups) reusa el cache de KPIs → mide solo su costo propio.
+  const t1 = Date.now();
   const [kpis, general, porCat] = await Promise.all([
     getSeguimientoKpis(anio),
     getSeguimientoObjetivos(anio),
     getSeguimientoPorCategoria(anio),
   ]);
+  const restMs = Date.now() - t1;
   // KPIs del scorecard General = solo los conectados a algún objetivo (como en "Estado").
   const mapeados = new Set(general.objetivos.flatMap((o) => o.aportes.map((a) => a.kpi)));
   const kpisGeneral = general.disponible && mapeados.size > 0 ? kpis.filter((k) => mapeados.has(k.kpi)) : kpis;
@@ -138,5 +146,10 @@ export async function getSeguimientoCompleto(anio: number): Promise<SeguimientoC
     { key: "general", label: "General", seg: general, kpis: kpisGeneral },
     ...porCat.categorias.map((c) => ({ key: c.categoria, label: c.categoria, seg: c.seg, kpis: c.kpis })),
   ];
-  return { disponible: general.disponible, refMes: general.refMes || porCat.refMes, vistas };
+  return {
+    disponible: general.disponible,
+    refMes: general.refMes || porCat.refMes,
+    vistas,
+    debug: { kpisMs, restMs, totalMs: Date.now() - t0 },
+  };
 }

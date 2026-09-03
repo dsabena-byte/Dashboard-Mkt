@@ -42,6 +42,11 @@ export function SeguimientoView({ data }: { data: SeguimientoCompleto }) {
           ))}
         </div>
         <span className="text-[11px] text-muted-foreground">a {data.refMes}</span>
+        {data.debug && (
+          <span className="ml-auto font-mono text-[10px] text-muted-foreground/70" title="Tiempo de cómputo server (no incluye cold start ni red)">
+            ⏱ server {data.debug.totalMs}ms (kpis {data.debug.kpisMs} · resto {data.debug.restMs})
+          </span>
+        )}
       </div>
 
       <div>
