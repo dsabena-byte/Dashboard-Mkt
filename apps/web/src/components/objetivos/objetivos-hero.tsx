@@ -14,7 +14,11 @@ import type { SeguimientoObjetivos, ObjetivoRollup, ObjAporte, CatDesglose } fro
 
 const UMBRAL = { umbralVerde: 100, umbralAmarillo: 90 };
 const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(0)}%`);
+const f1 = (v: number | null) => (v == null ? "—" : v.toFixed(1));
 const semOf = (v: number | null): Semaforo => semaforoDe(v, UMBRAL);
+// Resultado acumulado = meta × cumplimiento YTD / 100 (proyección del objetivo según lo ejecutado).
+const resultadoAcum = (meta: number | null, cumplYtd: number | null) =>
+  meta == null || cumplYtd == null ? null : (meta * cumplYtd) / 100;
 
 function Barra({ v }: { v: number | null }) {
   const sem = semOf(v);
@@ -105,7 +109,10 @@ function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
       <div className="mt-2"><Barra v={o.cumplMes} /></div>
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
         <span>YTD <span className="font-semibold tabular-nums text-foreground">{pct(o.cumplYtd)}</span></span>
-        <span title="Target de negocio = Σ meta por categoría × peso (mix nov-25)">Meta neg. <span className="font-semibold tabular-nums text-foreground">{o.metaNegMes == null ? "—" : o.metaNegMes.toFixed(1)}</span></span>
+        <span title="Resultado acumulado (= meta × cumplimiento YTD) vs meta de negocio del objetivo">
+          Result. acum. <span className="font-semibold tabular-nums text-foreground">{f1(resultadoAcum(o.metaNegMes, o.cumplYtd))}</span>
+          <span className="text-muted-foreground/60"> / Meta {f1(o.metaNegMes)}</span>
+        </span>
       </div>
       {o.cobertura < 99.5 && (
         <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>
@@ -163,7 +170,10 @@ export function ObjetivosHero({ data }: { data: SeguimientoObjetivos }) {
             </div>
             <div className="text-right text-[11px] text-muted-foreground">
               <div>YTD <span className="font-semibold tabular-nums text-foreground">{pct(sm.cumplYtd)}</span></div>
-              <div>Meta neg. <span className="font-semibold tabular-nums text-foreground">{sm.metaNegMes == null ? "—" : sm.metaNegMes.toFixed(1)}</span></div>
+              <div title="Resultado acumulado (= meta × cumplimiento YTD) vs meta de Salud de Marca">
+                Result. acum. <span className="font-semibold tabular-nums text-foreground">{f1(resultadoAcum(sm.metaNegMes, sm.cumplYtd))}</span>
+                <span className="text-muted-foreground/60"> / Meta {f1(sm.metaNegMes)}</span>
+              </div>
             </div>
           </div>
         </div>
