@@ -91,18 +91,22 @@ async function fetchRows<T>(query: string): Promise<T[]> {
 type WebCatRow = { fecha: string; categoria: string | null; usuarios: number | null };
 type IgCatRow = { fecha_post: string; categoria: string | null; reach: number | null };
 // Distribución por categoría (Web usuarios · IG reach) para el real por categoría.
-// CACHE 30 min: es data de fuente (sin metas → no afecta el guardado de metas) y el
-// view vw_drean_web_by_category es LENTO (~6s). Cachearlo evita pagarlo en cada carga.
+// Web sale de web_monthly_by_category (PRECALCULADA por el cron web-cat-agg → rápido);
+// si esa tabla está vacía (antes de migrar/correr el cron), cae a la vista lenta
+// vw_drean_web_by_category. CACHE 6h: data de fuente (sin metas).
 const getWebIgCatRows = unstable_cache(
   async (anio: number): Promise<{ web: WebCatRow[]; ig: IgCatRow[] }> => {
-    const [web, ig] = await Promise.all([
-      safe(fetchRows<WebCatRow>(`vw_drean_web_by_category?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,categoria,usuarios`), []),
+    const [webPre, ig] = await Promise.all([
+      safe(fetchRows<WebCatRow>(`web_monthly_by_category?mes=gte.${anio}-01-01&mes=lte.${anio}-12-31&select=fecha:mes,categoria,usuarios`), []),
       safe(fetchRows<IgCatRow>(`meta_posts?platform=eq.instagram&fecha_post=gte.${anio}-01-01&fecha_post=lt.${anio + 1}-01-01&select=fecha_post,categoria,reach`), []),
     ]);
+    const web = webPre.length > 0
+      ? webPre
+      : await safe(fetchRows<WebCatRow>(`vw_drean_web_by_category?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,categoria,usuarios`), []);
     return { web, ig };
   },
-  ["objetivos-webig-cat-rows-v1"],
-  { revalidate: 21600 }, // 6 h — la distribución por categoría cambia lento; evita pagar la vista lenta seguido
+  ["objetivos-webig-cat-rows-v2"],
+  { revalidate: 21600 }, // 6 h
 );
 
 // Web mensual para el Seguimiento — sesiones + avg (vw_drean_web_monthly) y conversiones
