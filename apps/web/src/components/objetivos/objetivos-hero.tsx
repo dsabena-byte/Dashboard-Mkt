@@ -86,8 +86,10 @@ function AporteRow({ a }: { a: ObjAporte }) {
 
 const TOP_APORTES = 3;
 function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
-  const sem = semOf(o.cumplMes);
-  const color = SEMAFORO_COLOR[sem];
+  const semMes = semOf(o.cumplMes);
+  const colorMes = SEMAFORO_COLOR[semMes];
+  const res = resultadoAcum(o.metaNegMes, o.cumplYtd);
+  const colorRes = SEMAFORO_COLOR[semOf(o.cumplYtd)];
   const aportes = o.aportes.filter((a) => a.peso > 0);
   const primeros = aportes.slice(0, TOP_APORTES);
   const resto = aportes.slice(TOP_APORTES);
@@ -100,19 +102,23 @@ function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
           </div>
           <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">peso estratégico {o.pesoEstrategico}%</div>
         </div>
+        {/* Cumplimiento del mes → badge secundario */}
+        <div className="flex flex-col items-end">
+          <span className="rounded-full px-2 py-0.5 text-[12px] font-bold tabular-nums" style={{ color: colorMes, background: `${colorMes}1a` }}>{pct(o.cumplMes)}</span>
+          <span className="mt-0.5 text-[8px] uppercase tracking-wide text-muted-foreground/60">cumpl. mes</span>
+        </div>
       </div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums" style={{ color }}>{pct(o.cumplMes)}</span>
-        <span className="text-[11px] text-muted-foreground">cumplimiento</span>
-      </div>
-      <div className="text-[10px] text-muted-foreground/70">= Σ (peso × cumpl KPI, capado 100%)</div>
-      <div className="mt-2"><Barra v={o.cumplMes} /></div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-        <span>YTD <span className="font-semibold tabular-nums text-foreground">{pct(o.cumplYtd)}</span></span>
-        <span title="Resultado acumulado (= meta × cumplimiento YTD) vs meta de negocio del objetivo">
-          Result. acum. <span className="font-semibold tabular-nums text-foreground">{f1(resultadoAcum(o.metaNegMes, o.cumplYtd))}</span>
-          <span className="text-muted-foreground/60"> / Meta {f1(o.metaNegMes)}</span>
-        </span>
+      {/* PROTAGONISTA: Resultado acumulado vs Meta de negocio */}
+      <div className="mt-3">
+        <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/60">Resultado acum. · Meta</div>
+        <div className="mt-0.5 flex items-baseline gap-1.5">
+          <span className="text-3xl font-bold tabular-nums" style={{ color: colorRes }}>{f1(res)}</span>
+          <span className="text-lg font-semibold tabular-nums text-muted-foreground/45">/ {f1(o.metaNegMes)}</span>
+        </div>
+        <div className="mt-2"><Barra v={o.cumplYtd} /></div>
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          Avance YTD <span className="font-semibold tabular-nums text-foreground">{pct(o.cumplYtd)}</span> de la meta
+        </div>
       </div>
       {o.cobertura < 99.5 && (
         <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>
@@ -163,21 +169,24 @@ export function ObjetivosHero({ data }: { data: SeguimientoObjetivos }) {
             </div>
             <div className="mt-0.5 text-[11px] text-muted-foreground">Σ peso estratégico × cumplimiento de cada objetivo · a {data.refMes}</div>
           </div>
-          <div className="flex items-baseline gap-3">
-            <div className="text-right">
-              <div className="text-4xl font-bold tabular-nums" style={{ color: smColor }}>{pct(sm.cumplMes)}</div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">cumplimiento</div>
-            </div>
-            <div className="text-right text-[11px] text-muted-foreground">
-              <div>YTD <span className="font-semibold tabular-nums text-foreground">{pct(sm.cumplYtd)}</span></div>
-              <div title="Resultado acumulado (= meta × cumplimiento YTD) vs meta de Salud de Marca">
-                Result. acum. <span className="font-semibold tabular-nums text-foreground">{f1(resultadoAcum(sm.metaNegMes, sm.cumplYtd))}</span>
-                <span className="text-muted-foreground/60"> / Meta {f1(sm.metaNegMes)}</span>
+          <div className="flex items-center gap-4">
+            {/* PROTAGONISTA: Resultado acumulado vs Meta */}
+            <div className="text-right" title="Resultado acumulado (= meta × cumplimiento YTD) vs meta de Salud de Marca">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">Resultado acum. · Meta</div>
+              <div className="flex items-baseline justify-end gap-1.5">
+                <span className="text-4xl font-bold tabular-nums" style={{ color: SEMAFORO_COLOR[semOf(sm.cumplYtd)] }}>{f1(resultadoAcum(sm.metaNegMes, sm.cumplYtd))}</span>
+                <span className="text-xl font-semibold tabular-nums text-muted-foreground/45">/ {f1(sm.metaNegMes)}</span>
               </div>
+              <div className="text-[10px] text-muted-foreground">Avance YTD <span className="font-semibold tabular-nums text-foreground">{pct(sm.cumplYtd)}</span> de la meta</div>
+            </div>
+            {/* Cumplimiento del mes → badge secundario */}
+            <div className="flex flex-col items-center">
+              <span className="rounded-full px-2.5 py-1 text-sm font-bold tabular-nums" style={{ color: smColor, background: `${smColor}1a` }}>{pct(sm.cumplMes)}</span>
+              <span className="mt-0.5 text-[8px] uppercase tracking-wide text-muted-foreground/60">cumpl. mes</span>
             </div>
           </div>
         </div>
-        <div className="mt-3"><Barra v={sm.cumplMes} /></div>
+        <div className="mt-3"><Barra v={sm.cumplYtd} /></div>
         <div className="max-w-md"><PorCategoria items={sm.porCategoria} /></div>
       </div>
 
