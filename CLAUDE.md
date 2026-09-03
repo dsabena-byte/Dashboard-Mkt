@@ -95,8 +95,14 @@ reporte_existencia/cb_homologos).
   cliente cambia al instante. `ObjetivosHero`/`KpiScorecard` son `"use client"`. **OJO perf:** NO
   envolver `getSeguimientoKpis` en `unstable_cache` — sus queries usan `getServerSupabase()` →
   `cookies()`, que explota fuera del scope del request (una vez rompió el dash: quedaba ~98% con
-  cobertura 20%, calculado solo con CB/Floor Share que van por REST). El único `unstable_cache` OK
-  es `getWebIgCatRows` (REST service-key, sin cookies). Idea central: *si cumplís el 100% de las
+  cobertura 20%, calculado solo con CB/Floor Share que van por REST). Los `unstable_cache` OK son
+  los REST service-key (sin cookies): `getWebIgCatRows`, `getWebMonthlySeguimiento`. **PERF (medido,
+  sep-2026):** el ingreso lo dominaban 2 vistas web lentas que agregan una tabla enorme —
+  `vw_drean_web_daily_kpis` (~6.7s) → reemplazada por `vw_drean_web_monthly` + `..._by_channel`
+  (mensuales, ~10x); y `vw_drean_web_by_category` (~8.8s) → **precalculada** en la tabla
+  `web_monthly_by_category` (migración 0101) por el cron `web-cat-agg` (cada 6h), que `getWebIgCatRows`
+  lee al instante (fallback a la vista si la tabla está vacía). NO consultar esas vistas lentas
+  directo desde el render del Seguimiento. Idea central: *si cumplís el 100% de las
   metas de los KPIs, cumplís el 100% de los objetivos estratégicos.* Piezas:
   - **Mapa** (`/mapa-estrategico`): modelo **aplanado** (`mapa-estrategico-config.ts`).
     Objetivo `{id,nombre,color,peso}` (peso estratégico, se normaliza a 100% entre objetivos).
