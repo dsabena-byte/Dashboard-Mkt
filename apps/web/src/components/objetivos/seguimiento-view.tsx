@@ -4,14 +4,19 @@
 // Las 4 vistas vienen precomputadas del server (un solo cálculo pesado) → el cambio
 // es instantáneo, sin recargar. Cada vista = cards de objetivos + scorecard de KPIs.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ObjetivosHero } from "./objetivos-hero";
 import { KpiScorecard } from "./kpi-scorecard";
+import { readNavDelta } from "@/lib/nav-timing";
 import type { SeguimientoCompleto } from "@/lib/objetivos-por-categoria";
 
 export function SeguimientoView({ data }: { data: SeguimientoCompleto }) {
   const [key, setKey] = useState(data.vistas[0]?.key ?? "general");
+  // Tiempo real vivido: clic en el menú → esta vista montada (incluye cold start,
+  // queries, render RSC, red e hidratación). null si se entró sin pasar por el menú.
+  const [realMs, setRealMs] = useState<number | null>(null);
+  useEffect(() => { setRealMs(readNavDelta("/overview")); }, []);
   if (!data.disponible || data.vistas.length === 0) {
     return (
       <div className="rounded-xl border border-dashed bg-card p-5 text-sm text-muted-foreground">
@@ -42,11 +47,18 @@ export function SeguimientoView({ data }: { data: SeguimientoCompleto }) {
           ))}
         </div>
         <span className="text-[11px] text-muted-foreground">a {data.refMes}</span>
-        {data.debug && (
-          <span className="ml-auto font-mono text-[10px] text-muted-foreground/70" title="Tiempo de cómputo server (no incluye cold start ni red)">
-            ⏱ server {data.debug.totalMs}ms (kpis {data.debug.kpisMs} · resto {data.debug.restMs})
-          </span>
-        )}
+        <span className="ml-auto flex flex-col items-end gap-0.5 font-mono text-[10px] leading-tight">
+          {realMs != null && (
+            <span className="font-semibold text-foreground" title="Tiempo real vivido: desde el clic en el menú hasta que aparece la página (incluye cold start de Vercel, queries, render y red)">
+              ⏱ real {(realMs / 1000).toFixed(1)}s <span className="font-normal text-muted-foreground/70">clic → pantalla</span>
+            </span>
+          )}
+          {data.debug && (
+            <span className="text-muted-foreground/70" title="Solo el cómputo de datos en el servidor (no incluye cold start ni red)">
+              server {data.debug.totalMs}ms (kpis {data.debug.kpisMs} · resto {data.debug.restMs})
+            </span>
+          )}
+        </span>
       </div>
 
       <div>
