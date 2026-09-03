@@ -102,16 +102,26 @@ const getWebIgCatRows = unstable_cache(
     return { web, ig };
   },
   ["objetivos-webig-cat-rows-v1"],
-  { revalidate: 1800 },
+  { revalidate: 21600 }, // 6 h — la distribución por categoría cambia lento; evita pagar la vista lenta seguido
 );
 
-type WebDailyRow = { fecha: string; sesiones: number | null; conversiones: number | null; usuarios: number | null; avg_session_duration: number | null };
-// KPIs diarios de web para el Seguimiento. CACHE 30 min: data de fuente (sin metas)
-// y el view vw_drean_web_daily_kpis es LENTO (~6s, agrega una tabla enorme).
-const getWebDailySeguimiento = unstable_cache(
-  async (anio: number): Promise<WebDailyRow[]> =>
-    safe(fetchRows<WebDailyRow>(`vw_drean_web_daily_kpis?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,sesiones,conversiones,usuarios,avg_session_duration`), []),
-  ["objetivos-webdaily-seg-v1"],
+// Web mensual para el Seguimiento — sesiones + avg (vw_drean_web_monthly) y conversiones
+// (vw_drean_web_monthly_by_channel). Reemplaza a vw_drean_web_daily_kpis (~6.7s, agrega
+// una tabla enorme): las vistas mensuales son ~10x más rápidas y dan los mismos valores.
+// CACHE 30 min: data de fuente, sin metas.
+type WebMonthAgg = { ses: number[]; avg: number[]; conv: number[]; has: boolean[] };
+const getWebMonthlySeguimiento = unstable_cache(
+  async (anio: number): Promise<WebMonthAgg> => {
+    const [mon, chan] = await Promise.all([
+      safe(fetchRows<{ mes: string; sesiones: number | null; avg_session_duration: number | null }>(`vw_drean_web_monthly?mes=gte.${anio}-01-01&mes=lte.${anio}-12-31&select=mes,sesiones,avg_session_duration`), []),
+      safe(fetchRows<{ mes: string; conversiones: number | null }>(`vw_drean_web_monthly_by_channel?mes=gte.${anio}-01-01&mes=lte.${anio}-12-31&select=mes,conversiones`), []),
+    ]);
+    const ses = Array<number>(12).fill(0), avg = Array<number>(12).fill(0), conv = Array<number>(12).fill(0), has = Array<boolean>(12).fill(false);
+    for (const r of mon) { const i = Number(r.mes?.slice(5, 7)) - 1; if (i >= 0 && i < 12) { ses[i] = r.sesiones ?? 0; avg[i] = r.avg_session_duration ?? 0; has[i] = true; } }
+    for (const r of chan) { const i = Number(r.mes?.slice(5, 7)) - 1; if (i >= 0 && i < 12) conv[i] = (conv[i] ?? 0) + (r.conversiones ?? 0); }
+    return { ses, avg, conv, has };
+  },
+  ["objetivos-web-monthly-seg-v1"],
   { revalidate: 1800 },
 );
 
@@ -218,7 +228,7 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
 
   const [
     pauta, metaPaid, dv360, dv360Reach, gads, fx,
-    webDaily, monthlyUsers, ig,
+    webMonthly, monthlyUsers, ig,
     mInv, mAlc, mFrec, mImpr, mVtr, mClicks,
     mWebUsers, mWebAvg, mWebConv,
     mIgAlc, mIgEng,
@@ -230,7 +240,7 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
     safe(getDv360Reach(), [] as Awaited<ReturnType<typeof getDv360Reach>>),
     safe(getGoogleAdsOmd(), [] as Awaited<ReturnType<typeof getGoogleAdsOmd>>),
     safe(getFxRates(), {} as Record<string, number>),
-    safe(getWebDailySeguimiento(anio), [] as WebDailyRow[]),
+    getWebMonthlySeguimiento(anio),
     safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>),
     safe(getIgOrganicSummary(yearRange), null as Awaited<ReturnType<typeof getIgOrganicSummary>> | null),
     getMetaKpi("Pauta Mkt", "Inversión", anio),
@@ -256,26 +266,16 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
   // ---- Pauta (6) ----
   const pm = computePautaImpacto(pauta, metaPaid, dv360, dv360Reach, gads, fx, anio, currentMonth);
 
-  // ---- Web (3): agrega los daily kpis por mes (solo meses cerrados) ----
-  const webAgg = Array.from({ length: 12 }, () => ({ ses: 0, conv: 0, avgW: 0, usu: 0, has: false }));
-  for (const r of webDaily) {
-    if (!r.fecha?.startsWith(String(anio))) continue;
-    const mi = Number(r.fecha.slice(5, 7)) - 1;
-    if (mi < 0 || mi > 11) continue;
-    const a = webAgg[mi]!;
-    a.ses += r.sesiones ?? 0; a.conv += r.conversiones ?? 0; a.usu += r.usuarios ?? 0;
-    a.avgW += (r.avg_session_duration ?? 0) * (r.sesiones ?? 0);
-    a.has = true;
-  }
-  // Usuarios únicos por mes desde ga4_monthly_users (más preciso que la suma diaria).
+  // ---- Web (3): desde las vistas MENSUALES (rápidas), solo meses cerrados ----
+  // Usuarios únicos por mes desde ga4_monthly_users.
   const usersByMonth = new Map<number, number>();
   for (const u of monthlyUsers) {
     if (!u.mes?.startsWith(String(anio))) continue;
     usersByMonth.set(Number(u.mes.slice(5, 7)) - 1, u.total_users ?? 0);
   }
-  const webUsersM = webAgg.map((a, i) => (closed(i) && a.has ? (usersByMonth.get(i) ?? a.usu) : null));
-  const webAvgM = webAgg.map((a, i) => (closed(i) && a.ses > 0 ? a.avgW / a.ses : null));
-  const webConvM = webAgg.map((a, i) => (closed(i) && a.ses > 0 ? (a.conv / a.ses) * 100 : null));
+  const webUsersM = Array.from({ length: 12 }, (_, i) => (closed(i) && (webMonthly.has[i] || usersByMonth.has(i)) ? (usersByMonth.get(i) ?? 0) : null));
+  const webAvgM = Array.from({ length: 12 }, (_, i) => (closed(i) && webMonthly.has[i] ? (webMonthly.avg[i] ?? null) : null));
+  const webConvM = Array.from({ length: 12 }, (_, i) => (closed(i) && (webMonthly.ses[i] ?? 0) > 0 ? ((webMonthly.conv[i] ?? 0) / webMonthly.ses[i]!) * 100 : null));
 
   // ---- Instagram (2): de monthlyData (año completo), solo meses cerrados ----
   const igAlcM: (number | null)[] = Array.from({ length: 12 }, () => null);
