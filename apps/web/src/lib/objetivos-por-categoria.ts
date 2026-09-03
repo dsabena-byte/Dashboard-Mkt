@@ -5,7 +5,7 @@ import "server-only";
 // (Lavado / Refrigeración / Cocción). Se precomputan las 3 en una sola pasada
 // (getSeguimientoKpis corre una vez) y el selector cliente cambia al instante.
 
-import { getSeguimientoKpis, type KpiSeguimiento } from "./objetivos-kpis";
+import { getSeguimientoKpis, kpiTimings, type KpiSeguimiento } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
 import { CATEGORIAS_CORE } from "./categorias";
@@ -123,7 +123,7 @@ export interface SeguimientoCompleto {
   disponible: boolean;
   refMes: string;
   vistas: VistaSeguimiento[];
-  debug?: { kpisMs: number; restMs: number; totalMs: number };
+  debug?: { kpisMs: number; restMs: number; totalMs: number; breakdown?: Record<string, number> };
 }
 
 export async function getSeguimientoCompleto(anio: number): Promise<SeguimientoCompleto> {
@@ -150,6 +150,6 @@ export async function getSeguimientoCompleto(anio: number): Promise<SeguimientoC
     disponible: general.disponible,
     refMes: general.refMes || porCat.refMes,
     vistas,
-    debug: { kpisMs, restMs, totalMs: Date.now() - t0 },
+    debug: { kpisMs, restMs, totalMs: Date.now() - t0, breakdown: { ...kpiTimings } },
   };
 }

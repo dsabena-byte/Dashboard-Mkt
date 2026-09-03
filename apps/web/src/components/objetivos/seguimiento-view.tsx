@@ -58,6 +58,15 @@ export function SeguimientoView({ data }: { data: SeguimientoCompleto }) {
               server {data.debug.totalMs}ms (kpis {data.debug.kpisMs} · resto {data.debug.restMs})
             </span>
           )}
+          {data.debug?.breakdown && (
+            <span className="text-muted-foreground/60" title="Tiempo de cada grupo de queries (corren en paralelo → el total ≈ la más lenta)">
+              {Object.entries(data.debug.breakdown)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 4)
+                .map(([k, v]) => `${k} ${v}ms`)
+                .join(" · ")}
+            </span>
+          )}
         </span>
       </div>
 
