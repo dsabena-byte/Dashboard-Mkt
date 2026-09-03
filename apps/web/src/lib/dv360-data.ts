@@ -27,6 +27,7 @@ export interface Dv360ReachRow {
   revenue_usd: number;
   reach: number;
   frequency: number;
+  categoria?: string; // parseada del line_item (Lavado/Refrigeración/Cocción/Brand)
 }
 
 // ---- Resumen por canal: inversión + performance (+ reach por canal) ----------
@@ -107,6 +108,12 @@ const DV_LINEITEM_CAT: Array<[RegExp, string]> = [
   [/marcelino/i, "Brand"], // vocero de marca → Brand (igual criterio que Meta)
   [/brand/i, "Brand"],
 ];
+
+// Categoría de un line_item de DV360 (dv360_reach no trae columna categoria; está en el nombre).
+export function dv360LineItemCategoria(lineItem: string): string {
+  for (const [re, cat] of DV_LINEITEM_CAT) if (re.test(lineItem)) return cat;
+  return "Otras";
+}
 
 export function aggregateDv360LineItems(reach: Dv360ReachRow[]): Dv360LineItem[] {
   const map = new Map<string, { canal: string; categoria: string; formato: string; tipoCompra: string | null; display: string; impresiones: number; reach: number; revenueUsd: number }>();
