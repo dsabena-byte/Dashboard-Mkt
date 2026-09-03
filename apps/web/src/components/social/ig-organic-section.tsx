@@ -109,11 +109,12 @@ export function IgOrganicSection({
     d.alcance && d.engagement != null && d.alcance > 0 ? (d.engagement / d.alcance) * 100 : null,
   );
 
-  // Mes de REFERENCIA para los cards = último mes con dato real (no el calendario:
-  // a principio de mes el mes en curso está vacío y el desvío no tendría sentido).
+  // Mes de REFERENCIA para los cards = último mes CERRADO con dato real (el mes en
+  // curso es parcial → no se toma, si no el desvío sale falso).
+  const igCurrentMonth = new Date().getUTCMonth() + 1;
   let refIdx = -1;
   for (let i = data.monthlyData.length - 1; i >= 0; i--) {
-    if (data.monthlyData[i]?.alcance != null) { refIdx = i; break; }
+    if (data.monthlyData[i]?.alcance != null && i + 1 < igCurrentMonth) { refIdx = i; break; }
   }
   const refMes = refIdx >= 0 ? (data.monthlyData[refIdx]?.mes ?? "") : "";
   const alcRef = refIdx >= 0 ? (data.monthlyData[refIdx]?.alcance ?? null) : null;

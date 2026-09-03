@@ -75,8 +75,10 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
   const alcVals = metaAlc?.valores;
   const engVals = metaEng?.valores;
   const engPctMensual = md.map((d) => (d.alcance && d.engagement != null && d.alcance > 0 ? (d.engagement / d.alcance) * 100 : null));
+  // Mes de referencia = último mes CERRADO con dato (el mes en curso es parcial).
+  const fbCurrentMonth = new Date().getUTCMonth() + 1;
   let refIdx = -1;
-  for (let i = md.length - 1; i >= 0; i--) { if (md[i]?.alcance != null) { refIdx = i; break; } }
+  for (let i = md.length - 1; i >= 0; i--) { if (md[i]?.alcance != null && i + 1 < fbCurrentMonth) { refIdx = i; break; } }
   const refMes = refIdx >= 0 ? (md[refIdx]?.mes ?? "") : "";
   const alcRef = refIdx >= 0 ? (md[refIdx]?.alcance ?? null) : null;
   const engRef = refIdx >= 0 ? (engPctMensual[refIdx] ?? null) : null;
