@@ -1,0 +1,82 @@
+import "server-only";
+
+// Ecommerce (Web / Ecommerce) — serie mensual de Transacciones, Total Ingresos y ROAS.
+// - Transacciones + Ingresos: TODO el sitio (ga4_purchases_daily, sin filtro de campaña).
+// - ROAS = Ingresos totales ÷ (inversión de rol Consideración [Pauta Mkt] + Conversión
+//   [ecommerce inhouse]). Es un ROAS "blended" — se aclara en la UI.
+// Lectura por REST con service-key (sin cookies → independiente del request scope).
+
+const MES_FULL_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+// Fetch REST con paginación por Range (algunas tablas superan las 1000 filas/año).
+async function fetchAll<T>(query: string): Promise<T[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return [];
+  const out: T[] = [];
+  const page = 1000;
+  for (let from = 0; from < 200_000; from += page) {
+    let res: Response;
+    try {
+      res = await fetch(`${url}/rest/v1/${query}`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}`, Range: `${from}-${from + page - 1}` },
+        cache: "no-store",
+      });
+    } catch { break; }
+    if (!res.ok) break;
+    const rows = (await res.json()) as T[];
+    out.push(...rows);
+    if (rows.length < page) break;
+  }
+  return out;
+}
+
+export interface EcommerceMensual {
+  transacciones: (number | null)[]; // 12 (índice 0 = enero)
+  ingresos: (number | null)[];
+  invConversion: (number | null)[]; // ecommerce inhouse (ga4_ads_cost_daily)
+  invConsideracion: (number | null)[]; // Pauta Mkt objetivo=Consideración
+  roas: (number | null)[]; // ingresos / (consideración + conversión)
+}
+
+export async function getEcommerceMensual(anio: number): Promise<EcommerceMensual> {
+  const [purch, cost, pauta] = await Promise.all([
+    fetchAll<{ fecha: string; purchases: number | null; revenue: number | null }>(
+      `ga4_purchases_daily?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,purchases,revenue`,
+    ),
+    fetchAll<{ fecha: string; cost: number | null }>(
+      `ga4_ads_cost_daily?utm_campaign=ilike.inhouse*&fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,cost`,
+    ),
+    fetchAll<{ mes: string; inversion: number | null }>(
+      `pauta_performance?objetivo=eq.${encodeURIComponent("Consideración")}&select=mes,inversion`,
+    ),
+  ]);
+
+  const trans: (number | null)[] = Array.from({ length: 12 }, () => null);
+  const ing: (number | null)[] = Array.from({ length: 12 }, () => null);
+  const conv: (number | null)[] = Array.from({ length: 12 }, () => null);
+  const consid: (number | null)[] = Array.from({ length: 12 }, () => null);
+  const add = (arr: (number | null)[], i: number, v: number) => { arr[i] = (arr[i] ?? 0) + v; };
+
+  for (const r of purch) {
+    const i = Number(r.fecha?.slice(5, 7)) - 1;
+    if (i >= 0 && i < 12) { add(trans, i, r.purchases ?? 0); add(ing, i, Number(r.revenue) || 0); }
+  }
+  for (const r of cost) {
+    const i = Number(r.fecha?.slice(5, 7)) - 1;
+    if (i >= 0 && i < 12) add(conv, i, Number(r.cost) || 0);
+  }
+  for (const r of pauta) {
+    const parts = (r.mes ?? "").split(" ");
+    if (Number(parts[1]) !== anio) continue;
+    const i = MES_FULL_ES.indexOf(parts[0] ?? "");
+    if (i >= 0) add(consid, i, Number(r.inversion) || 0);
+  }
+
+  const roas = trans.map((_, i) => {
+    const denom = (consid[i] ?? 0) + (conv[i] ?? 0);
+    return ing[i] != null && denom > 0 ? ing[i]! / denom : null;
+  });
+
+  return { transacciones: trans, ingresos: ing, invConversion: conv, invConsideracion: consid, roas };
+}
