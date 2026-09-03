@@ -180,6 +180,25 @@ export const getSeguimientoKpis = cache(
   async (anio: number): Promise<KpiSeguimiento[]> => computeSeguimientoKpis(anio),
 );
 
+// Inversión TOTAL de medios de Pauta Mkt por mes (gap-fill, todos los objetivos).
+// Es la MISMA inversión que muestra el dashboard de Pauta Mkt (Impacto Campaña).
+// NO incluye ecommerce (rol Conversión) — se suma aparte donde haga falta.
+// Se llama desde server components en scope de request (usa getServerSupabase → cookies).
+export async function getPautaInversionTotalMensual(anio: number): Promise<(number | null)[]> {
+  const now = new Date();
+  const currentMonth = now.getUTCFullYear() > anio ? 13 : now.getUTCFullYear() < anio ? 1 : now.getUTCMonth() + 1;
+  const [pauta, metaPaid, dv360, dv360Reach, gads, fx] = await Promise.all([
+    safe(getPautaPerformance(true), [] as Awaited<ReturnType<typeof getPautaPerformance>>),
+    safe(getMetaPaidCreatives(true), [] as Awaited<ReturnType<typeof getMetaPaidCreatives>>),
+    safe(getDv360Creatives(), [] as Awaited<ReturnType<typeof getDv360Creatives>>),
+    safe(getDv360Reach(), [] as Awaited<ReturnType<typeof getDv360Reach>>),
+    safe(getGoogleAdsOmd(), [] as Awaited<ReturnType<typeof getGoogleAdsOmd>>),
+    safe(getFxRates(), {} as Record<string, number>),
+  ]);
+  const pm = computePautaImpacto(pauta, metaPaid, dv360, dv360Reach, gads, fx, anio, currentMonth);
+  return pm.map((m) => (m ? m.inv : null));
+}
+
 async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
   const now = new Date();
   const currentMonth = now.getUTCFullYear() > anio ? 13 : now.getUTCFullYear() < anio ? 1 : now.getUTCMonth() + 1;
