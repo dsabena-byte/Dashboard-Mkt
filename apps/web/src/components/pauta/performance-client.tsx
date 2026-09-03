@@ -1224,7 +1224,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               ))}
             </div>
             {catImp !== "General" && (
-              <span className="text-[11px] text-muted-foreground">meta = {CAT_META_MIX[catImp]}% del plan (mix)</span>
+              <span className="text-[11px] text-muted-foreground">metas de volumen × {CAT_META_MIX[catImp]}% (mix) · tasas (Frecuencia/VTR) sin cambio</span>
             )}
           </div>
           {/* ===== 0. KPIs ESTRATÉGICOS · metas del plan (año completo, sin filtros) ===== */}
