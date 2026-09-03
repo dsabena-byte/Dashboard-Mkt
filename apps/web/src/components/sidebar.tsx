@@ -39,16 +39,7 @@ const TREE: NavNode[] = [
     label: "Planes de Acción",
     icon: Layers,
     children: [
-      {
-        type: "group",
-        id: "plan-medios",
-        label: "Plan de Medios",
-        dot: "#3b82f6",
-        children: [
-          { type: "link", href: "/performance", label: "Pauta Mkt" },
-          { type: "link", href: "/performance-conversion", label: "Pauta Ecommerce" },
-        ],
-      },
+      { type: "link", href: "/performance", label: "Plan de Medios", dot: "#3b82f6" },
       { type: "link", href: "/redes", label: "Redes Sociales", dot: "#14b8a6" },
       { type: "link", href: "/influencia", label: "Mkt de Influencia", dot: "#ec4899" },
       { type: "link", href: "/mkt-canal", label: "Mkt Canal Comercial", dot: "#f59e0b" },
@@ -103,7 +94,7 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
   // dashboards internos se vean apenas se abre Planes de Acción). Planes de
   // Acción arranca cerrado; se abre si estás dentro de una de sus páginas.
   const [openIds, setOpenIds] = useState<Set<string>>(
-    () => new Set<string>(["plan-medios", "trade", ...(ancestorsOf(TREE, pathname) ?? [])]),
+    () => new Set<string>(["trade", ...(ancestorsOf(TREE, pathname) ?? [])]),
   );
 
   const tree = filterTree(TREE, allowed);
