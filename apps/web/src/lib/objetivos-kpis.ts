@@ -226,6 +226,10 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
 
   const yearRange = { from: `${anio}-01-01`, to: `${anio}-12-31` };
 
+  // Distribución web/IG por categoría: se ARRANCA acá (no se espera) para que corra
+  // EN PARALELO con el resto, no serializada después. Se cachea 6h (vista lenta ~8.8s).
+  const webIgCatP = getWebIgCatRows(anio);
+
   const [
     pauta, metaPaid, dv360, dv360Reach, gads, fx,
     webMonthly, monthlyUsers, ig,
@@ -318,8 +322,8 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
   for (const r of pauta) { const mi = mesIdxFull(r.mes); const c = normCat(r.categoria); if (mi >= 0 && c) pautaAcc[mi]![c] = (pautaAcc[mi]![c] ?? 0) + (r.impresiones ?? 0); }
   for (const r of metaPaid) { const mi = mesIdxFull(r.mes); const c = normCat(r.categoria); if (mi >= 0 && c) pautaAcc[mi]![c] = (pautaAcc[mi]![c] ?? 0) + (r.impresiones ?? 0); }
   const pautaShare = sharesFromTotals(pautaAcc);
-  // Web + IG: por categoría (vw_drean_web_by_category; meta_posts IG) — cacheado 30 min.
-  const { web: webCatRows, ig: igCatRows } = await getWebIgCatRows(anio);
+  // Web + IG: por categoría (ya se arrancó arriba, corre en paralelo). Cacheado 6h.
+  const { web: webCatRows, ig: igCatRows } = await webIgCatP;
   // Tráfico web = SUM → share por usuarios. (Conversión NO se desglosa: la vista
   // vw_drean_web_by_category trae conversiones=0 por categoría — el dato de conversión
   // solo existe a nivel total en vw_drean_web_daily_kpis. → Conversión queda total-only.)
