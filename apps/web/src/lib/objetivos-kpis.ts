@@ -243,8 +243,11 @@ const serieRate = (ms: (PautaMes | null)[], num: (m: PautaMes) => number, den: (
 // NO usar unstable_cache acá: las queries usan getServerSupabase() (cookies()), que
 // EXPLOTA fuera del scope del request → los datos salían vacíos. Se usa React cache()
 // para dedup POR REQUEST (el tab "Estado" lo llama 2x: directo + vía el rollup).
+// skipTrade=true: NO trae CB/Floor Share (paginan la tabla CB entera, ~26s contra
+// el proyecto CB lento). Se usa para el PRIMER paint rápido; el trade llega después
+// por fetch cliente (/api/seguimiento) sin bloquear la vista.
 export const getSeguimientoKpis = cache(
-  async (anio: number): Promise<KpiSeguimiento[]> => computeSeguimientoKpis(anio),
+  async (anio: number, skipTrade = false): Promise<KpiSeguimiento[]> => computeSeguimientoKpis(anio, skipTrade),
 );
 
 // Breakdown de tiempos por grupo de queries (DIAGNÓSTICO temporal). Se llena en
@@ -270,7 +273,7 @@ export async function getPautaInversionTotalMensual(anio: number): Promise<(numb
   return pm.map((m) => (m ? m.inv : null));
 }
 
-async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
+async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<KpiSeguimiento[]> {
   const now = new Date();
   const currentMonth = now.getUTCFullYear() > anio ? 13 : now.getUTCFullYear() < anio ? 1 : now.getUTCMonth() + 1;
   const closed = (i: number) => i + 1 < currentMonth;
@@ -289,6 +292,15 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
   // Distribución web/IG por categoría: se ARRANCA acá (no se espera) para que corra
   // EN PARALELO con el resto, no serializada después. Se cachea 6h (vista lenta ~8.8s).
   const webIgCatP = T("webIgCat", getWebIgCatRows(anio));
+
+  // Trade (CB/Floor Share): en skipTrade se resuelve al instante con nulls (el dato
+  // real llega después por /api/seguimiento). Si no, paga el agregado mensual.
+  const emptyFloor: FloorMonthly = {
+    general: Array(12).fill(null),
+    cat: { Brand: Array(12).fill(null), Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null) },
+  };
+  const cbP = skipTrade ? Promise.resolve<(number | null)[]>(Array(12).fill(null)) : getCbMonthlyPct(anio);
+  const fsP = skipTrade ? Promise.resolve<FloorMonthly>(emptyFloor) : getFloorMonthly(anio);
 
   const [
     pauta, metaPaid, dv360, dv360Reach, gads, fx,
@@ -318,10 +330,10 @@ async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
     T("metas", getMetaKpi("Web / Ecommerce", "Tasa de conversión", anio)),
     T("metas", getMetaKpi("Redes Sociales", "Alcance orgánico", anio)),
     T("metas", getMetaKpi("Redes Sociales", "Engagement rate", anio)),
-    // Trade (proyecto CB): agregado MENSUAL cacheado 1h (antes paginaba la tabla
-    // entera en cada render → ~25s). El filtro "mes cerrado" se aplica afuera.
-    T("cb", getCbMonthlyPct(anio)),
-    T("floorShare", getFloorMonthly(anio)),
+    // Trade (proyecto CB): agregado mensual (o nulls si skipTrade). El filtro "mes
+    // cerrado" se aplica afuera.
+    T("cb", cbP),
+    T("floorShare", fsP),
     T("metas", getMetaKpi("Cuadros Básicos", "% Cumplimiento CB", anio)),
     T("metas", getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Lavado")),
     T("metas", getMetaKpi("Floor Share", "Floor Share (exhibición)", anio, "Refrigeración")),

@@ -131,14 +131,14 @@ function metaGeneral(byCat: Record<string, (number | null)[]> | undefined, mesId
   return generalPonderado(Object.fromEntries(Object.entries(byCat).map(([cat, arr]) => [cat, arr[mesIdx] ?? null])));
 }
 
-export async function getSeguimientoObjetivos(anio: number): Promise<SeguimientoObjetivos> {
+export async function getSeguimientoObjetivos(anio: number, skipTrade = false): Promise<SeguimientoObjetivos> {
   const now = new Date();
   const currentMonth = now.getUTCFullYear() > anio ? 13 : now.getUTCFullYear() < anio ? 1 : now.getUTCMonth() + 1;
   const refIdx = Math.max(0, Math.min(11, currentMonth - 2)); // último mes cerrado (0-based)
   const refMes = MES[refIdx] ?? "";
 
   const [kpis, mapa, objMetas] = await Promise.all([
-    getSeguimientoKpis(anio),
+    getSeguimientoKpis(anio, skipTrade),
     getMapaConfig(),
     getObjetivoMetas(anio),
   ]);

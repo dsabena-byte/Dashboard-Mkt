@@ -321,11 +321,12 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
   // ===== Tab "Estado de KPIs": General + categorías en una pasada, selector cliente =====
   if (tab === "estado") {
-    const seg = await safe(getSeguimientoCompleto(curYear), { disponible: false, refMes: "", vistas: [] });
+    // Primer paint SIN CB/Floor Share (skipTrade) → rápido. El cliente los pide luego.
+    const seg = await safe(getSeguimientoCompleto(curYear, true), { disponible: false, refMes: "", vistas: [] });
     return (
       <div className="space-y-5">
         <SeguimientoHeader tab="estado" />
-        <SeguimientoView data={seg} />
+        <SeguimientoView data={seg} anio={curYear} />
       </div>
     );
   }

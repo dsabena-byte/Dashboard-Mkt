@@ -11,8 +11,26 @@ import { KpiScorecard } from "./kpi-scorecard";
 import { readNavDelta } from "@/lib/nav-timing";
 import type { SeguimientoCompleto } from "@/lib/objetivos-por-categoria";
 
-export function SeguimientoView({ data }: { data: SeguimientoCompleto }) {
-  const [key, setKey] = useState(data.vistas[0]?.key ?? "general");
+export function SeguimientoView({ data: initial, anio }: { data: SeguimientoCompleto; anio?: number }) {
+  // La página pinta primero SIN CB/Floor Share (rápido). Si quedó pendiente, pedimos
+  // la versión completa a /api/seguimiento y refrescamos cuando llega (sin bloquear).
+  const [data, setData] = useState(initial);
+  const [tradeCargando, setTradeCargando] = useState(false);
+  const [tradeError, setTradeError] = useState(false);
+  useEffect(() => {
+    if (!initial.tradePendiente) return;
+    let vivo = true;
+    setTradeCargando(true);
+    const q = anio ? `?anio=${anio}` : "";
+    fetch(`/api/seguimiento${q}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((full: SeguimientoCompleto) => { if (vivo && full?.disponible !== undefined) setData(full); })
+      .catch(() => { if (vivo) setTradeError(true); })
+      .finally(() => { if (vivo) setTradeCargando(false); });
+    return () => { vivo = false; };
+  }, [initial, anio]);
+
+  const [key, setKey] = useState(initial.vistas[0]?.key ?? "general");
   // Tiempo real vivido: clic en el menú → esta vista montada (incluye cold start,
   // queries, render RSC, red e hidratación). null si se entró sin pasar por el menú.
   const [realMs, setRealMs] = useState<number | null>(null);
@@ -47,6 +65,17 @@ export function SeguimientoView({ data }: { data: SeguimientoCompleto }) {
           ))}
         </div>
         <span className="text-[11px] text-muted-foreground">a {data.refMes}</span>
+        {tradeCargando && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+            Cargando CB y Floor Share…
+          </span>
+        )}
+        {tradeError && (
+          <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700">
+            CB / Floor Share no disponibles
+          </span>
+        )}
         <span className="ml-auto flex flex-col items-end gap-0.5 font-mono text-[10px] leading-tight">
           {realMs != null && (
             <span className="font-semibold text-foreground" title="Tiempo real vivido: desde el clic en el menú hasta que aparece la página (incluye cold start de Vercel, queries, render y red)">

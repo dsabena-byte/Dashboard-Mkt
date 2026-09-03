@@ -27,13 +27,13 @@ export interface SeguimientoPorCategoria {
   categorias: CategoriaSeguimiento[];
 }
 
-export async function getSeguimientoPorCategoria(anio: number): Promise<SeguimientoPorCategoria> {
+export async function getSeguimientoPorCategoria(anio: number, skipTrade = false): Promise<SeguimientoPorCategoria> {
   const now = new Date();
   const currentMonth = now.getUTCFullYear() > anio ? 13 : now.getUTCFullYear() < anio ? 1 : now.getUTCMonth() + 1;
   const refIdx = Math.max(0, Math.min(11, currentMonth - 2));
   const refMes = MES[refIdx] ?? "";
 
-  const [kpis, mapa, objMetas] = await Promise.all([getSeguimientoKpis(anio), getMapaConfig(), getObjetivoMetas(anio)]);
+  const [kpis, mapa, objMetas] = await Promise.all([getSeguimientoKpis(anio, skipTrade), getMapaConfig(), getObjetivoMetas(anio)]);
   if (!mapa || mapa.objetivos.length === 0) return { disponible: false, refMes, categorias: [] };
 
   const catRM = makeCatRealMeta(kpis, mapa);
@@ -123,20 +123,23 @@ export interface SeguimientoCompleto {
   disponible: boolean;
   refMes: string;
   vistas: VistaSeguimiento[];
+  tradePendiente?: boolean; // true = CB/Floor Share todavía no cargados (llegan por fetch)
   debug?: { kpisMs: number; restMs: number; totalMs: number; breakdown?: Record<string, number> };
 }
 
-export async function getSeguimientoCompleto(anio: number): Promise<SeguimientoCompleto> {
+// skipTrade=true → primer paint rápido SIN CB/Floor Share (esos paginan la tabla CB
+// entera, ~26s). El cliente pide luego /api/seguimiento (skipTrade=false) y refresca.
+export async function getSeguimientoCompleto(anio: number, skipTrade = false): Promise<SeguimientoCompleto> {
   const t0 = Date.now();
   // 1) La parte pesada: fetch + cómputo de KPIs (memoizado por request).
-  await getSeguimientoKpis(anio);
+  await getSeguimientoKpis(anio, skipTrade);
   const kpisMs = Date.now() - t0;
   // 2) El resto (rollups) reusa el cache de KPIs → mide solo su costo propio.
   const t1 = Date.now();
   const [kpis, general, porCat] = await Promise.all([
-    getSeguimientoKpis(anio),
-    getSeguimientoObjetivos(anio),
-    getSeguimientoPorCategoria(anio),
+    getSeguimientoKpis(anio, skipTrade),
+    getSeguimientoObjetivos(anio, skipTrade),
+    getSeguimientoPorCategoria(anio, skipTrade),
   ]);
   const restMs = Date.now() - t1;
   // KPIs del scorecard General = solo los conectados a algún objetivo (como en "Estado").
@@ -150,6 +153,7 @@ export async function getSeguimientoCompleto(anio: number): Promise<SeguimientoC
     disponible: general.disponible,
     refMes: general.refMes || porCat.refMes,
     vistas,
+    tradePendiente: skipTrade,
     debug: { kpisMs, restMs, totalMs: Date.now() - t0, breakdown: { ...kpiTimings } },
   };
 }
