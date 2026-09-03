@@ -1,9 +1,8 @@
-name: Trade agg (precalcula CB + Floor Share mensual, cada 6h)
+name: Trade agg (precalcula CB + Floor Share mensual — manual)
 
 on:
-  schedule:
-    - cron: "50 6 * * *"  # 1x/día (06:50 UTC ≈ 03:50 ART) — CB/Floor Share se cargan semanal, no hace falta más
-  workflow_dispatch:
+  workflow_dispatch:  # solo manual — CB/Floor Share se cargan por reporte (Apps Script);
+                      # dispararlo a mano tras cargar un reporte nuevo de CB.
 
 jobs:
   trigger:
