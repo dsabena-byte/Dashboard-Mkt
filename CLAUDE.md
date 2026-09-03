@@ -85,15 +85,19 @@ reporte_existencia/cb_homologos).
   (cards, gráficos, colores, método) en cada dashboard nuevo. **Validar este checklist antes de
   decir que las metas están "listas".**
 - **Seguimiento Objetivos (`/overview`) — Mapa Estratégico → cumplimiento por categoría:**
-  el índice se llama **"Seguimiento Objetivos"** y tiene 3 tabs: **"Estado de KPIs"**
-  (`ObjetivosHero` hero-cards arriba + `KpiScorecard` abajo), **"Por Categoría"** (`?tab=gaps`:
-  `objetivos-por-categoria.ts` → `getSeguimientoPorCategoria` + `components/objetivos/categoria-view.tsx`:
-  **la misma interfaz que "Estado de KPIs"** — cards de objetivos + scorecard — con un selector
-  Lavado/Refri/Cocción arriba que recalcula todo para la categoría elegida; las 3 se precomputan
-  server-side en una pasada, el selector cliente cambia al instante. `ObjetivosHero`/`KpiScorecard`
-  son `"use client"` para poder montarse en el selector) y **"OKR Mkt"** (los objetivos viejos).
-  Idea central: *si cumplís el 100% de las metas de los KPIs, cumplís el 100% de los objetivos
-  estratégicos.* Piezas:
+  el índice se llama **"Seguimiento Objetivos"** y tiene 2 tabs: **"Estado de KPIs"** y **"OKR
+  Mkt"** (los objetivos viejos). El tab "Estado de KPIs" trae un **selector interno General /
+  Lavado / Refrigeración / Cocción** (`components/objetivos/seguimiento-view.tsx`, cliente): en
+  cada vista muestra `ObjetivosHero` (hero-cards) + `KpiScorecard`. Las 4 vistas se precomputan
+  server-side en UNA pasada (`objetivos-por-categoria.ts` → `getSeguimientoCompleto`, que junta
+  `getSeguimientoObjetivos` (General) + `getSeguimientoPorCategoria` (las 3 cats); `getSeguimientoKpis`
+  está memoizado por request con React `cache()` → la parte pesada corre una sola vez), y el selector
+  cliente cambia al instante. `ObjetivosHero`/`KpiScorecard` son `"use client"`. **OJO perf:** NO
+  envolver `getSeguimientoKpis` en `unstable_cache` — sus queries usan `getServerSupabase()` →
+  `cookies()`, que explota fuera del scope del request (una vez rompió el dash: quedaba ~98% con
+  cobertura 20%, calculado solo con CB/Floor Share que van por REST). El único `unstable_cache` OK
+  es `getWebIgCatRows` (REST service-key, sin cookies). Idea central: *si cumplís el 100% de las
+  metas de los KPIs, cumplís el 100% de los objetivos estratégicos.* Piezas:
   - **Mapa** (`/mapa-estrategico`): modelo **aplanado** (`mapa-estrategico-config.ts`).
     Objetivo `{id,nombre,color,peso}` (peso estratégico, se normaliza a 100% entre objetivos).
     KPI `{nombre, vinculos:Record<objId,pesoInbound>, mix?:Record<cat,%>}`. Regla: **la suma de
