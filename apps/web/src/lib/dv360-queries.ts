@@ -1,5 +1,6 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
+import { dv360LineItemCategoria } from "./dv360-data";
 import type { Dv360CreativeRow, Dv360ReachRow } from "./dv360-data";
 
 const num = (v: string | number | null): number =>
@@ -76,5 +77,6 @@ export async function getDv360Reach(): Promise<Dv360ReachRow[]> {
     revenue_usd: num(r.revenue_usd),
     reach: num(r.reach),
     frequency: num(r.frequency),
+    categoria: dv360LineItemCategoria(r.line_item), // parseada del nombre del line_item
   }));
 }

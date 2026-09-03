@@ -825,8 +825,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         e.impr += im; e.alc += al; e.clic += cl; e.inv += iv; auto.set(medio, e);
       };
       for (const r of dv360) { if (r.mes === iso && catOk(r.categoria)) addAuto(DVMED[r.canal] ?? r.canal, r.impresiones, 0, r.clicks, (r.revenue_usd ?? 0) * (arsMode ? fx : 1)); }
-      // dv360_reach no trae categoría → el alcance de DV360 solo se suma en la vista General.
-      if (catImp === "General") for (const r of dv360Reach) { if (r.mes === iso) { const e = auto.get(DVMED[r.canal] ?? r.canal); if (e) e.alc += r.reach ?? 0; } }
+      // Reach de DV360: la categoría se parsea del line_item (getDv360Reach) → se filtra por categoría.
+      for (const r of dv360Reach) { if (r.mes === iso && catOk(r.categoria)) { const e = auto.get(DVMED[r.canal] ?? r.canal); if (e) e.alc += r.reach ?? 0; } }
       for (const r of metaPaid) {
         if (r.mes !== mesLabel || !catOk(r.categoria)) continue;
         const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
@@ -962,10 +962,11 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     };
     const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
     for (const r of dv360Conv) add(DVMED[r.canal] ?? r.canal, r.revenue_usd, r.impresiones, r.clicks, 0);
-    // Reach de DV360 desde dv360_reach (aproximado: suma por canal). Solo se suma a
-    // medios que ya tienen volumen (no crea medios fantasma desde reach).
+    // Reach de DV360 desde dv360_reach (suma por canal). Categoría parseada del line_item
+    // → respeta el filtro de categoría (antes sumaba todo, sobrecontando el alcance al filtrar).
     for (const r of dv360Reach) {
       if (selMesesISO.size > 0 && !selMesesISO.has(r.mes)) continue;
+      if (selCats.length > 0 && !selCats.includes(r.categoria ?? "")) continue;
       const e = m.get(DVMED[r.canal] ?? r.canal);
       if (e) e.alcance += r.reach ?? 0;
     }
@@ -977,7 +978,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     // Google Ads de OMD (Demand Gen + Search) desde GA4 — el medio es el canal.
     for (const r of gadsOmdF) add(r.canal, r.costo, r.impresiones, r.clicks, 0);
     return m;
-  }, [dv360Conv, dv360Reach, selMesesISO, metaPaidF, gadsOmdF]);
+  }, [dv360Conv, dv360Reach, selMesesISO, selCats, metaPaidF, gadsOmdF]);
   const medioModel = useMemo(() => {
     const mk = (m: typeof byMedio[number]) => {
       const v = vtrByMedio.get(m.medio);
@@ -1223,7 +1224,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
               ))}
             </div>
             {catImp !== "General" && (
-              <span className="text-[11px] text-muted-foreground">meta = {CAT_META_MIX[catImp]}% del plan (mix); alcance sin DV360</span>
+              <span className="text-[11px] text-muted-foreground">meta = {CAT_META_MIX[catImp]}% del plan (mix)</span>
             )}
           </div>
           {/* ===== 0. KPIs ESTRATÉGICOS · metas del plan (año completo, sin filtros) ===== */}
