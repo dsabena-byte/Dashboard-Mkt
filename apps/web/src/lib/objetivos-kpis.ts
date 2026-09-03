@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { unstable_cache } from "next/cache";
 
 // Serie real mensual (año completo) + meta de cada KPI estratégico con meta cargada.
@@ -172,14 +173,11 @@ const serieSum = (ms: (PautaMes | null)[], f: (m: PautaMes) => number): (number 
 const serieRate = (ms: (PautaMes | null)[], num: (m: PautaMes) => number, den: (m: PautaMes) => number, scale = 1): (number | null)[] =>
   ms.map((m) => (m && den(m) > 0 ? (num(m) / den(m)) * scale : null));
 
-// Cacheado 3 min: es la pieza pesada compartida por los tabs "Estado" y "Por
-// Categoría" (y el rollup). Sin cache, cada cambio de tab recalcula ~20 queries a
-// Supabase. Incluye metas → una meta recién guardada puede tardar hasta 3 min en
-// reflejarse en /overview (el tablero donde se edita la meta no está cacheado).
-export const getSeguimientoKpis = unstable_cache(
-  (anio: number) => computeSeguimientoKpis(anio),
-  ["seguimiento-kpis-v1"],
-  { revalidate: 180 },
+// NO usar unstable_cache acá: las queries usan getServerSupabase() (cookies()), que
+// EXPLOTA fuera del scope del request → los datos salían vacíos. Se usa React cache()
+// para dedup POR REQUEST (el tab "Estado" lo llama 2x: directo + vía el rollup).
+export const getSeguimientoKpis = cache(
+  async (anio: number): Promise<KpiSeguimiento[]> => computeSeguimientoKpis(anio),
 );
 
 async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
