@@ -172,7 +172,17 @@ const serieSum = (ms: (PautaMes | null)[], f: (m: PautaMes) => number): (number 
 const serieRate = (ms: (PautaMes | null)[], num: (m: PautaMes) => number, den: (m: PautaMes) => number, scale = 1): (number | null)[] =>
   ms.map((m) => (m && den(m) > 0 ? (num(m) / den(m)) * scale : null));
 
-export async function getSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
+// Cacheado 3 min: es la pieza pesada compartida por los tabs "Estado" y "Por
+// Categoría" (y el rollup). Sin cache, cada cambio de tab recalcula ~20 queries a
+// Supabase. Incluye metas → una meta recién guardada puede tardar hasta 3 min en
+// reflejarse en /overview (el tablero donde se edita la meta no está cacheado).
+export const getSeguimientoKpis = unstable_cache(
+  (anio: number) => computeSeguimientoKpis(anio),
+  ["seguimiento-kpis-v1"],
+  { revalidate: 180 },
+);
+
+async function computeSeguimientoKpis(anio: number): Promise<KpiSeguimiento[]> {
   const now = new Date();
   const currentMonth = now.getUTCFullYear() > anio ? 13 : now.getUTCFullYear() < anio ? 1 : now.getUTCMonth() + 1;
   const closed = (i: number) => i + 1 < currentMonth;
