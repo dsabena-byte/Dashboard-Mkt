@@ -37,6 +37,7 @@ import { MetaPanel } from "@/components/metas/meta-panel";
 import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { getEcommerceMensual } from "@/lib/ecommerce-queries";
+import { getPautaInversionTotalMensual } from "@/lib/objetivos-kpis";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -121,6 +122,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     webMetaIng,
     webMetaRoas,
     ecom,
+    pautaTotalInv,
   ] = await Promise.all([
     safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
     safe(getWebDailyKpis(yoyRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(yoy)"),
@@ -155,7 +157,8 @@ export default async function WebPage({ searchParams }: PageProps) {
     safe(getMetaKpi("Web / Ecommerce", "Transacciones", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-trans)"),
     safe(getMetaKpi("Web / Ecommerce", "Total Ingresos", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-ing)"),
     safe(getMetaKpi("Web / Ecommerce", "ROAS", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-roas)"),
-    safe(getEcommerceMensual(new Date().getFullYear()), { transacciones: [], ingresos: [], invConversion: [], invConsideracion: [], roas: [] } as Awaited<ReturnType<typeof getEcommerceMensual>>, "getEcommerceMensual"),
+    safe(getEcommerceMensual(new Date().getFullYear()), { transacciones: [], ingresos: [], invConversion: [] } as Awaited<ReturnType<typeof getEcommerceMensual>>, "getEcommerceMensual"),
+    safe(getPautaInversionTotalMensual(new Date().getFullYear()), Array.from({ length: 12 }, () => null) as (number | null)[], "getPautaInversionTotalMensual"),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -322,12 +325,16 @@ export default async function WebPage({ searchParams }: PageProps) {
   const ingRefMeta = webRefIdx >= 0 ? (webMetaIng.valores[webRefIdx] ?? null) : null;
   const ingYtd = webSum(ecom.ingresos.slice(0, webUpto + 1));
   const ingMetaYtd = webSum(webMetaIng.valores.slice(0, webUpto + 1));
-  const roasRef = ecomAt(ecom.roas);
+  // ROAS = Ingresos ÷ inversión TOTAL de medios (Pauta Mkt gap-fill, todos los objetivos + Conversión ecommerce).
+  const totalInvM = MES_SHORT.map((_, i) => (pautaTotalInv[i] ?? 0) + (ecom.invConversion[i] ?? 0));
+  const roasM: (number | null)[] = MES_SHORT.map((_, i) => {
+    const inv = totalInvM[i]!;
+    return ecom.ingresos[i] != null && inv > 0 ? ecom.ingresos[i]! / inv : null;
+  });
+  const roasRef = ecomAt(roasM);
   const roasRefMeta = webRefIdx >= 0 ? (webMetaRoas.valores[webRefIdx] ?? null) : null;
-  // ROAS YTD = ingresos acum ÷ (inversión Consideración + Conversión) acum.
-  const considYtd = webSum(ecom.invConsideracion.slice(0, webUpto + 1));
-  const convInvYtd = webSum(ecom.invConversion.slice(0, webUpto + 1));
-  const roasYtd = considYtd + convInvYtd > 0 ? ingYtd / (considYtd + convInvYtd) : null;
+  const totalInvYtd = webSum(totalInvM.slice(0, webUpto + 1));
+  const roasYtd = totalInvYtd > 0 ? ingYtd / totalInvYtd : null;
   const roasMetasYtd = webMetaRoas.valores.slice(0, webUpto + 1).filter((v): v is number => v != null);
   const roasMetaYtd = roasMetasYtd.length ? roasMetasYtd.reduce((a, b) => a + b, 0) / roasMetasYtd.length : null;
 
@@ -337,7 +344,7 @@ export default async function WebPage({ searchParams }: PageProps) {
   const convEvol: MetaEvolDatum[] = convAvgData.map((d) => ({ mes: d.mes, real: d.convPct, meta: d.convMeta }));
   const transEvol: MetaEvolDatum[] = MES_SHORT.map((mes, i) => ({ mes, real: ecom.transacciones[i] ?? null, meta: webMetaTrans.valores[i] ?? null }));
   const ingEvol: MetaEvolDatum[] = MES_SHORT.map((mes, i) => ({ mes, real: ecom.ingresos[i] ?? null, meta: webMetaIng.valores[i] ?? null }));
-  const roasEvol: MetaEvolDatum[] = MES_SHORT.map((mes, i) => ({ mes, real: ecom.roas[i] ?? null, meta: webMetaRoas.valores[i] ?? null }));
+  const roasEvol: MetaEvolDatum[] = MES_SHORT.map((mes, i) => ({ mes, real: roasM[i] ?? null, meta: webMetaRoas.valores[i] ?? null }));
 
   // Estrategia de agregación según el largo del rango:
   //   ≤ 60 días → diaria, > 60 días → semanal (lunes inicio).
@@ -543,7 +550,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         />
         <MetaKpiCard
           title="ROAS"
-          medida="Ingresos ÷ inversión (Consideración + Conversión)"
+          medida="Ingresos ÷ inversión total de medios (Pauta Mkt + Ecommerce)"
           headlineActual={roasRef}
           headlineLabel={webRefMes}
           unidad="x"
@@ -573,7 +580,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       {/* Evolución mensual de los 6 KPIs principales (real vs meta), 2 por línea */}
       <section className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual — KPIs principales (real vs meta)</h3>
-        <p className="text-xs text-muted-foreground">Real en color · meta en gris. Año actual. ROAS = Ingresos ÷ (inversión Consideración + Conversión).</p>
+        <p className="text-xs text-muted-foreground">Real en color · meta en gris. Año actual. ROAS = Ingresos ÷ inversión total de medios (toda la Pauta Mkt + Ecommerce).</p>
         <div className="mt-4 grid gap-6 lg:grid-cols-2">
           {[
             { t: "Tráfico web (usuarios)", d: traficoEvol, mode: "bar" as const, u: "" as const },
