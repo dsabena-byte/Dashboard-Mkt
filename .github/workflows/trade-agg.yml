@@ -2,7 +2,7 @@ name: Trade agg (precalcula CB + Floor Share mensual, cada 6h)
 
 on:
   schedule:
-    - cron: "50 */6 * * *"  # cada 6h — refresca trade_monthly (CB + Floor Share)
+    - cron: "50 6 * * *"  # 1x/día (06:50 UTC ≈ 03:50 ART) — CB/Floor Share se cargan semanal, no hace falta más
   workflow_dispatch:
 
 jobs:

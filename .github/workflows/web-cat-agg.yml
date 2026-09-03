@@ -2,7 +2,7 @@ name: Web categoría agg (precalcula distribución web por categoría, cada 6h)
 
 on:
   schedule:
-    - cron: "45 */6 * * *"  # cada 6h — refresca web_monthly_by_category antes de que expire el cache de la app
+    - cron: "45 6 * * *"  # 1x/día (06:45 UTC ≈ 03:45 ART) — la distribución web por categoría cambia lento
   workflow_dispatch:
 
 jobs:
