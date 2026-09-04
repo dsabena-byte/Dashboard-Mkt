@@ -1,7 +1,6 @@
 import { CbFiltersBar } from "@/components/cb/cb-filters";
 import { getCbRowsFast } from "@/lib/cb-mirror";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
-import { NavTimer } from "@/components/nav-timer";
 import { LastUpdated } from "@/components/last-updated";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
@@ -165,10 +164,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         <p className="text-sm text-muted-foreground">
           Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
         </p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <LastUpdated date={lastUpdated} />
-          <NavTimer path="/cuadros-basicos" />
-        </div>
+        <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
 
       <CbTabsNav />

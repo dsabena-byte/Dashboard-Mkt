@@ -15,7 +15,6 @@ import { getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast, 
 import { computeFsView, isFsDefault, type FsView, type FsEnrichedRow } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
-import { NavTimer } from "@/components/nav-timer";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +68,6 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
 }
 
 async function renderFloorShare(searchParams: PageProps["searchParams"]) {
-  const t0 = Date.now(); // instrumentación temporal (server-timing en el header)
   const filter: FloorShareFilter = {
     meses: paramArr(searchParams, "meses"),
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
@@ -82,7 +80,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   // Con filtros activos → se computa sobre el mirror (fetch + agregación).
   let view: FsView | null = null;
   let fetchError: string | null = null;
-  let readMs = 0;
 
   if (isFsDefault(filter)) view = await getFsPrecomputed();
 
@@ -94,7 +91,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         semanas = weeks.slice(0, 26);
       }
       const [rawRows, clienteMap] = await Promise.all([getFloorShareRowsFast(semanas), getTiendaClienteMapFast()]);
-      readMs = Date.now() - t0;
       const enriched: FsEnrichedRow[] = rawRows
         .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null)
         .map((r) => ({ ...r, cliente: clienteMap.get(r.numero_tienda) ?? "Sin cliente" }));
@@ -111,9 +107,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   };
   const { options, totalRanking, catBrand, cats, byTienda, byCliente, overall, top5, weekly, totalTiendasRelevadas, hasData } = v;
 
-  const aggMs = Date.now() - t0 - readMs;
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
-  const serverMs = Date.now() - t0;
 
   // Objetivo general ponderado (Σ obj_cat × peso / Σ peso) para el card general.
   const genObj = (() => {
@@ -132,13 +126,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         <p className="text-sm text-muted-foreground">
           Share de góndola por categoría · Ranking de marcas · Evolución mensual.
         </p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <LastUpdated date={lastUpdated} />
-          <NavTimer path="/floor-share" />
-          <span className="font-mono text-[10px] text-muted-foreground/60" title="Cómputo server (no incluye cold start ni red)">
-            server {serverMs}ms (read {readMs} · agg {aggMs})
-          </span>
-        </div>
+        <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
 
       <MetaPanel
