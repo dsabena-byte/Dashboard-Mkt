@@ -296,6 +296,13 @@ reporte_existencia/cb_homologos).
   reemplace al anterior (no acumular fantasmas). Baseline = últimas 3 semanas de
   `cuadro_basico_semanal`. "Tiendas relevadas" del card global respeta el filtro (usa
   `totals.tiendas`, no el histórico).
+- **CB / Floor Share (`/cuadros-basicos`, `/floor-share`) — PERF: paginación en PARALELO.**
+  `getCbRows`/`getFloorShareRows` (proyecto CB, lento) **paginaban SERIAL** (~1s por round-trip) →
+  CB ~6s, Floor Share **~23s** (26 semanas). Fix: 1 query con `count: "exact"` para saber el total
+  y traer el resto de las páginas **en paralelo** (concurrencia 8) → ~3s. NO volver a paginar serial.
+  Estos dashboards **necesitan el detalle** (tablas por tienda/marca) → no se pueden reducir a
+  agregados mensuales como el Seguimiento; por eso el fix es acelerar el fetch, no precalcular.
+  Ambos tienen el medidor `⏱` (NavTimer) en el header y usan el card sobrio `KpiObjCard` (semáforo).
 - **Web (GA4) — timeouts:** las vistas derivadas de `web_landing_daily` (~113k filas/mes) hacían
   regex por fila y **timeouteaban** (statement_timeout 8s) → paneles vacíos (`safe()` lo escondía).
   Fix: **columna generada `categoria`/`sku` precomputada** (migración `0087`, corrida en SQL
