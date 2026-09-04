@@ -163,6 +163,20 @@ reporte_existencia/cb_homologos).
     kpi-scorecard}.tsx`, `components/mapa-estrategico/mapa-editor.tsx`.
 
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
+- **Inversión de Marketing (`/funnel`) — dash NATIVO (dic-2026, reemplazó el iframe).** Antes era
+  un iframe a un HTML estático (`public/bgt-mkt/index.html`, Chart.js, cargaba `data.json` de
+  GitHub). Ahora es React nativo con el sistema visual de la app: `app/funnel/page.tsx` (server) +
+  `components/inversion/inversion-comparador.tsx` (client, Recharts) + `lib/bgt-dashboard.ts`
+  (clasificación de cuentas EQUITY/VISIBILITY/… + lógica de cuatrimestres). Datos por `getBgtData()`
+  (tabla `bgt_marketing`) + `getFacturacionMensual()`. Dos secciones: (1) **Ejecución del Presupuesto**
+  = el ex-OKR Obj.1 (3 cuatrimestres con comparación FIJA Real 2026 vs BGT vigente: **T1·BGT, T2·4+8,
+  T3·8+4**, desvío <5%, Inv/Fact ≤1,3%); (2) **Comparador libre A vs B** (selects de versión/período/
+  cuenta/moneda, KPI cards, evolución + acumulado, distribución, árbol por concepto). Paleta: **A
+  (REAL) azul `#1e40af`, B (comparación) gris pizarra `#94a3b8`**, verde/rojo solo desvíos. Nota:
+  `8+4 2026` todavía NO está cargado en `bgt_marketing` → T3 sale "no cargada". **PENDIENTE:** el
+  usuario quiere **borrar el tab "OKR Mkt" de `/overview`** una vez que valide este dash (Obj.1 ya
+  vive acá; Obj.2/3/4 = Floor Share/CB/Salud de Marca ya están en sus dashboards). El iframe viejo
+  (`public/bgt-mkt/`) quedó sin uso — se puede borrar.
 - **Pauta Mkt (`/performance`) — inversión: fuente de verdad POR MEDIO (dic-2026).** El dash
   brand **no mezcla ecommerce** (conversión/PMax/shopping va aparte, en `/performance-conversion`
   vía `pauta-conversion-queries`; **Performance Max se EXCLUYE** de Pauta Mkt). Fuente por medio:
