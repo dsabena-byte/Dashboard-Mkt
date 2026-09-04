@@ -100,29 +100,31 @@ export async function getTotalTiendasRelevadasCB(): Promise<number> {
   return ids.size;
 }
 
+// Concurrencia de la paginación en paralelo contra el proyecto CB (lento). Antes
+// se paginaba SERIAL (~1s por round-trip) → 6K filas = ~6s, y peor en Floor Share.
+const CB_CONCURRENCY = 8;
+
 export async function getCbRows(filter: CbFilter = {}): Promise<CbRow[]> {
   const supabase = getCbSupabase();
-  const all: CbRow[] = [];
-  let from = 0;
-  while (true) {
-    let q = supabase
-      .from(TABLE)
-      .select("semana, tienda, sku, cliente, division, target_cb, real_cb, target_inf, real_inf, tipo_sku")
-      .range(from, from + PAGE - 1);
+  const SEL = "semana, tienda, sku, cliente, division, target_cb, real_cb, target_inf, real_inf, tipo_sku";
+  const page = (from: number, withCount: boolean) => {
+    let q = supabase.from(TABLE).select(SEL, withCount ? { count: "exact" } : undefined).range(from, from + PAGE - 1);
     if (filter.semanas && filter.semanas.length > 0) q = q.in("semana", filter.semanas);
     if (filter.divisiones && filter.divisiones.length > 0) q = q.in("division", filter.divisiones);
     if (filter.clientes && filter.clientes.length > 0) q = q.in("cliente", filter.clientes);
     if (filter.tiendas && filter.tiendas.length > 0) q = q.in("tienda", filter.tiendas);
-    const { data, error } = await q.returns<CbRow[]>();
-    if (error) {
-      console.error(`[cb-queries] ${TABLE}:`, error.message);
-      return all;
-    }
-    const batch = data ?? [];
-    all.push(...batch);
-    if (batch.length < PAGE) break;
-    from += PAGE;
-    if (from > 50_000) break; // safety
+    return q.returns<CbRow[]>();
+  };
+  // Página 0 + count total → saber cuántas páginas y traerlas en paralelo.
+  const first = await page(0, true);
+  if (first.error) { console.error(`[cb-queries] ${TABLE}:`, first.error.message); return []; }
+  const all: CbRow[] = [...(first.data ?? [])];
+  const total = Math.min(first.count ?? all.length, 200_000);
+  const offsets: number[] = [];
+  for (let from = PAGE; from < total; from += PAGE) offsets.push(from);
+  for (let i = 0; i < offsets.length; i += CB_CONCURRENCY) {
+    const res = await Promise.all(offsets.slice(i, i + CB_CONCURRENCY).map((off) => page(off, false)));
+    for (const r of res) { if (r.error) { console.error(`[cb-queries] ${TABLE}:`, r.error.message); return all; } all.push(...(r.data ?? [])); }
   }
   return all;
 }

@@ -143,29 +143,30 @@ export async function getAvailableWeeks(): Promise<{ weeks: number[]; debug: str
   return { weeks, debug: `max=${maxSem} derived=${weeks.length}` };
 }
 
+// Paginación en PARALELO (con límite de concurrencia) contra el proyecto CB lento.
+// Antes era serial (~1s/round-trip) → 26 semanas de floor_share tardaban ~23s.
+const FS_CONCURRENCY = 8;
+
 export async function getFloorShareRows(filter: FloorShareFilter = {}): Promise<FloorShareRow[]> {
   const supabase = getCbSupabase();
-  const all: FloorShareRow[] = [];
-  let from = 0;
-  while (true) {
-    let q = supabase
-      .from(TABLE)
-      .select("periodo, semana, categoria, numero_tienda, nombre_tienda, marca, unidades, pct_raw")
-      .range(from, from + PAGE - 1);
+  const SEL = "periodo, semana, categoria, numero_tienda, nombre_tienda, marca, unidades, pct_raw";
+  const page = (from: number, withCount: boolean) => {
+    let q = supabase.from(TABLE).select(SEL, withCount ? { count: "exact" } : undefined).range(from, from + PAGE - 1);
     if (filter.semanas && filter.semanas.length > 0) q = q.in("semana", filter.semanas);
     if (filter.categorias && filter.categorias.length > 0) q = q.in("categoria", filter.categorias);
     if (filter.tiendas && filter.tiendas.length > 0) q = q.in("numero_tienda", filter.tiendas);
     if (filter.marcas && filter.marcas.length > 0) q = q.in("marca", filter.marcas);
-    const { data, error } = await q.returns<FloorShareRow[]>();
-    if (error) {
-      console.error(`[floor-share] ${TABLE}:`, error.message);
-      return all;
-    }
-    const batch = data ?? [];
-    all.push(...batch);
-    if (batch.length < PAGE) break;
-    from += PAGE;
-    if (from > 200_000) break;
+    return q.returns<FloorShareRow[]>();
+  };
+  const first = await page(0, true);
+  if (first.error) { console.error(`[floor-share] ${TABLE}:`, first.error.message); return []; }
+  const all: FloorShareRow[] = [...(first.data ?? [])];
+  const total = Math.min(first.count ?? all.length, 300_000);
+  const offsets: number[] = [];
+  for (let from = PAGE; from < total; from += PAGE) offsets.push(from);
+  for (let i = 0; i < offsets.length; i += FS_CONCURRENCY) {
+    const res = await Promise.all(offsets.slice(i, i + FS_CONCURRENCY).map((off) => page(off, false)));
+    for (const r of res) { if (r.error) { console.error(`[floor-share] ${TABLE}:`, r.error.message); return all; } all.push(...(r.data ?? [])); }
   }
   return all;
 }
