@@ -61,10 +61,12 @@ export async function GET(request: Request) {
 
     const tcRows = [...tiendaCliente.entries()].map(([numero_tienda, cliente]) => ({ numero_tienda, cliente }));
 
+    // OJO: el filtro del DELETE debe matchear TODAS las filas, incluidas semana NULL
+    // (si no, se acumulan). "or=(semana.gte.0,semana.is.null)" borra todo.
     const [cbRes, fsRes, tcRes] = await Promise.all([
-      replaceAll(url, key, "cb_semanal_mirror", "semana=gte.0", cbRows),
-      replaceAll(url, key, "floor_share_mirror", "semana=gte.0", fsRows),
-      replaceAll(url, key, "cb_tienda_cliente_mirror", "numero_tienda=not.is.null", tcRows),
+      replaceAll(url, key, "cb_semanal_mirror", "or=(semana.gte.0,semana.is.null)", cbRows),
+      replaceAll(url, key, "floor_share_mirror", "or=(semana.gte.0,semana.is.null)", fsRows),
+      replaceAll(url, key, "cb_tienda_cliente_mirror", "or=(numero_tienda.not.is.null,numero_tienda.is.null)", tcRows),
     ]);
 
     // Precalcula la vista DEFAULT (últimas 26 sem, sin filtro) → fs_precomputed.
