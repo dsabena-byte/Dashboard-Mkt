@@ -296,13 +296,21 @@ reporte_existencia/cb_homologos).
   reemplace al anterior (no acumular fantasmas). Baseline = últimas 3 semanas de
   `cuadro_basico_semanal`. "Tiendas relevadas" del card global respeta el filtro (usa
   `totals.tiendas`, no el histórico).
-- **CB / Floor Share (`/cuadros-basicos`, `/floor-share`) — PERF: paginación en PARALELO.**
-  `getCbRows`/`getFloorShareRows` (proyecto CB, lento) **paginaban SERIAL** (~1s por round-trip) →
-  CB ~6s, Floor Share **~23s** (26 semanas). Fix: 1 query con `count: "exact"` para saber el total
-  y traer el resto de las páginas **en paralelo** (concurrencia 8) → ~3s. NO volver a paginar serial.
-  Estos dashboards **necesitan el detalle** (tablas por tienda/marca) → no se pueden reducir a
-  agregados mensuales como el Seguimiento; por eso el fix es acelerar el fetch, no precalcular.
-  Ambos tienen el medidor `⏱` (NavTimer) en el header y usan el card sobrio `KpiObjCard` (semáforo).
+- **CB / Floor Share (`/cuadros-basicos`, `/floor-share`) — PERF: MIRROR al principal (cron).**
+  `getCbRows`/`getFloorShareRows` leen el **proyecto CB, que es lento POR QUERY** (throughput, no
+  round-trips: paginar en paralelo NO alcanzó, 23s→21s). Floor Share tenía **~135k filas** → CB 5.9s,
+  FS 21s EN CADA visita. Fix (patrón definitivo): el cron **`cb-mirror`** (1x/día, `workflow_dispatch`)
+  copia `cuadro_basico_semanal` + `floor_share` (últimas 30 sem) + tienda→cliente a tablas **mirror
+  del proyecto PRINCIPAL** (`cb_semanal_mirror`, `floor_share_mirror`, `cb_tienda_cliente_mirror` —
+  migración 0104). Los dashboards leen el mirror por REST **paralelo con PAGE=10000** (`getCbRowsFast`/
+  `getFloorShareRowsFast` en `lib/cb-mirror.ts`), fallback al proyecto CB si el mirror está vacío. CB
+  quedó ~2.9s. **Floor Share (135k filas) además PRECALCULA la vista default** (agregar 135k en JS
+  costaba ~6s): `computeFsView` (`lib/fs-view.ts`, función pura) se corre en el cron y se guarda como
+  JSON en `fs_precomputed` (migración 0105); el dash lee esa fila al instante en la vista default
+  (**12s→1.1s**), y con filtros activos computa sobre el mirror. **OJO cron:** derivar las semanas de
+  los propios datos (getAvailableWeeks al CB daba vacío → vista vacía); y el DELETE del clean-replace
+  debe matchear filas `semana` NULL (`or=(semana.gte.0,semana.is.null)`) o se acumulan. Ambos usan el
+  card sobrio `KpiObjCard` (semáforo).
 - **Web (GA4) — timeouts:** las vistas derivadas de `web_landing_daily` (~113k filas/mes) hacían
   regex por fila y **timeouteaban** (statement_timeout 8s) → paneles vacíos (`safe()` lo escondía).
   Fix: **columna generada `categoria`/`sku` precomputada** (migración `0087`, corrida en SQL
