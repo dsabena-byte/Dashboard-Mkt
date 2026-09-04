@@ -134,15 +134,44 @@ export async function getWebDailyKpis(range: WebRange): Promise<DailyKpiRow[]> {
  * del fin del rango elegido.
  */
 export async function getLatestWebDate(): Promise<string | null> {
+  // Directo a la tabla base (indexada por fecha) en vez de la vista lenta
+  // vw_drean_web_daily_kpis, que materializa la agregación aun para un LIMIT 1
+  // (bajo carga tardaba ~18s). web_landing_daily.fecha es rápido.
   const supabase = getServerSupabase();
   const { data, error } = await supabase
-    .from("vw_drean_web_daily_kpis")
+    .from("web_landing_daily")
     .select("fecha")
     .order("fecha", { ascending: false })
     .limit(1)
     .returns<Array<{ fecha: string }>>();
-  if (error) throw new Error(`vw_drean_web_daily_kpis (latest): ${error.message}`);
+  if (error) throw new Error(`web_landing_daily (latest): ${error.message}`);
   return data?.[0]?.fecha ?? null;
+}
+
+// KPIs MENSUALES (para el YoY / histórico) desde las vistas mensuales rápidas, en
+// vez de traer 24 meses de datos DIARIOS (que partía el rango en ~104 queries
+// semanales en paralelo contra la vista pesada → ahogaba Postgres en Vercel).
+// Devuelve filas con shape DailyKpiRow (fecha = mes) para el consumo existente.
+export async function getWebMonthlyKpis(range: WebRange): Promise<DailyKpiRow[]> {
+  const from = `${range.from.slice(0, 7)}-01`;
+  const supabase = getServerSupabase();
+  const [monRes, chanRes] = await Promise.all([
+    supabase.from("vw_drean_web_monthly").select("mes, sesiones, avg_session_duration").gte("mes", from).lte("mes", range.to).returns<Array<{ mes: string; sesiones: number | null; avg_session_duration: number | null }>>(),
+    supabase.from("vw_drean_web_monthly_by_channel").select("mes, conversiones").gte("mes", from).lte("mes", range.to).returns<Array<{ mes: string; conversiones: number | null }>>(),
+  ]);
+  const conv = new Map<string, number>();
+  for (const r of chanRes.data ?? []) conv.set(r.mes, (conv.get(r.mes) ?? 0) + (r.conversiones ?? 0));
+  return (monRes.data ?? []).map((r) => ({
+    fecha: r.mes,
+    sesiones: r.sesiones ?? 0,
+    usuarios: 0, // ga4_monthly_users es la fuente primaria de usuarios; esto es fallback
+    usuarios_nuevos: 0,
+    conversiones: conv.get(r.mes) ?? 0,
+    eventos_clave: 0,
+    pageviews: 0,
+    bounce_rate: null,
+    avg_session_duration: r.avg_session_duration ?? null,
+  }));
 }
 
 export async function getWebBySource(range: WebRange): Promise<BySourceRow[]> {

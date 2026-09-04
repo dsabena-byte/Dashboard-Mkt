@@ -14,6 +14,7 @@ import {
   getWebByCategory,
   getWebBySource,
   getWebDailyKpis,
+  getWebMonthlyKpis,
   getLatestWebDate,
   getAllMonthlyUsers,
   getMonthlyUsers,
@@ -133,7 +134,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     pautaTotalInv,
   ] = await Promise.all([
     safe(T("dailyKpis", getWebDailyKpis(range)), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
-    safe(T("dailyKpis(yoy)", getWebDailyKpis(yoyRange)), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(yoy)"),
+    safe(T("monthlyKpis(yoy)", getWebMonthlyKpis(yoyRange)), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebMonthlyKpis(yoy)"),
     safe(T("bySource", getWebBySource(range)), [] as Awaited<ReturnType<typeof getWebBySource>>, "getWebBySource"),
     safe(T("byCategory", getWebByCategory(range)), [] as Awaited<ReturnType<typeof getWebByCategory>>, "getWebByCategory"),
     safe(T("demographics", getWebDemographicsSummary(range, 7)), { byDevice: [], byRegion: [], rangeLabel: "sin datos" } as Awaited<ReturnType<typeof getWebDemographicsSummary>>, "getWebDemographicsSummary"),
