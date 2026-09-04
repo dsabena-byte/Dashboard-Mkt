@@ -58,7 +58,7 @@ export function CbFiltersBar({ current, options }: CbFiltersBarProps) {
         onChange={(v) => update("semanas", v)}
       />
       <MultiDropdown
-        label="División"
+        label="Categoría"
         placeholder="Todas"
         selected={current.divisiones ?? []}
         options={options.divisiones.map((d) => ({ value: d, label: d }))}

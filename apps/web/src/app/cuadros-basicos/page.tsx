@@ -1,4 +1,6 @@
 import { CbFiltersBar } from "@/components/cb/cb-filters";
+import { KpiObjCard } from "@/components/trade/kpi-obj-card";
+import { NavTimer } from "@/components/nav-timer";
 import { LastUpdated } from "@/components/last-updated";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
@@ -167,7 +169,10 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         <p className="text-sm text-muted-foreground">
           Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
         </p>
-        <LastUpdated date={lastUpdated} className="mt-1" />
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <LastUpdated date={lastUpdated} />
+          <NavTimer path="/cuadros-basicos" />
+        </div>
       </header>
 
       <CbTabsNav />
@@ -194,28 +199,25 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       ) : (
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl bg-[#0a1849] p-5 text-white">
-              <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
-                Cuadro Básico Drean — Cumplimiento global
-              </div>
-              <div className="mt-2 text-4xl font-bold text-rose-300">
-                {totals.cb_pct.toFixed(1)}%
-              </div>
-              <div className="mt-2 text-[11px] opacity-80">
-                {totals.tiendas} tiendas relevadas · {totals.cb_ok.toLocaleString()} cumplidos / {totals.cb_target.toLocaleString()} target
-              </div>
-            </div>
-            <CbMetricCard label="Infaltables" pct={totals.infalt_pct} ok={totals.infalt_ok} target={totals.infalt_target} obj={OBJ_PCT} />
-            <CbMetricCard label="Estratégico" pct={totals.estrat_pct} ok={totals.estrat_ok} target={totals.estrat_target} obj={OBJ_PCT} />
-            <div className="rounded-xl border bg-card p-5">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tiendas relevadas</div>
-              <div className="mt-1 text-3xl font-bold text-rose-500">{totals.tiendas}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">Según filtros aplicados</div>
-              <div className="mt-3 border-t pt-2 text-[11px] flex items-center justify-between">
+            <KpiObjCard
+              title="Cuadro Básico — global" medida="% Cumplimiento CB" value={totals.cb_pct} obj={OBJ_PCT}
+              contexto={`${totals.cb_ok.toLocaleString()} / ${totals.cb_target.toLocaleString()} · ${totals.tiendas} tiendas`}
+            />
+            <KpiObjCard
+              title="Infaltables" medida="% Infaltables presentes" value={totals.infalt_pct} obj={OBJ_PCT}
+              contexto={`${totals.infalt_ok.toLocaleString()} / ${totals.infalt_target.toLocaleString()}`}
+            />
+            <KpiObjCard
+              title="Estratégico" medida="% Estratégicos presentes" value={totals.estrat_pct} obj={OBJ_PCT}
+              contexto={`${totals.estrat_ok.toLocaleString()} / ${totals.estrat_target.toLocaleString()}`}
+            />
+            <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tiendas relevadas</div>
+              <div className="mt-0.5 text-[10px] text-muted-foreground/70">Según filtros aplicados</div>
+              <div className="mt-2 text-3xl font-bold tabular-nums tracking-tight">{totals.tiendas}</div>
+              <div className="mt-3 flex items-center justify-between border-t pt-2 text-[11px]">
                 <span className="text-muted-foreground">Universo histórico</span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold tabular-nums text-slate-700">
-                  {totalTiendasRelevadas}
-                </span>
+                <span className="rounded-full bg-muted px-2 py-0.5 font-semibold tabular-nums text-foreground">{totalTiendasRelevadas}</span>
               </div>
             </div>
           </section>
@@ -228,7 +230,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           )}
 
           <section className="rounded-xl border bg-card p-4">
-            <h3 className="mb-3 text-sm font-bold">📊 Cumplimiento por División</h3>
+            <h3 className="mb-3 text-sm font-bold">📊 Cumplimiento por Categoría</h3>
             <CbCategoryChart data={byDiv} />
           </section>
 
@@ -239,18 +241,18 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead className="bg-[#0a1849] text-white">
+                <thead className="border-b bg-muted/40 text-muted-foreground">
                   <tr>
-                    <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">Cliente/Cadena</th>
-                    <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">% CB</th>
-                    <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">% Infaltables</th>
-                    <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">% Estratégico</th>
+                    <th rowSpan={2} className="border-r border-border px-3 py-2 text-left align-bottom">Cliente/Cadena</th>
+                    <th colSpan={2} className="border-r border-border px-3 py-1 text-center text-[11px] font-semibold uppercase tracking-wide">% CB</th>
+                    <th colSpan={2} className="hidden border-r border-border px-3 py-1 text-center text-[11px] font-semibold uppercase tracking-wide md:table-cell">% Infaltables</th>
+                    <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] font-semibold uppercase tracking-wide md:table-cell">% Estratégico</th>
                   </tr>
-                  <tr className="text-[10px] uppercase tracking-wide opacity-80">
+                  <tr className="text-[10px] uppercase tracking-wide">
                     <th className="px-2 py-1 text-right">%</th>
-                    <th className="border-r border-white/10 px-2 py-1 text-right">Δ</th>
+                    <th className="border-r border-border px-2 py-1 text-right">Δ</th>
                     <th className="hidden px-2 py-1 text-right md:table-cell">%</th>
-                    <th className="hidden border-r border-white/10 px-2 py-1 text-right md:table-cell">Δ</th>
+                    <th className="hidden border-r border-border px-2 py-1 text-right md:table-cell">Δ</th>
                     <th className="hidden px-2 py-1 text-right md:table-cell">%</th>
                     <th className="hidden px-2 py-1 text-right md:table-cell">Δ</th>
                   </tr>
@@ -269,7 +271,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-[#0a1849] text-white font-bold">
+                  <tr className="border-t-2 bg-muted font-bold text-foreground">
                     <td className="px-3 py-2">TOTAL CADENAS</td>
                     <td className="px-2 py-2 text-right tabular-nums">{totals.cb_pct.toFixed(0)}%</td>
                     <td className="px-2 py-2 text-right tabular-nums">{deltaPp(totals.cb_pct)}</td>
@@ -328,21 +330,3 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   );
 }
 
-function CbMetricCard({ label, pct, ok, target, obj }: { label: string; pct: number; ok: number; target: number; obj: number }) {
-  const delta = pct - obj;
-  return (
-    <div className="rounded-xl border bg-card p-5">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-3xl font-bold text-rose-500">{pct.toFixed(1)}%</div>
-      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
-        {ok.toLocaleString()} / {target.toLocaleString()}
-      </div>
-      <div className="mt-3 border-t pt-2 text-[11px] flex items-center justify-between">
-        <span className="text-muted-foreground">Obj {obj}%</span>
-        <span className={`rounded-full px-2 py-0.5 font-semibold tabular-nums ${delta >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-          {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp
-        </span>
-      </div>
-    </div>
-  );
-}

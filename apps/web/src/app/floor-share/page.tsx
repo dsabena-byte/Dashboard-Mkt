@@ -23,6 +23,8 @@ import {
 } from "@/lib/floor-share-queries";
 import { isoWeekToMes } from "@/lib/cb-queries";
 import { MetaPanel } from "@/components/metas/meta-panel";
+import { KpiObjCard } from "@/components/trade/kpi-obj-card";
+import { NavTimer } from "@/components/nav-timer";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
 
 export const dynamic = "force-dynamic";
@@ -175,6 +177,16 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const hasData = rows.length > 0;
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
 
+  // Objetivo general ponderado (Σ obj_cat × peso / Σ peso) para el card general.
+  const genObj = (() => {
+    const p = CATEGORIA_PESOS as Record<string, number>;
+    const items: Array<[number, number]> = [
+      [FS_OBJ_PCT.lavado, p.Lavado ?? 0], [FS_OBJ_PCT.refri, p["Refrigeración"] ?? 0], [FS_OBJ_PCT.coccion, p["Cocción"] ?? 0],
+    ];
+    const wsum = items.reduce((s, [, w]) => s + w, 0) || 1;
+    return items.reduce((s, [o, w]) => s + o * w, 0) / wsum;
+  })();
+
   return (
     <div className="space-y-4">
       <header>
@@ -182,7 +194,10 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         <p className="text-sm text-muted-foreground">
           Share de góndola por categoría · Ranking de marcas · Evolución mensual.
         </p>
-        <LastUpdated date={lastUpdated} className="mt-1" />
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <LastUpdated date={lastUpdated} />
+          <NavTimer path="/floor-share" />
+        </div>
       </header>
 
       <MetaPanel
@@ -208,20 +223,16 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       ) : (
         <>
           <section className="grid gap-3 lg:grid-cols-4">
-            <div className="rounded-xl bg-[#0a1849] p-5 text-white">
-              <div className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
-                Floor Share Drean — Todas las categorías
-              </div>
-              <div className="mt-2 text-4xl font-bold text-rose-300">
-                {overall.total.share.toFixed(1)}%
-              </div>
-              <div className="mt-2 text-[11px] opacity-80">
-                {totalTiendasRelevadas} tiendas relevadas · {overall.total.drean_units.toLocaleString()} unidades exhibidas / {overall.total.total_units.toLocaleString()} total piso
-              </div>
-            </div>
-            <CategoryCard label="Cocción" obj={FS_OBJ_PCT.coccion} block={overall.coccion} />
-            <CategoryCard label="Lavado" obj={FS_OBJ_PCT.lavado} block={overall.lavado} />
-            <CategoryCard label="Refrigeración" obj={FS_OBJ_PCT.refri} block={overall.refri} />
+            <KpiObjCard
+              title="Floor Share — general" medida="Drean · todas las categorías" value={overall.total.share} obj={Number(genObj.toFixed(1))}
+              contexto={`${overall.total.drean_units.toLocaleString()} / ${overall.total.total_units.toLocaleString()} · ${totalTiendasRelevadas} tiendas`}
+            />
+            <KpiObjCard title="Lavado" medida="Share Drean góndola" value={overall.lavado.share} obj={FS_OBJ_PCT.lavado}
+              contexto={`${overall.lavado.drean_units.toLocaleString()} / ${overall.lavado.total_units.toLocaleString()}`} />
+            <KpiObjCard title="Refrigeración" medida="Share Drean góndola" value={overall.refri.share} obj={FS_OBJ_PCT.refri}
+              contexto={`${overall.refri.drean_units.toLocaleString()} / ${overall.refri.total_units.toLocaleString()}`} />
+            <KpiObjCard title="Cocción" medida="Share Drean góndola" value={overall.coccion.share} obj={FS_OBJ_PCT.coccion}
+              contexto={`${overall.coccion.drean_units.toLocaleString()} / ${overall.coccion.total_units.toLocaleString()}`} />
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
@@ -237,7 +248,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="bg-[#0a1849] text-white text-[11px] uppercase tracking-wide">
+                    <tr className="border-b bg-muted/40 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       <th className="px-3 py-2 text-left">Categoría</th>
                       <th className="px-3 py-2 text-left">Marca</th>
                       <th className="px-3 py-2 text-right">Share</th>
@@ -288,25 +299,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
 
 // ===== Helpers de render =====
 
-function CategoryCard({ label, obj, block }: { label: string; obj: number; block: CategoryBlock }) {
-  const delta = block.share - obj;
-  return (
-    <div className="rounded-xl border bg-card p-5">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-3xl font-bold text-rose-500">{block.share.toFixed(1)}%</div>
-      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
-        {block.drean_units.toLocaleString()} / {block.total_units.toLocaleString()}
-      </div>
-      <div className="mt-3 border-t pt-2 text-[11px] flex items-center justify-between">
-        <span className="text-muted-foreground">Obj {obj}%</span>
-        <span className={`rounded-full px-2 py-0.5 font-semibold tabular-nums ${delta >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-          {delta >= 0 ? "+" : ""}{delta.toFixed(1)} pp
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function pctCellBg(pct: number | null, obj: number): string {
   if (pct == null || pct === 0) return "bg-muted/30 text-muted-foreground";
   if (pct >= obj) return "bg-emerald-50 text-emerald-700 font-semibold";
@@ -346,18 +338,18 @@ function ClienteTable({ rows }: { rows: import("@/lib/floor-share-queries").Clie
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="bg-[#0a1849] text-white">
+          <thead className="border-b bg-muted/40 text-muted-foreground">
             <tr>
-              <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">Cliente</th>
-              <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS Lavado</th>
-              <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Refri</th>
+              <th rowSpan={2} className="border-r border-border px-3 py-2 text-left align-bottom">Cliente</th>
+              <th colSpan={2} className="border-r border-border px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS Lavado</th>
+              <th colSpan={2} className="hidden border-r border-border px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Refri</th>
               <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Cocción</th>
             </tr>
-            <tr className="text-[10px] uppercase tracking-wide opacity-80">
+            <tr className="text-[10px] uppercase tracking-wide">
               <th className="px-2 py-1 text-center">%</th>
-              <th className="border-r border-white/10 px-2 py-1 text-right">Δ</th>
+              <th className="border-r border-border px-2 py-1 text-right">Δ</th>
               <th className="hidden px-2 py-1 text-center md:table-cell">%</th>
-              <th className="hidden border-r border-white/10 px-2 py-1 text-right md:table-cell">Δ</th>
+              <th className="hidden border-r border-border px-2 py-1 text-right md:table-cell">Δ</th>
               <th className="hidden px-2 py-1 text-center md:table-cell">%</th>
               <th className="hidden px-2 py-1 text-right md:table-cell">Δ</th>
             </tr>
@@ -397,18 +389,18 @@ function TiendaTable({ rows }: { rows: import("@/lib/floor-share-queries").Tiend
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="bg-[#0a1849] text-white">
+          <thead className="border-b bg-muted/40 text-muted-foreground">
             <tr>
-              <th rowSpan={2} className="border-r border-white/10 px-3 py-2 text-left align-bottom">Tienda</th>
-              <th colSpan={2} className="border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS Lavado</th>
-              <th colSpan={2} className="hidden border-r border-white/10 px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Refri</th>
+              <th rowSpan={2} className="border-r border-border px-3 py-2 text-left align-bottom">Tienda</th>
+              <th colSpan={2} className="border-r border-border px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS Lavado</th>
+              <th colSpan={2} className="hidden border-r border-border px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Refri</th>
               <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Cocción</th>
             </tr>
-            <tr className="text-[10px] uppercase tracking-wide opacity-80">
+            <tr className="text-[10px] uppercase tracking-wide">
               <th className="px-2 py-1 text-center">%</th>
-              <th className="border-r border-white/10 px-2 py-1 text-right">Δ</th>
+              <th className="border-r border-border px-2 py-1 text-right">Δ</th>
               <th className="hidden px-2 py-1 text-center md:table-cell">%</th>
-              <th className="hidden border-r border-white/10 px-2 py-1 text-right md:table-cell">Δ</th>
+              <th className="hidden border-r border-border px-2 py-1 text-right md:table-cell">Δ</th>
               <th className="hidden px-2 py-1 text-center md:table-cell">%</th>
               <th className="hidden px-2 py-1 text-right md:table-cell">Δ</th>
             </tr>
