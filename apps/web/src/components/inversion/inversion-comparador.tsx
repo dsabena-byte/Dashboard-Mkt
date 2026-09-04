@@ -259,14 +259,14 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-y text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 text-left font-semibold">N° / Clasificación / Concepto</th>
-                <th className="px-3 py-2 text-right font-semibold">{pptoA}</th>
-                <th className="px-3 py-2 text-right font-semibold">{pptoB}</th>
-                <th className="px-3 py-2 text-right font-semibold">Diferencia</th>
-                <th className="px-3 py-2 text-right font-semibold">% Var</th>
-                <th className="px-3 py-2 text-right font-semibold">% Inv</th>
-                {factPeriodo != null && <th className="px-3 py-2 text-right font-semibold">Inv / Fact</th>}
+              <tr className="border-y bg-muted/40 text-[11px] font-bold uppercase tracking-wider">
+                <th className="px-3 py-2.5 text-left text-foreground">N° / Clasificación / Concepto</th>
+                <th className="px-3 py-2.5 text-right" style={{ color: COLOR_A }}>{pptoA}</th>
+                <th className="px-3 py-2.5 text-right" style={{ color: COLOR_B }}>{pptoB}</th>
+                <th className="px-3 py-2.5 text-right text-muted-foreground">Diferencia</th>
+                <th className="px-3 py-2.5 text-right text-muted-foreground">% Var</th>
+                <th className="px-3 py-2.5 text-right text-muted-foreground">% Inv</th>
+                {factPeriodo != null && <th className="px-3 py-2.5 text-right text-muted-foreground">Inv / Fact</th>}
               </tr>
             </thead>
             <tbody>

@@ -99,13 +99,6 @@ export default async function WebPage({ searchParams }: PageProps) {
     }
   };
 
-  // --- Instrumentación temporal: mide cada grupo de queries (todas en paralelo →
-  // el total ≈ la más lenta). Se muestra en el header para diagnosticar la lentitud. ---
-  const timings: Record<string, number> = {};
-  const t0 = Date.now();
-  const T = <R,>(label: string, p: Promise<R>): Promise<R> =>
-    p.then((r) => { timings[label] = Date.now() - t0; return r; }, (e) => { timings[label] = Date.now() - t0; throw e; });
-
   const [
     dailyKpis,
     monthlyDailyKpis,
@@ -133,19 +126,19 @@ export default async function WebPage({ searchParams }: PageProps) {
     ecom,
     pautaTotalInv,
   ] = await Promise.all([
-    safe(T("dailyKpis", getWebDailyKpis(range)), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
-    safe(T("monthlyKpis(yoy)", getWebMonthlyKpis(yoyRange)), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebMonthlyKpis(yoy)"),
-    safe(T("bySource", getWebBySource(range)), [] as Awaited<ReturnType<typeof getWebBySource>>, "getWebBySource"),
-    safe(T("byCategory", getWebByCategory(range)), [] as Awaited<ReturnType<typeof getWebByCategory>>, "getWebByCategory"),
-    safe(T("demographics", getWebDemographicsSummary(range, 7)), { byDevice: [], byRegion: [], rangeLabel: "sin datos" } as Awaited<ReturnType<typeof getWebDemographicsSummary>>, "getWebDemographicsSummary"),
-    safe(T("topProducts", getWebTopProducts(range, 10)), [] as Awaited<ReturnType<typeof getWebTopProducts>>, "getWebTopProducts"),
-    safe(T("dailyKpis(prev)", getWebDailyKpis(prev)), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(prev)"),
-    safe(T("compSnapshot", getCompetitorWebSnapshot()), [] as Awaited<ReturnType<typeof getCompetitorWebSnapshot>>, "getCompetitorWebSnapshot"),
-    safe(T("compHistory", getCompetitorMonthlyHistory()), [] as Awaited<ReturnType<typeof getCompetitorMonthlyHistory>>, "getCompetitorMonthlyHistory"),
-    safe(T("compTraffic", getCompetitorTrafficSources()), [] as Awaited<ReturnType<typeof getCompetitorTrafficSources>>, "getCompetitorTrafficSources"),
-    safe(T("compKeywords", getCompetitorKeywords(10)), [] as Awaited<ReturnType<typeof getCompetitorKeywords>>, "getCompetitorKeywords"),
-    safe(T("compByCat", getCompetitorByCategoria()), [] as Awaited<ReturnType<typeof getCompetitorByCategoria>>, "getCompetitorByCategoria"),
-    safe(T("googleTrends", getGoogleTrends()), [] as Awaited<ReturnType<typeof getGoogleTrends>>, "getGoogleTrends"),
+    safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
+    safe(getWebMonthlyKpis(yoyRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebMonthlyKpis(yoy)"),
+    safe(getWebBySource(range), [] as Awaited<ReturnType<typeof getWebBySource>>, "getWebBySource"),
+    safe(getWebByCategory(range), [] as Awaited<ReturnType<typeof getWebByCategory>>, "getWebByCategory"),
+    safe(getWebDemographicsSummary(range, 7), { byDevice: [], byRegion: [], rangeLabel: "sin datos" } as Awaited<ReturnType<typeof getWebDemographicsSummary>>, "getWebDemographicsSummary"),
+    safe(getWebTopProducts(range, 10), [] as Awaited<ReturnType<typeof getWebTopProducts>>, "getWebTopProducts"),
+    safe(getWebDailyKpis(prev), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis(prev)"),
+    safe(getCompetitorWebSnapshot(), [] as Awaited<ReturnType<typeof getCompetitorWebSnapshot>>, "getCompetitorWebSnapshot"),
+    safe(getCompetitorMonthlyHistory(), [] as Awaited<ReturnType<typeof getCompetitorMonthlyHistory>>, "getCompetitorMonthlyHistory"),
+    safe(getCompetitorTrafficSources(), [] as Awaited<ReturnType<typeof getCompetitorTrafficSources>>, "getCompetitorTrafficSources"),
+    safe(getCompetitorKeywords(10), [] as Awaited<ReturnType<typeof getCompetitorKeywords>>, "getCompetitorKeywords"),
+    safe(getCompetitorByCategoria(), [] as Awaited<ReturnType<typeof getCompetitorByCategoria>>, "getCompetitorByCategoria"),
+    safe(getGoogleTrends(), [] as Awaited<ReturnType<typeof getGoogleTrends>>, "getGoogleTrends"),
     // Si el rango es exactamente UN mes calendario (1 al último día), traer
     // total users únicos de GA4. Si el rango cubre varios meses, devolver null
     // para que la card use la suma diaria (totals.usuarios) en lugar del
@@ -157,20 +150,18 @@ export default async function WebPage({ searchParams }: PageProps) {
       const expectedTo = `${range.from.slice(0, 8)}${String(lastDay).padStart(2, "0")}`;
       return range.to === expectedTo ? getMonthlyUsers(range.from) : Promise.resolve(null);
     })(), null, "getMonthlyUsers"),
-    safe(T("allMonthlyUsers", getAllMonthlyUsers()), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>, "getAllMonthlyUsers"),
-    safe<string | null>(T("latestWebDate", getLatestWebDate()), null, "getLatestWebDate"),
-    safe(T("metas", getMetaKpi("Web / Ecommerce", "Tráfico web (usuarios)", new Date().getFullYear())), META_FALLBACK, "getMetaKpi(web-users)"),
-    safe(T("metas", getMetaKpi("Web / Ecommerce", "Sesiones", new Date().getFullYear())), META_FALLBACK, "getMetaKpi(web-sessions)"),
-    safe(T("metas", getMetaKpi("Web / Ecommerce", "Avg Sesión (segundos)", new Date().getFullYear())), META_FALLBACK, "getMetaKpi(web-avg)"),
-    safe(T("metas", getMetaKpi("Web / Ecommerce", "Tasa de conversión", new Date().getFullYear())), META_FALLBACK, "getMetaKpi(web-conv)"),
-    safe(T("metas", getMetaKpi("Web / Ecommerce", "Transacciones", new Date().getFullYear())), META_FALLBACK, "getMetaKpi(web-trans)"),
-    safe(T("metas", getMetaKpi("Web / Ecommerce", "Total Ingresos", new Date().getFullYear())), META_FALLBACK, "getMetaKpi(web-ing)"),
-    safe(T("metas", getMetaKpi("Web / Ecommerce", "ROAS", new Date().getFullYear())), META_FALLBACK, "getMetaKpi(web-roas)"),
-    safe(T("ecom", getEcommerceMensual(new Date().getFullYear())), { transacciones: [], ingresos: [], invConversion: [] } as Awaited<ReturnType<typeof getEcommerceMensual>>, "getEcommerceMensual"),
-    safe(T("pautaInv", getPautaInversionTotalMensual(new Date().getFullYear())), Array.from({ length: 12 }, () => null) as (number | null)[], "getPautaInversionTotalMensual"),
+    safe(getAllMonthlyUsers(), [] as Awaited<ReturnType<typeof getAllMonthlyUsers>>, "getAllMonthlyUsers"),
+    safe<string | null>(getLatestWebDate(), null, "getLatestWebDate"),
+    safe(getMetaKpi("Web / Ecommerce", "Tráfico web (usuarios)", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-users)"),
+    safe(getMetaKpi("Web / Ecommerce", "Sesiones", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-sessions)"),
+    safe(getMetaKpi("Web / Ecommerce", "Avg Sesión (segundos)", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-avg)"),
+    safe(getMetaKpi("Web / Ecommerce", "Tasa de conversión", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-conv)"),
+    safe(getMetaKpi("Web / Ecommerce", "Transacciones", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-trans)"),
+    safe(getMetaKpi("Web / Ecommerce", "Total Ingresos", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-ing)"),
+    safe(getMetaKpi("Web / Ecommerce", "ROAS", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-roas)"),
+    safe(getEcommerceMensual(new Date().getFullYear()), { transacciones: [], ingresos: [], invConversion: [] } as Awaited<ReturnType<typeof getEcommerceMensual>>, "getEcommerceMensual"),
+    safe(getPautaInversionTotalMensual(new Date().getFullYear()), Array.from({ length: 12 }, () => null) as (number | null)[], "getPautaInversionTotalMensual"),
   ]);
-  const serverMs = Date.now() - t0;
-  const timingBreakdown = Object.entries(timings).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${v}ms`).join(" · ");
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
   const today = new Date();
@@ -476,9 +467,6 @@ export default async function WebPage({ searchParams }: PageProps) {
               <p className="text-xs text-muted-foreground/70">Última actualización: {ultimaFecha}</p>
             )}
             <NavTimer path="/web" />
-            <span className="font-mono text-[10px] text-muted-foreground/60" title="Cómputo server (queries) — no incluye cold start ni red">
-              server {serverMs}ms · {timingBreakdown}
-            </span>
           </div>
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
