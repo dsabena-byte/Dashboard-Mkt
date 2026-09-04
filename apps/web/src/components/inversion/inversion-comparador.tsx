@@ -252,8 +252,11 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
 
       {/* Detalle por concepto (árbol) */}
       <div className="overflow-hidden rounded-xl border bg-card">
-        <h4 className="px-4 pt-4 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Detalle por concepto</h4>
-        <div className="mt-3 overflow-x-auto">
+        <div className="border-b bg-muted/30 px-4 py-3">
+          <h4 className="text-base font-bold tracking-tight text-foreground">Detalle por concepto</h4>
+          <p className="text-[11px] text-muted-foreground">{pptoA} vs {pptoB} · por clasificación → cuenta → concepto (clic para expandir)</p>
+        </div>
+        <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-y text-[10px] uppercase tracking-wide text-muted-foreground">
