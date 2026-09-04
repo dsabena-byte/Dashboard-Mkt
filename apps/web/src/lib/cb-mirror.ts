@@ -7,8 +7,10 @@ import "server-only";
 import { getCbRows, type CbRow } from "./cb-queries";
 import { getFloorShareRows, type FloorShareRow } from "./floor-share-queries";
 
-const PAGE = 1000;
-const CONC = 8;
+// El principal (rápido) devuelve hasta 10k filas por request → páginas grandes para
+// leer floor_share_mirror (~135k filas) en pocas idas. Con PAGE=1000 eran 136 páginas.
+const PAGE = 10000;
+const CONC = 6;
 
 // Paginación en paralelo por REST contra el principal (rápido).
 async function fetchAllPrincipal<T>(query: string): Promise<T[]> {
