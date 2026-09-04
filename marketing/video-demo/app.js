@@ -4,8 +4,15 @@
    No hay CSS animations ni transitions (el render por frame las rompería).
    ========================================================================= */
 
-const DUR = 30.0;            // duración total en segundos
-const LEAD = 0.24;           // solape de cross-fade entre escenas
+/* El timeline se escribe en la escala original del storyboard (30 s) y se estira
+   con SPEED. Escalar en un solo lugar mantiene el ritmo relativo de cada escena:
+   los sub-tiempos internos (tipeo, cursor, gráficos) siguen en escala original y
+   el motor les entrega el tiempo local ya dividido. Para cambiar la duración
+   total alcanza con tocar DUR. */
+const BASE = 30.0;           // escala en la que están escritos los sub-tiempos
+const DUR = 50.0;            // duración final del video, en segundos
+const SPEED = DUR / BASE;    // 1 = ritmo original, >1 = más pausado
+const LEAD = 0.24 * SPEED;   // solape de cross-fade entre escenas
 
 /* ---------------------------- utilidades ---------------------------- */
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -49,7 +56,8 @@ const SCENES = [];
 function scene(id, start, end, html, init) {
   const node = mk(`<div class="scene" id="${id}">${html}</div>`);
   stage.appendChild(node);
-  const o = { id, start, end, node, dur: end - start };
+  // start/end vienen en escala original y se estiran; init/draw trabajan en escala original
+  const o = { id, start: start * SPEED, end: end * SPEED, node, dur: (end - start) * SPEED };
   o.draw = init(node, o) || (() => {});
   SCENES.push(o);
   return o;
@@ -207,7 +215,7 @@ scene('s2', 2.4, 9.4, `
         const b = beat(cur);
         mt.className = 'tile ' + OBJ[cur].cls; mt.innerHTML = OBJ[cur].ic;
         txt.textContent = typed(OBJ[cur].nm, S(lt, b.t0, b.t1));
-        car.style.opacity = (lt > b.t1 + .05) ? (Math.floor(lt * 2.2) % 2 ? 0 : 1) : 1;
+        car.style.opacity = (lt > b.t1 + .05) ? (Math.floor(lt * 2.2 / SPEED) % 2 ? 0 : 1) : 1;
       }
       runCursor(kfs, lt, alpha);
     };
@@ -619,7 +627,7 @@ window.__seek = function (t) {
     s.node.style.display = 'block';
     s.node.style.opacity = a;
     s.node.style.transform = `translateY(${(1 - ai) * 20 - (1 - ao) * 12}px) scale(${lerp(.995, 1, ai)})`;
-    s.draw(Math.max(0, t - s.start), a);
+    s.draw(Math.max(0, (t - s.start) / SPEED), a);
   }
   if (!cursorUsed) { cursorEl.style.opacity = 0; ringEl.style.opacity = 0; }
 };
