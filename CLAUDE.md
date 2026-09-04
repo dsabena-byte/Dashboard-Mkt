@@ -11,6 +11,11 @@
   verificar, decilo — no maquilles ni inventes. Corregí explícitamente cuando algo que dijiste
   resultó mal.
 - **Compilá antes de pushear:** `cd apps/web && pnpm exec tsc --noEmit` (hay `node_modules`).
+  **Si tocás la frontera server/client (nuevo client component, imports cruzados), validá con
+  `pnpm build` — NO solo `tsc`.** `tsc` NO detecta que un client component importe un módulo
+  `server-only` (rompió el deploy de `/funnel`: el cliente importaba de `bgt-queries`). Regla:
+  un `"use client"` solo puede importar de módulos server-only cosas de **tipo** (`import type`,
+  se borran); las constantes/funciones puras compartidas van en un módulo client-safe.
 - **Deploy:** commit + `git push origin HEAD:main` (Vercel deploya solo; rebasar si main avanzó).
 - **Mergeá siempre sin preguntar:** cuando termina un cambio validado (tsc OK), abrí el PR y
   **mergealo directo** (squash a `main`) — no preguntes "¿lo mergeo?". Preferencia explícita del user.
