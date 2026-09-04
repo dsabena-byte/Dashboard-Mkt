@@ -1,4 +1,4 @@
-# Video demo · 30 s · 16:9
+# Video demo · 50 s · 16:9
 
 Video de producto (sin personas) que recorre el ciclo completo del modelo estratégico:
 **objetivos → KPIs → pesos → metas mensuales → seguimiento real vs meta → insights →
@@ -10,7 +10,7 @@ Cierre: **“Learn what matters. Drive results.”**
 
 | Archivo | Detalle |
 |---|---|
-| `export/demo-30s.mp4` | 1920×1080, 30 fps, 30,000 s exactos, H.264 yuv420p, `+faststart` (~2 MB) |
+| `export/demo-50s.mp4` | 1920×1080, 30 fps, 50,000 s exactos, H.264 yuv420p, `+faststart` (~3 MB) |
 | `export/poster.jpg` | Frame de cierre, para thumbnail |
 
 ## Cómo se genera
@@ -20,7 +20,7 @@ Todo el estado visual sale de `window.__seek(t)`; Chromium avanza frame a frame 
 se pipea a ffmpeg. El resultado no depende del reloj real, así que es reproducible al frame.
 
 ```bash
-node render.mjs                          # -> export/demo-30s.mp4
+node render.mjs                          # -> export/demo-50s.mp4
 node render.mjs --fps 60                 # más fluido (el doble de frames)
 node render.mjs --stills 5.5,22,28.4     # PNGs sueltos en export/stills para revisar
 ```
@@ -41,17 +41,23 @@ Para que los textos rendericen igual conviene tener la familia **Inter** instala
 
 | # | Escena | Rango | Contenido |
 |---|---|---|---|
-| 1 | Intro | 0,0 – 2,4 | “De tu estrategia a mejores resultados.” |
-| 2 | Objetivos + pesos | 2,4 – 9,4 | Se tipean **Top of Mind**, **Intención de Compra** y **Facturación**; se asignan pesos 40/30/30 |
-| 3 | KPIs → objetivos | 9,4 – 14,0 | Matriz de aportes; cada objetivo cierra en 100% |
-| 4 | Metas mensuales | 14,0 – 19,2 | Meta en `%` y en `personas` (el número crudo se formatea al confirmar); `$` para Facturación |
-| 5 | Modelo listo | 19,2 – 20,3 | 3 objetivos · 5 KPIs · 12 meses |
-| 6 | Seguimiento | 20,3 – 25,1 | Ene→Sep, real vs meta, GAPs y estado general |
-| 7 | Insights | 25,1 – 26,9 | Aprendizajes detectados |
-| 8 | Optimizar + recalibrar | 26,9 – 28,9 | Reasignación de inversión y cierre del ciclo anual |
-| 9 | Cierre | 28,9 – 30,0 | “Learn what matters. Drive results.” |
+| 1 | Intro | 0,0 – 4,0 | “De tu estrategia a mejores resultados.” |
+| 2 | Objetivos + pesos | 4,0 – 15,7 | Se tipean **Top of Mind**, **Intención de Compra** y **Facturación**; se asignan pesos 40/30/30 |
+| 3 | KPIs → objetivos | 15,7 – 23,3 | Matriz de aportes; cada objetivo cierra en 100% |
+| 4 | Metas mensuales | 23,3 – 32,0 | Meta en `%` y en `personas` (el número crudo se formatea al confirmar); `$` para Facturación |
+| 5 | Modelo listo | 32,0 – 33,8 | 3 objetivos · 5 KPIs · 12 meses |
+| 6 | Seguimiento | 33,8 – 41,8 | Ene→Sep, real vs meta, GAPs y estado general |
+| 7 | Insights | 41,8 – 44,8 | Aprendizajes detectados |
+| 8 | Optimizar + recalibrar | 44,8 – 48,2 | Reasignación de inversión y cierre del ciclo anual |
+| 9 | Cierre | 48,2 – 50,0 | “Learn what matters. Drive results.” |
 
-Para reajustar el ritmo alcanza con mover `start`/`end` de cada `scene(...)` y `DUR` en `app.js`.
+### Ritmo
+
+Los sub-tiempos de cada escena (tipeo, movimientos del cursor, crecimiento de los gráficos)
+están escritos en la escala original del storyboard de 30 s y el motor los estira con `SPEED`.
+**Para cambiar la duración total alcanza con tocar `DUR` en `app.js`** — todo escala parejo y el
+ritmo relativo entre escenas se mantiene. Para reacomodar una escena en particular se mueven su
+`start`/`end` (también en escala de 30 s).
 
 ## Convenciones respetadas
 

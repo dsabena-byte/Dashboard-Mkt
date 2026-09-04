@@ -3,7 +3,7 @@
  * Render del demo: Chromium avanza la animación frame a frame (window.__seek)
  * y cada captura se pipea a ffmpeg. Determinístico: no depende del reloj real.
  *
- *   node render.mjs                      -> export/demo-30s.mp4 (1920x1080 @30fps)
+ *   node render.mjs                      -> export/demo-50s.mp4 (1920x1080 @30fps, 50 s)
  *   node render.mjs --fps 30 --scale 1   -> opciones
  *   node render.mjs --stills 0.8,4,11.5  -> PNGs sueltos en export/stills (revisión)
  */
@@ -62,7 +62,7 @@ if (STILLS) {
 }
 
 const total = Math.round(DUR * FPS);
-const mp4 = resolve(OUT, 'demo-30s.mp4');
+const mp4 = resolve(OUT, 'demo-50s.mp4');
 const ff = spawn('ffmpeg', [
   '-y', '-loglevel', 'error',
   '-f', 'image2pipe', '-framerate', String(FPS), '-i', '-',
