@@ -91,33 +91,21 @@ export default async function InversionMarketingPage() {
         Fuente BGT: SharePoint → Supabase · Última sincronización: {syncLabel}
       </p>
 
-      {/* ===== Ejecución del Presupuesto (ex-OKR Obj.1) ===== */}
-      <section className="overflow-hidden rounded-xl border border-l-[5px] border-l-primary bg-primary/[0.03]">
-        <div className="border-b border-primary/10 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Objetivo</span>
-                <h3 className="text-sm font-bold tracking-tight">Ejecución del Presupuesto de Marketing</h3>
-              </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Ejecutar el presupuesto con un desvío menor al {MAX_DESVIO}% vs el BGT vigente del cuatrimestre (T1 · BGT, T2 · 4+8, T3 · 8+4), sin superar el {invFactLabel}% de Inversión real / Facturación.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">&lt; {MAX_DESVIO}%</span><span className="text-muted-foreground">desvío</span></span>
-              <span className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-primary">≤ {invFactLabel}%</span><span className="text-muted-foreground">Inv / Fact</span></span>
-            </div>
-          </div>
+      {/* ===== Ejecución del Presupuesto (por cuatrimestre) ===== */}
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-sm font-bold tracking-tight">Ejecución del Presupuesto</h3>
+          <p className="text-[11px] text-muted-foreground">
+            Real {YEAR} vs BGT vigente por cuatrimestre (T1 · BGT, T2 · 4+8, T3 · 8+4) · meta: desvío &lt; {MAX_DESVIO}% y Inv / Facturación ≤ {invFactLabel}%.
+          </p>
         </div>
 
-        <div className="p-4">
-          {!dataLoaded && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-              No se pudo cargar la data de BGT. Verificá la conectividad o la variable <code>BGT_DATA_JSON_URL</code>.
-            </div>
-          )}
-          <div className="grid gap-4 lg:grid-cols-3">
+        {!dataLoaded && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+            No se pudo cargar la data de BGT. Verificá la conectividad o la variable <code>BGT_DATA_JSON_URL</code>.
+          </div>
+        )}
+        <div className="grid gap-4 lg:grid-cols-3">
             {cuatris.map((c) => (
               <div key={c.id} className="rounded-xl border bg-card p-5">
                 <div className="mb-3 flex items-center justify-between">
@@ -176,7 +164,6 @@ export default async function InversionMarketingPage() {
                 )}
               </div>
             ))}
-          </div>
         </div>
       </section>
 
