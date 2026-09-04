@@ -7,9 +7,6 @@ import {
   computeOverall,
   FS_OBJ_PCT,
   getAvailableWeeks,
-  getFloorShareRows,
-  getTiendaClienteMap,
-  getTotalTiendasRelevadas,
   shareByBrand,
   shareByCatBrand,
   shareByCliente,
@@ -22,6 +19,7 @@ import {
   type FloorShareRow,
 } from "@/lib/floor-share-queries";
 import { isoWeekToMes } from "@/lib/cb-queries";
+import { getFloorShareRowsFast, getTiendaClienteMapFast } from "@/lib/cb-mirror";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { NavTimer } from "@/components/nav-timer";
@@ -100,7 +98,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         baseFilter.semanas = weeks_used;
         weeks_debug = debug;
       }
-      const data = await getFloorShareRows({ semanas: baseFilter.semanas });
+      const data = await getFloorShareRowsFast(baseFilter.semanas ?? []);
       return { rows: data, error: null, weeks_used, weeks_debug };
     } catch (err) {
       return { rows: [], error: err instanceof Error ? err.message : String(err), weeks_used: [], weeks_debug: "exception" };
@@ -110,11 +108,9 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const [
     { rows: allRowsRaw, error: fetchError },
     clienteMap,
-    totalTiendasRelevadas,
   ] = await Promise.all([
     fetchRows(),
-    getTiendaClienteMap(),
-    getTotalTiendasRelevadas(),
+    getTiendaClienteMapFast(),
   ]);
 
   // Filtramos rows con campos críticos null antes de cualquier aggregation.
@@ -124,6 +120,9 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const allRows: EnrichedRow[] = allRowsRaw
     .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null)
     .map((r) => ({ ...r, cliente: clienteMap.get(r.numero_tienda) ?? "Sin cliente" }));
+
+  // Universo de tiendas relevadas = distinct del set traído (mirror).
+  const totalTiendasRelevadas = new Set(allRows.map((r) => r.numero_tienda)).size;
 
   function applyFilter(rs: EnrichedRow[], f: FloorShareFilter): EnrichedRow[] {
     return rs.filter((r) => {

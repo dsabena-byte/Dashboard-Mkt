@@ -1,4 +1,5 @@
 import { CbFiltersBar } from "@/components/cb/cb-filters";
+import { getCbRowsFast } from "@/lib/cb-mirror";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { NavTimer } from "@/components/nav-timer";
 import { LastUpdated } from "@/components/last-updated";
@@ -14,8 +15,6 @@ import {
   computeByDivision,
   computeByDim,
   computeByTienda,
-  getCbRows,
-  getTotalTiendasRelevadasCB,
   getCbBaselineMedidas,
   getCbSuggestions,
   getCbSuggestionsDetail,
@@ -117,12 +116,9 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   let fetchError: string | null = null;
   let totalTiendasRelevadas = 0;
   try {
-    const [rows, totalTiendas] = await Promise.all([
-      getCbRows({}),
-      getTotalTiendasRelevadasCB(),
-    ]);
-    allRows = rows;
-    totalTiendasRelevadas = totalTiendas;
+    // Lee el mirror en el principal (rápido); universo de tiendas = distinct del set.
+    allRows = await getCbRowsFast();
+    totalTiendasRelevadas = new Set(allRows.map((r) => r.tienda)).size;
   } catch (err) {
     fetchError = err instanceof Error ? err.message : String(err);
   }
