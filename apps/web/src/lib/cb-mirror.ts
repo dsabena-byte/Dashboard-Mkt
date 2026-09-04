@@ -6,6 +6,7 @@ import "server-only";
 
 import { getCbRows, type CbRow } from "./cb-queries";
 import { getFloorShareRows, type FloorShareRow } from "./floor-share-queries";
+import type { FsView } from "./fs-view";
 
 // El principal (rápido) devuelve hasta 10k filas por request → páginas grandes para
 // leer floor_share_mirror (~135k filas) en pocas idas. Con PAGE=1000 eran 136 páginas.
@@ -80,4 +81,21 @@ export async function getAvailableWeeksFast(): Promise<{ weeks: number[]; debug:
 export async function getTiendaClienteMapFast(): Promise<Map<string, string>> {
   const rows = await fetchAllPrincipal<{ numero_tienda: string; cliente: string }>(`cb_tienda_cliente_mirror?select=numero_tienda,cliente`);
   return new Map(rows.map((r) => [r.numero_tienda, r.cliente]));
+}
+
+// Vista default de Floor Share PRECALCULADA (la llena el cron). null si no existe.
+export async function getFsPrecomputed(): Promise<FsView | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  try {
+    const res = await fetch(`${url}/rest/v1/fs_precomputed?id=eq.1&select=data`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Array<{ data: FsView }>;
+    return rows[0]?.data ?? null;
+  } catch {
+    return null;
+  }
 }

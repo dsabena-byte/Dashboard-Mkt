@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCbRows } from "@/lib/cb-queries";
 import { getFloorShareRows, getAvailableWeeks, getTiendaClienteMap } from "@/lib/floor-share-queries";
+import { computeFsView, type FsEnrichedRow } from "@/lib/fs-view";
 
 // Copia la data del proyecto CB (lento) a tablas mirror en el PRINCIPAL (rápido),
 // para que /cuadros-basicos y /floor-share lean el mirror al instante. Clean-replace
@@ -63,8 +64,21 @@ export async function GET(request: Request) {
       replaceAll(url, key, "cb_tienda_cliente_mirror", "numero_tienda=not.is.null", tcRows),
     ]);
 
-    const ok = ![cbRes, fsRes, tcRes].some((r) => r.includes("error"));
-    return NextResponse.json({ ok, cb: cbRes, floor_share: fsRes, tienda_cliente: tcRes }, { status: ok ? 200 : 500 });
+    // Precalcula la vista DEFAULT (últimas 26 sem, sin filtro) → fs_precomputed.
+    const defWeeks = weeks.slice(0, 26);
+    const enriched: FsEnrichedRow[] = fsRows
+      .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null && defWeeks.includes(r.semana))
+      .map((r) => ({ ...r, cliente: tiendaCliente.get(r.numero_tienda) ?? "Sin cliente" }));
+    const view = computeFsView(enriched, {});
+    const fsViewRes = await fetch(`${url}/rest/v1/fs_precomputed?on_conflict=id`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify([{ id: 1, data: view, updated_at: new Date().toISOString() }]),
+    });
+    const fsViewMsg = fsViewRes.ok ? "OK" : `error ${fsViewRes.status}: ${await fsViewRes.text()}`;
+
+    const ok = ![cbRes, fsRes, tcRes, fsViewMsg].some((r) => r.includes("error"));
+    return NextResponse.json({ ok, cb: cbRes, floor_share: fsRes, tienda_cliente: tcRes, fs_view: fsViewMsg }, { status: ok ? 200 : 500 });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }

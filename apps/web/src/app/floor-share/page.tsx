@@ -6,19 +6,13 @@ import { colorForBrand } from "@/lib/floor-share-colors";
 import {
   computeOverall,
   FS_OBJ_PCT,
-  shareByBrand,
-  shareByCatBrand,
-  shareByCliente,
-  shareByTienda,
-  weeklyShareByBrand,
   normalizeCategoria,
   OWN_BRAND_FS,
   type CategoryBlock,
   type FloorShareFilter,
-  type FloorShareRow,
 } from "@/lib/floor-share-queries";
-import { isoWeekToMes } from "@/lib/cb-queries";
-import { getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast } from "@/lib/cb-mirror";
+import { getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast, getFsPrecomputed } from "@/lib/cb-mirror";
+import { computeFsView, isFsDefault, type FsView, type FsEnrichedRow } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { NavTimer } from "@/components/nav-timer";
@@ -84,98 +78,40 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     tiendas: paramArr(searchParams, "tiendas"),
   };
 
-  // Por performance: si no hay semanas seleccionadas, limitamos el universo
-  // a las últimas 26 semanas con data (≈6 meses) para abarcar todas las
-  // tiendas activas. Si el user selecciona semanas/meses, fetcheamos solo esas.
-  async function fetchRows(): Promise<{ rows: FloorShareRow[]; error: string | null; weeks_used: number[]; weeks_debug: string }> {
+  // Vista DEFAULT (sin filtros) → se lee PRECALCULADA (fs_precomputed, instantáneo).
+  // Con filtros activos → se computa sobre el mirror (fetch + agregación).
+  let view: FsView | null = null;
+  let fetchError: string | null = null;
+  let readMs = 0;
+
+  if (isFsDefault(filter)) view = await getFsPrecomputed();
+
+  if (!view) {
     try {
-      const baseFilter: FloorShareFilter = { ...filter };
-      let weeks_used: number[] = baseFilter.semanas ?? [];
-      let weeks_debug = "filter-provided";
-      if (!baseFilter.semanas || baseFilter.semanas.length === 0) {
-        const { weeks, debug } = await getAvailableWeeksFast();
-        weeks_used = weeks.slice(0, 26);
-        baseFilter.semanas = weeks_used;
-        weeks_debug = debug;
+      let semanas = filter.semanas ?? [];
+      if (semanas.length === 0) {
+        const { weeks } = await getAvailableWeeksFast();
+        semanas = weeks.slice(0, 26);
       }
-      const data = await getFloorShareRowsFast(baseFilter.semanas ?? []);
-      return { rows: data, error: null, weeks_used, weeks_debug };
+      const [rawRows, clienteMap] = await Promise.all([getFloorShareRowsFast(semanas), getTiendaClienteMapFast()]);
+      readMs = Date.now() - t0;
+      const enriched: FsEnrichedRow[] = rawRows
+        .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null)
+        .map((r) => ({ ...r, cliente: clienteMap.get(r.numero_tienda) ?? "Sin cliente" }));
+      view = computeFsView(enriched, filter);
     } catch (err) {
-      return { rows: [], error: err instanceof Error ? err.message : String(err), weeks_used: [], weeks_debug: "exception" };
+      fetchError = err instanceof Error ? err.message : String(err);
     }
   }
 
-  const [
-    { rows: allRowsRaw, error: fetchError },
-    clienteMap,
-  ] = await Promise.all([
-    fetchRows(),
-    getTiendaClienteMapFast(),
-  ]);
-  const readMs = Date.now() - t0;
-
-  // Filtramos rows con campos críticos null antes de cualquier aggregation.
-  // Cualquier null en marca/categoria/numero_tienda rompía las agregaciones.
-  // Y enriquecemos cada row con cliente derivado del map (cb_visitas).
-  type EnrichedRow = FloorShareRow & { cliente: string };
-  const allRows: EnrichedRow[] = allRowsRaw
-    .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null)
-    .map((r) => ({ ...r, cliente: clienteMap.get(r.numero_tienda) ?? "Sin cliente" }));
-
-  // Universo de tiendas relevadas = distinct del set traído (mirror).
-  const totalTiendasRelevadas = new Set(allRows.map((r) => r.numero_tienda)).size;
-
-  function applyFilter(rs: EnrichedRow[], f: FloorShareFilter): EnrichedRow[] {
-    return rs.filter((r) => {
-      if (r.semana == null) return false;
-      if (f.meses && f.meses.length > 0 && !f.meses.includes(isoWeekToMes(r.semana))) return false;
-      if (f.semanas && f.semanas.length > 0 && !f.semanas.includes(r.semana)) return false;
-      if (f.categorias && f.categorias.length > 0 && !f.categorias.includes(normalizeCategoria(r.categoria ?? ""))) return false;
-      if (f.clientes && f.clientes.length > 0 && !f.clientes.includes(r.cliente)) return false;
-      if (f.tiendas && f.tiendas.length > 0 && !f.tiendas.includes(r.numero_tienda ?? "")) return false;
-      if (f.marcas && f.marcas.length > 0 && !f.marcas.includes(r.marca ?? "")) return false;
-      return true;
-    });
-  }
-
-  const rows = applyFilter(allRows, filter);
-
-  const uniq = <T,>(arr: (T | null | undefined)[]): T[] =>
-    [...new Set(arr.filter((x): x is T => x != null))];
-
-  const MES_ORDER = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
-  const options = {
-    meses: uniq(applyFilter(allRows, { ...filter, meses: [] }).map((r) => isoWeekToMes(r.semana)))
-      .sort((a, b) => MES_ORDER.indexOf(a) - MES_ORDER.indexOf(b)),
-    semanas: uniq(applyFilter(allRows, { ...filter, semanas: [] }).map((r) => r.semana)).sort((a, b) => a - b),
-    categorias: uniq(applyFilter(allRows, { ...filter, categorias: [] }).map((r) => normalizeCategoria(r.categoria))).sort(),
-    clientes: uniq(applyFilter(allRows, { ...filter, clientes: [] }).map((r) => r.cliente)).sort(),
-    tiendas: uniq(applyFilter(allRows, { ...filter, tiendas: [] })
-      .map((r) => ({ value: r.numero_tienda, label: r.nombre_tienda ?? r.numero_tienda })))
-      .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)
-      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" })),
+  const v: FsView = view ?? {
+    options: { meses: [], semanas: [], categorias: [], clientes: [], tiendas: [] },
+    totalRanking: [], catBrand: [], cats: [], byTienda: [], byCliente: [],
+    overall: computeOverall([]), top5: [], weekly: [], totalTiendasRelevadas: 0, hasData: false,
   };
-
-  const totalRanking = shareByBrand(rows);
-  const catBrand = shareByCatBrand(rows);
-  const byTienda = shareByTienda(rows);
-  const byCliente = shareByCliente(rows);
-  const overall = computeOverall(rows);
-
-  // Top 5 marcas para el chart semanal
-  const top5 = totalRanking.slice(0, 5).map((r) => r.marca);
-  // Drean siempre incluido aunque no esté en top 5
-  if (!top5.includes(OWN_BRAND_FS) && rows.some((r) => r.marca === OWN_BRAND_FS)) {
-    top5.unshift(OWN_BRAND_FS);
-  }
-  const weekly = weeklyShareByBrand(rows, top5);
-
-  // Share por categoría — agrupado para la tabla
-  const cats = uniq(rows.map((r) => normalizeCategoria(r.categoria))).sort();
+  const { options, totalRanking, catBrand, cats, byTienda, byCliente, overall, top5, weekly, totalTiendasRelevadas, hasData } = v;
 
   const aggMs = Date.now() - t0 - readMs;
-  const hasData = rows.length > 0;
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
   const serverMs = Date.now() - t0;
 
