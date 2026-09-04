@@ -1,5 +1,6 @@
 import { KpiCard } from "@/components/kpi-card";
 import { DateRangePicker } from "@/components/date-range-picker";
+import { NavTimer } from "@/components/nav-timer";
 
 import { CompetitorMonthlyChart } from "@/components/competitor-monthly-chart";
 import { CategoryTrendChart } from "@/components/category-trend-chart";
@@ -460,11 +461,12 @@ export default async function WebPage({ searchParams }: PageProps) {
           <p className="text-sm text-muted-foreground">
             Tráfico real de Google Analytics 4 (drean.com.ar) — performance, canales, categorías y top landings.
           </p>
-          {ultimaFecha && (
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              Última actualización: {ultimaFecha}
-            </p>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {ultimaFecha && (
+              <p className="text-xs text-muted-foreground/70">Última actualización: {ultimaFecha}</p>
+            )}
+            <NavTimer path="/web" />
+          </div>
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
