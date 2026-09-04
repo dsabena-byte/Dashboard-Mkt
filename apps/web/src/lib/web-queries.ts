@@ -192,18 +192,33 @@ export async function getWebBySource(range: WebRange): Promise<BySourceRow[]> {
 }
 
 export async function getWebByCategory(range: WebRange): Promise<ByCategoryRow[]> {
+  // Lee la tabla PRECALCULADA web_daily_by_category (indexada por fecha, rápida) que
+  // llena el cron web-cat-agg. Bajo carga en Vercel la vista vw_drean_web_by_category
+  // tardaba ~18-27s (agrega web_landing_daily). Fallback a la vista si la tabla no
+  // cubre el rango (mes fuera del año actual/anterior, o antes del primer cron).
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("web_daily_by_category")
+    .select("fecha, categoria, sesiones, usuarios, conversiones, pageviews, bounce_rate")
+    .gte("fecha", range.from)
+    .lte("fecha", range.to)
+    .range(0, 99_999)
+    .returns<ByCategoryRow[]>();
+  if (!error && data && data.length > 0) return data;
+
+  // Fallback: vista lenta (chunked por semana para no timeoutear).
   const chunks = splitRangeByWeek(range);
   const results = await Promise.all(chunks.map(async (r) => {
-    const supabase = getServerSupabase();
-    const { data, error } = await supabase
+    const sb = getServerSupabase();
+    const { data: d, error: e } = await sb
       .from("vw_drean_web_by_category")
       .select("*")
       .gte("fecha", r.from)
       .lte("fecha", r.to)
       .range(0, 99_999)
       .returns<ByCategoryRow[]>();
-    if (error) throw new Error(`vw_drean_web_by_category: ${error.message}`);
-    return data ?? [];
+    if (e) throw new Error(`vw_drean_web_by_category: ${e.message}`);
+    return d ?? [];
   }));
   return results.flat();
 }

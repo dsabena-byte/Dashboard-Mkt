@@ -13,7 +13,7 @@ function env(key: string): string {
   return v;
 }
 
-interface DiaCatRow { fecha: string; categoria: string | null; usuarios: number | null; sesiones: number | null; conversiones: number | null }
+interface DiaCatRow { fecha: string; categoria: string | null; usuarios: number | null; sesiones: number | null; conversiones: number | null; pageviews: number | null; bounce_rate: number | null }
 
 // Lee la vista con paginación por Range (supera 1000 filas/año).
 async function fetchAll(url: string, key: string, query: string): Promise<DiaCatRow[]> {
@@ -55,9 +55,20 @@ export async function GET(request: Request) {
     const key = env("SUPABASE_SERVICE_ROLE_KEY");
     const year = new Date().getUTCFullYear();
 
-    const rows = await fetchAll(url, key, `vw_drean_web_by_category?fecha=gte.${year}-01-01&fecha=lte.${year}-12-31&select=fecha,categoria,usuarios,sesiones,conversiones`);
+    // Lee el año actual + el anterior (para YoY / rangos históricos del dash).
+    const rows = await fetchAll(url, key, `vw_drean_web_by_category?fecha=gte.${year - 1}-01-01&fecha=lte.${year}-12-31&select=fecha,categoria,usuarios,sesiones,conversiones,pageviews,bounce_rate`);
 
-    // Agrega por (mes, categoría).
+    const now = new Date().toISOString();
+
+    // (1) DIARIO por categoría → web_daily_by_category (lo que lee getWebByCategory).
+    const daily = rows
+      .filter((r) => r.fecha && r.categoria)
+      .map((r) => ({
+        fecha: r.fecha, categoria: r.categoria, usuarios: r.usuarios ?? 0, sesiones: r.sesiones ?? 0,
+        conversiones: r.conversiones ?? 0, pageviews: r.pageviews ?? 0, bounce_rate: r.bounce_rate, updated_at: now,
+      }));
+
+    // (2) MENSUAL por categoría → web_monthly_by_category (lo que lee el Seguimiento).
     const agg = new Map<string, { mes: string; categoria: string; usuarios: number; sesiones: number; conversiones: number }>();
     for (const r of rows) {
       if (!r.fecha || !r.categoria) continue;
@@ -67,11 +78,18 @@ export async function GET(request: Request) {
       e.usuarios += r.usuarios ?? 0; e.sesiones += r.sesiones ?? 0; e.conversiones += r.conversiones ?? 0;
       agg.set(k, e);
     }
-    const now = new Date().toISOString();
-    const out = [...agg.values()].map((e) => ({ ...e, updated_at: now }));
+    const monthly = [...agg.values()].map((e) => ({ ...e, updated_at: now }));
 
-    const upsert = await supabaseUpsert(url, key, "web_monthly_by_category", out, "mes,categoria");
-    return NextResponse.json({ ok: true, dias_leidos: rows.length, filas_upsert: out.length, upsert });
+    // Upsert diario en lotes (pueden ser miles de filas).
+    let dailyOk = 0;
+    for (let i = 0; i < daily.length; i += 500) {
+      const res = await supabaseUpsert(url, key, "web_daily_by_category", daily.slice(i, i + 500), "fecha,categoria");
+      if (res.includes("error")) return NextResponse.json({ ok: false, error: `daily ${res}` }, { status: 500 });
+      dailyOk += Math.min(500, daily.length - i);
+    }
+    const monthlyRes = await supabaseUpsert(url, key, "web_monthly_by_category", monthly, "mes,categoria");
+
+    return NextResponse.json({ ok: true, dias_leidos: rows.length, daily_upsert: dailyOk, monthly_upsert: monthly.length, monthlyRes });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
