@@ -301,6 +301,22 @@ reporte_existencia/cb_homologos).
   Fix: **columna generada `categoria`/`sku` precomputada** (migración `0087`, corrida en SQL
   Editor) + **chunk semanal** (`splitRangeByWeek` en `lib/web-queries.ts`, no mensual). Causa raíz
   original: disco lleno en free tier → se subió a Pro + 8 GB.
+- **Web (`/web`) — PERF: de 27.9s a 3.3s (medido con `⏱ real` + instrumentación por query).**
+  El dash disparaba ~25 queries en paralelo y el cuello NO era una query sola sino **CONTENCIÓN**:
+  el YoY traía **24 meses de datos DIARIOS** → `getWebDailyKpis` partía en **~104 queries
+  semanales concurrentes** contra las vistas pesadas de `web_landing_daily`, ahogando Postgres →
+  `byCategory` saltaba a **26.8s** (vs 2.9s aislada) y `latestWebDate` a 18.8s. OJO: en el sandbox
+  cada query va sola y es rápida → el problema SOLO se ve en Vercel con todo junto; medir con la
+  instrumentación en el header, no desde el sandbox. Fixes (mismo patrón que Seguimiento): (1)
+  **YoY desde vistas MENSUALES** (`getWebMonthlyKpis`: `vw_drean_web_monthly` + `..._by_channel`,
+  2 queries) en vez de 24 meses diarios → mata las ~104 concurrentes; (2) **`getLatestWebDate` a la
+  tabla base** `web_landing_daily` (indexada) en vez de la vista; (3) **`byCategory` PRECALCULADA**:
+  el cron `web-cat-agg` ahora llena también `web_daily_by_category` (diario×categoría, año actual+
+  anterior, con pageviews+bounce — migración 0103), y `getWebByCategory` lee esa tabla al instante
+  (fallback a la vista si el rango no está). Al sacar byCategory + la contención, topProducts/
+  demographics/ecom cayeron solos. Techo actual = `getWebMonthlyKpis` ~2.8s (se puede precalcular si
+  hace falta). NO volver a traer 24 meses de datos diarios ni pegarle a las vistas `web_landing_daily`
+  para agregados históricos.
 - **Modelo:** el proyecto usa OpenAI (no Anthropic) para las features de IA existentes.
 - **Monitoreo (Routine "System health check") — auto-fix POR GITHUB, no por Vercel/Supabase:**
   la tarea programada corre en un entorno cuya **política de red bloquea el egress a
