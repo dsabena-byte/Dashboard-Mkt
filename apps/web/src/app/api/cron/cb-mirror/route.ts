@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCbRows } from "@/lib/cb-queries";
-import { getFloorShareRows, getAvailableWeeks, getTiendaClienteMap } from "@/lib/floor-share-queries";
+import { getFloorShareRows, getTiendaClienteMap } from "@/lib/floor-share-queries";
 import { computeFsView, type FsEnrichedRow } from "@/lib/fs-view";
 
 // Copia la data del proyecto CB (lento) a tablas mirror en el PRINCIPAL (rápido),
@@ -47,14 +47,17 @@ export async function GET(request: Request) {
     const url = env("NEXT_PUBLIC_SUPABASE_URL");
     const key = env("SUPABASE_SERVICE_ROLE_KEY");
 
-    // Lee del proyecto CB (lento) — acá sí, en background.
-    const { weeks } = await getAvailableWeeks();
-    const fsWeeks = weeks.slice(0, 30); // ~7 meses, cubre las 26 que usa el dash
-    const [cbRows, fsRows, tiendaCliente] = await Promise.all([
+    // Lee del proyecto CB (lento) — acá sí, en background. Trae TODO floor_share
+    // y deriva las semanas de los propios datos (NO de getAvailableWeeks, que
+    // devolvió vacío en el cron → la vista quedaba vacía).
+    const [cbRows, fsAll, tiendaCliente] = await Promise.all([
       getCbRows({}),
-      getFloorShareRows({ semanas: fsWeeks }),
+      getFloorShareRows({}),
       getTiendaClienteMap(),
     ]);
+    const allWeeks = [...new Set(fsAll.map((r) => r.semana).filter((x): x is number => x != null))].sort((a, b) => b - a);
+    const keepWeeks = new Set(allWeeks.slice(0, 30)); // mirror = últimas 30 sem
+    const fsRows = fsAll.filter((r) => r.semana != null && keepWeeks.has(r.semana));
 
     const tcRows = [...tiendaCliente.entries()].map(([numero_tienda, cliente]) => ({ numero_tienda, cliente }));
 
@@ -65,9 +68,9 @@ export async function GET(request: Request) {
     ]);
 
     // Precalcula la vista DEFAULT (últimas 26 sem, sin filtro) → fs_precomputed.
-    const defWeeks = weeks.slice(0, 26);
+    const defWeeks = new Set(allWeeks.slice(0, 26));
     const enriched: FsEnrichedRow[] = fsRows
-      .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null && defWeeks.includes(r.semana))
+      .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null && defWeeks.has(r.semana))
       .map((r) => ({ ...r, cliente: tiendaCliente.get(r.numero_tienda) ?? "Sin cliente" }));
     const view = computeFsView(enriched, {});
     const fsViewRes = await fetch(`${url}/rest/v1/fs_precomputed?on_conflict=id`, {
