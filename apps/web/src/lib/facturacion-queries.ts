@@ -18,7 +18,7 @@ const FACTURACION_FALLBACK: Record<string, number> = {
   "2026-03-01": 19299000,
   "2026-04-01": 23423000,
   "2026-05-01": 19767000,
-  // 2026-06 (junio) PENDIENTE — sin junio, T2 (May–Ago) no calcula Inv/Fact.
+  "2026-06-01": 18510000,
   "2026-07-01": 25377000,
   "2026-08-01": 18535000,
 };
