@@ -6,7 +6,6 @@ import { colorForBrand } from "@/lib/floor-share-colors";
 import {
   computeOverall,
   FS_OBJ_PCT,
-  getAvailableWeeks,
   shareByBrand,
   shareByCatBrand,
   shareByCliente,
@@ -19,7 +18,7 @@ import {
   type FloorShareRow,
 } from "@/lib/floor-share-queries";
 import { isoWeekToMes } from "@/lib/cb-queries";
-import { getFloorShareRowsFast, getTiendaClienteMapFast } from "@/lib/cb-mirror";
+import { getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast } from "@/lib/cb-mirror";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { NavTimer } from "@/components/nav-timer";
@@ -76,6 +75,7 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
 }
 
 async function renderFloorShare(searchParams: PageProps["searchParams"]) {
+  const t0 = Date.now(); // instrumentación temporal (server-timing en el header)
   const filter: FloorShareFilter = {
     meses: paramArr(searchParams, "meses"),
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
@@ -93,7 +93,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       let weeks_used: number[] = baseFilter.semanas ?? [];
       let weeks_debug = "filter-provided";
       if (!baseFilter.semanas || baseFilter.semanas.length === 0) {
-        const { weeks, debug } = await getAvailableWeeks();
+        const { weeks, debug } = await getAvailableWeeksFast();
         weeks_used = weeks.slice(0, 26);
         baseFilter.semanas = weeks_used;
         weeks_debug = debug;
@@ -112,6 +112,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     fetchRows(),
     getTiendaClienteMapFast(),
   ]);
+  const readMs = Date.now() - t0;
 
   // Filtramos rows con campos críticos null antes de cualquier aggregation.
   // Cualquier null en marca/categoria/numero_tienda rompía las agregaciones.
@@ -173,8 +174,10 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   // Share por categoría — agrupado para la tabla
   const cats = uniq(rows.map((r) => normalizeCategoria(r.categoria))).sort();
 
+  const aggMs = Date.now() - t0 - readMs;
   const hasData = rows.length > 0;
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
+  const serverMs = Date.now() - t0;
 
   // Objetivo general ponderado (Σ obj_cat × peso / Σ peso) para el card general.
   const genObj = (() => {
@@ -196,6 +199,9 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <LastUpdated date={lastUpdated} />
           <NavTimer path="/floor-share" />
+          <span className="font-mono text-[10px] text-muted-foreground/60" title="Cómputo server (no incluye cold start ni red)">
+            server {serverMs}ms (read {readMs} · agg {aggMs})
+          </span>
         </div>
       </header>
 

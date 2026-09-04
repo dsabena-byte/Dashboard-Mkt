@@ -56,6 +56,27 @@ export async function getFloorShareRowsFast(semanas: number[]): Promise<FloorSha
   return getFloorShareRows({ semanas }); // fallback
 }
 
+// Últimas 26 semanas con dato — desde el mirror (rápido) en vez del proyecto CB.
+export async function getAvailableWeeksFast(): Promise<{ weeks: number[]; debug: string }> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { weeks: [], debug: "no-env" };
+  try {
+    const res = await fetch(`${url}/rest/v1/floor_share_mirror?select=semana&order=semana.desc&limit=1`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store",
+    });
+    if (!res.ok) return { weeks: [], debug: `err ${res.status}` };
+    const rows = (await res.json()) as Array<{ semana: number | null }>;
+    const maxSem = rows[0]?.semana ?? null;
+    if (maxSem == null) return { weeks: [], debug: "no-max" };
+    const weeks: number[] = [];
+    for (let i = 0; i < 26 && maxSem - i > 0; i++) weeks.push(maxSem - i);
+    return { weeks, debug: `max=${maxSem}` };
+  } catch {
+    return { weeks: [], debug: "exception" };
+  }
+}
+
 export async function getTiendaClienteMapFast(): Promise<Map<string, string>> {
   const rows = await fetchAllPrincipal<{ numero_tienda: string; cliente: string }>(`cb_tienda_cliente_mirror?select=numero_tienda,cliente`);
   return new Map(rows.map((r) => [r.numero_tienda, r.cliente]));
