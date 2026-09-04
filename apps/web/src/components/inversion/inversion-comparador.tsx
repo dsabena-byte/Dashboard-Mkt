@@ -11,10 +11,9 @@ import {
 } from "recharts";
 import { ChartTooltip } from "@/components/chart-tooltip";
 import type { BgtRow } from "@/lib/bgt-queries";
-import { MESES_UP } from "@/lib/bgt-queries";
 import type { FacturacionRow } from "@/lib/facturacion-queries";
 import {
-  CUENTA_NUM, CLASIF_ORDER, clasifDe, MESES_CAP, mesesDePeriodo,
+  CUENTA_NUM, CLASIF_ORDER, clasifDe, MESES_CAP, MESES_UP, mesesDePeriodo,
   type Clasif, type Moneda, type Periodo,
 } from "@/lib/bgt-dashboard";
 

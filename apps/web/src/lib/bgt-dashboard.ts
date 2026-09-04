@@ -2,8 +2,23 @@
 // lógica de cuatrimestres (comparación fija Real vs BGT vigente) y agregaciones.
 // Portado del HTML estático bgt-mkt para reconstruirlo nativo en React.
 
+// OJO: este módulo lo importan un client component (inversion-comparador) Y el
+// server (funnel/page). NO importar nada runtime de módulos `server-only`
+// (bgt-queries). Solo tipos (se borran en compilación) + constantes/funciones puras.
 import type { BgtRow } from "./bgt-queries";
-import { MESES_UP, sumVersion } from "./bgt-queries";
+
+// Meses en MAYÚSCULA (igual que bgt-queries, duplicado acá para ser client-safe).
+export const MESES_UP = [
+  "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+];
+
+// Suma pura de una versión de presupuesto para un set de meses (UPPER). Pura →
+// client-safe (la de bgt-queries es igual pero vive en un módulo server-only).
+function sumVersion(rows: BgtRow[], version: string, meses: string[], field: "usd" | "ars" = "usd"): number {
+  const set = new Set(meses);
+  return rows.filter((r) => r.presupuesto === version && set.has(r.mes)).reduce((s, r) => s + r[field], 0);
+}
 
 // Número de cuenta por nombre (del plan de cuentas de Marketing).
 export const CUENTA_NUM: Record<string, string> = {
