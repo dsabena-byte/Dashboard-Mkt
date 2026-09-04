@@ -299,6 +299,19 @@ reporte_existencia/cb_homologos).
   el valor vive en Vercel (proyecto Dashboard-Mkt) + GitHub Actions secrets + el entorno
   programado, y deben coincidir. Config del environment: claude.ai/code → environment del Routine.
 
+## Assets de marketing
+- **Video demo 30s (`marketing/video-demo/`):** video de producto 16:9 sin personas que recorre el
+  ciclo del modelo estratégico (objetivos → KPIs y pesos → metas mensuales → seguimiento real vs
+  meta y GAPs → insights → optimización → recalibración anual), con cursor y escritura real en los
+  formularios. Cierre: "Learn what matters. Drive results." **NO es un screen recording:** es una
+  animación HTML determinística (`index.html` + `app.js`, todo el estado sale de `window.__seek(t)`)
+  que `render.mjs` captura frame a frame con Chromium y pipea a ffmpeg → reproducible al frame.
+  Salida versionada en `marketing/video-demo/export/demo-30s.mp4` (1920x1080, 30fps, ~2 MB).
+  Re-render: `cd marketing/video-demo && node render.mjs` (necesita playwright + ffmpeg con libx264;
+  fuente Inter para que los textos rendericen igual). El ritmo se ajusta moviendo los rangos de cada
+  `scene(...)`. Números ilustrativos (no salen de Supabase): para una versión con data real se
+  reemplazan `TOM_META`/`TOM_REAL`/`ALC_*` y la matriz `MX` en `app.js`. Detalle: su `README.md`.
+
 ## Punteros a docs/
 `docs/architecture.md`, `docs/crons-github-actions.md`, `docs/guia-replicacion-y-seguridad.md`,
 `docs/meta-fb-reach-deprecation.md`, **`docs/mercado-gfk-carga.md`** (carga mensual de mercado
