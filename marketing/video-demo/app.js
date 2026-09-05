@@ -44,7 +44,7 @@ function inUp(node, p, dist = 26) {
 /* ---------------------------- iconos ---------------------------- */
 const ICON = {
   star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.6 6.1 6.6.55-5 4.35 1.5 6.45L12 16.7l-5.7 3.35 1.5-6.45-5-4.35 6.6-.55z"/></svg>',
-  bag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>',
+  bag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5.6 8h12.8l-1 11.4a1.6 1.6 0 0 1-1.6 1.45H8.2a1.6 1.6 0 0 1-1.6-1.45z"/><path d="M8.7 8V6.6a3.3 3.3 0 0 1 6.6 0V8"/></svg>',
   bars: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4.4" height="9" rx="1.4"/><rect x="9.8" y="7" width="4.4" height="14" rx="1.4"/><rect x="16.6" y="3" width="4.4" height="18" rx="1.4"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
   plus: '<svg style="width:26px;height:26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
@@ -103,12 +103,16 @@ scene('s1', 0, 2.4, `
   <div class="hero-glow"></div>
   <svg id="ribbons" style="position:absolute;right:-60px;top:0;width:1250px;height:1080px" viewBox="0 0 1250 1080" fill="none">
     <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8B7BFF"/><stop offset=".55" stop-color="#5EC8FF"/><stop offset="1" stop-color="#7DF2DE"/>
+      <stop offset="0" stop-color="#0a4da0"/><stop offset=".55" stop-color="#12a6f4"/><stop offset="1" stop-color="#6fd3ff"/>
     </linearGradient></defs>
     <path class="rb" d="M-40 760 C 300 700, 380 300, 700 250 S 1150 300, 1290 150" stroke="url(#rg)" stroke-width="3.2" opacity=".95"/>
     <path class="rb" d="M-40 830 C 320 780, 420 380, 760 330 S 1180 380, 1290 240" stroke="url(#rg)" stroke-width="2.2" opacity=".62"/>
     <path class="rb" d="M-40 900 C 340 860, 470 470, 820 420 S 1200 470, 1290 340" stroke="url(#rg)" stroke-width="1.6" opacity=".38"/>
   </svg>
+  <div class="logo on-dark intro-logo" id="s1logo">
+    <div class="bip">BIP<span class="tri"></span></div>
+    <div class="tag">Business<br>Impact<br>Platform</div>
+  </div>
   <div class="hero-copy">
     <div class="eyebrow">Marketing Intelligence</div>
     <h1>De tu estrategia<br><span class="grad">a mejores resultados.</span></h1>
@@ -118,13 +122,15 @@ scene('s1', 0, 2.4, `
     const ribs = [...node.querySelectorAll('.rb')];
     ribs.forEach(r => { const L = r.getTotalLength(); r.style.strokeDasharray = L; r.dataset.len = L; });
     const copy = node.querySelector('.hero-copy');
+    const logo = node.querySelector('#s1logo');
     const parts = [node.querySelector('.eyebrow'), node.querySelector('h1'), node.querySelector('.hero-copy p')];
     return (lt, alpha) => {
       ribs.forEach((r, i) => {
         const p = eo(S(lt, .05 + i * .12, 1.5 + i * .12));
         r.style.strokeDashoffset = (1 - p) * r.dataset.len;
       });
-      parts.forEach((p, i) => inUp(p, eo(S(lt, .28 + i * .17, 1.05 + i * .17)), 30));
+      inUp(logo, eo(S(lt, .05, .62)), 20);
+      parts.forEach((p, i) => inUp(p, eo(S(lt, .34 + i * .17, 1.1 + i * .17)), 30));
       copy.style.transform = `translateY(${lerp(10, 0, eo(S(lt, .2, 1.6)))}px)`;
     };
   });
@@ -134,8 +140,8 @@ scene('s1', 0, 2.4, `
    Cursor real: abre el modal, escribe el nombre, guarda. x3. Luego pesos.
    ========================================================================= */
 const OBJ = [
-  { nm: 'Top of Mind', ic: ICON.star, cls: 't-pri', bar: '#6C5CE7', peso: 40 },
-  { nm: 'Intención de Compra', ic: ICON.bag, cls: 't-grn', bar: '#16A34A', peso: 30 },
+  { nm: 'Top of Mind', ic: ICON.star, cls: 't-pri', bar: '#0a4da0', peso: 40 },
+  { nm: 'Intención de Compra', ic: ICON.bag, cls: 't-grn', bar: '#0a7fce', peso: 30 },
   { nm: 'Facturación', ic: ICON.bars, cls: 't-amb', bar: '#D97706', peso: 30 }
 ];
 scene('s2', 2.4, 9.4, `
@@ -314,9 +320,9 @@ scene('s4', 14.0, 19.2, `
   </div>
   <div class="card" id="s4c" style="left:660px;top:880px;width:600px;padding:26px 30px;display:flex;align-items:center;gap:18px">
     <div class="tile t-amb">${ICON.bars}</div>
-    <div style="flex:1"><div style="font-size:19px;color:#64748B;font-weight:600">Facturación · meta Jun</div>
-    <div style="font-size:31px;font-weight:700;letter-spacing:-.01em">$ 120.000.000</div></div>
-    <div class="unit">ARS</div>
+    <div style="flex:1"><div style="font-size:19px;color:#64748B;font-weight:600">Facturación · meta anual</div>
+    <div style="font-size:31px;font-weight:700;letter-spacing:-.01em">US$ 15,5M</div></div>
+    <div class="unit">USD</div>
   </div>`,
   (node) => {
     const A = node.querySelector('#s4a'), B = node.querySelector('#s4b'), C = node.querySelector('#s4c');
@@ -368,7 +374,7 @@ scene('s4', 14.0, 19.2, `
    ========================================================================= */
 scene('s5', 19.2, 20.3, `
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-    <div class="ok-circle" id="s5r"><span id="s5k" style="color:#6C5CE7;display:flex">
+    <div class="ok-circle" id="s5r"><span id="s5k" style="color:#0a4da0;display:flex">
       <svg viewBox="0 0 24 24" width="74" height="74" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path id="s5p" d="M20 6L9 17l-5-5"/></svg></span></div>
     <h2 id="s5t" style="margin-top:44px;font-size:64px;font-weight:700;letter-spacing:-.024em">Tu modelo está listo</h2>
     <p id="s5s" style="margin-top:20px;font-size:28px;color:#64748B;font-weight:500">3 objetivos · 5 KPIs · 12 meses de metas</p>
@@ -398,33 +404,33 @@ const ALC_REAL = [1.92, 2.08, 2.22, 2.35, 2.41, 2.52, 2.55, 2.48, 2.60];
 const RES = [
   { nm: 'Top of Mind', ic: ICON.star, cls: 't-pri', a: '29,6', b: '31,4', g: '-5,8%' },
   { nm: 'Intención de Compra', ic: ICON.bag, cls: 't-grn', a: '15,2', b: '18,0', g: '-15,6%' },
-  { nm: 'Facturación', ic: ICON.bars, cls: 't-amb', a: '$98M', b: '$120M', g: '-18,3%' }
+  { nm: 'Facturación', ic: ICON.bars, cls: 't-amb', a: 'US$ 14,4M', b: 'US$ 15,5M', g: '-7,1%' }
 ];
 scene('s6', 20.3, 25.1, `
   <div class="top-b"><h2>Seguimiento mensual</h2><div class="mpill" id="s6m">Ene 2026</div></div>
   <div class="card" id="s6a" style="left:132px;top:196px;width:800px;height:474px">
     <div class="card-h" style="padding-bottom:6px"><h3 style="display:flex;align-items:center;gap:14px"><span class="tile t-pri" style="width:40px;height:40px;border-radius:12px">${ICON.star}</span>Top of Mind</h3></div>
     <div class="kpi-head"><div class="kh"><div class="kl">Meta</div><div class="kv" id="s6am">28,0</div></div>
-      <div class="kh"><div class="kl">Actual</div><div class="kv" id="s6ar" style="color:#1E40AF">27,4</div></div>
+      <div class="kh"><div class="kl">Actual</div><div class="kv" id="s6ar" style="color:#0a4da0">27,4</div></div>
       <div class="gap" id="s6ag">-5,8%</div></div>
     <svg id="s6svg" viewBox="0 0 730 250" style="width:730px;height:250px;margin:6px 35px 0">
       <g id="s6grid"></g>
       <path id="s6meta" fill="none" stroke="#94A3B8" stroke-width="3" stroke-dasharray="8 7" stroke-linecap="round"/>
-      <path id="s6real" fill="none" stroke="#1E40AF" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
-      <circle id="s6dot" r="8" fill="#1E40AF" stroke="#fff" stroke-width="3.5" opacity="0"/>
+      <path id="s6real" fill="none" stroke="#0a4da0" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle id="s6dot" r="8" fill="#0a4da0" stroke="#fff" stroke-width="3.5" opacity="0"/>
       <g id="s6lab"></g>
     </svg>
-    <div class="legend" style="margin-top:4px"><span><i style="background:#1E40AF"></i>Real</span><span><i style="background:#94A3B8"></i>Meta</span></div>
+    <div class="legend" style="margin-top:4px"><span><i style="background:#0a4da0"></i>Real</span><span><i style="background:#94A3B8"></i>Meta</span></div>
   </div>
   <div class="card" id="s6b" style="left:988px;top:196px;width:800px;height:474px">
-    <div class="card-h" style="padding-bottom:6px"><h3 style="display:flex;align-items:center;gap:14px"><span style="width:14px;height:14px;border-radius:5px;background:#1E40AF;display:inline-block"></span>Alcance único <span style="font-size:20px;color:#94A3B8;font-weight:500">(personas)</span></h3></div>
+    <div class="card-h" style="padding-bottom:6px"><h3 style="display:flex;align-items:center;gap:14px"><span style="width:14px;height:14px;border-radius:5px;background:#0a4da0;display:inline-block"></span>Alcance único <span style="font-size:20px;color:#94A3B8;font-weight:500">(personas)</span></h3></div>
     <div class="kpi-head"><div class="kh"><div class="kl">Meta</div><div class="kv" id="s6bm">2,1M</div></div>
-      <div class="kh"><div class="kl">Actual</div><div class="kv" id="s6br" style="color:#1E40AF">1,9M</div></div>
+      <div class="kh"><div class="kl">Actual</div><div class="kv" id="s6br" style="color:#0a4da0">1,9M</div></div>
       <div class="gap" id="s6bg">-10%</div></div>
     <svg id="s6svg2" viewBox="0 0 730 250" style="width:730px;height:250px;margin:6px 35px 0">
       <g id="s6grid2"></g><g id="s6bars"></g><g id="s6lab2"></g>
     </svg>
-    <div class="legend" style="margin-top:4px"><span><i style="background:#1E40AF"></i>Real</span><span><i style="background:#CBD5E1"></i>Meta</span></div>
+    <div class="legend" style="margin-top:4px"><span><i style="background:#0a4da0"></i>Real</span><span><i style="background:#CBD5E1"></i>Meta</span></div>
   </div>
   ${RES.map((r, i) => `<div class="sum-card" data-s="${i}" style="left:${180 + i * 530}px;top:700px;width:500px">
       <div class="nm"><span class="tile ${r.cls}" style="width:36px;height:36px;border-radius:11px">${r.ic}</span>${r.nm}<span class="gpill">${r.g}</span></div>
@@ -452,7 +458,7 @@ scene('s6', 20.3, 25.1, `
     });
     const bars = node.querySelector('#s6bars');
     M9.forEach((m, i) => bars.insertAdjacentHTML('beforeend',
-      `<rect data-m="${i}" x="${XS(i) - 30}" width="26" rx="6" fill="#CBD5E1"/><rect data-r="${i}" x="${XS(i) + 4}" width="26" rx="6" fill="#1E40AF"/>`));
+      `<rect data-m="${i}" x="${XS(i) - 30}" width="26" rx="6" fill="#CBD5E1"/><rect data-r="${i}" x="${XS(i) + 4}" width="26" rx="6" fill="#0a4da0"/>`));
     const bm = [...node.querySelectorAll('[data-m]')], br = [...node.querySelectorAll('[data-r]')];
     const pMeta = node.querySelector('#s6meta'), pReal = node.querySelector('#s6real'), dot = node.querySelector('#s6dot');
     const cards = [...node.querySelectorAll('.sum-card')];
@@ -508,7 +514,7 @@ scene('s6', 20.3, 25.1, `
 const INS = [
   { i: '↑', bg: '#DCFCE7', c: '#16A34A', t: 'El <b>VTR</b> es el KPI de mayor correlación con Top of Mind.' },
   { i: '!', bg: '#FEF3C7', c: '#D97706', t: 'Top of Mind viene <b>5,8% debajo</b> de su meta anual.' },
-  { i: '◆', bg: '#EDE9FF', c: '#6C5CE7', t: 'Social Media es el mayor driver de <b>Intención de Compra</b>.' }
+  { i: '◆', bg: '#eaf1fb', c: '#0a4da0', t: 'Social Media es el mayor driver de <b>Intención de Compra</b>.' }
 ];
 scene('s7', 25.1, 26.9, `
   <div class="lead" style="top:330px">
@@ -545,7 +551,7 @@ scene('s8', 26.9, 28.9, `
   <div class="card" id="s8a" style="left:132px;top:216px;width:800px;padding-bottom:30px">
     <div class="card-h"><h3>Reasignación de inversión</h3><div class="sub">próximo ciclo</div></div>
     ${MEDIOS.map((m, i) => `<div class="opt-row"><div class="nm">${m.nm}</div>
-      <div class="track" style="height:14px"><i data-b="${i}" style="background:${m.d[0] === '+' ? '#1E40AF' : '#CBD5E1'}"></i></div>
+      <div class="track" style="height:14px"><i data-b="${i}" style="background:${m.d[0] === '+' ? '#0a4da0' : '#CBD5E1'}"></i></div>
       <div class="pct" data-p="${i}">0%</div>
       <div class="delta ${m.d[0] === '+' ? 'd-up' : 'd-dn'}" data-d="${i}">${m.d} pts</div></div>`).join('')}
   </div>
@@ -554,7 +560,7 @@ scene('s8', 26.9, 28.9, `
     <div style="position:relative;width:800px;height:376px">
       <svg viewBox="0 0 380 380" style="position:absolute;left:210px;top:0;width:380px;height:380px">
         <circle cx="190" cy="190" r="118" fill="none" stroke="#EEF1F7" stroke-width="15"/>
-        <circle id="s8arc" cx="190" cy="190" r="118" fill="none" stroke="#6C5CE7" stroke-width="15"
+        <circle id="s8arc" cx="190" cy="190" r="118" fill="none" stroke="#0a4da0" stroke-width="15"
                 stroke-linecap="round" transform="rotate(-90 190 190)"/>
       </svg>
       <div class="cyc-mid" style="left:400px;top:190px"><b>4 ciclos</b><span>al año</span></div>
@@ -598,10 +604,15 @@ scene('s9', 28.9, 30.0, `
   <div class="out-wrap"></div>
   <div class="out-copy">
     <h1 id="s9a">Learn what matters.</h1>
-    <h1 id="s9b" style="background:linear-gradient(92deg,#6C5CE7,#3B82F6 70%,#0EA5E9);-webkit-background-clip:text;background-clip:text;color:transparent">Drive results.</h1>
+    <h1 id="s9b" style="background:linear-gradient(92deg,#0a4da0,#12a6f4 65%,#5bc8fb);-webkit-background-clip:text;background-clip:text;color:transparent">Drive results.</h1>
     <div class="cta" id="s9c">Comenzar ahora →</div>
   </div>
-  <div class="out-foot" id="s9f">Dashboard de Marketing</div>`,
+  <div class="out-foot" id="s9f">
+    <div class="logo">
+      <div class="bip">BIP<span class="tri"></span></div>
+      <div class="tag">Business<br>Impact<br>Platform</div>
+    </div>
+  </div>`,
   (node) => {
     const a = node.querySelector('#s9a'), b = node.querySelector('#s9b'), c = node.querySelector('#s9c'), f = node.querySelector('#s9f');
     return (lt, alpha) => {
