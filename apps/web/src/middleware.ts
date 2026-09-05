@@ -6,7 +6,8 @@ import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
 const PUBLIC_PATHS = ["/login"];
 
 // Rutas que tienen su propia auth (no aplicar middleware)
-const BYPASS_PATHS = ["/api/cron"];
+// "/bip" = landing comercial pública (public/bip.html + public/bip/*), sin login.
+const BYPASS_PATHS = ["/api/cron", "/bip"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
