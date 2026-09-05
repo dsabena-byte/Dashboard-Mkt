@@ -1,10 +1,23 @@
-# Video demo · 50 s · 16:9
+# Video demo · 50 s · 16:9 · marca BIP
 
 Video de producto (sin personas) que recorre el ciclo completo del modelo estratégico:
 **objetivos → KPIs → pesos → metas mensuales → seguimiento real vs meta → insights →
 optimización → recalibración anual**, mostrando el cursor y la escritura real en los formularios.
 
 Cierre: **“Learn what matters. Drive results.”**
+
+## Identidad (BIP)
+
+Rebrandeado a **BIP · Business Impact Platform** para combinar con el sitio comercial:
+- **Paleta:** navy `#0a4da0` (estructura, botones, línea real de gráficos) + cyan `#12a6f4`
+  (acento: triángulo del logo, badges PASO, gradientes); meta en gris pizarra
+  `#94A3B8`/`#CBD5E1`; **verde/ámbar/rojo solo semáforo**. Fondo blanco/azulado, cards blancas.
+- **Tipografía:** títulos en **Poppins** (600/700/800), cuerpo en **Inter** — ambas **embebidas en
+  base64** dentro de `index.html` (`@font-face`), para que el render sea offline y consistente sin
+  depender de fuentes del sistema ni de red.
+- **Logo:** wordmark en HTML/CSS (`BIP ▸` + `BUSINESS / IMPACT / PLATFORM`), no imagen — aparece en
+  el intro (arriba-izq, sobre navy) y en el cierre (centrado). Clase `.logo` (+ `.on-dark`).
+- **Facturación en USD** (objetivo): metas y seguimiento en `US$` (ej meta anual `US$ 15,5M`).
 
 ## Salida
 
@@ -27,8 +40,13 @@ node render.mjs --stills 5.5,22,28.4     # PNGs sueltos en export/stills para re
 
 Requisitos: `playwright` (Chromium) y `ffmpeg` con `libx264`. En un entorno limpio:
 `npm i -g playwright && npx playwright install chromium && apt-get install -y ffmpeg`.
-Para que los textos rendericen igual conviene tener la familia **Inter** instalada
-(`apt-get install -y fonts-inter fonts-inter-variable`); si falta, cae al sans del sistema.
+Las fuentes (Poppins + Inter) van **embebidas** en `index.html`, así que el render no depende de
+fuentes del sistema.
+
+> **Sandbox sin ffmpeg full:** el ffmpeg que trae Playwright NO tiene `libx264` (solo VP8/webm).
+> Para el `.mp4` H.264, traer uno con libx264 desde PyPI:
+> `pip install imageio-ffmpeg` → `ln -sf $(python3 -c "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())") ~/bin/ffmpeg` y `export PATH=$HOME/bin:$PATH`.
+> Para revisar sin encodear: `node render.mjs --stills a,b,c` genera PNGs (no usa ffmpeg).
 
 ## Archivos
 
@@ -61,8 +79,8 @@ ritmo relativo entre escenas se mantiene. Para reacomodar una escena en particul
 
 ## Convenciones respetadas
 
-- **Color:** real en azul `#1E40AF`, meta en gris pizarra `#CBD5E1`/`#94A3B8`;
-  verde/rojo **solo** como semáforo (GAP, totales OK), nunca decorativo.
+- **Color:** real en navy `#0a4da0`, meta en gris pizarra `#CBD5E1`/`#94A3B8`;
+  verde/rojo **solo** como semáforo (GAP, totales OK), nunca decorativo. Acento cyan `#12a6f4`.
 - **Modelo:** la suma de aportes inbound por objetivo se capa en **100%**, igual que el
   editor del Mapa Estratégico.
 - Los números son ilustrativos (no salen de Supabase); si se quiere una versión con datos
