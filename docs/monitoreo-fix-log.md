@@ -6,6 +6,92 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-09-05 · BGT Inversión — "sin actualizar hace 56h" (fuente SharePoint estancada, no es el cron)
+
+- **Alarma:** Issue #632, reabierto/actualizado 3 veces (38h → 42h → 50h → 56h)
+  entre el 4/9 16:22 UTC y el 5/9 10:37 UTC: `BGT Inversión` (GitHub Action) sin
+  actualizar, esperado cada 12h.
+- **Chequeo de rutina (Routine "System health check"):** este entorno solo llega a
+  GitHub (Vercel/Supabase dan 403 en la policy de red). Diagnóstico 100% por
+  GitHub Actions + repos públicos, sin tocar Supabase.
+- **Diagnóstico — NO es un cron caído, es la fuente de origen (SharePoint) sin
+  cambios:**
+  1. `bgt-sync.yml` (este repo, cada 12h) viene corriendo en **success** sin
+     cortes: runs de 05/9 01:57, 04/9 15:24, 04/9 01:56, 03/9 15:27, 03/9 02:00 —
+     todos HTTP 200 / `ok:true`.
+  2. `apps/web/src/app/api/cron/bgt-sync/route.ts` estampa `updated_at` con el
+     `syncedAt` **real de la fuente** (`data.json`), no con "ahora" — a propósito
+     (comentario en el código), para que el Monitoreo mida frescura de dato real
+     y no de ejecución del cron.
+  3. Se leyó `data.json` de `github.com/dsabena-byte/Dashboard-BGT` (repo público
+     que alimenta el cron): `syncedAt = 2026-09-03T02:47:43Z` → coincide con las
+     ~56h de desvío que reporta el watchdog. O sea el cron de este repo SÍ está
+     leyendo y upsertenado la fuente en cada corrida, pero la fuente no cambió.
+  4. Ese repo tiene su propio workflow (`sync-sharepoint.yml`, cada 6h) que baja
+     el Excel de SharePoint y **solo commitea `data.json` si hay diff** — si el
+     presupuesto no cambió en SharePoint, no hay commit ni bump de `syncedAt`,
+     aunque el workflow corra bien. No hay forma de ver el estado de esos runs
+     desde acá (repo ajeno, sin API/push attachment) — solo se pudo clonar en
+     modo lectura y leer el workflow/script.
+  5. Encaja con la nota ya existente en `CLAUDE.md` ("BGT ... presupuesto, cambia
+     lento") — el umbral de 12h del watchdog es más agresivo que la cadencia real
+     con la que se edita el Excel de SharePoint.
+- **Acción tomada:** ninguna en código — no hay bug que arreglar, ni un Action en
+  rojo para re-disparar (ambos cronjobs, el de este repo y el de `Dashboard-BGT`,
+  están sanos). No se re-disparó nada.
+- **Pendiente (manual):** confirmar del lado de quien carga el Excel de
+  SharePoint que el presupuesto de septiembre esté cargado ahí (si ya lo está y
+  el sync sigue sin verlo, ahí sí habría que mirar `sync-sharepoint.yml` en
+  `Dashboard-BGT` con acceso de escritura). Si el dato es correcto y solo tardó en
+  cambiar, no hace falta acción — pero vale evaluar subir el umbral de frescura
+  de BGT en `monitoreo-config.ts` (hoy 12h) a algo más realista para no generar
+  ruido en cada fin de semana sin cambios de presupuesto.
+
+---
+
+## 2026-09-05 · BGT Inversión — "sin actualizar hace 56h" (fuente SharePoint estancada, no es el cron)
+
+- **Alarma:** Issue #632, reabierto/actualizado 3 veces (38h → 42h → 50h → 56h)
+  entre el 4/9 16:22 UTC y el 5/9 10:37 UTC: `BGT Inversión` (GitHub Action) sin
+  actualizar, esperado cada 12h.
+- **Chequeo de rutina (Routine "System health check"):** este entorno solo llega a
+  GitHub (Vercel/Supabase dan 403 en la policy de red). Diagnóstico 100% por
+  GitHub Actions + repos públicos, sin tocar Supabase.
+- **Diagnóstico — NO es un cron caído, es la fuente de origen (SharePoint) sin
+  cambios:**
+  1. `bgt-sync.yml` (este repo, cada 12h) viene corriendo en **success** sin
+     cortes: runs de 05/9 01:57, 04/9 15:24, 04/9 01:56, 03/9 15:27, 03/9 02:00 —
+     todos HTTP 200 / `ok:true`.
+  2. `apps/web/src/app/api/cron/bgt-sync/route.ts` estampa `updated_at` con el
+     `syncedAt` **real de la fuente** (`data.json`), no con "ahora" — a propósito
+     (comentario en el código), para que el Monitoreo mida frescura de dato real
+     y no de ejecución del cron.
+  3. Se leyó `data.json` de `github.com/dsabena-byte/Dashboard-BGT` (repo público
+     que alimenta el cron): `syncedAt = 2026-09-03T02:47:43Z` → coincide con las
+     ~56h de desvío que reporta el watchdog. O sea el cron de este repo SÍ está
+     leyendo y upsertenado la fuente en cada corrida, pero la fuente no cambió.
+  4. Ese repo tiene su propio workflow (`sync-sharepoint.yml`, cada 6h) que baja
+     el Excel de SharePoint y **solo commitea `data.json` si hay diff** — si el
+     presupuesto no cambió en SharePoint, no hay commit ni bump de `syncedAt`,
+     aunque el workflow corra bien. No hay forma de ver el estado de esos runs
+     desde acá (repo ajeno, sin API/push attachment) — solo se pudo clonar en
+     modo lectura y leer el workflow/script.
+  5. Encaja con la nota ya existente en `CLAUDE.md` ("BGT ... presupuesto, cambia
+     lento") — el umbral de 12h del watchdog es más agresivo que la cadencia real
+     con la que se edita el Excel de SharePoint.
+- **Acción tomada:** ninguna en código — no hay bug que arreglar, ni un Action en
+  rojo para re-disparar (ambos cronjobs, el de este repo y el de `Dashboard-BGT`,
+  están sanos). No se re-disparó nada.
+- **Pendiente (manual):** confirmar del lado de quien carga el Excel de
+  SharePoint que el presupuesto de septiembre esté cargado ahí (si ya lo está y
+  el sync sigue sin verlo, ahí sí habría que mirar `sync-sharepoint.yml` en
+  `Dashboard-BGT` con acceso de escritura). Si el dato es correcto y solo tardó en
+  cambiar, no hace falta acción — pero vale evaluar subir el umbral de frescura
+  de BGT en `monitoreo-config.ts` (hoy 12h) a algo más realista para no generar
+  ruido en cada fin de semana sin cambios de presupuesto.
+
+---
+
 ## 2026-08-24 · SEO · Posición (SERP matrix) e Índice — "atrasado" persistente por cadencia desactualizada
 
 - **Chequeo de rutina:** corrida automática del monitoreo (24/8). Esta sesión (entorno
