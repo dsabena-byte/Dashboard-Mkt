@@ -241,9 +241,19 @@
   .pr .cur{font-family:"Poppins"; font-weight:700; font-size:15px; color:var(--navy)}
   .pr .mo{font-family:"Poppins"; font-weight:800; font-size:38px; letter-spacing:-.03em; color:var(--navy); line-height:1}
   .pr .per{font-size:14px; color:var(--muted); font-weight:600}
-  .terms{font-size:11.5px; color:var(--muted); line-height:1.5}
-  .terms b{color:var(--good); font-weight:700}
-  .terms span{color:var(--faint)}
+  .mod{font-size:12.5px; color:var(--muted); margin-top:2px}
+  .mod b{color:var(--ink); font-weight:700}
+  .setup-row{margin-top:6px; background:var(--ground-2); border:1px solid var(--line-2); border-radius:10px; padding:12px 14px}
+  .sr-top{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+  .sr-k{font-size:12px; color:var(--muted); font-weight:600}
+  .sr-p{font-family:"Poppins"; font-weight:800; font-size:20px; letter-spacing:-.02em; color:var(--navy); white-space:nowrap}
+  .sr-promo{margin-top:6px; font-size:12px; font-weight:700; color:var(--good); display:flex; align-items:center; gap:6px}
+  .iacap{margin-top:2px; border:1px solid color-mix(in srgb,var(--cyan) 38%,transparent); background:linear-gradient(135deg, var(--cyan-soft), var(--navy-soft)); border-radius:11px; padding:13px 15px}
+  .iacap-h{display:flex; align-items:center; gap:8px; font-family:"Poppins"; font-weight:800; font-size:13px; color:var(--navy); margin-bottom:10px}
+  .iatag{margin-left:auto; font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#fff; background:var(--cyan-ink); padding:2px 8px; border-radius:5px}
+  .iacap-i{display:flex; gap:8px; font-size:13px; font-weight:600; color:var(--ink); line-height:1.35}
+  .iacap-i + .iacap-i{margin-top:7px}
+  .iacap-i::before{content:"\2726"; color:var(--cyan-ink); flex:none}
   .spec .sp2{font-family:"Poppins"; font-weight:600; font-size:12px; color:var(--muted); margin-left:auto}
   .addons-sec .addgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:40px}
   @media(max-width:820px){.addons-sec .addgrid{grid-template-columns:1fr; max-width:440px; margin-inline:auto}}
@@ -251,6 +261,7 @@
   .addc .an{font-family:"Poppins"; font-weight:700; font-size:15px; color:var(--navy)}
   .addc .ad{font-size:12.5px; color:var(--muted); margin:6px 0 12px; line-height:1.45}
   .addc .ap{font-family:"Poppins"; font-weight:700; font-size:13.5px; color:var(--cyan-ink)}
+  .addc .aq{font-size:12px; color:var(--ink); font-weight:600; margin-bottom:9px}
   details.compare{margin-top:30px; border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden}
   details.compare>summary{cursor:pointer; list-style:none; padding:17px 20px; font-family:"Poppins"; font-weight:600; font-size:15px; color:var(--navy); display:flex; align-items:center; gap:10px}
   details.compare>summary::-webkit-details-marker{display:none}
@@ -619,10 +630,10 @@
     </div>
     <div class="addgrid">
       <div class="addc"><div class="an">Mediciones de mercado</div><div class="ad">Top of Mind · Share of Mind · Intención de Compra · Funnel</div><div class="ap">1 = USD 2.500 · 2 = USD 4.500 · 3 = USD 6.000</div></div>
-      <div class="addc"><div class="an">Generación de contenidos</div><div class="ad">Imágenes con brand book, videos, piezas RRSS, UGC + calendario</div><div class="ap">desde USD 490 / mes</div></div>
-      <div class="addc"><div class="an">Marca adicional</div><div class="ad">Replicación completa de dashboards + clasificación automática</div><div class="ap">set-up desde USD 1.900 + USD 350 / mes</div></div>
+      <div class="addc"><div class="an">Generación de contenidos</div><div class="ad">Imágenes con brand book · videos de producto · piezas RRSS · videos cortos UGC · gestor de publicación y calendario en Instagram y Facebook.</div><div class="aq">Pack base: 20 imágenes + 6 videos / mes</div><div class="ap">desde USD 490 / mes · escala según volumen (FAI)</div></div>
+      <div class="addc"><div class="an">Marca adicional</div><div class="ad">Replicación completa de dashboards + clasificación automática</div><div class="ap">set-up desde USD 600 + USD 350 / mes</div></div>
       <div class="addc"><div class="an">Categoría adicional</div><div class="ad">Sobre la marca ya configurada</div><div class="ap">USD 150 / mes</div></div>
-      <div class="addc"><div class="an">Usuario adicional</div><div class="ad">Sumá integrantes del equipo</div><div class="ap">USD 75 / mes</div></div>
+      <div class="addc"><div class="an">Usuario adicional</div><div class="ad">Sumá integrantes del equipo</div><div class="ap">USD 50 / mes</div></div>
       <div class="addc"><div class="an">Hora de asesoramiento extra</div><div class="ad">Además de las horas incluidas en tu plan</div><div class="ap">USD 110</div></div>
     </div>
   </div>
@@ -756,22 +767,25 @@ const MODULES = [
   ['Optimización SEO',0,1,1],
   ['Trade · Surtido + Floor Share',0,1,1],
   ['Asesoramiento Online',0,'4 hs/mes','8 hs/mes'],
-  ['Preguntá a tus datos con IA',0,0,1],
-  ['Insights automáticos por dashboard',0,0,1],
+  ['Preguntá a tus datos con IA',0,0,1,'ia'],
+  ['Insights automáticos por dashboard',0,0,1,'ia'],
 ];
 const idx = {insight:1,optimize:2,accelerate:3};
 const has = v => v===1 || v==='adv' || typeof v==='string';
 document.getElementById('tiers').innerHTML = PLANS.map(p => {
   const c = idx[p.key];
-  const mods = MODULES.filter(m=>has(m[c])).map(m=>{
+  const mods = MODULES.filter(m=>has(m[c]) && !m[4]).map(m=>{
     let chip=''; if(m[c]==='adv') chip=` <span class="plus">+ Competencia</span>`; else if(typeof m[c]==='string') chip=` <span class="valc">${m[c]}</span>`;
     return `<li>${CHECK}<span>${m[0]}${chip}</span></li>`;
   }).join('');
+  const iaMods = MODULES.filter(m=>has(m[c]) && m[4]==='ia');
+  const iaBlock = iaMods.length ? `<div class="iacap"><div class="iacap-h"><span>Capa de inteligencia</span><span class="iatag">Solo Accelerate</span></div>${iaMods.map(m=>`<div class="iacap-i">${m[0]}</div>`).join('')}</div>` : '';
   return `<article class="card"><div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
     <div class="pr"><span class="cur">USD</span><span class="mo">${p.price}</span><span class="per">/ mes</span></div>
-    <div class="terms">Contratación 6 o 12 meses · <b>set-up sin cargo a 12 meses</b><br><span>6 meses: + set-up USD ${p.setup}</span></div>
+    <div class="mod">Contratación: <b>6 o 12 meses</b></div>
+    <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 12 meses</div></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
-    <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>
+    <p class="pitch">${p.pitch}</p>${iaBlock}<div class="inc">Incluye</div><ul class="mods2">${mods}</ul>
     <a class="pcta" href="#demo">Empezar con ${p.name}</a></article>`;
 }).join('');
 
@@ -822,10 +836,10 @@ form.addEventListener('submit', e => {
 (function(){
   const SEM={g:'#16a34a',a:'#d97706',r:'#dc2626'};
   const OBJ=[
-    {n:'TOM',c:'#a855f7',cumpl:88,res:'31.4',meta:'33.0',ytd:94,kpis:[['Alcance único','30','96','g'],['Impresiones','24','88','g'],['VTR (≥50%)','18','79','a']]},
-    {n:'SOM',c:'#16a34a',cumpl:84,res:'58.5',meta:'62.0',ytd:91,kpis:[['Engagement','28','92','g'],['Alcance orgánico','22','85','g'],['Frecuencia','16','74','a']]},
-    {n:'Intención de Compra',c:'#f59e0b',cumpl:82,res:'34.1',meta:'36.0',ytd:90,kpis:[['Clicks','26','90','g'],['Tráfico web (usuarios)','24','83','g'],['Tasa de conversión','20','76','a']]},
-    {n:'Facturación',c:'#3b82f6',cumpl:86,res:'US$ 14.4M',meta:'US$ 15.5M',ytd:93,kpis:[['Tasa de conversión','28','89','g'],['Floor Share','24','94','g'],['Clicks','18','81','g']]},
+    {n:'TOM',c:'#a855f7',cumpl:91,res:'31.4',meta:'33.0',ytd:95,kpis:[['Alcance único','30','96','g'],['Impresiones','24','92','g'],['VTR (≥50%)','18','88','g']]},
+    {n:'SOM',c:'#16a34a',cumpl:89,res:'58.5',meta:'62.0',ytd:93,kpis:[['Engagement','28','94','g'],['Alcance orgánico','22','90','g'],['Frecuencia','16','86','g']]},
+    {n:'Intención de Compra',c:'#f59e0b',cumpl:88,res:'34.1',meta:'36.0',ytd:92,kpis:[['Clicks','26','93','g'],['Tráfico web (usuarios)','24','89','g'],['Tasa de conversión','20','86','g']]},
+    {n:'Facturación',c:'#3b82f6',cumpl:90,res:'US$ 14.4M',meta:'US$ 15.5M',ytd:94,kpis:[['Tasa de conversión','28','92','g'],['Floor Share','24','95','g'],['Clicks','18','88','g']]},
   ];
   const cards=OBJ.map(o=>`<div class="ocard">
     <div class="ohead"><span class="odot" style="background:${o.c}"></span><span class="oname">${o.n}</span><span class="oc"><b>${o.cumpl}%</b><small>Cumpl. mes</small></span></div>
@@ -847,11 +861,11 @@ form.addEventListener('submit', e => {
   }
   const META=[10,14,17,19,18,15,11];
   const ROWS=[
-    {k:'Alcance único',s:'Personas alcanzadas',mr:'26.0M',mm:'25.0M',md:['up','▲ 4%'],yr:'230.5M',ym:'229.0M',yd:['up','▲ 1%'],rl:[12,8,15,10,18,13,9]},
-    {k:'Frecuencia',s:'Impresiones ÷ alcance',mr:'2.0×',mm:'3.4×',md:['dn','▼ 41%'],yr:'2.5×',ym:'2.7×',yd:['mid','▼ 8%'],rl:[9,14,7,16,11,13,8]},
-    {k:'Impresiones',s:'Impresiones totales',mr:'52.0M',mm:'200.0M',md:['dn','▼ 74%'],yr:'599.1M',ym:'750.0M',yd:['dn','▼ 20%'],rl:[8,13,9,17,12,10,7]},
-    {k:'VTR (≥50%)',s:'Vistas 50% ÷ impr. de video',mr:'30.62%',mm:'30.00%',md:['up','▲ 2%'],yr:'21.39%',ym:'21.20%',yd:['up','▲ 1%'],rl:[7,11,9,14,10,16,13]},
-    {k:'Clicks',s:'Clicks totales',mr:'431K',mm:'1.7M',md:['dn','▼ 75%'],yr:'4.3M',ym:'5.6M',yd:['dn','▼ 23%'],rl:[11,7,13,9,15,10,6]},
+    {k:'Alcance único',s:'Personas alcanzadas',mr:'26.0M',mm:'25.0M',md:['up','▲ 4%'],yr:'236.0M',ym:'229.0M',yd:['up','▲ 3%'],rl:[11,15,17,20,18,16,19]},
+    {k:'Frecuencia',s:'Impresiones ÷ alcance',mr:'3.5×',mm:'3.4×',md:['up','▲ 3%'],yr:'2.8×',ym:'2.7×',yd:['up','▲ 4%'],rl:[12,14,16,18,17,19,20]},
+    {k:'Impresiones',s:'Impresiones totales',mr:'212.0M',mm:'200.0M',md:['up','▲ 6%'],yr:'780.0M',ym:'750.0M',yd:['up','▲ 4%'],rl:[13,15,17,19,18,20,21]},
+    {k:'VTR (≥50%)',s:'Vistas 50% ÷ impr. de video',mr:'30.62%',mm:'30.00%',md:['up','▲ 2%'],yr:'21.39%',ym:'21.20%',yd:['up','▲ 1%'],rl:[10,13,15,17,16,18,19]},
+    {k:'Clicks',s:'Clicks totales',mr:'1.65M',mm:'1.70M',md:['mid','▼ 3%'],yr:'5.40M',ym:'5.60M',yd:['mid','▼ 4%'],rl:[11,13,14,16,15,14,15]},
   ];
   const rows=ROWS.map(r=>`<tr>
     <td class="l"><div class="knm">${r.k}</div><div class="ksub">${r.s}</div></td>
@@ -862,7 +876,7 @@ form.addEventListener('submit', e => {
   </tr>`).join('');
 
   const table=`<div class="scblock">
-    <div class="sctitle"><span class="st">KPIs por plan</span><span class="ss">· Pauta Mkt</span><span class="sem"><span><i style="background:${SEM.g}"></i>2</span><span><i style="background:${SEM.a}"></i>0</span><span><i style="background:${SEM.r}"></i>3</span></span></div>
+    <div class="sctitle"><span class="st">KPIs por plan</span><span class="ss">· Pauta Mkt</span><span class="sem"><span><i style="background:${SEM.g}"></i>4</span><span><i style="background:${SEM.a}"></i>1</span><span><i style="background:${SEM.r}"></i>0</span></span></div>
     <div class="scwrap"><table class="sctable">
       <thead>
         <tr><th class="l" rowspan="2">KPI</th><th rowspan="2">Mes</th><th class="gl" colspan="3">Desvío del mes</th><th class="gl" colspan="3">Acumulado YTD</th><th class="gl" rowspan="2">Evolución (real vs meta)</th></tr>
