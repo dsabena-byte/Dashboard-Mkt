@@ -241,8 +241,8 @@
   .pr .cur{font-family:"Poppins"; font-weight:700; font-size:15px; color:var(--navy)}
   .pr .mo{font-family:"Poppins"; font-weight:800; font-size:38px; letter-spacing:-.03em; color:var(--navy); line-height:1}
   .pr .per{font-size:14px; color:var(--muted); font-weight:600}
-  .mod{font-size:12.5px; color:var(--muted); margin-top:2px}
-  .mod b{color:var(--ink); font-weight:700}
+  .ctrterm{font-size:12px; color:var(--muted); margin:1px 0 3px}
+  .ctrterm b{color:var(--ink); font-weight:700}
   .setup-row{margin-top:6px; background:var(--ground-2); border:1px solid var(--line-2); border-radius:10px; padding:12px 14px}
   .sr-top{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
   .sr-k{font-size:12px; color:var(--muted); font-weight:600}
@@ -610,7 +610,7 @@
       <p>Cada plan es autocontenido. Podés escalar cuando quieras.</p>
     </div>
     <div class="tiers" id="tiers"></div>
-    <details class="compare">
+    <details class="compare" open>
       <summary><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Ver comparación completa, plan por plan</summary>
       <div class="tablewrap"><table>
         <thead><tr><th>Incluye</th><th><span class="thn">Insight</span><span class="tht">base</span></th><th><span class="thn">Optimize</span><span class="tht">intermedio</span></th><th><span class="thn">Accelerate</span><span class="tht">full</span></th></tr></thead>
@@ -626,13 +626,13 @@
     <div class="sec-head center">
       <span class="kicker">Sumá cuando lo necesites</span>
       <h2>Complementos opcionales, sobre cualquier plan.</h2>
-      <p>Todo lo que genera trabajo extra se cobra aparte — pagás solo lo que usás.</p>
+      <p>Agregá valor a tu estrategia, a demanda.</p>
     </div>
     <div class="addgrid">
       <div class="addc"><div class="an">Mediciones de mercado</div><div class="ad">Top of Mind · Share of Mind · Intención de Compra · Funnel</div><div class="ap">1 = USD 2.500 · 2 = USD 4.500 · 3 = USD 6.000</div></div>
-      <div class="addc"><div class="an">Generación de contenidos</div><div class="ad">Imágenes con brand book · videos de producto · piezas RRSS · videos cortos UGC · gestor de publicación y calendario en Instagram y Facebook.</div><div class="aq">Pack base: 20 imágenes + 6 videos / mes</div><div class="ap">desde USD 490 / mes · escala según volumen (FAI)</div></div>
+      <div class="addc"><div class="an">Generación de contenidos</div><div class="ad">Imágenes con brand book · videos de producto · videos cortos UGC · piezas RRSS · gestor de publicación y calendario en Instagram y Facebook.</div><div class="aq">Pack: 100 imágenes + 20 videos de producto (6s) + 10 videos UGC (10s) / mes</div><div class="ap">desde USD 890 / mes · según costos de generación (FAI)</div></div>
       <div class="addc"><div class="an">Marca adicional</div><div class="ad">Replicación completa de dashboards + clasificación automática</div><div class="ap">set-up desde USD 600 + USD 350 / mes</div></div>
-      <div class="addc"><div class="an">Categoría adicional</div><div class="ad">Sobre la marca ya configurada</div><div class="ap">USD 150 / mes</div></div>
+      <div class="addc"><div class="an">Categoría adicional</div><div class="ad">Sobre la marca ya configurada</div><div class="ap">USD 250 / mes</div></div>
       <div class="addc"><div class="an">Usuario adicional</div><div class="ad">Sumá integrantes del equipo</div><div class="ap">USD 50 / mes</div></div>
       <div class="addc"><div class="an">Hora de asesoramiento extra</div><div class="ad">Además de las horas incluidas en tu plan</div><div class="ap">USD 110</div></div>
     </div>
@@ -754,7 +754,7 @@ const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 const PLANS = [
   {key:'insight',name:'Insight',tag:'plan base',price:'390',setup:'700',users:'1 usuario',cats:'1 marca · 1 categoría',pitch:'Conectá tus fuentes y medí toda la operación contra la meta, en un solo tablero.'},
   {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'990',setup:'900',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',pitch:'Sumá la mirada competitiva, el punto de venta y el asesoramiento estratégico.'},
-  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',pitch:'El tablero completo, con la capa de IA para explorar tus datos y detectar oportunidades solo.'}
+  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',pitch:'El tablero completo: explorá tus datos y detectá oportunidades con ayuda de la IA.'}
 ];
 const MODULES = [
   ['Núcleo estratégico · Mapa + Seguimiento de Objetivos',1,1,1],
@@ -782,24 +782,25 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
   const iaBlock = iaMods.length ? `<div class="iacap"><div class="iacap-h"><span>Capa de inteligencia</span><span class="iatag">Solo Accelerate</span></div>${iaMods.map(m=>`<div class="iacap-i">${m[0]}</div>`).join('')}</div>` : '';
   return `<article class="card"><div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
     <div class="pr"><span class="cur">USD</span><span class="mo">${p.price}</span><span class="per">/ mes</span></div>
-    <div class="mod">Contratación: <b>6 o 12 meses</b></div>
+    <div class="ctrterm">Contratación por <b>6 o 12 meses</b></div>
     <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 12 meses</div></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
-    <p class="pitch">${p.pitch}</p>${iaBlock}<div class="inc">Incluye</div><ul class="mods2">${mods}</ul>
+    <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
     <a class="pcta" href="#demo">Empezar con ${p.name}</a></article>`;
 }).join('');
 
 const FULL = [
-  {t:'Núcleo estratégico',r:[['Mapa Estratégico',1,1,1],['Seguimiento de Objetivos',1,1,1]]},
-  {t:'Conexiones de datos',r:[['API Meta Business · FB + IG',1,1,1],['API Google Ads',1,1,1],['API GA4 Analytics',1,1,1],['API DV360',1,1,1],['SharePoint',1,1,1],['Google Drive',1,1,1],['API DataForSEO',0,1,1],['SimilarWeb',0,1,1]]},
-  {t:'Plan de Medios · ON + OFF',r:[['Funnel de Mkt / Conversión',1,1,1],['Análisis de Eficiencia de Medios',1,1,1],['KPIs de campaña',1,1,1],['Inversión y performance por medio',1,1,1],['Insights de mejora de Pauta',1,1,1]]},
-  {t:'Redes Sociales',r:[['Engagement por interacción',1,1,1],['Segmentación de audiencias',1,1,1],['KPIs por post',1,1,1],['Alcance e interacciones orgánicas',1,1,1],['Análisis de sentimiento',1,1,1],['Insights de comentarios',1,1,1],['Insights de mejora orgánica',1,1,1],['Análisis competitivo',0,'adv','adv']]},
-  {t:'Web / Ecommerce',r:[['Tráfico y alcance',1,1,1],['Fuentes de tráfico',1,1,1],['Performance web',1,1,1],['KPIs de ecommerce',1,1,1],['Categorías y top landings',1,1,1],['Análisis competitivo web',0,'adv','adv']]},
-  {t:'Optimización SEO',r:[['Posicionamiento y visibilidad',0,1,1],['Volumen y tendencias',0,1,1],['Análisis competitivo SEO',0,'adv','adv']]},
-  {t:'Trade Marketing',r:[['Surtido',0,1,1],['Floor Share',0,1,1],['Performance por cliente y tienda',0,1,1]]},
-  {t:'Facturación &amp; Mercado',r:[['Facturación mensual',1,1,1],['Share de mercado por segmento',1,1,1]]},
-  {t:'Inversión de Marketing',r:[['Ejecución del presupuesto vs BGT',1,1,1],['Inversión / Facturación',1,1,1],['Comparador de presupuestos',1,1,1]]},
-  {t:'Capa de inteligencia',r:[['Preguntá a tus datos con IA',0,0,1],['Insights automáticos por dashboard',0,0,1]]},
+  {t:'Núcleo estratégico',r:[['Mapa Estratégico (objetivos, pesos y KPIs)',1,1,1],['Seguimiento de Objetivos · real vs meta',1,1,1],['Cumplimiento por categoría',1,1,1],['Metas mensuales por KPI',1,1,1],['Semáforos y alertas de desvío',1,1,1]]},
+  {t:'Conexiones de datos',r:[['API Meta Business · Facebook + Instagram',1,1,1],['API Google Ads',1,1,1],['API GA4 Analytics',1,1,1],['API DV360',1,1,1],['SharePoint',1,1,1],['Google Drive',1,1,1],['API DataForSEO',0,1,1],['SimilarWeb',0,1,1]]},
+  {t:'Plan de Medios · ON + OFF',r:[['Funnel de Marketing / Conversión',1,1,1],['Inversión y performance por medio (Meta, Google, DV360, YouTube, TikTok…)',1,1,1],['Análisis de eficiencia de medios (CPM, CPC, CTR, VTR, CPA)',1,1,1],['KPIs de campaña (alcance, frecuencia, impresiones, clicks)',1,1,1],['Medios ON + OFF (digital + TV / OOH / DOOH)',1,1,1],['Performance por objetivo (Awareness / Consideración / Conversión)',1,1,1],['Performance por categoría de producto',1,1,1],['Insights de mejora de pauta',1,1,1]]},
+  {t:'Redes Sociales · orgánico',r:[['Engagement por interacción (likes, comentarios, guardados, compartidos)',1,1,1],['Análisis de engagement por tipo de interacción',1,1,1],['KPIs por posteo (alcance, impresiones, views)',1,1,1],['Análisis de performance por posteo',1,1,1],['Clasificación de posteos por tipo de contenido (imagen / video / sidecar)',1,1,1],['Clasificación por pilar (Branding, Producto, Promoción, Educativo, Influencer)',1,1,1],['Análisis demográfico de audiencias',1,1,1],['Alcance e interacciones orgánicas (Instagram + Facebook)',1,1,1],['Seguidores y evolución',1,1,1],['Tendencia mensual de engagement',1,1,1],['Análisis de sentimiento de comentarios (Instagram)',1,1,1],['Insights de comentarios',1,1,1],['Insights de mejora orgánica',1,1,1]]},
+  {t:'Redes Sociales · competencia',r:[['Benchmark de marcas · KPIs comparados',0,1,1],['Cantidad de posteos por semana vs competencia',0,1,1],['Engagement promedio por pilar (marca vs competencia)',0,1,1],['Distribución por tipo de contenido de la competencia',0,1,1],['Sentimiento por marca (Instagram)',0,1,1],['Análisis cualitativo del sentimiento por marca',0,1,1],['Feed de posteos de la competencia (por engagement, tipo y pilar)',0,1,1]]},
+  {t:'Web / Ecommerce',r:[['Tráfico y alcance (usuarios, sesiones)',1,1,1],['Fuentes de tráfico (orgánico, pago, social, directo, referral)',1,1,1],['Performance web (páginas vistas, rebote, duración)',1,1,1],['KPIs de ecommerce (transacciones, ingresos, ROAS, tasa de conversión)',1,1,1],['Análisis por categoría de producto',1,1,1],['Categorías y top landings',1,1,1],['Demografía de usuarios web',1,1,1],['Embudo de conversión',1,1,1],['Análisis competitivo web · SimilarWeb (tráfico y share of visits)',0,1,1]]},
+  {t:'Optimización SEO',r:[['Posicionamiento y visibilidad',0,1,1],['Volumen de búsqueda y tendencias (DataForSEO)',0,1,1],['Keywords y oportunidades',0,1,1],['Search Console (clicks, impresiones, CTR, posición)',0,1,1],['Share of search vs competencia',0,1,1]]},
+  {t:'Trade Marketing',r:[['Surtido por cliente y tienda',0,1,1],['Floor Share por góndola',0,1,1],['Performance por cliente y tienda',0,1,1],['Sugerencias de surtido / reposición',0,1,1],['Evolución semanal',0,1,1]]},
+  {t:'Facturación &amp; Mercado',r:[['Facturación mensual',1,1,1],['Share de mercado por segmento',1,1,1],['Evolución y MAT',1,1,1]]},
+  {t:'Inversión de Marketing',r:[['Ejecución del presupuesto vs BGT',1,1,1],['Inversión / Facturación',1,1,1],['Comparador de presupuestos (versión / período / cuenta)',1,1,1]]},
+  {t:'Capa de inteligencia',r:[['Preguntá a tus datos con IA (análisis libre)',0,0,1],['Insights automáticos por dashboard',0,0,1]]},
   {t:'Asesoramiento',r:[['Asesoramiento Online',0,'4 hs/mes','8 hs/mes']]},
 ];
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
@@ -836,13 +837,13 @@ form.addEventListener('submit', e => {
 (function(){
   const SEM={g:'#16a34a',a:'#d97706',r:'#dc2626'};
   const OBJ=[
-    {n:'TOM',c:'#a855f7',cumpl:91,res:'31.4',meta:'33.0',ytd:95,kpis:[['Alcance único','30','96','g'],['Impresiones','24','92','g'],['VTR (≥50%)','18','88','g']]},
-    {n:'SOM',c:'#16a34a',cumpl:89,res:'58.5',meta:'62.0',ytd:93,kpis:[['Engagement','28','94','g'],['Alcance orgánico','22','90','g'],['Frecuencia','16','86','g']]},
-    {n:'Intención de Compra',c:'#f59e0b',cumpl:88,res:'34.1',meta:'36.0',ytd:92,kpis:[['Clicks','26','93','g'],['Tráfico web (usuarios)','24','89','g'],['Tasa de conversión','20','86','g']]},
-    {n:'Facturación',c:'#3b82f6',cumpl:90,res:'US$ 14.4M',meta:'US$ 15.5M',ytd:94,kpis:[['Tasa de conversión','28','92','g'],['Floor Share','24','95','g'],['Clicks','18','88','g']]},
+    {n:'TOM',c:'#a855f7',cumpl:91,st:'g',res:'31.4',meta:'33.0',ytd:95,kpis:[['Alcance único','30','96','g'],['Impresiones','24','92','g'],['VTR (≥50%)','18','88','g']]},
+    {n:'SOM',c:'#16a34a',cumpl:89,st:'a',res:'58.5',meta:'62.0',ytd:93,kpis:[['Engagement','28','94','g'],['Alcance orgánico','22','90','g'],['Frecuencia','16','86','g']]},
+    {n:'Intención de Compra',c:'#f59e0b',cumpl:88,st:'a',res:'34.1',meta:'36.0',ytd:92,kpis:[['Clicks','26','93','g'],['Tráfico web (usuarios)','24','89','g'],['Tasa de conversión','20','86','g']]},
+    {n:'Facturación',c:'#3b82f6',cumpl:90,st:'g',res:'US$ 14.4M',meta:'US$ 15.5M',ytd:94,kpis:[['Tasa de conversión','28','92','g'],['Floor Share','24','95','g'],['Clicks','18','88','g']]},
   ];
   const cards=OBJ.map(o=>`<div class="ocard">
-    <div class="ohead"><span class="odot" style="background:${o.c}"></span><span class="oname">${o.n}</span><span class="oc"><b>${o.cumpl}%</b><small>Cumpl. mes</small></span></div>
+    <div class="ohead"><span class="odot" style="background:${o.c}"></span><span class="oname">${o.n}</span><span class="oc"><b style="color:${SEM[o.st]||'#0a7fce'}">${o.cumpl}%</b><small>Cumpl. mes</small></span></div>
     <div class="opeso">Peso estratégico 25%</div>
     <div class="olabel">Resultado acum. · Meta</div>
     <div class="obig"><b>${o.res}</b> <span>/ ${o.meta}</span></div>
@@ -859,13 +860,13 @@ form.addEventListener('submit', e => {
     const P=a=>a.map((y,i)=>`${xs(i)},${(31-y).toFixed(1)}`).join(' ');
     return `<svg class="spk" viewBox="0 0 96 34" role="img"><polyline points="${P(meta)}" fill="none" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="3 3" opacity=".85"/><polyline points="${P(real)}" fill="none" stroke="var(--navy)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
-  const META=[10,14,17,19,18,15,11];
+  const META=[10,12,13,15,16,17,18];
   const ROWS=[
-    {k:'Alcance único',s:'Personas alcanzadas',mr:'26.0M',mm:'25.0M',md:['up','▲ 4%'],yr:'236.0M',ym:'229.0M',yd:['up','▲ 3%'],rl:[11,15,17,20,18,16,19]},
-    {k:'Frecuencia',s:'Impresiones ÷ alcance',mr:'3.5×',mm:'3.4×',md:['up','▲ 3%'],yr:'2.8×',ym:'2.7×',yd:['up','▲ 4%'],rl:[12,14,16,18,17,19,20]},
-    {k:'Impresiones',s:'Impresiones totales',mr:'212.0M',mm:'200.0M',md:['up','▲ 6%'],yr:'780.0M',ym:'750.0M',yd:['up','▲ 4%'],rl:[13,15,17,19,18,20,21]},
-    {k:'VTR (≥50%)',s:'Vistas 50% ÷ impr. de video',mr:'30.62%',mm:'30.00%',md:['up','▲ 2%'],yr:'21.39%',ym:'21.20%',yd:['up','▲ 1%'],rl:[10,13,15,17,16,18,19]},
-    {k:'Clicks',s:'Clicks totales',mr:'1.65M',mm:'1.70M',md:['mid','▼ 3%'],yr:'5.40M',ym:'5.60M',yd:['mid','▼ 4%'],rl:[11,13,14,16,15,14,15]},
+    {k:'Alcance único',s:'Personas alcanzadas',mr:'26.0M',mm:'25.0M',md:['up','▲ 4%'],yr:'236.0M',ym:'229.0M',yd:['up','▲ 3%'],rl:[11,15,13,19,17,21,23]},
+    {k:'Frecuencia',s:'Impresiones ÷ alcance',mr:'3.5×',mm:'3.4×',md:['up','▲ 3%'],yr:'2.8×',ym:'2.7×',yd:['up','▲ 4%'],rl:[12,14,18,16,20,19,22]},
+    {k:'Impresiones',s:'Impresiones totales',mr:'212.0M',mm:'200.0M',md:['up','▲ 6%'],yr:'780.0M',ym:'750.0M',yd:['up','▲ 4%'],rl:[13,16,15,20,18,22,24]},
+    {k:'VTR (≥50%)',s:'Vistas 50% ÷ impr. de video',mr:'30.62%',mm:'30.00%',md:['up','▲ 2%'],yr:'21.39%',ym:'21.20%',yd:['up','▲ 1%'],rl:[11,15,14,18,17,20,22]},
+    {k:'Clicks',s:'Clicks totales',mr:'1.65M',mm:'1.70M',md:['mid','▼ 3%'],yr:'5.40M',ym:'5.60M',yd:['mid','▼ 4%'],rl:[9,12,8,11,9,7,6]},
   ];
   const rows=ROWS.map(r=>`<tr>
     <td class="l"><div class="knm">${r.k}</div><div class="ksub">${r.s}</div></td>
