@@ -1,0 +1,514 @@
+<title>Planes, valor y precio · BIP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --ground:#eef3f9; --panel:#ffffff; --panel-2:#f6f9fd;
+  --ink:#131c28; --muted:#57697f; --faint:#8496ab;
+  --line:#e2e9f2; --line-2:#eef2f8;
+  --navy:#0a4da0; --navy-ink:#083d80; --navy-soft:#e9f0fb;
+  --cyan:#12a6f4; --cyan-ink:#0a7fce; --cyan-soft:#e6f4fe;
+  --good:#16854b; --good-soft:#e4f3ea;
+  --warn:#b06a00;
+  --shadow:0 22px 50px -30px rgba(10,45,90,.45);
+  --shadow-sm:0 10px 26px -18px rgba(10,45,90,.4);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0a1421; --panel:#101d2e; --panel-2:#14243a;
+    --ink:#eaf1fb; --muted:#9db2cd; --faint:#6f8bab;
+    --line:#213348; --line-2:#1a2a3d;
+    --navy:#4a9bf0; --navy-ink:#7ab7f5; --navy-soft:#132a44;
+    --cyan:#3fbdf8; --cyan-ink:#6cd0fb; --cyan-soft:#122d44;
+    --good:#43c483; --good-soft:#123227;
+    --warn:#e0a24a;
+    --shadow:0 24px 60px -34px rgba(0,0,0,.7);
+    --shadow-sm:0 12px 30px -20px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0a1421; --panel:#101d2e; --panel-2:#14243a;
+  --ink:#eaf1fb; --muted:#9db2cd; --faint:#6f8bab;
+  --line:#213348; --line-2:#1a2a3d;
+  --navy:#4a9bf0; --navy-ink:#7ab7f5; --navy-soft:#132a44;
+  --cyan:#3fbdf8; --cyan-ink:#6cd0fb; --cyan-soft:#122d44;
+  --good:#43c483; --good-soft:#123227;
+  --warn:#e0a24a;
+  --shadow:0 24px 60px -34px rgba(0,0,0,.7);
+  --shadow-sm:0 12px 30px -20px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+body{background:var(--ground); color:var(--ink);
+  font-family:"Inter",system-ui,-apple-system,sans-serif; line-height:1.6;
+  -webkit-font-smoothing:antialiased;}
+.wrap{max-width:1080px; margin:0 auto; padding:0 24px}
+h1,h2,h3,h4,.disp{font-family:"Poppins","Inter",sans-serif}
+h2{font-size:clamp(21px,2.6vw,28px); font-weight:700; letter-spacing:-.02em; line-height:1.2; text-wrap:balance; margin:0}
+h3{font-size:17px; font-weight:700; letter-spacing:-.01em; margin:0}
+p{margin:0}
+.eyebrow{font-family:"Poppins"; font-weight:700; font-size:11.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--cyan-ink)}
+.mut{color:var(--muted)}
+.tnum{font-variant-numeric:tabular-nums}
+
+header{background:
+  radial-gradient(120% 140% at 88% -10%, rgba(18,166,244,.16), transparent 55%),
+  linear-gradient(180deg, var(--panel), var(--panel));
+  border-bottom:1px solid var(--line)}
+.hz{padding:54px 0 42px}
+.logo{display:flex; align-items:center; gap:12px; margin-bottom:26px}
+.logo .bip{font-family:"Poppins"; font-weight:800; font-size:24px; letter-spacing:-.03em; color:var(--ink); display:flex; align-items:center; gap:7px}
+.logo .tri{width:0;height:0;border-left:12px solid var(--cyan); border-top:8px solid transparent; border-bottom:8px solid transparent}
+.logo .tag{font-family:"Poppins"; font-weight:700; font-size:10px; line-height:1.15; letter-spacing:.12em; color:var(--navy); text-transform:uppercase}
+header h1{font-family:"Poppins"; font-weight:800; font-size:clamp(30px,5vw,46px); letter-spacing:-.035em; line-height:1.04; margin:12px 0 0; max-width:16ch; text-wrap:balance}
+header h1 .hl{color:var(--cyan-ink)}
+header .sub{margin-top:18px; font-size:clamp(15px,1.7vw,18px); color:var(--muted); max-width:60ch}
+.stamp{display:inline-flex; align-items:center; gap:8px; margin-top:22px; padding:7px 14px; border-radius:999px; background:var(--navy-soft); color:var(--navy-ink); font-size:12.5px; font-weight:600}
+.stamp b{font-weight:700}
+
+section{padding:44px 0}
+section + section{border-top:1px solid var(--line-2)}
+.shead{display:flex; flex-direction:column; gap:8px; margin-bottom:26px}
+
+.thesis{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+.tcard{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px 22px; box-shadow:var(--shadow-sm)}
+.tcard .k{display:flex; align-items:center; gap:11px; margin-bottom:10px}
+.tcard .k .dot{width:26px;height:26px;border-radius:8px; background:var(--cyan-soft); color:var(--cyan-ink); display:grid; place-items:center; font-family:"Poppins"; font-weight:800; font-size:13px; flex:none}
+.tcard p{font-size:14.5px; color:var(--muted)}
+.tcard p b{color:var(--ink); font-weight:600}
+
+.seg{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+.scard{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px 22px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden}
+.scard::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--tier)}
+.scard .top{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+.scard .nm{font-family:"Poppins"; font-weight:800; font-size:19px; letter-spacing:-.02em}
+.scard .role{font-size:12.5px; font-weight:700; color:var(--tier); font-family:"Poppins"; letter-spacing:.02em}
+.scard .who{font-size:14px; color:var(--ink); font-weight:600}
+.scard .desc{font-size:13.5px; color:var(--muted); flex:1}
+.scard dl{display:grid; grid-template-columns:auto 1fr; gap:6px 12px; margin:0; font-size:12.5px}
+.scard dt{color:var(--faint); font-weight:600}
+.scard dd{margin:0; color:var(--ink); text-align:right; font-weight:600}
+.magnet{outline:2px solid var(--navy); outline-offset:-2px}
+.magnet .flag{position:absolute; top:0; right:0; background:var(--navy); color:#fff; font-family:"Poppins"; font-weight:700; font-size:10px; letter-spacing:.08em; padding:5px 11px; border-bottom-left-radius:10px; text-transform:uppercase}
+
+.jumps{display:flex; flex-direction:column; gap:16px}
+.jump{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px 24px; box-shadow:var(--shadow-sm)}
+.jump .track{display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap}
+.pill{font-family:"Poppins"; font-weight:700; font-size:13px; padding:6px 14px; border-radius:999px}
+.pill.a{background:var(--cyan-soft); color:var(--cyan-ink)}
+.pill.b{background:var(--navy-soft); color:var(--navy-ink)}
+.pill.c{background:var(--navy); color:#fff}
+.arw{color:var(--faint); font-weight:700}
+.jump .track .mult{margin-left:auto; font-family:"Poppins"; font-weight:800; font-size:15px; color:var(--navy-ink); background:var(--navy-soft); padding:5px 13px; border-radius:8px}
+.jump .grid{display:grid; grid-template-columns:1.1fr 1fr; gap:20px}
+.jump h4{font-family:"Poppins"; font-size:12px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--faint); margin:0 0 10px}
+.jump ul{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:9px}
+.jump li{position:relative; padding-left:24px; font-size:14px; color:var(--ink)}
+.jump li::before{content:""; position:absolute; left:0; top:8px; width:12px; height:12px; border-radius:4px; background:var(--cyan)}
+.jump .why li::before{background:var(--good)}
+.jump .why li{color:var(--muted)}
+.jump .why li b{color:var(--ink); font-weight:600}
+
+.tblwrap{overflow-x:auto; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow-sm)}
+table{border-collapse:collapse; width:100%; min-width:640px; background:var(--panel)}
+th,td{text-align:left; padding:12px 16px; font-size:13.5px; border-bottom:1px solid var(--line-2)}
+thead th{position:sticky; top:0; background:var(--panel-2); font-family:"Poppins"; font-weight:700; font-size:13px; letter-spacing:-.01em; z-index:1}
+thead th.tier{text-align:center; width:170px}
+thead th .dt{display:block; font-size:11px; font-weight:600; color:var(--faint); font-family:"Inter"; letter-spacing:0; margin-top:2px}
+tbody td:first-child{font-weight:600; color:var(--ink)}
+tbody td.c{text-align:center; color:var(--muted); font-weight:600}
+tbody tr.sec td{background:var(--panel-2); font-family:"Poppins"; font-weight:700; font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint)}
+td .yes{color:var(--good); font-weight:700}
+td .no{color:var(--faint)}
+td .co{color:var(--cyan-ink); font-weight:700; font-size:12px}
+.col-mag{background:color-mix(in srgb, var(--navy-soft) 55%, transparent)}
+tbody tr:last-child td{border-bottom:none}
+
+.price{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+.pcard{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px 24px; display:flex; flex-direction:column; gap:6px; box-shadow:var(--shadow-sm); position:relative}
+.pcard.mag{outline:2px solid var(--navy); outline-offset:-2px; box-shadow:var(--shadow)}
+.pcard .pn{font-family:"Poppins"; font-weight:800; font-size:19px; letter-spacing:-.02em; display:flex; align-items:center; gap:9px}
+.pcard .pn .cd{width:11px;height:11px;border-radius:50%; background:var(--tier)}
+.pcard .setup{margin-top:12px; font-size:12.5px; color:var(--faint); font-weight:600; text-transform:uppercase; letter-spacing:.04em}
+.pcard .setupv{font-family:"Poppins"; font-weight:700; font-size:22px; letter-spacing:-.02em}
+.pcard .rule{height:1px; background:var(--line-2); margin:14px 0}
+.pcard .permo{display:flex; align-items:baseline; gap:6px}
+.pcard .permo{align-items:baseline}
+.pcard .permo .cur{font-family:"Poppins"; font-weight:700; font-size:15px; color:var(--navy-ink); margin-right:1px}
+.pcard .permo .big{font-family:"Poppins"; font-weight:800; font-size:38px; letter-spacing:-.03em; color:var(--navy-ink)}
+.pcard .permo .u{font-size:14px; color:var(--muted); font-weight:600}
+.pcard .kier{font-family:"Poppins"; font-weight:700; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--cyan-ink); margin-top:14px; margin-bottom:2px}
+.pcard .ann{margin-top:8px; font-size:13px; color:var(--muted)}
+.pcard .ann b{color:var(--good); font-weight:700}
+.pcard .perk{color:var(--good); font-weight:700; font-size:13px; margin-top:9px; display:flex; align-items:center; gap:7px}
+.pcard .semi{font-size:12.5px; color:var(--muted); line-height:1.5}
+.pcard .semi b{color:var(--ink); font-weight:700} .pcard .semi span{color:var(--faint)}
+.pcard .note{margin-top:auto; padding-top:14px; font-size:12.5px; color:var(--faint)}
+.entpill{margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:14px; background:var(--panel); border:1px dashed var(--line); border-radius:14px; padding:16px 22px}
+.entpill .l{font-size:13.5px; color:var(--muted)} .entpill .l b{color:var(--ink); font-family:"Poppins"; font-weight:700}
+.entpill .r{font-family:"Poppins"; font-weight:700; color:var(--navy-ink); font-size:14px}
+.frame{margin-top:16px; background:var(--cyan-soft); border-radius:12px; padding:14px 18px; font-size:13.5px; color:var(--navy-ink)}
+.frame b{font-weight:700}
+
+/* mediciones add-on block */
+.mez{background:var(--navy-soft); border:1px solid var(--line); border-radius:14px; padding:18px 22px; margin-bottom:16px}
+.mez .mzt{font-size:13.5px; color:var(--navy-ink); margin-bottom:14px}
+.mez .mzt b{font-family:"Poppins"; font-weight:700}
+.mez .mzp{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.mez .mzp > div{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:3px}
+.mez .q{font-size:12.5px; color:var(--muted); font-weight:600}
+.mez .v{font-family:"Poppins"; font-weight:800; font-size:20px; letter-spacing:-.02em; color:var(--ink)}
+.mez .per{font-size:11px; color:var(--faint)}
+
+.adds{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px}
+.add{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; display:flex; justify-content:space-between; align-items:baseline; gap:12px}
+.add .l{font-size:13.5px; color:var(--ink); font-weight:600}
+.add .l small{display:block; font-weight:500; color:var(--faint); font-size:11.5px; margin-top:2px}
+.add .p{font-family:"Poppins"; font-weight:700; color:var(--navy-ink); font-size:14px; white-space:nowrap; text-align:right}
+
+.levers{display:grid; grid-template-columns:repeat(2,1fr); gap:14px}
+.lever{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px 22px; box-shadow:var(--shadow-sm)}
+.lever .tt{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap}
+.lever .tt .b{font-family:"Poppins"; font-weight:700; font-size:15px}
+.lever .term{font-size:11px; font-weight:700; color:var(--cyan-ink); background:var(--cyan-soft); padding:3px 9px; border-radius:6px; letter-spacing:.02em; white-space:nowrap}
+.lever p{font-size:13.5px; color:var(--muted)}
+.lever p b{color:var(--ink); font-weight:600}
+
+.roll{display:flex; flex-direction:column; gap:12px}
+.rstep{display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:start; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 22px}
+.rstep .num{font-family:"Poppins"; font-weight:800; font-size:22px; color:var(--cyan); line-height:1; width:32px}
+.rstep .bd h3{margin-bottom:5px}
+.rstep .bd p{font-size:13.5px; color:var(--muted)}
+
+.calib{background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:22px 24px; font-size:13.5px; color:var(--muted)}
+.calib b{color:var(--ink); font-weight:600}
+.calib + .calib{margin-top:12px}
+footer{padding:34px 0 60px; color:var(--faint); font-size:12px; text-align:center}
+
+@media(max-width:820px){
+  .thesis,.seg,.price,.levers{grid-template-columns:1fr}
+  .jump .grid{grid-template-columns:1fr}
+  .mez .mzp{grid-template-columns:1fr}
+}
+:focus-visible{outline:2px solid var(--cyan); outline-offset:2px; border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<header>
+  <div class="wrap hz">
+    <div class="logo">
+      <div class="bip">BIP<span class="tri"></span></div>
+      <div class="tag">Business<br>Impact<br>Platform</div>
+    </div>
+    <span class="eyebrow">Arquitectura comercial · Good–Better–Best</span>
+    <h1>Planes, valor y <span class="hl">precio</span>.</h1>
+    <p class="sub">Cómo segmentar los tres planes por tamaño y madurez de empresa, qué incluir en cada uno para que el salto de precio se sienta justo, y cuánto cobrar de <b>set-up</b> y de <b>suscripción mensual</b> — con la lógica de negocio y de psicología del comprador detrás de cada decisión.</p>
+    <span class="stamp">◆&nbsp; Propuesta accionable · precios en <b>USD</b> · calibrar ±15–20% al mercado objetivo</span>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">La tesis</span>
+      <h2>El precio sigue al valor, no a la lista de funciones.</h2>
+    </div>
+    <div class="thesis">
+      <div class="tcard">
+        <div class="k"><span class="dot">1</span><h3>Una escalera, no un menú</h3></div>
+        <p>Cada plan resuelve el problema de una <b>empresa más grande</b> que el anterior: el que ordena → el que compite → el que decide con IA. Se compra el <b>nivel de ambición</b>, no una suma de módulos.</p>
+      </div>
+      <div class="tcard">
+        <div class="k"><span class="dot">2</span><h3>El del medio es el imán</h3></div>
+        <p><b>Optimize</b> está diseñado para ser la mejor relación valor/precio. Frente a tres opciones, la mayoría evita los extremos y elige el centro (<b>efecto compromiso</b>): ahí es donde queremos que aterrice el grueso.</p>
+      </div>
+      <div class="tcard">
+        <div class="k"><span class="dot">3</span><h3>Anclado al ROI, no al costo</h3></div>
+        <p>La cuota es una <b>fracción</b> de lo que la empresa ya gasta: presupuesto de medios, un analista, una agencia. Se vende contra <b>lo que reemplaza o desbloquea</b>, no contra su costo de producción.</p>
+      </div>
+      <div class="tcard">
+        <div class="k"><span class="dot">4</span><h3>El core estándar, el valor a la carta</h3></div>
+        <p>Los tres planes comparten una <b>única marca</b> y el núcleo analítico. Lo pesado de operar (otra marca, contenidos, estudios de mercado) es <b>add-on</b> — se cobra cuando genera trabajo real, sin inflar el plan base.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Segmentación &amp; target</span>
+      <h2>A quién le hablás con cada plan.</h2>
+      <p class="mut" style="font-size:14.5px; max-width:64ch">El disparador de compra cambia con el tamaño de la empresa. El plan correcto es el que resuelve el dolor dominante de ese segmento — no el que tiene más features.</p>
+    </div>
+    <div class="seg">
+      <div class="scard" style="--tier:var(--cyan-ink)">
+        <div class="top"><span class="nm">Insight</span><span class="role">El que ordena</span></div>
+        <p class="who">PyMEs, marcas únicas, D2C emergente, marketing de 1 persona.</p>
+        <p class="desc">Dolor: caos de reportes aislados; no ve el vínculo entre lo que hace y el negocio. Quiere <b>orden y claridad</b> ya.</p>
+        <dl>
+          <dt>Decisor</dt><dd>Dueño / Mkt Manager</dd>
+          <dt>Equipo</dt><dd>1 usuario</dd>
+          <dt>Alcance</dt><dd>1 marca · 1 cat.</dd>
+          <dt>Inversión mkt</dt><dd>&lt; USD 25k/mes</dd>
+        </dl>
+      </div>
+      <div class="scard magnet" style="--tier:var(--navy)">
+        <span class="flag">Núcleo del negocio</span>
+        <div class="top"><span class="nm">Optimize</span><span class="role">El que compite</span></div>
+        <p class="who">Mid-market con equipo de marketing y presencia en retail.</p>
+        <p class="desc">Dolor: decide a ciegas frente a la competencia y al punto de venta, y necesita <b>una mirada experta</b> que lo acompañe.</p>
+        <dl>
+          <dt>Decisor</dt><dd>Gerente de Mkt</dd>
+          <dt>Equipo</dt><dd>2 a 4</dd>
+          <dt>Alcance</dt><dd>1 marca · 2 cat.</dd>
+          <dt>Inversión mkt</dt><dd>USD 25–100k/mes</dd>
+        </dl>
+      </div>
+      <div class="scard" style="--tier:var(--navy-ink)">
+        <div class="top"><span class="nm">Accelerate</span><span class="role">El que decide con IA</span></div>
+        <p class="who">Grandes anunciantes y equipos data-driven exigentes.</p>
+        <p class="desc">Dolor: no quiere depender de un analista para explorar. Quiere <b>preguntarle a sus datos</b> y que el sistema le <b>marque oportunidades solo</b>.</p>
+        <dl>
+          <dt>Decisor</dt><dd>Dir. Mkt / CMO</dd>
+          <dt>Equipo</dt><dd>+4</dd>
+          <dt>Alcance</dt><dd>1 marca · 3 cat.</dd>
+          <dt>Inversión mkt</dt><dd>&gt; USD 100k/mes</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">La escala de valor</span>
+      <h2>Qué justifica cada salto de precio.</h2>
+      <p class="mut" style="font-size:14.5px; max-width:64ch">Un salto de precio de ~2,5× solo se tolera si el comprador <b>ve</b> un salto de valor equivalente. Cada peldaño desbloquea una capacidad que la empresa de ese tamaño ya sabe que necesita.</p>
+    </div>
+    <div class="jumps">
+      <div class="jump">
+        <div class="track"><span class="pill a">Insight</span><span class="arw">→</span><span class="pill b">Optimize</span><span class="mult">2,5× mensual</span></div>
+        <div class="grid">
+          <div>
+            <h4>Qué se desbloquea</h4>
+            <ul>
+              <li>Inteligencia <b>competitiva</b> en Redes, Web y SEO</li>
+              <li><b>Optimización SEO</b> completa</li>
+              <li><b>Trade</b>: Surtido + Floor Share</li>
+              <li><b>Asesoramiento Online</b>: 4 h/mes de experto</li>
+              <li>Equipo (hasta 4) y una <b>2.ª categoría</b></li>
+            </ul>
+          </div>
+          <div class="why">
+            <h4>Por qué se paga</h4>
+            <ul>
+              <li>Pasa de <b>mirarse a sí mismo</b> a leer el mercado y la góndola.</li>
+              <li>La hora de asesoría sola vale más que la diferencia de cuota.</li>
+              <li>Es el salto de <b>“ver” a “decidir con respaldo”</b>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="jump">
+        <div class="track"><span class="pill b">Optimize</span><span class="arw">→</span><span class="pill c">Accelerate</span><span class="mult">1,7× mensual</span></div>
+        <div class="grid">
+          <div>
+            <h4>Qué se desbloquea</h4>
+            <ul>
+              <li><b>Preguntá a tus datos con IA</b>: gráficos, análisis e insights libres en cada dashboard</li>
+              <li><b>Insights automáticos</b>: el sistema detecta oportunidades por dashboard</li>
+              <li>Asesoramiento <b>8 h/mes</b> y una <b>3.ª categoría</b></li>
+            </ul>
+          </div>
+          <div class="why">
+            <h4>Por qué se paga</h4>
+            <ul>
+              <li>Deja de <b>depender de un analista</b> para explorar cada pregunta.</li>
+              <li>La capa de IA es <b>capacidad de plataforma</b>, no un servicio puntual: valor que se usa todos los días.</li>
+              <li>Es el salto de <b>“decidir” a “que los datos te hablen”</b>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Packaging optimizado</span>
+      <h2>Qué incluye cada plan.</h2>
+      <p class="mut" style="font-size:14.5px; max-width:66ch">Los tres planes trabajan sobre <b>una única marca</b> (sumar otra marca es replicar todo el tablero → add-on). El diferencial escala por <b>categorías</b> (1 / 2 / 3), por los <b>módulos de competencia y trade</b>, y por la <b>capa de IA</b> que corona el plan full.</p>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Capacidad</th>
+            <th class="tier">Insight<span class="dt">El que ordena</span></th>
+            <th class="tier col-mag">Optimize<span class="dt">El que compite</span></th>
+            <th class="tier">Accelerate<span class="dt">El que decide con IA</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="sec"><td colspan="4">Alcance de cuenta</td></tr>
+          <tr><td>Usuarios incluidos</td><td class="c">1</td><td class="c col-mag">2 a 4</td><td class="c">+4</td></tr>
+          <tr><td>Marca</td><td class="c">1</td><td class="c col-mag">1</td><td class="c">1</td></tr>
+          <tr><td>Categorías incluidas</td><td class="c">1</td><td class="c col-mag">2</td><td class="c">3</td></tr>
+          <tr class="sec"><td colspan="4">Núcleo analítico</td></tr>
+          <tr><td>Mapa + Seguimiento de Objetivos</td><td class="c"><span class="yes">✓</span></td><td class="c col-mag"><span class="yes">✓</span></td><td class="c"><span class="yes">✓</span></td></tr>
+          <tr><td>Conexiones de datos (Meta, Google, GA4, DV360, Drive…)</td><td class="c"><span class="yes">✓</span></td><td class="c col-mag"><span class="yes">✓</span></td><td class="c"><span class="yes">✓</span></td></tr>
+          <tr><td>Plan de Medios · ON + OFF</td><td class="c"><span class="yes">✓</span></td><td class="c col-mag"><span class="yes">✓</span></td><td class="c"><span class="yes">✓</span></td></tr>
+          <tr><td>Redes · Web / Ecommerce</td><td class="c"><span class="yes">✓</span></td><td class="c col-mag"><span class="co">+ competencia</span></td><td class="c"><span class="co">+ competencia</span></td></tr>
+          <tr><td>Facturación &amp; Share · Inversión de Mkt</td><td class="c"><span class="yes">✓</span></td><td class="c col-mag"><span class="yes">✓</span></td><td class="c"><span class="yes">✓</span></td></tr>
+          <tr class="sec"><td colspan="4">Diferenciales por segmento</td></tr>
+          <tr><td>Optimización SEO</td><td class="c"><span class="no">—</span></td><td class="c col-mag"><span class="yes">✓</span></td><td class="c"><span class="yes">✓</span></td></tr>
+          <tr><td>Trade · Surtido + Floor Share</td><td class="c"><span class="no">—</span></td><td class="c col-mag"><span class="yes">✓</span></td><td class="c"><span class="yes">✓</span></td></tr>
+          <tr><td>Asesoramiento Online</td><td class="c"><span class="no">—</span></td><td class="c col-mag"><span class="co">4 h/mes</span></td><td class="c"><span class="co">8 h/mes</span></td></tr>
+          <tr class="sec"><td colspan="4">Capa de inteligencia</td></tr>
+          <tr><td>Preguntá a tus datos con IA (análisis libre)</td><td class="c"><span class="no">—</span></td><td class="c col-mag"><span class="no">—</span></td><td class="c"><span class="yes">✓</span></td></tr>
+          <tr><td>Insights automáticos (oportunidades por dashboard)</td><td class="c"><span class="no">—</span></td><td class="c col-mag"><span class="no">—</span></td><td class="c"><span class="yes">✓</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mut" style="font-size:12.5px; margin-top:12px">Mediciones de mercado, generación de contenidos, marcas y categorías extra: disponibles como <b>add-on en cualquier plan</b> (ver más abajo).</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Precio recomendado · USD</span>
+      <h2>Se contrata por 6 o 12 meses.</h2>
+      <p class="mut" style="font-size:14.5px; max-width:64ch">El precio se expresa <b>por mes</b>, pero la contratación es por <b>6 o 12 meses</b> — no hay plan mes a mes. El de <b>12 meses</b> es el recomendado: mismo precio mensual, con el <b>set-up sin cargo</b>. El resultado se ve en el ciclo, no en 30 días.</p>
+    </div>
+    <div class="price">
+      <div class="pcard" style="--tier:var(--cyan-ink)">
+        <div class="pn"><span class="cd"></span>Insight</div>
+        <div class="kier">Precio por mes</div>
+        <div class="permo"><span class="cur">USD</span><span class="big tnum">390</span><span class="u">/ mes</span></div>
+        <div class="rule"></div>
+        <div class="perk">✓ Plan de 12 meses — set-up sin cargo</div>
+        <div class="semi">Plan de 6 meses — + set-up USD 700</div>
+        <div class="note">Ticket de entrada. Objetivo: adopción y primer resultado rápido.</div>
+      </div>
+      <div class="pcard mag" style="--tier:var(--navy)">
+        <div class="pn"><span class="cd"></span>Optimize</div>
+        <div class="kier">Precio por mes</div>
+        <div class="permo"><span class="cur">USD</span><span class="big tnum">990</span><span class="u">/ mes</span></div>
+        <div class="rule"></div>
+        <div class="perk">✓ Plan de 12 meses — set-up sin cargo</div>
+        <div class="semi">Plan de 6 meses — + set-up USD 900</div>
+        <div class="note">El mejor valor/precio. Donde debe caer la mayoría.</div>
+      </div>
+      <div class="pcard" style="--tier:var(--navy-ink)">
+        <div class="pn"><span class="cd"></span>Accelerate</div>
+        <div class="kier">Precio por mes</div>
+        <div class="permo"><span class="cur">USD</span><span class="big tnum">1.690</span><span class="u">/ mes</span></div>
+        <div class="rule"></div>
+        <div class="perk">✓ Plan de 12 meses — set-up sin cargo</div>
+        <div class="semi">Plan de 6 meses — + set-up USD 1.500</div>
+        <div class="note">Capa de IA: preguntá a tus datos + insights automáticos.</div>
+      </div>
+    </div>
+    <div class="entpill">
+      <div class="l"><b>Enterprise · a medida</b> — holdings, multimarca, multipaís, SSO e integraciones propias.</div>
+      <div class="r">plan de 12 meses a medida · “Hablemos”</div>
+    </div>
+    <div class="frame"><b>Por qué por 6 o 12 meses:</b> el resultado del producto se construye en un ciclo (conectar → medir → optimizar → recalibrar), no en 30 días. El <b>plan de 12 meses</b> es el recomendado: mismo precio por mes que el de 6, pero con el <b>set-up sin cargo</b>. El de 6 meses existe para quien quiere entrar con menos compromiso.</div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Expansión de cuenta · add-ons</span>
+      <h2>El valor a la carta (sube el ticket promedio).</h2>
+      <p class="mut" style="font-size:14.5px; max-width:64ch">Todo lo que cuesta trabajo real de operar sale del plan base y se cobra aparte, disponible <b>sobre cualquier plan</b>. Así el plan no se infla y la cuenta crece con el uso.</p>
+    </div>
+
+    <div class="mez">
+      <div class="mzt"><b>Mediciones de mercado</b> · investigación de marca (Top of Mind, Share of Mind, Intención de Compra, Funnel) · add-on de cualquier plan</div>
+      <div class="mzp">
+        <div><span class="q">1 medición / año</span><span class="v tnum">USD 2.500</span></div>
+        <div><span class="q">2 mediciones / año</span><span class="v tnum">USD 4.500</span><span class="per">USD 2.250 c/u</span></div>
+        <div><span class="q">3 mediciones / año</span><span class="v tnum">USD 6.000</span><span class="per">USD 2.000 c/u</span></div>
+      </div>
+    </div>
+
+    <div class="adds">
+      <div class="add"><span class="l">Capa de inteligencia (IA)<small>Preguntá a tus datos con IA + insights automáticos (incluida en Accelerate)</small></span><span class="p tnum">USD 300/mes</span></div>
+      <div class="add"><span class="l">Generación de contenidos<small>100 imágenes + 20 videos de producto (6s) + 10 UGC (10s) · brand book + gestor y calendario IG/FB</small></span><span class="p tnum">USD 490/mes</span></div>
+      <div class="add"><span class="l">Marca adicional<small>Replicación completa de dashboards + clasificación automática</small></span><span class="p tnum">set-up desde USD 600<br>+ USD 350/mes</span></div>
+      <div class="add"><span class="l">Categoría adicional<small>Sobre la marca ya configurada</small></span><span class="p tnum">USD 250/mes</span></div>
+      <div class="add"><span class="l">Usuario adicional</span><span class="p tnum">USD 50/mes</span></div>
+      <div class="add"><span class="l">Hora de asesoramiento extra</span><span class="p tnum">USD 110</span></div>
+      <div class="add"><span class="l">Fuente de datos a medida</span><span class="p tnum">a cotizar</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Psicología del comprador aplicada</span>
+      <h2>Las palancas detrás de estos números.</h2>
+    </div>
+    <div class="levers">
+      <div class="lever">
+        <div class="tt"><span class="b">El centro gana</span><span class="term">Efecto compromiso</span></div>
+        <p>Con tres opciones, la gente rehúye los extremos. Con Insight “demasiado justo” y Accelerate “demasiado”, <b>Optimize se vuelve la elección segura</b>. Por eso Optimize concentra el mejor valor relativo.</p>
+      </div>
+      <div class="lever">
+        <div class="tt"><span class="b">Anclaje alto</span><span class="term">Anchoring</span></div>
+        <p>Accelerate y “Enterprise a medida” <b>fijan el techo</b> de precio. Al lado de USD 1.690 y “desde USD 3.000”, los USD 990 de Optimize se leen como razonables — el ancla hace el trabajo.</p>
+      </div>
+      <div class="lever">
+        <div class="tt"><span class="b">El de 12 meses es el default</span><span class="term">Compromiso</span></div>
+        <p>Sin mes suelto, la decisión es 6 vs 12 meses. Mismo precio por mes, pero el de 12 <b>bonifica el set-up</b> — el gancho justo para inclinar la decisión hacia el compromiso largo, que <b>estabiliza la caja y baja el churn</b>.</p>
+      </div>
+      <div class="lever">
+        <div class="tt"><span class="b">El valor a la carta</span><span class="term">Unbundling</span></div>
+        <p>Sacar contenidos y estudios del plan y ofrecerlos como add-on <b>respeta al que ya tiene agencia</b> y hace pagar solo al que lo usa. Además <b>eleva el ticket promedio</b> sin subir el precio de lista.</p>
+      </div>
+      <div class="lever">
+        <div class="tt"><span class="b">Cupo fundador</span><span class="term">Escasez + reciprocidad</span></div>
+        <p>Primeros 5–10 clientes con <b>–20% de por vida</b> a cambio de caso de éxito y feedback. Crea urgencia real y te da la prueba social para vender al resto sin descuento.</p>
+      </div>
+      <div class="lever">
+        <div class="tt"><span class="b">Invertí el riesgo</span><span class="term">Aversión a la pérdida</span></div>
+        <p>“Primer ciclo en semanas” + una <b>garantía de valor a 60 días</b>. Bajás la barrera de entrada apelando al miedo a decidir mal — que es, además, el problema que el producto resuelve.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Cómo lanzarlo</span>
+      <h2>De la lista de precios a la venta.</h2>
+    </div>
+    <div class="roll">
+      <div class="rstep"><div class="num">1</div><div class="bd"><h3>Arrancá con cupo fundador</h3><p>Cerrá los primeros clientes con el –20% vitalicio. El objetivo no es la caja: son los <b>casos de éxito</b> con números reales que después venden el plan a precio lleno.</p></div></div>
+      <div class="rstep"><div class="num">2</div><div class="bd"><h3>El plan de 12 meses es el default</h3><p>Presentá los 12 meses como la opción natural: mismo precio por mes que el de 6, pero con el <b>set-up sin cargo</b>. El de 6 meses queda para el indeciso. Cobrás por adelantado y bajás el churn del primer año, que es donde más se pierde.</p></div></div>
+      <div class="rstep"><div class="num">3</div><div class="bd"><h3>Vendé el salto, no el plan</h3><p>Guion por segmento: al que ordena mostrale el caos → Insight; al que compite, la ceguera competitiva → Optimize; al que quiere autonomía, <b>“preguntale a tus datos”</b> y las oportunidades automáticas → Accelerate.</p></div></div>
+      <div class="rstep"><div class="num">4</div><div class="bd"><h3>Expandí con add-ons</h3><p>Entrá por Insight/Optimize y creé la cuenta con add-ons (mediciones, contenidos, categorías, usuarios). Es más barato hacer crecer un cliente que conseguir uno nuevo.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="calib">
+      <b>Sobre el historial de datos.</b> No se usa como diferencial de plan: el período disponible <b>depende de cada fuente</b> (p. ej. SimilarWeb ~3 meses; GA4, SEO, RRSS y scraping de competencia según lo que expone cada API). Lo que el cliente <b>aporta</b> (sus propios históricos) se carga completo, sin límite artificial. Por eso el fence de la cuenta escala por <b>categorías y usuarios</b>, no por meses de historia.
+    </div>
+    <div class="calib">
+      <b>Nota de calibración.</b> Los montos son un punto de partida <b>defendible</b> para un mercado B2B en LatAm con precios en USD. Movelos ±15–20% según poder adquisitivo del segmento, intensidad competitiva local y tu costo de servicio (las horas de asesoramiento, la generación de contenidos y las mediciones de mercado son los ítems de mayor costo variable — por eso van como add-on). Dos criterios detrás de la escala: el salto <b>Insight→Optimize puede ser grande (~2,5×)</b> porque suma muchos módulos, mientras que el salto <b>Optimize→Accelerate se mantiene contenido (~1,7×)</b> porque agrega una <b>capa de inteligencia</b>, no un paquete de servicios. Y el <b>set-up se deja bajo a propósito</b> (tope USD 1.500): no es un centro de ganancia sino un <b>fee de onboarding</b> que financia la implementación, cualifica al comprador y baja la fricción de entrada — <b>se bonifica en el plan de 12 meses</b> para empujar esa decisión.
+    </div>
+  </div>
+  <footer>BIP · Business Impact Platform — propuesta de arquitectura de planes y pricing · documento de trabajo</footer>
+</section>
