@@ -362,6 +362,35 @@ reporte_existencia/cb_homologos).
   de 30s y el motor los estira con `SPEED`; era de 30s y el user lo pidió más pausado, a 50s). Números ilustrativos (no salen de Supabase): para una versión con data real se
   reemplazan `TOM_META`/`TOM_REAL`/`ALC_*` y la matriz `MX` en `app.js`. Detalle: su `README.md`.
 
+- **Video TOUR de la plataforma (`marketing/video-tour/`, dic-2026):** recorrido de ~117s
+  **dashboard por dashboard** (walkthrough del producto; complementa al video-demo que explica el
+  *modelo*). **Sin marca Drean ni data real:** marca ficticia **"Novara"** + competidores inventados
+  (Vanté/Kova/Areté/Belmar/Aurex), pill "Datos ilustrativos". Misma técnica que video-demo (HTML
+  determinístico `index.html`+`app.js`, `window.__seek(t)`, `render.mjs`→ffmpeg libx264). **Réplica
+  FIEL** del sistema visual real de cada dash (se relevó el código real de los 6 con agentes Explore):
+  MetaKpiCards con filas Mes/YTD + semáforo, scorecard con desvío + sparkline, tabla maestra por medio,
+  ranking de marcas, sentimiento stacked, donut, combo dual-axis, KpiObjCard, cuatri Real-vs-BGT,
+  comparador A/B. 11 escenas: intro · **Mapa Estratégico** (KPI→objetivo con pesos, la tesis) ·
+  Seguimiento · Plan de Medios · Redes IG · Redes competitivo · Web · Trade · **Copiloto IA** (insight
+  que cruza Pauta→VTR→Intención→Facturación) · Inversión · cierre. **Timing en segundos reales**
+  (`SPEED=1`, escenas definidas en s). Salida `export/tour-plataforma.mp4`. **GOTCHA clave:** un SVG
+  `<path>` creado con `mk('<path/>')` NO se parsea como SVG (queda HTMLUnknownElement, sin
+  `getTotalLength` y no renderiza) → los paths van SIEMPRE dentro del `<svg>` del template. **PENDIENTE
+  (retomar): el user quiere mejorar algunas pantallas y hacerlo MÁS ÁGIL** (bajar duración por escena /
+  ritmo más rápido; achicar sub-tiempos de reveals y cursor; algunas escenas todavía tienen algo de
+  aire abajo). Detalle y plan en `marketing/video-tour/HANDOFF.md` + `README.md`.
+
+- **Web comercial BIP (`apps/web/public/bip.html` + artifact):** landing de venta. Los 3 planes
+  (Insight/Optimize/Accelerate) se arman por JS (arrays `PLANS`/`MODULES`/`FULL`). El artifact
+  compartible **`bip-web.html`** (id `f98ddfbe-b163-4a01-84bc-9dfde6456c6b`) es self-contained: se
+  **regenera desde `bip.html`** swapeando `src="/bip/hero.png"` y `src="/bip/demo.mp4"` a base64
+  (script python, ~6.3MB) y se republica con `url`. `/bip.html` es público por Vercel (middleware
+  `BYPASS_PATHS` incluye `/bip`) y **siempre está al día**; el artifact muestra a terceros una versión
+  *pinneada* (re-pinear al actualizar). **Fix dic-2026:** el recuadro `.spec` (usuarios·categorías)
+  hacía wrap a 2 líneas en Optimize y desalineaba el "Incluye" → se forzó a 1 línea (`white-space:nowrap`
+  + `min-height:44px`) y se igualaron alturas de `.pitch` (min-height) y `.sr-k` (nowrap). `pricing.html`
+  (racional de precios) es otra estructura, no tiene esas tarjetas.
+
 - **Generador de Contenido — Calendario + publicación IG/FB (dic-2026):** `/contenido` →
   `/contenido/calendario` (tabs: RRSS, UGC, Biblioteca UGC, Adaptación de piezas). Las piezas viven en
   `contenido_calendario` (migs 0075-0090); flujo Generar→Diseñar→Biblioteca→**Distribuir** (fecha/hora/
