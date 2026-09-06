@@ -1,10 +1,10 @@
 name: Publicar contenido (IG/FB · calendario)
 
 on:
-  # Auto-publicación DESACTIVADA por ahora (no publica solo). Para activarla,
-  # descomentar el schedule. Mientras tanto, sólo se dispara a mano.
-  # schedule:
-  #   - cron: "*/30 * * * *"  # cada 30 min: publica las aprobadas cuya fecha/hora llegó
+  # Auto-publicación ACTIVA: cada 30 min publica las piezas aprobadas cuya
+  # fecha/hora ya llegó (depende de permisos Meta OK; si fallan, quedan con publish_error).
+  schedule:
+    - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       dry:
