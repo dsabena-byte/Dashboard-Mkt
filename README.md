@@ -185,6 +185,7 @@ instancia de N8N. Ver [`n8n-workflows/README.md`](n8n-workflows/README.md).
 ## Documentación
 
 - [`docs/architecture.md`](docs/architecture.md) — detalle técnico de cada capa
+- [`docs/calendario-publicacion-meta.md`](docs/calendario-publicacion-meta.md) — Generador de Contenido: calendario, adaptación de piezas y publicación orgánica IG/FB (+ estado de permisos Meta)
 - [`docs/utm-conventions.md`](docs/utm-conventions.md) — convención de UTMs (crítico)
 - [`docs/supabase-setup.md`](docs/supabase-setup.md) — paso a paso para crear y aplicar el schema
 - [`docs/planning-sheet-template.md`](docs/planning-sheet-template.md) — estructura del Sheet de planning
