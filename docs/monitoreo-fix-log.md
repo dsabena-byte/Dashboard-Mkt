@@ -6,6 +6,37 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-09-06 · BGT Inversión — sigue escalando (56h → 80h), mismo diagnóstico, sin novedad
+
+- **Alarma:** Issue #632 sigue abierto y escaló en 6 corridas más del watchdog
+  desde el último log (5/9 10:37 UTC, 56h) hasta hoy (6/9 10:59 UTC, **80h**):
+  42h → 50h → 56h → 60h → 66h → 74h → 80h. Es la misma alarma de siempre, sin
+  cambio de causa.
+- **Chequeo de rutina:** re-verificado por GitHub (único acceso de este
+  entorno). `bgt-sync.yml` sigue en **success** ininterrumpido (última corrida
+  6/9 01:51 UTC, run #312) — el cron de este repo está sano, corriendo cada 12h
+  sin cortes. Los otros 12 workflows de sync bajo monitoreo (ga4, meta-paid,
+  organic-insights, meta-fb, ig-sync-6h, ig-sentiment, ugc-comments-graph/sync/
+  analysis, seo-sync, trends-sync, clasificar-contenido) también están todos en
+  **success** en su última corrida — no hay ningún Action en rojo.
+- **Diagnóstico:** sin cambios respecto al 2026-09-05 (ver entradas debajo): no
+  es un cron caído, es la fuente (Excel de SharePoint vía
+  `Dashboard-BGT/sync-sharepoint.yml`) que sigue sin commitear un diff nuevo —
+  ya lleva ~80h sin cambiar. No se volvió a clonar/leer `Dashboard-BGT` porque
+  el diagnóstico de la corrida anterior ya cubre la causa raíz y no hay señal de
+  que haya cambiado (mismo patrón de escalón ~4-6h entre corridas del watchdog,
+  consistente con "no hay commit nuevo", no con un cron roto).
+- **Acción tomada:** ninguna en código (no hay bug ni Action fallado que
+  re-disparar). No se repite el diagnóstico completo para no duplicar entradas.
+- **Pendiente (manual, sin cambios):** sigue siendo el mismo pendiente — cargar
+  el presupuesto de septiembre en el Excel de SharePoint (o confirmar que ya
+  está y mirar `sync-sharepoint.yml` en `Dashboard-BGT` con acceso de
+  escritura), y evaluar subir el umbral de `cadenciaH` de BGT en
+  `monitoreo-config.ts` (hoy 12h) para no generar ruido en cada corrida del
+  watchdog mientras el Excel no cambia.
+
+---
+
 ## 2026-09-05 · BGT Inversión — "sin actualizar hace 56h" (fuente SharePoint estancada, no es el cron)
 
 - **Alarma:** Issue #632, reabierto/actualizado 3 veces (38h → 42h → 50h → 56h)
