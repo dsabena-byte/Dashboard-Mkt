@@ -362,9 +362,25 @@ reporte_existencia/cb_homologos).
   de 30s y el motor los estira con `SPEED`; era de 30s y el user lo pidió más pausado, a 50s). Números ilustrativos (no salen de Supabase): para una versión con data real se
   reemplazan `TOM_META`/`TOM_REAL`/`ALC_*` y la matriz `MX` en `app.js`. Detalle: su `README.md`.
 
+- **Generador de Contenido — Calendario + publicación IG/FB (dic-2026):** `/contenido` →
+  `/contenido/calendario` (tabs: RRSS, UGC, Biblioteca UGC, Adaptación de piezas). Las piezas viven en
+  `contenido_calendario` (migs 0075-0090); flujo Generar→Diseñar→Biblioteca→**Distribuir** (fecha/hora/
+  redes). **Grilla mensual restaurada** (`MonthGrid` en `contenido/calendario/page.tsx`: piezas por día
+  por estado; tocar un día lo selecciona). **Publicación a Meta** (orgánica) por `lib/meta-publish.ts`
+  (Graph v22): manual (`api/contenido/calendario/publicar|retirar`) y **automática** (`api/cron/
+  publicar-contenido`, workflow `publicar-contenido.yml` **cron */30 ACTIVO** — publica las **aprobadas**
+  cuya fecha/hora llegó). **Permisos Meta validados sep-2026:** token system-user sin vencimiento; Página
+  **Drean** + IG **@dreanargentina** vinculados; scopes `pages_manage_posts` + `instagram_content_publish`
+  OK → **publicar a IG+FB funciona**. **Falta `instagram_manage_contents`** → borrar de IG por API NO
+  (FB sí; IG se borra a mano). **OJO seguridad:** el diag `api/diag/meta-publish-access` devuelve un Page
+  token real — no compartirlo. **Adaptación de piezas** (reframe IA, `lib/pauta-formatos.ts`): imagen
+  1:1/4:5/9:16/1.91:1, video 9:16/1:1/16:9 (Meta, Demand Gen, YouTube/DV360, TikTok). Detalle completo en
+  `docs/calendario-publicacion-meta.md`.
+
 ## Punteros a docs/
 `docs/architecture.md`, `docs/crons-github-actions.md`, `docs/guia-replicacion-y-seguridad.md`,
 `docs/meta-fb-reach-deprecation.md`, **`docs/mercado-gfk-carga.md`** (carga mensual de mercado
-GfK → `mercado_share`), y varios `*-sync.md` (dv360, google-ads, etc.). Los
-`handoff-*.md` son notas de sesiones previas.
+GfK → `mercado_share`), **`docs/calendario-publicacion-meta.md`** (calendario de contenidos +
+publicación orgánica IG/FB + estado de permisos Meta), y varios `*-sync.md` (dv360, google-ads, etc.).
+Los `handoff-*.md` son notas de sesiones previas.
 </content>
