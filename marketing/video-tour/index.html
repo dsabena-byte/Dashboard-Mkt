@@ -114,6 +114,174 @@
   .cover p{margin-top:26px;font-size:26px;color:#9db9de;font-weight:500}
   .cover .note{position:absolute;bottom:54px;font-size:16px;color:#5f7fa6;letter-spacing:.04em}
 
+  /* ===== réplica fiel de componentes del dashboard ===== */
+  .phead .datep{margin-left:auto;font-size:13px;color:var(--muted);font-weight:600;border:1px solid var(--line);border-radius:9px;padding:8px 14px;background:var(--panel);display:flex;align-items:center;gap:8px}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px}
+  .tabs .tb{padding:10px 18px;font-size:15px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent}
+  .tabs .tb.on{color:var(--ink);border-bottom-color:var(--ink)}
+  .tabs .tb.on.amber{border-bottom-color:#f59e0b}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px;background:var(--panel)}
+  .seg b{font-size:13px;font-weight:600;color:var(--muted);padding:6px 14px;border-radius:8px}
+  .seg b.on{background:var(--navy);color:#fff}
+  .stitle{font-size:14px;font-weight:700;color:var(--muted);margin:2px 0 12px}
+
+  /* MetaKpiCard */
+  .mgrid{display:grid;gap:14px}
+  .mcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:17px 19px;display:flex;flex-direction:column}
+  .mcard .mt{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .mcard .md{font-size:11px;color:var(--faint);margin-top:2px}
+  .mcard .mh{display:flex;align-items:baseline;gap:9px;margin-top:9px}
+  .mcard .mh b{font-family:var(--disp);font-weight:800;font-size:33px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+  .mcard .mh small{font-size:12px;color:var(--muted);font-weight:600}
+  .mcard .mrows{border-top:1px solid var(--line);margin-top:13px;padding-top:12px;display:flex;flex-direction:column;gap:12px}
+  .mrow .mrt{display:flex;align-items:center;gap:7px;font-size:13px}
+  .sdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .mrow .mrl{color:var(--muted)}
+  .mrow .mrm{font-weight:700;font-variant-numeric:tabular-nums}
+  .mchip{margin-left:auto;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;font-variant-numeric:tabular-nums}
+  .mbar{height:6px;border-radius:4px;background:var(--panel2);margin-top:7px;overflow:hidden}
+  .mbar i{display:block;height:100%;border-radius:4px}
+
+  /* Salud de Marca banner + objetivo cards */
+  .salud{background:var(--panel);border:2px solid var(--g);border-radius:20px;box-shadow:var(--sh);padding:20px 24px;margin-bottom:16px}
+  .salud .sh{display:flex;align-items:center;gap:14px}
+  .salud .badge{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;font-size:17px;font-weight:800}
+  .salud .st{font-family:var(--disp);font-weight:800;font-size:19px}
+  .salud .ssub{font-size:12px;color:var(--faint);margin-top:1px}
+  .salud .sr{margin-left:auto;display:flex;align-items:center;gap:22px}
+  .salud .sbig{text-align:right}
+  .salud .sbig .sl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}
+  .salud .sbig .sv{font-family:var(--disp);font-weight:800;font-size:38px;line-height:1;font-variant-numeric:tabular-nums}
+  .salud .sbig .sv span{font-size:20px;color:var(--faint);font-weight:700}
+  .salud .sbig .sy{font-size:11px;color:var(--muted);margin-top:3px}
+  .salud .spill{text-align:center}
+  .salud .spill b{display:block;border-radius:999px;padding:5px 13px;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+  .salud .spill small{font-size:8px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700;margin-top:3px;display:block}
+  .salud .sbar{height:8px;border-radius:5px;background:var(--panel2);overflow:hidden;margin-top:13px}
+  .salud .sbar i{display:block;height:100%;border-radius:5px}
+
+  .objc{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:17px 19px;display:flex;flex-direction:column}
+  .objc .oh{display:flex;align-items:flex-start;gap:8px}
+  .objc .och{width:11px;height:11px;border-radius:3px;flex:none;margin-top:3px}
+  .objc .on{font-family:var(--disp);font-weight:700;font-size:15.5px;line-height:1.15}
+  .objc .ope{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);margin-top:2px}
+  .objc .opill{margin-left:auto;text-align:center}
+  .objc .opill b{display:block;border-radius:999px;padding:3px 9px;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+  .objc .opill small{font-size:8px;text-transform:uppercase;color:var(--faint);font-weight:700;margin-top:2px;display:block}
+  .objc .obig{margin-top:12px}
+  .objc .obig .ol{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}
+  .objc .obig .ov{font-family:var(--disp);font-weight:800;font-size:29px;line-height:1;font-variant-numeric:tabular-nums;margin-top:2px}
+  .objc .obig .ov span{font-size:16px;color:var(--faint);font-weight:700}
+  .objc .obar{height:7px;border-radius:4px;background:var(--panel2);overflow:hidden;margin-top:9px}
+  .objc .obar i{display:block;height:100%;border-radius:4px}
+  .objc .oyt{font-size:11px;color:var(--muted);margin-top:6px}
+  .objc .apo{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+  .objc .apo .aph{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);margin-bottom:7px}
+  .objc .arow{display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0}
+  .objc .arow .an{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .objc .arow .ar{margin-left:auto;display:flex;gap:8px;font-variant-numeric:tabular-nums}
+  .objc .arow .ar .aw{color:var(--faint)} .objc .arow .ar .ac{font-weight:800}
+
+  /* scorecard grande (KPI | Mes real/meta/desv | YTD real/meta/desv | sparkline) */
+  table.sc2{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.sc2 th,table.sc2 td{padding:9px 12px;text-align:right;white-space:nowrap}
+  table.sc2 thead .g1 th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);background:var(--panel2)}
+  table.sc2 thead .g2 th{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--line)}
+  table.sc2 td{border-bottom:1px solid var(--line2);font-size:14px}
+  table.sc2 td.l,table.sc2 th.l{text-align:left}
+  table.sc2 .kn{font-weight:700} table.sc2 .km{font-size:11px;color:var(--faint);font-weight:500;display:block}
+  table.sc2 .mv{color:var(--meta2)}
+  table.sc2 .cc{display:inline-flex;justify-content:center;min-width:56px;font-size:12px;font-weight:700;padding:2px 7px;border-radius:6px;font-variant-numeric:tabular-nums}
+  .divx{width:1px;background:var(--line);padding:0!important}
+
+  /* tabla maestra por medio */
+  table.mt{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12.5px;table-layout:fixed}
+  table.mt th,table.mt td{padding:8px 8px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  table.mt th{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--faint);border-bottom:1px solid var(--line)}
+  table.mt td{border-bottom:1px solid var(--line2)}
+  table.mt td.l,table.mt th.l{text-align:left}
+  table.mt .md{color:var(--muted)}
+  table.mt .mn{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--ink)}
+  table.mt .mn i{width:9px;height:9px;border-radius:50%;flex:none}
+  table.mt tr.tot td{border-top:2px solid var(--line);font-weight:800;background:var(--panel2)}
+  .heat-g{color:#047857} .heat-a{color:#b45309} .heat-r{color:#be123c}
+
+  /* KpiObjCard (Trade) */
+  .kobj{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:17px 19px}
+  .kobj .kt{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .kobj .km{font-size:10px;color:var(--faint);margin-top:2px}
+  .kobj .kr{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+  .kobj .kv{font-family:var(--disp);font-weight:800;font-size:31px;line-height:1;font-variant-numeric:tabular-nums}
+  .kobj .kchip{font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;font-variant-numeric:tabular-nums}
+  .kobj .kctx{font-size:11px;color:var(--muted);margin-top:7px;font-variant-numeric:tabular-nums}
+  .kobj .kobjl{font-size:11px;color:var(--muted);margin-top:2px}
+  .kobj .kbar{height:6px;border-radius:4px;background:var(--panel2);overflow:hidden;margin-top:8px}
+  .kobj .kbar i{display:block;height:100%;border-radius:4px}
+
+  /* ranking horizontal (marcas) */
+  .rank .rr{display:flex;align-items:center;gap:12px;padding:6px 0}
+  .rank .rl{width:130px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .rank .rl i{width:9px;height:9px;border-radius:50%;flex:none}
+  .rank .rl .star{color:#e11d48;font-weight:800}
+  .rank .rt{flex:1;height:20px;border-radius:6px;background:var(--panel2);overflow:hidden}
+  .rank .rt i{display:block;height:100%;border-radius:6px}
+  .rank .rv{width:66px;text-align:right;font-family:var(--disp);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+
+  /* sentimiento stacked por marca */
+  .sent .sr{display:flex;align-items:center;gap:12px;padding:9px 0}
+  .sent .sl{width:78px;font-size:14px;font-weight:600}
+  .sent .st{flex:1;height:22px;border-radius:6px;overflow:hidden;display:flex;background:var(--panel2)}
+  .sent .st i{height:100%}
+
+  /* demografía barras */
+  .demo h5{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:9px}
+  .demo .dr{margin:8px 0}
+  .demo .dt{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+  .demo .dt b{font-weight:600} .demo .dt span{color:var(--muted);font-variant-numeric:tabular-nums}
+  .demo .db{height:8px;border-radius:5px;background:var(--panel2);overflow:hidden}
+  .demo .db i{display:block;height:100%;border-radius:5px}
+
+  /* chat drawer copiloto */
+  .cdrawer{position:absolute;top:0;right:0;bottom:0;width:460px;background:var(--panel);border-left:1px solid var(--line);box-shadow:-24px 0 60px -30px rgba(10,32,46,.4);display:flex;flex-direction:column;z-index:5}
+  .cdrawer .ch{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:16px 20px}
+  .cdrawer .ch b{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .cdrawer .ch b .sp{width:18px;height:18px;color:var(--cyan-ink)}
+  .cdrawer .ch .x{color:var(--faint);font-size:18px}
+  .cdrawer .cbody{flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+  .cdrawer .chips{display:flex;flex-direction:column;gap:8px}
+  .cdrawer .chips p{font-size:12px;color:var(--muted);margin-bottom:2px}
+  .cdrawer .chip2{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 12px;font-size:12.5px;color:var(--muted);text-align:left}
+  .cdrawer .ubub{align-self:flex-end;max-width:85%;background:var(--navy);color:#fff;padding:11px 15px;border-radius:16px 16px 4px 16px;font-size:14px;font-weight:500}
+  .cdrawer .abub{align-self:flex-start;width:100%;background:var(--panel2);border:1px solid var(--line);padding:14px 16px;border-radius:16px 16px 16px 4px;font-size:14px;line-height:1.5}
+  .cdrawer .abub .cop{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-weight:700;color:var(--cyan-ink);font-size:13px;margin-bottom:7px}
+  .cdrawer .abub .cop .sp{width:17px;height:17px}
+  .cdrawer .cinp{border-top:1px solid var(--line);padding:14px 18px;display:flex;gap:10px}
+  .cdrawer .cinp .box{flex:1;border:1px solid var(--line);border-radius:9px;padding:10px 13px;font-size:14px;color:var(--faint)}
+  .cdrawer .cinp .snd{width:42px;border-radius:9px;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:16px}
+  .fab{position:absolute;bottom:34px;right:34px;background:var(--navy);color:#fff;border-radius:999px;padding:14px 22px;font-size:15px;font-weight:700;box-shadow:0 14px 34px -14px rgba(10,45,90,.7);z-index:4}
+  .insrow{display:flex;gap:12px;align-items:flex-start;padding:14px 15px;border:1px solid var(--line);border-radius:13px}
+  .insrow .ib{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;font-weight:800}
+
+  /* cuatrimestre cards (Inversión) */
+  .cuad{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:18px 20px;display:flex;flex-direction:column}
+  .cuad .ct{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .cuad .cs{font-size:10px;color:var(--faint);margin-top:2px}
+  .cuad .cbadge{margin-left:auto;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-radius:999px;padding:3px 10px}
+  .cuad .cbig{font-family:var(--disp);font-weight:800;font-size:31px;line-height:1;margin-top:12px;font-variant-numeric:tabular-nums}
+  .cuad .cbg{font-size:11px;color:var(--muted);margin-top:6px}
+  .cuad .crow{border-top:1px solid var(--line);margin-top:12px;padding-top:11px;display:flex;flex-direction:column;gap:11px}
+
+  /* mapa estratégico */
+  .mapwrap{flex:1;display:grid;grid-template-columns:1fr 1.3fr;gap:40px;align-items:center;position:relative}
+  .mapcol h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:14px}
+  .mobj{background:var(--panel);border:1px solid var(--line);border-left-width:5px;border-radius:13px;box-shadow:var(--sh);padding:15px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+  .mobj .mn{font-family:var(--disp);font-weight:700;font-size:17px}
+  .mobj .mw{margin-left:auto;font-family:var(--disp);font-weight:800;font-size:20px;color:var(--navy)}
+  .mobj .mws{font-size:10px;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .mkpi{background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--sh);padding:11px 15px;margin-bottom:9px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+  .mkpi .mkw{margin-left:auto;font-size:12px;color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
+  .maplines{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:visible}
+
 </style>
 </head>
 <body>
