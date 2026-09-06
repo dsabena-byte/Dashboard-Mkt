@@ -238,8 +238,9 @@ export default function CalendarioPage() {
     return map;
   }, [items]);
 
-  // (El calendario mensual se removió de esta vista: la programación de cada
-  // pieza vive dentro de su paso "Distribuir". y/m siguen acotando la carga del mes.)
+  // El calendario mensual (grilla) muestra las piezas por día vía byDay; al tocar
+  // un día se selecciona esa fecha (sel) y abajo se listan sus piezas. y/m acotan
+  // la carga del mes.
 
   async function addEntry() {
     setErr(null);
@@ -292,7 +293,7 @@ export default function CalendarioPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Generador UGC (persona hablando)" : "Generación de Contenidos RRSS"}</h2>
-          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Generá videos UGC nativos (guion → video) con perfiles, escenarios y configuraciones. Lo generado se guarda en la Biblioteca UGC. La marca va en el copy, no hablada." : "Generá cada pieza, diseñala y aprobala. Cuándo se publica (la agenda) se decide después, en el calendario de abajo."}</p>
+          <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Generá videos UGC nativos (guion → video) con perfiles, escenarios y configuraciones. Lo generado se guarda en la Biblioteca UGC. La marca va en el copy, no hablada." : "Elegí el día en el calendario y trabajá las piezas de esa fecha; la hora y las redes de publicación se definen en el paso Distribuir de cada pieza."}</p>
         </div>
       </header>
 
@@ -402,8 +403,9 @@ export default function CalendarioPage() {
         </section>
       ) : (
       <>
-      {/* Piezas: crear / generar / diseñar es el foco. La programación
-          (calendario) vive dentro de cada pieza, en el paso Distribuir. */}
+      <MonthGrid y={y} m={m} sel={sel} byDay={byDay} onPick={setSel} setY={setY} setM={setM} />
+      {/* Piezas del día seleccionado. La programación fina (fecha/hora/redes) de
+          cada pieza vive dentro de su paso "Distribuir". */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -428,6 +430,69 @@ export default function CalendarioPage() {
       </>
       )}
     </div>
+  );
+}
+
+// Grilla mensual (calendario visual). Muestra las piezas por día (puntos por
+// estado) y al tocar un día selecciona esa fecha para la lista de "Piezas".
+const WD = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+function MonthGrid({ y, m, sel, byDay, onPick, setY, setM }: {
+  y: number; m: number; sel: string; byDay: Record<string, Cal[]>;
+  onPick: (d: string) => void; setY: (n: number) => void; setM: (n: number) => void;
+}) {
+  const t = new Date();
+  const todayStr = ymd(t.getFullYear(), t.getMonth(), t.getDate());
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const startDow = (new Date(y, m, 1).getDay() + 6) % 7; // lunes = 0
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const monthLabel = new Date(y, m, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+  const prev = () => { const d = new Date(y, m - 1, 1); setY(d.getFullYear()); setM(d.getMonth()); };
+  const next = () => { const d = new Date(y, m + 1, 1); setY(d.getFullYear()); setM(d.getMonth()); };
+  return (
+    <section className="rounded-xl border bg-card p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <button onClick={prev} className="rounded-md border px-2.5 py-1 text-sm hover:bg-accent" aria-label="Mes anterior">‹</button>
+        <div className="text-sm font-semibold capitalize">{monthLabel}</div>
+        <button onClick={next} className="rounded-md border px-2.5 py-1 text-sm hover:bg-accent" aria-label="Mes siguiente">›</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium uppercase text-muted-foreground">
+        {WD.map((w) => <div key={w} className="py-1">{w}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((d, i) => {
+          if (d === null) return <div key={i} />;
+          const ds = ymd(y, m, d);
+          const dayItems = byDay[ds] ?? [];
+          const isSel = ds === sel;
+          const isToday = ds === todayStr;
+          return (
+            <button
+              key={i}
+              onClick={() => onPick(ds)}
+              className={`flex min-h-[56px] flex-col items-start gap-1 rounded-md border p-1.5 text-left transition ${isSel ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-accent"}`}
+            >
+              <span className={`text-xs font-medium ${isToday ? "grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground" : "text-foreground"}`}>{d}</span>
+              {dayItems.length > 0 && (
+                <span className="flex flex-wrap items-center gap-0.5">
+                  {dayItems.slice(0, 4).map((it) => (
+                    <span key={it.id} title={`${ESTADO_LABEL[it.estado] ?? it.estado}${it.hora ? " · " + it.hora.slice(0, 5) : ""}`} className="h-1.5 w-1.5 rounded-full" style={{ background: ESTADO_COLOR[it.estado] ?? "#94a3b8" }} />
+                  ))}
+                  {dayItems.length > 4 && <span className="text-[9px] leading-none text-muted-foreground">+{dayItems.length - 4}</span>}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+        {Object.entries(ESTADO_LABEL).map(([k, l]) => (
+          <span key={k} className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full" style={{ background: ESTADO_COLOR[k] }} />{l}</span>
+        ))}
+      </div>
+    </section>
   );
 }
 
