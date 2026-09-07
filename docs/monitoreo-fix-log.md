@@ -6,6 +6,26 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-09-07 · BGT Inversión — sigue sin actualizar, ahora 98h (~4 días)
+
+- **Chequeo de rutina:** Issue #632 sigue abierto, ahora en su 10ª actualización
+  (38h → 42h → 50h → 56h → 60h → 66h → 74h → 80h → 85h → **98h**, última corrida
+  del watchdog 07/9 04:44 UTC). Diagnóstico ya hecho el 05/9 (ver entrada de abajo)
+  no cambió: `bgt-sync.yml` de este repo sigue en **success** en todas sus corridas
+  (última 07/9 01:49 UTC, HTTP 200/`ok:true`) — el cron nunca se cayó. Confirmado
+  además que **ningún** workflow de sync (los 13 del checklist) tiene el último
+  run en rojo — no hay nada para re-disparar.
+- **Acción tomada:** ninguna en código, no aplica re-trigger. Sigue siendo 100%
+  la fuente SharePoint sin cambios (`Dashboard-BGT/data.json` no se actualiza),
+  no un bug de este repo.
+- **Pendiente (manual, sin cambios respecto al 05/9):** cargar/confirmar el
+  presupuesto de septiembre en el Excel de SharePoint que alimenta
+  `Dashboard-BGT/sync-sharepoint.yml`. Ya lleva **~4 días** sin moverse — vale la
+  pena que el usuario lo revise directamente en vez de esperar a que el sync lo
+  detecte solo.
+
+---
+
 ## 2026-09-05 · BGT Inversión — "sin actualizar hace 56h" (fuente SharePoint estancada, no es el cron)
 
 - **Alarma:** Issue #632, reabierto/actualizado 3 veces (38h → 42h → 50h → 56h)
