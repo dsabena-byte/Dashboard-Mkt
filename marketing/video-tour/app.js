@@ -4,9 +4,9 @@
    DATOS 100% FICTICIOS: marca "Novara" + competidores inventados. Sin data real.
    Réplica del sistema visual real de cada dashboard (cards, tablas, gráficos).
    ========================================================================= */
-const DUR = 117.0;
+const DUR = 61.0;
 const SPEED = 1.0;
-const LEAD = 0.42;
+const LEAD = 0.28;
 
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const S = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
@@ -60,9 +60,23 @@ function shell(active, head, body) {
     <div class="main">
       <div class="top"><div class="brand"><div class="bdot">N</div><div class="bn">Novara</div><span class="bs">· Electro</span></div>
         <div class="rt"><span class="pill">Datos ilustrativos</span><div class="av">ML</div></div></div>
-      <div class="body">${head}${body}</div>
+      <div class="body"><div class="scrollinner">${head}${body}</div><div class="sbar"><i></i></div></div>
     </div>
   </div>`;
+}
+/* scroll de página: pan vertical del contenido durante la escena (de arriba hacia abajo) */
+function pageScroll(node, lt, from, to) {
+  const inner = node.querySelector('.scrollinner'), body = node.querySelector('.body'), bar = node.querySelector('.sbar i');
+  if (!inner || !body) return;
+  const maxS = Math.max(0, inner.offsetHeight - body.offsetHeight);
+  const p = maxS ? eio(clamp((lt - from) / (to - from), 0, 1)) : 0;
+  inner.style.transform = `translateY(${(-maxS * p).toFixed(1)}px)`;
+  if (bar) {
+    if (!maxS) { bar.style.opacity = 0; return; }
+    bar.style.opacity = 1;
+    const trackH = body.offsetHeight - 24, thumb = Math.max(28, trackH * body.offsetHeight / inner.offsetHeight);
+    bar.style.height = thumb.toFixed(0) + 'px'; bar.style.top = (p * (trackH - thumb)).toFixed(1) + 'px';
+  }
 }
 function phead(title, sub, right = '') { return `<div class="phead"><h2>${title}</h2><div class="ps">${sub}</div>${right}</div>`; }
 
@@ -179,6 +193,21 @@ function svgLine(id, months, real, meta, min, max, opt = {}) {
   months.forEach((m, i) => g += `<text x="${x(i).toFixed(1)}" y="${(H - 7).toFixed(1)}" text-anchor="middle" font-size="11" fill="var(--faint)" font-weight="600">${m}</text>`);
   return `<svg id="${id}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:${H}px">${g}</svg>`;
 }
+/* combo doble-eje: barras apiladas (eje der. interacciones) + línea real/meta % (eje izq.) con grilla */
+function svgCombo(id, months, stacks, realPct, metaPct, maxInt, maxPct, opt = {}) {
+  const W = opt.W || 700, H = opt.H || 210, padL = 46, padR = 48, padT = 16, padB = 24, N = 4;
+  const ph = H - padT - padB, pw = W - padL - padR;
+  const yP = v => padT + ph - (v / maxPct) * ph, step = pw / months.length, cx = i => padL + step * i + step / 2;
+  const colors = ['#1e40af', '#60a5fa', '#bfdbfe'];
+  let g = '';
+  for (let i = 0; i <= N; i++) { const yy = padT + ph - (i / N) * ph; g += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" stroke="var(--line2)" stroke-width="1"/><text x="${padL - 7}" y="${(yy + 3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#0f172a">${(maxPct * i / N).toFixed(0)}%</text><text x="${(W - padR + 7).toFixed(0)}" y="${(yy + 3.5).toFixed(1)}" text-anchor="start" font-size="10" fill="#1e40af">${fmtAxis(maxInt * i / N)}</text>`; }
+  g += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${(padT + ph).toFixed(1)}" stroke="var(--line)" stroke-width="1.4"/><line x1="${(W - padR).toFixed(0)}" y1="${padT}" x2="${(W - padR).toFixed(0)}" y2="${(padT + ph).toFixed(1)}" stroke="var(--line)" stroke-width="1.4"/>`;
+  months.forEach((m, i) => { let acc = 0; const bw = Math.min(26, step * 0.5); stacks[i].forEach((v, j) => { const bh = (v / maxInt) * ph; g += `<rect x="${(cx(i) - bw / 2).toFixed(1)}" y="${(padT + ph - acc - bh).toFixed(1)}" width="${bw}" height="${bh.toFixed(1)}" fill="${colors[j]}"${j === stacks[i].length - 1 ? ' rx="3"' : ''}/>`; acc += bh; }); g += `<text x="${cx(i).toFixed(1)}" y="${(H - 7).toFixed(1)}" text-anchor="middle" font-size="11" fill="var(--faint)" font-weight="600">${m}</text>`; });
+  const pp = a => a.map((v, i) => (i ? 'L' : 'M') + cx(i).toFixed(1) + ' ' + yP(v).toFixed(1)).join(' ');
+  g += `<path d="${pp(metaPct)}" fill="none" stroke="var(--meta2)" stroke-width="2.2" stroke-dasharray="6 5"/><path class="rl" d="${pp(realPct)}" fill="none" stroke="#0f172a" stroke-width="3" stroke-linejoin="round"/>`;
+  realPct.forEach((v, i) => g += `<circle cx="${cx(i).toFixed(1)}" cy="${yP(v).toFixed(1)}" r="3" fill="#0f172a"/><text x="${cx(i).toFixed(1)}" y="${(yP(v) - 8).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0f172a">${v.toString().replace('.', ',')}%</text>`);
+  return `<svg id="${id}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:${H}px">${g}</svg>`;
+}
 /* tarjeta de pieza (post o creativo de pauta) con thumbnail + métricas de performance */
 function pieceCard(cat, catColor, title, badge, metrics, icon) {
   return `<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);box-shadow:var(--sh)">
@@ -234,14 +263,14 @@ function navCursor(key, toX, toY) {
 /* =========================== ESCENAS =========================== */
 
 /* 0 · Intro */
-scene('intro', 0, 5, `<div class="cover">
+scene('intro', 0, 3, `<div class="cover">
   <div class="logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div>
   <h1>Un recorrido por <span class="hl">la plataforma.</span></h1>
   <p>De la estrategia al resultado, con todos los datos conectados.</p>
   <div class="note">Marca y datos ilustrativos · no representan a ninguna empresa real</div>
 </div>`, (node) => {
   const parts = [node.querySelector('.logo'), node.querySelector('h1'), node.querySelector('.cover p'), node.querySelector('.note')];
-  return (lt) => parts.forEach((p, i) => inUp(p, eo(S(lt, .2 + i * .28, 1.3 + i * .28)), 26));
+  return (lt) => parts.forEach((p, i) => inUp(p, eo(S(lt, .1 + i * .13, .55 + i * .13)), 22));
 });
 
 /* 1 · Mapa Estratégico (la tesis: KPIs → objetivos) — coordenadas px en caja 1740x660 */
@@ -253,7 +282,7 @@ const M_KPI = [['Alcance único', '15%'], ['Frecuencia', '15%'], ['Impresiones',
 const M_LINK = [[0, 0, .35], [1, 0, .30], [2, 0, .20], [2, 2, .25], [3, 1, .40], [3, 2, .20], [4, 1, .35], [4, 2, .25], [5, 3, .45], [6, 3, .55], [0, 1, .15]];
 const M_X1 = 360, M_X2 = 1310, M_MX = (360 + 1310) / 2;
 const M_PATHS = M_LINK.map(l => { const y1 = M_KTOP[l[0]] + 23, y2 = M_OTOP[l[1]] + 31; return `<path class="mln" d="M${M_X1} ${y1} C${M_MX} ${y1} ${M_MX} ${y2} ${M_X2} ${y2}" fill="none" stroke="${M_OBJ[l[1]][1]}" stroke-width="${(1.4 + l[2] * 6).toFixed(1)}" opacity="${(.16 + l[2] * .5).toFixed(2)}" stroke-linecap="round"/>`; }).join('');
-scene('mapa', 5, 16, `<div style="position:absolute;inset:0;background:var(--ground);padding:44px 90px 30px;display:flex;flex-direction:column">
+scene('mapa', 3, 8, `<div style="position:absolute;inset:0;background:var(--ground);padding:44px 90px 30px;display:flex;flex-direction:column">
   <div class="mhead" style="text-align:center;margin-bottom:14px">
     <div class="bip" style="font-family:var(--disp);font-weight:800;font-size:22px;color:var(--navy);display:inline-flex;align-items:center;gap:7px">BIP<span style="width:0;height:0;border-left:12px solid var(--cyan);border-top:8px solid transparent;border-bottom:8px solid transparent"></span></div>
     <h2 style="font-family:var(--disp);font-weight:800;font-size:38px;letter-spacing:-.025em;margin-top:6px">Mapa Estratégico</h2>
@@ -273,10 +302,10 @@ scene('mapa', 5, 16, `<div style="position:absolute;inset:0;background:var(--gro
   const kpis = M_KPI.map((_, i) => node.querySelector('.mk' + i)), objs = M_OBJ.map((_, i) => node.querySelector('.mo' + i));
   const paths = [...node.querySelectorAll('.mln')]; paths.forEach(p => p.__L = 0);
   return (lt) => {
-    inUp(head, eo(S(lt, .2, 1.2)), 20);
-    kpis.forEach((k, i) => inUp(k, eo(S(lt, 1.1 + i * .11, 1.7 + i * .11)), 16));
-    objs.forEach((o, i) => inUp(o, eo(S(lt, 1.5 + i * .16, 2.1 + i * .16)), 16));
-    paths.forEach((p, i) => { if (!p.__L) p.__L = dash(p); const pr = eo(S(lt, 2.7 + i * .11, 4.2 + i * .11)); p.style.strokeDashoffset = (1 - pr) * p.__L; });
+    inUp(head, eo(S(lt, .1, .7)), 18);
+    kpis.forEach((k, i) => inUp(k, eo(S(lt, .5 + i * .07, .95 + i * .07)), 14));
+    objs.forEach((o, i) => inUp(o, eo(S(lt, .8 + i * .1, 1.3 + i * .1)), 14));
+    paths.forEach((p, i) => { if (!p.__L) p.__L = dash(p); const pr = eo(S(lt, 1.5 + i * .08, 2.7 + i * .08)); p.style.strokeDashoffset = (1 - pr) * p.__L; });
   };
 });
 
@@ -287,13 +316,43 @@ const SEG_OBJ = [
   { n: 'Intención de Compra', c: '#f59e0b', peso: 25, cmes: 102, res: '34,2', meta: '34,1', ytd: 101, ap: [['Alcance único', 'up', 12, 100], ['VTR (≥50%)', 'up', 10, 104], ['Clicks', 'up', 10, 101]] },
   { n: 'Poder de Marca', c: '#0ea5e9', peso: 25, cmes: 103, res: '15,6', meta: '15,5', ytd: 101, ap: [['VTR (≥50%)', 'up', 14, 104], ['Impresiones', 'up', 12, 102], ['Alcance único', 'up', 10, 100]] },
 ];
-const SEG_SC = [
-  ['Alcance único', 'Personas alcanzadas', 'Ago', '26,0M', '25,0M', 'up', '▲ 4%', '230M', '229M', 'up', '▲ 0%', [20, 22, 21, 24, 23, 26], [21, 21, 22, 23, 24, 25]],
-  ['Impresiones', 'Impresiones totales', 'Ago', '52,0M', '50,0M', 'up', '▲ 4%', '598M', '580M', 'up', '▲ 3%', [40, 44, 42, 48, 50, 52], [42, 43, 45, 47, 49, 50]],
-  ['VTR (≥50%)', 'Vistas 50% ÷ impr. video', 'Ago', '30,6%', '30,0%', 'up', '▲ 2%', '29,0%', '29,0%', 'up', '▲ 0%', [27, 28, 29, 29, 30, 31], [28, 28, 29, 29, 30, 30]],
-  ['Tráfico web', 'Usuarios únicos del mes', 'Ago', '367K', '360K', 'up', '▲ 2%', '2,3M', '2,3M', 'up', '▲ 0%', [30, 34, 33, 36, 35, 37], [32, 34, 34, 35, 36, 36]],
-  ['Floor Share', 'Share góndola (Σ cat×peso)', 'Ago', '24,0%', '23,5%', 'up', '▲ 2%', '22,1%', '22,0%', 'up', '▲ 0%', [22, 23, 23, 24, 24, 24], [23, 23, 23, 23, 24, 24]],
+const SEG_GROUPS = [
+  ['Pauta Mkt', [4, 1, 0], [
+    ['Alcance único', 'Personas alcanzadas', '26,0M', '25,0M', 'up', '▲ 4%', '230M', '229M', 'up', '▲ 0%', [20, 22, 21, 24, 23, 26], [21, 21, 22, 23, 24, 25]],
+    ['Frecuencia', 'Impresiones ÷ alcance', '2,0×', '2,0×', 'up', '▲ 0%', '2,0×', '2,0×', 'up', '▲ 0%', [19, 20, 21, 20, 20, 20], [20, 20, 20, 20, 20, 20]],
+    ['Impresiones', 'Impresiones totales', '52,0M', '50,0M', 'up', '▲ 4%', '598M', '580M', 'up', '▲ 3%', [40, 44, 42, 48, 50, 52], [42, 43, 45, 47, 49, 50]],
+    ['VTR (≥50%)', 'Vistas 50% ÷ impr. video', '30,6%', '30,0%', 'up', '▲ 2%', '29,0%', '29,0%', 'up', '▲ 0%', [27, 28, 29, 29, 30, 31], [28, 28, 29, 29, 30, 30]],
+    ['Clicks', 'Clicks totales', '431K', '420K', 'up', '▲ 3%', '5,6M', '5,5M', 'up', '▲ 1%', [36, 40, 38, 44, 42, 43], [38, 40, 40, 41, 42, 43]],
+  ]],
+  ['Web / Ecommerce', [3, 0, 0], [
+    ['Tráfico web', 'Usuarios únicos del mes', '367K', '360K', 'up', '▲ 2%', '2,3M', '2,3M', 'up', '▲ 0%', [30, 34, 33, 36, 35, 37], [32, 34, 34, 35, 36, 36]],
+    ['Avg Sesión (seg)', 'Duración media de sesión', '146s', '140s', 'up', '▲ 4%', '142s', '140s', 'up', '▲ 1%', [130, 138, 140, 142, 145, 146], [138, 139, 140, 140, 140, 140]],
+    ['Tasa de conversión', 'Conversiones ÷ sesiones', '1,6%', '1,5%', 'up', '▲ 7%', '1,5%', '1,5%', 'up', '▲ 3%', [13, 14, 15, 15, 16, 16], [14, 15, 15, 15, 15, 15]],
+  ]],
+  ['Instagram', [2, 0, 0], [
+    ['Alcance orgánico', 'Alcance IG del mes', '53K', '50K', 'up', '▲ 6%', '296K', '288K', 'up', '▲ 3%', [38, 45, 41, 43, 52, 53], [40, 42, 44, 46, 48, 50]],
+    ['Engagement rate', 'Interacciones ÷ alcance', '3,83%', '3,00%', 'up', '▲ 28%', '2,52%', '2,44%', 'up', '▲ 4%', [22, 20, 20, 25, 30, 38], [20, 20, 20, 24, 27, 30]],
+  ]],
+  ['Trade · CB + Floor Share', [1, 1, 0], [
+    ['% Cumplimiento CB', '% CB del mes', '76,3%', '78,0%', 'mid', '▼ 2%', '74,6%', '74,6%', 'up', '▲ 0%', [70, 72, 73, 74, 75, 76], [76, 76, 77, 77, 78, 78]],
+    ['Floor Share', 'Share góndola (Σ cat×peso)', '24,0%', '23,5%', 'up', '▲ 2%', '22,1%', '22,0%', 'up', '▲ 0%', [22, 23, 23, 24, 24, 24], [23, 23, 23, 23, 24, 24]],
+  ]],
 ];
+function scRow(r) {
+  return `<tr><td class="l"><span class="kn">${r[0]}</span><span class="km">${r[1]}</span></td><td class="mv">Ago</td>
+    <td>${r[2]}</td><td class="mv">${r[3]}</td><td><span class="cc" style="color:${SEM[r[4]]};background:${SEMB[r[4]]}">${r[5]}</span></td><td class="divx"></td>
+    <td>${r[6]}</td><td class="mv">${r[7]}</td><td><span class="cc" style="color:${SEM[r[8]]};background:${SEMB[r[8]]}">${r[9]}</span></td>
+    <td style="text-align:center">${spark(r[10], r[11])}</td></tr>`;
+}
+function scGroup(name, tally, rows) {
+  const dot = (c, n) => `<span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:4px;vertical-align:0"></i>${n}</span>`;
+  return `<div style="margin-top:14px"><div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><h3 style="font-size:16px">${name}</h3>
+    <div style="display:flex;gap:10px;font-size:12px;color:var(--muted);font-weight:600">${dot(SEM.up, tally[0])}${dot(SEM.mid, tally[1])}${dot(SEM.dn, tally[2])}</div></div>
+    <div class="panel" style="padding:4px 16px"><table class="sc2"><thead>
+      <tr class="g1"><th class="l" rowspan="2">KPI</th><th rowspan="2">Mes</th><th colspan="3">Desvío del mes</th><th class="divx" rowspan="2"></th><th colspan="3">Acumulado YTD</th><th rowspan="2" style="text-align:center">Evolución (real vs meta)</th></tr>
+      <tr class="g2"><th>Real</th><th>Meta</th><th>Desv.</th><th>Real</th><th>Meta</th><th>Desv.</th></tr></thead>
+      <tbody>${rows.map(scRow).join('')}</tbody></table></div></div>`;
+}
 function objCard(o) {
   const cm = o.cmes >= 100 ? 'up' : o.cmes >= 90 ? 'mid' : 'dn', yt = o.ytd >= 100 ? 'up' : o.ytd >= 90 ? 'mid' : 'dn';
   return `<div class="objc">
@@ -305,29 +364,23 @@ function objCard(o) {
       ${o.ap.map(a => `<div class="arow"><span class="sdot" style="background:${SEM[a[1]]}"></span><span class="an">${a[0]}</span><span class="ar"><span class="aw">${a[2]}%</span><span class="ac" style="color:${SEM[a[1]]}">${a[3]}%</span></span></div>`).join('')}</div>
   </div>`;
 }
-scene('seg', 16, 30, shell('seg',
+scene('seg', 8, 15.5, shell('seg',
   phead('Seguimiento de Objetivos', 'Cumplimiento de objetivos y KPIs vs metas mensuales · a Ago', '<div class="datep">Vista: General ▾</div>'), `
-  <div class="salud">
+  <div class="salud sec">
     <div class="sh"><span class="badge" style="background:${SEM.up}">★</span>
       <div><div class="st">Salud de Marca</div><div class="ssub">Σ peso estratégico × cumplimiento de cada objetivo · a Ago</div></div>
       <div class="sr"><div class="sbig"><div class="sl">Resultado acum. · Meta</div><div class="sv" style="color:${SEM.up}">101,2 <span>/ 100</span></div><div class="sy">Avance YTD <b>101%</b> de la meta</div></div>
         <div class="spill"><b style="color:${SEM.up};background:${SEMB.up}">103%</b><small>cumpl. mes</small></div></div></div>
     <div class="sbar"><i data-w="100" style="background:${SEM.up}"></i></div></div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px">${SEG_OBJ.map(objCard).join('')}</div>
-  <div class="panel" style="flex:1;padding:18px 22px"><div class="ph"><h3>KPIs por plan</h3><div class="lg"><span><i style="background:var(--real)"></i>Real</span><span><i style="background:var(--meta2)"></i>Meta</span><span style="color:var(--faint)">·</span><span><i style="background:${SEM.up}"></i>En meta</span><span><i style="background:${SEM.mid}"></i>En riesgo</span></div></div>
-    <table class="sc2"><thead>
-      <tr class="g1"><th class="l" rowspan="2">KPI</th><th rowspan="2">Mes</th><th colspan="3">Desvío del mes</th><th class="divx" rowspan="2"></th><th colspan="3">Acumulado YTD</th><th rowspan="2" style="text-align:center">Evolución</th></tr>
-      <tr class="g2"><th>Real</th><th>Meta</th><th>Desv.</th><th>Real</th><th>Meta</th><th>Desv.</th></tr></thead>
-    <tbody>${SEG_SC.map(r => `<tr><td class="l"><span class="kn">${r[0]}</span><span class="km">${r[1]}</span></td><td class="mv">${r[2]}</td>
-      <td>${r[3]}</td><td class="mv">${r[4]}</td><td><span class="cc" style="color:${SEM[r[5]]};background:${SEMB[r[5]]}">${r[6]}</span></td><td class="divx"></td>
-      <td>${r[7]}</td><td class="mv">${r[8]}</td><td><span class="cc" style="color:${SEM[r[9]]};background:${SEMB[r[9]]}">${r[10]}</span></td>
-      <td style="text-align:center">${spark(r[11], r[12])}</td></tr>`).join('')}</tbody></table></div>`),
+  <div class="sech">Objetivos Estratégicos</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:6px">${SEG_OBJ.map(objCard).join('')}</div>
+  <div class="sech" style="margin-top:16px">KPIs por plan <span style="color:var(--faint);font-weight:500">· indicadores que alimentan los objetivos</span></div>
+  ${SEG_GROUPS.map(g => scGroup(...g)).join('')}`),
   (node) => {
-    const banner = node.querySelector('.salud'), cards = [...node.querySelectorAll('.objc')], panel = node.querySelector('.panel'), rows = [...node.querySelectorAll('.sc2 tbody tr')];
+    const banner = node.querySelector('.salud'), cards = [...node.querySelectorAll('.objc')];
     return (lt, a) => {
-      inUp(banner, eo(S(lt, .3, 1.0)), 18); stagger(cards, lt, .7, .12, 18); inUp(panel, eo(S(lt, 1.5, 2.1)), 20);
-      rows.forEach((r, i) => inUp(r, eo(S(lt, 2.2 + i * .12, 2.7 + i * .12)), 10));
-      grow(node, eo(S(lt, .6, 2.6))); runCursor(navCursor('seg', 980, 620), lt, a);
+      inUp(banner, eo(S(lt, .15, .6)), 16); stagger(cards, lt, .35, .07, 14);
+      grow(node, eo(S(lt, .4, 1.6))); pageScroll(node, lt, 1.4, 6.8);
     };
   });
 
@@ -339,7 +392,7 @@ const MED_MEDIA = [
   ['Programmatic', '#4285F4', '$1,0M', '48M', '14,1M', '3,4', '28%', '$21', 'a'],
   ['TikTok', '#111827', '$0,6M', '31M', '9,2M', '3,3', '31%', '$19', 'g'],
 ];
-scene('medios', 30, 43, shell('medios',
+scene('medios', 15.5, 22, shell('medios',
   `<div class="phead" style="align-items:flex-start;flex-wrap:wrap"><div><h2>Plan de Medios</h2><div class="ps">Resultados ejecutados (Digital ON + TV + OOH) · Fuente: OMD</div>
     <div style="display:flex;gap:18px;margin-top:8px;font-size:12px;color:var(--faint);font-weight:600">${['DV360 al 07/09', 'Meta al 06/09', 'Plan/OMD al 03/09', 'Google Ads al 07/09'].map(s => `<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:7px;height:7px;border-radius:50%;background:${SEM.up};display:inline-block"></i>${s}</span>`).join('')}</div></div></div>`, `
   <div class="tabs"><span class="tb on amber">Impacto Campaña</span><span class="tb">Eficiencia Medios</span><span class="tb">Insights Pauta</span></div>
@@ -354,38 +407,44 @@ scene('medios', 30, 43, shell('medios',
     ${metaCard('VTR ≥50%', 'Vistas 50% ÷ impr. video', '30,6%', 'Ago', [['Mes', 'up', '30,0%', '▲ 2%', 102], ['Acum. YTD', 'up', '29,0%', '▲ 1%', 101]])}
     ${metaCard('Clicks', 'Clicks totales del período', '430,8K', 'Ago', [['Mes', 'mid', '450K', '▼ 4%', 96], ['Acum. YTD', 'up', '5,6M', '▲ 1%', 101]])}
   </div>
-  <div class="panel" style="flex:1;padding:16px 22px">
-    <div style="display:grid;grid-template-columns:1.12fr 1fr;gap:26px;height:100%">
-      <div style="display:flex;flex-direction:column;min-width:0">
-        <div class="ph" style="margin-bottom:6px"><h3 style="font-size:17px">Evolución mensual · real vs meta</h3><div class="lg"><span><i style="background:var(--real)"></i>Real</span><span><i style="background:var(--meta)"></i>Meta</span></div></div>
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin:2px 0 -6px">Inversión ($)</div>
-        ${svgBars(['Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [180, 240, 70, 150, 84] }, { color: 'var(--real)', vals: [188, 254, 58, 161, 81] }], 280, { H: 140, W: 780, fmtV: v => '$' + Math.round(v) + 'M' })}
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin:6px 0 -6px">VTR ≥50% (%)</div>
-        ${svgLine('med-vtr', ['Abr', 'May', 'Jun', 'Jul', 'Ago'], [24, 26, 38, 25, 31], [30, 30, 30, 30, 30], 0, 45, { H: 140, W: 780, unit: '%' })}
-      </div>
-      <div style="display:flex;flex-direction:column;min-width:0">
-        <div class="ph" style="margin-bottom:10px"><h3 style="font-size:17px">Piezas pautadas · por medio</h3><div class="sub">activas · orden por inversión</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-          ${pieceCard('Refrigeración', '#0ea5e9', 'Video Lineal KV1 · Heladera Side by Side', 'Activa', [['Inv.', '$1,55M'], ['Impr.', '1,82M'], ['Alcance', '1,22M'], ['VTR', '29,7%']], I.fridge)}
-          ${pieceCard('Lavado', '#a78bfa', 'Video Lineal KV1 · Lavarropas Inverter', 'Activa', [['Inv.', '$1,67M'], ['Impr.', '1,88M'], ['Alcance', '1,13M'], ['VTR', '31,2%']], I.washer)}
-          ${pieceCard('Cocción', '#f97316', 'Video Lineal KV1 · Cocina Multigas', 'Activa', [['Inv.', '$0,74M'], ['Impr.', '632K'], ['Alcance', '253K'], ['VTR', '60,2%']], I.cook)}
-        </div>
-      </div>
-    </div></div>`),
+  <div class="sech">Evolución mensual · real vs meta <span style="color:var(--faint);font-weight:500">· meses cerrados</span></div>
+  <div class="panel sec" style="padding:16px 22px">
+    <div class="lg" style="margin-bottom:6px"><span><i style="background:var(--real)"></i>Real</span><span><i style="background:var(--meta)"></i>Meta</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px 34px">
+      <div><div class="cht">Inversión ($)</div>${svgBars(['Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [180, 240, 70, 150, 84] }, { color: 'var(--real)', vals: [188, 254, 58, 161, 81] }], 280, { H: 148, W: 740, fmtV: v => '$' + Math.round(v) + 'M' })}</div>
+      <div><div class="cht">Alcance único</div>${svgBars(['Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [22, 24, 8, 20, 25] }, { color: 'var(--real)', vals: [24, 28, 9, 22, 26] }], 32, { H: 148, W: 740, fmtV: v => Math.round(v) + 'M' })}</div>
+      <div><div class="cht">VTR ≥50% (%)</div>${svgLine('med-vtr', ['Abr', 'May', 'Jun', 'Jul', 'Ago'], [24, 26, 38, 25, 31], [30, 30, 30, 30, 30], 0, 45, { H: 148, W: 740, unit: '%' })}</div>
+      <div><div class="cht">Clicks</div>${svgBars(['Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [300, 340, 90, 260, 450] }, { color: 'var(--real)', vals: [320, 380, 80, 290, 431] }], 500, { H: 148, W: 740, fmtV: v => Math.round(v) + 'K' })}</div>
+    </div></div>
+  <div class="sech" style="margin-top:16px">Distribución de inversión</div>
+  <div class="panel sec" style="padding:16px 22px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px">
+    <div><div class="cht">Mix ON / OFF</div>${donut([['Digital', 58, '#2b4dff'], ['OOH', 42, '#f59e0b']])}</div>
+    <div><div class="cht">Por medio</div>${donut([['Meta', 28, '#0866FF'], ['YouTube', 22, '#FF0000'], ['Programmatic', 16, '#4285F4'], ['Google', 14, '#FBBC05'], ['OOH', 12, '#94a3b8'], ['TikTok', 8, '#111827']])}</div>
+    <div><div class="cht">Por categoría</div>${donut([['Brand', 34, '#0a1849'], ['Refrigeración', 26, '#0ea5e9'], ['Lavado', 24, '#a78bfa'], ['Cocción', 16, '#f59e0b']])}</div>
+  </div></div>
+  <div class="sech" style="margin-top:16px">Piezas pautadas · por medio <span style="color:var(--faint);font-weight:500">· activas · orden por inversión</span></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+    ${pieceCard('Refrigeración', '#0ea5e9', 'Video Lineal KV1 · Heladera Side by Side', 'Activa', [['Inv.', '$1,55M'], ['Impr.', '1,82M'], ['Alcance', '1,22M'], ['VTR', '29,7%']], I.fridge)}
+    ${pieceCard('Lavado', '#a78bfa', 'Video Lineal KV1 · Lavarropas Inverter', 'Activa', [['Inv.', '$1,67M'], ['Impr.', '1,88M'], ['Alcance', '1,13M'], ['VTR', '31,2%']], I.washer)}
+    ${pieceCard('Cocción', '#f97316', 'Video Lineal KV1 · Cocina Multigas', 'Activa', [['Inv.', '$0,74M'], ['Impr.', '632K'], ['Alcance', '253K'], ['VTR', '60,2%']], I.cook)}
+    ${pieceCard('Brand', '#0a1849', 'Marcelino · pieza institucional', 'Activa', [['Inv.', '$0,60M'], ['Impr.', '321K'], ['Alcance', '61K'], ['VTR', '56,6%']], I.spark)}
+    ${pieceCard('Lavado', '#a78bfa', 'Imagen Lineal KV1 · Lavarropas', 'Activa', [['Inv.', '$0,38M'], ['Impr.', '378K'], ['Clicks', '18,9K'], ['CTR', '5,0%']], I.washer)}
+    ${pieceCard('Cocción', '#f97316', 'Video Lineal KV1 · Cocción (Demand Gen)', 'Activa', [['Inv.', '$0,29M'], ['Impr.', '324K'], ['Clicks', '14,8K'], ['CTR', '4,5%']], I.cook)}
+  </div>`),
   (node) => {
-    const cards = [...node.querySelectorAll('.mcard')], panel = node.querySelector('.panel');
+    const cards = [...node.querySelectorAll('.mcard')];
     const rl = node.querySelector('#med-vtr .rl'); let L = 0;
     return (lt, a) => {
-      stagger(cards, lt, .4, .1, 18); inUp(panel, eo(S(lt, 1.6, 2.2)), 20);
-      if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, 2.0, 3.4))) * L;
-      runCursor(navCursor('medios', 900, 560), lt, a);
+      stagger(cards, lt, .3, .07, 14); grow(node, eo(S(lt, .4, 1.5)));
+      if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, .8, 1.8))) * L;
+      pageScroll(node, lt, 1.3, 5.4);
     };
   });
 
 /* 4 · Redes — IG orgánico */
-scene('redes1', 43, 52, shell('redes',
+scene('redes1', 22, 28, shell('redes',
   phead('Redes Sociales', 'Analítica orgánica de Novara · Instagram', '<div class="datep">Ene–Sep 2026 ▾</div>'), `
-  <div class="panel" style="flex:1;padding:20px 24px;display:flex;flex-direction:column"><div class="ph" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:11px"><span style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">IG</span><div><h3>Instagram orgánico — @novara</h3><div class="sub">KPIs del período · Ene–Sep 2026</div></div></div></div>
+  <div class="panel sec" style="padding:20px 24px"><div class="ph" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:11px"><span style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">IG</span><div><h3>Instagram orgánico — @novara</h3><div class="sub">KPIs del período · Ene–Sep 2026</div></div></div></div>
     <div class="mgrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
       ${metaCard('Alcance (personas)', 'Suma del reach de los posts del mes', '52,8K', 'Ago', [['Mes', 'up', '50,0K', '▲ 6%', 106], ['Acum. YTD', 'up', '288K', '▲ 3%', 103]])}
       ${metaCard('Engagement %', 'Interacciones ÷ alcance', '3,83%', 'Ago', [['Mes', 'up', '3,00%', '▲ 28%', 128], ['Acum. YTD', 'up', '2,44%', '▲ 4%', 104]])}
@@ -396,14 +455,13 @@ scene('redes1', 43, 52, shell('redes',
       <div style="border:2px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:13px 16px"><div style="font-size:12px;color:#2563eb;font-weight:700">Engagement total</div><div style="font-family:var(--disp);font-weight:800;font-size:25px;color:#1d4ed8;margin-top:3px">7,6K</div><div style="font-size:12px;color:#3b82f6;margin-top:2px">200 posts</div></div>
       ${kpi('Likes', '4,6K', '', '', '❤️ me gusta')}${kpi('Comentarios', '1,6K', '', '', '💬 respuestas')}${kpi('Guardados', '1,5K', '', '', '🔖 saves')}${kpi('Video views', '239K', '', '', '▶ reproducciones')}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;min-height:0">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div style="border:1px solid var(--line);border-radius:14px;padding:16px 18px"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:6px">Alcance mensual — real vs meta</h4>
         <div style="display:flex;gap:16px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--real);vertical-align:-1px;margin-right:5px"></i>Alcance (real)</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--meta);vertical-align:-1px;margin-right:5px"></i>Meta</span></div>
-        ${svgBars(['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [30, 40, 40, 49, 48, 49] }, { color: 'var(--real)', vals: [38, 45, 41, 43, 52, 53] }], 60, { H: 128, W: 560, fmtV: v => Math.round(v) + 'K' })}</div>
-      <div style="border:1px solid var(--line);border-radius:14px;padding:16px 18px" id="ig-combo"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:6px">Engagement % e interacciones por tipo</h4>
+        ${svgBars(['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [30, 40, 40, 49, 48, 49] }, { color: 'var(--real)', vals: [38, 45, 41, 43, 52, 53] }], 60, { H: 150, W: 560, fmtV: v => Math.round(v) + 'K' })}</div>
+      <div style="border:1px solid var(--line);border-radius:14px;padding:16px 18px"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:6px">Engagement % (real vs meta) e interacciones</h4>
         <div style="display:flex;gap:14px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1e40af;vertical-align:-1px;margin-right:5px"></i>Likes</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#60a5fa;vertical-align:-1px;margin-right:5px"></i>Coment.</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#bfdbfe;vertical-align:-1px;margin-right:5px"></i>Guardados</span><span><i style="display:inline-block;width:16px;height:3px;background:#0f172a;vertical-align:3px;margin-right:5px"></i>Eng.%</span></div>
-        <div style="position:relative">${vstack(['Abr', 'May', 'Jun', 'Jul', 'Ago'], ['#1e40af', '#60a5fa', '#bfdbfe'], [[60, 22, 14], [58, 20, 15], [66, 24, 16], [70, 22, 18], [78, 26, 20]], 130, 104, 30)}
-          <svg viewBox="0 0 500 104" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:104px"><polyline class="rl2" points="50,40 150,45 250,32 350,38 450,26" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        ${svgCombo('ig-combo', ['Abr', 'May', 'Jun', 'Jul', 'Ago'], [[60, 22, 14], [58, 20, 15], [66, 24, 16], [70, 22, 18], [78, 26, 20]], [2.2, 2.0, 2.0, 2.5, 3.8], [3, 3, 3, 3, 3], 130, 4.5, { H: 150, W: 560 })}</div>
     </div>
     <div style="margin-top:16px"><div class="ph" style="margin-bottom:10px"><h3 style="font-size:16px">Top posts del período</h3><div class="sub">200 posts · orden por engagement</div></div>
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">
@@ -416,13 +474,12 @@ scene('redes1', 43, 52, shell('redes',
       </div>
     </div></div>`),
   (node) => {
-    const panel = node.querySelector('.panel'), cards = [...node.querySelectorAll('.mcard')], charts = [...node.querySelectorAll('#redes1 .panel > div > div')];
-    const rl = node.querySelector('.rl2'); let L = 0;
+    const cards = [...node.querySelectorAll('.mcard')];
+    const rl = node.querySelector('#ig-combo .rl'); let L = 0;
     return (lt, a) => {
-      inUp(panel, eo(S(lt, .3, 1.0)), 18); stagger(cards, lt, .7, .1, 16);
-      grow(node, eo(S(lt, 1.2, 3.0)));
-      if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, 1.8, 3.2))) * L;
-      runCursor(navCursor('redes', 900, 560), lt, a);
+      stagger(cards, lt, .3, .07, 14); grow(node, eo(S(lt, .4, 1.5)));
+      if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, .8, 1.9))) * L;
+      pageScroll(node, lt, 1.2, 4.7);
     };
   });
 
@@ -431,9 +488,9 @@ const R_BENCH = [
   ['Novara', 1, '204K', '42', '2,8%', 58, 30, 12], ['Vanté', 0, '188K', '38', '1,2%', 41, 46, 13],
   ['Kova', 0, '142K', '31', '0,9%', 37, 49, 14], ['Areté', 0, '96K', '24', '0,4%', 33, 52, 15], ['Belmar', 0, '71K', '18', '0,3%', 29, 55, 16],
 ];
-scene('redes2', 52, 61, shell('redes',
+scene('redes2', 28, 33, shell('redes',
   phead('Redes Sociales · Análisis Competitivo', 'Novara vs Vanté · Kova · Areté · Belmar en IG, FB y TikTok', ''), `
-  <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:18px;flex:1;min-height:0">
+  <div style="display:grid;grid-template-columns:1fr;gap:16px">
     <div class="panel" style="padding:18px 22px"><div class="ph"><h3>Benchmark de marcas · KPIs comparados</h3></div>
       <table class="mt" style="font-size:13px"><colgroup><col style="width:26%"><col style="width:15%"><col style="width:11%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:12%"></colgroup>
       <thead><tr><th class="l">Marca</th><th>Follow.</th><th>Posts</th><th>Eng.</th><th>Pos</th><th>Neg</th><th>Neu</th></tr></thead>
@@ -453,15 +510,15 @@ scene('redes2', 52, 61, shell('redes',
     </div>
   </div>`),
   (node) => {
-    const panels = [...node.querySelectorAll('.panel')], rows = [...node.querySelectorAll('.mt tbody tr')];
+    const t = node.querySelector('.panel');
     return (lt, a) => {
-      stagger(panels, lt, .3, .18, 20); rows.forEach((r, i) => inUp(r, eo(S(lt, 1.0 + i * .1, 1.5 + i * .1)), 10));
-      grow(node, eo(S(lt, 1.2, 3.0))); runCursor([{ t: 0, x: 150, y: NAV_Y('redes') + 120 }, { t: .8, x: 600, y: 400 }, { t: 3, x: 1300, y: 360 }, { t: 6, x: 1300, y: 640 }], lt, a);
+      inUp(t, eo(S(lt, .1, .5)), 14); grow(node, eo(S(lt, .3, 1.6)));
+      pageScroll(node, lt, 1.1, 4.2);
     };
   });
 
 /* 6 · Web / Ecommerce */
-scene('web', 61, 74, shell('web',
+scene('web', 33, 39.5, shell('web',
   phead('Web · Novara', 'Tráfico real de GA4 — performance, canales, categorías y top landings', '<div class="datep">01–31 ago 2026 ▾</div>'), `
   <div class="mgrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
     ${metaCard('Tráfico web (usuarios)', 'Usuarios del mes', '366,8K', 'Ago', [['Mes', 'mid', '400K', '▼ 8%', 92], ['Acum. YTD', 'up', '2,4M', '▲ 2%', 101]])}
@@ -471,30 +528,30 @@ scene('web', 61, 74, shell('web',
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">
     ${kpi('Sesiones', '428,5K', '▲ 2%', 'up')}${kpi('Transacciones', '679', '▲ 13%', 'up')}${kpi('Conversiones', '679', '▲ 64%', 'up')}${kpi('Pageviews', '711,6K', '', '', '1,64 pág/sesión')}${kpi('Top canal', 'Paid Social', '', '', '162K sesiones')}
   </div>
-  <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:18px;flex:1;min-height:0">
+  <div style="display:grid;grid-template-columns:1fr;gap:16px">
     <div class="panel" style="padding:18px 22px"><div class="ph"><h3>Evolución mensual · real vs meta</h3><div class="lg"><span><i style="background:var(--real)"></i>Real</span><span><i style="background:var(--meta2)"></i>Meta</span></div></div>
-      ${svgLine('web-l', ['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'], [169, 370, 566, 290, 334, 367], [160, 350, 520, 340, 345, 360], 0, 600, { H: 200, W: 720, fmtV: v => Math.round(v) + 'K' })}
+      ${svgLine('web-l', ['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'], [169, 370, 566, 290, 334, 367], [160, 350, 520, 340, 345, 360], 0, 600, { H: 220, W: 1480, fmtV: v => Math.round(v) + 'K' })}
       <div style="margin-top:14px"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:10px">Detalle por canal</h4>
         <table class="sc" style="font-size:13px"><thead><tr><th class="l">Canal</th><th>Usuarios</th><th>%</th><th>PV/ses</th></tr></thead><tbody>
         ${[['Paid Social', '#ec4899', '159K', '38,8%', '1,25'], ['Cross-network', '#6366f1', '78K', '18,9%', '1,68'], ['Demand Gen', '#14b8a6', '43K', '10,5%', '1,04'], ['Paid Search', '#f97316', '43K', '10,4%', '2,58'], ['Organic Search', '#22c55e', '34K', '8,3%', '2,28']].map(c => `<tr><td class="l"><span style="display:inline-flex;align-items:center;gap:8px"><i style="width:9px;height:9px;border-radius:50%;background:${c[1]}"></i>${c[0]}</span></td><td class="num">${c[2]}</td><td class="num">${c[3]}</td><td class="num">${c[4]}</td></tr>`).join('')}</tbody></table></div></div>
-    <div style="display:flex;flex-direction:column;gap:16px;min-height:0">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="panel" style="padding:16px 20px"><div class="ph"><h3>Performance por categoría</h3></div>
         <table class="sc" style="font-size:13px"><thead><tr><th class="l">Categoría</th><th>Usuarios</th><th>%</th><th>Sesiones</th></tr></thead><tbody>
         ${[['Lavado', '#a78bfa', '183K', '44,6%', '188K'], ['Cocinas', '#f97316', '80K', '19,6%', '82K'], ['Refrigeración', '#22c55e', '76K', '18,6%', '78K'], ['Otros / Home', '#94a3b8', '74K', '18,2%', '76K']].map(c => `<tr><td class="l"><span style="display:inline-flex;align-items:center;gap:8px"><i style="width:9px;height:9px;border-radius:50%;background:${c[1]}"></i>${c[0]}</span></td><td class="num">${c[2]}</td><td class="num">${c[3]}</td><td class="num">${c[4]}</td></tr>`).join('')}</tbody></table></div>
-      <div class="panel demo" style="padding:16px 20px;flex:1"><div class="ph"><h3>Audiencia (GA4)</h3></div>
+      <div class="panel demo" style="padding:16px 20px"><div class="ph"><h3>Audiencia (GA4)</h3><div class="sub">dispositivos · últimos 7 días</div></div>
         <h5>Dispositivos</h5>
-        ${[['Mobile', 90, '#22c55e'], ['Desktop', 9, '#3b82f6'], ['Tablet', 1, '#a78bfa']].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[1]}" style="background:${d[2]}"></i></div></div>`).join('')}</div>
+        ${[['Mobile', 90, '#22c55e'], ['Desktop', 9, '#3b82f6'], ['Tablet', 1, '#a78bfa']].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[1]}" style="background:${d[2]}"></i></div></div>`).join('')}
+        <h5 style="margin-top:14px">Top provincias</h5>
+        ${[['Buenos Aires', 34.5, '#0ea5e9'], ['Córdoba', 8.4, '#0ea5e9'], ['Santa Fe', 7.2, '#0ea5e9'], ['Mendoza', 3.8, '#0ea5e9']].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1].toString().replace('.', ',')}%</span></div><div class="db"><i data-w="${d[1] / 34.5 * 100}" style="background:${d[2]}"></i></div></div>`).join('')}</div>
     </div>
   </div>`),
   (node) => {
-    const cards = [...node.querySelectorAll('.mcard')], kpis = [...node.querySelectorAll('.kpi')], panels = [...node.querySelectorAll('.body > div.panel, .body > div > .panel')];
+    const cards = [...node.querySelectorAll('.mcard')], kpis = [...node.querySelectorAll('.kpi')];
     const rl = node.querySelector('#web-l .rl'); let L = 0;
-    const allPanels = [...node.querySelectorAll('.panel')];
     return (lt, a) => {
-      stagger(cards, lt, .3, .1, 16); kpis.forEach((k, i) => inUp(k, eo(S(lt, .8 + i * .07, 1.3 + i * .07)), 14));
-      allPanels.forEach((p, i) => inUp(p, eo(S(lt, 1.3 + i * .14, 1.9 + i * .14)), 18));
-      const g = eo(S(lt, 1.4, 3.2)); grow(node, g); if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - g) * L;
-      runCursor(navCursor('web', 900, 560), lt, a);
+      stagger(cards, lt, .3, .07, 14); kpis.forEach((k, i) => inUp(k, eo(S(lt, .5 + i * .05, .95 + i * .05)), 12));
+      const g = eo(S(lt, .4, 1.6)); grow(node, g); if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, .8, 1.9))) * L;
+      pageScroll(node, lt, 1.3, 5.6);
     };
   });
 
@@ -504,7 +561,7 @@ function kobj(title, medida, val, sem, chip, ctx, objl, pct) {
     <div class="kr"><div class="kv" style="color:${SEM[sem]}">${val}</div><div class="kchip" style="color:${SEM[sem]};background:${SEMB[sem]}">${chip}</div></div>
     <div class="kctx">${ctx}</div><div class="kobjl">${objl}</div><div class="kbar"><i data-w="${pct}" style="background:${SEM[sem]}"></i></div></div>`;
 }
-scene('trade', 74, 87, shell('trade',
+scene('trade', 39.5, 45, shell('trade',
   phead('Floor Share', 'Share de góndola por categoría · Ranking de marcas · por cliente', '<div class="datep">Sem 34 · Ago ▾</div>'), `
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px">
     ${kobj('Floor Share — general', 'Novara · todas las categorías', '34,2%', 'up', '+3,6 pp', '18.240 / 53.300 · 342 tiendas', 'Objetivo 30,6%', 100)}
@@ -512,7 +569,7 @@ scene('trade', 74, 87, shell('trade',
     ${kobj('Refrigeración', 'Share Novara góndola', '31,0%', 'up', '+6,0 pp', '5.420 / 17.480', 'Objetivo 25%', 100)}
     ${kobj('Cocción', 'Share Novara góndola', '26,0%', 'up', '+3,0 pp', '2.950 / 11.340', 'Objetivo 23%', 100)}
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:18px;flex:1;min-height:0">
+  <div style="display:grid;grid-template-columns:1fr;gap:16px">
     <div class="panel rank" style="padding:18px 22px"><div class="ph"><h3>🏆 Ranking de marcas</h3><div class="sub">share total góndola</div></div>
       ${[['Novara', 1, 34.2, '#2b4dff'], ['Aurex', 0, 22.5, '#fb923c'], ['Vanté', 0, 16.8, '#22c55e'], ['Kova', 0, 12.1, '#a78bfa'], ['Belmar', 0, 8.4, '#ec4899'], ['Otros', 0, 6.0, '#94a3b8']].map(b => `<div class="rr"><div class="rl">${b[0]}${b[1] ? ' <span class="star">★</span>' : ''}</div><div class="rt"><i data-w="${b[2] / 34.2 * 100}" style="background:${b[3]};opacity:${b[1] ? 1 : .65}"></i></div><div class="rv">${b[2].toFixed(1).replace('.', ',')}%</div></div>`).join('')}</div>
     <div class="panel" style="padding:18px 22px"><div class="ph"><h3>Performance por cliente</h3><div class="sub">Δ vs objetivo</div></div>
@@ -523,16 +580,15 @@ scene('trade', 74, 87, shell('trade',
         ${vbars(['Lavado', 'Refrig.', 'Cocción'], [{ color: '#2b4dff', vals: [88, 82, 79] }, { color: '#a78bfa', vals: [84, 78, 74] }, { color: '#ec4899', vals: [80, 75, 70] }], 100, 96, 20)}</div></div>
   </div>`),
   (node) => {
-    const cards = [...node.querySelectorAll('.kobj')], panels = [...node.querySelectorAll('.panel')], rows = [...node.querySelectorAll('.sc2 tbody tr')];
+    const cards = [...node.querySelectorAll('.kobj')];
     return (lt, a) => {
-      stagger(cards, lt, .3, .1, 16); panels.forEach((p, i) => inUp(p, eo(S(lt, .9 + i * .16, 1.5 + i * .16)), 18));
-      rows.forEach((r, i) => inUp(r, eo(S(lt, 1.6 + i * .1, 2.1 + i * .1)), 10));
-      grow(node, eo(S(lt, 1.0, 3.0))); runCursor(navCursor('trade', 560, 420), lt, a);
+      stagger(cards, lt, .3, .07, 14); grow(node, eo(S(lt, .4, 1.6)));
+      pageScroll(node, lt, 1.2, 4.7);
     };
   });
 
 /* 8 · Copiloto IA (cruza dashboards) */
-scene('ia', 87, 100, shell('web',
+scene('ia', 45, 50.5, shell('web',
   phead('Web · Novara', 'Tráfico real de GA4 — performance, canales, categorías y ventas', '<div class="datep">Últimos 30 días ▾</div>'), `
   <div style="opacity:.5;filter:blur(1.5px)">
     <div class="mgrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
@@ -560,11 +616,11 @@ scene('ia', 87, 100, shell('web',
     const fab = node.querySelector('.fab'), drawer = node.querySelector('.cdrawer'), chips = node.querySelector('.chips'), ub = node.querySelector('.ubub'), ab = node.querySelector('.abub');
     const rl = node.querySelector('.rl2'); let L = 0;
     return (lt, a) => {
-      inUp(fab, eo(S(lt, .3, .9)), 14);
-      const dp = eo(S(lt, 1.0, 1.8)); drawer.style.opacity = dp; drawer.style.transform = `translateX(${(1 - dp) * 100}%)`;
-      inUp(chips, eo(S(lt, 1.9, 2.4)), 10); inUp(ub, eo(S(lt, 2.5, 3.0)), 14); inUp(ab, eo(S(lt, 3.4, 4.1)), 16);
-      if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, 4.2, 5.6))) * L;
-      runCursor([{ t: 0, x: 1600, y: 900 }, { t: .7, x: 1650, y: 1010 }, { t: 1.0, x: 1650, y: 1010, click: 1 }, { t: 2.2, x: 1500, y: 400 }, { t: 6, x: 1500, y: 560 }], lt, a);
+      inUp(fab, eo(S(lt, .15, .5)), 14);
+      const dp = eo(S(lt, .6, 1.3)); drawer.style.opacity = dp; drawer.style.transform = `translateX(${(1 - dp) * 100}%)`;
+      inUp(chips, eo(S(lt, 1.4, 1.8)), 10); inUp(ub, eo(S(lt, 1.9, 2.4)), 14); inUp(ab, eo(S(lt, 2.7, 3.4)), 16);
+      if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, 3.5, 4.9))) * L;
+      runCursor([{ t: 0, x: 1600, y: 900 }, { t: .45, x: 1650, y: 1010 }, { t: .7, x: 1650, y: 1010, click: 1 }, { t: 1.5, x: 1500, y: 420 }, { t: 5, x: 1500, y: 520 }], lt, a);
     };
   });
 
@@ -574,7 +630,7 @@ function cuad(id, label, badge, badgeCls, big, bg, rows) {
     <div class="cbig">${big}</div><div class="cbg">${bg}</div>
     <div class="crow">${rows.map(r => mrow(...r)).join('')}</div></div>`;
 }
-scene('inv', 100, 111, shell('inv',
+scene('inv', 50.5, 57, shell('inv',
   phead('Inversión de Marketing', 'Ejecución del presupuesto y comparador de versiones (A vs B)', ''), `
   <div class="stitle">Ejecución del Presupuesto <span style="color:var(--faint);font-weight:500">· Real 2026 vs BGT vigente por cuatrimestre · meta: desvío &lt; 5% y Inv/Fact ≤ 1,3%</span></div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
@@ -582,7 +638,7 @@ scene('inv', 100, 111, shell('inv',
     ${cuad('T2', 'MAY–AGO', 'cerrado', ['#047857', '#dcfce7'], 'US$ 875K', 'BGT vigente US$ 1,3M · Facturación US$ 82,2M', [['Desvío vs BGT', 'up', '&lt; 5%', '▲ 1,9%', 98], ['Inv / Facturación', 'up', '≤ 1,3%', '1,06%', 92]])}
     ${cuad('T3', 'SEP–DIC', 'en curso', ['#0a7fce', '#e6f4fe'], 'US$ 210K', 'BGT 8+4 aún no cargada · en ejecución', [['Desvío vs BGT', 'na', '&lt; 5%', 'en curso', 40], ['Inv / Facturación', 'up', '≤ 1,3%', '1,11%', 85]])}
   </div>
-  <div class="panel" style="flex:1;padding:18px 22px"><div class="ph"><h3>Comparador de presupuestos</h3><div class="sub">Real 2026 (A) vs 4+8 2026 (B) · año completo</div></div>
+  <div class="panel sec" style="padding:18px 22px"><div class="ph"><h3>Comparador de presupuestos</h3><div class="sub">Real 2026 (A) vs 4+8 2026 (B) · año completo</div></div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px">
       ${[['Presupuesto A · Real 2026', '$3,0B', '#1e40af', '56 registros'], ['Presupuesto B · 4+8 2026', '$4,7B', '#94a3b8', '85 registros'], ['Diferencia (A − B)', '−$1,7B', '#dc2626', 'A queda debajo de B'], ['Variación %', '−36,1%', '#dc2626', 'A vs B']].map(k => `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">${k[0]}</div><div style="font-family:var(--disp);font-weight:800;font-size:26px;color:${k[2]};margin-top:6px;font-variant-numeric:tabular-nums">${k[1]}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">${k[3]}</div></div>`).join('')}
     </div>
@@ -592,19 +648,29 @@ scene('inv', 100, 111, shell('inv',
       ${svgBars(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A'], [{ color: '#94a3b8', vals: [95, 260, 210, 400, 490, 430, 390, 760] }, { color: '#1e40af', vals: [110, 350, 300, 510, 430, 320, 350, 560] }], 800, { H: 210, W: 660, labels: false, fmtV: v => '$' + Math.round(v) + 'M' })}</div>
       <div><div style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:8px">Acumulado del período</div>
       ${svgLine('inv-l', ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A'], [0.1, 0.5, 0.8, 1.3, 1.7, 2.0, 2.4, 3.0], [0.1, 0.4, 0.6, 1.0, 1.5, 2.0, 2.5, 3.0], 0, 5, { H: 210, W: 660, labels: false, fmtV: v => '$' + v.toFixed(1).replace('.', ',') + 'B' })}</div>
-    </div></div>`),
+    </div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="panel" style="padding:18px 22px"><div class="ph"><h3 style="font-size:16px">Distribución por clasificación</h3><div class="sub">Real 2026</div></div>
+      ${[['Equity', 52.7, '$1,6B', '#1e40af'], ['Integrales', 13.5, '$407M', '#1e40af'], ['Trade Marketing', 12.8, '$387M', '#1e40af'], ['Otros', 12.6, '$379M', '#1e40af'], ['Visibility', 8.4, '$252M', '#1e40af']].map(d => `<div style="display:flex;align-items:center;gap:12px;padding:7px 0"><div style="width:140px;font-size:14px;font-weight:600">${d[0]}</div><div style="flex:1;height:12px;border-radius:7px;background:var(--panel2);overflow:hidden"><i data-w="${d[1]}" style="display:block;height:100%;border-radius:7px;background:${d[3]}"></i></div><div style="width:120px;text-align:right;font-size:13px;font-weight:700"><span style="color:var(--muted);font-weight:500">${d[2]}</span> ${d[1].toString().replace('.', ',')}%</div></div>`).join('')}</div>
+    <div class="panel" style="padding:18px 22px"><div class="ph"><h3 style="font-size:16px">Distribución por cuenta</h3><div class="sub">Real 2026</div></div>
+      ${[['Publicidad TV', 41.2, '$1,2B', '#94a3b8'], ['Integrales', 13.5, '$407M', '#94a3b8'], ['Publicidad Eventos', 12.8, '$385M', '#94a3b8'], ['Publicidad Compartida', 12.6, '$379M', '#94a3b8'], ['Producción y Agencias', 11.5, '$347M', '#94a3b8']].map(d => `<div style="display:flex;align-items:center;gap:12px;padding:7px 0"><div style="width:190px;font-size:14px;font-weight:600">${d[0]}</div><div style="flex:1;height:12px;border-radius:7px;background:var(--panel2);overflow:hidden"><i data-w="${d[1]}" style="display:block;height:100%;border-radius:7px;background:${d[3]}"></i></div><div style="width:120px;text-align:right;font-size:13px;font-weight:700"><span style="color:var(--muted);font-weight:500">${d[2]}</span> ${d[1].toString().replace('.', ',')}%</div></div>`).join('')}</div>
+  </div>
+  <div class="sech" style="margin-top:16px">Detalle por concepto <span style="color:var(--faint);font-weight:500">· Real 2026 vs 4+8 2026</span></div>
+  <div class="panel" style="padding:4px 16px"><table class="sc2" style="font-size:13px"><thead><tr class="g1"><th class="l">Clasificación / Concepto</th><th style="color:#1e40af">Real 2026</th><th style="color:#94a3b8">4+8 2026</th><th>Diferencia</th><th>% Var</th><th>% Inv</th></tr></thead>
+    <tbody>${[['Equity · Publicidad TV', '$1,24B', '$2,42B', '−$1,17B', '−48,6%', '41,2%', 'dn'], ['Visibility · Exhibiciones', '$252M', '$424M', '−$172M', '−40,6%', '8,4%', 'dn'], ['Integrales', '$407M', '$540M', '−$133M', '−24,6%', '13,5%', 'mid'], ['Trade · Eventos', '$386M', '$704M', '−$318M', '−45,2%', '12,8%', 'dn'], ['Otros · Compartida', '$379M', '$0', '+$379M', '—', '12,6%', 'up']].map(r => `<tr><td class="l"><span class="kn">${r[0]}</span></td><td>${r[1]}</td><td class="mv">${r[2]}</td><td style="color:${SEM[r[6]]};font-weight:700">${r[3]}</td><td style="color:${SEM[r[6]]};font-weight:700">${r[4]}</td><td class="mv">${r[5]}</td></tr>`).join('')}
+    <tr style="border-top:2px solid var(--line)"><td class="l" style="font-weight:800">TOTAL</td><td style="font-weight:800">$3,01B</td><td class="mv" style="font-weight:800">$4,72B</td><td style="color:${SEM.dn};font-weight:800">−$1,70B</td><td style="color:${SEM.dn};font-weight:800">−36,1%</td><td style="font-weight:800">100%</td></tr></tbody></table></div>`),
   (node) => {
-    const cuads = [...node.querySelectorAll('.cuad')], panel = node.querySelector('.panel'), kcards = [...node.querySelectorAll('.panel > div > div')];
+    const cuads = [...node.querySelectorAll('.cuad')];
     const rl = node.querySelector('#inv-l .rl'); let L = 0;
     return (lt, a) => {
-      stagger(cuads, lt, .3, .14, 18); inUp(panel, eo(S(lt, 1.1, 1.7)), 20);
-      const g = eo(S(lt, 1.4, 3.4)); grow(node, g); if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - g) * L;
-      runCursor(navCursor('inv', 700, 640), lt, a);
+      stagger(cuads, lt, .3, .1, 16); grow(node, eo(S(lt, .4, 1.8)));
+      if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, .9, 2.2))) * L;
+      pageScroll(node, lt, 1.4, 6.0);
     };
   });
 
 /* 10 · Cierre */
-scene('outro', 111, 117, `<div class="cover">
+scene('outro', 57, 61, `<div class="cover">
   <div class="logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div>
   <h1 id="o1" style="font-size:64px">Todo tu marketing,<br><span class="hl">conectado al resultado.</span></h1>
   <div id="o2" style="margin-top:44px;background:#9db9de55;border:1px solid #ffffff22;color:#fff;font-family:var(--disp);font-weight:700;font-size:24px;padding:20px 44px;border-radius:14px">Agendá una demo →</div>
