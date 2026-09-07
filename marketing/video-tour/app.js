@@ -32,6 +32,9 @@ const I = {
   heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-8.4C1 8.3 2.7 5 6 5c2 0 3.2 1.2 4 2.3C10.8 6.2 12 5 14 5c3.3 0 5 3.3 3.2 6.6C19 15.6 12 20 12 20Z"/></svg>',
   dollar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v20M7 6.5h8a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h9"/></svg>',
   map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4zM9 4v13M15 6.5v13"/></svg>',
+  washer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="13.5" r="4.6"/><circle cx="12" cy="13.5" r="1.8"/><circle cx="8" cy="6" r=".7" fill="currentColor" stroke="none"/><circle cx="10.5" cy="6" r=".7" fill="currentColor" stroke="none"/></svg>',
+  fridge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="2.5" width="12" height="19" rx="2"/><path d="M6 9h12"/><path d="M9 5.5v2M9 11.5v3.5"/></svg>',
+  cook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M4 12h16"/><circle cx="8" cy="9.5" r=".8" fill="currentColor" stroke="none"/><circle cx="12" cy="9.5" r=".8" fill="currentColor" stroke="none"/><circle cx="16" cy="9.5" r=".8" fill="currentColor" stroke="none"/><path d="M8 15.5h8"/></svg>',
 };
 
 const NAV = [
@@ -128,6 +131,66 @@ function donut(segs) {
   const arcs = segs.map(s => { const len = s[1] / 100 * C; const a = `<circle r="${R}" cx="75" cy="75" fill="none" stroke="${s[2]}" stroke-width="24" stroke-dasharray="${len.toFixed(1)} ${(C - len).toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}" transform="rotate(-90 75 75)"/>`; off += len; return a; }).join('');
   const leg = segs.map(s => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:6px 0"><span style="width:11px;height:11px;border-radius:3px;background:${s[2]}"></span>${s[0]} · <b>${s[1]}%</b></div>`).join('');
   return `<div style="display:flex;align-items:center;gap:22px;margin-top:6px"><svg viewBox="0 0 150 150" style="width:150px;height:150px;flex:none">${arcs}</svg><div>${leg}</div></div>`;
+}
+
+/* ---------- gráficos realistas: ejes + grilla + valores ---------- */
+function fmtAxis(v, unit) {
+  const pre = unit === '$' ? '$' : '', suf = unit === '%' ? '%' : unit === 'x' ? '×' : '';
+  let n; const a = Math.abs(v);
+  if (unit === '%' || unit === 'x') n = (Math.round(v * 10) / 10).toString().replace('.', ',');
+  else if (a >= 1e9) n = (v / 1e9).toFixed(1).replace('.', ',') + 'B';
+  else if (a >= 1e6) n = (v / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(',0', '').replace('.', ',') + 'M';
+  else if (a >= 1e3) n = Math.round(v / 1e3) + 'K';
+  else n = Math.round(v).toString();
+  return pre + n + suf;
+}
+/* barras verticales real-vs-meta con eje Y (grilla + valores), etiquetas por barra y eje X */
+function svgBars(months, series, max, opt = {}) {
+  const W = opt.W || 700, H = opt.H || 200, padL = opt.padL || 48, padR = 10, padT = 18, padB = 24;
+  const ph = H - padT - padB, pw = W - padL - padR, N = 4;
+  const fmtV = opt.fmtV || (v => fmtAxis(v, opt.unit));
+  const y = v => padT + ph - (v / max) * ph, step = pw / months.length, cx = i => padL + step * i + step / 2;
+  const grouped = series.length > 1, bw = opt.bw || Math.min(grouped ? 15 : 28, step * 0.42);
+  let g = '';
+  for (let i = 0; i <= N; i++) { const t = max * i / N, yy = y(t); g += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" stroke="var(--line2)" stroke-width="1"/><text x="${padL - 7}" y="${(yy + 3.5).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--faint)">${fmtV(t)}</text>`; }
+  g += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${(padT + ph).toFixed(1)}" stroke="var(--line)" stroke-width="1.4"/>`;
+  months.forEach((m, i) => {
+    const totalW = grouped ? series.length * bw + (series.length - 1) * 3 : bw; let bx = cx(i) - totalW / 2;
+    series.forEach(se => { const bh = (se.vals[i] / max) * ph; g += `<rect x="${bx.toFixed(1)}" y="${(padT + ph - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, bh).toFixed(1)}" rx="3" fill="${se.color}"/>`; bx += bw + 3; });
+    const rv = series[series.length - 1].vals[i], rbh = (rv / max) * ph;
+    if (opt.labels !== false) g += `<text x="${cx(i).toFixed(1)}" y="${(padT + ph - rbh - 6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#1e293b">${fmtV(rv)}</text>`;
+    g += `<text x="${cx(i).toFixed(1)}" y="${(H - 7).toFixed(1)}" text-anchor="middle" font-size="11" fill="var(--faint)" font-weight="600">${m}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:${H}px">${g}</svg>`;
+}
+/* línea real (draw animado, clase rl) + meta punteada, con eje Y + valores */
+function svgLine(id, months, real, meta, min, max, opt = {}) {
+  const W = opt.W || 700, H = opt.H || 200, padL = opt.padL || 48, padR = 14, padT = 20, padB = 24;
+  const ph = H - padT - padB, pw = W - padL - padR, N = 4;
+  const fmtV = opt.fmtV || (v => fmtAxis(v, opt.unit));
+  const y = v => padT + ph - ((v - min) / (max - min)) * ph, x = i => padL + (pw / (months.length - 1)) * i;
+  const path = a => a.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  let g = '';
+  for (let i = 0; i <= N; i++) { const t = min + (max - min) * i / N, yy = y(t); g += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" stroke="var(--line2)" stroke-width="1"/><text x="${padL - 7}" y="${(yy + 3.5).toFixed(1)}" text-anchor="end" font-size="10.5" fill="var(--faint)">${fmtV(t)}</text>`; }
+  g += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${(padT + ph).toFixed(1)}" stroke="var(--line)" stroke-width="1.4"/>`;
+  g += `<path d="${path(meta)}" fill="none" stroke="var(--meta2)" stroke-width="2.4" stroke-dasharray="7 6" stroke-linecap="round" opacity=".85"/>`;
+  g += `<path class="rl" d="${path(real)}" fill="none" stroke="var(--real)" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+  real.forEach((v, i) => { g += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2" fill="#fff" stroke="var(--real)" stroke-width="2.4"/>`; if (opt.labels !== false) g += `<text x="${x(i).toFixed(1)}" y="${(y(v) - 9).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--real)">${fmtV(v)}</text>`; });
+  months.forEach((m, i) => g += `<text x="${x(i).toFixed(1)}" y="${(H - 7).toFixed(1)}" text-anchor="middle" font-size="11" fill="var(--faint)" font-weight="600">${m}</text>`);
+  return `<svg id="${id}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:${H}px">${g}</svg>`;
+}
+/* tarjeta de pieza (post o creativo de pauta) con thumbnail + métricas de performance */
+function pieceCard(cat, catColor, title, badge, metrics, icon) {
+  return `<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);box-shadow:var(--sh)">
+    <div style="height:78px;background:linear-gradient(140deg,#2a3a4f,#101a2b);position:relative;display:grid;place-items:center">
+      <span style="width:32px;height:32px;color:#fff;opacity:.28;display:block">${icon || I.chart}</span>
+      <span style="position:absolute;top:7px;left:7px;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#fff;background:${catColor};padding:2px 7px;border-radius:5px">${cat}</span>
+      ${badge ? `<span style="position:absolute;top:7px;right:7px;font-size:8.5px;font-weight:700;color:#065f46;background:#a7f3d0;padding:2px 8px;border-radius:999px">● ${badge}</span>` : ''}
+    </div>
+    <div style="padding:9px 12px">
+      <div style="font-size:11.5px;font-weight:600;line-height:1.28;height:29px;overflow:hidden">${title}</div>
+      <div style="margin-top:7px;display:flex;flex-direction:column;gap:3px">${metrics.map(mt => `<div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--muted)">${mt[0]}</span><span style="font-weight:700;font-variant-numeric:tabular-nums">${mt[1]}</span></div>`).join('')}</div>
+    </div></div>`;
 }
 
 /* ---------- motor ---------- */
@@ -291,17 +354,31 @@ scene('medios', 30, 43, shell('medios',
     ${metaCard('VTR ≥50%', 'Vistas 50% ÷ impr. video', '30,6%', 'Ago', [['Mes', 'up', '30,0%', '▲ 2%', 102], ['Acum. YTD', 'up', '29,0%', '▲ 1%', 101]])}
     ${metaCard('Clicks', 'Clicks totales del período', '430,8K', 'Ago', [['Mes', 'mid', '450K', '▼ 4%', 96], ['Acum. YTD', 'up', '5,6M', '▲ 1%', 101]])}
   </div>
-  <div class="panel" style="flex:1;padding:16px 22px"><div class="ph"><h3>Distribución de inversión</h3><div class="sub">mix del período</div></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:4px">
-      <div><div style="font-size:14px;font-weight:700;margin-bottom:2px">Mix ON / OFF</div>${donut([['Digital', 58, '#2b4dff'], ['OOH', 42, '#f59e0b']])}</div>
-      <div><div style="font-size:14px;font-weight:700;margin-bottom:2px">Inversión por medio</div>${donut([['Meta', 28, '#0866FF'], ['YouTube', 22, '#FF0000'], ['Programmatic', 16, '#4285F4'], ['Google', 14, '#FBBC05'], ['OOH', 12, '#94a3b8'], ['TikTok', 8, '#111827']])}</div>
-      <div><div style="font-size:14px;font-weight:700;margin-bottom:2px">Inversión por categoría</div>${donut([['Brand', 34, '#0a1849'], ['Refrigeración', 26, '#0ea5e9'], ['Lavado', 24, '#a78bfa'], ['Cocción', 16, '#f59e0b']])}</div>
+  <div class="panel" style="flex:1;padding:16px 22px">
+    <div style="display:grid;grid-template-columns:1.12fr 1fr;gap:26px;height:100%">
+      <div style="display:flex;flex-direction:column;min-width:0">
+        <div class="ph" style="margin-bottom:6px"><h3 style="font-size:17px">Evolución mensual · real vs meta</h3><div class="lg"><span><i style="background:var(--real)"></i>Real</span><span><i style="background:var(--meta)"></i>Meta</span></div></div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin:2px 0 -6px">Inversión ($)</div>
+        ${svgBars(['Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [180, 240, 70, 150, 84] }, { color: 'var(--real)', vals: [188, 254, 58, 161, 81] }], 280, { H: 140, W: 780, fmtV: v => '$' + Math.round(v) + 'M' })}
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin:6px 0 -6px">VTR ≥50% (%)</div>
+        ${svgLine('med-vtr', ['Abr', 'May', 'Jun', 'Jul', 'Ago'], [24, 26, 38, 25, 31], [30, 30, 30, 30, 30], 0, 45, { H: 140, W: 780, unit: '%' })}
+      </div>
+      <div style="display:flex;flex-direction:column;min-width:0">
+        <div class="ph" style="margin-bottom:10px"><h3 style="font-size:17px">Piezas pautadas · por medio</h3><div class="sub">activas · orden por inversión</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          ${pieceCard('Refrigeración', '#0ea5e9', 'Video Lineal KV1 · Heladera Side by Side', 'Activa', [['Inv.', '$1,55M'], ['Impr.', '1,82M'], ['Alcance', '1,22M'], ['VTR', '29,7%']], I.fridge)}
+          ${pieceCard('Lavado', '#a78bfa', 'Video Lineal KV1 · Lavarropas Inverter', 'Activa', [['Inv.', '$1,67M'], ['Impr.', '1,88M'], ['Alcance', '1,13M'], ['VTR', '31,2%']], I.washer)}
+          ${pieceCard('Cocción', '#f97316', 'Video Lineal KV1 · Cocina Multigas', 'Activa', [['Inv.', '$0,74M'], ['Impr.', '632K'], ['Alcance', '253K'], ['VTR', '60,2%']], I.cook)}
+        </div>
+      </div>
     </div></div>`),
   (node) => {
     const cards = [...node.querySelectorAll('.mcard')], panel = node.querySelector('.panel');
+    const rl = node.querySelector('#med-vtr .rl'); let L = 0;
     return (lt, a) => {
       stagger(cards, lt, .4, .1, 18); inUp(panel, eo(S(lt, 1.6, 2.2)), 20);
-      grow(node, eo(S(lt, .5, 2.4))); runCursor(navCursor('medios', 900, 560), lt, a);
+      if (rl && !L) L = dash(rl); if (rl) rl.style.strokeDashoffset = (1 - eo(S(lt, 2.0, 3.4))) * L;
+      runCursor(navCursor('medios', 900, 560), lt, a);
     };
   });
 
@@ -322,16 +399,21 @@ scene('redes1', 43, 52, shell('redes',
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;min-height:0">
       <div style="border:1px solid var(--line);border-radius:14px;padding:16px 18px"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:6px">Alcance mensual — real vs meta</h4>
         <div style="display:flex;gap:16px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--real);vertical-align:-1px;margin-right:5px"></i>Alcance (real)</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--meta);vertical-align:-1px;margin-right:5px"></i>Meta</span></div>
-        ${vbars(['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [30, 40, 40, 49, 48, 49] }, { color: 'var(--real)', vals: [38, 45, 41, 43, 52, 53] }], 60, 128)}</div>
+        ${svgBars(['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [30, 40, 40, 49, 48, 49] }, { color: 'var(--real)', vals: [38, 45, 41, 43, 52, 53] }], 60, { H: 128, W: 560, fmtV: v => Math.round(v) + 'K' })}</div>
       <div style="border:1px solid var(--line);border-radius:14px;padding:16px 18px" id="ig-combo"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:6px">Engagement % e interacciones por tipo</h4>
         <div style="display:flex;gap:14px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1e40af;vertical-align:-1px;margin-right:5px"></i>Likes</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#60a5fa;vertical-align:-1px;margin-right:5px"></i>Coment.</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#bfdbfe;vertical-align:-1px;margin-right:5px"></i>Guardados</span><span><i style="display:inline-block;width:16px;height:3px;background:#0f172a;vertical-align:3px;margin-right:5px"></i>Eng.%</span></div>
-        <div style="position:relative">${vstack(['Abr', 'May', 'Jun', 'Jul', 'Ago'], ['#1e40af', '#60a5fa', '#bfdbfe'], [[60, 22, 14], [58, 20, 15], [66, 24, 16], [70, 22, 18], [78, 26, 20]], 130, 118, 30)}
-          <svg viewBox="0 0 500 118" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:118px"><polyline class="rl2" points="50,44 150,50 250,36 350,42 450,30" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        <div style="position:relative">${vstack(['Abr', 'May', 'Jun', 'Jul', 'Ago'], ['#1e40af', '#60a5fa', '#bfdbfe'], [[60, 22, 14], [58, 20, 15], [66, 24, 16], [70, 22, 18], [78, 26, 20]], 130, 104, 30)}
+          <svg viewBox="0 0 500 104" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:104px"><polyline class="rl2" points="50,40 150,45 250,32 350,38 450,26" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
     </div>
-    <div class="demo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:16px">
-      <div><h5>Edad</h5>${[['35–44', 29, 100], ['45–54', 28, 97], ['55–64', 17, 59], ['25–34', 17, 59]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#ec4899"></i></div></div>`).join('')}</div>
-      <div><h5>Género</h5>${[['Mujeres', 75, 100], ['Hombres', 16, 21], ['Otro', 9, 12]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#a855f7"></i></div></div>`).join('')}</div>
-      <div><h5>Top provincias</h5>${[['Buenos Aires', 33, 100], ['CABA', 21, 64], ['Córdoba', 18, 55], ['Santa Fe', 9, 27]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#3b82f6"></i></div></div>`).join('')}</div>
+    <div style="margin-top:16px"><div class="ph" style="margin-bottom:10px"><h3 style="font-size:16px">Top posts del período</h3><div class="sub">200 posts · orden por engagement</div></div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">
+        ${pieceCard('Cocción', '#f97316', 'Tu día cambia constantemente. Pero hay algo que…', '', [['Alcance', '1,0K'], ['Likes', '22'], ['Coment.', '29'], ['Guardados', '4']], I.cook)}
+        ${pieceCard('Lavado', '#a78bfa', 'Elegí el ciclo perfecto según tu ropa.', '', [['Alcance', '407'], ['Likes', '6'], ['Coment.', '4'], ['Views', '479']], I.washer)}
+        ${pieceCard('Brand', '#3b82f6', 'No existe tal desconexión. Más bien hablamos de…', '', [['Alcance', '1,9K'], ['Likes', '63'], ['Coment.', '91'], ['Views', '2,8K']], I.spark)}
+        ${pieceCard('Refrigeración', '#0ea5e9', 'Celebrando la inspiración, el arte y el diseño.', '', [['Alcance', '426'], ['Likes', '18'], ['Coment.', '5'], ['Views', '459']], I.fridge)}
+        ${pieceCard('Lavado', '#a78bfa', 'No hay palabras. Solo queda agradecer. Eterno.', '', [['Alcance', '9,2K'], ['Likes', '660'], ['Coment.', '772'], ['Guardados', '41']], I.washer)}
+        ${pieceCard('Brand', '#3b82f6', 'Él no improvisa. Sabe exactamente qué elegir.', '', [['Alcance', '2,1K'], ['Likes', '52'], ['Coment.', '89'], ['Views', '3,0K']], I.spark)}
+      </div>
     </div></div>`),
   (node) => {
     const panel = node.querySelector('.panel'), cards = [...node.querySelectorAll('.mcard')], charts = [...node.querySelectorAll('#redes1 .panel > div > div')];
@@ -391,8 +473,7 @@ scene('web', 61, 74, shell('web',
   </div>
   <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:18px;flex:1;min-height:0">
     <div class="panel" style="padding:18px 22px"><div class="ph"><h3>Evolución mensual · real vs meta</h3><div class="lg"><span><i style="background:var(--real)"></i>Real</span><span><i style="background:var(--meta2)"></i>Meta</span></div></div>
-      ${lineSvg('web-l', [169, 370, 566, 290, 334, 367], [160, 350, 520, 340, 345, 360], 100, 600, 720, 190)}
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--faint);font-weight:600;margin-top:2px"><span>Mar</span><span>Abr</span><span>May</span><span>Jun</span><span>Jul</span><span>Ago</span></div>
+      ${svgLine('web-l', ['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'], [169, 370, 566, 290, 334, 367], [160, 350, 520, 340, 345, 360], 0, 600, { H: 200, W: 720, fmtV: v => Math.round(v) + 'K' })}
       <div style="margin-top:14px"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:10px">Detalle por canal</h4>
         <table class="sc" style="font-size:13px"><thead><tr><th class="l">Canal</th><th>Usuarios</th><th>%</th><th>PV/ses</th></tr></thead><tbody>
         ${[['Paid Social', '#ec4899', '159K', '38,8%', '1,25'], ['Cross-network', '#6366f1', '78K', '18,9%', '1,68'], ['Demand Gen', '#14b8a6', '43K', '10,5%', '1,04'], ['Paid Search', '#f97316', '43K', '10,4%', '2,58'], ['Organic Search', '#22c55e', '34K', '8,3%', '2,28']].map(c => `<tr><td class="l"><span style="display:inline-flex;align-items:center;gap:8px"><i style="width:9px;height:9px;border-radius:50%;background:${c[1]}"></i>${c[0]}</span></td><td class="num">${c[2]}</td><td class="num">${c[3]}</td><td class="num">${c[4]}</td></tr>`).join('')}</tbody></table></div></div>
@@ -508,9 +589,9 @@ scene('inv', 100, 111, shell('inv',
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div>
       <div style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:8px">Evolución mensual · A vs B</div>
       <div style="display:flex;gap:16px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1e40af;vertical-align:-1px;margin-right:5px"></i>Real (A)</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#94a3b8;vertical-align:-1px;margin-right:5px"></i>4+8 (B)</span></div>
-      ${vbars(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A'], [{ color: '#94a3b8', vals: [95, 260, 210, 400, 490, 430, 390, 760] }, { color: '#1e40af', vals: [110, 350, 300, 510, 430, 320, 350, 560] }], 800, 120, 11)}</div>
+      ${svgBars(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A'], [{ color: '#94a3b8', vals: [95, 260, 210, 400, 490, 430, 390, 760] }, { color: '#1e40af', vals: [110, 350, 300, 510, 430, 320, 350, 560] }], 800, { H: 210, W: 660, labels: false, fmtV: v => '$' + Math.round(v) + 'M' })}</div>
       <div><div style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:8px">Acumulado del período</div>
-      ${lineSvg('inv-l', [0.1, 0.5, 0.8, 1.3, 1.7, 2.0, 2.4, 3.0], [0.1, 0.4, 0.6, 1.0, 1.5, 2.0, 2.5, 3.0], 0, 5, 640, 150)}</div>
+      ${svgLine('inv-l', ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A'], [0.1, 0.5, 0.8, 1.3, 1.7, 2.0, 2.4, 3.0], [0.1, 0.4, 0.6, 1.0, 1.5, 2.0, 2.5, 3.0], 0, 5, { H: 210, W: 660, labels: false, fmtV: v => '$' + v.toFixed(1).replace('.', ',') + 'B' })}</div>
     </div></div>`),
   (node) => {
     const cuads = [...node.querySelectorAll('.cuad')], panel = node.querySelector('.panel'), kcards = [...node.querySelectorAll('.panel > div > div')];
