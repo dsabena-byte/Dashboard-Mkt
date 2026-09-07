@@ -277,28 +277,31 @@ const MED_MEDIA = [
   ['TikTok', '#111827', '$0,6M', '31M', '9,2M', '3,3', '31%', '$19', 'g'],
 ];
 scene('medios', 30, 43, shell('medios',
-  phead('Plan de Medios', 'Resultados ejecutados (Digital ON + TV + OOH) · Fuente: OMD', ''), `
+  `<div class="phead" style="align-items:flex-start;flex-wrap:wrap"><div><h2>Plan de Medios</h2><div class="ps">Resultados ejecutados (Digital ON + TV + OOH) · Fuente: OMD</div>
+    <div style="display:flex;gap:18px;margin-top:8px;font-size:12px;color:var(--faint);font-weight:600">${['DV360 al 07/09', 'Meta al 06/09', 'Plan/OMD al 03/09', 'Google Ads al 07/09'].map(s => `<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:7px;height:7px;border-radius:50%;background:${SEM.up};display:inline-block"></i>${s}</span>`).join('')}</div></div></div>`, `
   <div class="tabs"><span class="tb on amber">Impacto Campaña</span><span class="tb">Eficiencia Medios</span><span class="tb">Insights Pauta</span></div>
-  <div class="stitle">Impacto de campaña · metas del plan <span style="color:var(--navy)">· General</span> <span style="color:var(--faint);font-weight:500">(mes ref: Ago 2026)</span></div>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)">Categoría</span>
+    <div class="seg"><b class="on">General</b><b>Lavado</b><b>Refrigeración</b><b>Cocinas</b></div></div>
+  <div class="stitle">Impacto de campaña · metas del plan <span style="color:var(--faint);font-weight:500">(mes ref: Ago 2026)</span></div>
   <div class="mgrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
-    ${metaCard('Inversión', 'Inversión total ejecutada', '$8,9M', 'Ago', [['Mes', 'up', '$8,4M', '▲ 6%', 106], ['Acum. YTD', 'up', '$62,0M', '▲ 3%', 103]])}
-    ${metaCard('Alcance único', 'Personas alcanzadas', '26,0M', 'Ago', [['Mes', 'up', '25,0M', '▲ 4%', 104], ['Acum. YTD', 'up', '182M', '▲ 3%', 103]])}
-    ${metaCard('Frecuencia', 'Impresiones ÷ alcance', '3,5×', 'Ago', [['Mes', 'up', '3,4×', '▲ 3%', 103], ['Acum. YTD', 'up', '3,4×', '▲ 2%', 102]])}
-    ${metaCard('Impresiones', 'Impresiones del período', '212M', 'Ago', [['Mes', 'up', '200M', '▲ 6%', 106], ['Acum. YTD', 'up', '1,5B', '▲ 4%', 104]])}
+    ${metaCard('Inversión', 'Inversión total ejecutada (ARS)', '$81,2M', 'Ago', [['Mes', 'up', '$78,0M', '▲ 4%', 104], ['Acum. YTD', 'up', '$760M', '▲ 3%', 103]])}
+    ${metaCard('Alcance único', 'Personas alcanzadas', '26,0M', 'Ago', [['Mes', 'up', '25,0M', '▲ 4%', 104], ['Acum. YTD', 'up', '229M', '▲ 0%', 100]])}
+    ${metaCard('Frecuencia', 'Impresiones ÷ alcance', '2,0×', 'Ago', [['Mes', 'mid', '2,1×', '▼ 5%', 95], ['Acum. YTD', 'up', '2,0×', '▲ 0%', 100]])}
+    ${metaCard('Impresiones', 'Impresiones del período', '52,0M', 'Ago', [['Mes', 'up', '50,0M', '▲ 4%', 104], ['Acum. YTD', 'up', '480M', '▲ 3%', 103]])}
     ${metaCard('VTR ≥50%', 'Vistas 50% ÷ impr. video', '30,6%', 'Ago', [['Mes', 'up', '30,0%', '▲ 2%', 102], ['Acum. YTD', 'up', '29,0%', '▲ 1%', 101]])}
-    ${metaCard('Clicks', 'Clicks totales del período', '1,65M', 'Ago', [['Mes', 'mid', '1,70M', '▼ 3%', 97], ['Acum. YTD', 'up', '12,3M', '▲ 1%', 101]])}
+    ${metaCard('Clicks', 'Clicks totales del período', '430,8K', 'Ago', [['Mes', 'mid', '450K', '▼ 4%', 96], ['Acum. YTD', 'up', '5,6M', '▲ 1%', 101]])}
   </div>
-  <div class="panel" style="flex:1;padding:16px 22px"><div class="ph"><h3>Tabla maestra · medios digitales</h3><div class="sub">general + efectivo · Ago</div></div>
-    <table class="mt"><colgroup><col style="width:22%"><col style="width:13%"><col style="width:14%"><col style="width:14%"><col style="width:9%"><col style="width:14%"><col style="width:14%"></colgroup>
-    <thead><tr><th class="l">Medio</th><th>Inversión</th><th>Impres.</th><th>Alcance</th><th>Frec.</th><th>VTR real</th><th>CPM efect.</th></tr></thead>
-    <tbody>${MED_MEDIA.map(m => `<tr><td class="l"><span class="mn"><i style="background:${m[1]}"></i>${m[0]}</span></td><td class="md">${m[2]}</td><td class="md">${m[3]}</td><td class="md">${m[4]}</td><td class="md">${m[5]}</td><td class="heat-${m[8]}" style="font-weight:700">${m[6]}</td><td class="heat-${m[8]}" style="font-weight:700">${m[7]}</td></tr>`).join('')}
-      <tr class="tot"><td class="l">Total</td><td>$8,9M</td><td>341M</td><td>26,0M</td><td>3,5</td><td>31%</td><td>$24</td></tr></tbody></table></div>`),
+  <div class="panel" style="flex:1;padding:16px 22px"><div class="ph"><h3>Distribución de inversión</h3><div class="sub">mix del período</div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:4px">
+      <div><div style="font-size:14px;font-weight:700;margin-bottom:2px">Mix ON / OFF</div>${donut([['Digital', 58, '#2b4dff'], ['OOH', 42, '#f59e0b']])}</div>
+      <div><div style="font-size:14px;font-weight:700;margin-bottom:2px">Inversión por medio</div>${donut([['Meta', 28, '#0866FF'], ['YouTube', 22, '#FF0000'], ['Programmatic', 16, '#4285F4'], ['Google', 14, '#FBBC05'], ['OOH', 12, '#94a3b8'], ['TikTok', 8, '#111827']])}</div>
+      <div><div style="font-size:14px;font-weight:700;margin-bottom:2px">Inversión por categoría</div>${donut([['Brand', 34, '#0a1849'], ['Refrigeración', 26, '#0ea5e9'], ['Lavado', 24, '#a78bfa'], ['Cocción', 16, '#f59e0b']])}</div>
+    </div></div>`),
   (node) => {
-    const cards = [...node.querySelectorAll('.mcard')], panel = node.querySelector('.panel'), rows = [...node.querySelectorAll('.mt tbody tr')];
+    const cards = [...node.querySelectorAll('.mcard')], panel = node.querySelector('.panel');
     return (lt, a) => {
-      stagger(cards, lt, .4, .1, 18); inUp(panel, eo(S(lt, 1.4, 2.0)), 20);
-      rows.forEach((r, i) => inUp(r, eo(S(lt, 2.1 + i * .1, 2.6 + i * .1)), 10));
-      grow(node, eo(S(lt, .5, 2.4))); runCursor(navCursor('medios', 900, 640), lt, a);
+      stagger(cards, lt, .4, .1, 18); inUp(panel, eo(S(lt, 1.6, 2.2)), 20);
+      grow(node, eo(S(lt, .5, 2.4))); runCursor(navCursor('medios', 900, 560), lt, a);
     };
   });
 
