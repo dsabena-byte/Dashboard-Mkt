@@ -184,8 +184,8 @@ scene('intro', 0, 5, `<div class="cover">
 /* 1 · Mapa Estratégico (la tesis: KPIs → objetivos) — coordenadas px en caja 1740x660 */
 const M_KTOP = [30, 122, 214, 306, 398, 490, 582]; // top de cada KPI (alto ~46)
 const M_OTOP = [60, 210, 360, 510];                // top de cada objetivo (alto ~62)
-const M_OBJ = [['Awareness', '#7a5cf0', 40], ['Consideración', '#0ea5e9', 30], ['Intención de Compra', '#f59e0b', 20], ['Impacto en Negocio', '#16a34a', 10]];
-const M_KPI = [['Alcance único', '35%'], ['Impresiones', '30%'], ['VTR (≥50%)', '45%'], ['Engagement orgánico', '40%'], ['Tráfico web', '35%'], ['Floor Share', '45%'], ['Facturación', '55%']];
+const M_OBJ = [['TOM', '#7a5cf0', 25], ['SOM', '#16a34a', 25], ['Intención de Compra', '#f59e0b', 25], ['Poder de Marca', '#0ea5e9', 25]];
+const M_KPI = [['Alcance único', '15%'], ['Frecuencia', '15%'], ['Impresiones', '14%'], ['VTR (≥50%)', '14%'], ['Tráfico web', '10%'], ['Alcance orgánico', '6%'], ['Floor Share', '10%']];
 // vínculos KPI(idx) -> objetivo(idx) con peso relativo (grosor/opacidad)
 const M_LINK = [[0, 0, .35], [1, 0, .30], [2, 0, .20], [2, 2, .25], [3, 1, .40], [3, 2, .20], [4, 1, .35], [4, 2, .25], [5, 3, .45], [6, 3, .55], [0, 1, .15]];
 const M_X1 = 360, M_X2 = 1310, M_MX = (360 + 1310) / 2;
@@ -219,17 +219,17 @@ scene('mapa', 5, 16, `<div style="position:absolute;inset:0;background:var(--gro
 
 /* 2 · Seguimiento de Objetivos */
 const SEG_OBJ = [
-  { n: 'Awareness', c: '#7a5cf0', peso: 40, cmes: 103, res: '40,4', meta: '40,0', ytd: 101, ap: [['VTR (≥50%)', 'up', 35, 104], ['Alcance único', 'up', 30, 101], ['Impresiones', 'up', 25, 102]] },
-  { n: 'Consideración', c: '#0ea5e9', peso: 30, cmes: 100, res: '30,1', meta: '30,0', ytd: 100, ap: [['Engagement org.', 'mid', 40, 95], ['Tráfico web', 'up', 35, 106], ['Alcance único', 'up', 25, 101]] },
-  { n: 'Intención', c: '#f59e0b', peso: 20, cmes: 102, res: '20,4', meta: '20,0', ytd: 102, ap: [['VTR (≥50%)', 'up', 30, 104], ['Tráfico web', 'up', 35, 106], ['Engagement', 'mid', 20, 95]] },
-  { n: 'Impacto Negocio', c: '#16a34a', peso: 10, cmes: 106, res: '10,6', meta: '10,0', ytd: 104, ap: [['Floor Share', 'up', 55, 110], ['Facturación', 'up', 45, 98]] },
+  { n: 'TOM', c: '#7a5cf0', peso: 25, cmes: 102, res: '31,5', meta: '31,4', ytd: 101, ap: [['Alcance único', 'up', 15, 100], ['Frecuencia', 'up', 15, 101], ['% Cumplimiento CB', 'up', 11, 100]] },
+  { n: 'SOM', c: '#16a34a', peso: 25, cmes: 101, res: '58,7', meta: '58,5', ytd: 100, ap: [['Alcance único', 'up', 15, 100], ['Frecuencia', 'up', 15, 101], ['Impresiones', 'up', 14, 100]] },
+  { n: 'Intención de Compra', c: '#f59e0b', peso: 25, cmes: 102, res: '34,2', meta: '34,1', ytd: 101, ap: [['Alcance único', 'up', 12, 100], ['VTR (≥50%)', 'up', 10, 104], ['Clicks', 'up', 10, 101]] },
+  { n: 'Poder de Marca', c: '#0ea5e9', peso: 25, cmes: 103, res: '15,6', meta: '15,5', ytd: 101, ap: [['VTR (≥50%)', 'up', 14, 104], ['Impresiones', 'up', 12, 102], ['Alcance único', 'up', 10, 100]] },
 ];
 const SEG_SC = [
-  ['Alcance único', 'Personas alcanzadas', 'Ago', '26,0M', '25,0M', 'up', '▲ 4%', '188M', '182M', 'up', '▲ 3%', [20, 22, 21, 24, 23, 26], [21, 21, 22, 23, 24, 25]],
-  ['VTR (≥50%)', 'Vistas 50% ÷ impr. video', 'Ago', '30,6%', '30,0%', 'up', '▲ 2%', '29,4%', '29,0%', 'up', '▲ 1%', [27, 28, 29, 29, 30, 31], [28, 28, 29, 29, 30, 30]],
-  ['Engagement rate', 'Interacciones ÷ alcance', 'Ago', '2,8%', '3,0%', 'mid', '▼ 7%', '2,9%', '3,0%', 'mid', '▼ 3%', [3.1, 2.9, 3.0, 2.8, 2.7, 2.8], [3, 3, 3, 3, 3, 3]],
-  ['Tráfico web', 'Usuarios únicos del mes', 'Ago', '318K', '300K', 'up', '▲ 6%', '2,3M', '2,2M', 'up', '▲ 5%', [26, 28, 27, 30, 31, 32], [27, 28, 28, 29, 30, 30]],
-  ['Floor Share', 'Share góndola (Σ cat×peso)', 'Ago', '34,2%', '31,0%', 'up', '▲ 10%', '33,1%', '31,0%', 'up', '▲ 7%', [30, 31, 32, 33, 33, 34], [31, 31, 31, 31, 31, 31]],
+  ['Alcance único', 'Personas alcanzadas', 'Ago', '26,0M', '25,0M', 'up', '▲ 4%', '230M', '229M', 'up', '▲ 0%', [20, 22, 21, 24, 23, 26], [21, 21, 22, 23, 24, 25]],
+  ['Impresiones', 'Impresiones totales', 'Ago', '52,0M', '50,0M', 'up', '▲ 4%', '598M', '580M', 'up', '▲ 3%', [40, 44, 42, 48, 50, 52], [42, 43, 45, 47, 49, 50]],
+  ['VTR (≥50%)', 'Vistas 50% ÷ impr. video', 'Ago', '30,6%', '30,0%', 'up', '▲ 2%', '29,0%', '29,0%', 'up', '▲ 0%', [27, 28, 29, 29, 30, 31], [28, 28, 29, 29, 30, 30]],
+  ['Tráfico web', 'Usuarios únicos del mes', 'Ago', '367K', '360K', 'up', '▲ 2%', '2,3M', '2,3M', 'up', '▲ 0%', [30, 34, 33, 36, 35, 37], [32, 34, 34, 35, 36, 36]],
+  ['Floor Share', 'Share góndola (Σ cat×peso)', 'Ago', '24,0%', '23,5%', 'up', '▲ 2%', '22,1%', '22,0%', 'up', '▲ 0%', [22, 23, 23, 24, 24, 24], [23, 23, 23, 23, 24, 24]],
 ];
 function objCard(o) {
   const cm = o.cmes >= 100 ? 'up' : o.cmes >= 90 ? 'mid' : 'dn', yt = o.ytd >= 100 ? 'up' : o.ytd >= 90 ? 'mid' : 'dn';
@@ -307,31 +307,31 @@ scene('medios', 30, 43, shell('medios',
 
 /* 4 · Redes — IG orgánico */
 scene('redes1', 43, 52, shell('redes',
-  phead('Redes Sociales', 'Analítica orgánica de Novara · Instagram', '<div class="datep">Ago 2026 ▾</div>'), `
-  <div class="panel" style="flex:1;padding:20px 24px;display:flex;flex-direction:column"><div class="ph" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:11px"><span style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">IG</span><div><h3>Instagram orgánico — @novara</h3><div class="sub">KPIs del período · Agosto</div></div></div></div>
+  phead('Redes Sociales', 'Analítica orgánica de Novara · Instagram', '<div class="datep">Ene–Sep 2026 ▾</div>'), `
+  <div class="panel" style="flex:1;padding:20px 24px;display:flex;flex-direction:column"><div class="ph" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:11px"><span style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">IG</span><div><h3>Instagram orgánico — @novara</h3><div class="sub">KPIs del período · Ene–Sep 2026</div></div></div></div>
     <div class="mgrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
-      ${metaCard('Alcance (personas)', 'Suma del reach de los posts', '4,1M', 'Ago', [['Mes', 'up', '3,8M', '▲ 8%', 108], ['Acum. YTD', 'up', '29M', '▲ 5%', 105]])}
-      ${metaCard('Engagement %', 'Interacciones ÷ alcance', '2,8%', 'Ago', [['Mes', 'mid', '3,0%', '▼ 7%', 93], ['Acum. YTD', 'mid', '3,0%', '▼ 3%', 97]])}
-      <div class="mcard"><div class="mt">Followers</div><div class="md">@novara</div><div class="mh"><b>204K</b><small>+3,1K en el mes</small></div>
+      ${metaCard('Alcance (personas)', 'Suma del reach de los posts del mes', '52,8K', 'Ago', [['Mes', 'up', '50,0K', '▲ 6%', 106], ['Acum. YTD', 'up', '288K', '▲ 3%', 103]])}
+      ${metaCard('Engagement %', 'Interacciones ÷ alcance', '3,83%', 'Ago', [['Mes', 'up', '3,00%', '▲ 28%', 128], ['Acum. YTD', 'up', '2,44%', '▲ 4%', 104]])}
+      <div class="mcard"><div class="mt">Followers</div><div class="md">@novara</div><div class="mh"><b>145,7K</b><small>+2,4K en el mes</small></div>
         <div class="mrows"><div class="mrow"><div class="mrt"><span class="sdot" style="background:${SEM.up}"></span><span class="mrl">Crecimiento sostenido 12 meses</span></div><div class="mbar"><i data-w="78" style="background:var(--real)"></i></div></div></div></div>
     </div>
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px">
-      <div style="border:2px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:13px 16px"><div style="font-size:12px;color:#2563eb;font-weight:700">Engagement total</div><div style="font-family:var(--disp);font-weight:800;font-size:25px;color:#1d4ed8;margin-top:3px">114K</div><div style="font-size:12px;color:#3b82f6;margin-top:2px">42 posts</div></div>
-      ${kpi('Likes', '96K', '', '', '❤️ me gusta')}${kpi('Comentarios', '9,2K', '', '', '💬 respuestas')}${kpi('Guardados', '6,4K', '', '', '🔖 saves')}${kpi('Video views', '2,3M', '', '', '▶ reproducciones')}
+      <div style="border:2px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:13px 16px"><div style="font-size:12px;color:#2563eb;font-weight:700">Engagement total</div><div style="font-family:var(--disp);font-weight:800;font-size:25px;color:#1d4ed8;margin-top:3px">7,6K</div><div style="font-size:12px;color:#3b82f6;margin-top:2px">200 posts</div></div>
+      ${kpi('Likes', '4,6K', '', '', '❤️ me gusta')}${kpi('Comentarios', '1,6K', '', '', '💬 respuestas')}${kpi('Guardados', '1,5K', '', '', '🔖 saves')}${kpi('Video views', '239K', '', '', '▶ reproducciones')}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;min-height:0">
       <div style="border:1px solid var(--line);border-radius:14px;padding:16px 18px"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:6px">Alcance mensual — real vs meta</h4>
         <div style="display:flex;gap:16px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--real);vertical-align:-1px;margin-right:5px"></i>Alcance (real)</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--meta);vertical-align:-1px;margin-right:5px"></i>Meta</span></div>
-        ${vbars(['Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [3.4, 3.5, 3.6, 3.7, 3.8] }, { color: 'var(--real)', vals: [3.5, 3.4, 3.8, 3.6, 4.1] }], 4.6, 128)}</div>
+        ${vbars(['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago'], [{ color: 'var(--meta)', vals: [30, 40, 40, 49, 48, 49] }, { color: 'var(--real)', vals: [38, 45, 41, 43, 52, 53] }], 60, 128)}</div>
       <div style="border:1px solid var(--line);border-radius:14px;padding:16px 18px" id="ig-combo"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:6px">Engagement % e interacciones por tipo</h4>
         <div style="display:flex;gap:14px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1e40af;vertical-align:-1px;margin-right:5px"></i>Likes</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#60a5fa;vertical-align:-1px;margin-right:5px"></i>Coment.</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#bfdbfe;vertical-align:-1px;margin-right:5px"></i>Guardados</span><span><i style="display:inline-block;width:16px;height:3px;background:#0f172a;vertical-align:3px;margin-right:5px"></i>Eng.%</span></div>
         <div style="position:relative">${vstack(['Abr', 'May', 'Jun', 'Jul', 'Ago'], ['#1e40af', '#60a5fa', '#bfdbfe'], [[60, 22, 14], [58, 20, 15], [66, 24, 16], [70, 22, 18], [78, 26, 20]], 130, 118, 30)}
           <svg viewBox="0 0 500 118" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:118px"><polyline class="rl2" points="50,44 150,50 250,36 350,42 450,30" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
     </div>
     <div class="demo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:16px">
-      <div><h5>Edad</h5>${[['18–24', 22, 58], ['25–34', 38, 100], ['35–44', 24, 63], ['45+', 16, 42]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#ec4899"></i></div></div>`).join('')}</div>
-      <div><h5>Género</h5>${[['Mujeres', 61, 100], ['Hombres', 39, 64]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#a855f7"></i></div></div>`).join('')}</div>
-      <div><h5>Top provincias</h5>${[['Buenos Aires', 34, 100], ['Córdoba', 18, 53], ['Santa Fe', 14, 41], ['Mendoza', 9, 26]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#3b82f6"></i></div></div>`).join('')}</div>
+      <div><h5>Edad</h5>${[['35–44', 29, 100], ['45–54', 28, 97], ['55–64', 17, 59], ['25–34', 17, 59]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#ec4899"></i></div></div>`).join('')}</div>
+      <div><h5>Género</h5>${[['Mujeres', 75, 100], ['Hombres', 16, 21], ['Otro', 9, 12]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#a855f7"></i></div></div>`).join('')}</div>
+      <div><h5>Top provincias</h5>${[['Buenos Aires', 33, 100], ['CABA', 21, 64], ['Córdoba', 18, 55], ['Santa Fe', 9, 27]].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[2]}" style="background:#3b82f6"></i></div></div>`).join('')}</div>
     </div></div>`),
   (node) => {
     const panel = node.querySelector('.panel'), cards = [...node.querySelectorAll('.mcard')], charts = [...node.querySelectorAll('#redes1 .panel > div > div')];
@@ -380,29 +380,29 @@ scene('redes2', 52, 61, shell('redes',
 
 /* 6 · Web / Ecommerce */
 scene('web', 61, 74, shell('web',
-  phead('Web · Novara', 'Tráfico real de GA4 — performance, canales, categorías y ventas', '<div class="datep">Últimos 30 días ▾</div>'), `
+  phead('Web · Novara', 'Tráfico real de GA4 — performance, canales, categorías y top landings', '<div class="datep">01–31 ago 2026 ▾</div>'), `
   <div class="mgrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
-    ${metaCard('Tráfico web (usuarios)', 'Usuarios del mes', '318K', 'Ago', [['Mes', 'up', '300K', '▲ 6%', 106], ['Acum. YTD', 'up', '2,3M', '▲ 5%', 105]])}
-    ${metaCard('Conversion rate', 'Conversiones ÷ sesiones', '2,4%', 'Ago', [['Mes', 'up', '2,3%', '▲ 4%', 104], ['Acum. YTD', 'up', '2,2%', '▲ 3%', 103]])}
-    ${metaCard('Total Ingresos', 'Ingresos ecommerce del mes', '$1,28M', 'Ago', [['Mes', 'up', '$1,15M', '▲ 11%', 111], ['Acum. YTD', 'up', '$9,1M', '▲ 9%', 109]])}
+    ${metaCard('Tráfico web (usuarios)', 'Usuarios del mes', '366,8K', 'Ago', [['Mes', 'mid', '400K', '▼ 8%', 92], ['Acum. YTD', 'up', '2,4M', '▲ 2%', 101]])}
+    ${metaCard('Total Ingresos', 'Ingresos ecommerce del mes', '$648,3M', 'Ago', [['Mes', 'up', '$600M', '▲ 8%', 108], ['Acum. YTD', 'up', '$2,95B', '▲ 3%', 103]])}
+    ${metaCard('ROAS', 'Ingresos ÷ inversión total de medios', '8,0×', 'Ago', [['Mes', 'up', '8,0×', '▲ 0%', 100], ['Acum. YTD', 'up', '7,4×', '▲ 4%', 104]])}
   </div>
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">
-    ${kpi('Sesiones', '412K', '▲ 8%', 'up')}${kpi('Transacciones', '4,9K', '▲ 7%', 'up')}${kpi('Pageviews', '1,9M', '', '', '4,6 pág/sesión')}${kpi('Bounce rate', '38,2%', '▼ 2%', 'up')}${kpi('ROAS', '4,6×', '▲ 4%', 'up')}
+    ${kpi('Sesiones', '428,5K', '▲ 2%', 'up')}${kpi('Transacciones', '679', '▲ 13%', 'up')}${kpi('Conversiones', '679', '▲ 64%', 'up')}${kpi('Pageviews', '711,6K', '', '', '1,64 pág/sesión')}${kpi('Top canal', 'Paid Social', '', '', '162K sesiones')}
   </div>
   <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:18px;flex:1;min-height:0">
     <div class="panel" style="padding:18px 22px"><div class="ph"><h3>Evolución mensual · real vs meta</h3><div class="lg"><span><i style="background:var(--real)"></i>Real</span><span><i style="background:var(--meta2)"></i>Meta</span></div></div>
-      ${lineSvg('web-l', [258, 272, 266, 288, 296, 318], [250, 258, 264, 272, 288, 300], 230, 340, 720, 190)}
+      ${lineSvg('web-l', [169, 370, 566, 290, 334, 367], [160, 350, 520, 340, 345, 360], 100, 600, 720, 190)}
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--faint);font-weight:600;margin-top:2px"><span>Mar</span><span>Abr</span><span>May</span><span>Jun</span><span>Jul</span><span>Ago</span></div>
       <div style="margin-top:14px"><h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:10px">Detalle por canal</h4>
         <table class="sc" style="font-size:13px"><thead><tr><th class="l">Canal</th><th>Usuarios</th><th>%</th><th>PV/ses</th></tr></thead><tbody>
-        ${[['Organic Search', '#22c55e', '121K', '38%', '4,9'], ['Paid Search', '#f97316', '86K', '27%', '3,8'], ['Organic Social', '#a78bfa', '60K', '19%', '5,2'], ['Direct', '#64748b', '32K', '10%', '4,1'], ['Referral', '#0ea5e9', '19K', '6%', '3,6']].map(c => `<tr><td class="l"><span style="display:inline-flex;align-items:center;gap:8px"><i style="width:9px;height:9px;border-radius:50%;background:${c[1]}"></i>${c[0]}</span></td><td class="num">${c[2]}</td><td class="num">${c[3]}</td><td class="num">${c[4]}</td></tr>`).join('')}</tbody></table></div></div>
+        ${[['Paid Social', '#ec4899', '159K', '38,8%', '1,25'], ['Cross-network', '#6366f1', '78K', '18,9%', '1,68'], ['Demand Gen', '#14b8a6', '43K', '10,5%', '1,04'], ['Paid Search', '#f97316', '43K', '10,4%', '2,58'], ['Organic Search', '#22c55e', '34K', '8,3%', '2,28']].map(c => `<tr><td class="l"><span style="display:inline-flex;align-items:center;gap:8px"><i style="width:9px;height:9px;border-radius:50%;background:${c[1]}"></i>${c[0]}</span></td><td class="num">${c[2]}</td><td class="num">${c[3]}</td><td class="num">${c[4]}</td></tr>`).join('')}</tbody></table></div></div>
     <div style="display:flex;flex-direction:column;gap:16px;min-height:0">
       <div class="panel" style="padding:16px 20px"><div class="ph"><h3>Performance por categoría</h3></div>
         <table class="sc" style="font-size:13px"><thead><tr><th class="l">Categoría</th><th>Usuarios</th><th>%</th><th>Sesiones</th></tr></thead><tbody>
-        ${[['Lavado', '#a78bfa', '121K', '38%', '156K'], ['Refrigeración', '#22c55e', '89K', '28%', '112K'], ['Cocinas', '#f97316', '73K', '23%', '94K'], ['Otros / Home', '#94a3b8', '35K', '11%', '50K']].map(c => `<tr><td class="l"><span style="display:inline-flex;align-items:center;gap:8px"><i style="width:9px;height:9px;border-radius:50%;background:${c[1]}"></i>${c[0]}</span></td><td class="num">${c[2]}</td><td class="num">${c[3]}</td><td class="num">${c[4]}</td></tr>`).join('')}</tbody></table></div>
+        ${[['Lavado', '#a78bfa', '183K', '44,6%', '188K'], ['Cocinas', '#f97316', '80K', '19,6%', '82K'], ['Refrigeración', '#22c55e', '76K', '18,6%', '78K'], ['Otros / Home', '#94a3b8', '74K', '18,2%', '76K']].map(c => `<tr><td class="l"><span style="display:inline-flex;align-items:center;gap:8px"><i style="width:9px;height:9px;border-radius:50%;background:${c[1]}"></i>${c[0]}</span></td><td class="num">${c[2]}</td><td class="num">${c[3]}</td><td class="num">${c[4]}</td></tr>`).join('')}</tbody></table></div>
       <div class="panel demo" style="padding:16px 20px;flex:1"><div class="ph"><h3>Audiencia (GA4)</h3></div>
         <h5>Dispositivos</h5>
-        ${[['Mobile', 68, '#22c55e'], ['Desktop', 26, '#3b82f6'], ['Tablet', 6, '#a78bfa']].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[1]}" style="background:${d[2]}"></i></div></div>`).join('')}</div>
+        ${[['Mobile', 90, '#22c55e'], ['Desktop', 9, '#3b82f6'], ['Tablet', 1, '#a78bfa']].map(d => `<div class="dr"><div class="dt"><b>${d[0]}</b><span>${d[1]}%</span></div><div class="db"><i data-w="${d[1]}" style="background:${d[2]}"></i></div></div>`).join('')}</div>
     </div>
   </div>`),
   (node) => {
@@ -497,20 +497,20 @@ scene('inv', 100, 111, shell('inv',
   phead('Inversión de Marketing', 'Ejecución del presupuesto y comparador de versiones (A vs B)', ''), `
   <div class="stitle">Ejecución del Presupuesto <span style="color:var(--faint);font-weight:500">· Real 2026 vs BGT vigente por cuatrimestre · meta: desvío &lt; 5% y Inv/Fact ≤ 1,3%</span></div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
-    ${cuad('T1', 'BGT', 'cerrado', ['#047857', '#dcfce7'], 'US$ 4,9M', 'BGT vigente US$ 5,0M · Facturación US$ 402M', [['Desvío vs BGT', 'up', '&lt; 5%', '▼ 2,0%', 98], ['Inv / Facturación', 'up', '≤ 1,3%', '1,22%', 94]])}
-    ${cuad('T2', '4+8', 'cerrado', ['#047857', '#dcfce7'], 'US$ 5,3M', 'BGT vigente US$ 5,2M · Facturación US$ 445M', [['Desvío vs BGT', 'up', '&lt; 5%', '▲ 1,9%', 98], ['Inv / Facturación', 'up', '≤ 1,3%', '1,19%', 92]])}
-    ${cuad('T3', '8+4', 'en curso', ['#0a7fce', '#e6f4fe'], 'US$ 2,1M', 'BGT vigente US$ 5,4M · Facturación US$ 190M', [['Desvío vs BGT', 'na', '&lt; 5%', 'en curso', 40], ['Inv / Facturación', 'up', '≤ 1,3%', '1,11%', 85]])}
+    ${cuad('T1', 'ENE–ABR', 'cerrado', ['#047857', '#dcfce7'], 'US$ 936K', 'BGT vigente US$ 1,2M · Facturación US$ 75,8M', [['Desvío vs BGT', 'up', '&lt; 5%', '▼ 2,0%', 98], ['Inv / Facturación', 'up', '≤ 1,3%', '1,23%', 94]])}
+    ${cuad('T2', 'MAY–AGO', 'cerrado', ['#047857', '#dcfce7'], 'US$ 875K', 'BGT vigente US$ 1,3M · Facturación US$ 82,2M', [['Desvío vs BGT', 'up', '&lt; 5%', '▲ 1,9%', 98], ['Inv / Facturación', 'up', '≤ 1,3%', '1,06%', 92]])}
+    ${cuad('T3', 'SEP–DIC', 'en curso', ['#0a7fce', '#e6f4fe'], 'US$ 210K', 'BGT 8+4 aún no cargada · en ejecución', [['Desvío vs BGT', 'na', '&lt; 5%', 'en curso', 40], ['Inv / Facturación', 'up', '≤ 1,3%', '1,11%', 85]])}
   </div>
   <div class="panel" style="flex:1;padding:18px 22px"><div class="ph"><h3>Comparador de presupuestos</h3><div class="sub">Real 2026 (A) vs 4+8 2026 (B) · año completo</div></div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px">
-      ${[['Presupuesto A', 'US$ 15,4M', '#1e40af', '2.140 registros'], ['Presupuesto B', 'US$ 15,9M', '#94a3b8', '2.086 registros'], ['Diferencia (A − B)', '−US$ 0,5M', '#dc2626', 'A queda debajo de B'], ['Variación %', '−3,1%', '#dc2626', 'A vs B']].map(k => `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">${k[0]}</div><div style="font-family:var(--disp);font-weight:800;font-size:26px;color:${k[2]};margin-top:6px;font-variant-numeric:tabular-nums">${k[1]}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">${k[3]}</div></div>`).join('')}
+      ${[['Presupuesto A · Real 2026', '$3,0B', '#1e40af', '56 registros'], ['Presupuesto B · 4+8 2026', '$4,7B', '#94a3b8', '85 registros'], ['Diferencia (A − B)', '−$1,7B', '#dc2626', 'A queda debajo de B'], ['Variación %', '−36,1%', '#dc2626', 'A vs B']].map(k => `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700">${k[0]}</div><div style="font-family:var(--disp);font-weight:800;font-size:26px;color:${k[2]};margin-top:6px;font-variant-numeric:tabular-nums">${k[1]}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">${k[3]}</div></div>`).join('')}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div>
       <div style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:8px">Evolución mensual · A vs B</div>
       <div style="display:flex;gap:16px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1e40af;vertical-align:-1px;margin-right:5px"></i>Real (A)</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#94a3b8;vertical-align:-1px;margin-right:5px"></i>4+8 (B)</span></div>
-      ${vbars(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A'], [{ color: '#94a3b8', vals: [1.2, 1.3, 1.3, 1.4, 1.5, 1.4, 1.5, 1.6] }, { color: '#1e40af', vals: [1.1, 1.3, 1.2, 1.4, 1.6, 1.3, 1.6, 1.7] }], 1.9, 120, 11)}</div>
+      ${vbars(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A'], [{ color: '#94a3b8', vals: [95, 260, 210, 400, 490, 430, 390, 760] }, { color: '#1e40af', vals: [110, 350, 300, 510, 430, 320, 350, 560] }], 800, 120, 11)}</div>
       <div><div style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:8px">Acumulado del período</div>
-      ${lineSvg('inv-l', [1.1, 2.4, 3.6, 5.0, 6.6, 7.9, 9.5, 11.2], [1.2, 2.5, 3.8, 5.2, 6.7, 8.1, 9.6, 11.1], 0, 12, 640, 150)}</div>
+      ${lineSvg('inv-l', [0.1, 0.5, 0.8, 1.3, 1.7, 2.0, 2.4, 3.0], [0.1, 0.4, 0.6, 1.0, 1.5, 2.0, 2.5, 3.0], 0, 5, 640, 150)}</div>
     </div></div>`),
   (node) => {
     const cuads = [...node.querySelectorAll('.cuad')], panel = node.querySelector('.panel'), kcards = [...node.querySelectorAll('.panel > div > div')];
