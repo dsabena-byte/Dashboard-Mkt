@@ -752,7 +752,7 @@ const ICON = {
 };
 const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3"/><path d="M20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>';
 const PLANS = [
-  {key:'insight',name:'Insight',tag:'plan base',price:'390',setup:'700',users:'1 usuario',cats:'1 marca · 1 categoría',pitch:'Conectá tus fuentes y medí toda la operación contra la meta, en un solo tablero.'},
+  {key:'insight',name:'Insight',tag:'plan base',price:'490',setup:'700',users:'1 usuario',cats:'1 marca · 1 categoría',pitch:'Conectá tus fuentes y medí toda la operación contra la meta, en un solo tablero.'},
   {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'990',setup:'900',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',pitch:'Sumá la mirada competitiva, el punto de venta y el asesoramiento estratégico.'},
   {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',pitch:'El tablero completo: explorá tus datos y detectá oportunidades con ayuda de la IA.'}
 ];
@@ -806,7 +806,7 @@ const FULL = [
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
 document.getElementById('matrix').innerHTML =
   `<tr class="section"><td colspan="4">Precio</td></tr>`+
-  `<tr><td>Precio por mes (USD)</td><td><span class="val">390</span></td><td><span class="val">990</span></td><td><span class="val">1.690</span></td></tr>`+
+  `<tr><td>Precio por mes (USD)</td><td><span class="val">490</span></td><td><span class="val">990</span></td><td><span class="val">1.690</span></td></tr>`+
   `<tr><td>Set-up · plan 6 meses (USD)</td><td><span class="val">700</span></td><td><span class="val">900</span></td><td><span class="val">1.500</span></td></tr>`+
   `<tr><td>Set-up · plan 12 meses</td><td><span class="val">sin cargo</span></td><td><span class="val">sin cargo</span></td><td><span class="val">sin cargo</span></td></tr>`+
   `<tr class="section"><td colspan="4">Acceso</td></tr>`+
