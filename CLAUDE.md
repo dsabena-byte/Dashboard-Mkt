@@ -192,10 +192,20 @@ reporte_existencia/cb_homologos).
   - **Carga manual en `pauta_performance`** (de los reportes mensuales de **OMD**, PDF): medios
     **sin API** → **TikTok, Mercado Ads (=Mercado Libre), Geo Mobile (=TapTap, pauta geolocalizada)**.
     Y los **tradicionales/offline** (TV Cable, OOH, DOOH) = **plan de medios aparte**, también manual.
-  - **OJO 1:** en `pauta_performance` hay filas de **Meta manuales que NO coinciden con la API**
-    (ej ago: pauta 13,4M vs `meta_paid_creatives` 62,7M). Para "plataforma = fuente de verdad" el
-    dash debe leer Meta/Google/DV360 de la **API**, no de pauta → **dedup pendiente** (no sumar
-    ambas fuentes para el mismo medio).
+  - **OJO 1 — RESUELTO (dic-2026): Meta = fuente de verdad SIEMPRE la API, nunca OMD.** En
+    `pauta_performance` OMD cargaba una fila de **Meta que subcontaba** (ej ago-26 OMD **$13,4M** =
+    solo awareness+tráfico, vs API `meta_paid_creatives` **$62,7M** → dejaba afuera **$49,3M de
+    video-views/ThruPlay**; ese hueco era el burst de 3 días de las campañas `_Diario`). El dash
+    priorizaba OMD si el medio tenía fila OMD, así que el gap-fill de la API quedaba bloqueado
+    **solo para Meta** (YouTube/Programmatic/Google ya venían por API porque OMD no los carga).
+    **Fix (`performance-client.tsx`): `const API_MEDIOS = new Set(["Meta"])` + `esMedioApi()` →
+    Meta se EXCLUYE de todas las agregaciones OMD** (`rows`, `rowsNoMes`, `impactoMensual`, modelo
+    de ejecución de presupuesto, `catDonutData`) y entra por el gap-fill de la API en TODOS los
+    modelos (medioModel/catModel/rolModel/monthTotals/impacto/cuatrimestres) → inversión,
+    impresiones, alcance, clicks y VTR de Meta salen de la API. `data` cruda queda intacta (Meta
+    sigue como opción de filtro). Regla general: **medio con API conectada → volumen de la API;
+    OMD solo para medios SIN API** (OOH, TV, DOOH, TikTok, Mercado Ads, Geo). Si algún día OMD
+    carga otro medio-API (ej Google), sumarlo al set `API_MEDIOS`.
   - **OJO 2:** `pauta_performance.tipo_compra` es **NOT NULL** (usar "CPM"). Categorías válidas:
     Brand/Cocción/Lavado/Refrigeración/UGC/Promoción. Objetivos: Awareness/Consideración/Build.
   - **UGC:** el dash de Pauta Mkt **INCLUYE UGC** como una categoría más (`getPautaPerformance(true)`

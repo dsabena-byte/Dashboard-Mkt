@@ -6,6 +6,7 @@ import {
   type PautaRow,
   PAUTA_INSIGHTS,
   MEDIO_COLORS,
+  CATEGORIA_COLORS,
   computeByMedio,
   investmentByCategoria,
   extractMeses,
@@ -110,6 +111,18 @@ function videoMetrics(comp: number, vimpr: number, impr: number, inv: number): {
   const esVideo = vimpr > 0 && impr > 0 && vimpr >= impr * 0.3 && comp <= vimpr;
   return { vtr: esVideo ? (comp / vimpr) * 100 : 0, cpmEf: esVideo && comp > 0 ? (inv / comp) * 1000 : 0 };
 }
+
+// Medios con API propia conectada: su volumen (inversión, impresiones, alcance,
+// clicks, VTR) es FUENTE DE VERDAD desde la API, NO desde la carga manual de OMD
+// (pauta_performance). OMD queda solo para medios sin API (OOH, TV Cable, DOOH,
+// TikTok, Mercado Ads, Geo). Meta es el único medio-API que además tenía fila en
+// OMD y subcontaba: ej ago-26 OMD $13,4M (solo awareness+tráfico) vs API $62,7M
+// (dejaba afuera $49,3M de video-views). Se excluye Meta de las agregaciones OMD →
+// entra por el gap-fill de la API en todos los modelos (medio/categoría/rol/impacto/
+// ejecución de presupuesto). YouTube/Programmatic/Google ya venían por API (no
+// están en OMD). Meta SIGUE siendo opción de filtro (data cruda intacta).
+const API_MEDIOS = new Set(["Meta"]);
+const esMedioApi = (medio: string) => API_MEDIOS.has(medio);
 
 // Agrega por dimensión (categoría o rol) con la MISMA estructura/fuentes que la tabla
 // maestra: VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD; EFECTIVO
@@ -329,6 +342,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     () =>
       data.filter(
         (r) =>
+          !esMedioApi(r.medio) && // Meta sale de la API, no de OMD
           (selMeses.length === 0 || selMeses.includes(r.mes)) &&
           (selMedios.length === 0 || selMedios.includes(tipoMedio(r.medio))) &&
           (selCats.length === 0 || selCats.includes(r.categoria)) &&
@@ -668,7 +682,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       const row = { mes: short, digital: 0, tvCable: 0, dooh: 0, ooh: 0, isPlanned: false, mes_pct: null as number | null, pct_marker: 1 };
       const present = new Set<string>(); // medios que YA tiene el plan OMD de ese mes
       for (const r of data) {
-        if (r.mes !== mes) continue;
+        if (r.mes !== mes || esMedioApi(r.medio)) continue; // Meta gap-fillea desde la API
         const v = r.inversion ?? 0;
         if (v > 0 || (r.impresiones ?? 0) > 0) present.add(r.medio);
         const k = tipoMedio(r.medio);
@@ -714,6 +728,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     () =>
       data.filter(
         (r) =>
+          !esMedioApi(r.medio) && // Meta sale de la API, no de OMD
           (selMedios.length === 0 || selMedios.includes(tipoMedio(r.medio))) &&
           (selCats.length === 0 || selCats.includes(r.categoria)) &&
           (selRoles.length === 0 || selRoles.includes(r.objetivo)) &&
@@ -810,7 +825,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       // OMD (todos los objetivos/medios), por medio.
       const omd = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
       for (const r of data) {
-        if (r.mes !== mesLabel || !catOk(r.categoria)) continue;
+        if (r.mes !== mesLabel || !catOk(r.categoria) || esMedioApi(r.medio)) continue; // Meta gap-fillea desde la API
         const e = omd.get(r.medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
         e.impr += r.impresiones ?? 0; e.alc += r.alcance ?? 0; e.clic += r.clics ?? 0; e.inv += r.inversion ?? 0;
         omd.set(r.medio, e);
@@ -1091,7 +1106,19 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
 
   const donutData = medioModel.items.map((m) => ({ name: m.medio, value: m.inversion, color: MEDIO_COLORS[m.medio] ?? "#94a3b8" }));
-  const catDonutData = useMemo(() => investmentByCategoria(rows), [rows]);
+  const catDonutData = useMemo(() => {
+    // OMD (sin Meta) + Meta por categoría desde la API (spend real).
+    const map = new Map<string, number>();
+    for (const d of investmentByCategoria(rows)) map.set(d.name, d.value);
+    for (const r of metaPaidF) {
+      if (r.plataforma !== "meta") continue;
+      const cat = r.categoria ?? "Sin categoría";
+      map.set(cat, (map.get(cat) ?? 0) + (r.spend ?? 0));
+    }
+    return [...map.entries()]
+      .map(([name, value]) => ({ name, value, color: CATEGORIA_COLORS[name] ?? "#94a3b8" }))
+      .sort((a, b) => b.value - a.value);
+  }, [rows, metaPaidF]);
   const mixData = [
     { name: "Digital", value: invDigital, color: "#2b4dff" },
     { name: "TV Cable", value: invTv, color: "#e63946" },
