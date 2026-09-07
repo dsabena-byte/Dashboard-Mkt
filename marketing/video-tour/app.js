@@ -46,7 +46,6 @@ const NAV = [
   { k: 'trade', label: 'Trade Marketing', icon: I.store },
   { k: 'marca', label: 'Salud de Marca', icon: I.heart },
   { k: 'inv', label: 'Inversión', icon: I.dollar },
-  { k: 'ia', label: 'Copiloto IA', icon: I.spark },
 ];
 const NAV_Y = k => { const i = NAV.findIndex(n => n.k === k); return 172 + i * 40; };
 
