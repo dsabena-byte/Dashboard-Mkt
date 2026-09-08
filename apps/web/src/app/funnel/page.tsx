@@ -10,6 +10,13 @@ export const maxDuration = 60;
 const YEAR = 2026;
 const invFactLabel = MAX_INV_FACT.toString().replace(".", ","); // "1,3"
 
+// El link "anyone with the link" de SharePoint que alimenta el BGT vence ~30 días
+// (política de Mabe). Al renovarlo (nuevo secret SHAREPOINT_URL en Dashboard-BGT),
+// actualizar esta fecha = día en que se generó el link nuevo. El dash muestra el
+// vencimiento estimado (+30 días) al lado de la última sincronización.
+const SHAREPOINT_LINK_RENOVADO = "2026-09-07";
+const SHAREPOINT_LINK_DIAS = 30;
+
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try { return await p; } catch { return fallback; }
 }
@@ -132,6 +139,14 @@ export default async function InversionMarketingPage() {
     : "—";
   const dataLoaded = bgt.rows.length > 0;
 
+  // Vencimiento estimado del link de SharePoint (renovado + 30 días).
+  const venceLink = new Date(SHAREPOINT_LINK_RENOVADO + "T00:00:00");
+  venceLink.setDate(venceLink.getDate() + SHAREPOINT_LINK_DIAS);
+  const venceLabel = venceLink.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const diasRestantes = Math.ceil((venceLink.getTime() - Date.now()) / 86_400_000);
+  const linkColor = diasRestantes <= 0 ? "text-red-600 font-medium" : diasRestantes <= 5 ? "text-amber-600 font-medium" : "text-muted-foreground";
+  const linkTexto = diasRestantes <= 0 ? `Link SharePoint VENCIDO (${venceLabel}) — renovar` : `Renovar link SharePoint antes del ${venceLabel} (faltan ${diasRestantes} días)`;
+
   return (
     <div className="space-y-5">
       <header>
@@ -142,6 +157,8 @@ export default async function InversionMarketingPage() {
       </header>
       <p className="-mt-2 text-xs text-muted-foreground">
         Fuente BGT: SharePoint → Supabase · Última sincronización: {syncLabel}
+        <span className="mx-1">·</span>
+        <span className={linkColor}>{linkTexto}</span>
       </p>
 
       {/* ===== Ejecución del Presupuesto (por cuatrimestre) ===== */}
