@@ -431,4 +431,9 @@ reporte_existencia/cb_homologos).
 GfK → `mercado_share`), **`docs/calendario-publicacion-meta.md`** (calendario de contenidos +
 publicación orgánica IG/FB + estado de permisos Meta), y varios `*-sync.md` (dv360, google-ads, etc.).
 Los `handoff-*.md` son notas de sesiones previas.
+
+**Proyecto APARTE — BIP (SaaS self-serve multi-tenant):** convertir este dashboard en un producto
+multi-cliente (fork + capa de conexiones OAuth vía Nango + planes/upgrade/add-ons + billing). **NO
+toca Drean.** Estado, decisiones, identidad (`bip.explore@gmail.com`, dominio `bip-go.com`) y pasos
+pendientes en **`docs/bip-platform-handoff.md`**. El código se entregó al user como zips.
 </content>
