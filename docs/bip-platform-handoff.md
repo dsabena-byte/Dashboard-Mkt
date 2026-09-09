@@ -43,6 +43,30 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
   WhatsApp real (hoy placeholder `5491100000000`).
 
 ## Código entregado (zips que tiene el user — el scratchpad se pierde)
+- **`bip-platform.zip`** (sep-2026, NUEVO — la capa de plataforma, **build validado**: `npm run
+  build` OK en Next 16.3.4, TSC exit 0, todas las rutas compilan). Contenido (44 archivos):
+  - **Control plane:** `supabase/migrations/0001_control_plane.sql` (tenants, tenant_users,
+    connections, connection_events, billing_events + RLS con `is_member`/`is_owner` + triggers).
+  - **Núcleo:** `lib/plan.ts` (planes + matriz de gating `canAccess`/`visibleModules`),
+    `lib/connectors.ts` (registro oauth vs asistidas), `lib/tenant.ts` (`getCurrentTenant`),
+    `lib/nango.ts` + `lib/connections.ts` (`getToken`, mismo patrón que la prueba), `lib/supabase/*`
+    (SSR con RLS + service-role), `lib/billing/*` (stripe lazy + mapa price↔plan +
+    `deriveFromSubscription`).
+  - **Auth + shell:** `app/login` (magic link), `app/auth/callback`, `app/onboarding`,
+    `proxy.ts` (gate de /dashboard y /cuenta; Next 16 usa `proxy`, no `middleware`),
+    `app/(app)/layout.tsx` (sidebar gateado por plan) + `dashboard`.
+  - **Autogestión:** `app/(app)/cuenta/{conexiones,plan,addons}` + `components/{connect-button,
+    plan-actions,sidebar}`. Conexiones self-serve (Nango) + upgrade prorrateado + add-ons + portal.
+  - **API:** `connect/[provider]`(+callback), `billing/{checkout,upgrade,addon,portal,webhook}`,
+    `onboarding`. Webhook con firma verificada (raw body, runtime nodejs) + idempotencia.
+  - **Infra + docs:** `infra/nango-railway/` (docker-compose + RUNBOOK del self-host),
+    `docs/conectores.md` (provider keys + scopes verificados) + `docs/verificacion-google.md`.
+  - **Gotcha resuelto en build:** el cliente de Stripe se instanciaba al importar → rompía el
+    "collect page data" sin `STRIPE_SECRET_KEY`. Fix: `getStripe()` lazy (se crea al primer uso).
+  - Es la **capa de plataforma**; los ~17 dashboards se traen del fork de Drean y se cuelgan del
+    shell. El único cambio del pipeline es `process.env.TOKEN` → `getToken(tenant, provider)`.
+- **`bip-app.zip`** — la PRUEBA del circuito (Google→Supabase→Nango→Sheets), ya deployada y
+  validada end-to-end en Vercel (`bip-explore/bip-app`). Es el MVP mínimo, no la plataforma.
 - **`bip-mvp.zip`** — starter production-ready de la plataforma (21 archivos, ~840 líneas):
   `supabase/migrations/0001_control_plane.sql` (tenants, connections, tenant_users, RLS),
   `lib/{plan,connections,nango,billing,tenant,supabase/server}.ts`, `middleware.ts`,
