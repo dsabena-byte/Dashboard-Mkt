@@ -78,6 +78,29 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
 - Runbook de deploy (Vercel + Supabase + variables).
 - Resto de UI: `/cuenta/usuarios`, portal de billing, dashboard de estado de conexiones.
 
+## Progreso de setup (sep-2026)
+- ✅ Identidad `bip.explore@gmail.com` (2FA) + dominio `bip-go.com` (Netlify, SSL OK, público).
+- ✅ Sitio comercial vivo (`bip-go.com` + /privacy + /terms).
+- ✅ **Google Cloud** listo: proyecto + 3 APIs (Analytics Data / Ads / Sheets) + pantalla de
+  consentimiento (branding con bip-go.com/privacy+terms) + 3 scopes sensibles (sin CASA) +
+  **cliente OAuth Web** (redirect `https://api.nango.dev/oauth/callback`) + `bip.explore` como
+  **usuario de prueba** (modo Testing).
+- ✅ **Nango Cloud** (free, env `dev`, org BIP): integración **Google** (`provider=google`, Custom
+  developer app con el Client ID/Secret propios + los 3 scopes) → **CONEXIÓN DE PRUEBA CREADA Y
+  FUNCIONANDO** (el "Conectar Google" self-serve anda end-to-end).
+- ⏳ Meta: esperando que el socio dé Admin del Business → después crear app `BIP Connector` +
+  integración en Nango (mismo flujo que Google).
+- ⏳ TikTok: idem (opcional).
+- ⏳ Pendiente Google: **enviar la verificación OAuth** (necesita demo de la app viva) → después.
+- ⏳ Deploy de la app (`bip-mvp`): repo + Supabase (migración 0001) + Vercel + env (Nango
+  `NANGO_HOST`+`NANGO_SECRET_KEY`, Supabase, Stripe).
+- **Gotchas del setup Nango+Google (no re-tropezar):** (1) los scopes van en "Agregar permisos
+  manualmente", NO en el filtro; (2) la callback va en "URIs de redireccionamiento", NO en
+  "Orígenes JavaScript"; (3) si el consent da 403 "nango.dev no verificó", es que la integración
+  usaba la app de Nango (faltaba guardar el Custom developer app) o falta el usuario de prueba;
+  (4) en modo Testing hay que agregar cada mail como **usuario de prueba** en "Público", y en el
+  consent tocar "Configuración avanzada → Ir a BIP (no seguro) → Continuar".
+
 ## Cómo retomar
 Leer este doc. El código vive en los zips que tiene el user (pedirle que los suba si hace falta
 continuarlo, o regenerar desde el README del `bip-mvp`). Próximo paso natural: **Google Cloud**
