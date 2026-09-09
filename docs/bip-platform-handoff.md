@@ -119,6 +119,51 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
   (4) en modo Testing hay que agregar cada mail como **usuario de prueba** en "Público", y en el
   consent tocar "Configuración avanzada → Ir a BIP (no seguro) → Continuar".
 
+## Sacar el cartel "app no verificada" — plan definitivo (self-host Nango en Railway)
+> Decidido sep-2026 tras llegar a la pantalla de verificación de Google y toparse con el bloqueo.
+
+### Por qué aparece el cartel y por qué NO se puede verificar hoy
+- La app OAuth (`BIP-GO`) ya está **En producción** (tokens estables, hasta 100 usuarios), pero
+  **sin verificar** → sale "Google no verificó esta app" (Avanzado → Continuar). Funciona igual.
+- **El bloqueo de la verificación es el dominio autorizado `nango.dev`.** Se metió **automático**
+  cuando el OAuth client usó el redirect `https://api.nango.dev/oauth/callback` (el de **Nango
+  Cloud**). Google exige que **TODOS los dominios autorizados estén verificados a tu nombre** en
+  Search Console. `bip-go.com` sí; **`nango.dev` NO es tuyo → imposible verificarlo** → traba todo.
+- Confirmado con precios reales (sep-2026): Nango Cloud **Free** = 10 conexiones (callback
+  compartido); **Starter** ~$50/mes (20 conns + $1 c/u); **Growth** $500/mes (agrega branding del
+  Connect UI, NO callback propio); **callback en dominio propio recién en Enterprise**. O sea:
+  **pagar Nango Cloud NO resuelve la verificación** salvo Enterprise (caro).
+
+### La solución: self-hostear Nango en un dominio propio (`nango.bip-go.com`)
+Nango es **open source**. Self-host = correr el mismo software en un server tuyo (Railway), con el
+callback en **`https://nango.bip-go.com/oauth/callback`** → dominio **tuyo, verificable**. Gratis el
+software; solo ~**$5-20/mes** de server; **conexiones ilimitadas** (no $1 c/u). Resuelve **costo Y
+verificación** a la vez. Era el plan de escala desde el arranque.
+
+### Pasos para sacar el cartel (los ejecuta el USER; Claude deja el kit + runbook)
+1. **Deploy Nango self-host en Railway** (docker-compose oficial de Nango: server + Postgres +
+   Redis + Elasticsearch/Temporal según versión). Kit + runbook en
+   `scratchpad/bip-platform/infra/nango-railway/` (o el zip entregado).
+2. **Subdominio `nango.bip-go.com`** → CNAME al deploy de Railway (DNS en DonWeb + "custom domain"
+   en Railway). Esperar SSL.
+3. **Recrear la integración Google** en el Nango self-host (mismo Client ID/Secret propios + los 3
+   scopes sensibles). Copiar el **nuevo Secret Key** del self-host.
+4. **Google OAuth client** → cambiar el redirect a `https://nango.bip-go.com/oauth/callback` y
+   **borrar** el de `api.nango.dev`.
+5. **Google Auth Platform → Información de marca → Dominios autorizados** → dejar **solo
+   `bip-go.com`** (borrar `nango.dev`).
+6. **Verificar `bip-go.com` en Google Search Console** (mismo mail `bip.explore@gmail.com`,
+   registro TXT en DonWeb).
+7. **"Verificar la marca"** → ahora pasa (todos los dominios son tuyos).
+8. **App (Vercel):** `NANGO_HOST=https://nango.bip-go.com` + `NANGO_SECRET_KEY` del self-host.
+9. **Enviar verificación de scopes** → textos de justificación + guión del video ya escritos en
+   `scratchpad/bip-verificacion-google.md`. Google revisa **días/semanas**.
+
+### Mientras tanto (importante)
+La app **YA sirve para los primeros clientes** en producción con el cartel (Avanzado → Continuar),
+hasta 100 usuarios. La verificación es solo para **sacar el cartel + escalar >100**, y va **junto**
+con este self-host. No bloquea onboardear los primeros clientes.
+
 ## Cómo retomar
 Leer este doc. El código vive en los zips que tiene el user (pedirle que los suba si hace falta
 continuarlo, o regenerar desde el README del `bip-mvp`). Próximo paso natural: **Google Cloud**
