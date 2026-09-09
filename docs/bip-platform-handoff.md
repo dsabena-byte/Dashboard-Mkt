@@ -179,7 +179,28 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
   `min` en `lib/plan.ts`) es un placeholder con criterio → **confirmar contra la matriz real de
   `public/bip.html`**.
 
+### Decisión de dominios (sep-2026) — landing en la agencia, plataforma+legales en bip-go.com
+El user quiere que **la PÁGINA comercial de BIP** (la landing `bip.html`) viva **en la web de la
+agencia**. Eso NO afecta la verificación de Google, porque son cosas separadas:
+- **Landing / marketing** → web de la agencia. Libre, sin dependencia de OAuth.
+- **Plataforma (app + login) + el homepage/privacy/terms del consent + `nango.bip-go.com`** →
+  se quedan en **`bip-go.com`** (dominio propio, verificado). Es lo que Google mira.
+- Basta con que `bip-go.com` sirva homepage + /privacy + /terms para el consent (no hace falta que
+  ahí esté la landing linda).
+- **NO enmascarar/cloaking/iframe** para servir la app bajo el dominio de la agencia: rompe el
+  OAuth (Google/Meta no corren en iframe) y las cookies de sesión. Si algún día se quiere la app
+  SERVIDA bajo la agencia, sería un subdominio (`plataforma.agencia.com` → CNAME al Vercel) y habría
+  que **re-verificar ese dominio** — por eso **decidir el dominio final ANTES de mandar la
+  verificación** para no hacerla dos veces. Default acordado: plataforma en `bip-go.com`.
+
 ### 👉 RETOMAR ACÁ (próxima sesión): VERIFICAR LA APP DE GOOGLE
+**EN CURSO (empezado desde el celu):** verificar `bip-go.com` en **Google Search Console** (paso 5
+del runbook, es independiente de Railway y lento de propagar → se arrancó primero). Flujo: Search
+Console (con `bip.explore@gmail.com`) → Agregar propiedad tipo **Dominio** `bip-go.com` → copiar el
+**TXT** `google-site-verification=...` → agregarlo como registro **TXT** en el DNS de **DonWeb**
+(host `@`) → volver a Search Console y **Verificar** (tarda minutos-horas). Confirmar en la próxima
+si quedó verificado.
+
 El user quiere sacar el cartel "app no verificada". **Requiere el self-host de Nango primero**
 (el callback debe salir de `nango.dev`). Todo el runbook está listo en el zip:
 `infra/nango-railway/RUNBOOK.md` + `docs/verificacion-google.md` (justificaciones de scopes + guión
