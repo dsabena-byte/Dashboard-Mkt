@@ -162,6 +162,35 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
   de 0001** (recrea con el esquema bueno). **OJO a futuro:** si se vuelve a correr sobre tablas
   pre-existentes, `if not exists` las saltea — para cambios de esquema hay que ALTER o drop+recreate.
 
+### Ajustes ya hechos sobre el scaffold (sep-2026, 2da tanda)
+- **Índice del menú corregido a un HÍBRIDO** (el user marcó que el mío inventado no era el real):
+  ahora `lib/plan.ts` (`NAV`) espeja EXACTO el árbol de Drean (`apps/web/src/components/sidebar.tsx`)
+  — Mapa Estratégico, Seguimiento Objetivos, grupo **Planes de Acción** (Plan de Medios, Redes
+  Sociales, Mkt de Influencia, Mkt Canal Comercial, Web/Ecom, Optimización SEO, subgrupo **Trade
+  Mkt**), Salud de Marca, Resultados Comerciales, Inversión de Marketing, Generador de Contenido,
+  Monitoreo conexiones — **+ una sección de Extras de BIP (add-ons)** que Drean NO tiene: Copiloto
+  IA y Competitivo, marcados con badge "add-on" y bloqueados hasta activarlos. `components/sidebar.tsx`
+  reescrito para render en árbol con grupos colapsables + candado por plan/addon.
+- **Logo de BIP** replicado del sitio (`components/logo.tsx`: wordmark Poppins 800 + triángulo
+  `#0a4da0` + tagline; el logo NO es un PNG, es SVG/CSS — está en `public/bip.html`) puesto en
+  login, onboarding y sidebar. Build revalidado OK. Zip actualizado entregado al user.
+- **PENDIENTE ESTÉTICO (dicho por el user, aplazado):** hay que revisar orden, nomenclatura y
+  varias cuestiones estéticas del menú/UI. La asignación de qué dashboard va en qué plan (campo
+  `min` en `lib/plan.ts`) es un placeholder con criterio → **confirmar contra la matriz real de
+  `public/bip.html`**.
+
+### 👉 RETOMAR ACÁ (próxima sesión): VERIFICAR LA APP DE GOOGLE
+El user quiere sacar el cartel "app no verificada". **Requiere el self-host de Nango primero**
+(el callback debe salir de `nango.dev`). Todo el runbook está listo en el zip:
+`infra/nango-railway/RUNBOOK.md` + `docs/verificacion-google.md` (justificaciones de scopes + guión
+del video ya escritos). Secuencia: (1) Nango self-host en **Railway** → `nango.bip-go.com`;
+(2) recrear integración Google ahí; (3) cambiar redirect en Google Cloud a
+`nango.bip-go.com/oauth/callback` y sacar el de `api.nango.dev`; (4) sacar `nango.dev` de dominios
+autorizados; (5) verificar `bip-go.com` en Search Console (TXT en DonWeb); (6) "Verificar la marca"
+→ pasa; (7) enviar verificación de scopes; (8) apuntar la app al self-host (`NANGO_HOST` +
+`NANGO_SECRET_KEY` nuevos en Vercel). Implica **~$5-20/mes de Railway** + un cambio de DNS. El user
+paró acá porque estaba cansado — arrancar por Railway (login con GitHub de BIP → New Project).
+
 ### Lo que FALTA para que sea el producto completo
 1. **Los dashboards reales** (los ~17 de Drean) todavía NO están cableados en el shell — los links
    del menú apuntan a rutas que aún no existen en `bip-platform`. Próximo build grande: **traer los
