@@ -88,6 +88,24 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
 - ✅ **Nango Cloud** (free, env `dev`, org BIP): integración **Google** (`provider=google`, Custom
   developer app con el Client ID/Secret propios + los 3 scopes) → **CONEXIÓN DE PRUEBA CREADA Y
   FUNCIONANDO** (el "Conectar Google" self-serve anda end-to-end).
+- ✅ **CIRCUITO COMPLETO VALIDADO EN PRODUCCIÓN (Vercel) — el hito clave.** Se armó una app
+  mínima `bip-app` (Next 16, App Router) que prueba el patrón end-to-end y se deployó:
+  - **Infra creada:** GitHub `bip-explore/bip-app` (privado); Vercel team **BIP** (Hobby, slug
+    `bip9`) importó el repo con la GitHub App instalada; Supabase control-plane (proyecto
+    `czcfrzqioulhjfqkagcb`, tablas `tenants`/`connections`/etc. + RLS de la migración 0001).
+  - **Env vars en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+    `NANGO_HOST=https://api.nango.dev`, `NANGO_SECRET_KEY` (Secret Key del env `dev`),
+    `NEXT_PUBLIC_NANGO_CONNECT_HOST=https://api.nango.dev`, `NEXT_PUBLIC_DEMO_TENANT=demo`.
+  - **Prueba real:** en la app deployada → "Conectar Google" (self-serve, un clic, autoriza con
+    `bip.explore`) → guardó la conexión en Supabase (tenant `demo`) → se pegó el ID de un Google
+    Sheet propio → **devolvió los `values` reales del sheet** (`ok:true`). O sea: Supabase →
+    `getToken(tenant,'google')` → Nango (token fresco, auto-refresh) → API de Google. **El
+    corazón técnico de la plataforma quedó probado de punta a punta.**
+  - Es el mismo patrón que van a usar TODOS los crons por cliente (Sheets hoy; GA4/Ads/Meta/
+    TikTok = mismo `getToken`, distinto scope/provider).
+  - **Código del test:** vive en el scratchpad como `bip-app/` (11 archivos de código +
+    config); es un MVP de prueba, NO la plataforma final (esa es `bip-mvp.zip`). Si hay que
+    retomar, está en `bip-explore/bip-app`.
 - ⏳ Meta: esperando que el socio dé Admin del Business → después crear app `BIP Connector` +
   integración en Nango (mismo flujo que Google).
 - ⏳ TikTok: idem (opcional).
