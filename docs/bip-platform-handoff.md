@@ -130,8 +130,15 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
   - **Código del test:** vive en el scratchpad como `bip-app/` (11 archivos de código +
     config); es un MVP de prueba, NO la plataforma final (esa es `bip-mvp.zip`). Si hay que
     retomar, está en `bip-explore/bip-app`.
-- ⏳ Meta: esperando que el socio dé Admin del Business → después crear app `BIP Connector` +
-  integración en Nango (mismo flujo que Google).
+- ⏳ Meta (sep-2026, DESTRABÁNDOSE): **la agencia YA avanzó con los permisos** y llegó un **email
+  de Meta a `bip.explore@gmail.com`** (probablemente la **invitación al Business Manager de la
+  agencia** como Admin). PENDIENTE, EN LA COMPU: (1) abrir el email y **aceptar la invitación**
+  (confirmar que es Admin del Business de la agencia); (2) crear la app **`BIP Connector`** en
+  developers.facebook.com ligada a ese Business; (3) Facebook Login + redirect al callback de Nango
+  (Cloud por ahora: `api.nango.dev/oauth/callback`; self-host después); (4) App ID + Secret →
+  integración **Meta en Nango** (provider `facebook`, scopes: `ads_read read_insights
+  pages_read_engagement pages_show_list instagram_basic instagram_manage_insights
+  business_management`); (5) probar; (6) **App Review** de Meta para clientes externos.
 - ⏳ TikTok: idem (opcional).
 - ⏳ Pendiente Google: **enviar la verificación OAuth** (necesita demo de la app viva) → después.
 - ⏳ Deploy de la app (`bip-mvp`): repo + Supabase (migración 0001) + Vercel + env (Nango
