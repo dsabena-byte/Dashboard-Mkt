@@ -194,12 +194,14 @@ agencia**. Eso NO afecta la verificación de Google, porque son cosas separadas:
   verificación** para no hacerla dos veces. Default acordado: plataforma en `bip-go.com`.
 
 ### 👉 RETOMAR ACÁ (próxima sesión): VERIFICAR LA APP DE GOOGLE
-**EN CURSO (empezado desde el celu):** verificar `bip-go.com` en **Google Search Console** (paso 5
-del runbook, es independiente de Railway y lento de propagar → se arrancó primero). Flujo: Search
-Console (con `bip.explore@gmail.com`) → Agregar propiedad tipo **Dominio** `bip-go.com` → copiar el
-**TXT** `google-site-verification=...` → agregarlo como registro **TXT** en el DNS de **DonWeb**
-(host `@`) → volver a Search Console y **Verificar** (tarda minutos-horas). Confirmar en la próxima
-si quedó verificado.
+**✅ HECHO (sep-2026, desde el celu): `bip-go.com` VERIFICADO en Google Search Console** con
+`bip.explore@gmail.com` (método "Proveedor de nombres de dominio" = registro TXT). El prerequisito
+lento del paso 5 ya está. **OJO:** el DNS de `bip-go.com` se maneja en **Netlify** (nameservers
+`nsone.net`), NO en DonWeb — el TXT `google-site-verification=fnvWJXf20vfl...` vive en Netlify; **no
+borrarlo** o se pierde la verificación. (DonWeb solo tiene el registro del dominio, no el DNS.)
+
+**Lo que queda (en la compu):** el resto de la cadena de verificación de Google necesita el
+self-host de Nango primero. Secuencia:
 
 El user quiere sacar el cartel "app no verificada". **Requiere el self-host de Nango primero**
 (el callback debe salir de `nango.dev`). Todo el runbook está listo en el zip:
