@@ -143,6 +143,35 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
   (4) en modo Testing hay que agregar cada mail como **usuario de prueba** en "Público", y en el
   consent tocar "Configuración avanzada → Ir a BIP (no seguro) → Continuar".
 
+## ✅ PLATAFORMA DEPLOYADA Y VALIDADA EN PRODUCCIÓN (sep-2026)
+`bip-platform` está **viva en `bip-platform.vercel.app`** y probada end-to-end:
+- **Infra:** repo GitHub `bip-explore/bip-platform` (privado) → Vercel team BIP (mismo que bip-app) →
+  Supabase `czcfrzqioulhjfqkagcb` (proyecto "bip-platform", el mismo de siempre; usa las claves
+  **nuevas** `sb_publishable_`/`sb_secret_`). Nango Cloud dev por ahora.
+- **Env vars en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  (= publishable `sb_...`), `SUPABASE_SERVICE_ROLE_KEY` (= secret `sb_...`), `NANGO_HOST`
+  (=api.nango.dev), `NANGO_SECRET_KEY`. Stripe todavía NO (billing pendiente).
+- **Supabase Auth:** Email habilitado + **URL Configuration** con Site URL `https://bip-platform.vercel.app`
+  y Redirect `https://bip-platform.vercel.app/**` (sin esto el magic link no vuelve).
+- **Probado OK:** login (magic link) → onboarding (crea tenant) → dashboard **gateado por plan**
+  (Insight muestra 4 tableros, el resto 🔒) → **Conexiones → Conectar Google** quedó conectada,
+  ligada al tenant vía Nango. Auth + multi-tenant + RLS + gating + conexiones self-serve = FUNCIONA.
+- **BUG resuelto en el camino:** la migración 0001 usa `create table if not exists`; las tablas ya
+  existían de la prueba `bip-app` con esquema viejo (sin `trialing` en el status_check ni columnas
+  de billing) → el onboarding tiraba `tenants_status_check`. Fix: **drop de las 5 tablas + re-run
+  de 0001** (recrea con el esquema bueno). **OJO a futuro:** si se vuelve a correr sobre tablas
+  pre-existentes, `if not exists` las saltea — para cambios de esquema hay que ALTER o drop+recreate.
+
+### Lo que FALTA para que sea el producto completo
+1. **Los dashboards reales** (los ~17 de Drean) todavía NO están cableados en el shell — los links
+   del menú apuntan a rutas que aún no existen en `bip-platform`. Próximo build grande: **traer los
+   dashboards del fork de Drean** y colgarlos del shell, cambiando `process.env.TOKEN` →
+   `getToken(tenant, provider)` en cada query/cron.
+2. **Stripe** (billing): crear 3 Products+Prices (planes) + 3 add-ons, cargar los `STRIPE_*` en
+   Vercel, configurar el webhook a `/api/billing/webhook` y el Customer Portal. Recién ahí se cobra.
+3. **Nango self-host + verificación** (sacar el cartel). Ver sección de abajo.
+4. **Meta/TikTok**: App Review de cada plataforma.
+
 ## Sacar el cartel "app no verificada" — plan definitivo (self-host Nango en Railway)
 > Decidido sep-2026 tras llegar a la pantalla de verificación de Google y toparse con el bloqueo.
 
