@@ -268,6 +268,10 @@
   .trialbadge{display:inline-flex;align-items:center;gap:6px;background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid #bfe3fb;font-family:"Poppins";font-weight:700;font-size:11.5px;letter-spacing:.01em;padding:5px 11px;border-radius:999px;margin:0}
   .trialnote{margin-top:22px;text-align:center;font-size:13.5px;color:var(--muted)}
   .trialnote b{color:var(--navy)}
+  .trialnote2{margin-top:24px;display:flex;flex-direction:column;gap:10px;align-items:center;font-size:13.5px;color:var(--muted)}
+  .trialnote2 .ti{display:flex;gap:9px;align-items:flex-start;max-width:640px;text-align:left;line-height:1.5}
+  .trialnote2 .ti .tm{color:var(--cyan-ink);font-weight:800;flex:none;line-height:1.5}
+  .trialnote2 b{color:var(--navy)}
   .trialcta-sub{font-size:11.5px;color:var(--cyan-ink);text-align:center;margin-top:9px;font-weight:600;line-height:1.4}
   /* expertise / knowledge */
   .exp{background:linear-gradient(180deg,#0a4da0,#073c80);color:#eaf1fb}
@@ -680,7 +684,10 @@
       <p>Cada plan es autocontenido. Podés escalar cuando quieras.</p>
     </div>
     <div class="tiers" id="tiers"></div>
-    <p class="trialnote"><b>Comprobá Insight en tu propia operación antes de decidir</b> — estamos seguros del resultado. · Como cliente de Insight, a partir del 4.º mes accedés <b>15 días a Optimize</b> para comprobar su impacto competitivo.</p>
+    <div class="trialnote2">
+      <div class="ti"><span class="tm">✦</span><span><b>Comprobá Insight en tu propia operación antes de decidir.</b> Estamos seguros del resultado.</span></div>
+      <div class="ti"><span class="tm">✦</span><span>Como cliente de Insight, a partir del 4.º mes accedés <b>15 días a Optimize</b> para comprobar su impacto competitivo.</span></div>
+    </div>
     <details class="compare" open>
       <summary><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Ver comparación completa, plan por plan</summary>
       <div class="tablewrap"><table>
