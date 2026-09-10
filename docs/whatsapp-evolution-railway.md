@@ -14,10 +14,26 @@ cuenta de gateway, sin paywall.
 Un **número de WhatsApp DEDICADO** (chip/SIM extra o número de empresa), NO el personal — se
 empareja escaneando un QR una vez, y hay riesgo de ban por uso automatizado.
 
+## Estado (sep-2026) — DEPLOYADO, falta emparejar número
+- **Evolution v2.3.7 corriendo** en Railway (proyecto `reasonable-perception`, cuenta de BIP):
+  URL pública **`https://evolution-api-production-6d60.up.railway.app`** (responde el JSON de
+  bienvenida). Postgres conectado, variables cargadas.
+- **API key global** (`AUTHENTICATION_API_KEY`): está en las Variables de Railway del servicio
+  `evolution-api` (NO se commitea acá por seguridad).
+- **Instancia `drean-cron`** creada (Channel Baileys), estado **Disconnected**.
+- **PENDIENTE:** conseguir el **número dedicado** (chip aparte, NO el personal) → en el Manager
+  (`/manager`, login con Server URL + API key global) abrir `drean-cron` → **Connect** → escanear
+  el QR con WhatsApp → Dispositivos vinculados. Queda en "open" y ya envía.
+- **Después:** construir el cron de reporte en Drean (`app/api/cron/report-whatsapp` + workflow),
+  con env vars `EVO_URL` + `EVO_API_KEY` (la global de Railway) + `EVO_INSTANCE=drean-cron` +
+  `WA_RECIPIENTS`.
+- **OJO tag de imagen:** es **`evoapicloud/evolution-api:v2.3.7`** (con la `v`; `2.3.7` sin v no
+  existe en el registry).
+
 ## Deploy en Railway
 1. **New Project** → **Add → Database → PostgreSQL** (obligatorio; guarda la sesión/creds para que
    sobreviva a redeploys). Redis NO hace falta (lo desactivamos por env).
-2. **Add → Service → Docker Image:** `evoapicloud/evolution-api:2.3.7` (pineá la versión, no `latest`).
+2. **Add → Service → Docker Image:** `evoapicloud/evolution-api:v2.3.7` (con la `v`; pineá la versión, no `latest`).
    (OJO: NO usar `atendai/evolution-api`, es la v1 vieja.)
 3. **Variables** del servicio (Settings → Variables). Cargar:
    ```
