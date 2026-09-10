@@ -644,9 +644,7 @@
       <h2>Complementos opcionales, sobre cualquier plan.</h2>
       <p>Agregá valor a tu estrategia, a demanda.</p>
     </div>
-    <div class="addgrid"><div class="addc"><div class="an">Capa de inteligencia (IA)</div><div class="ad">Tu analista con IA, 24/7: chateá con tus datos en lenguaje natural y pedí gráficos, análisis y comparaciones al instante. Además, el sistema detecta y te avisa oportunidades y desvíos en cada dashboard, sin que los busques. (Incluida en Accelerate.)</div><div class="ap">USD 250 / mes</div></div>
-      <div class="addc"><div class="an">Mediciones de mercado</div><div class="ad">Top of Mind · Share of Mind · Intención de Compra · Funnel</div><div class="ap">1 = USD 2.500 · 2 = USD 4.500 · 3 = USD 6.000</div></div>
-      <div class="addc"><div class="an">Generación de contenidos</div><div class="ad">Imágenes con brand book · videos de producto · videos cortos UGC · piezas RRSS · calendarización y publicación en Instagram y Facebook (elegí mes, día y hora de cada posteo).</div><div class="aq">Pack: 100 imágenes + 20 videos de producto (6s) + 10 videos UGC (10s) / mes</div><div class="ap">USD 490 / mes</div></div><div class="addc"><div class="an">Adaptación de piezas a pauta</div><div class="ad">Reframe con IA: adaptá cada pieza a los formatos que pide la pauta sin deformar el foco. Imagen: 1:1 · 4:5 · 9:16 · 1.91:1. Video: 9:16 · 1:1 · 16:9 (Meta, Demand Gen, YouTube/DV360, TikTok).</div><div class="ap">incluido en Generación de contenidos</div></div>
+    <div class="addgrid">
       <div class="addc"><div class="an">Marca adicional</div><div class="ad">Replicación completa de dashboards + clasificación automática</div><div class="ap">set-up desde USD 600 + USD 350 / mes</div></div>
       <div class="addc"><div class="an">Categoría adicional</div><div class="ad">Sobre la marca ya configurada</div><div class="ap">USD 250 / mes</div></div>
       <div class="addc"><div class="an">Usuario adicional</div><div class="ad">Sumá integrantes del equipo</div><div class="ap">USD 50 / mes</div></div>
@@ -663,7 +661,7 @@
       <details open><summary>¿Se conecta con las herramientas que ya uso?</summary><div class="a">Sí. BIP se integra con tus fuentes de datos —Meta, Google Ads, GA4, DV360, SharePoint, Google Drive y más— para consolidar todo en un solo lugar, sin cargas manuales interminables.</div></details>
       <details><summary>¿Necesito un equipo técnico para implementarlo?</summary><div class="a">No. Nosotros configuramos las conexiones y el modelo estratégico con vos. Tu equipo se dedica a decidir y optimizar, no a armar reportes.</div></details>
       <details><summary>¿Cuánto tarda en estar funcionando?</summary><div class="a">El primer ciclo arranca en semanas. A partir de ahí, cada 3 meses el sistema se vuelve más preciso con tu propia experiencia de mercado.</div></details>
-      <details><summary>¿Puedo empezar con un plan y escalar después?</summary><div class="a">Sí. Podés empezar con Insight y sumar competencia, trade, asesoramiento o herramientas de contenido cuando lo necesites.</div></details>
+      <details><summary>¿Puedo empezar con un plan y escalar después?</summary><div class="a">Sí. Podés empezar con Insight (todos tus dashboards + IA + alertas) y subir a Optimize para sumar la mirada competitiva y consultoría, o a Accelerate para el research de mercado, cuando lo necesites.</div></details>
       <details><summary>¿Qué diferencia a BIP de un tablero de métricas?</summary><div class="a">Un tablero muestra números. BIP conecta cada métrica y acción con un objetivo estratégico, y te dice qué mover para lograrlo. No es reporting: es un método para generar impacto.</div></details>
     </div>
   </div>
@@ -754,7 +752,7 @@ const MODS = [
   ['Optimización SEO','Posicionamiento, volumen y tendencias de búsqueda','<circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/>'],
   ['Trade Marketing','Cuadros Básicos y Floor Share por cliente y tienda','<path d="M3 9 5 4h14l2 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M4 9h16"/>'],
   ['Inversión','Ejecución del presupuesto e Inversión / Facturación','<path d="M12 2v20M6 6h9a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h9"/>'],
-  ['Facturación & Mercado','Facturación mensual y share de mercado','<path d="M3 3v18h18M8 15l3-4 3 3 4-6"/>'],
+  ['Resultados Comerciales','Facturación mensual y share','<path d="M3 3v18h18M8 15l3-4 3 3 4-6"/>'],
 ];
 document.getElementById('modgrid').innerHTML = MODS.map(m =>
   `<div class="mod"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${m[2]}</svg></div><div class="t">${m[0]}</div><div class="d">${m[1]}</div></div>`).join('');
@@ -768,9 +766,9 @@ const ICON = {
 };
 const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3"/><path d="M20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>';
 const PLANS = [
-  {key:'insight',name:'Insight',tag:'plan base',price:'490',setup:'700',users:'1 usuario',cats:'1 marca · 1 categoría',pitch:'Conectá tus fuentes y medí toda la operación contra la meta, en un solo tablero.'},
-  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'990',setup:'900',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',pitch:'Sumá la mirada competitiva, el punto de venta y el asesoramiento estratégico.'},
-  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',pitch:'El tablero completo: explorá tus datos y detectá oportunidades con ayuda de la IA.'}
+  {key:'insight',name:'Insight',tag:'plan base',price:'490',setup:'700',users:'1 usuario',cats:'1 marca · 1 categoría',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
+  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'990',setup:'900',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',pitch:'Sumás la mirada competitiva (redes, web y SEO) y 4 hs de consultoría para convertir esa data en planes de acción.'},
+  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y 8 hs de consultoría para un diagnóstico total.'}
 ];
 const MODULES = [
   ['Núcleo estratégico · Mapa + Seguimiento de Objetivos',1,1,1],
@@ -778,13 +776,15 @@ const MODULES = [
   ['Plan de Medios · ON + OFF',1,1,1],
   ['Redes Sociales',1,'adv','adv'],
   ['Web / Ecommerce',1,'adv','adv'],
-  ['Facturación &amp; Share de Mercado',1,1,1],
+  ['Optimización SEO',1,'adv','adv'],
+  ['Trade · Surtido + Floor Share',1,1,1],
+  ['Resultados Comerciales (facturación + share)',1,1,1],
   ['Inversión de Marketing',1,1,1],
-  ['Optimización SEO',0,'adv','adv'],
-  ['Trade · Surtido + Floor Share',0,1,1],
-  ['Asesoramiento Online',0,0,'4 hs/mes'],
-  ['Preguntá a tus datos con IA',0,0,1,'ia'],
-  ['Insights automáticos por dashboard',0,0,1,'ia'],
+  ['Capa de inteligencia (IA) · chat + insights',1,1,1],
+  ['Alertas + reportes automatizados (email / WhatsApp)',1,1,1],
+  ['Diagnósticos y planes con data competitiva',0,1,1],
+  ['Research de mercado (Top of Mind, Share of Mind, intención, funnel)',0,0,1],
+  ['Asesoramiento estratégico',0,'4 hs/mes','8 hs/mes'],
 ];
 const idx = {insight:1,optimize:2,accelerate:3};
 const has = v => v===1 || v==='adv' || typeof v==='string';
@@ -807,17 +807,19 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
 
 const FULL = [
   {t:'Núcleo estratégico',r:[['Mapa Estratégico (objetivos, pesos y KPIs)',1,1,1],['Seguimiento de Objetivos · real vs meta',1,1,1],['Cumplimiento por categoría',1,1,1],['Metas mensuales por KPI',1,1,1],['Semáforos y alertas de desvío',1,1,1]]},
+  {t:'Capa de inteligencia (IA) · incluida en todos',r:[['Preguntá a tus datos con IA (análisis libre)',1,1,1],['Insights automáticos por dashboard',1,1,1],['Detección de oportunidades y desvíos',1,1,1]]},
+  {t:'Alertas + reportes automatizados · incluidos en todos',r:[['Insights inteligentes con IA dentro de tus informes',1,1,1],['Alertas de rendimiento de Metas y Objetivos',1,1,1],['Envío recurrente de informes por email o WhatsApp',1,1,1]]},
   {t:'Conexiones de datos',r:[['API Meta Business · Facebook + Instagram',1,1,1],['API Google Ads',1,1,1],['API GA4 Analytics',1,1,1],['API DV360',1,1,1],['SharePoint',1,1,1],['Google Drive',1,1,1]]},
   {t:'Plan de Medios · ON + OFF',r:[['Funnel de Marketing / Conversión',1,1,1],['Inversión y performance por medio (Meta, Google, DV360, YouTube, TikTok…)',1,1,1],['Análisis de eficiencia de medios (CPM, CPC, CTR, VTR, CPA)',1,1,1],['KPIs de campaña (alcance, frecuencia, impresiones, clicks)',1,1,1],['Medios ON + OFF (digital + TV / OOH / DOOH)',1,1,1],['Performance por objetivo (Awareness / Consideración / Conversión)',1,1,1],['Performance por categoría de producto',1,1,1],['Insights de mejora de pauta',1,1,1]]},
-  {t:'Redes Sociales · orgánico',r:[['Engagement por interacción (likes, comentarios, guardados, compartidos)',1,1,1],['Análisis de engagement por tipo de interacción',1,1,1],['KPIs por posteo (alcance, impresiones, views)',1,1,1],['Análisis de performance por posteo',1,1,1],['Clasificación de posteos por tipo de contenido (imagen / video / sidecar)',1,1,1],['Clasificación por pilar (Branding, Producto, Promoción, Educativo, Influencer)',1,1,1],['Análisis demográfico de audiencias',1,1,1],['Alcance e interacciones orgánicas (Instagram + Facebook)',1,1,1],['Seguidores y evolución',1,1,1],['Tendencia mensual de engagement',1,1,1],['Análisis de sentimiento de comentarios (Instagram)',1,1,1],['Insights de comentarios',1,1,1],['Insights de mejora orgánica',0,0,1]]},
+  {t:'Redes Sociales · orgánico',r:[['Engagement por interacción (likes, comentarios, guardados, compartidos)',1,1,1],['Análisis de engagement por tipo de interacción',1,1,1],['KPIs por posteo (alcance, impresiones, views)',1,1,1],['Análisis de performance por posteo',1,1,1],['Clasificación de posteos por tipo de contenido (imagen / video / sidecar)',1,1,1],['Clasificación por pilar (Branding, Producto, Promoción, Educativo, Influencer)',1,1,1],['Análisis demográfico de audiencias',1,1,1],['Alcance e interacciones orgánicas (Instagram + Facebook)',1,1,1],['Seguidores y evolución',1,1,1],['Tendencia mensual de engagement',1,1,1],['Análisis de sentimiento de comentarios (Instagram)',1,1,1],['Insights de comentarios',1,1,1]]},
   {t:'Redes Sociales · competencia',r:[['Benchmark de marcas · KPIs comparados',0,1,1],['Cantidad de posteos por semana vs competencia',0,1,1],['Engagement promedio por pilar (marca vs competencia)',0,1,1],['Distribución por tipo de contenido de la competencia',0,1,1],['Sentimiento por marca (Instagram)',0,1,1],['Análisis cualitativo del sentimiento por marca',0,1,1],['Feed de posteos de la competencia (por engagement, tipo y pilar)',0,1,1]]},
-  {t:'Web / Ecommerce',r:[['Tráfico y alcance (usuarios, sesiones)',1,1,1],['Fuentes de tráfico (orgánico, pago, social, directo, referral)',1,1,1],['Performance web (páginas vistas, rebote, duración)',1,1,1],['KPIs de ecommerce (transacciones, ingresos, ROAS, tasa de conversión)',1,1,1],['Análisis por categoría de producto',1,1,1],['Categorías y top landings',1,1,1],['Demografía de usuarios web',1,1,1],['Embudo de conversión',1,1,1],['Análisis competitivo web (tráfico y share of visits)',0,1,1]]},
-  {t:'Optimización SEO',r:[['Posicionamiento y visibilidad',0,1,1],['Volumen de búsqueda y tendencias',0,1,1],['Keywords y oportunidades',0,1,1],['Search Console (clicks, impresiones, CTR, posición)',0,1,1],['Share of search vs competencia',0,1,1]]},
-  {t:'Trade Marketing',r:[['Surtido por cliente y tienda',0,1,1],['Floor Share por góndola',0,1,1],['Performance por cliente y tienda',0,1,1],['Sugerencias de surtido / reposición',0,1,1],['Evolución semanal',0,1,1]]},
-  {t:'Facturación &amp; Mercado',r:[['Facturación mensual',1,1,1],['Share de mercado por segmento',1,1,1],['Evolución y MAT',1,1,1]]},
+  {t:'Web / Ecommerce',r:[['Tráfico y alcance (usuarios, sesiones)',1,1,1],['Fuentes de tráfico (orgánico, pago, social, directo, referral)',1,1,1],['Performance web (páginas vistas, rebote, duración)',1,1,1],['KPIs de ecommerce (transacciones, ingresos, ROAS, tasa de conversión)',1,1,1],['Análisis por categoría de producto',1,1,1],['Categorías y top landings',1,1,1],['Demografía de usuarios web',1,1,1],['Embudo de conversión',1,1,1],['Análisis competitivo web · SimilarWeb (tráfico y share of visits)',0,1,1]]},
+  {t:'Optimización SEO',r:[['Posicionamiento y visibilidad',1,1,1],['Volumen de búsqueda y tendencias',1,1,1],['Keywords y oportunidades',1,1,1],['Search Console (clicks, impresiones, CTR, posición)',1,1,1],['Share of search vs competencia',0,1,1]]},
+  {t:'Trade Marketing',r:[['Surtido por cliente y tienda',1,1,1],['Floor Share por góndola',1,1,1],['Performance por cliente y tienda',1,1,1],['Sugerencias de surtido / reposición',1,1,1],['Evolución semanal',1,1,1]]},
+  {t:'Resultados Comerciales',r:[['Facturación mensual',1,1,1],['Share (por segmento y evolución)',1,1,1],['Evolución y acumulado',1,1,1]]},
   {t:'Inversión de Marketing',r:[['Ejecución del presupuesto vs BGT',1,1,1],['Inversión / Facturación',1,1,1],['Comparador de presupuestos (versión / período / cuenta)',1,1,1]]},
-  {t:'Capa de inteligencia',r:[['Preguntá a tus datos con IA (análisis libre)',0,0,1],['Insights automáticos por dashboard',0,0,1]]},
-  {t:'Asesoramiento',r:[['Asesoramiento Online',0,0,'4 hs/mes']]},
+  {t:'Research de mercado',r:[['Top of Mind',0,0,1],['Share of Mind',0,0,1],['Intención de compra',0,0,1],['Funnel de decisión de compra',0,0,1]]},
+  {t:'Consultoría estratégica',r:[['Diagnósticos y planes de acción específicos',0,1,1],['Asesoramiento estratégico Online',0,'4 hs/mes','8 hs/mes']]},
 ];
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
 document.getElementById('matrix').innerHTML =
