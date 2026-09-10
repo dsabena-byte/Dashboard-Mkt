@@ -336,6 +336,53 @@ verificación con las justificaciones de los 3 scopes + el video demo (materiale
 `docs/verificacion-google.md`). Google revisa días/semanas; recién ahí se saca del todo el cartel
 "app no verificada" y se pasa de 100 usuarios. Mientras, la app funciona en producción con el aviso.
 
+**🔴 BLOQUEO ACTUAL (sep-2026): la CONEXIÓN OAuth no se completa en el self-host.** La marca ya
+está verificada, pero al intentar conectar Google **el flujo OAuth nunca termina** (esto BLOQUEA
+grabar el video demo, que a su vez BLOQUEA enviar la verificación de scopes). Diagnóstico profundo
+en curso (un subagente de research está buscando el root cause exacto contra el repo real de Nango;
+al terminar se actualiza acá con el fix confirmado).
+
+**Síntomas medidos (validado, no asumido):**
+1. **Desde la app (bip-platform, `@nangohq/frontend` v0.48.0):** `new Nango({ host:
+   'https://nango.bip-go.com' })` → `openConnectUI({ onEvent })` → `connect.setSessionToken(token)`.
+   El modal **ABRE** pero muestra **"Your session has expired, please refresh the modal."** — o sea
+   el session token se crea server-side pero el Connect UI lo rechaza/no lo consume.
+2. **Desde el dashboard de Nango ("Add test connection → Google → Authorize"):** **no abre el popup
+   de consent de Google**, el browser vuelve a `/connections/create` y **no se crea conexión**. Los
+   logs del contenedor (Railway Deploy Logs) muestran operaciones `create_connection` con estado
+   **"running", `endedAt: null`** → la connect-session se crea pero el OAuth nunca vuelve al callback.
+3. Popups permitidos. Auth callback URL correcto (`https://nango.bip-go.com/oauth/callback`).
+4. Los **Logs UI de Nango** dicen "Logs not configured" → Elasticsearch está apagado (no hay traza
+   detallada; por eso se lee de los Deploy Logs de Railway).
+
+**Hipótesis (a confirmar con el research — NO dar por cerrado hasta validar):**
+- **(A) Connect UI / puerto:** en versiones self-host el Connect UI puede servirse en un **puerto
+  distinto** (histórico 3009) que en Railway **no está expuesto** (solo el 3003 tiene dominio). Si el
+  modal carga assets/hace requests contra un host/puerto inalcanzable, "session expired" encaja.
+  Verificar `FLAG_SERVE_CONNECT_UI=true` y qué puerto sirve el Connect UI en `hosted-0.71.6`, y que
+  `NANGO_PUBLIC_CONNECT_URL` apunte a `https://nango.bip-go.com` (mismo dominio expuesto).
+- **(B) Mismatch de URLs públicas:** si `NANGO_SERVER_URL` / `NANGO_PUBLIC_SERVER_URL` /
+  `NANGO_PUBLIC_CONNECT_URL` no son EXACTAMENTE `https://nango.bip-go.com`, el token se firma para un
+  origen y el UI corre en otro → "session expired". Revisar las 3 en Railway.
+- **(C) `@nangohq/frontend` no apunta al self-host:** `new Nango({ host })` puede no rutear el
+  Connect UI al self-host (cargar el de Cloud). Confirmar la firma correcta para self-host en v0.48.0
+  (¿`host` vs `connectHost`?).
+- **(D) Workaround directo:** el link **"Use deprecated flow"** del dashboard hace un **redirect
+  OAuth directo** (sin Connect UI). Si ESE funciona, aísla el problema al Connect UI y sirve para
+  grabar el video igual.
+
+**Config actual del self-host (Railway `ravishing-flow`, servicio `nango-server`
+`nangohq/nango-server:hosted-0.71.6`, dominio `nango.bip-go.com` → port 3003):** `NANGO_SERVER_URL`,
+`NANGO_PUBLIC_SERVER_URL`, `NANGO_PUBLIC_CONNECT_URL` = `https://nango.bip-go.com`;
+`FLAG_SERVE_CONNECT_UI=true`; `SERVER_PORT=3003`; `CACHE_REDIS_ENABLED=false`;
+`CACHE_LOCAL_ENABLED=true`; `FLAG_AUTH_ENABLED=true` (basic auth del dashboard); Postgres+Redis
+attach; `NANGO_ENCRYPTION_KEY` (inmutable, en Railway). Integración Google cargada (Client ID
+`279230041069-...` + Secret + 3 scopes), redirect en Google Cloud = `nango.bip-go.com/oauth/callback`.
+
+**Estado de la verificación de scopes (form ya cargado, falta el video):** las 3 justificaciones
+están pegadas en el Centro de verificación (957/1000 chars) + "Información adicional". Falta grabar
+el **video demo** del flujo OAuth vivo → por eso resolver esta conexión es el camino crítico.
+
 **✅ NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
 - Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
   (imagen **`nangohq/nango-server:hosted-0.71.6`**), Postgres, Redis.
