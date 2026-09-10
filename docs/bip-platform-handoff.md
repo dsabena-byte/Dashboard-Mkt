@@ -322,7 +322,21 @@ lento del paso 5 ya está. **OJO:** el DNS de `bip-go.com` se maneja en **Netlif
 `nsone.net`), NO en DonWeb — el TXT `google-site-verification=fnvWJXf20vfl...` vive en Netlify; **no
 borrarlo** o se pierde la verificación. (DonWeb solo tiene el registro del dominio, no el DNS.)
 
-**✅ EN CURSO (sep-2026): NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
+**✅✅ HITO (sep-2026): MARCA VERIFICADA EN GOOGLE — el bloqueo de `nango.dev` RESUELTO.**
+Cadena completada hoy: Nango self-host en Railway (`nango.bip-go.com`, SSL OK) → login al dashboard
+(cuenta `bip.explore@gmail.com`, verificada a mano en la DB: `UPDATE nango._nango_users SET
+email_verified=true` porque el self-host no tiene SMTP) → **integración Google recreada** en ese
+Nango (Client ID `279230041069-...apps.googleusercontent.com` + Client Secret + 3 scopes; callback
+`https://nango.bip-go.com/oauth/callback`) → en Google Cloud se **cambió el redirect** del OAuth
+client "BIP Nango" a `nango.bip-go.com/oauth/callback` (se borró `api.nango.dev`) y se **sacó
+`nango.dev` de Dominios autorizados** (quedó solo `bip-go.com`) → **"Verificar la marca" PASÓ** y se
+**publicó** → *"Se verificó la información de tu marca y se muestra a los usuarios"*.
+**FALTA (último tramo): verificación de SCOPES (Data access)** — enviar desde el Centro de
+verificación con las justificaciones de los 3 scopes + el video demo (materiales listos en
+`docs/verificacion-google.md`). Google revisa días/semanas; recién ahí se saca del todo el cartel
+"app no verificada" y se pasa de 100 usuarios. Mientras, la app funciona en producción con el aviso.
+
+**✅ NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
 - Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
   (imagen **`nangohq/nango-server:hosted-0.71.6`**), Postgres, Redis.
 - **`NANGO_ENCRYPTION_KEY` está en las Variables de Railway** (es **INMUTABLE** — el user tiene que
