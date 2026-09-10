@@ -21,29 +21,42 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
   (b) alertas de rendimiento sobre Metas y Objetivos; (c) envío recurrente automático de informes
   por **email o WhatsApp**. (Ejemplos que dio el user en imágenes.)
 
-**Insight** (base):
-- **Todos los dashboards operativos** (incluye Trade Mkt) + capa de IA + alertas/reportes.
-- **SIN información de competencia** y sin research de mercado (data propia del cliente).
+**Insight** (base) — solo data que provee el cliente, sin competencia ni research:
+- **Todos los dashboards operativos** (incluye Trade Mkt y **Resultados Comerciales** =
+  facturación/share, que es data del cliente → va en TODOS los planes) + IA + alertas/reportes.
+- **SIN capa de competencia** y sin research de mercado.
 
 **Optimize** (= Insight + bloque de competencia):
-- Agrega la **capa de competencia** (data de competidores).
+- Agrega la **capa de competencia**, que aplica a **Redes, Web (vía SimilarWeb) y SEO** (esos 3
+  tienen data competitiva).
 - Con esa info: **diagnósticos y planes de acción específicos** basados en el competitivo.
-- Incluye **4 horas de consultoría mensual**. Todo esto es "un bloque adicional".
+- Incluye **4 horas de consultoría mensual**. Es "un bloque adicional".
 
 **Accelerate** (= Optimize + bloque de research de mercado):
-- Agrega **investigaciones de mercado**: Top of Mind, Share of Mind, intención de compra, funnel de
-  decisión de compra, etc. (la capa Kantar/GfK: Salud de Marca + Resultados Comerciales).
-- Incluye **8 horas de consultoría mensual** → diagnóstico TOTAL de la estrategia de marketing, del
-  negocio, planes de acción, etc.
+- Tiene todo lo de Optimize (incl. competencia).
+- Agrega **research de mercado**: **Top of Mind, Share of Mind, intención de compra, funnel de
+  decisión de compra** (capa tipo Kantar = **Salud de Marca**).
+- Incluye **8 horas de consultoría mensual** → diagnóstico TOTAL de estrategia, negocio y planes.
 
-**PENDIENTE DE CONFIRMAR (mapping a gating, no asumir):**
-- ¿"todos los dash" en Insight incluye **Salud de Marca** y **Resultados Comerciales/Mercado**, o
-  esos SON el research que agrega Accelerate? (Interpretación lógica: research = Accelerate.)
-- ¿La "capa de competencia" de Optimize = las vistas competitivas (ej. Redes competitivo) + data de
-  competidores cross-dashboard?
-- Reescribir `lib/plan.ts` (gating) con este modelo: quitar addon `ia` (incluido), mover
-  `competitivo` de add-on a feature de Optimize, y las horas de consultoría + alertas/reportes como
-  atributos del plan. Actualizar también `public/bip.html` (pricing/propuesta de valor).
+**Correcciones del user (sep-2026):**
+- **GfK / "Mercado" SE SACA del modelo** — es específico, fuera de la oferta estándar de planes.
+- **Resultados Comerciales** (facturación, share) = data del cliente → **TODOS los planes** (NO es
+  research). OJO: en la nav de Drean el ítem "Resultados Comerciales" apuntaba a `/mercado` (GfK);
+  en BIP es OTRO contenido (facturación/share) — hay que separar/relabelar.
+- **Competencia = Redes + Web (SimilarWeb) + SEO** (no es solo Redes).
+- **Research (Accelerate) = Salud de Marca** (TOM/SOM/intención/funnel), NO GfK.
+- **SE SACAN los add-ons de contenido:** "Generación de contenidos" ($490) y "Adaptación de
+  piezas a pauta" salen de la oferta. Sumado a que `ia` va incluido y `competitivo` pasa a Optimize
+  → **el modelo de add-ons prácticamente desaparece** (queda por confirmar si sobrevive
+  "Categoría extra" o algún otro). El eje de monetización pasa a ser **plan + horas de consultoría**.
+
+**PENDIENTE (implementación, cuando el user confirme la tabla):**
+- Reescribir `lib/plan.ts`: gating por **capacidades**, no solo por dashboard. Flags de plan:
+  `ia` (todos), `alertsReports` (todos), `competitive` (Optimize+, afecta vistas de Redes/Web/SEO),
+  `research`/Salud de Marca (Accelerate), `consultingHours` (0/4/8). Quitar addon `ia`; `competitivo`
+  deja de ser add-on (pasa a feature de Optimize). Sacar Mercado(GfK) de la nav estándar.
+- Construir la **funcionalidad de alertas + reportes automatizados** (email/WhatsApp) — NO existe aún.
+- Actualizar `public/bip.html` (pricing + propuesta de valor) con este modelo.
 
 ## Arquitectura de identidades y conexiones (Google + Meta → Nango → BIP)
 > Diagrama de referencia — cómo se vincula cada pieza. Google y Meta son ramas
