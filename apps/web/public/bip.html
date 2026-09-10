@@ -858,7 +858,7 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
     <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 12 meses</div></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
     <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
-    ${p.trial ? `<a class="pcta" href="#demo">Probá ${p.trial} →</a><div class="trialcta-sub">Estamos tan seguros que la primera semana es gratis: si lo probás, te quedás.</div>` : `<a class="pcta" href="#demo">Empezar con ${p.name}</a>`}</article>`;
+    ${p.trial ? `<a class="pcta" href="#demo">Probá ${p.trial} →</a><div class="trialcta-sub">La primera semana es gratis porque sabemos algo: cuando lo probás, lo adoptás.</div>` : `<a class="pcta" href="#demo">Empezar con ${p.name}</a>`}</article>`;
 }).join('');
 
 const FULL = [
