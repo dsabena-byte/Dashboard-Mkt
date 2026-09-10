@@ -322,8 +322,30 @@ lento del paso 5 ya está. **OJO:** el DNS de `bip-go.com` se maneja en **Netlif
 `nsone.net`), NO en DonWeb — el TXT `google-site-verification=fnvWJXf20vfl...` vive en Netlify; **no
 borrarlo** o se pierde la verificación. (DonWeb solo tiene el registro del dominio, no el DNS.)
 
-**Lo que queda (en la compu):** el resto de la cadena de verificación de Google necesita el
-self-host de Nango primero. Secuencia:
+**✅ EN CURSO (sep-2026): NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
+- Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
+  (imagen **`nangohq/nango-server:hosted-0.71.6`**), Postgres, Redis.
+- **`NANGO_ENCRYPTION_KEY` está en las Variables de Railway** (es **INMUTABLE** — el user tiene que
+  **backupearla en un gestor de contraseñas**; si se pierde, se pierden todas las credenciales. NO
+  se commitea acá por seguridad).
+- Dashboard: user **`bip`** + `NANGO_DASHBOARD_PASSWORD` (en Railway).
+- Dominio temporal: `nango-server-production-ce30.up.railway.app` (port 3003).
+- **Custom domain `nango.bip-go.com`** agregado en Railway (port 3003). DNS cargado en **Netlify**
+  (DNS de bip-go.com): CNAME `nango` → `imgga2if.up.railway.app` + TXT `_railway-verify.nango`.
+  Al momento de guardar: **Railway emitiendo el SSL** ("Certificate Authority is validating
+  challenges") → esperar a que pase a ✓.
+- Env vars ya puestas con `NANGO_SERVER_URL=https://nango.bip-go.com` (el callback correcto).
+- **OJO uptime:** el trial de Railway ($5/30días) alcanza para probar; para 24/7 (la sesión no
+  puede dormir) → plan Hobby ~$5/mes.
+
+**RETOMAR: cuando `nango.bip-go.com` tenga SSL ✓:** (a) abrir `https://nango.bip-go.com` (login
+`bip` + pass) para confirmar que Nango levantó; (b) **recrear la integración Google** en ESE Nango
+(mismo Client ID/Secret propios + los 3 scopes) y copiar el **Secret Key** nuevo; (c) seguir la
+secuencia de Google de abajo (cambiar redirect, sacar nango.dev, verificar marca, enviar scopes);
+(d) apuntar la app (bip-platform en Vercel) a `NANGO_HOST=https://nango.bip-go.com` +
+`NANGO_SECRET_KEY` nuevo.
+
+**Secuencia de verificación de Google (la que queda tras el self-host):**
 
 El user quiere sacar el cartel "app no verificada". **Requiere el self-host de Nango primero**
 (el callback debe salir de `nango.dev`). Todo el runbook está listo en el zip:
