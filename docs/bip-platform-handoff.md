@@ -9,6 +9,43 @@ Plataforma donde **el cliente se autogestiona**: conecta sus fuentes de un clic 
 elige/sube de plan pagando, suma add-ons, maneja usuarios — con mínima participación del
 consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder funcionalidad.
 
+## Arquitectura de identidades y conexiones (Google + Meta → Nango → BIP)
+> Diagrama de referencia — cómo se vincula cada pieza. Google y Meta son ramas
+> INDEPENDIENTES entre sí; solo se juntan en Nango + la plataforma.
+
+```
+RAMA GOOGLE (limpia, sin terceros):
+  bip.explore@gmail.com  → dueña de → Google Cloud "BIP-GO"
+     → OAuth Client (Client ID + Secret), consent verificado en bip-go.com
+     → Client ID/Secret ─┐
+                         │
+RAMA META (via agencia): │
+  Tu Facebook PERSONAL (admin, invisible al cliente)
+     → miembro/Admin del Business "ROQUÉ Marketing Insights" (hospeda la app)
+     → App "BIP Connector" (App ID + Secret) ─┐
+                                              │
+             ambos App-ID/Secret ────────────┴──► NANGO (guarda TODAS las llaves)
+                                                     → PLATAFORMA BIP (bip-go.com)
+                                                     → cada CLIENTE conecta SUS
+                                                       propias cuentas (Google/Meta/…)
+```
+- **Google**: se posee TODO con solo el email (`bip.explore`) → sin agencia, sin persona-FB.
+  Por eso fue limpio y ya está casi verificado (dominio bip-go.com verificado en Search Console).
+- **Meta**: Meta OBLIGA a una persona + un Business. Se usa el **FB personal del user como admin**
+  (ya administra Drean y otros — un FB puede administrar muchos Business sin riesgo; lo prohibido
+  es tener DOS cuentas personales, no gestionar varios negocios) y el **Business de ROQUÉ como
+  "casa" de la app** (atajo para saltear Business Verification). La invitación de Meta hay que
+  aceptarla con el FB personal → pedirle a Diego (Diego Passamonte) que la reenvíe al **email del
+  FB personal** con rol **Admin**. NO crear una 2da cuenta de FB (riesgo de ban por duplicada).
+- **Único acoplamiento con la agencia**: el *registro* de la app "BIP Connector" vive en el Business
+  de ROQUÉ. Todo lo operativo (Nango, plataforma, dominio, datos, clientes, facturación) es de BIP.
+  **Reversible**: migrar la app a un Business propio de BIP (haciendo la Business Verification) el
+  día que se quiera independencia total en Meta; Google ni se entera.
+- **Comparten**: Nango + plataforma BIP + `bip-go.com` (homepage/privacy/terms del consent de las
+  dos ramas). **NO comparten**: la infra de cada proveedor.
+- Para el **cliente** es transparente: entra a BIP y ve "Conectar Google / Meta / TikTok"; cada
+  botón usa la app que corresponde por detrás.
+
 ## Decisiones tomadas (no re-litigar)
 - **Base = fork del dashboard de Drean** (trae los ~17 dashboards). Lo único nuevo es la
   capa de plataforma; Drean queda intacto.
