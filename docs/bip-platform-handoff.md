@@ -50,6 +50,24 @@ consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder 
   → **el modelo de add-ons prácticamente desaparece** (queda por confirmar si sobrevive
   "Categoría extra" o algún otro). El eje de monetización pasa a ser **plan + horas de consultoría**.
 
+**Free trial (sep-2026):** **Insight = 1 semana gratis** (free trial de entrada; "seguros de que
+lo contratan"). **Optimize/Accelerate NO tienen prueba inicial.** Los **clientes que pagan Insight
+desbloquean 15 días gratis de Optimize a partir del mes 4** (upsell). (El brief original decía
+"todos los planes tienen semana gratis" pero enseguida "los otros no" → se interpretó así; confirmar.)
+Ya reflejado en `bip.html` (badge en card Insight + nota bajo los tiers + FAQ).
+
+**Storytelling de conocimiento/expertise (sep-2026):** el user quiere reencuadrar BIP de
+"plataforma de reporting" a **"plataforma de conocimiento y expertise"**. Puntos: cada dashboard,
+indicador, plan cargado y definición de objetivo trae **contenido embebido que guía según las
+mejores prácticas de ejecución del mercado**; detrás está **ROQUÉ Marketing Insights**, consultora
+experta en investigación y marketing que trabaja con las marcas más importantes del mundo; "no
+accedés solo a tecnología, accedés a un universo de conocimiento, know-how y expertise world-class".
+Ya en `bip.html`: sección nueva **#expertise** (fondo navy) + hero + FAQ + link de menú "Conocimiento".
+**OJO tensión:** antes el user quería BIP separado de la agencia; ahora pide **nombrar ROQUÉ** como
+la credibilidad detrás (decisión explícita suya — es un "powered by", la separación de marca/dominio/
+datos se mantiene). La funcionalidad de "contenido guía embebido por KPI/objetivo" **NO existe aún
+en la plataforma** — hay que construirla (además de alertas/reportes).
+
 **PENDIENTE (implementación, cuando el user confirme la tabla):**
 - Reescribir `lib/plan.ts`: gating por **capacidades**, no solo por dashboard. Flags de plan:
   `ia` (todos), `alertsReports` (todos), `competitive` (Optimize+, afecta vistas de Redes/Web/SEO),
