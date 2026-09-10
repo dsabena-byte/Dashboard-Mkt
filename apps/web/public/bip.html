@@ -267,6 +267,7 @@
   .trialbadge{display:inline-flex;align-items:center;gap:6px;background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid #bfe3fb;font-family:"Poppins";font-weight:700;font-size:11.5px;letter-spacing:.01em;padding:5px 11px;border-radius:999px;margin:0 0 12px}
   .trialnote{margin-top:22px;text-align:center;font-size:13.5px;color:var(--muted)}
   .trialnote b{color:var(--navy)}
+  .trialcta-sub{font-size:11.5px;color:var(--cyan-ink);text-align:center;margin-top:9px;font-weight:600;line-height:1.4}
   /* expertise / knowledge */
   .exp{background:linear-gradient(180deg,#0a4da0,#073c80);color:#eaf1fb}
   .exp .kicker{color:#8fc4f4}
@@ -521,7 +522,7 @@
 <section class="why">
   <div class="wrap">
     <span class="kicker">Por qué BIP</span>
-    <div class="lead">Del caos de iniciativas a un sistema donde cada esfuerzo está conectado con el impacto.</div>
+    <div class="lead">Del caos de iniciativas a un sistema donde cada esfuerzo está conectado con el impacto — y guiado por el conocimiento de quienes trabajan con las marcas más importantes del mundo.</div>
 
     <div class="prow">
       <div class="art"><svg viewBox="0 0 200 156" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -584,6 +585,21 @@
         <div class="pnum"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> 03 · Eficiencia</div>
         <h3>Optimizá con evidencia, no con intuición.</h3>
         <p>El mercado habla, la plataforma aprende. Al medir qué impacta en qué métrica, <b>optimizás recursos, reasignás inversiones con evidencia</b> y maximizás el peso de cada esfuerzo. Hacés más, con mayor asertividad.</p>
+      </div>
+    </div>
+
+    <div class="prow rev">
+      <div class="art"><svg viewBox="0 0 200 156" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <!-- expertise: escudo con check + destellos -->
+        <path d="M100 20 L150 36 V80 C150 110 128 128 100 138 C72 128 50 110 50 80 V36 Z" stroke="var(--navy)" stroke-width="3"/>
+        <path d="M78 82 l16 16 l30 -34" stroke="var(--cyan)" stroke-width="4"/>
+        <circle cx="150" cy="30" r="3" fill="var(--cyan)" stroke="none"/>
+        <circle cx="50" cy="30" r="3" fill="var(--cyan)" stroke="none"/>
+      </svg></div>
+      <div>
+        <div class="pnum"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> 04 · Expertise</div>
+        <h3>No estás solo: expertise world-class de tu lado.</h3>
+        <p>BIP no es solo tecnología. Está construido sobre el <b>know-how de ROQUÉ Marketing Insights</b> —consultora experta en investigación y marketing para las marcas más importantes del mundo—: su criterio y las <b>mejores prácticas del mercado</b> viven dentro de la plataforma, guiándote en cada decisión. No accedés a una herramienta: accedés a un <b>universo de conocimiento</b>.</p>
       </div>
     </div>
   </div>
@@ -713,7 +729,7 @@
       <div>
         <span class="kicker">Empezá hoy</span>
         <h2>¿Listo para descubrir qué mueve <span style="color:#bfe0fb">realmente</span> tus KPIs?</h2>
-        <p class="p">Agendá una demo de 30 minutos. Te mostramos cómo se vería tu estrategia dentro de BIP y salís con un primer diagnóstico.</p>
+        <p class="p">Agendá una demo de 30 minutos. Te mostramos cómo se vería tu estrategia dentro de BIP —con el criterio experto de ROQUÉ— y salís con un primer diagnóstico.</p>
         <ul class="checklist">
           <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Demo personalizada con tu caso</li>
           <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Diagnóstico inicial sin compromiso</li>
@@ -806,8 +822,8 @@ const ICON = {
 const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3"/><path d="M20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>';
 const PLANS = [
   {key:'insight',name:'Insight',tag:'plan base',price:'490',setup:'700',users:'1 usuario',cats:'1 marca · 1 categoría',trial:'1 semana gratis',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
-  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'990',setup:'900',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y 4 hs de consultoría para convertir esa data en planes de acción.'},
-  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y 8 hs de consultoría para un diagnóstico total.'}
+  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'990',setup:'900',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y consultoría estratégica para convertir esa data en planes de acción.'},
+  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y consultoría estratégica para un diagnóstico total.'}
 ];
 const MODULES = [
   ['Núcleo estratégico · Mapa + Seguimiento de Objetivos',1,1,1],
@@ -823,7 +839,7 @@ const MODULES = [
   ['Alertas + reportes automatizados (email / WhatsApp)',1,1,1],
   ['Diagnósticos y planes con data competitiva',0,1,1],
   ['Research de mercado (Top of Mind, Share of Mind, intención, funnel)',0,0,1],
-  ['Asesoramiento estratégico',0,'4 hs/mes','8 hs/mes'],
+  ['Consultoría y acompañamiento estratégico',0,1,1],
 ];
 const idx = {insight:1,optimize:2,accelerate:3};
 const has = v => v===1 || v==='adv' || typeof v==='string';
@@ -842,7 +858,7 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
     <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 12 meses</div></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
     <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
-    <a class="pcta" href="#demo">Empezar con ${p.name}</a></article>`;
+    ${p.trial ? `<a class="pcta" href="#demo">Probá ${p.trial} →</a><div class="trialcta-sub">Estamos tan seguros que la primera semana es gratis: si lo probás, te quedás.</div>` : `<a class="pcta" href="#demo">Empezar con ${p.name}</a>`}</article>`;
 }).join('');
 
 const FULL = [
@@ -859,7 +875,7 @@ const FULL = [
   {t:'Resultados Comerciales',r:[['Facturación mensual',1,1,1],['Share (por segmento y evolución)',1,1,1],['Evolución y acumulado',1,1,1]]},
   {t:'Inversión de Marketing',r:[['Ejecución del presupuesto vs BGT',1,1,1],['Inversión / Facturación',1,1,1],['Comparador de presupuestos (versión / período / cuenta)',1,1,1]]},
   {t:'Research de mercado',r:[['Top of Mind',0,0,1],['Share of Mind',0,0,1],['Intención de compra',0,0,1],['Funnel de decisión de compra',0,0,1]]},
-  {t:'Consultoría estratégica',r:[['Diagnósticos y planes de acción específicos',0,1,1],['Asesoramiento estratégico Online',0,'4 hs/mes','8 hs/mes']]},
+  {t:'Consultoría estratégica',r:[['Diagnósticos y planes de acción específicos',0,1,1],['Consultoría y acompañamiento estratégico',0,1,1]]},
 ];
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
 document.getElementById('matrix').innerHTML =
