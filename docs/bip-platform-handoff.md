@@ -9,6 +9,42 @@ Plataforma donde **el cliente se autogestiona**: conecta sus fuentes de un clic 
 elige/sube de plan pagando, suma add-ons, maneja usuarios — con mínima participación del
 consultor. Segura, escalable (objetivo: 50 clientes en simultáneo), sin perder funcionalidad.
 
+## MODELO DE PLANES v2 (sep-2026 — REEMPLAZA la matriz vieja de bip.html)
+> Nuevo eje de valor definido por el user: **el salto entre planes NO es "más dashboards"
+> sino MÁS CAPAS DE INFORMACIÓN + la CONSULTORÍA que se apoya en esa info.**
+
+**Transversal a TODOS los planes (nuevo):**
+- **Capa de IA incluida en todos** — ya no es add-on pago (no se puede cobrar aparte). El add-on
+  "Copiloto IA" se ELIMINA como cobro; va incluido en Insight/Optimize/Accelerate.
+- **Alertas + reportes automatizados incluidos en todos** — funcionalidad NUEVA (aún NO existe en
+  la plataforma, hay que construirla): (a) insights inteligentes con IA dentro de los informes;
+  (b) alertas de rendimiento sobre Metas y Objetivos; (c) envío recurrente automático de informes
+  por **email o WhatsApp**. (Ejemplos que dio el user en imágenes.)
+
+**Insight** (base):
+- **Todos los dashboards operativos** (incluye Trade Mkt) + capa de IA + alertas/reportes.
+- **SIN información de competencia** y sin research de mercado (data propia del cliente).
+
+**Optimize** (= Insight + bloque de competencia):
+- Agrega la **capa de competencia** (data de competidores).
+- Con esa info: **diagnósticos y planes de acción específicos** basados en el competitivo.
+- Incluye **4 horas de consultoría mensual**. Todo esto es "un bloque adicional".
+
+**Accelerate** (= Optimize + bloque de research de mercado):
+- Agrega **investigaciones de mercado**: Top of Mind, Share of Mind, intención de compra, funnel de
+  decisión de compra, etc. (la capa Kantar/GfK: Salud de Marca + Resultados Comerciales).
+- Incluye **8 horas de consultoría mensual** → diagnóstico TOTAL de la estrategia de marketing, del
+  negocio, planes de acción, etc.
+
+**PENDIENTE DE CONFIRMAR (mapping a gating, no asumir):**
+- ¿"todos los dash" en Insight incluye **Salud de Marca** y **Resultados Comerciales/Mercado**, o
+  esos SON el research que agrega Accelerate? (Interpretación lógica: research = Accelerate.)
+- ¿La "capa de competencia" de Optimize = las vistas competitivas (ej. Redes competitivo) + data de
+  competidores cross-dashboard?
+- Reescribir `lib/plan.ts` (gating) con este modelo: quitar addon `ia` (incluido), mover
+  `competitivo` de add-on a feature de Optimize, y las horas de consultoría + alertas/reportes como
+  atributos del plan. Actualizar también `public/bip.html` (pricing/propuesta de valor).
+
 ## Arquitectura de identidades y conexiones (Google + Meta → Nango → BIP)
 > Diagrama de referencia — cómo se vincula cada pieza. Google y Meta son ramas
 > INDEPENDIENTES entre sí; solo se juntan en Nango + la plataforma.
