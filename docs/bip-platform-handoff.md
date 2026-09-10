@@ -55,6 +55,11 @@ lo contratan"). **Optimize/Accelerate NO tienen prueba inicial.** Los **clientes
 desbloquean 15 días gratis de Optimize a partir del mes 4** (upsell). (El brief original decía
 "todos los planes tienen semana gratis" pero enseguida "los otros no" → se interpretó así; confirmar.)
 Ya reflejado en `bip.html` (badge en card Insight + nota bajo los tiers + FAQ).
+**PRECIOS VIGENTES (sep-2026, REEMPLAZAN 490/990/1690):** Insight **USD 190/mes** (set-up 250),
+Optimize **USD 390/mes** (set-up 350), Accelerate **USD 690/mes** (set-up 450). Set-up bonificado
+(sin cargo) en plan de 12 meses. Ya en `bip.html` + `bip/pricing.html`. **Sincronizar
+`lib/plan.ts` de la plataforma (`priceUsd`) cuando se redeploye bip-platform.**
+
 **CRITERIO DE COMUNICACIÓN (clave, sep-2026):** **NUNCA comunicar "gratis"** — liderar con
 "gratis" ancla el valor para abajo y le saca jerarquía a una plataforma premium. La prueba se
 comunica desde la **confianza y la comprobación**: "Comprobalo una semana", "acceso completo sobre
