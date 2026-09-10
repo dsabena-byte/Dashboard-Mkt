@@ -55,6 +55,12 @@ lo contratan"). **Optimize/Accelerate NO tienen prueba inicial.** Los **clientes
 desbloquean 15 días gratis de Optimize a partir del mes 4** (upsell). (El brief original decía
 "todos los planes tienen semana gratis" pero enseguida "los otros no" → se interpretó así; confirmar.)
 Ya reflejado en `bip.html` (badge en card Insight + nota bajo los tiers + FAQ).
+**CRITERIO DE COMUNICACIÓN (clave, sep-2026):** **NUNCA comunicar "gratis"** — liderar con
+"gratis" ancla el valor para abajo y le saca jerarquía a una plataforma premium. La prueba se
+comunica desde la **confianza y la comprobación**: "Comprobalo una semana", "acceso completo sobre
+tu propia operación", "estamos tan seguros del valor que te dejamos verlo antes de decidir". El
+substrato comercial (sin cargo esa semana) se explica en la venta, NO se grita en la página. Igual
+para Optimize: "accedés a Optimize para comprobar su impacto competitivo" (no "15 días gratis").
 
 **Storytelling de conocimiento/expertise (sep-2026):** el user quiere reencuadrar BIP de
 "plataforma de reporting" a **"plataforma de conocimiento y expertise"**. Puntos: cada dashboard,
