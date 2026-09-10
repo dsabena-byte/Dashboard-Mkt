@@ -263,6 +263,24 @@
   .addc .ad{font-size:12.5px; color:var(--muted); margin:6px 0 12px; line-height:1.45}
   .addc .ap{font-family:"Poppins"; font-weight:700; font-size:13.5px; color:var(--cyan-ink)}
   .addc .aq{font-size:12px; color:var(--ink); font-weight:600; margin-bottom:9px}
+  /* free trial */
+  .trialbadge{display:inline-flex;align-items:center;gap:6px;background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid #bfe3fb;font-family:"Poppins";font-weight:700;font-size:11.5px;letter-spacing:.01em;padding:5px 11px;border-radius:999px;margin:0 0 12px}
+  .trialnote{margin-top:22px;text-align:center;font-size:13.5px;color:var(--muted)}
+  .trialnote b{color:var(--navy)}
+  /* expertise / knowledge */
+  .exp{background:linear-gradient(180deg,#0a4da0,#073c80);color:#eaf1fb}
+  .exp .kicker{color:#8fc4f4}
+  .exp h2{color:#fff}
+  .exp .hl{color:#bfe0fb}
+  .exp .lede-x{color:#cfe0f4;font-size:18px;max-width:60ch;margin:18px 0 0}
+  .expgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
+  @media(max-width:820px){.expgrid{grid-template-columns:1fr;max-width:460px;margin-inline:auto}}
+  .expc{background:#ffffff14;border:1px solid #ffffff2e;border-radius:13px;padding:20px}
+  .expc .eh{font-family:"Poppins";font-weight:700;font-size:15px;color:#fff;margin-bottom:7px}
+  .expc .ed{font-size:13px;color:#cfe0f4;line-height:1.5}
+  .roque{margin-top:30px;background:#ffffff12;border:1px solid #ffffff33;border-radius:14px;padding:24px 26px;font-size:16px;line-height:1.6;color:#eaf1fb}
+  .roque b{color:#fff}
+  .roque .rq-k{font-family:"Poppins";font-weight:800;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:#8fc4f4;display:block;margin-bottom:10px}
   details.compare{margin-top:30px; border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden}
   details.compare>summary{cursor:pointer; list-style:none; padding:17px 20px; font-family:"Poppins"; font-weight:600; font-size:15px; color:var(--navy); display:flex; align-items:center; gap:10px}
   details.compare>summary::-webkit-details-marker{display:none}
@@ -358,6 +376,7 @@
   <div class="row">
     <a class="brand" href="#top">BIP<svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg><span class="rs">Business Impact Platform</span></a>
     <div class="links">
+      <a href="#expertise">Conocimiento</a>
       <a href="#como">Cómo funciona</a>
       <a href="#modulos">Qué medís</a>
       <a href="#planes">Planes</a>
@@ -375,7 +394,7 @@
   <div class="wrap hero-content">
     <span class="kicker">Business Impact Platform</span>
     <h1>Tener una estrategia no te asegura <span class="hl">lograr tus resultados</span>.</h1>
-    <p class="lede">BIP conecta cada acción de marketing con el impacto real en el negocio. Ordená tu estrategia, controlá todo tu ecosistema en un solo lugar y optimizá con evidencia.</p>
+    <p class="lede">BIP conecta cada acción de marketing con el impacto real en el negocio. No accedés solo a una tecnología: accedés a un <b>universo de conocimiento y expertise world-class</b> que te guía en cada decisión.</p>
     <div class="cta-row">
       <a class="btn primary" href="#demo"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Agendá tu demo</a>
       <a class="btn ghost" href="#como">Ver cómo funciona</a>
@@ -570,6 +589,24 @@
   </div>
 </section>
 
+<!-- EXPERTISE / KNOWLEDGE -->
+<section class="exp" id="expertise">
+  <div class="wrap">
+    <span class="kicker">No es solo tecnología</span>
+    <h2 class="pop" style="font-weight:800;font-size:clamp(28px,4vw,44px);margin:.3em 0 0;max-width:22ch">Una plataforma de <span class="hl">conocimiento y expertise</span>, no solo de reporting.</h2>
+    <p class="lede-x">Cada dashboard, cada indicador, cada plan que cargás y cada objetivo que definís viene con contenido que te guía según las <b>mejores prácticas de ejecución del mercado</b>. No te dejamos solo frente a los datos: te mostramos qué mirar y cómo actuar.</p>
+    <div class="expgrid">
+      <div class="expc"><div class="eh">Mejores prácticas embebidas</div><div class="ed">Cada dashboard, KPI y objetivo trae la guía de cómo ejecutarlo bien, incorporada dentro de la plataforma.</div></div>
+      <div class="expc"><div class="eh">Know-how aplicado</div><div class="ed">Metodología de investigación y marketing puesta a trabajar sobre tu operación, no un manual aparte.</div></div>
+      <div class="expc"><div class="eh">Estándar world-class</div><div class="ed">El mismo criterio con el que se trabaja para las compañías más importantes a nivel internacional.</div></div>
+    </div>
+    <div class="roque">
+      <span class="rq-k">La consultora detrás de BIP</span>
+      Detrás de la plataforma está <b>ROQUÉ Marketing Insights</b>, consultora experta en investigación y marketing que trabaja con las marcas más importantes del mundo. Con BIP no accedés solo a una herramienta: accedés a su <b>universo de conocimiento, know-how y expertise de primer nivel</b>, convertido en un sistema que te acompaña todos los días.
+    </div>
+  </div>
+</section>
+
 <!-- HOW / CYCLE -->
 <section class="band center" id="como">
   <div class="wrap">
@@ -626,6 +663,7 @@
       <p>Cada plan es autocontenido. Podés escalar cuando quieras.</p>
     </div>
     <div class="tiers" id="tiers"></div>
+    <p class="trialnote"><b>Probá Insight 1 semana gratis.</b> Estamos seguros de que te vas a quedar. · Los clientes de Insight desbloquean <b>15 días gratis de Optimize</b> a partir del 4.º mes.</p>
     <details class="compare" open>
       <summary><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Ver comparación completa, plan por plan</summary>
       <div class="tablewrap"><table>
@@ -662,7 +700,8 @@
       <details><summary>¿Necesito un equipo técnico para implementarlo?</summary><div class="a">No. Nosotros configuramos las conexiones y el modelo estratégico con vos. Tu equipo se dedica a decidir y optimizar, no a armar reportes.</div></details>
       <details><summary>¿Cuánto tarda en estar funcionando?</summary><div class="a">El primer ciclo arranca en semanas. A partir de ahí, cada 3 meses el sistema se vuelve más preciso con tu propia experiencia de mercado.</div></details>
       <details><summary>¿Puedo empezar con un plan y escalar después?</summary><div class="a">Sí. Podés empezar con Insight (todos tus dashboards + IA + alertas) y subir a Optimize para sumar la mirada competitiva y consultoría, o a Accelerate para el research de mercado, cuando lo necesites.</div></details>
-      <details><summary>¿Qué diferencia a BIP de un tablero de métricas?</summary><div class="a">Un tablero muestra números. BIP conecta cada métrica y acción con un objetivo estratégico, y te dice qué mover para lograrlo. No es reporting: es un método para generar impacto.</div></details>
+      <details><summary>¿Hay una prueba gratis?</summary><div class="a">Sí. Podés probar <b>Insight una semana gratis</b>, sin compromiso. Y si sos cliente de Insight, a partir del 4.º mes desbloqueás <b>15 días gratis de Optimize</b> para sumar la mirada competitiva. Optimize y Accelerate no tienen prueba inicial: se contratan directo.</div></details>
+      <details><summary>¿Qué diferencia a BIP de un tablero de métricas?</summary><div class="a">Un tablero muestra números. BIP conecta cada métrica y acción con un objetivo estratégico, <b>trae embebidas las mejores prácticas de ejecución del mercado</b> —el know-how de ROQUÉ, consultora experta en investigación y marketing— y te dice qué mover para lograrlo. No es reporting: es conocimiento y método para generar impacto.</div></details>
     </div>
   </div>
 </section>
@@ -766,9 +805,9 @@ const ICON = {
 };
 const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3"/><path d="M20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>';
 const PLANS = [
-  {key:'insight',name:'Insight',tag:'plan base',price:'490',setup:'700',users:'1 usuario',cats:'1 marca · 1 categoría',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
-  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'990',setup:'900',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',pitch:'Sumás la mirada competitiva (redes, web y SEO) y 4 hs de consultoría para convertir esa data en planes de acción.'},
-  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y 8 hs de consultoría para un diagnóstico total.'}
+  {key:'insight',name:'Insight',tag:'plan base',price:'490',setup:'700',users:'1 usuario',cats:'1 marca · 1 categoría',trial:'1 semana gratis',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
+  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'990',setup:'900',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y 4 hs de consultoría para convertir esa data en planes de acción.'},
+  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'1.690',setup:'1.500',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y 8 hs de consultoría para un diagnóstico total.'}
 ];
 const MODULES = [
   ['Núcleo estratégico · Mapa + Seguimiento de Objetivos',1,1,1],
@@ -797,6 +836,7 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
   const iaMods = MODULES.filter(m=>has(m[c]) && m[4]==='ia');
   const iaBlock = iaMods.length ? `<div class="iacap"><div class="iacap-h"><span>Capa de inteligencia</span><span class="iatag">Solo Accelerate</span></div>${iaMods.map(m=>`<div class="iacap-i">${m[0]}</div>`).join('')}</div>` : '';
   return `<article class="card"><div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
+    ${p.trial ? `<div class="trialbadge">✦ ${p.trial}</div>` : ''}
     <div class="pr"><span class="cur">USD</span><span class="mo">${p.price}</span><span class="per">/ mes</span></div>
     <div class="ctrterm">Contratación por <b>6 o 12 meses</b></div>
     <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 12 meses</div></div>
