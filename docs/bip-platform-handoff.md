@@ -338,9 +338,8 @@ verificación con las justificaciones de los 3 scopes + el video demo (materiale
 
 **🔴 BLOQUEO ACTUAL (sep-2026): la CONEXIÓN OAuth no se completa en el self-host.** La marca ya
 está verificada, pero al intentar conectar Google **el flujo OAuth nunca termina** (esto BLOQUEA
-grabar el video demo, que a su vez BLOQUEA enviar la verificación de scopes). Diagnóstico profundo
-en curso (un subagente de research está buscando el root cause exacto contra el repo real de Nango;
-al terminar se actualiza acá con el fix confirmado).
+grabar el video demo, que a su vez BLOQUEA enviar la verificación de scopes). **Root cause
+CONFIRMADO** (research contra el source real de Nango v0.71.6) + fix listo — ver abajo.
 
 **Síntomas medidos (validado, no asumido):**
 1. **Desde la app (bip-platform, `@nangohq/frontend` v0.48.0):** `new Nango({ host:
@@ -355,29 +354,52 @@ al terminar se actualiza acá con el fix confirmado).
 4. Los **Logs UI de Nango** dicen "Logs not configured" → Elasticsearch está apagado (no hay traza
    detallada; por eso se lee de los Deploy Logs de Railway).
 
-**Hipótesis (a confirmar con el research — NO dar por cerrado hasta validar):**
-- **(A) Connect UI / puerto:** en versiones self-host el Connect UI puede servirse en un **puerto
-  distinto** (histórico 3009) que en Railway **no está expuesto** (solo el 3003 tiene dominio). Si el
-  modal carga assets/hace requests contra un host/puerto inalcanzable, "session expired" encaja.
-  Verificar `FLAG_SERVE_CONNECT_UI=true` y qué puerto sirve el Connect UI en `hosted-0.71.6`, y que
-  `NANGO_PUBLIC_CONNECT_URL` apunte a `https://nango.bip-go.com` (mismo dominio expuesto).
-- **(B) Mismatch de URLs públicas:** si `NANGO_SERVER_URL` / `NANGO_PUBLIC_SERVER_URL` /
-  `NANGO_PUBLIC_CONNECT_URL` no son EXACTAMENTE `https://nango.bip-go.com`, el token se firma para un
-  origen y el UI corre en otro → "session expired". Revisar las 3 en Railway.
-- **(C) `@nangohq/frontend` no apunta al self-host:** `new Nango({ host })` puede no rutear el
-  Connect UI al self-host (cargar el de Cloud). Confirmar la firma correcta para self-host en v0.48.0
-  (¿`host` vs `connectHost`?).
-- **(D) Workaround directo:** el link **"Use deprecated flow"** del dashboard hace un **redirect
-  OAuth directo** (sin Connect UI). Si ESE funciona, aísla el problema al Connect UI y sirve para
-  grabar el video igual.
+**✅ ROOT CAUSE CONFIRMADO (research contra el source real de Nango v0.71.6):** en v0.71.x el
+**Connect UI es una SPA estática que se sirve en un PUERTO APARTE (3009)**, NO en el puerto de la API
+(3003). En Railway sólo expusimos el 3003 (un dominio → un puerto), así que **la SPA del Connect UI
+es inalcanzable** → de ahí salen los dos síntomas. Evidencia en el repo (tag `v0.71.6`):
+- `packages/server/entrypoint.sh`: con `FLAG_SERVE_CONNECT_UI=true` arranca **dos procesos** — la API
+  (`server.js`) **y** un `serve -s packages/connect-ui/dist -p ${NANGO_CONNECT_UI_PORT:-3009}`.
+- `packages/utils/.../detection.ts`: `connectUrl = NANGO_PUBLIC_CONNECT_URL || http://localhost:3009`
+  (la SPA) es **distinto** de `baseUrl = NANGO_SERVER_URL` (la API). Son **orígenes diferentes por
+  diseño.** Nosotros habíamos puesto `NANGO_PUBLIC_CONNECT_URL = nango.bip-go.com` (la API, 3003) →
+  mal.
+- El cartel **"Your session has expired"** se renderiza literal en un **HTTP 401**
+  (`packages/connect-ui/.../ErrorFallback.tsx`): la SPA cargó pero pegó contra la **API equivocada**
+  (Nango Cloud) que no conoce el session token del self-host.
+- `packages/frontend/lib/connectUI.ts`: `openConnectUI` **NO usa** el `host` del `new Nango({host})`;
+  tiene sus propios defaults a **Cloud** (`baseURL=https://connect.nango.dev`,
+  `apiURL=https://api.nango.dev`). Hay que pasar `baseURL` + `apiURL` explícitos (así lo hace el
+  propio dashboard de Nango).
+
+**FIX (lista mínima para retomar):**
+1. **Railway:** en el servicio `nango-server` → Networking → **agregar un 2º dominio
+   `connect.bip-go.com` con target port `3009`** (dejar `nango.bip-go.com` → 3003). DNS: CNAME
+   `connect` → target de Railway, en **Netlify**. Esperar SSL.
+2. **Env vars (Railway):** `NANGO_PUBLIC_CONNECT_URL=https://connect.bip-go.com` (era el error);
+   dejar `NANGO_SERVER_URL` y `NANGO_PUBLIC_SERVER_URL` = `https://nango.bip-go.com`; mantener
+   `FLAG_SERVE_CONNECT_UI=true` y `NANGO_CONNECT_UI_PORT=3009`. Redeploy.
+3. **App (bip-platform, `components/connect-button.tsx`):** llamar
+   `nango.openConnectUI({ baseURL: 'https://connect.bip-go.com', apiURL: 'https://nango.bip-go.com',
+   onEvent })` (nombres exactos `baseURL`/`apiURL`; **no** existe `connectHost`). Y **alinear la
+   versión** de `@nangohq/frontend` (estamos en 0.48.0 contra server 0.71.6) → subir a ~0.71.x para
+   evitar skew del handshake.
+4. **Redirect en Google Cloud** = la API: `https://nango.bip-go.com/oauth/callback` (ya está bien; es
+   el 3003, no el dominio del connect).
+
+**WORKAROUND YA (para desbloquear el video demo sin tocar nada):** en el dashboard de Nango, el link
+**"Use deprecated flow"** (`/connections/create-legacy`) hace el OAuth **directo** por el 3003 (abre
+el popup de Google, vuelve al `/oauth/callback`, crea la conexión) — **no usa la SPA del 3009**. Sirve
+para probar que el Client ID + callback están OK y para grabar el video mientras se expone el 3009.
 
 **Config actual del self-host (Railway `ravishing-flow`, servicio `nango-server`
 `nangohq/nango-server:hosted-0.71.6`, dominio `nango.bip-go.com` → port 3003):** `NANGO_SERVER_URL`,
-`NANGO_PUBLIC_SERVER_URL`, `NANGO_PUBLIC_CONNECT_URL` = `https://nango.bip-go.com`;
-`FLAG_SERVE_CONNECT_UI=true`; `SERVER_PORT=3003`; `CACHE_REDIS_ENABLED=false`;
-`CACHE_LOCAL_ENABLED=true`; `FLAG_AUTH_ENABLED=true` (basic auth del dashboard); Postgres+Redis
-attach; `NANGO_ENCRYPTION_KEY` (inmutable, en Railway). Integración Google cargada (Client ID
-`279230041069-...` + Secret + 3 scopes), redirect en Google Cloud = `nango.bip-go.com/oauth/callback`.
+`NANGO_PUBLIC_SERVER_URL` = `https://nango.bip-go.com`; **`NANGO_PUBLIC_CONNECT_URL` estaba mal en
+`nango.bip-go.com` → debe ser `https://connect.bip-go.com` (3009)**; `FLAG_SERVE_CONNECT_UI=true`;
+`SERVER_PORT=3003`; `CACHE_REDIS_ENABLED=false`; `CACHE_LOCAL_ENABLED=true`; `FLAG_AUTH_ENABLED=true`
+(basic auth del dashboard); Postgres+Redis attach; `NANGO_ENCRYPTION_KEY` (inmutable, en Railway).
+Integración Google cargada (Client ID `279230041069-...` + Secret + 3 scopes), redirect en Google
+Cloud = `nango.bip-go.com/oauth/callback`.
 
 **Estado de la verificación de scopes (form ya cargado, falta el video):** las 3 justificaciones
 están pegadas en el Centro de verificación (957/1000 chars) + "Información adicional". Falta grabar
