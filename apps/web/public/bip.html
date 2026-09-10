@@ -31,9 +31,9 @@
   .kicker::before{content:""; width:26px; height:3px; background:var(--cyan); border-radius:2px}
   .center{text-align:center} .center .kicker{justify-content:center}
 
-  .btn{display:inline-flex; align-items:center; gap:9px; font-family:"Poppins"; font-weight:600; font-size:15px; padding:14px 26px; border-radius:5px; text-decoration:none; cursor:pointer; border:2px solid transparent; transition:transform .15s ease, background .2s, color .2s; white-space:nowrap}
-  .btn.primary{background:var(--cyan); color:#fff; border-color:var(--cyan)}
-  .btn.primary:hover{transform:translateY(-2px); background:var(--cyan-ink); border-color:var(--cyan-ink)}
+  .btn{display:inline-flex; align-items:center; gap:9px; font-family:"Poppins"; font-weight:700; font-size:15px; padding:14px 28px; border-radius:11px; text-decoration:none; cursor:pointer; border:2px solid transparent; transition:transform .15s ease, box-shadow .16s ease, filter .16s ease, background .2s, color .2s; white-space:nowrap}
+  .btn.primary{background:linear-gradient(135deg,#0a4da0,#12a6f4); color:#fff; border-color:transparent; box-shadow:0 9px 22px -9px rgba(10,77,160,.55)}
+  .btn.primary:hover{transform:translateY(-2px); box-shadow:0 15px 30px -9px rgba(10,77,160,.72); filter:brightness(1.07)}
   .btn.primary .tri{color:#fff}
   .btn.ghost{background:transparent; color:var(--navy); border-color:var(--navy)}
   .btn.ghost:hover{background:var(--navy); color:#fff}
@@ -236,8 +236,8 @@
   .mods2 li .ck{flex:none; margin-top:2px; color:var(--good)}
   .plus{font-family:"Poppins"; font-size:9px; font-weight:700; color:var(--cyan-ink); background:var(--cyan-soft); border-radius:4px; padding:1px 6px; margin-left:5px; text-transform:uppercase; white-space:nowrap; letter-spacing:.04em; vertical-align:1px}
   .valc{font-family:"Poppins"; font-size:9px; font-weight:700; color:var(--navy); background:var(--navy-soft); border-radius:4px; padding:1px 6px; margin-left:5px; white-space:nowrap; vertical-align:1px}
-  .pcta{margin-top:auto; text-align:center; font-family:"Poppins"; font-weight:600; font-size:14px; border-radius:5px; padding:13px; text-decoration:none; border:2px solid var(--navy); color:var(--navy); background:transparent; transition:background .2s,color .2s}
-  .pcta:hover{background:var(--navy); color:#fff}
+  .pcta{margin-top:auto; text-align:center; font-family:"Poppins"; font-weight:700; font-size:15px; border-radius:11px; padding:15px 16px; text-decoration:none; border:0; color:#fff; background:linear-gradient(135deg,#0a4da0,#12a6f4); box-shadow:0 9px 22px -9px rgba(10,77,160,.6); transition:transform .16s ease, box-shadow .16s ease, filter .16s ease}
+  .pcta:hover{transform:translateY(-2px); box-shadow:0 15px 30px -9px rgba(10,77,160,.72); filter:brightness(1.07)}
   .pr{display:flex; align-items:baseline; gap:5px; margin-top:2px}
   .pr .cur{font-family:"Poppins"; font-weight:700; font-size:15px; color:var(--navy)}
   .pr .mo{font-family:"Poppins"; font-weight:800; font-size:38px; letter-spacing:-.03em; color:var(--navy); line-height:1}
@@ -264,7 +264,8 @@
   .addc .ap{font-family:"Poppins"; font-weight:700; font-size:13.5px; color:var(--cyan-ink)}
   .addc .aq{font-size:12px; color:var(--ink); font-weight:600; margin-bottom:9px}
   /* free trial */
-  .trialbadge{display:inline-flex;align-items:center;gap:6px;background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid #bfe3fb;font-family:"Poppins";font-weight:700;font-size:11.5px;letter-spacing:.01em;padding:5px 11px;border-radius:999px;margin:0 0 12px}
+  .trialslot{min-height:26px;display:flex;align-items:center}
+  .trialbadge{display:inline-flex;align-items:center;gap:6px;background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid #bfe3fb;font-family:"Poppins";font-weight:700;font-size:11.5px;letter-spacing:.01em;padding:5px 11px;border-radius:999px;margin:0}
   .trialnote{margin-top:22px;text-align:center;font-size:13.5px;color:var(--muted)}
   .trialnote b{color:var(--navy)}
   .trialcta-sub{font-size:11.5px;color:var(--cyan-ink);text-align:center;margin-top:9px;font-weight:600;line-height:1.4}
@@ -852,13 +853,13 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
   const iaMods = MODULES.filter(m=>has(m[c]) && m[4]==='ia');
   const iaBlock = iaMods.length ? `<div class="iacap"><div class="iacap-h"><span>Capa de inteligencia</span><span class="iatag">Solo Accelerate</span></div>${iaMods.map(m=>`<div class="iacap-i">${m[0]}</div>`).join('')}</div>` : '';
   return `<article class="card"><div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
-    ${p.trial ? `<div class="trialbadge">✦ ${p.trial}</div>` : ''}
+    <div class="trialslot">${p.trial ? `<div class="trialbadge">✦ ${p.trial}</div>` : ''}</div>
     <div class="pr"><span class="cur">USD</span><span class="mo">${p.price}</span><span class="per">/ mes</span></div>
     <div class="ctrterm">Contratación por <b>6 o 12 meses</b></div>
     <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 12 meses</div></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
     <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
-    ${p.trial ? `<a class="pcta" href="#demo">Empezá a comprobarlo →</a><div class="trialcta-sub">Una semana de acceso completo, sobre tu propia operación. Estamos tan seguros del valor que te dejamos verlo antes de decidir.</div>` : `<a class="pcta" href="#demo">Empezar con ${p.name}</a>`}</article>`;
+    ${p.trial ? `<a class="pcta" href="#demo">Empezá a comprobarlo →</a><div class="trialcta-sub">Una semana de acceso completo, sobre tu propia operación. Estamos tan seguros del valor que te dejamos verlo antes de decidir.</div>` : `<a class="pcta" href="#demo">Empezá con ${p.name} →</a>`}</article>`;
 }).join('');
 
 const FULL = [
