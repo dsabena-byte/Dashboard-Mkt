@@ -472,6 +472,34 @@ SharePoint/Excel Online por Microsoft OAuth (registrar app en Azure + integraci�
 después reusa el ConnectButton). Nango soporta 400+ integraciones (LinkedIn/Bing/X/Pinterest/Snapchat/
 Amazon Ads, Shopify, HubSpot/Salesforce, Microsoft/SharePoint, etc.).
 
+**✅ `/web` RÉPLICA FIEL DE DREAN (sep-2026, en main) — el dash de referencia.** El `/web` de BIP
+ahora espeja el de Drean (`apps/web/src/app/web/page.tsx`) sobre **GA4**, probado con la GA4 real de
+**ROQUÉ** (`www.roque-in.com`; se le dio Viewer a `bip.explore` en Property Access Management). Tiene:
+- **6 MetaKpiCards** con headline + filas **Mes / Acum.YTD** + meta + semáforo + barra (en gris "sin
+  meta" hasta cargar objetivos): Tráfico, Duración media de sesión, Tasa de conversión, Transacciones,
+  Ingresos, Valor medio de compra (ROAS no se puede en GA4 solo → AOV). + 5 KpiCards secundarios.
+- **6 gráficos real-vs-meta** (Recharts, meta gris + real azul #1e40af, barra/línea por KPI).
+- **MetaPanel** = Configuración de objetivos por KPI (12 meses + dirección/umbrales), guarda por
+  cliente en `web_metas` (**migración 0003**, `tenant_id text`). API `/api/web-metas`.
+- Performance/Tendencia por categoría, Tendencia de usuarios, Top 10 productos, Audiencia
+  (dispositivos + provincias vía dim `region`), Detalle + Evolución por canal. Paletas de Drean.
+- **Selector de período abajo** (no en header): dropdown "Mes" con **checkboxes multi-selección** +
+  "Limpiar selección" + rango de fechas. Meses en orden cronológico ascendente.
+- **Tipografía = fuente del sistema** (como Drean, más limpia); Poppins queda SOLO para el logo BIP.
+- Componentes en `components/web/*` + `lib/web-viz.ts` + `lib/metas-web.ts`.
+- **GOTCHA Recharts:** 2.x NO renderiza series con React 19/Next 16 (dibuja ejes, no barras/líneas) →
+  **subido a Recharts v3** (compat React 19); ajustar formatters a los tipos nuevos (`(v)=>fn(Number(v))`).
+- **⚠️ PENDIENTE del user en Supabase de bip-platform:** correr **migración 0002** (`tenant_datasets`,
+  ya) y **0003** (`web_metas`) en el SQL Editor. Sin 0003 el MetaPanel no guarda.
+
+**🔨 EN CURSO (sep-2026) — Alertas + Base de conocimiento (empezar por Plan de Medios en DREAN, luego
+replicar a BIP):** ver **`docs/alertas-plan-medios.md`** (spec completo, best-practice format-aware,
+benchmarks anclados en data real). Mockup interactivo aprobado:
+`https://claude.ai/code/artifact/12fe8b5e-7dca-4924-af48-b3fff8e67b93`. **Un solo cerebro:** las
+alertas y la base de conocimiento comparten los mismos benchmarks. Próximo paso: construir el motor
+`lib/alertas/` + panel en `/performance` + el modelo `kb_content` (content-as-data, para que ROQUÉ
+edite sin deploy y BIP lo reuse con gating por plan). Detalle abajo en la sección de alertas.
+
 **✅ NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
 - Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
   (imagen **`nangohq/nango-server:hosted-0.71.6`**), Postgres, Redis.

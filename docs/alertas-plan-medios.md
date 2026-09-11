@@ -118,3 +118,42 @@ Meta no expone placement limpio → formato se aproxima por objetivo + curva.
 El motor es agnóstico de origen: en Drean lee `pauta_performance` + `*_creatives`; en BIP lee las
 conexiones del cliente (Meta/DV360/Google por Nango). Las reglas, buckets y el principio de
 benchmark (max industria / p75 propio) son los mismos → auto-escalan por cliente sin tocar código.
+
+---
+
+## Base de conocimiento embebida (mismo cerebro que las alertas)
+Contenido de consultoría (know-how de ROQUÉ) accesible en cada dash, por 3 capas:
+1. **Micro — ⓘ en cada métrica:** popover corto = *Qué es · Cómo se lee · Benchmark (por
+   formato/medio) · Tu número vs estándar · Qué hacer*.
+2. **Meso — drawer "Cómo leer este tablero":** guía específica del dash (el framework, benchmarks,
+   ejemplos con datos del cliente). 5-8 min.
+3. **Macro — "Academia":** hub buscable (se llena solo con lo de las capas 1-2).
+
+**Decisiones clave (pensado para BIP):**
+- **Un solo cerebro:** el `benchmark(jsonb)` de cada concepto es el mismo que evalúan las alertas.
+  Se escribe una vez, enseña (ⓘ/guía) y vigila (alerta).
+- **Content-as-data desde el día 1** (no MD hardcodeado): tabla central
+  `kb_content: id · dash · concepto · tipo(tooltip|guia) · titulo · cuerpo(md) · benchmark(jsonb) ·
+  ejemplo · accion · plan_min · orden · updated_at`. Librería central compartida (todos los clientes
+  de BIP ven lo mismo; el expertise es el producto). Editable por ROQUÉ sin deploy (mini-CMS).
+- **Personalización:** placeholders `{tu_ctr}`/`{benchmark_ctr}` se resuelven en render con el dato
+  del tenant.
+- **Gating por plan (BIP):** Insight = ⓘ básicos · Optimize = benchmarks + guía · Accelerate =
+  best-practices avanzadas + Academia + alertas proactivas. El conocimiento tira del upgrade.
+
+**Mockup interactivo aprobado (referencia visual):**
+`https://claude.ai/code/artifact/12fe8b5e-7dca-4924-af48-b3fff8e67b93`
+(muestra: ⓘ contextual con VTR por formato, panel de alertas con casos reales —$11,9M/3días, video
+forzado al 8%—, y drawer de guía; identidad BIP navy/cyan, fuente del sistema).
+
+## Estado / próximos pasos (retomar acá)
+1. Spec + benchmarks: **HECHO** (este doc, anclado en data real de Drean).
+2. Mockup aprobado: **HECHO** (link arriba).
+3. **PENDIENTE — construir en DREAN primero, luego replicar a BIP:**
+   - Motor `lib/alertas/`: clasificador (objetivo + formato inferido por skips/embudo) + evaluación
+     de reglas → lista de alertas. Lee `pauta_performance` + `meta_paid_creatives` + `dv360_creatives`
+     + `google_ads_creatives`.
+   - Panel de Alertas en `/performance` (reemplaza el insight estático).
+   - Modelo `kb_content` + render ⓘ/drawer + placeholders de datos del cliente.
+   - Fase 2: digest al cliente (WhatsApp Evolution API / email).
+4. Definir con el user antes de construir: **deploy de Drean** (¿push a `main` o rama+PR?).
