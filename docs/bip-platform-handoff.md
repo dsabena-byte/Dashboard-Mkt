@@ -336,10 +336,39 @@ verificación con las justificaciones de los 3 scopes + el video demo (materiale
 `docs/verificacion-google.md`). Google revisa días/semanas; recién ahí se saca del todo el cartel
 "app no verificada" y se pasa de 100 usuarios. Mientras, la app funciona en producción con el aviso.
 
-**🔴 BLOQUEO ACTUAL (sep-2026): la CONEXIÓN OAuth no se completa en el self-host.** La marca ya
-está verificada, pero al intentar conectar Google **el flujo OAuth nunca termina** (esto BLOQUEA
-grabar el video demo, que a su vez BLOQUEA enviar la verificación de scopes). **Root cause
-CONFIRMADO** (research contra el source real de Nango v0.71.6) + fix listo — ver abajo.
+**✅✅ RESUELTO (sep-2026): la conexión OAuth funciona end-to-end en el self-host.** Se probó
+"Conectar Google" en bip-platform → abrió el Connect UI → consent de Google (cuenta + 2FA) →
+**Conectado ✓**. Antes moría en "Your session has expired". El fix que funcionó (detalle abajo):
+**se expuso el Connect UI (puerto 3009) con un 2º dominio + se corrigieron `NANGO_PUBLIC_CONNECT_URL`
+y el `openConnectUI(baseURL,apiURL)` + se subió `@nangohq/frontend` a 0.71.6.** Con esto queda
+DESBLOQUEADO grabar el video demo → enviar la verificación de scopes.
+
+**CONFIG QUE FUNCIONA (no re-romper):**
+- **Railway:** el servicio `nango-server` expone DOS dominios generados (gratis, no cuentan al límite
+  de custom domains del plan): `nango-server-production-ce30.up.railway.app` → **port 3003** (API +
+  dashboard) y `nango-server-production-52d6.up.railway.app` → **port 3009** (Connect UI SPA). El
+  custom domain `nango.bip-go.com` sigue en 3003 (es el que ve Google en el callback). No hizo falta
+  `connect.bip-go.com` (Google NO mira el dominio del Connect UI, solo el callback del 3003).
+- **Railway env:** `NANGO_PUBLIC_CONNECT_URL=https://nango-server-production-52d6.up.railway.app`
+  (la SPA/3009 — ESTE era el error: apuntaba al 3003); `NANGO_SERVER_URL`/`NANGO_PUBLIC_SERVER_URL`=
+  `https://nango.bip-go.com`; `FLAG_SERVE_CONNECT_UI=true`; `NANGO_CONNECT_UI_PORT=3009`.
+- **Vercel (bip-platform):** `NEXT_PUBLIC_NANGO_API_URL=https://nango.bip-go.com` +
+  `NEXT_PUBLIC_NANGO_CONNECT_URL=https://nango-server-production-52d6.up.railway.app`. (La vieja
+  `NEXT_PUBLIC_NANGO_CONNECT_HOST` quedó sin uso.)
+- **Código (`components/connect-button.tsx`):** `new Nango({ host: apiURL })` +
+  `openConnectUI({ baseURL, apiURL, onEvent })` con `baseURL`=Connect URL y `apiURL`=API URL leídas
+  de esas env `NEXT_PUBLIC_*`. El evento se tipa `ConnectUIEvent` (import de `@nangohq/frontend`) y
+  en `event.type==="connect"` el payload es `{ providerConfigKey, connectionId }`.
+- **`@nangohq/frontend` = `0.71.6`** (matchea el server; la 0.48.0 daba skew + tipos viejos).
+- **GOTCHA build Vercel:** Vercel corre `npm ci` → si cambiás `package.json` sin regenerar el
+  `package-lock.json`, el build falla ("can only install with an existing package-lock.json" o
+  mismatch). Solución usada: se **borró `package-lock.json`** del repo → Vercel cae a `npm install` y
+  lo regenera. (Y OJO: editar `package.json` a mano en GitHub web rompió el JSON una vez —
+  "Expected ',' at position 256"; validar el JSON.) El repo de la app es **`bip-explore/bip-platform`**
+  (branch `main`, conectado a Vercel; NO puedo pushear ahí desde esta sesión → los cambios los aplica
+  el user por GitHub web y Vercel deploya solo).
+
+**Root cause CONFIRMADO** (research contra el source real de Nango v0.71.6) — detalle abajo.
 
 **Síntomas medidos (validado, no asumido):**
 1. **Desde la app (bip-platform, `@nangohq/frontend` v0.48.0):** `new Nango({ host:
