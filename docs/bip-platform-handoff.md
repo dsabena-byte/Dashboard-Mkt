@@ -434,6 +434,44 @@ Cloud = `nango.bip-go.com/oauth/callback`.
 están pegadas en el Centro de verificación (957/1000 chars) + "Información adicional". Falta grabar
 el **video demo** del flujo OAuth vivo → por eso resolver esta conexión es el camino crítico.
 
+**✅✅ HITO (sep-2026): PUSH DIRECTO AL REPO — se terminó el upload manual.** El repo de la
+plataforma **se transfirió de `bip-explore` a `dsabena-byte`** (GitHub → Settings → Danger Zone →
+Transfer ownership → aceptar como dsabena). Motivo: esta sesión de Claude Code está anclada a
+`dsabena-byte` y `add_repo` **solo acepta repos del mismo dueño** (los cross-tier están bloqueados);
+con el repo bajo dsabena-byte, `add_repo(dsabena-byte/bip-platform, push)` funciona y **Claude
+clona/edita/pushea directo**. Se descartaron: sesión nueva anclada a bip-explore (riesgo de pisar el
+conector de GitHub de dsabena y **romper Drean** — ya pasó 2 veces al tocar esa autorización), y 2º
+plan de Claude (costo). **Transferir NO toca el conector de Claude → Drean intacto.** El app de
+GitHub de Claude en dsabena está en "All repositories" (tras la transferencia, `add_repo` entró sin
+tocar nada; hubo ~1 min de propagación).
+- **GOTCHA Vercel (Hobby):** el proyecto Vercel `bip-platform` es de la cuenta **BIP Hobby
+  (bip.explore)**. El Hobby plan **bloquea deploys cuyo commit author no sea miembro de la cuenta**
+  ("Deployment Blocked: commit author did not have contributing access… Hobby does not support
+  collaboration for private repos"). Por eso los commits de este repo se firman como **`bip-explore
+  <bip.explore@gmail.com>`** (ya quedó en el `git config` local del clon `/home/user/bip-platform`).
+  Si algún commit sale firmado por dsabena → Blocked; se arregla `git commit --amend --reset-author`
+  con la config bip-explore + force-push. NO hace falta pagar Pro.
+- **Tras la transferencia, Vercel siguió deployando** desde `dsabena-byte/bip-platform` (el redirect
+  de GitHub lo mantuvo; no hizo falta reconectar el Git en Vercel). Env vars/dominios intactos.
+- **Identidad BIP intacta:** el dueño del repo en GitHub NO es parte de la verificación de Google/Meta
+  (eso usa `bip-go.com` + `bip.explore`). La separación real no cambió.
+- **Flujo actual:** Claude edita en `/home/user/bip-platform`, `npm ci && npm run build`, commit
+  (autor bip-explore) + `git push origin main` → Vercel deploya. Lo único que queda del lado del user:
+  correr migraciones SQL en el Supabase de bip-platform (no hay conexión DDL desde la sesión).
+
+**Features nuevas (sep-2026, ya en main):** (1) **`/web` cableado a GA4 real** (`getToken` → Admin
+API descubre propiedades + selector + Data API runReport: usuarios/sesiones/transacciones/ingresos +
+serie diaria + canales). Requiere habilitar **Analytics Admin API + Data API** en el proyecto Google
+Cloud (`279230041069`). (2) **Menú:** todo con `soon:true` (candado) menos Web/Ecommerce, para probar;
+Trade Mkt como ítem único; viñetas de colores estilo Drean, logo BIP blanco, sidebar navy/cyan. (3)
+**Conexiones rediseñada:** Plataformas (Google/Meta/TikTok, OAuth) / Tus archivos (subir Excel/CSV +
+SharePoint) / Coordinadas (DV360), con íconos, **sin GfK**. (4) **Subir Excel/CSV self-serve:**
+`components/file-upload.tsx` → `/api/datasets` (parseo SheetJS `xlsx@0.18.5`) → tabla `tenant_datasets`
+(migración 0002, `tenant_id **text**` porque `tenants.id` es text, no uuid). **Pendiente self-serve:**
+SharePoint/Excel Online por Microsoft OAuth (registrar app en Azure + integración Microsoft en Nango,
+después reusa el ConnectButton). Nango soporta 400+ integraciones (LinkedIn/Bing/X/Pinterest/Snapchat/
+Amazon Ads, Shopify, HubSpot/Salesforce, Microsoft/SharePoint, etc.).
+
 **✅ NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
 - Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
   (imagen **`nangohq/nango-server:hosted-0.71.6`**), Postgres, Redis.
