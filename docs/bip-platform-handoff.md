@@ -555,12 +555,16 @@ varias páginas (Daniel ve **Drean** `257587170945975` Y **ROQUÉ - Research Sol
 / IG `@roque.research.solutions` `17841427311265529`). NO se auto-elige: `lib/meta-assets.ts` descubre
 las cuentas, `/api/meta/assets` lista+guarda la elección en `connections.config` (**migración 0004,
 YA CORRIDA**), `MetaAssetPicker` (tarjeta Meta en Conexiones) deja elegir, `getSelectedMetaAsset()` da
-selección + page token a los dashboards. **Dash `/redes` v1 EN MAIN:** IG orgánico en vivo
-(`lib/meta-social.ts` `getIgOrganicLive`) → `IgOrganicSection` (cards Mes/YTD, `IgAlcanceChart`,
-`SocialEngagementChart`, demografía, top posts) — réplica visual de Drean. **PENDIENTE Redes:** FB
-orgánico (`getFbOrganicLive` + `FbOrganicSection`), sistema de **metas** (crear tabla genérica
-`dash_metas` por tenant/plan/kpi + MetaPanel + getMetaKpi → hoy cards salen "sin meta"), y
-`OrganicBuildupPanel`. Competitivo sigue fuera (sin scraper).
+selección + page token a los dashboards. **Dash `/redes` EN MAIN — IG + FB orgánico + metas, idéntico a
+Drean.** Orgánico en vivo (`lib/meta-social.ts`: `getIgOrganicLive` + `getFbOrganicLive`, defensivos) →
+`IgOrganicSection` + `FbOrganicSection` (cards Mes/YTD, `IgAlcanceChart` real-vs-meta, `SocialEngagementChart`
+con `ENG_COLORS`, demografía, top posts). **Metas:** store genérico `dash_metas` (**migración 0005, YA
+CORRIDA**, tenant/plan/kpi/anio) + `lib/metas-dash.ts` + API `/api/dash-metas` + **MetaPanel generalizado**
+(props `endpoint`/`titulo`/`plan`, backward-compat con `/web`); planes **"Redes Sociales"** (IG) y
+**"Facebook"** (FB); alineación por `mesIdx`. **GOTCHA IG resuelto:** NO pedir `shares` en insights de
+media feed (rompe la llamada → alcance 0); fallback a `reach`. **FB:** reach por post
+(`post_impressions_unique`) + filtro `isPaidOutlier`. **PENDIENTE Redes (menor):** `OrganicBuildupPanel`
+(buildup IG+FB por pilar/categoría — requiere clasificar posts). Competitivo fuera (sin scraper).
 
 **🟡 DASH DE REDES SOCIALES en BIP (en curso, sep-2026) — replica el orgánico de Drean con data de ROQUÉ.**
 - **Blueprint relevado** del `/redes` de Drean (mapa completo de secciones/componentes/shapes/paleta —
@@ -601,6 +605,14 @@ orgánico (`getFbOrganicLive` + `FbOrganicSection`), sistema de **metas** (crear
 - **Yo después:** configuro integración `tiktok-ads` en Nango (App ID+Secret, scopes vacíos — TikTok
   maneja permisos en la app), y armo diag como el de Meta. **Gotcha:** confirmar ARS del ad account AR
   (reporting devuelve en la moneda de la cuenta; si no, FX como DV360).
+- **Identidad TikTok de BIP CREADA (sep-2026):** Daniel registró `bip.explore@gmail.com` en
+  `business.tiktok.com` como **advertiser** → Business Center **"BIP - Business Impact Platform"**
+  (BC ID `7684666094161936400`) + ad account "BIP" (`7684666093257736208`). Así el email ya existe en
+  TikTok para que ROQUÉ lo invite como Admin sin fricción (lección de Meta: la identidad debe existir
+  antes). Se salteó "Link TikTok accounts" (opcional, es para correr campañas). **ORGÁNICO también
+  pedido** → ROQUÉ debe tener además una **cuenta de contenido TikTok Business** (@handle) para
+  `tiktok-accounts`. **Nota TikTok ≠ Meta:** el admin de TikTok va por email y se registra al aceptar
+  (no exige perfil previo como Meta), así que acá bip.explore SÍ sirve.
 
 **✅ NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
 - Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
