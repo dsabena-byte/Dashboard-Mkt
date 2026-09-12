@@ -548,7 +548,47 @@ edite sin deploy y BIP lo reuse con gating por plan). Detalle abajo en la secci�
   self-serve usa user token que Nango refresca. Para un enterprise puntual se puede sumar después el
   camino system-user (provider `facebook-system-user`, API_KEY, token pegado a mano).
 - **PENDIENTE:** (1) prod: **App Review** de los 12 + **Business Verification** de ROQUÉ. (2) construir
-  el **dash de Meta** en BIP (hoy solo `/web` de GA4). (3) correr migs 0002+0003 en Supabase de BIP.
+  el **dash de Meta/Redes** en BIP (hoy solo `/web` de GA4). (3) correr migs 0002+0003 en Supabase de BIP.
+
+**🟡 DASH DE REDES SOCIALES en BIP (en curso, sep-2026) — replica el orgánico de Drean con data de ROQUÉ.**
+- **Blueprint relevado** del `/redes` de Drean (mapa completo de secciones/componentes/shapes/paleta —
+  ver abajo). Se replica **fiel** el ORGÁNICO: `IgOrganicSection` + `FbOrganicSection` (cards Mes/YTD con
+  semáforo, `IgAlcanceChart` barras real azul `#1e40af` + meta gris, `SocialEngagementChart` líneas
+  real+meta con `ENG_COLORS=["#1e40af","#60a5fa","#bfdbfe"]`, demografía `HorizontalBars`, top posts,
+  **comentarios FB+IG**) + los **MetaPanel** (planes `"Redes Sociales"`=IG y `"Facebook"`) +
+  `OrganicBuildupPanel`. Shapes objetivo: `IgOrganicSummary` / `FbOrganicSummary` (ver blueprint).
+- **FUERA por ahora:** el **Análisis Competitivo** (Drean lo arma con un scraper de cuentas de la
+  competencia → tabla `social_posts`/`social_followers`; BIP no lo tiene para ROQUÉ). Se suma si el user
+  quiere monitorear competidores. Insights tab (LLM) también más adelante.
+- **Fuente de datos:** en Drean el orgánico sale de tablas pre-synced por crons (`meta_posts`,
+  `meta_page_daily`, `meta_fb_audience_demographics`, `meta_fb_monthly_reach`). En **BIP v1 = LIVE desde
+  la Graph API** vía `getToken(tenant,"facebook")` (ROQUÉ es chico, rinde). A escala → sync por tenant.
+- **Selector de página/IG por tenant:** la conexión puede ver varias páginas (la de Daniel ve Drean +
+  las de los negocios que administra). El dash debe elegir la de ROQUÉ (nunca mostrar Drean). **NO
+  preguntar al user qué IG/página tiene ROQUÉ** — se DESCUBRE por API: `/api/diag/meta` ahora enumera
+  `owned_pages`+`client_pages` con su `instagram_business_account` **por cada negocio** (`/{biz}/owned_pages`),
+  porque `/me/accounts` solo trae las administradas directo (dio solo Drean). ROQUÉ = business
+  `109057158156439`.
+
+**🔵 CONECTOR TIKTOK (investigado a fondo sep-2026, FALTA que ROQUÉ arme la app).**
+- **TikTok ≠ Meta:** son DOS mundos separados (dos apps, dos flujos, dos tokens). **Ads** = Marketing
+  API → provider Nango **`tiktok-ads`** (token **SIN vencimiento**, sin refresh — por eso el template no
+  tiene `refresh_url`, es correcto; una auth cubre **varios advertiser_ids**). **Orgánico** = Accounts
+  API → provider **`tiktok-accounts`** (token de usuario que **SÍ vence**/refresca; ventana **60 días**;
+  "views" mezcla orgánico+pago) → **fase 2 opcional**. NO usar `tiktok-personal` ni Research API
+  (restringida a académicos).
+- **v1 = `tiktok-ads`** (es la tarjeta "TikTok Ads" del menú de BIP). Portal correcto:
+  **`business-api.tiktok.com/portal`** (NO `developers.tiktok.com`). Modelo de control = **igual que
+  Meta**: la app conectora vive en el **TikTok for Business de ROQUÉ**, Daniel admin; los clientes
+  autorizan por OAuth (Model 1, no hace falta agregar a nadie al Business Center).
+- **Pedido a ROQUÉ (enviado):** crear TikTok for Business + Business Center + advertiser (ARS); crear app
+  con **Marketing API** en el portal; redirect `https://nango.bip-go.com/oauth/callback`; permisos de
+  **lectura/Reporting** (sacar captura del selector antes de enviar — nombres exactos no se pudieron
+  transcribir, dominios TikTok bloqueados en el sandbox); pasar **App ID + Secret** (secret en privado);
+  agregar a Daniel como **Admin**; validar en **Sandbox**; enviar a **auditoría** (~días-2sem) para prod.
+- **Yo después:** configuro integración `tiktok-ads` en Nango (App ID+Secret, scopes vacíos — TikTok
+  maneja permisos en la app), y armo diag como el de Meta. **Gotcha:** confirmar ARS del ad account AR
+  (reporting devuelve en la moneda de la cuenta; si no, FX como DV360).
 
 **✅ NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
 - Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
