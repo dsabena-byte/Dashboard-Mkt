@@ -550,6 +550,18 @@ edite sin deploy y BIP lo reuse con gating por plan). Detalle abajo en la secci�
 - **PENDIENTE:** (1) prod: **App Review** de los 12 + **Business Verification** de ROQUÉ. (2) construir
   el **dash de Meta/Redes** en BIP (hoy solo `/web` de GA4). (3) correr migs 0002+0003 en Supabase de BIP.
 
+**🟢 SELECTOR DE CUENTA META + DASH REDES v1 (sep-2026).** Multi-cuenta resuelto: la conexión ve
+varias páginas (Daniel ve **Drean** `257587170945975` Y **ROQUÉ - Research Solutions** `109052558156899`
+/ IG `@roque.research.solutions` `17841427311265529`). NO se auto-elige: `lib/meta-assets.ts` descubre
+las cuentas, `/api/meta/assets` lista+guarda la elección en `connections.config` (**migración 0004,
+YA CORRIDA**), `MetaAssetPicker` (tarjeta Meta en Conexiones) deja elegir, `getSelectedMetaAsset()` da
+selección + page token a los dashboards. **Dash `/redes` v1 EN MAIN:** IG orgánico en vivo
+(`lib/meta-social.ts` `getIgOrganicLive`) → `IgOrganicSection` (cards Mes/YTD, `IgAlcanceChart`,
+`SocialEngagementChart`, demografía, top posts) — réplica visual de Drean. **PENDIENTE Redes:** FB
+orgánico (`getFbOrganicLive` + `FbOrganicSection`), sistema de **metas** (crear tabla genérica
+`dash_metas` por tenant/plan/kpi + MetaPanel + getMetaKpi → hoy cards salen "sin meta"), y
+`OrganicBuildupPanel`. Competitivo sigue fuera (sin scraper).
+
 **🟡 DASH DE REDES SOCIALES en BIP (en curso, sep-2026) — replica el orgánico de Drean con data de ROQUÉ.**
 - **Blueprint relevado** del `/redes` de Drean (mapa completo de secciones/componentes/shapes/paleta —
   ver abajo). Se replica **fiel** el ORGÁNICO: `IgOrganicSection` + `FbOrganicSection` (cards Mes/YTD con
