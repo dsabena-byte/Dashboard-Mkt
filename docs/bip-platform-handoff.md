@@ -591,7 +591,15 @@ posts en 2026 → 0 real, no bug; la actividad de ROQUÉ está en IG.) **PENDIEN
   porque `/me/accounts` solo trae las administradas directo (dio solo Drean). ROQUÉ = business
   `109057158156439`.
 
-**🟢 PLAN DE MEDIOS `/performance` (Meta ads) EN MAIN — "Impacto Campaña" réplica de Drean.** Genérico
+**🟢 PLAN DE MEDIOS `/performance` (Meta ads) EN MAIN — COMPLETO, 3 TABS (réplica de Drean).** Tabs:
+(1) **Impacto Campaña** (6 MetaKpiCards + 6 EvolCharts real-vs-meta + MetaPanel plan "Pauta Mkt");
+(2) **Eficiencia Medios** (KPIs del período CPM/CPC/CTR/Frecuencia/CPCV; tabla **por campaña** con semáforo
+best-in-class; tabla **por objetivo**; **calidad de video** scorecard ≥50%/VTR100/CPCV/desperdiciadas +
+**embudo** plays→p25→p50→p75→p100; **top creativos** con thumbnail); (3) **Insights** (motor de reglas
+in-code: mejor/peor campaña por CPM, mejor CTR, escalables VTR≥50%+bajo share, video desperdiciado).
+Motor `lib/meta-pauta.ts` `getPautaFull` (insights nivel campaña + objetivos + ads con thumbnail, todo con
+cursor `after`); UI `components/pauta/performance-tabs.tsx` (cliente, specs locales para no importar el
+server-only `metas-dash`). Fuente única Meta (se extiende a multi-medio cuando entren Google/TikTok). Genérico
 para cualquier cliente (no atado a ROQUÉ). Selector de **cuenta de anuncios** (`meta-assets`:
 `listMetaAdAccounts` + `getSelectedAdAccount`, guardado en `connections.config.meta.ad_account_id`; el
 `MetaAssetPicker` de Conexiones ahora tiene 2 selects: Redes=página/IG, Plan de Medios=cuenta de anuncios;
