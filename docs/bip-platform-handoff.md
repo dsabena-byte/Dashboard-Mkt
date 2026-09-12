@@ -622,6 +622,14 @@ MCC ni `login_customer_id`. **Nango:** provider `google-ads`, `developer_token` 
 **Pendiente:** el user hace los pasos 1-5; me pasa developer_token + client_id/secret → cargo en Vercel/Nango
 y construyo el motor de Google Ads en `/performance`. Doc completa la sacó el research (release-notes p/versión
 de API). **OJO:** la doc de Nango de google-ads describe el flujo VIEJO (API Center) — ignorarla en eso.
+- **ESTADO VALIDADO (sep-2026, mirando la consola real):** Ads API **habilitada** en BIP-GO ✓, consent+branding
+  ✓, scope `adwords` ✓, credencial OAuth **"BIP Nango"** existe (ya hay tráfico a la API). Nivel de acceso
+  estaba en **"Prueba"** (Test, solo cuentas de prueba) → **se solicitó "Explorador"** (nombre nuevo del nivel
+  que permite cuentas de producción; reemplaza a "Basic"), quedó **EN REVISIÓN** (aprueba en minutos con marca
+  verificada). Cuando pase a **Explorador**: copiar developer token de la MCC "BIP" (`206-880-2546`, bajo
+  dsabena — sirve igual, el acceso lo gobierna el proyecto BIP-GO) → cargar en Vercel/Nango + construir motor.
+  **OJO nombres nuevos de niveles:** Prueba (Test) → **Explorador** (producción) → superior. La MCC quedó bajo
+  dsabena (validado: bip.explore no tenía cuenta de Ads); no bloquea porque el acceso cuelga del proyecto Cloud.
 
 **🔵 CONECTOR TIKTOK (investigado a fondo sep-2026, FALTA que ROQUÉ arme la app).**
 - **TikTok ≠ Meta:** son DOS mundos separados (dos apps, dos flujos, dos tokens). **Ads** = Marketing
