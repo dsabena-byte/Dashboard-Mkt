@@ -500,37 +500,55 @@ alertas y la base de conocimiento comparten los mismos benchmarks. Próximo paso
 `lib/alertas/` + panel en `/performance` + el modelo `kb_content` (content-as-data, para que ROQUÉ
 edite sin deploy y BIP lo reuse con gating por plan). Detalle abajo en la sección de alertas.
 
-**🔵 CONECTOR META (sep-2026) — app creada + integración Nango lista, FALTA probar y App Review.**
+**🟢 CONECTOR META (sep-2026) — CONECTADO Y VALIDADO EN DEV con data real. Falta App Review para prod.**
 - **Cómo funciona Meta en un SaaS (investigado a fondo):** BIP tiene **UNA app propia** ("BIP
-  Connector") en un **Business Portfolio verificado**; cada cliente **autoriza esa app por OAuth**
-  (Facebook Login) — el cliente NO te agrega a su Business. Para leer cuentas de OTROS (producción)
-  hace falta **App Review** (cada permiso + screencast, 3-7 días) + **Business Verification** del
-  portfolio dueño de la app (papeles legales). En **modo Desarrollo** el admin de la app puede probar
-  con su propia cuenta sin review.
+  Connector") en un **Business Portfolio**; cada cliente **autoriza esa app por OAuth**
+  (Facebook Login for Business) — el cliente NO te agrega a su Business. Para leer cuentas de OTROS
+  (producción) hace falta **App Review** (cada permiso + screencast, 3-7 días) + **Business
+  Verification** del portfolio dueño de la app (papeles legales). En **modo Desarrollo** el admin de
+  la app prueba con su propia cuenta sin review.
 - **Business:** la app vive en el portfolio de **ROQUÉ Marketing Insights** (business_id `10905…156439`;
   ROQUÉ = la agencia que opera BIP), **NO** en Alladio/Drean (Drean es cliente). **OJO Meta exige una
   persona REAL como admin** (no se puede un FB ficticio de "bip.explore" → baneo): el admin es el FB
-  personal **`daniel_sabena@hotmail.com`** (Diego de ROQUÉ lo invitó como Admin del portfolio). La
-  identidad BIP vive en el nombre del business + la app, no en el admin personal.
-- **App:** **"BIP Connector"**, **App ID `1413533137383885`**, tipo **Negocios**, modo Desarrollo. Se
-  creó con la opción **"Otro"** (flujo clásico) para poder meter TODOS los productos/permisos en una
-  app (los "casos de uso" nuevos no se combinan). Producto **Facebook Login for Business** agregado,
-  redirect `https://nango.bip-go.com/oauth/callback` cargado. App Secret en Configuración→Básica (el
-  user lo guardó; NO commitear).
-- **Integración Nango (self-host) CREADA:** provider **Facebook** (OAuth2 · Marketing · Social; cubre
-  ads + Páginas + **Instagram** Business vía Graph API, no hace falta integración IG aparte), **Unique
-  Key = `facebook`** (matchea `provider:"facebook"` de `lib/connectors.ts`), Client ID = el App ID,
-  Secret + **9 scopes**: `ads_read, read_insights, pages_show_list, pages_read_engagement,
-  pages_read_user_content, instagram_basic, instagram_manage_insights, instagram_manage_comments,
-  business_management`. **SIN los de publicación** (`pages_manage_posts`, `instagram_content_publish`)
-  porque el user NO quiere el generador de contenido en BIP. (Scopes verificados contra el código real
-  de Drean: orgánico FB+IG + pauta + comentarios/UGC.)
-- **PENDIENTE:** (1) probar **BIP → Conexiones → Conectar Meta** con la cuenta del admin (modo
-  Desarrollo) → ¿"Conectado ✓"? **OJO posible fricción:** la app usa **"Facebook Login for Business"**
-  (variante nueva con `config_id`), que puede diferir del login clásico que espera el provider
-  `facebook` de Nango → si el consent falla, ajustar (login clásico o config). (2) Para producción:
-  **App Review** de los 9 permisos + **Business Verification** de ROQUÉ. (3) Construir el dash de Meta
-  en BIP (todavía solo está `/web` de GA4).
+  personal **`daniel_sabena@hotmail.com`**. La identidad BIP vive en el nombre del business + la app.
+- **App:** **"BIP Connector"**, **App ID `1413533137383885`**, tipo **Negocios**, modo Desarrollo.
+  Producto **Facebook Login for Business**, redirect `https://nango.bip-go.com/oauth/callback`. App
+  Secret en Configuración→Básica (el user lo guardó; NO commitear).
+- **CLAVE — FLB usa `config_id`, NO `scope` (esto trababa la conexión):** las apps tipo Negocios solo
+  ofrecen **Facebook Login for Business**, cuyo consent va por un **`config_id`** que *reemplaza* a los
+  scopes en la URL de OAuth. El provider `facebook` de Nango 0.71.6 manda `scope` clásico → si van
+  juntos, Meta los pelea. **Solución (implementada y probada):**
+  1. En Meta → FLB → **Configuraciones** → configuración **"BIP Data"**, variación **General**, token
+     **de usuario** (NO system-user: el system-user no es self-serve por OAuth; Nango solo lo soporta
+     pegando un token a mano). **`config_id = 1349490046995897`.** Los **12 permisos** viven en esta
+     config (editables después; solo variación y tipo de token quedan fijos).
+  2. **Nango:** integración `facebook` con **scopes VACÍOS** (los permisos vienen del config_id).
+  3. **Código BIP** (`lib/nango.ts` `createConnectSession`): inyecta
+     `integrations_config_defaults.facebook.authorization_params = { config_id }` desde la env
+     **`META_LOGIN_CONFIG_ID`** (seteada en Vercel). Verificado en el source de Nango que
+     `/connect/sessions` acepta ese campo.
+- **12 SCOPES (solo lectura + community mgmt + potencial futuro, SIN publicación):**
+  `ads_read, read_insights, pages_show_list, pages_read_engagement, pages_read_user_content,
+  instagram_basic, instagram_manage_insights, instagram_manage_comments, business_management,
+  pages_manage_engagement` (responder/ocultar comentarios FB), `pages_manage_metadata` (webhooks →
+  alertas real-time), `leads_retrieval` (leads de Lead Ads). **Excluidos** `pages_manage_posts` /
+  `instagram_content_publish` (publicación) y `ads_management` (write sobre pauta — se suma si algún
+  día BIP "opera" campañas). Los 9 primeros = 100% de lo que Drean lee; los 3 últimos = potencial que
+  Drean no hace. **OJO al elegir en Meta: `instagram_manage_comments` (comments), NO `..._contents`.**
+- **VALIDADO con `/api/diag/meta`** (endpoint nuevo en BIP: pega a la Graph con el token del tenant vía
+  Nango y reporta capacidad por capacidad). Resultado dev (cuenta admin Daniel Sabena): **12/12
+  concedidos, 0 declinados.** Data real traída: page_follows Drean 129.550, IG @dreanargentina 154.888
+  seg + reach 345.657, **texto de comentarios IG** ("NO LO RECOMIENDO", etc.), businesses OMD/
+  Alladio-Drean(verified)/ROQUÉ, ad accounts (incl. **Mabe act_1428795852368328** = la de Drean). O
+  sea en dev BIP ya ve la data real de Drean. **Lectura de texto de comentarios FB CONFIRMADA**
+  (`pages_read_user_content`): el diag trae el texto real de comentarios de posts de la Página Drean
+  (ej "Malísimo servicio técnico...") — **algo que Drean nunca cableó** (Drean solo leía conteo FB +
+  texto IG por Apify). BIP lee texto de comentarios FB **e** IG por Graph.
+- **Token = de usuario long-lived (60d).** Drean usa system-user (generado a mano, single-tenant); BIP
+  self-serve usa user token que Nango refresca. Para un enterprise puntual se puede sumar después el
+  camino system-user (provider `facebook-system-user`, API_KEY, token pegado a mano).
+- **PENDIENTE:** (1) prod: **App Review** de los 12 + **Business Verification** de ROQUÉ. (2) construir
+  el **dash de Meta** en BIP (hoy solo `/web` de GA4). (3) correr migs 0002+0003 en Supabase de BIP.
 
 **✅ NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
 - Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
