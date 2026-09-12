@@ -601,8 +601,14 @@ para cualquier cliente (no atado a ROQUÉ). Selector de **cuenta de anuncios** (
 igual que Drean: solo filas con p25+p50+p75>0), Clicks (Σclicks)**. Página: 6 `MetaKpiCard` + 6 `EvolChart`
 real-vs-meta (reusa los de `/web`) + `MetaPanel` plan **"Pauta Mkt"** (`dash_metas`, `PAUTA_KPIS` en
 `metas-dash.ts`). **VALIDADO por diag:** ROQUÉ **no corre pauta en Meta** (0 ad accounts); única cuenta con
-gasto = Mabe/Drean (151M ARS/360d) → se valida el pipeline contra Mabe en dev, ROQUÉ sale vacío. **FALTA
-Google Ads** (la otra fuente de pauta — ver abajo).
+gasto = Mabe/Drean (151M ARS/360d) → se valida el pipeline contra Mabe en dev, ROQUÉ sale vacío.
+**VALIDADO con data real:** cuenta **"Mabe Argentina"** (`act_1428795852368328`) → el dash muestra
+inversión/alcance/impresiones/clicks/VTR OK. OJO "MABE DREAN" (`act_217161613138470`) tiene gasto 0 → vacío;
+la que tiene pauta es "Mabe Argentina". **GOTCHA PAGINACIÓN (resuelto):** `paging.next` venía con versión
+distinta (v26) a la del request (v22) → `next.replace(GRAPH,"")` fallaba y armaba `v22.0https://...` (error
+"Object with ID 'v22.0https:'", rompía Redes con cuentas grandes tipo Drean). Fix: paginar con
+`paging.cursors.after` en IG media, FB posts y pauta insights. `/performance` bajado a `min:"insight"` para
+que aparezca en el menú. **FALTA Google Ads** (la otra fuente de pauta — ver abajo).
 
 **🟡 GOOGLE ADS API — el acceso CAMBIÓ (sep-2026), clave para que Plan de Medios tenga data.** El developer
 token y el "API Center" de la MCC **ya NO son el camino** (el 9-10/sep/2026 Google movió los niveles de
