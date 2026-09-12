@@ -599,7 +599,16 @@ best-in-class; tabla **por objetivo**; **calidad de video** scorecard ≥50%/VTR
 in-code: mejor/peor campaña por CPM, mejor CTR, escalables VTR≥50%+bajo share, video desperdiciado).
 Motor `lib/meta-pauta.ts` `getPautaFull` (insights nivel campaña + objetivos + ads con thumbnail, todo con
 cursor `after`); UI `components/pauta/performance-tabs.tsx` (cliente, specs locales para no importar el
-server-only `metas-dash`). Fuente única Meta (se extiende a multi-medio cuando entren Google/TikTok). Genérico
+server-only `metas-dash`). Fuente única Meta (se extiende a multi-medio cuando entren Google/TikTok). **Enriquecido (sep-2026):**
+Impacto Campaña ahora también tiene **Distribución de inversión** (donuts por objetivo + por campaña),
+**Desempeño mes-vs-mes** (cards con Δ%) y **Embudo de conversión** (Impresiones→Alcance→Reproducciones→
+25/50/75/100→Clicks). Eficiencia: **piezas ricas** (badge objetivo + activa, grilla Inv/Impr/Alc/Frec/
+Clicks/CTR/CPM/Views/VTR + interacción reacciones/comentarios/compartidos/guardados, link a permalink,
+paginación) — el motor trae `actions`+`effective_status`+`campaign{objective}`. **TIPOGRAFÍA: todo BIP usa
+Manrope** (self-hosted `/fonts/Manrope-Variable.ttf`, idéntica a Drean; Poppins solo el logo). Nav: se
+agregó **"Mkt de Influencia"** (soon) en Planes de Acción bajo Web/Ecommerce. **PENDIENTE fino:** pulir
+espaciados exactos vs Drean; secciones "por medio" (Aporte al funnel, Mix ON/OFF) recién aplican con
+multi-medio; selector de categoría (Meta no tiene la taxonomía de Drean). Genérico
 para cualquier cliente (no atado a ROQUÉ). Selector de **cuenta de anuncios** (`meta-assets`:
 `listMetaAdAccounts` + `getSelectedAdAccount`, guardado en `connections.config.meta.ad_account_id`; el
 `MetaAssetPicker` de Conexiones ahora tiene 2 selects: Redes=página/IG, Plan de Medios=cuenta de anuncios;
