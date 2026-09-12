@@ -591,6 +591,38 @@ posts en 2026 → 0 real, no bug; la actividad de ROQUÉ está en IG.) **PENDIEN
   porque `/me/accounts` solo trae las administradas directo (dio solo Drean). ROQUÉ = business
   `109057158156439`.
 
+**🟢 PLAN DE MEDIOS `/performance` (Meta ads) EN MAIN — "Impacto Campaña" réplica de Drean.** Genérico
+para cualquier cliente (no atado a ROQUÉ). Selector de **cuenta de anuncios** (`meta-assets`:
+`listMetaAdAccounts` + `getSelectedAdAccount`, guardado en `connections.config.meta.ad_account_id`; el
+`MetaAssetPicker` de Conexiones ahora tiene 2 selects: Redes=página/IG, Plan de Medios=cuenta de anuncios;
+`setMetaSelection` hace **merge** para que convivan). Motor `lib/meta-pauta.ts` `getPautaLive`: insights
+**nivel ad, `time_increment=monthly`** de la cuenta elegida → 6 KPIs = **Inversión (Σspend), Alcance único
+(Σreach), Frecuencia (Σimpr/Σalc), Impresiones (Σimpr), VTR ≥50% (Σvideo_p50/Σimpr de piezas de video ×100,
+igual que Drean: solo filas con p25+p50+p75>0), Clicks (Σclicks)**. Página: 6 `MetaKpiCard` + 6 `EvolChart`
+real-vs-meta (reusa los de `/web`) + `MetaPanel` plan **"Pauta Mkt"** (`dash_metas`, `PAUTA_KPIS` en
+`metas-dash.ts`). **VALIDADO por diag:** ROQUÉ **no corre pauta en Meta** (0 ad accounts); única cuenta con
+gasto = Mabe/Drean (151M ARS/360d) → se valida el pipeline contra Mabe en dev, ROQUÉ sale vacío. **FALTA
+Google Ads** (la otra fuente de pauta — ver abajo).
+
+**🟡 GOOGLE ADS API — el acceso CAMBIÓ (sep-2026), clave para que Plan de Medios tenga data.** El developer
+token y el "API Center" de la MCC **ya NO son el camino** (el 9-10/sep/2026 Google movió los niveles de
+acceso al **PROYECTO de Google Cloud**, no al token; el API Center quedó solo para tokens legacy de app
+conversion → por eso el cartel rojo). **Proceso correcto (todo bajo `bip.explore`):** (1) MCC de BIP en
+ads.google.com (recomendado, sin gastar; da `login_customer_id`). (2) **UN proyecto de Google Cloud** (reusar
+**BIP-GO** que ya existe para GA4) → **habilitar "Google Ads API"** en API Library. (3) **OAuth consent screen
++ branding + "Verify branding"** (obligatorio ahora, acelera la aprobación; authorized domain = bip-go.com).
+(4) OAuth client con scope **`https://www.googleapis.com/auth/adwords`** (se puede sumar al mismo client de
+GA4, pero el nivel de acceso cuelga del **proyecto** → usar UN proyecto con GA4+Ads+Basic). (5) **Solicitar
+Basic Access en la página "Google Ads API Overview" de Cloud Console** (NO en el API Center) → con brand
+verification suele aprobarse en **minutos**. **Niveles:** Test (solo cuentas de prueba) → **Basic** (cuentas
+reales, 15k ops/día — el que necesitamos) → Standard (ilimitado, solo si escala). **Leer cuenta de un cliente
+= Camino A (OAuth directo):** el cliente autoriza con su Google, se lee su `customer_id`, **sin** linkear a la
+MCC ni `login_customer_id`. **Nango:** provider `google-ads`, `developer_token` se inyecta del backend (campo
+"automated"), `login_customer_id` opcional. El developer token todavía se manda pero está de salida.
+**Pendiente:** el user hace los pasos 1-5; me pasa developer_token + client_id/secret → cargo en Vercel/Nango
+y construyo el motor de Google Ads en `/performance`. Doc completa la sacó el research (release-notes p/versión
+de API). **OJO:** la doc de Nango de google-ads describe el flujo VIEJO (API Center) — ignorarla en eso.
+
 **🔵 CONECTOR TIKTOK (investigado a fondo sep-2026, FALTA que ROQUÉ arme la app).**
 - **TikTok ≠ Meta:** son DOS mundos separados (dos apps, dos flujos, dos tokens). **Ads** = Marketing
   API → provider Nango **`tiktok-ads`** (token **SIN vencimiento**, sin refresh — por eso el template no
