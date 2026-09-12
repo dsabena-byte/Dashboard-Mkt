@@ -605,9 +605,16 @@ Impacto Campaña ahora también tiene **Distribución de inversión** (donuts po
 25/50/75/100→Clicks). Eficiencia: **piezas ricas** (badge objetivo + activa, grilla Inv/Impr/Alc/Frec/
 Clicks/CTR/CPM/Views/VTR + interacción reacciones/comentarios/compartidos/guardados, link a permalink,
 paginación) — el motor trae `actions`+`effective_status`+`campaign{objective}`. **TIPOGRAFÍA: todo BIP usa
-Manrope** (self-hosted `/fonts/Manrope-Variable.ttf`, idéntica a Drean; Poppins solo el logo). Nav: se
-agregó **"Mkt de Influencia"** (soon) en Planes de Acción bajo Web/Ecommerce. **PENDIENTE fino:** pulir
-espaciados exactos vs Drean; secciones "por medio" (Aporte al funnel, Mix ON/OFF) recién aplican con
+Manrope** (self-hosted `/fonts/Manrope-Variable.ttf`, idéntica a Drean; Poppins solo el logo). **Fondo
+BLANCO** (`--bg:#fff`). Nav: se agregó **"Mkt de Influencia"** (soon) en Planes de Acción bajo Web/Ecommerce.
+**Refinamientos visuales (sep-2026, réplica fiel de Drean):** (a) **gráficos de evolución** = cada KPI en su
+**propio sub-card bordeado**, grid **2 columnas fijas** (`repeat(2,minmax(0,1fr))`), título `KPI — REAL VS
+META`; (b) **etiquetas de meses SIN año** (solo `Ene…Dic`) + `interval={0}` en el `XAxis` → los 12 meses no
+se solapan (antes decía "Ene 26Feb 26…" pegado); (c) **Embudo de conversión CENTRADO y compacto**
+(`margin:0 auto`, `maxWidth:560`, sin el `minWidth:300` que rompía el taper; padding/fuente reducidos) → las
+barras decrecen desde el centro y parece un embudo real; (d) **filterBar (selector Objetivo) en AMBOS tabs**
+(Impacto tras el MetaPanel, Eficiencia arriba), tabs resaltados con subrayado ámbar como Drean. **PENDIENTE
+fino:** secciones "por medio" (Aporte al funnel, Mix ON/OFF) recién aplican con
 multi-medio; selector de categoría (Meta no tiene la taxonomía de Drean). Genérico
 para cualquier cliente (no atado a ROQUÉ). Selector de **cuenta de anuncios** (`meta-assets`:
 `listMetaAdAccounts` + `getSelectedAdAccount`, guardado en `connections.config.meta.ad_account_id`; el
