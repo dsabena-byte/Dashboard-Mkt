@@ -563,7 +563,12 @@ CORRIDA**, tenant/plan/kpi/anio) + `lib/metas-dash.ts` + API `/api/dash-metas` +
 (props `endpoint`/`titulo`/`plan`, backward-compat con `/web`); planes **"Redes Sociales"** (IG) y
 **"Facebook"** (FB); alineación por `mesIdx`. **GOTCHA IG resuelto:** NO pedir `shares` en insights de
 media feed (rompe la llamada → alcance 0); fallback a `reach`. **FB:** reach por post
-(`post_impressions_unique`) + filtro `isPaidOutlier`. **PENDIENTE Redes (menor):** `OrganicBuildupPanel`
+(`post_impressions_unique`) + filtro `isPaidOutlier`. **GOTCHA FB page token (#10):** leer una Página de FB
+necesita un **page access token**; `getSelectedMetaAsset` lo saca con `/{pageId}?fields=access_token`, que
+SOLO funciona si el usuario tiene un **rol/tarea sobre la Página** (no alcanza ser admin del *negocio*).
+Con ROQUÉ dio #10 hasta asignar a Daniel a la Página en Business Settings → Cuentas → Páginas → control
+total. Con clientes reales que autorizan su propia página no pasa. (ROQUÉ FB validado: 15 seguidores, sin
+posts en 2026 → 0 real, no bug; la actividad de ROQUÉ está en IG.) **PENDIENTE Redes (menor):** `OrganicBuildupPanel`
 (buildup IG+FB por pilar/categoría — requiere clasificar posts). Competitivo fuera (sin scraper).
 
 **🟡 DASH DE REDES SOCIALES en BIP (en curso, sep-2026) — replica el orgánico de Drean con data de ROQUÉ.**
