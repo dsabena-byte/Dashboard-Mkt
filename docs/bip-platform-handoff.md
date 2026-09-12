@@ -336,6 +336,359 @@ verificación con las justificaciones de los 3 scopes + el video demo (materiale
 `docs/verificacion-google.md`). Google revisa días/semanas; recién ahí se saca del todo el cartel
 "app no verificada" y se pasa de 100 usuarios. Mientras, la app funciona en producción con el aviso.
 
+**✅✅ RESUELTO (sep-2026): la conexión OAuth funciona end-to-end en el self-host.** Se probó
+"Conectar Google" en bip-platform → abrió el Connect UI → consent de Google (cuenta + 2FA) →
+**Conectado ✓**. Antes moría en "Your session has expired". El fix que funcionó (detalle abajo):
+**se expuso el Connect UI (puerto 3009) con un 2º dominio + se corrigieron `NANGO_PUBLIC_CONNECT_URL`
+y el `openConnectUI(baseURL,apiURL)` + se subió `@nangohq/frontend` a 0.71.6.** Con esto queda
+DESBLOQUEADO grabar el video demo → enviar la verificación de scopes.
+
+**CONFIG QUE FUNCIONA (no re-romper):**
+- **Railway:** el servicio `nango-server` expone DOS dominios generados (gratis, no cuentan al límite
+  de custom domains del plan): `nango-server-production-ce30.up.railway.app` → **port 3003** (API +
+  dashboard) y `nango-server-production-52d6.up.railway.app` → **port 3009** (Connect UI SPA). El
+  custom domain `nango.bip-go.com` sigue en 3003 (es el que ve Google en el callback). No hizo falta
+  `connect.bip-go.com` (Google NO mira el dominio del Connect UI, solo el callback del 3003).
+- **Railway env:** `NANGO_PUBLIC_CONNECT_URL=https://nango-server-production-52d6.up.railway.app`
+  (la SPA/3009 — ESTE era el error: apuntaba al 3003); `NANGO_SERVER_URL`/`NANGO_PUBLIC_SERVER_URL`=
+  `https://nango.bip-go.com`; `FLAG_SERVE_CONNECT_UI=true`; `NANGO_CONNECT_UI_PORT=3009`.
+- **Vercel (bip-platform):** `NEXT_PUBLIC_NANGO_API_URL=https://nango.bip-go.com` +
+  `NEXT_PUBLIC_NANGO_CONNECT_URL=https://nango-server-production-52d6.up.railway.app`. (La vieja
+  `NEXT_PUBLIC_NANGO_CONNECT_HOST` quedó sin uso.)
+- **Código (`components/connect-button.tsx`):** `new Nango({ host: apiURL })` +
+  `openConnectUI({ baseURL, apiURL, onEvent })` con `baseURL`=Connect URL y `apiURL`=API URL leídas
+  de esas env `NEXT_PUBLIC_*`. El evento se tipa `ConnectUIEvent` (import de `@nangohq/frontend`) y
+  en `event.type==="connect"` el payload es `{ providerConfigKey, connectionId }`.
+- **`@nangohq/frontend` = `0.71.6`** (matchea el server; la 0.48.0 daba skew + tipos viejos).
+- **GOTCHA build Vercel:** Vercel corre `npm ci` → si cambiás `package.json` sin regenerar el
+  `package-lock.json`, el build falla ("can only install with an existing package-lock.json" o
+  mismatch). Solución usada: se **borró `package-lock.json`** del repo → Vercel cae a `npm install` y
+  lo regenera. (Y OJO: editar `package.json` a mano en GitHub web rompió el JSON una vez —
+  "Expected ',' at position 256"; validar el JSON.) El repo de la app es **`bip-explore/bip-platform`**
+  (branch `main`, conectado a Vercel; NO puedo pushear ahí desde esta sesión → los cambios los aplica
+  el user por GitHub web y Vercel deploya solo).
+
+**Root cause CONFIRMADO** (research contra el source real de Nango v0.71.6) — detalle abajo.
+
+**Síntomas medidos (validado, no asumido):**
+1. **Desde la app (bip-platform, `@nangohq/frontend` v0.48.0):** `new Nango({ host:
+   'https://nango.bip-go.com' })` → `openConnectUI({ onEvent })` → `connect.setSessionToken(token)`.
+   El modal **ABRE** pero muestra **"Your session has expired, please refresh the modal."** — o sea
+   el session token se crea server-side pero el Connect UI lo rechaza/no lo consume.
+2. **Desde el dashboard de Nango ("Add test connection → Google → Authorize"):** **no abre el popup
+   de consent de Google**, el browser vuelve a `/connections/create` y **no se crea conexión**. Los
+   logs del contenedor (Railway Deploy Logs) muestran operaciones `create_connection` con estado
+   **"running", `endedAt: null`** → la connect-session se crea pero el OAuth nunca vuelve al callback.
+3. Popups permitidos. Auth callback URL correcto (`https://nango.bip-go.com/oauth/callback`).
+4. Los **Logs UI de Nango** dicen "Logs not configured" → Elasticsearch está apagado (no hay traza
+   detallada; por eso se lee de los Deploy Logs de Railway).
+
+**✅ ROOT CAUSE CONFIRMADO (research contra el source real de Nango v0.71.6):** en v0.71.x el
+**Connect UI es una SPA estática que se sirve en un PUERTO APARTE (3009)**, NO en el puerto de la API
+(3003). En Railway sólo expusimos el 3003 (un dominio → un puerto), así que **la SPA del Connect UI
+es inalcanzable** → de ahí salen los dos síntomas. Evidencia en el repo (tag `v0.71.6`):
+- `packages/server/entrypoint.sh`: con `FLAG_SERVE_CONNECT_UI=true` arranca **dos procesos** — la API
+  (`server.js`) **y** un `serve -s packages/connect-ui/dist -p ${NANGO_CONNECT_UI_PORT:-3009}`.
+- `packages/utils/.../detection.ts`: `connectUrl = NANGO_PUBLIC_CONNECT_URL || http://localhost:3009`
+  (la SPA) es **distinto** de `baseUrl = NANGO_SERVER_URL` (la API). Son **orígenes diferentes por
+  diseño.** Nosotros habíamos puesto `NANGO_PUBLIC_CONNECT_URL = nango.bip-go.com` (la API, 3003) →
+  mal.
+- El cartel **"Your session has expired"** se renderiza literal en un **HTTP 401**
+  (`packages/connect-ui/.../ErrorFallback.tsx`): la SPA cargó pero pegó contra la **API equivocada**
+  (Nango Cloud) que no conoce el session token del self-host.
+- `packages/frontend/lib/connectUI.ts`: `openConnectUI` **NO usa** el `host` del `new Nango({host})`;
+  tiene sus propios defaults a **Cloud** (`baseURL=https://connect.nango.dev`,
+  `apiURL=https://api.nango.dev`). Hay que pasar `baseURL` + `apiURL` explícitos (así lo hace el
+  propio dashboard de Nango).
+
+**FIX (lista mínima para retomar):**
+1. **Railway:** en el servicio `nango-server` → Networking → **agregar un 2º dominio
+   `connect.bip-go.com` con target port `3009`** (dejar `nango.bip-go.com` → 3003). DNS: CNAME
+   `connect` → target de Railway, en **Netlify**. Esperar SSL.
+2. **Env vars (Railway):** `NANGO_PUBLIC_CONNECT_URL=https://connect.bip-go.com` (era el error);
+   dejar `NANGO_SERVER_URL` y `NANGO_PUBLIC_SERVER_URL` = `https://nango.bip-go.com`; mantener
+   `FLAG_SERVE_CONNECT_UI=true` y `NANGO_CONNECT_UI_PORT=3009`. Redeploy.
+3. **App (bip-platform, `components/connect-button.tsx`):** llamar
+   `nango.openConnectUI({ baseURL: 'https://connect.bip-go.com', apiURL: 'https://nango.bip-go.com',
+   onEvent })` (nombres exactos `baseURL`/`apiURL`; **no** existe `connectHost`). Y **alinear la
+   versión** de `@nangohq/frontend` (estamos en 0.48.0 contra server 0.71.6) → subir a ~0.71.x para
+   evitar skew del handshake.
+4. **Redirect en Google Cloud** = la API: `https://nango.bip-go.com/oauth/callback` (ya está bien; es
+   el 3003, no el dominio del connect).
+
+**WORKAROUND YA (para desbloquear el video demo sin tocar nada):** en el dashboard de Nango, el link
+**"Use deprecated flow"** (`/connections/create-legacy`) hace el OAuth **directo** por el 3003 (abre
+el popup de Google, vuelve al `/oauth/callback`, crea la conexión) — **no usa la SPA del 3009**. Sirve
+para probar que el Client ID + callback están OK y para grabar el video mientras se expone el 3009.
+
+**Config actual del self-host (Railway `ravishing-flow`, servicio `nango-server`
+`nangohq/nango-server:hosted-0.71.6`, dominio `nango.bip-go.com` → port 3003):** `NANGO_SERVER_URL`,
+`NANGO_PUBLIC_SERVER_URL` = `https://nango.bip-go.com`; **`NANGO_PUBLIC_CONNECT_URL` estaba mal en
+`nango.bip-go.com` → debe ser `https://connect.bip-go.com` (3009)**; `FLAG_SERVE_CONNECT_UI=true`;
+`SERVER_PORT=3003`; `CACHE_REDIS_ENABLED=false`; `CACHE_LOCAL_ENABLED=true`; `FLAG_AUTH_ENABLED=true`
+(basic auth del dashboard); Postgres+Redis attach; `NANGO_ENCRYPTION_KEY` (inmutable, en Railway).
+Integración Google cargada (Client ID `279230041069-...` + Secret + 3 scopes), redirect en Google
+Cloud = `nango.bip-go.com/oauth/callback`.
+
+**Estado de la verificación de scopes (form ya cargado, falta el video):** las 3 justificaciones
+están pegadas en el Centro de verificación (957/1000 chars) + "Información adicional". Falta grabar
+el **video demo** del flujo OAuth vivo → por eso resolver esta conexión es el camino crítico.
+
+**✅✅ HITO (sep-2026): PUSH DIRECTO AL REPO — se terminó el upload manual.** El repo de la
+plataforma **se transfirió de `bip-explore` a `dsabena-byte`** (GitHub → Settings → Danger Zone →
+Transfer ownership → aceptar como dsabena). Motivo: esta sesión de Claude Code está anclada a
+`dsabena-byte` y `add_repo` **solo acepta repos del mismo dueño** (los cross-tier están bloqueados);
+con el repo bajo dsabena-byte, `add_repo(dsabena-byte/bip-platform, push)` funciona y **Claude
+clona/edita/pushea directo**. Se descartaron: sesión nueva anclada a bip-explore (riesgo de pisar el
+conector de GitHub de dsabena y **romper Drean** — ya pasó 2 veces al tocar esa autorización), y 2º
+plan de Claude (costo). **Transferir NO toca el conector de Claude → Drean intacto.** El app de
+GitHub de Claude en dsabena está en "All repositories" (tras la transferencia, `add_repo` entró sin
+tocar nada; hubo ~1 min de propagación).
+- **GOTCHA Vercel (Hobby):** el proyecto Vercel `bip-platform` es de la cuenta **BIP Hobby
+  (bip.explore)**. El Hobby plan **bloquea deploys cuyo commit author no sea miembro de la cuenta**
+  ("Deployment Blocked: commit author did not have contributing access… Hobby does not support
+  collaboration for private repos"). Por eso los commits de este repo se firman como **`bip-explore
+  <bip.explore@gmail.com>`** (ya quedó en el `git config` local del clon `/home/user/bip-platform`).
+  Si algún commit sale firmado por dsabena → Blocked; se arregla `git commit --amend --reset-author`
+  con la config bip-explore + force-push. NO hace falta pagar Pro.
+- **Tras la transferencia, Vercel siguió deployando** desde `dsabena-byte/bip-platform` (el redirect
+  de GitHub lo mantuvo; no hizo falta reconectar el Git en Vercel). Env vars/dominios intactos.
+- **Identidad BIP intacta:** el dueño del repo en GitHub NO es parte de la verificación de Google/Meta
+  (eso usa `bip-go.com` + `bip.explore`). La separación real no cambió.
+- **Flujo actual:** Claude edita en `/home/user/bip-platform`, `npm ci && npm run build`, commit
+  (autor bip-explore) + `git push origin main` → Vercel deploya. Lo único que queda del lado del user:
+  correr migraciones SQL en el Supabase de bip-platform (no hay conexión DDL desde la sesión).
+
+**Features nuevas (sep-2026, ya en main):** (1) **`/web` cableado a GA4 real** (`getToken` → Admin
+API descubre propiedades + selector + Data API runReport: usuarios/sesiones/transacciones/ingresos +
+serie diaria + canales). Requiere habilitar **Analytics Admin API + Data API** en el proyecto Google
+Cloud (`279230041069`). (2) **Menú:** todo con `soon:true` (candado) menos Web/Ecommerce, para probar;
+Trade Mkt como ítem único; viñetas de colores estilo Drean, logo BIP blanco, sidebar navy/cyan. (3)
+**Conexiones rediseñada:** Plataformas (Google/Meta/TikTok, OAuth) / Tus archivos (subir Excel/CSV +
+SharePoint) / Coordinadas (DV360), con íconos, **sin GfK**. (4) **Subir Excel/CSV self-serve:**
+`components/file-upload.tsx` → `/api/datasets` (parseo SheetJS `xlsx@0.18.5`) → tabla `tenant_datasets`
+(migración 0002, `tenant_id **text**` porque `tenants.id` es text, no uuid). **Pendiente self-serve:**
+SharePoint/Excel Online por Microsoft OAuth (registrar app en Azure + integración Microsoft en Nango,
+después reusa el ConnectButton). Nango soporta 400+ integraciones (LinkedIn/Bing/X/Pinterest/Snapchat/
+Amazon Ads, Shopify, HubSpot/Salesforce, Microsoft/SharePoint, etc.).
+
+**✅ `/web` RÉPLICA FIEL DE DREAN (sep-2026, en main) — el dash de referencia.** El `/web` de BIP
+ahora espeja el de Drean (`apps/web/src/app/web/page.tsx`) sobre **GA4**, probado con la GA4 real de
+**ROQUÉ** (`www.roque-in.com`; se le dio Viewer a `bip.explore` en Property Access Management). Tiene:
+- **6 MetaKpiCards** con headline + filas **Mes / Acum.YTD** + meta + semáforo + barra (en gris "sin
+  meta" hasta cargar objetivos): Tráfico, Duración media de sesión, Tasa de conversión, Transacciones,
+  Ingresos, Valor medio de compra (ROAS no se puede en GA4 solo → AOV). + 5 KpiCards secundarios.
+- **6 gráficos real-vs-meta** (Recharts, meta gris + real azul #1e40af, barra/línea por KPI).
+- **MetaPanel** = Configuración de objetivos por KPI (12 meses + dirección/umbrales), guarda por
+  cliente en `web_metas` (**migración 0003**, `tenant_id text`). API `/api/web-metas`.
+- Performance/Tendencia por categoría, Tendencia de usuarios, Top 10 productos, Audiencia
+  (dispositivos + provincias vía dim `region`), Detalle + Evolución por canal. Paletas de Drean.
+- **Selector de período abajo** (no en header): dropdown "Mes" con **checkboxes multi-selección** +
+  "Limpiar selección" + rango de fechas. Meses en orden cronológico ascendente.
+- **Tipografía = fuente del sistema** (como Drean, más limpia); Poppins queda SOLO para el logo BIP.
+- Componentes en `components/web/*` + `lib/web-viz.ts` + `lib/metas-web.ts`.
+- **GOTCHA Recharts:** 2.x NO renderiza series con React 19/Next 16 (dibuja ejes, no barras/líneas) →
+  **subido a Recharts v3** (compat React 19); ajustar formatters a los tipos nuevos (`(v)=>fn(Number(v))`).
+- **⚠️ PENDIENTE del user en Supabase de bip-platform:** correr **migración 0002** (`tenant_datasets`,
+  ya) y **0003** (`web_metas`) en el SQL Editor. Sin 0003 el MetaPanel no guarda.
+
+**🔨 EN CURSO (sep-2026) — Alertas + Base de conocimiento (empezar por Plan de Medios en DREAN, luego
+replicar a BIP):** ver **`docs/alertas-plan-medios.md`** (spec completo, best-practice format-aware,
+benchmarks anclados en data real). Mockup interactivo aprobado:
+`https://claude.ai/code/artifact/12fe8b5e-7dca-4924-af48-b3fff8e67b93`. **Un solo cerebro:** las
+alertas y la base de conocimiento comparten los mismos benchmarks. Próximo paso: construir el motor
+`lib/alertas/` + panel en `/performance` + el modelo `kb_content` (content-as-data, para que ROQUÉ
+edite sin deploy y BIP lo reuse con gating por plan). Detalle abajo en la sección de alertas.
+
+**🟢 CONECTOR META (sep-2026) — CONECTADO Y VALIDADO EN DEV con data real. Falta App Review para prod.**
+- **Cómo funciona Meta en un SaaS (investigado a fondo):** BIP tiene **UNA app propia** ("BIP
+  Connector") en un **Business Portfolio**; cada cliente **autoriza esa app por OAuth**
+  (Facebook Login for Business) — el cliente NO te agrega a su Business. Para leer cuentas de OTROS
+  (producción) hace falta **App Review** (cada permiso + screencast, 3-7 días) + **Business
+  Verification** del portfolio dueño de la app (papeles legales). En **modo Desarrollo** el admin de
+  la app prueba con su propia cuenta sin review.
+- **Business:** la app vive en el portfolio de **ROQUÉ Marketing Insights** (business_id `10905…156439`;
+  ROQUÉ = la agencia que opera BIP), **NO** en Alladio/Drean (Drean es cliente). **OJO Meta exige una
+  persona REAL como admin** (no se puede un FB ficticio de "bip.explore" → baneo): el admin es el FB
+  personal **`daniel_sabena@hotmail.com`**. La identidad BIP vive en el nombre del business + la app.
+- **App:** **"BIP Connector"**, **App ID `1413533137383885`**, tipo **Negocios**, modo Desarrollo.
+  Producto **Facebook Login for Business**, redirect `https://nango.bip-go.com/oauth/callback`. App
+  Secret en Configuración→Básica (el user lo guardó; NO commitear).
+- **CLAVE — FLB usa `config_id`, NO `scope` (esto trababa la conexión):** las apps tipo Negocios solo
+  ofrecen **Facebook Login for Business**, cuyo consent va por un **`config_id`** que *reemplaza* a los
+  scopes en la URL de OAuth. El provider `facebook` de Nango 0.71.6 manda `scope` clásico → si van
+  juntos, Meta los pelea. **Solución (implementada y probada):**
+  1. En Meta → FLB → **Configuraciones** → configuración **"BIP Data"**, variación **General**, token
+     **de usuario** (NO system-user: el system-user no es self-serve por OAuth; Nango solo lo soporta
+     pegando un token a mano). **`config_id = 1349490046995897`.** Los **12 permisos** viven en esta
+     config (editables después; solo variación y tipo de token quedan fijos).
+  2. **Nango:** integración `facebook` con **scopes VACÍOS** (los permisos vienen del config_id).
+  3. **Código BIP** (`lib/nango.ts` `createConnectSession`): inyecta
+     `integrations_config_defaults.facebook.authorization_params = { config_id }` desde la env
+     **`META_LOGIN_CONFIG_ID`** (seteada en Vercel). Verificado en el source de Nango que
+     `/connect/sessions` acepta ese campo.
+- **12 SCOPES (solo lectura + community mgmt + potencial futuro, SIN publicación):**
+  `ads_read, read_insights, pages_show_list, pages_read_engagement, pages_read_user_content,
+  instagram_basic, instagram_manage_insights, instagram_manage_comments, business_management,
+  pages_manage_engagement` (responder/ocultar comentarios FB), `pages_manage_metadata` (webhooks →
+  alertas real-time), `leads_retrieval` (leads de Lead Ads). **Excluidos** `pages_manage_posts` /
+  `instagram_content_publish` (publicación) y `ads_management` (write sobre pauta — se suma si algún
+  día BIP "opera" campañas). Los 9 primeros = 100% de lo que Drean lee; los 3 últimos = potencial que
+  Drean no hace. **OJO al elegir en Meta: `instagram_manage_comments` (comments), NO `..._contents`.**
+- **VALIDADO con `/api/diag/meta`** (endpoint nuevo en BIP: pega a la Graph con el token del tenant vía
+  Nango y reporta capacidad por capacidad). Resultado dev (cuenta admin Daniel Sabena): **12/12
+  concedidos, 0 declinados.** Data real traída: page_follows Drean 129.550, IG @dreanargentina 154.888
+  seg + reach 345.657, **texto de comentarios IG** ("NO LO RECOMIENDO", etc.), businesses OMD/
+  Alladio-Drean(verified)/ROQUÉ, ad accounts (incl. **Mabe act_1428795852368328** = la de Drean). O
+  sea en dev BIP ya ve la data real de Drean. **Lectura de texto de comentarios FB CONFIRMADA**
+  (`pages_read_user_content`): el diag trae el texto real de comentarios de posts de la Página Drean
+  (ej "Malísimo servicio técnico...") — **algo que Drean nunca cableó** (Drean solo leía conteo FB +
+  texto IG por Apify). BIP lee texto de comentarios FB **e** IG por Graph.
+- **Token = de usuario long-lived (60d).** Drean usa system-user (generado a mano, single-tenant); BIP
+  self-serve usa user token que Nango refresca. Para un enterprise puntual se puede sumar después el
+  camino system-user (provider `facebook-system-user`, API_KEY, token pegado a mano).
+- **PENDIENTE:** (1) prod: **App Review** de los 12 + **Business Verification** de ROQUÉ. (2) construir
+  el **dash de Meta/Redes** en BIP (hoy solo `/web` de GA4). (3) correr migs 0002+0003 en Supabase de BIP.
+
+**🟢 SELECTOR DE CUENTA META + DASH REDES v1 (sep-2026).** Multi-cuenta resuelto: la conexión ve
+varias páginas (Daniel ve **Drean** `257587170945975` Y **ROQUÉ - Research Solutions** `109052558156899`
+/ IG `@roque.research.solutions` `17841427311265529`). NO se auto-elige: `lib/meta-assets.ts` descubre
+las cuentas, `/api/meta/assets` lista+guarda la elección en `connections.config` (**migración 0004,
+YA CORRIDA**), `MetaAssetPicker` (tarjeta Meta en Conexiones) deja elegir, `getSelectedMetaAsset()` da
+selección + page token a los dashboards. **Dash `/redes` EN MAIN — IG + FB orgánico + metas, idéntico a
+Drean.** Orgánico en vivo (`lib/meta-social.ts`: `getIgOrganicLive` + `getFbOrganicLive`, defensivos) →
+`IgOrganicSection` + `FbOrganicSection` (cards Mes/YTD, `IgAlcanceChart` real-vs-meta, `SocialEngagementChart`
+con `ENG_COLORS`, demografía, top posts). **Metas:** store genérico `dash_metas` (**migración 0005, YA
+CORRIDA**, tenant/plan/kpi/anio) + `lib/metas-dash.ts` + API `/api/dash-metas` + **MetaPanel generalizado**
+(props `endpoint`/`titulo`/`plan`, backward-compat con `/web`); planes **"Redes Sociales"** (IG) y
+**"Facebook"** (FB); alineación por `mesIdx`. **GOTCHA IG resuelto:** NO pedir `shares` en insights de
+media feed (rompe la llamada → alcance 0); fallback a `reach`. **FB:** reach por post
+(`post_impressions_unique`) + filtro `isPaidOutlier`. **GOTCHA FB page token (#10):** leer una Página de FB
+necesita un **page access token**; `getSelectedMetaAsset` lo saca con `/{pageId}?fields=access_token`, que
+SOLO funciona si el usuario tiene un **rol/tarea sobre la Página** (no alcanza ser admin del *negocio*).
+Con ROQUÉ dio #10 hasta asignar a Daniel a la Página en Business Settings → Cuentas → Páginas → control
+total. Con clientes reales que autorizan su propia página no pasa. (ROQUÉ FB validado: 15 seguidores, sin
+posts en 2026 → 0 real, no bug; la actividad de ROQUÉ está en IG.) **PENDIENTE Redes (menor):** `OrganicBuildupPanel`
+(buildup IG+FB por pilar/categoría — requiere clasificar posts). Competitivo fuera (sin scraper).
+
+**🟡 DASH DE REDES SOCIALES en BIP (en curso, sep-2026) — replica el orgánico de Drean con data de ROQUÉ.**
+- **Blueprint relevado** del `/redes` de Drean (mapa completo de secciones/componentes/shapes/paleta —
+  ver abajo). Se replica **fiel** el ORGÁNICO: `IgOrganicSection` + `FbOrganicSection` (cards Mes/YTD con
+  semáforo, `IgAlcanceChart` barras real azul `#1e40af` + meta gris, `SocialEngagementChart` líneas
+  real+meta con `ENG_COLORS=["#1e40af","#60a5fa","#bfdbfe"]`, demografía `HorizontalBars`, top posts,
+  **comentarios FB+IG**) + los **MetaPanel** (planes `"Redes Sociales"`=IG y `"Facebook"`) +
+  `OrganicBuildupPanel`. Shapes objetivo: `IgOrganicSummary` / `FbOrganicSummary` (ver blueprint).
+- **FUERA por ahora:** el **Análisis Competitivo** (Drean lo arma con un scraper de cuentas de la
+  competencia → tabla `social_posts`/`social_followers`; BIP no lo tiene para ROQUÉ). Se suma si el user
+  quiere monitorear competidores. Insights tab (LLM) también más adelante.
+- **Fuente de datos:** en Drean el orgánico sale de tablas pre-synced por crons (`meta_posts`,
+  `meta_page_daily`, `meta_fb_audience_demographics`, `meta_fb_monthly_reach`). En **BIP v1 = LIVE desde
+  la Graph API** vía `getToken(tenant,"facebook")` (ROQUÉ es chico, rinde). A escala → sync por tenant.
+- **Selector de página/IG por tenant:** la conexión puede ver varias páginas (la de Daniel ve Drean +
+  las de los negocios que administra). El dash debe elegir la de ROQUÉ (nunca mostrar Drean). **NO
+  preguntar al user qué IG/página tiene ROQUÉ** — se DESCUBRE por API: `/api/diag/meta` ahora enumera
+  `owned_pages`+`client_pages` con su `instagram_business_account` **por cada negocio** (`/{biz}/owned_pages`),
+  porque `/me/accounts` solo trae las administradas directo (dio solo Drean). ROQUÉ = business
+  `109057158156439`.
+
+**🟢 PLAN DE MEDIOS `/performance` (Meta ads) EN MAIN — COMPLETO, 3 TABS (réplica de Drean).** Tabs:
+(1) **Impacto Campaña** (6 MetaKpiCards + 6 EvolCharts real-vs-meta + MetaPanel plan "Pauta Mkt");
+(2) **Eficiencia Medios** (KPIs del período CPM/CPC/CTR/Frecuencia/CPCV; tabla **por campaña** con semáforo
+best-in-class; tabla **por objetivo**; **calidad de video** scorecard ≥50%/VTR100/CPCV/desperdiciadas +
+**embudo** plays→p25→p50→p75→p100; **top creativos** con thumbnail); (3) **Insights** (motor de reglas
+in-code: mejor/peor campaña por CPM, mejor CTR, escalables VTR≥50%+bajo share, video desperdiciado).
+Motor `lib/meta-pauta.ts` `getPautaFull` (insights nivel campaña + objetivos + ads con thumbnail, todo con
+cursor `after`); UI `components/pauta/performance-tabs.tsx` (cliente, specs locales para no importar el
+server-only `metas-dash`). Fuente única Meta (se extiende a multi-medio cuando entren Google/TikTok). Genérico
+para cualquier cliente (no atado a ROQUÉ). Selector de **cuenta de anuncios** (`meta-assets`:
+`listMetaAdAccounts` + `getSelectedAdAccount`, guardado en `connections.config.meta.ad_account_id`; el
+`MetaAssetPicker` de Conexiones ahora tiene 2 selects: Redes=página/IG, Plan de Medios=cuenta de anuncios;
+`setMetaSelection` hace **merge** para que convivan). Motor `lib/meta-pauta.ts` `getPautaLive`: insights
+**nivel ad, `time_increment=monthly`** de la cuenta elegida → 6 KPIs = **Inversión (Σspend), Alcance único
+(Σreach), Frecuencia (Σimpr/Σalc), Impresiones (Σimpr), VTR ≥50% (Σvideo_p50/Σimpr de piezas de video ×100,
+igual que Drean: solo filas con p25+p50+p75>0), Clicks (Σclicks)**. Página: 6 `MetaKpiCard` + 6 `EvolChart`
+real-vs-meta (reusa los de `/web`) + `MetaPanel` plan **"Pauta Mkt"** (`dash_metas`, `PAUTA_KPIS` en
+`metas-dash.ts`). **VALIDADO por diag:** ROQUÉ **no corre pauta en Meta** (0 ad accounts); única cuenta con
+gasto = Mabe/Drean (151M ARS/360d) → se valida el pipeline contra Mabe en dev, ROQUÉ sale vacío.
+**VALIDADO con data real:** cuenta **"Mabe Argentina"** (`act_1428795852368328`) → el dash muestra
+inversión/alcance/impresiones/clicks/VTR OK. OJO "MABE DREAN" (`act_217161613138470`) tiene gasto 0 → vacío;
+la que tiene pauta es "Mabe Argentina". **GOTCHA PAGINACIÓN (resuelto):** `paging.next` venía con versión
+distinta (v26) a la del request (v22) → `next.replace(GRAPH,"")` fallaba y armaba `v22.0https://...` (error
+"Object with ID 'v22.0https:'", rompía Redes con cuentas grandes tipo Drean). Fix: paginar con
+`paging.cursors.after` en IG media, FB posts y pauta insights. `/performance` bajado a `min:"insight"` para
+que aparezca en el menú. **FALTA Google Ads** (la otra fuente de pauta — ver abajo).
+
+**🟡 GOOGLE ADS API — el acceso CAMBIÓ (sep-2026), clave para que Plan de Medios tenga data.** El developer
+token y el "API Center" de la MCC **ya NO son el camino** (el 9-10/sep/2026 Google movió los niveles de
+acceso al **PROYECTO de Google Cloud**, no al token; el API Center quedó solo para tokens legacy de app
+conversion → por eso el cartel rojo). **Proceso correcto (todo bajo `bip.explore`):** (1) MCC de BIP en
+ads.google.com (recomendado, sin gastar; da `login_customer_id`). (2) **UN proyecto de Google Cloud** (reusar
+**BIP-GO** que ya existe para GA4) → **habilitar "Google Ads API"** en API Library. (3) **OAuth consent screen
++ branding + "Verify branding"** (obligatorio ahora, acelera la aprobación; authorized domain = bip-go.com).
+(4) OAuth client con scope **`https://www.googleapis.com/auth/adwords`** (se puede sumar al mismo client de
+GA4, pero el nivel de acceso cuelga del **proyecto** → usar UN proyecto con GA4+Ads+Basic). (5) **Solicitar
+Basic Access en la página "Google Ads API Overview" de Cloud Console** (NO en el API Center) → con brand
+verification suele aprobarse en **minutos**. **Niveles:** Test (solo cuentas de prueba) → **Basic** (cuentas
+reales, 15k ops/día — el que necesitamos) → Standard (ilimitado, solo si escala). **Leer cuenta de un cliente
+= Camino A (OAuth directo):** el cliente autoriza con su Google, se lee su `customer_id`, **sin** linkear a la
+MCC ni `login_customer_id`. **Nango:** provider `google-ads`, `developer_token` se inyecta del backend (campo
+"automated"), `login_customer_id` opcional. El developer token todavía se manda pero está de salida.
+**Pendiente:** el user hace los pasos 1-5; me pasa developer_token + client_id/secret → cargo en Vercel/Nango
+y construyo el motor de Google Ads en `/performance`. Doc completa la sacó el research (release-notes p/versión
+de API). **OJO:** la doc de Nango de google-ads describe el flujo VIEJO (API Center) — ignorarla en eso.
+- **ESTADO VALIDADO (sep-2026, mirando la consola real):** Ads API **habilitada** en BIP-GO ✓, consent+branding
+  ✓, scope `adwords` ✓, credencial OAuth **"BIP Nango"** existe (ya hay tráfico a la API). Nivel de acceso
+  estaba en **"Prueba"** (Test, solo cuentas de prueba) → **se solicitó "Explorador"** (nombre nuevo del nivel
+  que permite cuentas de producción; reemplaza a "Basic"), quedó **EN REVISIÓN** (aprueba en minutos con marca
+  verificada). Cuando pase a **Explorador**: copiar developer token de la MCC "BIP" (`206-880-2546`, bajo
+  dsabena — sirve igual, el acceso lo gobierna el proyecto BIP-GO) → cargar en Vercel/Nango + construir motor.
+  **OJO nombres nuevos de niveles:** Prueba (Test) → **Explorador** (producción) → superior. La MCC quedó bajo
+  dsabena (validado: bip.explore no tenía cuenta de Ads); no bloquea porque el acceso cuelga del proyecto Cloud.
+- **VERIFICACIÓN OAuth ENVIADA (sep-2026) — en revisión de Google.** El nivel Explorador se había DENEGADO
+  (auto) por falta de **brand/OAuth verification** (validado en consola: "Verificación de la app de OAuth ⚠️").
+  Se completó y **envió la verificación**: (1) **logo** subido (`bip-logo.jpg` 512×512, generado con sharp —
+  BIP + triángulo cyan); (2) **justificación** de los 3 scopes sensibles (analytics.readonly, adwords,
+  spreadsheets.readonly — todos SENSIBLES, no restringidos → **CASA no aplica**); (3) **video demo**
+  `https://youtu.be/A2mP9qZOW8k` (Oculto, subtítulos EN por `.srt`, muestra bip-go.com → consent OAuth con
+  "app no verificada" → dashboards). Cuestionario: **No a las 4** → verificación completa. Marca verificada
+  primero (obligatorio; dominio bip-go.com ya verificado en Search Console), después Data access. **PENDIENTE:**
+  esperar aprobación de Google (scopes sensibles, días) → al quedar verificada, **re-solicitar Explorador** en
+  "Google Ads API Overview" (aprueba) → pasarme developer token (MCC API Center) + client_id/secret → cargo en
+  Vercel/Nango + construyo motor Google Ads en `/performance`.
+- **UX SIDEBAR + PERF (sep-2026):** iconos de estado por dashboard (🔒 no habilitado por plan · ✓ verde
+  conectado · ● ámbar habilitado sin conectar; layout calcula google→/web, meta+página→/redes, meta+cuenta
+  ads→/performance). `/performance` bajado a `min:"insight"` para verse en el menú del tenant demo. La
+  enumeración de cuentas Meta se **cachea** en `connections.config.meta_cache` (antes re-consultaba la Graph en
+  cada visita a Conexiones → "Cargando cuentas…"); botón "↻ Actualizar cuentas" fuerza refrescar.
+
+**🔵 CONECTOR TIKTOK (investigado a fondo sep-2026, FALTA que ROQUÉ arme la app).**
+- **TikTok ≠ Meta:** son DOS mundos separados (dos apps, dos flujos, dos tokens). **Ads** = Marketing
+  API → provider Nango **`tiktok-ads`** (token **SIN vencimiento**, sin refresh — por eso el template no
+  tiene `refresh_url`, es correcto; una auth cubre **varios advertiser_ids**). **Orgánico** = Accounts
+  API → provider **`tiktok-accounts`** (token de usuario que **SÍ vence**/refresca; ventana **60 días**;
+  "views" mezcla orgánico+pago) → **fase 2 opcional**. NO usar `tiktok-personal` ni Research API
+  (restringida a académicos).
+- **v1 = `tiktok-ads`** (es la tarjeta "TikTok Ads" del menú de BIP). Portal correcto:
+  **`business-api.tiktok.com/portal`** (NO `developers.tiktok.com`). Modelo de control = **igual que
+  Meta**: la app conectora vive en el **TikTok for Business de ROQUÉ**, Daniel admin; los clientes
+  autorizan por OAuth (Model 1, no hace falta agregar a nadie al Business Center).
+- **Pedido a ROQUÉ (enviado):** crear TikTok for Business + Business Center + advertiser (ARS); crear app
+  con **Marketing API** en el portal; redirect `https://nango.bip-go.com/oauth/callback`; permisos de
+  **lectura/Reporting** (sacar captura del selector antes de enviar — nombres exactos no se pudieron
+  transcribir, dominios TikTok bloqueados en el sandbox); pasar **App ID + Secret** (secret en privado);
+  agregar a Daniel como **Admin**; validar en **Sandbox**; enviar a **auditoría** (~días-2sem) para prod.
+- **Yo después:** configuro integración `tiktok-ads` en Nango (App ID+Secret, scopes vacíos — TikTok
+  maneja permisos en la app), y armo diag como el de Meta. **Gotcha:** confirmar ARS del ad account AR
+  (reporting devuelve en la moneda de la cuenta; si no, FX como DV360).
+- **Identidad TikTok de BIP CREADA (sep-2026):** Daniel registró `bip.explore@gmail.com` en
+  `business.tiktok.com` como **advertiser** → Business Center **"BIP - Business Impact Platform"**
+  (BC ID `7684666094161936400`) + ad account "BIP" (`7684666093257736208`). Así el email ya existe en
+  TikTok para que ROQUÉ lo invite como Admin sin fricción (lección de Meta: la identidad debe existir
+  antes). Se salteó "Link TikTok accounts" (opcional, es para correr campañas). **ORGÁNICO también
+  pedido** → ROQUÉ debe tener además una **cuenta de contenido TikTok Business** (@handle) para
+  `tiktok-accounts`. **Nota TikTok ≠ Meta:** el admin de TikTok va por email y se registra al aceptar
+  (no exige perfil previo como Meta), así que acá bip.explore SÍ sirve.
+
 **✅ NANGO SELF-HOST DEPLOYADO EN RAILWAY.** Estado:
 - Proyecto Railway **`ravishing-flow`** (cuenta de BIP), 3 servicios **Online**: `nango-server`
   (imagen **`nangohq/nango-server:hosted-0.71.6`**), Postgres, Redis.
