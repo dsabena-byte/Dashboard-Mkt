@@ -636,6 +636,22 @@ de API). **OJO:** la doc de Nango de google-ads describe el flujo VIEJO (API Cen
   dsabena — sirve igual, el acceso lo gobierna el proyecto BIP-GO) → cargar en Vercel/Nango + construir motor.
   **OJO nombres nuevos de niveles:** Prueba (Test) → **Explorador** (producción) → superior. La MCC quedó bajo
   dsabena (validado: bip.explore no tenía cuenta de Ads); no bloquea porque el acceso cuelga del proyecto Cloud.
+- **VERIFICACIÓN OAuth ENVIADA (sep-2026) — en revisión de Google.** El nivel Explorador se había DENEGADO
+  (auto) por falta de **brand/OAuth verification** (validado en consola: "Verificación de la app de OAuth ⚠️").
+  Se completó y **envió la verificación**: (1) **logo** subido (`bip-logo.jpg` 512×512, generado con sharp —
+  BIP + triángulo cyan); (2) **justificación** de los 3 scopes sensibles (analytics.readonly, adwords,
+  spreadsheets.readonly — todos SENSIBLES, no restringidos → **CASA no aplica**); (3) **video demo**
+  `https://youtu.be/A2mP9qZOW8k` (Oculto, subtítulos EN por `.srt`, muestra bip-go.com → consent OAuth con
+  "app no verificada" → dashboards). Cuestionario: **No a las 4** → verificación completa. Marca verificada
+  primero (obligatorio; dominio bip-go.com ya verificado en Search Console), después Data access. **PENDIENTE:**
+  esperar aprobación de Google (scopes sensibles, días) → al quedar verificada, **re-solicitar Explorador** en
+  "Google Ads API Overview" (aprueba) → pasarme developer token (MCC API Center) + client_id/secret → cargo en
+  Vercel/Nango + construyo motor Google Ads en `/performance`.
+- **UX SIDEBAR + PERF (sep-2026):** iconos de estado por dashboard (🔒 no habilitado por plan · ✓ verde
+  conectado · ● ámbar habilitado sin conectar; layout calcula google→/web, meta+página→/redes, meta+cuenta
+  ads→/performance). `/performance` bajado a `min:"insight"` para verse en el menú del tenant demo. La
+  enumeración de cuentas Meta se **cachea** en `connections.config.meta_cache` (antes re-consultaba la Graph en
+  cada visita a Conexiones → "Cargando cuentas…"); botón "↻ Actualizar cuentas" fuerza refrescar.
 
 **🔵 CONECTOR TIKTOK (investigado a fondo sep-2026, FALTA que ROQUÉ arme la app).**
 - **TikTok ≠ Meta:** son DOS mundos separados (dos apps, dos flujos, dos tokens). **Ads** = Marketing
