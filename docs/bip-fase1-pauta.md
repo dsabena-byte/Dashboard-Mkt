@@ -52,8 +52,38 @@ mostraba la cuenta anterior (por eso la invalidación automática).
 4. **Correr los 3 workflows** (Actions → Run workflow): Sync Pauta, Sync Redes, **Sync Web**.
    Verificar `sync_runs` (status `ok`) + `pauta_snapshot`/`redes_snapshot`/`web_snapshot`.
 
+## Fixes/hardening (sesión sep-2026) — aplicar aprendizajes de Drean, no solo inventariarlos
+- **FB reach = 0 (bug):** el motor de redes de BIP arrastró la métrica vieja
+  `post_impressions_unique`, que Meta **deprecó el 15-jun-2026**. Mezclar una métrica inválida en
+  `/insights` tira la llamada ENTERA → alcance, clicks y video views salían 0 (engagement no,
+  porque viene de fields del post). Fix en `lib/meta-social.ts` `getFbOrganicLive`: **sondear** qué
+  métricas acepta la cuenta (probe con el 1er post) y usar `post_total_media_view_unique` **leyendo
+  lifetime, no day**. Réplica del `meta-fb-sync` de Drean. **Orgánico vs pautado ya estaba portado
+  bien:** `isPaidOutlier(reach>20k && reacc/reach<1%)` aplicado a totales/mensual/topPosts (idéntico
+  a Drean). IG usa reach vivo sin filtro pago (= Drean).
+- **Seguimiento (`/overview`) lento (~decenas de s por click):** `getSeguimientoKpis` pegaba EN VIVO
+  a Meta (Pauta) + Meta (Redes IG+FB) + GA4 en cada render. Fix: lee de los **snapshots**
+  pre-computados (Pauta/Redes) con fallback a live, y se memoiza con **React `cache()`** (NO
+  `unstable_cache`: usa fuentes que dependen del request — Drean se quemó con eso por `cookies()`).
+  Patrón Drean: el render lee marts, nunca en vivo. (Web mensual sigue por 1 report GA4 cacheado.)
+- **Crons — resiliencia + frecuencia con fundamento:** los 3 workflows (`sync-pauta/redes/web.yml`)
+  ahora **reintentan 4× con backoff** (5/20/45/80s) en vez de perder la corrida 12-24h si un curl
+  falla. **Pauta y Web 2×/día** (GA4 llega hasta ayer → 1×/día alcanza; el 2º pase = autocura una
+  corrida fallida; Meta madura atribución ~7-14 días). **Redes 12h** (FB reach madura 50-60 días y
+  cada corrida re-lee lifetime → avanza maduración; **sin bug de ventana congelada porque BIP
+  recomputa, no persiste por-post** — a escala migrar a incremental + ventana 70d, Fase 3; IG no
+  trae Stories → no aplica el 6h de Drean). Cada YAML documenta qué resuelve y cómo.
+- **Sidebar:** el tilde verde de Mapa/Seguimiento usaba un OR (objetivos O algún plan c/kpis) →
+  quedaba verde tras borrar planes/KPIs si sobraba un objetivo. Ahora exige la MISMA condición que
+  hace disponible al Seguimiento: objetivos + ≥1 KPI vinculado a un objetivo (peso>0), si no ámbar.
+- **UI:** botones `.btn` con fondo pleno (sin degradé); isotipo oficial de Meta (era un garabato
+  tipo Nango); glifos reales de IG/FB en los headers de sus secciones.
+
 ## Próximo
+- **Rango histórico por plan (PEDIDO PENDIENTE):** Insight = ene del año en curso→hoy; Optimize y
+  Accelerate = ene-2025→hoy (2 años). Requiere: `from` según `tenant.plan`; snapshots por año
+  (marts ya son (tenant, anio)); crons que escriben 1 fila por año del rango; y render multi-año
+  (hoy los charts son 12 meses de 1 año → selector de año o 24 meses). Confirmar UX antes de armar.
 - **Fase 0** (si escala): Supavisor pooling (env) + Upstash (caché compartida + rate-limit).
-- **Seguimiento (`/overview`)**: hoy sigue live; se puede apuntar a los snapshots.
 - **Fase 3**: cola con fan-out por tenant + watchdog per-tenant sobre `sync_runs` cuando haya
   muchos clientes (el GitHub Action único alcanza para las primeras decenas).
