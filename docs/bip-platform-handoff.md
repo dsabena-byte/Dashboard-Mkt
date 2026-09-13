@@ -124,6 +124,12 @@ RAMA META (via agencia): │
 - Para el **cliente** es transparente: entra a BIP y ve "Conectar Google / Meta / TikTok"; cada
   botón usa la app que corresponde por detrás.
 
+## Arquitectura técnica / escalado → ver `docs/bip-escalado-arquitectura.md`
+> **Fuente de verdad de la arquitectura** (ingesta background + marts por tenant, Supavisor
+> pooling, cola con fan-out, caché Redis, storage/costos, seguridad multi-tenant, UX, plan por
+> fases para escalar a cientos de clientes). Este handoff queda como memoria de
+> **producto/pricing/features y estado de trámites**; el detalle de arquitectura vive allá.
+
 ## Decisiones tomadas (no re-litigar)
 - **Base = fork del dashboard de Drean** (trae los ~17 dashboards). Lo único nuevo es la
   capa de plataforma; Drean queda intacto.
