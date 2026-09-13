@@ -80,6 +80,18 @@ mostraba la cuenta anterior (por eso la invalidación automática).
   tipo Nango); glifos reales de IG/FB en los headers de sus secciones.
 
 ## Próximo
+- **Conector SharePoint/Excel + planillas (PEDIDO EN CURSO):** el código de BIP ya está
+  (tarjeta en Conexiones, `lib/ms-graph.ts` lectura por Graph solo-lectura con link para
+  compartir, `/api/diag/sharepoint` para probar). **Falta para que funcione:**
+  1. **Tu setup (irreducible):** registrar la **app en Azure AD** (Graph, `Files.Read.All` +
+     `offline_access`, solo lectura) + crear la **integración `sharepoint` en Nango** con ese
+     client_id/secret. Sin esto el botón Conectar no tiene contra qué autenticar (no se pudo
+     probar con archivo real todavía).
+  2. **Mi parte (bloqueada por decisión del user):** el **mart + dónde se muestran** los datos.
+     Los archivos (subidos/SharePoint/Sheets) alimentan **tableros ESPECÍFICOS que se desarrollan
+     con el cliente** (no es self-serve genérico); una vez configurado, queda conectado y
+     automatizado. **Decisión pendiente:** ¿(a) dashboard nuevo dedicado, o (b) alimentar un
+     KPI/dashboard existente? Con eso se define la estructura del mart + el cron de refresco.
 - **Rango histórico por plan (PEDIDO PENDIENTE):** Insight = ene del año en curso→hoy; Optimize y
   Accelerate = ene-2025→hoy (2 años). Requiere: `from` según `tenant.plan`; snapshots por año
   (marts ya son (tenant, anio)); crons que escriben 1 fila por año del rango; y render multi-año
