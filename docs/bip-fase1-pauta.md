@@ -52,6 +52,55 @@ mostraba la cuenta anterior (por eso la invalidación automática).
 4. **Correr los 3 workflows** (Actions → Run workflow): Sync Pauta, Sync Redes, **Sync Web**.
    Verificar `sync_runs` (status `ok`) + `pauta_snapshot`/`redes_snapshot`/`web_snapshot`.
 
+## Sesión (planes + builder + conexiones) — sep-2026
+**Modelo de 4 TIERS** (`lib/plan.ts`, `PlanId = insight_trial|insight|optimize|accelerate`):
+- **Insight Trial** (15 días, se cae si no se paga): Mapa, Seguimiento, Plan de Medios, Redes, Web.
+- **Insight**: + Resultados Comerciales, Inversión de Mkt, Copiloto IA, Alertas+reportes.
+- **Optimize**: + Optimización SEO, Trade Mkt, **capa de Competencia** (Redes/Web/SEO).
+- **Accelerate**: + (en desarrollo).
+- **Historia por tier:** `historyStartYear(plan)` → trial/insight = año en curso; optimize/accelerate
+  = año-1 (2 años). **OJO: definido en plan.ts pero TODAVÍA NO cableado** al rango de fetch de los
+  dashboards (pendiente aplicar en /performance, /redes, /web + snapshots por año).
+- Features derivadas del tier: `hasFeature(ia|competencia|alertas)` (+ override por addon). El
+  sidebar muestra tag **"+ COMP"** en Redes/Web/SEO desde Optimize. **La capa de competencia como
+  SECCIÓN dentro de cada dash NO está construida aún** (solo el flag).
+- `Mkt de Influencia` y `Optimización SEO` = min optimize, `soon` (en desarrollo).
+- Migración **0011**: amplía CHECK de `tenants.plan` para `insight_trial` + `trial_ends_at` +
+  tabla `plan_requests`. (Usuario ya corrió 0010 y 0011.)
+
+**Página PLANES Y FACTURACIÓN** (`app/(app)/cuenta/plan/page.tsx`) = herramienta de venta:
+Trial marcado "punto de partida", Optimize "MÁS ELEGIDO" (ancla), banner de urgencia en trial,
+features acumulativas, sección "Por qué subir", **comparativo completo** (matriz por grupo),
+reversión de riesgo. **Contratación SIN pago**: `PlanRequestButton` → `POST /api/plan/request` →
+tabla `plan_requests` (no cobra ni cambia acceso). Pagos (Stripe) = **pendiente, NO avanzar sin pedido**.
+
+**BUILDER de tableros custom (config-driven, 3 fases COMPLETAS)** — para los tableros manuales
+(Inversión/Resultados/Trade y custom) que se arman en el setup con el cliente, dentro del sistema
+visual de BIP (nada random):
+- **Motor** `lib/sheet-engine.ts` (PURO, client-safe): tipos (WidgetType = kpi|bars|lines|combo|hbar|
+  donut|table), `inferColumns` (date/number/text), `shapeWidget` (datos listos por widget).
+  `lib/sheet-dashboards.ts` (server-only) = persistencia (get/save config, datasets) + re-exporta tipos.
+- **Renderer** `components/dash-builder/{widgets.tsx (cliente, Recharts, paleta BIP), dashboard-view.tsx
+  (server)}`.
+- **Builder UI** `components/dash-builder/builder.tsx` (cliente, preview en vivo).
+- **Rutas** `/tablero/[slug]` (vista) y `/tablero/[slug]/editar` (builder). Menú: Inversión→
+  `/tablero/inversion`, Resultados→`/tablero/resultados`, Trade→`/tablero/trade` (destrabados).
+- **API** `POST /api/dashboards` (guardar), `GET /api/dashboards/dataset` (columnas+filas p/preview).
+- Migración **0010**: `tenant_dashboards` (config por tenant+slug). Se apoya en `tenant_datasets`
+  (upload Excel/CSV, ya existía). **SharePoint reusa el mismo mart** cuando esté Azure/Nango.
+- **PENDIENTE:** conectar el ingest de SharePoint/Sheets al mismo formato de `tenant_datasets`
+  (hoy el builder consume datasets de UPLOAD; el cron de SharePoint que llena datasets falta).
+
+**CONEXIONES** (`app/(app)/cuenta/conexiones/page.tsx`): guía "Cómo conectar" (2 modos: 1 clic vs
+config inicial), cards más anchas, **isotipos de marca reales** (Google/Ads/Analytics/Sheets/YouTube/
+IG/FB), **cuenta Meta ÚNICA sin switch** (se elige 1 vez y queda fija — `MetaAssetPicker` bloqueado;
+para cambiar, reconectar), reconectar al fondo, FAQ de requisitos (roles + cómo pedir acceso al admin).
+Conector **SharePoint** (`provider: "sharepoint"`, `lib/ms-graph.ts`, `/api/diag/sharepoint`) — código
+listo, **falta app Azure AD + integración Nango `sharepoint`** (parte del usuario).
+
+**Decisiones de tiers que fue tomando el user (por si re-edita):** SEO y Trade → Optimize (no Insight);
+IA y Alertas → Insight; Alertas NO va en el menú (irá embebido en cada dash); competencia = Redes/Web/SEO.
+
 ## Fixes/hardening (sesión sep-2026) — aplicar aprendizajes de Drean, no solo inventariarlos
 - **FB reach = 0 (bug):** el motor de redes de BIP arrastró la métrica vieja
   `post_impressions_unique`, que Meta **deprecó el 15-jun-2026**. Mezclar una métrica inválida en
