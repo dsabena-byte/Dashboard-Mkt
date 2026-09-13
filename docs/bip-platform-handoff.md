@@ -549,6 +549,18 @@ edite sin deploy y BIP lo reuse con gating por plan). Detalle abajo en la secci�
   camino system-user (provider `facebook-system-user`, API_KEY, token pegado a mano).
 - **PENDIENTE:** (1) prod: **App Review** de los 12 + **Business Verification** de ROQUÉ. (2) construir
   el **dash de Meta/Redes** en BIP (hoy solo `/web` de GA4). (3) correr migs 0002+0003 en Supabase de BIP.
+- **VERIFICACIÓN META — estado validado en vivo (sep-2026, diag `/api/diag/meta` → bloque `negocios`):**
+  `verification_status` por negocio: **OMD Argentina = verified**, **Alladio-Negocio Drean = verified**,
+  pero **ROQUÉ Marketing Insights (`109057158156439`, dueña de la app) = `not_verified`** → **falta la
+  Business Verification de ROQUÉ**, que es prerequisito OBLIGATORIO del App Review (Meta no da Advanced
+  Access sin el negocio dueño verificado). Orden: **Fase 1 Business Verification de ROQUÉ** (business.
+  facebook.com → business ROQUÉ → Centro de seguridad → Verificación del negocio; razón social AFIP +
+  dirección + constancia AFIP/CUIT; el nombre/dirección deben coincidir carácter x carácter con el doc)
+  → **Fase 2 App Review** (~2-7 días). **Guion completo de App Review YA ESCRITO** en
+  `docs/meta-app-review-guion.md`: justificación de cada uno de los 12 permisos + guion del screencast
+  maestro + recomendación de 2 tandas (A=9 de solo-lectura ya; B=community mgmt+leads cuando exista la
+  UI). Los 12 scopes siguen concedidos (dev). **OJO seguridad:** el JSON del diag trae tokens de acceso
+  reales en las URLs de `paging` — nunca compartirlo público.
 
 **🟢 SELECTOR DE CUENTA META + DASH REDES v1 (sep-2026).** Multi-cuenta resuelto: la conexión ve
 varias páginas (Daniel ve **Drean** `257587170945975` Y **ROQUÉ - Research Solutions** `109052558156899`
@@ -633,6 +645,44 @@ distinta (v26) a la del request (v22) → `next.replace(GRAPH,"")` fallaba y arm
 "Object with ID 'v22.0https:'", rompía Redes con cuentas grandes tipo Drean). Fix: paginar con
 `paging.cursors.after` en IG media, FB posts y pauta insights. `/performance` bajado a `min:"insight"` para
 que aparezca en el menú. **FALTA Google Ads** (la otra fuente de pauta — ver abajo).
+
+**🟢 MAPA ESTRATÉGICO + SEGUIMIENTO DE OBJETIVOS (sep-2026) — GENÉRICO multi-tenant.** Réplica del
+modelo de Drean (`Plan → KPI → Objetivo`) pero **SIN la dimensión de categorías** (Lavado/Refri/Cocción
+eran de Drean; Meta no tiene esa taxonomía → sería data inventada). El modelo es agnóstico de industria.
+- **Modelo** (`lib/mapa-config.ts`): `Objetivo{id,nombre,color,peso}` (peso estratégico, se normaliza a
+  100%), `Kpi{nombre,vinculos:Record<objId,pesoInbound>}` (**sin `mix`**), `Plan{nombre,kpis}`. Helpers
+  `normPeso`, `pesoAsignado`. Seed neutro (Notoriedad/Consideración/Conversión, sin planes).
+- **Catálogo** (`lib/mapa-catalogo.ts`): SOLO planes con fuente real cableada — **Plan de Medios**
+  (Inversión/Alcance único/Frecuencia/Impresiones/VTR≥50%/Clicks), **Redes Sociales** (Alcance orgánico/
+  Engagement rate), **Web / Ecommerce** (Tráfico web/Duración sesión/Tasa conversión/Transacciones/
+  Ingresos/Valor medio compra). KPIs sin fuente muestran ⏳ en el editor.
+- **Persistencia**: tabla `mapa_estrategico` **por tenant** (PK tenant_id, jsonb objetivos+planes —
+  **migración 0006, FALTA CORRERLA en Supabase de BIP**; hasta entonces getMapaConfig devuelve null →
+  Seguimiento muestra empty-state y el editor avisa "falta migración 0006"). Lectura SSR
+  `getMapaConfig(tenantId)` (`lib/mapa-server.ts`), API `/api/mapa-estrategico` GET/POST tenant-scoped
+  (upsert onConflict tenant_id). **Fuente de verdad = DB, sin localStorage** (multi-tenant → evita fuga
+  entre tenants en el mismo browser).
+- **Editor** (`components/mapa/mapa-editor.tsx`, cliente, CSS plano): 3 secciones — (1) Objetivos con
+  peso normalizado (algoritmo "balance en el vecino"), (2) matriz de vínculos inbound con **cap 100% por
+  objetivo** (header muestra asignado/libre), agregar plan/KPI del catálogo, (3) composición por objetivo
+  (barra apilada). Botón Guardar → POST (no router.refresh). Sin sección de mix/categorías.
+- **Rollup** (`lib/objetivos-rollup.ts`, server-only): `cumpl(KPI)=min(real/meta,100)`; `cumpl(objetivo)=
+  Σ pesoInbound×cumpl / Σ pesoInbound` (renormalizado → cobertura); **Salud de Marca = Σ pesoEstratégico×
+  cumpl(objetivo)**. `getSeguimientoObjetivos(tenantId,anio)` devuelve objetivos + saludMarca + los KPIs
+  del mapa (para el scorecard) en una pasada.
+- **Real+meta por KPI** (`lib/objetivos-kpis.ts`, server-only): cruza Pauta (`getPautaForTenant`), Redes
+  (`getRedesForTenant`, IG orgánico) y Web (`getWebMonthlyForTenant` en `lib/ga4-monthly.ts` — extraje el
+  report yearMonth de GA4 que estaba inline en `/web`) con las metas (`getDashMetas` planes "Pauta Mkt" y
+  "Redes Sociales" + `getWebMetas`). Serie real[12]+meta[12] por KPI; tipo sum (volumen, YTD suma) o rate
+  (ratio, YTD promedio).
+- **UI Seguimiento** (`/overview`): `ObjetivosHero` (card Salud de Marca + grid de objetivos con
+  cumpl mes/YTD, semáforo, aporte de KPIs) + `KpiScorecard` (agrupa por plan; por KPI: real/meta/desvío
+  del mes + YTD + sparkline SVG real-vs-meta). Componentes en `components/objetivos/`. Sin selector de
+  categoría (v1 = vista única). Semáforo reusa `lib/web-viz` (`semaforoDe`/`cumplimientoPct`/`SEMAFORO_COLOR`).
+- **Nav**: `/mapa-estrategico` y `/overview` salieron de `soon` en `lib/plan.ts` **y** `components/plan.ts`.
+- **PENDIENTE**: (1) correr **migración 0006** en Supabase BIP; (2) el objetivo/scorecard necesita que el
+  tenant cargue metas (MetaPanel de cada dashboard) + arme el mapa; (3) futuro: si un cliente necesita
+  categorías, se re-agrega la dimensión (mix) como opcional.
 
 **🟡 GOOGLE ADS API — el acceso CAMBIÓ (sep-2026), clave para que Plan de Medios tenga data.** El developer
 token y el "API Center" de la MCC **ya NO son el camino** (el 9-10/sep/2026 Google movió los niveles de
