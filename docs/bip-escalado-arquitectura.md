@@ -6,6 +6,9 @@
 > y (b) el **análisis de escalado** (ingesta, storage, seguridad, costos, UX, stack, fases).
 > El handoff sigue siendo la memoria de **producto/pricing/features y estado de trámites**;
 > este doc es la **arquitectura técnica**. Ante conflicto sobre arquitectura, manda este.
+> El **detalle operativo cron-por-cron + técnicas ya probadas en Drean** (replicar/evitar/
+> optimizar, ventanas de maduración, cadencias, mapa de retrofit) vive en
+> **`docs/bip-know-how-drean.md`** — leerlo antes de escribir la ingesta.
 >
 > Stack: **Next.js (App Router) en Vercel** · **Supabase** (Postgres + Auth + Storage) ·
 > **Nango self-host en Railway** (OAuth/tokens) · OpenAI (IA). Fuentes por cliente: Meta
