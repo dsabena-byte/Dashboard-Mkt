@@ -111,9 +111,8 @@ política §9. **PENDIENTE:** registro formal de subprocesadores + DPA donde apl
 
 ---
 ## ✅ Checklist para reenviar la verificación (lo que hay que cerrar sí o sí)
-1. **Política redactada** con §7 (protección de datos sensibles) + §8 (no IA training). **[OK]** ·
-   `privacy.html` publicable listo en `apps/web/public/bip-privacy.html` → **falta PUBLICARLO en
-   `bip-go.com/privacy`** (copiar a `privacy.html` del bip-site/Netlify). **(acción del user)**
+1. **Política con §7 (protección de datos sensibles) + §8 (no IA training): PUBLICADA en
+   `bip-go.com/privacy` ✅.** (También `bip-go.com/terms`.) No falta nada acá.
 2. **Consentimiento en el alta** (legal obligatorio + comunicaciones opt-in). **[OK]** (migración 0015).
 3. **Purgado/borrado** al desconectar (`api/connections/disconnect`) y baja total (`api/account/delete`).
    **[OK]**

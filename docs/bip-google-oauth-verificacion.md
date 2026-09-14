@@ -122,15 +122,26 @@ Items a resolver (del mail):
   quede verificada. Como la brand verification ya está, **el único gate es que termine la verificación
   de la app** (los scopes).
 
-**⇒ Lo único que falta para TODO (incluido Ads):** completar la **verificación de la app de OAuth**:
-1. **Responder el hilo de Trust & Safety** (Cloud Console → *Centro de verificación* /
-   `console.cloud.google.com/auth/verification`) con: **link al video** (demostrar los scopes) +
-   **cómo testear el consentimiento** (test creds sin bloqueos + pasos) + **política actualizada**
-   (protección de datos sensibles + no-IA-training — ya redactada en `bip-privacy.html`, falta que esté
-   publicada en `bip-go.com/privacy`).
-2. Cuando la app quede **verificada** → **re-solicitar Explorer** (Google Ads API → Niveles de acceso →
-   Solicitar acceso) → se otorga (suele ser horas). No hay que tramitar developer token aparte.
-**NO volver a mandar al user a revisar brand verification ni dominios — YA ESTÁN.**
+**Estado de los entregables (14-sep):**
+- ✅ **Política de privacidad PUBLICADA** en `bip-go.com/privacy` (con protección de datos + no-IA-training)
+  y `bip-go.com/terms`. **NO falta publicar nada.**
+- ✅ Brand verification hecha; app en verificación (scopes/T&S en proceso).
+
+### ⚠️ CHICKEN-AND-EGG (el punto real, 14-sep): no se puede demostrar Ads ni Sheets todavía
+El user marcó: *"todavía no puedo mostrar cómo funciona Google Ads y Sheets."* Motivo:
+- **Ads:** producción (Explorer) denegada hasta que la app se verifique; solo hay **Test access**.
+- **Sheets `drive.file`:** falta la API key del Picker en la consent + el scope; el demo necesita ese setup.
+- **GA4 `analytics.readonly`:** SÍ se puede demostrar hoy (anda en `/web`).
+
+**RECOMENDACIÓN ASERTIVA — verificar por rondas:**
+- **Ronda 1 (ahora, desbloquea BIP):** reducir la consent screen a **`analytics.readonly`** (lo único
+  demostrable hoy) → grabar video GA4 + test creds + responder T&S → la app se **verifica** para el core.
+  Ninguno de los scopes está aprobado aún, así que reducir el pedido es válido (y es justo lo que pide
+  "permisos mínimos"). El código de Ads/Sheets YA está construido, no se pierde.
+- **Ronda 2 (después):** agregar `adwords` (demostrable con **cuenta de PRUEBA de Google Ads**, que el
+  nivel Test permite) y `drive.file` (Picker + API key) → segunda verificación. Cuando la app quede
+  verificada, además se destraba **Explorer** (Ads producción).
+**NO volver a mandar al user a revisar brand verification/dominios/privacy — YA ESTÁN.**
 
 ### 🔧 EJECUCIÓN Opción B — estado detallado (14-sep)
 **Prerrequisitos EXTERNOS (los hace el user):**
