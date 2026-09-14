@@ -111,24 +111,26 @@ Items a resolver (del mail):
 - **Mientras tanto, con Test access** se puede demostrar el scope `adwords` en el video usando una
   **cuenta de prueba de Google Ads** (el nivel Test lo permite).
 
-#### 📍 Páginas y pasos EXACTOS de Google (validado 14-sep — no es opaco)
-**Requisito clave:** *"para la Google Ads API, la **brand verification** del proyecto de Cloud es
-requisito para que revisen la solicitud de Explorer/Basic; la app debe estar en **User type: External**
-+ **Publishing status: In production**."* (Google Ads API · Brand verification.)
-1. **Brand verification** — Cloud Console (BIP-GO) → **APIs y servicios → Pantalla de consentimiento
-   OAuth (OAuth consent screen) → Branding**. Confirmar **Tipo de usuario = External** y **Estado de
-   publicación = En producción**. Si hay botón **"Verify Branding"** → tocarlo (tarda minutos); al pasar
-   queda **"Ready to publish"** → **"Publish branding"** (el resultado vale **7 días**; publicar dentro
-   de ese plazo o hay que re-verificar). Esto muestra Nombre/Logo/Privacidad/Términos/scopes en la
-   consent screen Y es lo que habilita la revisión de Explorer.
-2. **Verificación de scopes sensibles (T&S)** — Cloud Console → **Verification Center**
-   (`console.cloud.google.com/auth/verification`): responder el hilo de Trust & Safety con **video +
-   test creds + política actualizada** (los 3 scopes). Es la otra pata de la verificación.
-3. **Re-solicitar Explorer** — Cloud Console → **Google Ads API → Niveles de acceso → Administrar →
-   Solicitar acceso**. Con brand verification publicada + In production, la revisión de Explorer avanza
-   (suele ser horas). El rechazo automático de antes fue por no tener esto completo.
-**Resumen:** publicar brand verification (paso 1) → destraba la revisión de Explorer (paso 3); la
-verificación de scopes (paso 2) va en paralelo por el hilo del mail.
+#### 📍 ESTADO REAL en Google (validado con capturas 14-sep — NO re-chequear estas dos)
+- ✅ **Brand verification: HECHA.** Google Auth Platform → *Información de la marca* muestra
+  **"✓ Se verificó la información de tu marca y se muestra a los usuarios."** Homepage `bip-go.com`,
+  privacy `bip-go.com/privacy`, terms `bip-go.com/terms`, **dominio autorizado `bip-go.com`**, contacto
+  `bip.explore@gmail.com`. **No hay nada que hacer acá.**
+- 🟠 **Verificación de la app de OAuth (scopes / Trust & Safety): EN PROCESO** (Auth Platform →
+  Descripción general: "⚠️ Tu app está en proceso de verificación"). Esta es la ÚNICA pata pendiente.
+- 🔴 **Ads Explorer (producción): denegado AUTOMÁTICO — esperado.** Se otorga **después** de que la app
+  quede verificada. Como la brand verification ya está, **el único gate es que termine la verificación
+  de la app** (los scopes).
+
+**⇒ Lo único que falta para TODO (incluido Ads):** completar la **verificación de la app de OAuth**:
+1. **Responder el hilo de Trust & Safety** (Cloud Console → *Centro de verificación* /
+   `console.cloud.google.com/auth/verification`) con: **link al video** (demostrar los scopes) +
+   **cómo testear el consentimiento** (test creds sin bloqueos + pasos) + **política actualizada**
+   (protección de datos sensibles + no-IA-training — ya redactada en `bip-privacy.html`, falta que esté
+   publicada en `bip-go.com/privacy`).
+2. Cuando la app quede **verificada** → **re-solicitar Explorer** (Google Ads API → Niveles de acceso →
+   Solicitar acceso) → se otorga (suele ser horas). No hay que tramitar developer token aparte.
+**NO volver a mandar al user a revisar brand verification ni dominios — YA ESTÁN.**
 
 ### 🔧 EJECUCIÓN Opción B — estado detallado (14-sep)
 **Prerrequisitos EXTERNOS (los hace el user):**
