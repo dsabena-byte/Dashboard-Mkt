@@ -802,9 +802,9 @@ const ICON = {
 };
 const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3"/><path d="M20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>';
 const PLANS = [
-  {key:'insight',name:'Insight',tag:'plan base',price:'190',setup:'150',users:'1 usuario',cats:'1 marca · 1 categoría',trial:'Comprobalo 15 días',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
-  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'390',setup:'250',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y consultoría estratégica para convertir esa data en planes de acción.'},
-  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'690',setup:'350',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y consultoría estratégica para un diagnóstico total.'}
+  {key:'insight',name:'Insight',tag:'plan base',price6:'199',price3:'249',users:'1 usuario',cats:'1 marca · 1 categoría',trial:'Comprobalo 15 días',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
+  {key:'optimize',name:'Optimize',tag:'plan intermedio',price6:'399',price3:'499',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y consultoría estratégica para convertir esa data en planes de acción.'},
+  {key:'accelerate',name:'Accelerate',tag:'plan full',price6:'695',price3:'869',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y consultoría estratégica para un diagnóstico total.'}
 ];
 const MODULES = [
   ['Núcleo estratégico · Mapa + Seguimiento de Objetivos',1,1,1],
@@ -834,9 +834,8 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
   const iaBlock = iaMods.length ? `<div class="iacap"><div class="iacap-h"><span>Capa de inteligencia</span><span class="iatag">Solo Accelerate</span></div>${iaMods.map(m=>`<div class="iacap-i">${m[0]}</div>`).join('')}</div>` : '';
   return `<article class="card"><div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
     <div class="trialslot">${p.trial ? `<div class="trialbadge">✦ ${p.trial}</div>` : ''}</div>
-    <div class="pr"><span class="cur">USD</span><span class="mo">${p.price}</span><span class="per">/ mes</span></div>
-    <div class="ctrterm">Contratación por <b>3 o 6 meses</b></div>
-    <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 6 meses</div></div>
+    <div class="pr"><span class="cur">desde USD</span><span class="mo">${p.price6}</span><span class="per">/ mes</span></div>
+    <div class="ctrterm">6 meses <b>USD ${p.price6}</b>/mes · 3 meses <b>USD ${p.price3}</b>/mes · <b style="color:#16a34a">sin set-up</b></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
     <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
     ${p.trial ? `<a class="pcta pcta-trial" href="https://bip-platform.vercel.app/signup">Probá Insight 15 días →</a><div class="trialcta-sub">15 días de acceso completo, sobre tu propia operación. Lo ves andando antes de decidir — sin tarjeta.</div><a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Activar ${p.name} →</a>` : `<a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Activar ${p.name} →</a>`}</article>`;
@@ -860,10 +859,9 @@ const FULL = [
 ];
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
 document.getElementById('matrix').innerHTML =
-  `<tr class="section"><td colspan="4">Precio</td></tr>`+
-  `<tr><td>Precio por mes (USD)</td><td><span class="val">190</span></td><td><span class="val">390</span></td><td><span class="val">690</span></td></tr>`+
-  `<tr><td>Set-up · plan 6 meses (USD)</td><td><span class="val">250</span></td><td><span class="val">350</span></td><td><span class="val">450</span></td></tr>`+
-  `<tr><td>Set-up · plan 12 meses</td><td><span class="val">sin cargo</span></td><td><span class="val">sin cargo</span></td><td><span class="val">sin cargo</span></td></tr>`+
+  `<tr class="section"><td colspan="4">Precio (USD / mes · sin set-up)</td></tr>`+
+  `<tr><td>Plan 6 meses</td><td><span class="val">199</span></td><td><span class="val">399</span></td><td><span class="val">695</span></td></tr>`+
+  `<tr><td>Plan 3 meses</td><td><span class="val">249</span></td><td><span class="val">499</span></td><td><span class="val">869</span></td></tr>`+
   `<tr class="section"><td colspan="4">Acceso</td></tr>`+
   `<tr><td>Usuarios incluidos</td><td><span class="val">1</span></td><td><span class="val">2 a 4</span></td><td><span class="val">+4</span></td></tr>`+
   `<tr><td>Marca</td><td><span class="val">1</span></td><td><span class="val">1</span></td><td><span class="val">1</span></td></tr>`+
