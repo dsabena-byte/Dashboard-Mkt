@@ -271,6 +271,95 @@ RAMA META (via agencia): │
   (4) en modo Testing hay que agregar cada mail como **usuario de prueba** en "Público", y en el
   consent tocar "Configuración avanzada → Ir a BIP (no seguro) → Continuar".
 
+## 🟢 SESIÓN 14-sep-2026 — modelo 4 tiers, pagos (Mercado Pago), builder, web→plan, login cerrado
+> **Día de mucho avance.** Todo pusheado a `main` (bip-platform.vercel.app deploya solo) y a
+> `main` de Dashboard-Mkt (para `bip.html`). Este bloque SUPERA partes del "MODELO DE PLANES v2"
+> de más arriba (precios/set-up/trial). Repos: **app** = `dsabena-byte/bip-platform` (deploy `main`);
+> **landing + memoria** = `dsabena-byte/Dashboard-Mkt` (`apps/web/public/bip.html`).
+
+### 1) Modelo de 4 tiers (DEFINITIVO, reemplaza precios/set-up/trial de v2)
+`lib/plan.ts` — `PlanId = insight_trial | insight | optimize | accelerate`:
+- **insight_trial** = estado de prueba de **15 días** (SOLO Insight tiene trial). Desde el trial se
+  puede **activar/pagar cualquiera** de los 3 planes directo.
+- **insight** USD **190**/mes · set-up **150** · 1 usuario · 1 marca · 1 categoría · historia **12 meses** (desde ene del año en curso).
+- **optimize** USD **390**/mes · set-up **250** · **4 usuarios** · 1 marca · **2 categorías** · historia **24 meses**.
+- **accelerate** USD **690**/mes · set-up **350** · **10 usuarios** · 1 marca · **3 categorías** · historia **24 meses**.
+- **Contratación 3 o 6 meses.** Set-up **bonificado a 6 meses**; **a 3 meses se prorratea** (set-up/3
+  sumado a cada mensualidad, flat) — se aclara en cada card. `maxUsers()`, `historyStartYear()`,
+  `hasFeature()`, `planRank/canAccessLink/visibleLinks`, `TRIAL_DAYS=15` viven en `lib/plan.ts`.
+
+### 2) Gating del menú por tier (`NAV` en `lib/plan.ts`)
+- **insight_trial:** Mapa, Seguimiento, Plan de Medios, Redes, Web.
+- **insight** suma: **Resultados Comerciales** + **Inversión de Marketing**.
+- **optimize** suma: **Optimización SEO**, **Trade Mkt**, y la **capa Competencia** en Redes/Web/SEO
+  (tag "+ COMP"). **Mkt de Influencia** = optimize+ (marcado "pronto"), ubicado debajo de Web/Ecom.
+- **accelerate** suma: **research** (en desarrollo).
+- **Alertas NO va en el menú** — se embebe por dashboard (pedido del user).
+- Inversión/Resultados/Trade son dashboards **manuales** → apuntan a `/tablero/<slug>` (builder).
+
+### 3) Builder de tableros config-driven (dashboards manuales sin código por cliente)
+Para Inversión / Resultados / Trade: el **cliente sube su planilla** y **mapea columnas → variantes
+de gráfico BIP** (elige tipo de gráfico y qué va en cada eje; NO random). Piezas:
+- `lib/sheet-engine.ts` (client-safe: tipos + `inferColumns` + `shapeWidget`), `lib/sheet-dashboards.ts`
+  (server-only: persistencia), `components/dash-builder/{widgets,dashboard-view,builder}.tsx`.
+- Rutas `/tablero/[slug]` (+ `/editar`); APIs `/api/dashboards`, `/api/dashboards/dataset`,
+  `/api/datasets` (upload → devuelve id). Fases 1-3 completas (tasks #21-23).
+
+### 4) Pagos — Mercado Pago (gateway elegido p/ Argentina), diseño "sin fisuras"
+- **Suscripción por preapproval:** `lib/billing/mercadopago.ts` — `mpToken()`, `getUsdArsRate()`,
+  `mpAmountArs(plan)`, `setupAmountArs(plan)`, `createPreapproval({plan,months})` (end_date=now+months),
+  `getPreapproval` (autoritativo, trae monto), `verifyWebhookSignature` (HMAC-SHA256 del manifest
+  `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`, **anti-replay 600s, fail-closed si no hay secret**).
+- **Checkout** `app/api/billing/mp/checkout/route.ts`: solo owner/admin; `monthly = mpAmountArs(plan)`;
+  si `months===3` suma `round(setup/3)` (a 6 meses set-up = 0); guarda `mp_preapproval_id`; redirige a `init_point`.
+- **Webhook** `app/api/billing/mp/webhook/route.ts`: filtra `topic.includes("preapproval")`, verifica
+  firma (401 si falla), `getPreapproval` como fuente de verdad, chequea `external_reference`, monto>0,
+  **idempotente**, activa el plan solo en status `authorized`, loguea `billing_events`.
+- **Reconcile al volver** (`/cuenta/plan?mp=ok`) activa el plan vía `getPreapproval` **sin depender del
+  webhook**. `?activate=<plan>` resalta la card ("TU ELECCIÓN").
+- **FX dinámico:** dólar oficial Banco Nación (`dolarapi.com/v1/dolares/oficial`, venta), cache 6h;
+  mensual ARS = USD × TC. Override opcional `USD_ARS_RATE`.
+- **Env (el user las carga en Vercel, NUNCA se pegan acá):** `MP_ACCESS_TOKEN` (APP_USR- prod / TEST- test),
+  `MP_WEBHOOK_SECRET`, `MP_AMOUNT_<PLAN>` (pin opcional), `MP_SETUP_<PLAN>`, `MP_TEST_PAYER_EMAIL` (sandbox),
+  `NEXT_PUBLIC_APP_URL`. **Webhook ya configurado + probado (200 OK).**
+- **PENDIENTE MP:** el user tenía `MP_AMOUNT_*=100` como pin de prueba → **sacarlos** cuando termine de
+  probar para volver a USD×TC. Sandbox pide "test payer" (crear con `POST /users/test_user {site_id:MLA}` y
+  ponerlo en `MP_TEST_PAYER_EMAIL`).
+
+### 5) Circuito Web → Plan (opción A: cuenta primero) + login cerrado
+- **La web es la ÚNICA entrada de registro.** Flujo: web deja email + elige plan → `bip-platform.vercel.app/signup?email=&plan=X`
+  → crea cuenta (contraseña o link mágico) → onboarding crea tenant **insight_trial** (+ `trial_ends_at` = +15d)
+  → si el plan es pago, redirige a `/cuenta/plan?activate=X` → checkout MP → vuelve a `/cuenta/plan?mp=ok`.
+  El **upgrade** se hace **adentro** de la plataforma. `back_url`/webhook de MP = URLs de la plataforma.
+- **Login cerrado (hoy):** `app/login/page.tsx` = **solo ingreso**. Se sacó el toggle "Crear cuenta nueva";
+  el link mágico usa `signInWithOtp({shouldCreateUser:false})` → un email nuevo **no** puede auto-registrarse
+  desde el login. Queda link "¿No tenés cuenta? Empezá tu prueba de 15 días" → `/signup`. Password + reset OK.
+- `app/signup/page.tsx` + `components/signup-form.tsx`; `app/onboarding/*`; `app/api/onboarding/route.ts`
+  (acepta invitación pendiente por email). Equipo: `/cuenta/usuarios` + `team-manager` + `/api/team/{invite,remove}`
+  con enforcement de `maxUsers`. Cambio de contraseña: `/cuenta/password`.
+
+### 6) Landing `bip.html` (Drean repo) alineada
+Set-up 150/250/350; "Comprobalo 15 días" (solo Insight); módulos por plan (Insight sin SEO/Trade;
+fila "Historial de datos" 12/24/24); "Contratación por 3 o 6 meses"; bonif. a 6; **CTAs → `/signup`**
+(pago con `?plan=<key>`); demo convertida en trial (form email → /signup); sección add-ons removida;
+logo con interlineado 1.25. Commits en `main` de Dashboard-Mkt (hasta `2615b68`).
+
+### Página de Planes (venta) — `app/(app)/cuenta/plan/page.tsx`
+3 planes display + card "Tu plan actual" (verde), pill "Comprobalo 15 días" (oculta si onTrial/isCurrentPaid),
+precio USD/mes, "Contratación por 3 o 6 meses", caja set-up ("Bonificado a 6 · prorrateado a 3"), fila
+**usuarios·marcas·categorías** (jerarquizada, pedido del user), pitch, lista de incluidos, CTA. `MpSubscribeButton`
+con selector 3/6 meses que muestra la mensualidad efectiva. Menú lateral: "Upgrade Plan".
+
+### PENDIENTES abiertos tras esta sesión
+- **Historia multi-año por tier:** `historyStartYear()` definido pero **NO cableado** a los rangos de
+  fetch/snapshots de los dashboards (falta decisión UX de render de 2 años). Insight ve desde ene del
+  año en curso; Optimize/Accelerate 24 meses.
+- **SharePoint end-to-end:** falta que el user cree app Azure AD + integración Nango `sharepoint`; y el
+  lado código (registrar source + cron sync a `tenant_datasets` + UI) sin construir.
+- **MP:** sacar los pins `MP_AMOUNT_*=100` al terminar de probar. Opcional: SMTP propio en Supabase para
+  entregar link mágico a cualquier email; deshabilitar "Confirm email" si se quiere alta instantánea.
+- **Research (Accelerate)** en desarrollo; **Mkt de Influencia** (optimize+) marcado "pronto".
+
 ## ✅ PLATAFORMA DEPLOYADA Y VALIDADA EN PRODUCCIÓN (sep-2026)
 `bip-platform` está **viva en `bip-platform.vercel.app`** y probada end-to-end:
 - **Infra:** repo GitHub `bip-explore/bip-platform` (privado) → Vercel team BIP (mismo que bip-app) →
