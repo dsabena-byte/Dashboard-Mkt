@@ -1,5 +1,25 @@
 # BIP · Verificación OAuth de Google — diagnóstico DEFINITIVO (14-sep-2026)
 
+## ✅ DECISIÓN + PLAN EN EJECUCIÓN: RONDA 1 = GA4 + Drive (el user confirmó)
+> Verificar la app con **2 scopes demostrables hoy**: `analytics.readonly` (GA4) + `drive.file`
+> (Google Sheet por Picker, reemplaza `spreadsheets.readonly`). **`adwords` → Ronda 2** (con cuenta de
+> prueba de Google Ads; producción/Explorer se destraba al verificar la app). Código de todo YA hecho.
+> Privacy PUBLICADA en bip-go.com/privacy. Brand verification HECHA. Estas 3 cosas NO se re-piden.
+>
+> **Pasos (todos config del user; el código está listo):**
+> - **Fase 1 — Picker:** Cloud Console (BIP-GO) → APIs y servicios → Biblioteca → habilitar **"Google
+>   Picker API"**; Credenciales → **Clave de API** → Vercel `bip-platform`: `NEXT_PUBLIC_GOOGLE_API_KEY`
+>   + `NEXT_PUBLIC_GOOGLE_APP_ID=279230041069` → Redeploy.
+> - **Fase 2 — Scopes:** Google Auth Platform → Acceso a los datos: agregar `drive.file`, dejar
+>   `analytics.readonly`, **sacar** `spreadsheets.readonly` y `adwords`. Mismo set en la integración de Nango.
+> - **Fase 3 — Reconectar:** en BIP (bip.explore) Conexiones → Desconectar + Conectar Google (pasar el
+>   aviso "app no verificada" → Avanzado → Continuar) → el token ya trae `drive.file`.
+> - **Fase 4 — Probar/grabar:** `/web` (GA4) + tablero → "Conectar Google Sheet" (Picker) → tablero.
+> - **Fase 5 — Cuenta de prueba + video + responder el hilo de T&S + reenviar** (guión y texto de
+>   respuesta ya entregados en el chat; scopes = solo analytics.readonly + drive.file).
+> **Estado:** esperando que el user haga Fases 1-3; después validamos 4-5.
+
+
 > Fuente de verdad: el **mail exacto de Google Trust & Safety** (pegado por el user) + validación
 > contra el **código real** de `bip-platform`. Reemplaza análisis previos. Objetivo: resolver **de
 > una, sin iterar**. App: **BIP** (proyecto Google Cloud **279230041069**), agencia **ROQUÉ**.
