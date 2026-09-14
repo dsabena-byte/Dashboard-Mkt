@@ -399,6 +399,46 @@ con email/WhatsApp para nurturing saliente (hoy Alertas/reportes está pendiente
 **Fase 1 sugerida (bajo riesgo, casi seguro correcta):** `tenant_profile` + card de perfil progresivo
 en `/dashboard` + `profile_completeness`. Las fases de scoring/pipeline/prompts van después.
 
+### ✅ IMPLEMENTADO (14-sep, misma sesión — todo en `main` de bip-platform)
+> El user confirmó el diseño y pidió construirlo. **Estado: código completo y deployado.**
+> **⚠️ ACCIÓN PENDIENTE DEL USER: correr la migración `supabase/migrations/0014_tenant_profile_crm.sql`
+> en el SQL Editor de Supabase (proyecto BIP).** Hasta correrla, el gate NO bloquea (fail-open:
+> `isProfileComplete` devuelve true si la tabla no existe) y el CRM sale vacío.
+
+1. **Pricing SIN set-up, por período (3/6 meses)** — reemplaza 190/390/690 + set-up. `lib/plan.ts`
+   `PLANS.price3/price6`: Insight **249/199**, Optimize **499/399**, Accelerate **869/695** (6 meses
+   ≈ 20% off). `planPriceUsd(plan, months)`; `mpAmountArs(plan, months)` = USD/mes × TC; checkout sin
+   proración; `/cuenta/plan` headline "Desde USD X/mes" + card elegida con fondo protagónico;
+   `MpSubscribeButton` muestra ahorro %. `bip.html` (cards + tabla) actualizado. Se sacaron
+   `setupAmountArs`/`updatePreapprovalAmount`.
+2. **Captura nombre+apellido en el alta** — `bip.html` (form trial → `/signup?first&last&email`) +
+   `SignupForm` (inputs nombre/apellido → `auth user_metadata` en signUp/OTP). Prefill del perfil.
+3. **Migración 0014** — `tenant_profile` (first/last, sector+sector_other, own_brand, `competitors`
+   jsonb [{name,instagram,facebook,tiktok,website}], `completed`) + CRM (`crm_status`, `crm_notes`,
+   `lead_events`). RLS on, acceso service-role.
+4. **Gate de perfil (bienvenida + form obligatorio + lock del menú)** — `components/welcome-profile.tsx`
+   (bienvenida "Bienvenido a BIP" + form: nombre/apellido/email + **sector** [desplegable + Otros] +
+   **marca** + **4 competidores**; Optimize/Accelerate exigen además **IG o web** por competidor).
+   `(app)/layout.tsx`: si el perfil no está completo → Sidebar **locked** (todos los ítems verdes,
+   NO clickeables, con aviso "Completá tu perfil") + el Inicio muestra el form; `/cuenta/plan` queda
+   **exento** (pagar antes del perfil). `proxy.ts` reenvía `x-pathname` para el gate por ruta.
+   Al completar → `/dashboard` = segunda pantalla ("Puesta en marcha", ya existente). API
+   `app/api/profile` valida server-side y marca `completed`.
+5. **Pago desde la web** — `onboarding` con `?plan` pago → `/cuenta/plan?activate=X` (card resaltada) →
+   elige 3/6 y paga → al volver `?mp=ok` con perfil incompleto → redirige a `/dashboard` (form, con
+   los campos competitivos si es Optimize/Accelerate).
+6. **CRM (a self-serve + b consultor-driven)** — `/consultor` (solo **staff** BIP, `isBipStaff` por
+   `BIP_STAFF_EMAILS`, default `bip.explore@gmail.com,dsabena@gmail.com`): panorama de TODAS las
+   cuentas (perfil, plan, trial, señales `lead_events`, **score**, etapa, competidores) + edición
+   inline de etapa/plan-objetivo/próxima acción + **notas** (`components/crm-board.tsx`, API
+   `app/api/crm`). Señales: `logEvent('dashboard_view'|'profile_completed')`. Self-serve: banner de
+   upgrade en el Inicio para trials + link "Consultor · CRM" en el sidebar (solo staff).
+
+**PENDIENTES de esta feature:** (a) **correr migración 0014** (crítico); (b) opcional: setear
+`BIP_STAFF_EMAILS` en Vercel si el staff cambia; (c) el perfil hoy es 1 sola pantalla obligatoria
+(no "progresivo" incremental — se decidió arrancar simple); (d) scoring es heurístico simple, se
+puede enriquecer; (e) nurturing saliente (email/WhatsApp) sigue pendiente (depende de Alertas).
+
 ## ✅ PLATAFORMA DEPLOYADA Y VALIDADA EN PRODUCCIÓN (sep-2026)
 `bip-platform` está **viva en `bip-platform.vercel.app`** y probada end-to-end:
 - **Infra:** repo GitHub `bip-explore/bip-platform` (privado) → Vercel team BIP (mismo que bip-app) →
