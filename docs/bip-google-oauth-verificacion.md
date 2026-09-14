@@ -16,6 +16,21 @@ Diag útil (staff): `/api/diag/google-token` muestra los scopes reales del token
 - **Falta para cerrar la verificación (Ronda 1):** grabar el **video** (GA4 + Picker), crear **cuenta
   de prueba sin bloqueos**, y **responder el hilo de T&S** (guión + texto ya entregados en el chat).
 
+## 🧹 UI limpia de Google Ads para Ronda 1 (14-sep — restaurar en Ronda 2)
+Para que la web y la plataforma NO muestren un scope (`adwords`) que todavía no demostramos, se
+**sacó toda mención de Google Ads de las superficies visibles**. NO se borró la funcionalidad:
+- **Web comercial (`apps/web/public/bip.html`):** sacadas las 5 menciones (chip demo, FAQ
+  integraciones, chips de integración, tabla comparativa fila "Conexiones de datos" + fila "API
+  Google Ads"). **Backup completo CON Google Ads = `apps/web/public/bip-full.html`** (977 líneas,
+  NO deployado) → en Ronda 2 se restaura desde ahí. `bip-privacy.html` ya estaba limpio.
+- **Plataforma (`bip-platform`):** sacadas menciones en `cuenta/plan` y `components/onboarding.tsx`
+  (conexiones + FAQ de permisos). El lector `lib/google-ads.ts` y la tabla en `/performance` quedan
+  **gated por `googleAdsEnabled()`** (developer token presente O `GOOGLE_ADS_ENABLED=1`) → sin token
+  no renderizan; **se restauran solos en Ronda 2** al cargar el developer token. `connectors.ts`
+  google ya estaba en `covers: ["Analytics 4","Sheets"]`.
+- **Restaurar en Ronda 2:** copiar `bip-full.html` → `bip.html`, re-agregar las menciones en
+  plan/onboarding, y setear el developer token en Vercel.
+
 ## ✅ DECISIÓN + PLAN EN EJECUCIÓN: RONDA 1 = GA4 + Drive (el user confirmó)
 > Verificar la app con **2 scopes demostrables hoy**: `analytics.readonly` (GA4) + `drive.file`
 > (Google Sheet por Picker, reemplaza `spreadsheets.readonly`). **`adwords` → Ronda 2** (con cuenta de
