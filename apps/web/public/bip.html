@@ -197,7 +197,8 @@
   .sec-head.center{margin-inline:auto}
   .sec-head h2{font-weight:800; font-size:clamp(28px,4vw,46px); margin:.35em 0 .2em; color:var(--navy)}
   .sec-head p{color:var(--muted); font-size:17px; margin:0}
-  .sec-h{font-weight:800; font-size:clamp(24px,3.2vw,38px); margin:.35em 0 .2em; color:var(--navy)}
+  .sec-h{font-weight:800; font-size:clamp(24px,3.2vw,38px); margin:.35em 0 .2em; color:var(--navy); display:flex; align-items:center; gap:12px}
+  .shield-ic{flex:0 0 auto}
   .sec-p{color:var(--muted); font-size:16px; margin:0}
   .secgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); grid-auto-rows:1fr; gap:14px; margin-top:22px}
   .seccard{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:6px}
@@ -735,7 +736,7 @@
 <section class="band" id="seguridad">
   <div class="wrap">
     <span class="kicker">Seguridad y privacidad</span>
-    <h2 class="sec-h">🛡️ Tus datos, protegidos y bajo tu control</h2>
+    <h2 class="sec-h"><svg class="shield-ic" viewBox="0 0 48 48" width="34" height="34" aria-hidden="true"><path d="M24 2.5 5 8.7v13.6C5 34 12.9 42.6 24 46.5 35.1 42.6 43 34 43 22.3V8.7L24 2.5Z" fill="#cbd5e1"/><path d="M24 6 8.5 11v11.3C8.5 32.2 15 39.4 24 42.9 33 39.4 39.5 32.2 39.5 22.3V11L24 6Z" fill="var(--navy)"/><rect x="16.4" y="23.4" width="15.2" height="12.6" rx="2.4" fill="#fff"/><path d="M19.4 23.4v-3.8a4.6 4.6 0 0 1 9.2 0v3.8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>Tus datos, protegidos y bajo tu control</h2>
     <p class="sec-p">Conectás tus cuentas en <b>solo lectura</b> para ver tus métricas. Así los cuidamos:</p>
     <div class="secgrid">
       <div class="seccard"><b>🔒 Solo lectura</b><span>Accedemos a tus métricas para mostrártelas. No publicamos ni modificamos nada sin tu acción.</span></div>
