@@ -7,6 +7,24 @@ Cualquier cambio de **scopes de la integración google se hace en `nango.bip-go.
 google**, NUNCA en app.nango.dev. Editar en Cloud NO afecta la app (nos hizo perder horas 14-sep).
 Diag útil (staff): `/api/diag/google-token` muestra los scopes reales del token.
 
+## 🚀 RONDA 1 REENVIADA A VERIFICACIÓN (14-sep)
+El user reenvió el formulario de verificación en Google Auth Platform (proyecto BIP-GO
+279230041069) con **scopes = solo 2**: `analytics.readonly` + `drive.file` (sacados `adwords` y
+`spreadsheets.readonly` → Ronda 2). Pantalla "Progreso de la verificación": *"El equipo de
+Confianza y Seguridad recibió tu formulario… primer correo en 3-5 días… revisión 4-6 semanas.
+Tu última pantalla de consentimiento aprobada sigue en uso."* Etapas: ✓ página principal, ✓
+marca; en curso: política de privacidad → funciones app → acceso a datos → permisos mínimos.
+- **NO hay botón extra de "enviar":** al guardar los scopes ya quedó reenviado (in review).
+- ✅ **EMAIL A T&S ENVIADO (14-sep):** el user respondió el hilo con **link del video**
+  (`https://youtu.be/8ZON9TVlBmk`, YouTube no listado, subtítulos EN `.srt` = `bip-oauth-demo-en.srt`)
+  + **credenciales de prueba** (`google.review@bip-go.com` + pasos) + nota de privacidad/Limited Use.
+  El texto de respuesta EN y la justificación por scope están entregados en el chat (14-sep).
+- **ESTADO: nada más que hacer del lado del user hasta que Google responda** (primer mail 3-5 días,
+  resolución 4-6 semanas). Si T&S pide algo, resolver según el pedido.
+- Video graba: seguridad/privacy/terms → alta (acepta T&C obligatorio) → login magic link →
+  Conexiones → consent Google (2 scopes) → GA4 en dash Ecommerce → conectar Google Sheet por
+  Picker + armar tablero → desconectar + borrar datos.
+
 ## ✅ RONDA 1 FUNCIONANDO (14-sep): GA4 + drive.file validados end-to-end
 - **`analytics.readonly` (GA4)** → `/web` trae data real (roque-in.com). ✅
 - **`drive.file` (Picker)** → "Conectar Google Sheet" abre el Picker y arma el tablero. ✅
