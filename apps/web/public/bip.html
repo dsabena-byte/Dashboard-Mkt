@@ -244,6 +244,9 @@
   .pr .per{font-size:14px; color:var(--muted); font-weight:600}
   .ctrterm{font-size:12px; color:var(--muted); margin:1px 0 3px}
   .ctrterm b{color:var(--ink); font-weight:700}
+  .save6{margin:4px 0 2px; background:#eafaf0; border:1px solid #b6e6c9; border-radius:10px; padding:10px 12px; font-size:12px; color:#14532d; line-height:1.45}
+  .save6 b{color:#166534; font-weight:800}
+  .save6-b{display:block; margin-top:4px; color:#166534; font-weight:700}
   .setup-row{margin-top:6px; background:var(--ground-2); border:1px solid var(--line-2); border-radius:10px; padding:12px 14px}
   .sr-top{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
   .sr-k{font-size:12px; color:var(--muted); font-weight:600; white-space:nowrap}
@@ -838,7 +841,8 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
   return `<article class="card"><div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
     <div class="trialslot">${p.trial ? `<div class="trialbadge">✦ ${p.trial}</div>` : ''}</div>
     <div class="pr"><span class="cur">desde USD</span><span class="mo">${p.price6}</span><span class="per">/ mes</span></div>
-    <div class="ctrterm">6 meses <b>USD ${p.price6}</b>/mes · 3 meses <b>USD ${p.price3}</b>/mes · <b style="color:#16a34a">sin set-up</b></div>
+    <div class="ctrterm">Elegí tu modalidad: contratación por <b>3 o 6 meses</b></div>
+    <div class="save6"><b>Contratá 6 meses y ahorrá ~20%:</b> USD ${p.price6}/mes en vez de USD ${p.price3}/mes (3 meses). <span class="save6-b">✓ Set-up y configuración inicial, sin cargo</span></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
     <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
     ${p.trial ? `<a class="pcta pcta-trial" href="https://bip-platform.vercel.app/signup">Probá Insight 15 días →</a><div class="trialcta-sub">15 días de acceso completo, sobre tu propia operación. Lo ves andando antes de decidir — sin tarjeta.</div><a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Activar ${p.name} →</a>` : `<a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Activar ${p.name} →</a>`}</article>`;
@@ -862,9 +866,10 @@ const FULL = [
 ];
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
 document.getElementById('matrix').innerHTML =
-  `<tr class="section"><td colspan="4">Precio (USD / mes · sin set-up)</td></tr>`+
-  `<tr><td>Plan 6 meses</td><td><span class="val">199</span></td><td><span class="val">399</span></td><td><span class="val">695</span></td></tr>`+
-  `<tr><td>Plan 3 meses</td><td><span class="val">249</span></td><td><span class="val">499</span></td><td><span class="val">869</span></td></tr>`+
+  `<tr class="section"><td colspan="4">Precio (USD / mes)</td></tr>`+
+  `<tr><td>Contratación 6 meses <b>(ahorrás ~20%)</b></td><td><span class="val">199</span></td><td><span class="val">399</span></td><td><span class="val">695</span></td></tr>`+
+  `<tr><td>Contratación 3 meses</td><td><span class="val">249</span></td><td><span class="val">499</span></td><td><span class="val">869</span></td></tr>`+
+  `<tr><td>Set-up y configuración inicial</td><td><span class="val">sin cargo</span></td><td><span class="val">sin cargo</span></td><td><span class="val">sin cargo</span></td></tr>`+
   `<tr class="section"><td colspan="4">Acceso</td></tr>`+
   `<tr><td>Usuarios incluidos</td><td><span class="val">1</span></td><td><span class="val">2 a 4</span></td><td><span class="val">+4</span></td></tr>`+
   `<tr><td>Marca</td><td><span class="val">1</span></td><td><span class="val">1</span></td><td><span class="val">1</span></td></tr>`+
