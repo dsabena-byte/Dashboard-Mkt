@@ -360,6 +360,45 @@ con selector 3/6 meses que muestra la mensualidad efectiva. Menú lateral: "Upgr
   entregar link mágico a cualquier email; deshabilitar "Confirm email" si se quiere alta instantánea.
 - **Research (Accelerate)** en desarrollo; **Mkt de Influencia** (optimize+) marcado "pronto".
 
+## 🎯 FEATURE PEDIDA (14-sep-2026) — Nurturing de leads/clientes + motor de venta interno (upgrades)
+> **Pedido del user (verbatim):** "para el inicio del plan insight y el trial insight, me interesa
+> que la página de inicio de la plataforma te permita **tomar datos, ir nutriendo cada lead y
+> cliente** para poder luego **realizar un proceso de venta desde la plataforma para los distintos
+> upgrades**." → CRM-lite embebido: captura + perfilado progresivo + señales de uso → upsell
+> trial→Insight→Optimize→Accelerate **desde adentro** de la plataforma. **AÚN NO CONSTRUIDO** —
+> esto es la spec para arrancar. Objetivo del negocio: cada cuenta (sobre todo trial e Insight)
+> se va enriqueciendo con datos para que el consultor (y/o automatismos) empujen el upgrade correcto.
+
+**Diseño propuesto (por fases, a confirmar campos/flujo con el user antes de codear la Fase 1):**
+- **Puntos de captura:**
+  1. **Onboarding** (ya crea el tenant) → sumar 2-3 campos mínimos (industria/rubro, rol de quien
+     entra, tamaño de equipo/empresa).
+  2. **/dashboard (inicio) = card "Completá tu perfil"** con perfilado **progresivo** (no todo de
+     una): objetivos de negocio, marcas/categorías reales, fuentes de datos que ya tienen (Meta/GA4/
+     etc.), presupuesto de marketing aprox., madurez analítica. Se guarda incrementalmente.
+- **Modelo de datos (propuesto, proyecto bip-platform Supabase):**
+  - `tenant_profile` (1:1 con tenant): firmografía + objetivos + fuentes declaradas + budget range +
+    `profile_completeness` (%). RLS por tenant.
+  - `lead_events` (append-only): señales de actividad/uso (login, dashboards vistos, conexión hecha,
+    meta configurada, días de trial restantes, etc.) → alimentan scoring.
+  - `sales_opportunities` / `sales_notes`: pipeline de upsell por tenant (etapa, plan objetivo,
+    próxima acción, dueño=consultor). Visible solo para rol interno (owner de BIP/admin global).
+- **Nurturing (señales → acción):** contador de trial + hitos de uso + gaps de perfil → **prompts de
+  upgrade contextuales** dentro de la app (ej: "Estás usando X, con Optimize verías la competencia").
+  Reglas simples primero (no ML): trial por vencer, límite de usuarios/categorías alcanzado, uso alto.
+- **Proceso de venta interno:** **vista de consultor** (pipeline/CRM-lite) que lista cuentas con su
+  perfil + score + próxima acción; el upgrade se consuma con el flujo MP ya existente (`/cuenta/plan`).
+- **Reusar lo que ya hay:** el checkout/activación de MP (`/cuenta/plan?activate=`), el gating por
+  plan (`lib/plan.ts`), `getCurrentTenant()`, `serviceClient()`. NO reinventar billing.
+
+**Decisiones abiertas (confirmar con el user):** (a) set exacto de campos del perfil y cuáles son
+obligatorios en onboarding vs progresivos; (b) ¿el "proceso de venta" es **self-serve** (prompts
+automáticos in-app) y/o **consultor-driven** (vista CRM para el equipo BIP)?; (c) ¿se trackean leads
+**pre-signup** desde la web (email dejado en `/signup`) o solo tenants ya creados?; (d) integración
+con email/WhatsApp para nurturing saliente (hoy Alertas/reportes está pendiente de construir).
+**Fase 1 sugerida (bajo riesgo, casi seguro correcta):** `tenant_profile` + card de perfil progresivo
+en `/dashboard` + `profile_completeness`. Las fases de scoring/pipeline/prompts van después.
+
 ## ✅ PLATAFORMA DEPLOYADA Y VALIDADA EN PRODUCCIÓN (sep-2026)
 `bip-platform` está **viva en `bip-platform.vercel.app`** y probada end-to-end:
 - **Infra:** repo GitHub `bip-explore/bip-platform` (privado) → Vercel team BIP (mismo que bip-app) →
