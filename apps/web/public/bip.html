@@ -334,6 +334,8 @@
   .formcard h3{font-family:"Poppins"; font-weight:800; font-size:22px; margin:0 0 4px; color:var(--navy)}
   .formcard .fp{color:var(--muted); font-size:13.5px; margin:0 0 20px}
   form .fg{display:flex; flex-direction:column; gap:6px; margin-bottom:14px}
+  form .fg2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  form .fg2 .fg{margin-bottom:14px}
   form label{font-family:"Poppins"; font-size:12px; font-weight:600; color:var(--muted)}
   form input, form select, form textarea{font-family:inherit; font-size:14.5px; color:var(--ink); background:var(--ground-2); border:1px solid var(--line); border-radius:8px; padding:12px 13px; width:100%}
   form input:focus, form select:focus, form textarea:focus{outline:none; border-color:var(--cyan); box-shadow:0 0 0 3px color-mix(in srgb,var(--cyan) 22%,transparent)}
@@ -739,7 +741,8 @@
       <div class="formcard">
         <form action="https://bip-platform.vercel.app/signup" method="get">
           <h3>Empezá tu trial de 15 días</h3>
-          <p class="fp">Dejá tu email y creás tu cuenta en un minuto. Sin tarjeta.</p>
+          <p class="fp">Dejá tus datos y creás tu cuenta en un minuto. Sin tarjeta.</p>
+          <div class="fg2"><div class="fg"><label for="first">Nombre</label><input id="first" name="first" type="text" autocomplete="given-name" required placeholder="Tu nombre"></div><div class="fg"><label for="last">Apellido</label><input id="last" name="last" type="text" autocomplete="family-name" required placeholder="Tu apellido"></div></div>
           <div class="fg"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required placeholder="tu@empresa.com"></div>
           <button type="submit" class="btn primary"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Empezá tu trial de 15 días</button>
           <p class="formnote">Acceso completo por 15 días sobre tu propia operación. El upgrade lo hacés adentro cuando quieras.</p>
