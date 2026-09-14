@@ -110,15 +110,29 @@ Items a resolver (del mail):
   una **API key** restringida por dominio → `NEXT_PUBLIC_GOOGLE_API_KEY`. App id = **279230041069**
   (project number) → `NEXT_PUBLIC_GOOGLE_APP_ID`.
 
-**Lo que construye Claude (código):**
-- **Sheets vía Picker → dataset** *(en curso 14-sep)*: `GoogleSheetPicker` (cliente, abre el Picker con
-  el token del cliente) + `/api/connect/google/token` (devuelve el access token para el Picker) +
-  `/api/datasets/google-sheet` (lee el Sheet con `getToken` y lo guarda como `tenant_datasets`,
-  `source:"google_sheet"`). Se engancha al builder existente (el dataset alimenta los tableros).
-- **Google Ads → /performance (Google)** *(pendiente, gate por `GOOGLE_ADS_DEVELOPER_TOKEN`)*: `lib/
-  google-ads.ts` (GAQL con `getToken(tenant,"google")` + developer token + login-customer-id) + sección
-  Google en `/performance`. Portar la lógica de Drean (`google_ads_creatives`). Queda listo para
-  funcionar apenas exista el developer token.
+**Lo que construyó Claude (código) — HECHO 14-sep, en `main`:**
+- **Sheets vía Picker → dataset** ✅: `components/google-sheet-picker.tsx` (abre el Google Picker con el
+  token del cliente; scope `drive.file` → solo el archivo elegido) + `/api/connect/google/token`
+  (devuelve el access token para el Picker, owner/admin) + `/api/datasets/google-sheet` (lee el Sheet
+  con `getToken` vía Sheets API y lo guarda como `tenant_datasets`, `source:"google_sheet"`). Botón
+  **"Conectar Google Sheet"** en el builder, al lado de "Subir". El dataset alimenta los tableros.
+- **Google Ads → /performance** ✅ (scaffold funcional, gate por `GOOGLE_ADS_DEVELOPER_TOKEN`):
+  `lib/google-ads.ts` (`listAccessibleCustomers` + GAQL `campaign` con `getToken(tenant,"google")` +
+  developer token; impresiones/clicks/costo/conversiones últimos 30 días) + sección **"Google Ads ·
+  pauta"** (tabla) en `/performance`, best-effort (se muestra sola cuando hay token + cuenta). **Queda
+  funcionando apenas exista el developer token** — no requiere más código.
+
+**FALTA (del user) para que funcione y pase la verificación:**
+1. **Google Ads developer token (Basic Access)** → Vercel `GOOGLE_ADS_DEVELOPER_TOKEN` (+ opcional
+   `GOOGLE_ADS_LOGIN_CUSTOMER_ID` si es MCC). **Es el cuello largo — pedirlo YA.**
+2. **Google Picker:** habilitar "Google Picker API" en el proyecto + crear **API key** de navegador
+   (restringida a `bip-platform.vercel.app`) → Vercel `NEXT_PUBLIC_GOOGLE_API_KEY` y
+   `NEXT_PUBLIC_GOOGLE_APP_ID=279230041069`.
+3. **Scopes en Nango + consent screen:** sumar `drive.file` a la integración Google de Nango y a la
+   consent screen; responder el mail (Opción 1 "Confirming narrower scopes" por `drive.file` en vez de
+   `spreadsheets.readonly`). Mantener `analytics.readonly` + `adwords`. No llamar `drive.file` en prod
+   hasta que aprueben.
+4. **Video** (los 3 scopes) + **test creds sin bloqueos** + **responder el hilo de T&S**.
 
 **Video (cubre los 3 scopes):** consent → `/web` (GA4) → conectar un Google Sheet vía Picker (drive.file)
 → `/performance` sección Google Ads. Test creds sin bloqueos + pasos, y responder el hilo de T&S.

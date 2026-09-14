@@ -439,6 +439,29 @@ en `/dashboard` + `profile_completeness`. Las fases de scoring/pipeline/prompts 
 (no "progresivo" incremental — se decidió arrancar simple); (d) scoring es heurístico simple, se
 puede enriquecer; (e) nurturing saliente (email/WhatsApp) sigue pendiente (depende de Alertas).
 
+### ✅ SEGURIDAD, CONSENTIMIENTO, BORRADO y LEGALES (14-sep, tarde — todo en `main`)
+- **Pricing sin set-up** (3/6 meses; Insight 249/199, Optimize 499/399, Accelerate 869/695) en
+  plataforma **y** web; 6 meses ~20% off como mensaje de venta; Accelerate reposicionado a "3
+  categorías = todo tu negocio" (se sacó Research del card).
+- **Consentimiento en el alta** (migración **0015**): aceptación obligatoria de Términos+Privacidad +
+  opt-in de comunicaciones (email/WhatsApp) → user_metadata + tenant.
+- **Borrado de datos**: `api/connections/disconnect` (revoca Nango + purga snapshot de la fuente) y
+  `api/account/delete` (baja total: revoca todo + borra tenant en cascada + borra usuarios de Auth).
+  UI: botón desconectar en Conexiones + "Zona de peligro" en Mi cuenta.
+- **Transparencia**: bloque "Cómo protegemos tus datos" en Conexiones + sección "Seguridad y privacidad"
+  (8 cards, escudo) en la web + `privacy.html`/`terms.html` publicables.
+- **Legales para Netlify** (`bip-go.com`): `apps/web/public/bip-privacy.html` + `bip-terms.html`
+  (self-contained, Google+Meta+Microsoft). Se suben como `privacy/index.html` + `terms/index.html` +
+  la carpeta `bip/` (assets). Docs: **`docs/bip-legal-privacidad.md`**, **`docs/bip-seguridad-procesos.md`**.
+- **Google verificación OAuth — Opción B** (demostrar uso, NO dropear scopes): **construido** Sheets
+  vía `drive.file`+Picker (`google-sheet-picker` + `/api/datasets/google-sheet` + `/api/connect/google/
+  token`) y Google Ads (`lib/google-ads.ts` + sección en `/performance`, gated por
+  `GOOGLE_ADS_DEVELOPER_TOKEN`). **Falta del user:** developer token de Ads, API key del Picker
+  (`NEXT_PUBLIC_GOOGLE_API_KEY` + `NEXT_PUBLIC_GOOGLE_APP_ID=279230041069`), sumar `drive.file` en
+  Nango/consent, video + test creds + responder T&S. Detalle: **`docs/bip-google-oauth-verificacion.md`**.
+- **Migraciones a correr en Supabase (BIP):** 0014 (perfil+CRM) y 0015 (consentimiento) — ya corridas
+  por el user el 14-sep.
+
 ## ✅ PLATAFORMA DEPLOYADA Y VALIDADA EN PRODUCCIÓN (sep-2026)
 `bip-platform` está **viva en `bip-platform.vercel.app`** y probada end-to-end:
 - **Infra:** repo GitHub `bip-explore/bip-platform` (privado) → Vercel team BIP (mismo que bip-app) →
