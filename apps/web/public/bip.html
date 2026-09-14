@@ -197,6 +197,12 @@
   .sec-head.center{margin-inline:auto}
   .sec-head h2{font-weight:800; font-size:clamp(28px,4vw,46px); margin:.35em 0 .2em; color:var(--navy)}
   .sec-head p{color:var(--muted); font-size:17px; margin:0}
+  .sec-h{font-weight:800; font-size:clamp(24px,3.2vw,38px); margin:.35em 0 .2em; color:var(--navy)}
+  .sec-p{color:var(--muted); font-size:16px; margin:0}
+  .secgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; margin-top:22px}
+  .seccard{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:6px}
+  .seccard b{font-family:"Poppins"; font-weight:700; font-size:15px; color:var(--navy)}
+  .seccard span{font-size:13.5px; color:var(--ink); line-height:1.5}
   .modgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:44px}
   @media(max-width:860px){.modgrid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:460px){.modgrid{grid-template-columns:1fr}}
@@ -729,6 +735,24 @@
   </div>
 </section>
 
+<!-- SEGURIDAD Y PRIVACIDAD -->
+<section class="band" id="seguridad">
+  <div class="wrap">
+    <span class="kicker">Seguridad y privacidad</span>
+    <h2 class="sec-h">Tus datos, protegidos y bajo tu control</h2>
+    <p class="sec-p">Conectás tus cuentas en <b>solo lectura</b> para ver tus métricas. Así los cuidamos:</p>
+    <div class="secgrid">
+      <div class="seccard"><b>🔒 Solo lectura</b><span>Accedemos a tus métricas para mostrártelas. No publicamos ni modificamos nada sin tu acción.</span></div>
+      <div class="seccard"><b>🛡️ Cifrado y aislado</b><span>Cifrado en tránsito y en reposo; tus datos quedan aislados por cuenta — nadie más los ve.</span></div>
+      <div class="seccard"><b>🔑 Vos tenés el control</b><span>Los accesos se guardan cifrados y podés revocarlos o pedir el borrado cuando quieras.</span></div>
+      <div class="seccard"><b>🚫 Nunca se venden</b><span>No vendemos tus datos ni los usamos para entrenar modelos de IA. Solo para tu tablero.</span></div>
+      <div class="seccard"><b>📄 Google Drive acotado</b><span>Con Drive accedemos <b>solo a la planilla que elegís</b>, no a todo tu Drive.</span></div>
+      <div class="seccard"><b>✅ Cumplimiento</b><span>Cumplimos la Google API Services User Data Policy (Limited Use) y las políticas de Meta.</span></div>
+    </div>
+    <p class="sec-p" style="margin-top:16px">Más detalle en nuestra <a href="https://bip-go.com/privacy" target="_blank" rel="noopener" style="color:var(--cyan-ink);font-weight:700">Política de Privacidad</a> y <a href="https://bip-go.com/terms" target="_blank" rel="noopener" style="color:var(--cyan-ink);font-weight:700">Términos</a>.</p>
+  </div>
+</section>
+
 <!-- FINAL CTA + FORM -->
 <section class="final" id="demo">
   <div class="wrap">
@@ -778,9 +802,12 @@
         <a href="#modulos">Qué medís</a>
         <a href="#planes">Planes</a>
         <a href="#faq">Preguntas</a>
+        <a href="#seguridad">Seguridad</a>
+        <a href="https://bip-go.com/privacy" target="_blank" rel="noopener">Privacidad</a>
+        <a href="https://bip-go.com/terms" target="_blank" rel="noopener">Términos</a>
       </div>
     </div>
-    <div class="legal">© <span id="yr"></span> BIP · Business Impact Platform</div>
+    <div class="legal">🔒 Solo lectura · datos cifrados · no vendemos tus datos ni los usamos para entrenar IA &nbsp;·&nbsp; © <span id="yr"></span> BIP · Business Impact Platform</div>
   </div>
 </footer>
 
