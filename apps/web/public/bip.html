@@ -699,21 +699,7 @@
 </section>
 
 <!-- ADD-ONS -->
-<section class="addons-sec">
-  <div class="wrap">
-    <div class="sec-head center">
-      <span class="kicker">Sumá cuando lo necesites</span>
-      <h2>Complementos opcionales, sobre cualquier plan.</h2>
-      <p>Agregá valor a tu estrategia, a demanda.</p>
-    </div>
-    <div class="addgrid">
-      <div class="addc"><div class="an">Marca adicional</div><div class="ad">Replicación completa de dashboards + clasificación automática</div><div class="ap">set-up desde USD 600 + USD 350 / mes</div></div>
-      <div class="addc"><div class="an">Categoría adicional</div><div class="ad">Sobre la marca ya configurada</div><div class="ap">USD 250 / mes</div></div>
-      <div class="addc"><div class="an">Usuario adicional</div><div class="ad">Sumá integrantes del equipo</div><div class="ap">USD 50 / mes</div></div>
-      <div class="addc"><div class="an">Hora de asesoramiento extra</div><div class="ad">Además de las horas incluidas en tu plan</div><div class="ap">USD 110</div></div>
-    </div>
-  </div>
-</section>
+<!-- (Sección de complementos removida: para más marcas/categorías/usuarios se sube de plan) -->
 
 <!-- FAQ -->
 <section class="band" id="faq">
@@ -737,11 +723,11 @@
       <div>
         <span class="kicker">Empezá hoy</span>
         <h2>¿Listo para descubrir qué mueve <span style="color:#bfe0fb">realmente</span> tus KPIs?</h2>
-        <p class="p">Agendá una demo de 30 minutos. Te mostramos cómo se vería tu estrategia dentro de BIP —con el criterio experto de ROQUÉ— y salís con un primer diagnóstico.</p>
+        <p class="p">Creá tu cuenta y arrancá tu trial de 15 días. Vas a ver tu estrategia dentro de BIP —con el criterio experto de ROQUÉ— sobre tu propia operación.</p>
         <ul class="checklist">
-          <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Demo personalizada con tu caso</li>
-          <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Diagnóstico inicial sin compromiso</li>
-          <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Respuesta en menos de 24 horas</li>
+          <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> 15 días de acceso completo</li>
+          <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Sobre tu propia operación · sin tarjeta</li>
+          <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> El upgrade lo hacés adentro cuando quieras</li>
         </ul>
         <div class="alt">
           <a id="waLink" href="#" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.7 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.7.7-2.8-.2-.3A8 8 0 1 1 12 20Zm4.5-5.6c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7.2 7.2 0 0 1-1.4-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4a.5.5 0 0 0 0-.4L8.9 8c-.2-.4-.3-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 4.9 4.9 0 0 0 1 2.6 11.2 11.2 0 0 0 4.3 3.8c.6.3 1.1.4 1.5.5a3.6 3.6 0 0 0 1.6.1 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg> WhatsApp</a>
@@ -749,28 +735,13 @@
         </div>
       </div>
       <div class="formcard">
-        <form id="leadForm" novalidate>
-          <h3>Agendá tu demo</h3>
-          <p class="fp">Contanos un poco de tu equipo y te contactamos.</p>
-          <div class="frow">
-            <div class="fg"><label for="nombre">Nombre*</label><input id="nombre" name="nombre" autocomplete="name" required></div>
-            <div class="fg"><label for="empresa">Empresa</label><input id="empresa" name="empresa" autocomplete="organization"></div>
-          </div>
-          <div class="frow">
-            <div class="fg"><label for="email">Email*</label><input id="email" name="email" type="email" autocomplete="email" required></div>
-            <div class="fg"><label for="telefono">Teléfono / WhatsApp</label><input id="telefono" name="telefono" type="tel" autocomplete="tel"></div>
-          </div>
-          <div class="fg"><label for="plan">¿Qué plan te interesa?</label>
-            <select id="plan" name="plan"><option value="">Todavía no sé</option><option>Insight</option><option>Optimize</option><option>Accelerate</option></select></div>
-          <div class="fg"><label for="mensaje">¿Qué querés lograr?</label><textarea id="mensaje" name="mensaje" placeholder="Ej: unificar mis reportes y saber qué campañas impactan en ventas."></textarea></div>
-          <button type="submit" class="btn primary" id="submitBtn"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Agendar mi demo</button>
-          <p class="formnote">Al enviar aceptás que te contactemos por este medio. No compartimos tus datos.</p>
+        <form action="https://bip-platform.vercel.app/signup" method="get">
+          <h3>Empezá tu trial de 15 días</h3>
+          <p class="fp">Dejá tu email y creás tu cuenta en un minuto. Sin tarjeta.</p>
+          <div class="fg"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required placeholder="tu@empresa.com"></div>
+          <button type="submit" class="btn primary"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Empezá tu trial de 15 días</button>
+          <p class="formnote">Acceso completo por 15 días sobre tu propia operación. El upgrade lo hacés adentro cuando quieras.</p>
         </form>
-        <div class="success" id="success">
-          <div class="ok"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12.5 9.5 18 20 6"/></svg></div>
-          <h3>¡Listo! Recibimos tu pedido.</h3>
-          <p id="successMsg">Te contactamos dentro de las próximas 24 horas para coordinar la demo.</p>
-        </div>
       </div>
     </div>
   </div>
@@ -786,7 +757,7 @@
           <span class="em" id="footEmail">hola@bip.com</span>
           <span>Estrategia que se convierte en resultados.</span>
         </div>
-        <div class="fbtn"><a href="#demo">Agendá tu demo →</a></div>
+        <div class="fbtn"><a href="https://bip-platform.vercel.app/signup">Empezá tu trial →</a></div>
       </div>
       <div class="flinks">
         <a href="#como">Cómo funciona</a>
@@ -904,17 +875,7 @@ document.getElementById('footEmail').textContent = SALES_EMAIL;
 document.getElementById('footEmail').style.cursor='pointer';
 document.getElementById('footEmail').onclick=()=>location.href=`mailto:${SALES_EMAIL}`;
 
-const form = document.getElementById('leadForm');
-form.addEventListener('submit', e => {
-  e.preventDefault();
-  const f = Object.fromEntries(new FormData(form).entries());
-  if(!f.nombre || !f.email){ (f.nombre?document.getElementById('email'):document.getElementById('nombre')).focus(); return; }
-  const body = `Nombre: ${f.nombre}\nEmpresa: ${f.empresa||'-'}\nEmail: ${f.email}\nTeléfono: ${f.telefono||'-'}\nPlan de interés: ${f.plan||'A definir'}\n\n${f.mensaje||''}`;
-  window.location.href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent('Demo BIP — '+f.nombre+(f.empresa?' ('+f.empresa+')':''))}&body=${encodeURIComponent(body)}`;
-  form.style.display='none';
-  document.getElementById('success').style.display='block';
-  document.getElementById('successMsg').innerHTML = `Te contactamos dentro de las próximas 24 horas. ¿Preferís algo más inmediato? <a href="${waUrl}" target="_blank" rel="noopener" style="color:var(--cyan-ink);font-weight:600">Escribinos por WhatsApp</a>.`;
-});
+// El bloque de cierre ahora es un form de trial (GET a /signup); no necesita JS.
 // ---- mockup dashboard (estilo Seguimiento de Objetivos) ----
 (function(){
   const SEM={g:'#16a34a',a:'#d97706',r:'#dc2626'};
