@@ -389,7 +389,7 @@
       <a href="#faq">Preguntas</a>
     </div>
     <div class="spacer"></div>
-    <a class="btn primary sm" href="#demo"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Agendar demo</a>
+    <a class="btn primary sm" href="https://bip-platform.vercel.app/signup"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Probá 15 días</a>
   </div>
 </nav>
 
@@ -402,7 +402,7 @@
     <h1>Tener una estrategia no te asegura <span class="hl">lograr tus resultados</span>.</h1>
     <p class="lede">BIP conecta cada acción de marketing con el impacto real en el negocio. No accedés solo a una tecnología: accedés a un <b>universo de conocimiento y expertise world-class</b> que te guía en cada decisión.</p>
     <div class="cta-row">
-      <a class="btn primary" href="#demo"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Agendá tu demo</a>
+      <a class="btn primary" href="https://bip-platform.vercel.app/signup"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Probá Insight 15 días</a>
       <a class="btn ghost" href="#como">Ver cómo funciona</a>
     </div>
     <p class="microcopy">Sin instalaciones · Se conecta con tus fuentes de datos · Primer ciclo en semanas</p>
@@ -829,9 +829,9 @@ const ICON = {
 };
 const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3"/><path d="M20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>';
 const PLANS = [
-  {key:'insight',name:'Insight',tag:'plan base',price:'190',setup:'250',users:'1 usuario',cats:'1 marca · 1 categoría',trial:'Comprobalo una semana',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
-  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'390',setup:'350',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y consultoría estratégica para convertir esa data en planes de acción.'},
-  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'690',setup:'450',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y consultoría estratégica para un diagnóstico total.'}
+  {key:'insight',name:'Insight',tag:'plan base',price:'190',setup:'150',users:'1 usuario',cats:'1 marca · 1 categoría',trial:'Comprobalo 15 días',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
+  {key:'optimize',name:'Optimize',tag:'plan intermedio',price:'390',setup:'250',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y consultoría estratégica para convertir esa data en planes de acción.'},
+  {key:'accelerate',name:'Accelerate',tag:'plan full',price:'690',setup:'350',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y consultoría estratégica para un diagnóstico total.'}
 ];
 const MODULES = [
   ['Núcleo estratégico · Mapa + Seguimiento de Objetivos',1,1,1],
@@ -839,15 +839,15 @@ const MODULES = [
   ['Plan de Medios · ON + OFF',1,1,1],
   ['Redes Sociales',1,'adv','adv'],
   ['Web / Ecommerce',1,'adv','adv'],
-  ['Optimización SEO',1,'adv','adv'],
-  ['Trade · Surtido + Floor Share',1,1,1],
   ['Resultados Comerciales (facturación + share)',1,1,1],
   ['Inversión de Marketing',1,1,1],
   ['Capa de inteligencia (IA) · chat + insights',1,1,1],
   ['Alertas + reportes automatizados (email / WhatsApp)',1,1,1],
-  ['Diagnósticos y planes con data competitiva',0,1,1],
-  ['Research de mercado (Top of Mind, Share of Mind, intención, funnel)',0,0,1],
-  ['Consultoría y acompañamiento estratégico',0,1,1],
+  ['Optimización SEO',0,'adv','adv'],
+  ['Trade · Surtido + Floor Share',0,1,1],
+  ['Consultoría estratégica',0,1,1],
+  ['Research de mercado (Top of Mind, Share of Mind, intención)',0,0,1],
+  ['Historial de datos','12 meses','24 meses','24 meses'],
 ];
 const idx = {insight:1,optimize:2,accelerate:3};
 const has = v => v===1 || v==='adv' || typeof v==='string';
@@ -862,11 +862,11 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
   return `<article class="card"><div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
     <div class="trialslot">${p.trial ? `<div class="trialbadge">✦ ${p.trial}</div>` : ''}</div>
     <div class="pr"><span class="cur">USD</span><span class="mo">${p.price}</span><span class="per">/ mes</span></div>
-    <div class="ctrterm">Contratación por <b>6 o 12 meses</b></div>
-    <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 12 meses</div></div>
+    <div class="ctrterm">Contratación por <b>3 o 6 meses</b></div>
+    <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 6 meses</div></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
     <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
-    ${p.trial ? `<a class="pcta" href="#demo">Empezá a comprobarlo →</a><div class="trialcta-sub">Una semana de acceso completo, sobre tu propia operación. Estamos tan seguros del valor que te dejamos verlo antes de decidir.</div>` : `<a class="pcta" href="#demo">Empezá con ${p.name} →</a>`}</article>`;
+    ${p.trial ? `<a class="pcta" href="https://bip-platform.vercel.app/signup">Probá Insight 15 días →</a><div class="trialcta-sub">15 días de acceso completo, sobre tu propia operación. Lo ves andando antes de decidir — sin tarjeta.</div>` : `<a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Empezá con ${p.name} →</a>`}</article>`;
 }).join('');
 
 const FULL = [
