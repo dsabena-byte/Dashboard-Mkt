@@ -97,10 +97,41 @@ Items a resolver (del mail):
 3. **Google Ads** en la plataforma (requiere developer token — tramitarlo en paralelo).
 4. **Video** cubriendo los 3 + **test creds** + responder el mail.
 
+### ⚠️ SECUENCIA CORRECTA del acceso a Google Ads (corregido 14-sep — NO re-litigar)
+- El **nivel de acceso de la Ads API para BIP-GO (proyecto 279230041069) es "Prueba" (Test)** y la
+  solicitud de **"Explorer" (producción) fue DENEGADA AUTOMÁTICAMENTE**. **Esto es ESPERADO, no un
+  problema aparte.** Google otorga el acceso a producción **DESPUÉS** de que la app pase la
+  **verificación OAuth / brand verification** del proyecto de Cloud. El proyecto que ya pasó **brand
+  verification** habilita/acelera el Explorer (a veces en horas).
+- ⇒ **El camino es terminar la verificación OAuth** (esto = Opción B: política + scopes + video + test
+  creds + responder T&S). Cuando la app quede verificada, se re-solicita/otorga Explorer y Ads
+  producción queda habilitado. **NO hay que "tramitar el developer token" aparte** (además Google movió
+  el acceso a los proyectos de Cloud el 10-sep y el developer token es opcional). El código ya está
+  listo (token opcional / `GOOGLE_ADS_ENABLED`).
+- **Mientras tanto, con Test access** se puede demostrar el scope `adwords` en el video usando una
+  **cuenta de prueba de Google Ads** (el nivel Test lo permite).
+
+#### 📍 Páginas y pasos EXACTOS de Google (validado 14-sep — no es opaco)
+**Requisito clave:** *"para la Google Ads API, la **brand verification** del proyecto de Cloud es
+requisito para que revisen la solicitud de Explorer/Basic; la app debe estar en **User type: External**
++ **Publishing status: In production**."* (Google Ads API · Brand verification.)
+1. **Brand verification** — Cloud Console (BIP-GO) → **APIs y servicios → Pantalla de consentimiento
+   OAuth (OAuth consent screen) → Branding**. Confirmar **Tipo de usuario = External** y **Estado de
+   publicación = En producción**. Si hay botón **"Verify Branding"** → tocarlo (tarda minutos); al pasar
+   queda **"Ready to publish"** → **"Publish branding"** (el resultado vale **7 días**; publicar dentro
+   de ese plazo o hay que re-verificar). Esto muestra Nombre/Logo/Privacidad/Términos/scopes en la
+   consent screen Y es lo que habilita la revisión de Explorer.
+2. **Verificación de scopes sensibles (T&S)** — Cloud Console → **Verification Center**
+   (`console.cloud.google.com/auth/verification`): responder el hilo de Trust & Safety con **video +
+   test creds + política actualizada** (los 3 scopes). Es la otra pata de la verificación.
+3. **Re-solicitar Explorer** — Cloud Console → **Google Ads API → Niveles de acceso → Administrar →
+   Solicitar acceso**. Con brand verification publicada + In production, la revisión de Explorer avanza
+   (suele ser horas). El rechazo automático de antes fue por no tener esto completo.
+**Resumen:** publicar brand verification (paso 1) → destraba la revisión de Explorer (paso 3); la
+verificación de scopes (paso 2) va en paralelo por el hilo del mail.
+
 ### 🔧 EJECUCIÓN Opción B — estado detallado (14-sep)
-**Prerrequisitos EXTERNOS (los hace el user; son el cuello largo, empezar YA):**
-- **Google Ads API developer token (Basic Access)** a nombre de ROQUÉ/BIP (Google Ads → API Center).
-  Sin esto NO se puede llamar a la Ads API. Tarda días. → set `GOOGLE_ADS_DEVELOPER_TOKEN` en Vercel.
+**Prerrequisitos EXTERNOS (los hace el user):**
 - **Scopes en Nango + consent screen:** en la integración Google de Nango sumar `drive.file` (y, para
   el Picker, mantener el flujo). En la consent screen de Google Cloud: agregar `drive.file`; **dejar**
   `analytics.readonly` + `adwords`; sobre `spreadsheets.readonly` responder al mail (Opción 1
