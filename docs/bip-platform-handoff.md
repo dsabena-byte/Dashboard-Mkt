@@ -416,9 +416,15 @@ en `/dashboard` + `profile_completeness`. Las fases de scoring/pipeline/prompts 
 3. **Migración 0014** — `tenant_profile` (first/last, sector+sector_other, own_brand, `competitors`
    jsonb [{name,instagram,facebook,tiktok,website}], `completed`) + CRM (`crm_status`, `crm_notes`,
    `lead_events`). RLS on, acceso service-role.
-4. **Gate de perfil (bienvenida + form obligatorio + lock del menú)** — `components/welcome-profile.tsx`
-   (bienvenida "Bienvenido a BIP" + form: nombre/apellido/email + **sector** [desplegable + Otros] +
-   **marca** + **4 competidores**; Optimize/Accelerate exigen además **IG o web** por competidor).
+4. **Perfil de nurturing (bienvenida + form)** — `components/welcome-profile.tsx`
+   (bienvenida "Bienvenido a BIP" + form: nombre/apellido/email + **sector** + **marca** + **4
+   competidores**; Optimize/Accelerate exigen además **IG o web** por competidor).
+   > **ACTUALIZACIÓN 14-sep:** el user pidió **simplificar el alta** → **el perfil YA NO es un gate
+   > bloqueante** (se sacó el lock del menú y el form obligatorio en `(app)/layout.tsx`). La plataforma
+   > se usa directo tras el alta. `welcome-profile.tsx` + `/api/profile` quedan en el repo para
+   > reactivarlo como paso **opcional/prompt** si se quiere (motivo: fricción + destrabar al revisor de
+   > Google, que ahora llega directo a Conexiones). Lo de abajo (Sidebar locked, gate por ruta) quedó
+   > **desactivado**.
    `(app)/layout.tsx`: si el perfil no está completo → Sidebar **locked** (todos los ítems verdes,
    NO clickeables, con aviso "Completá tu perfil") + el Inicio muestra el form; `/cuenta/plan` queda
    **exento** (pagar antes del perfil). `proxy.ts` reenvía `x-pathname` para el gate por ruta.
