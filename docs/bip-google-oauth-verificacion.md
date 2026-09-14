@@ -7,31 +7,90 @@
 > y escalar >100 usuarios. La cuenta de **Meta (Roque) ya está verificada como negocio**; esto es
 > aparte (es la verificación de la **app OAuth de Google**).
 
-## ⚠️ Regla de oro (por qué venías a iterar)
-La verificación de Google evalúa **varias cosas a la vez** y te devuelve el rechazo **item por item**.
-Si arreglás uno y dejás otro roto, volvés a la cola y **iterás para siempre**. Hay que mandar el
-paquete **completo y consistente** de una: **dominio propio + política de privacidad conforme +
-scopes mínimos + homepage + video + in-product disclosure**. Y sobre todo: hay **una causa-raíz
-ESTRUCTURAL** que, si no se resuelve, hace que **NINGÚN** otro arreglo pase la verificación.
+## ⚡ RECHAZO EXACTO DE GOOGLE (captura del user, 14-sep-2026) — esto es lo que hay que resolver
+Pantalla "Progreso de la verificación" (OAuth app verification, hilo con Trust & Safety):
+- ✅ **Requisitos de la página principal** → PASÓ (verde). ⇒ el **homepage y el dominio están OK**;
+  el tema `nango.dev` NO es el blocker actual (ver nota al final).
+- ✅ **Lineamientos de desarrollo de la marca** → PASÓ (verde).
+- ❌ **Requisitos de la política de privacidad** — *"Tu política de privacidad no especifica ningún
+  mecanismo de protección de datos sensibles."* → **Causa A (abajo). ES EL ITEM PRINCIPAL.**
+- ❌ **Funciones de la app** → **Causa B** (video demostrativo del flujo + uso de datos).
+- ❌ **Solicita los permisos mínimos** → **Causa C** (scopes demasiado amplios).
 
-## 🔴 CAUSA-RAÍZ #1 (estructural, bloquea todo): dominio autorizado `nango.dev`
-- La app usa el redirect OAuth de **Nango Cloud**: `https://api.nango.dev/oauth/callback`. Google, al
-  ver ese redirect, mete **`nango.dev`** como **dominio autorizado** en la consent screen.
-- **Google exige que TODOS los dominios autorizados estén verificados a TU nombre** en Search Console.
-  `bip-go.com` es tuyo (verificable); **`nango.dev` NO es tuyo → es IMPOSIBLE verificarlo** → la
-  verificación **no puede pasar jamás** mientras ese dominio esté ahí.
-- **Esto explica por qué "iterabas":** aunque arregles la política de privacidad, los permisos, etc.,
-  el dominio ajeno sigue trabando. **Es el primer arreglo, sí o sí.**
-- **Fix definitivo:** **self-hostear Nango en dominio propio** → `https://nango.bip-go.com/oauth/callback`.
-  Nango es open source; correrlo en Railway (~$5-20/mes) da callback en dominio **tuyo, verificable** y
-  conexiones ilimitadas. (Pagar Nango Cloud NO resuelve: el callback en dominio propio recién viene en
-  el plan Enterprise.) Detalle del runbook en la sección "Sacar el cartel 'app no verificada'" de
-  `bip-platform-handoff.md`.
-  - Pasos: deploy Nango self-host → `nango.bip-go.com` (CNAME + SSL) → recrear integración Google con
-    **tu** Client ID/Secret + los scopes → en el OAuth client de Google **cambiar el redirect** a
-    `https://nango.bip-go.com/oauth/callback` y **BORRAR** el de `api.nango.dev` → en la consent screen,
-    **dominios autorizados = solo `bip-go.com`** (sacar `nango.dev`) → app en Vercel:
-    `NANGO_HOST=https://nango.bip-go.com` + `NANGO_SECRET_KEY` nuevo.
+**Regla de oro:** Google rechaza item por item. Hay que resolver **los 3 rojos juntos** y **responder
+el hilo de correo** de Trust & Safety confirmando cada uno; si mandás uno y dejás otro, volvés a la
+cola. Los 3 son 100% resolubles sin infra nueva (no requieren el self-host).
+
+## 🔴 CAUSA A (item principal): Política de privacidad sin "mecanismo de protección de datos sensibles"
+Google usó una frase textual: *no especifica ningún mecanismo de protección de datos sensibles*. Tu
+política actual es genérica; falta una **sección explícita de seguridad/protección** + la divulgación
+completa del manejo de datos de Google. La política debe cumplir TODO esto (y estar en `bip-go.com`,
+pública, linkeada en la consent screen):
+1. **Sección de MECANISMOS DE PROTECCIÓN DE DATOS SENSIBLES** (lo que falta y disparó el rechazo):
+   nombrar explícitamente — **cifrado en tránsito (TLS/HTTPS)** y **en reposo**; **tokens OAuth
+   almacenados cifrados y revocables** (vía Nango); **control de acceso por roles**; **aislamiento por
+   cliente (RLS multi-tenant en Supabase)**; **acceso restringido al personal necesario**; **retención
+   limitada y borrado a pedido / al desconectar la cuenta**.
+2. **Divulgación por cada dato de Google** que tocás (GA4/Analytics, Google Ads): **qué** accedés,
+   **cómo** lo usás (mostrarlo en el dashboard del cliente dueño del dato), **dónde** lo guardás
+   (Supabase), **con quién** lo compartís (subprocesadores nombrados: Supabase/Vercel/Nango/OpenAI),
+   **cómo se borra**.
+3. **Cláusula de Limited Use textual:** el uso de datos de Google se limita a lo divulgado; **no se
+   venden**, **no se usan para publicidad**, **no se usan para entrenar modelos de IA** (aclarar que
+   los datos de Google NO se envían a OpenAI para entrenamiento), y solo personal autorizado los ve.
+> Claude puede **redactar esta política completa** (Google + Meta en una) cuando el user lo pida.
+
+## 🔴 CAUSA B: "Funciones de la app" → falta el video demostrativo
+Google pide un **video** (YouTube, no listado) que muestre: (a) el **flujo OAuth completo** desde la app
+con la **URL/dominio visible**, (b) la **pantalla de consentimiento** con los scopes que pide, (c) **cómo
+se usan esos datos dentro de la app** (el dashboard mostrando la data de GA4/Ads del cliente). Sin ese
+video, "Funciones de la app" queda en rojo. **Fix:** grabarlo en `bip-platform.vercel.app` → Conexiones
+→ Conectar Google → consent → dashboard con la data, y adjuntarlo/linkearlo en el hilo.
+
+## 🔴 CAUSA C: "Solicita los permisos mínimos" → scopes demasiado amplios
+Google detectó que pedís **más scope del necesario**. **Fix:** en la consent screen dejar **solo** los
+scopes read-only que los dashboards realmente consumen (p.ej. `analytics.readonly` de GA4 y el
+read-only de Google Ads) y **borrar** cualquier scope de escritura o de más. Por **cada** scope, tener
+la **justificación** lista (qué función lo usa) para el hilo. **Acción del user:** decir qué scopes pide
+hoy BIP-GO (consent screen) → Claude arma la lista mínima + la justificación por scope.
+
+## 🔎 ESTADO VALIDADO CONTRA EL CÓDIGO (14-sep-2026) — qué está hecho y qué no
+> Antes de dar la secuencia, se validó en los repos (no se asumió):
+- **Uso real de Google en BIP = SOLO GA4 (Analytics) en READ-ONLY.** El código llama a
+  `analyticsadmin.googleapis.com` (accountSummaries) y `analyticsdata.googleapis.com` (runReport),
+  archivos `lib/ga4-monthly.ts`, `lib/ga4-reports.ts`, `app/api/cron/sync-web`. **No hay una sola
+  llamada a Google Ads / DV360** en el código. ⇒ el **único scope que la app usa hoy es
+  `https://www.googleapis.com/auth/analytics.readonly`** (+ `openid email profile` para login).
+  **Implicancia directa de la Causa C:** si la consent screen pide scopes de **Google Ads** u otros
+  que el código NO usa, Google lo marca como "permisos no mínimos". **Fix concreto: dejar solo
+  `analytics.readonly`** (y sacar Ads/otros hasta que efectivamente se consuman por API).
+- **NO existe política de privacidad en los repos** ni link a una en `bip.html` (el footer solo tiene
+  el ©). ⇒ la Causa A **no está resuelta**: hay que **escribir y publicar** la política conforme (con
+  la sección de mecanismos de protección) en `bip-go.com/privacidad` y linkearla en la consent screen
+  y en la web. Claude la puede redactar.
+- **Homepage/dominio:** PASÓ en verde ⇒ pasos "verificar dominio / homepage" **ya están OK** (no
+  rehacer). El self-host de Nango / sacar `nango.dev` **NO es necesario para esta verificación** (no
+  está flagueado); queda para escalar.
+- **Nango:** `lib/nango.ts` usa `NANGO_HOST` (default `api.nango.dev`, cambiable a `nango.bip-go.com`).
+  El self-host es solo cambiar esa env — pero **no hace falta tocarlo ahora**.
+
+### Respuesta directa a "¿la secuencia de 7 pasos ya la habíamos hecho?"
+NO toda, y **no todos esos pasos aplican al rechazo actual**. Estado real:
+1. Self-host Nango + sacar `nango.dev` → **NO hace falta ahora** (homepage pasó verde).
+2. Verificar `bip-go.com` en Search Console → **ya OK** (implícito en el verde de "página principal").
+3. **Política de privacidad conforme → PENDIENTE (item rojo A).** ← hay que hacerlo.
+4. **Scopes mínimos → PENDIENTE (item rojo C).** ← dejar solo `analytics.readonly`.
+5. Homepage → **ya OK** (verde).
+6. **Video "Funciones de la app" → PENDIENTE (item rojo B).**
+7. Reenviar + responder el hilo → recién después de 3, 4 y 6.
+**En criollo: quedan 3 cosas — política de privacidad, scopes mínimos y video. El resto ya está.**
+
+## 🟢 Nota — dominio `nango.dev` (NO es el blocker actual, sí para escalar)
+En la captura, **"Requisitos de la página principal" pasó en verde**, así que el dominio/homepage NO es
+lo que traba ahora. El tema del callback `api.nango.dev` como dominio autorizado (que sí traba la
+verificación cuando aparece, porque no es verificable a tu nombre) **queda para el momento de escalar**
+(self-host Nango en `nango.bip-go.com`, runbook en `bip-platform-handoff.md`). Si en un reenvío Google
+vuelve a marcar "dominios autorizados" o "página principal", ahí sí es prioridad. Hoy: enfocarse en A/B/C.
 
 ## 🔴 CAUSA-RAÍZ #2: Política de privacidad NO conforme (mismo síntoma que te marcó Meta)
 Meta te marcó *"tu política de privacidad no especifica ningún mecanismo de protección de datos
