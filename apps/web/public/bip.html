@@ -810,7 +810,7 @@ const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 const PLANS = [
   {key:'insight',name:'Insight',tag:'plan base',price6:'199',price3:'249',users:'1 usuario',cats:'1 marca · 1 categoría',trial:'Comprobalo 15 días',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
   {key:'optimize',name:'Optimize',tag:'plan intermedio',price6:'399',price3:'499',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y consultoría estratégica para convertir esa data en planes de acción.'},
-  {key:'accelerate',name:'Accelerate',tag:'plan full',price6:'695',price3:'869',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Agregás research de mercado (Top of Mind, Share of Mind, intención) y consultoría estratégica para un diagnóstico total.'}
+  {key:'accelerate',name:'Accelerate',tag:'plan full',price6:'695',price3:'869',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Con 3 categorías tenés TODO tu negocio bajo la misma metodología: cada línea medida contra sus objetivos, con mirada competitiva y consultoría estratégica completa.'}
 ];
 const MODULES = [
   ['Núcleo estratégico · Mapa + Seguimiento de Objetivos',1,1,1],
@@ -818,14 +818,13 @@ const MODULES = [
   ['Plan de Medios · ON + OFF',1,1,1],
   ['Redes Sociales',1,'adv','adv'],
   ['Web / Ecommerce',1,'adv','adv'],
+  ['Optimización SEO',0,'adv','adv'],
   ['Resultados Comerciales (facturación + share)',1,1,1],
   ['Inversión de Marketing',1,1,1],
+  ['Trade · Surtido + Floor Share',0,1,1],
   ['Capa de inteligencia (IA) · chat + insights',1,1,1],
   ['Alertas + reportes automatizados (email / WhatsApp)',1,1,1],
-  ['Optimización SEO',0,'adv','adv'],
-  ['Trade · Surtido + Floor Share',0,1,1],
   ['Consultoría estratégica',0,1,1],
-  ['Research de mercado (Top of Mind, Share of Mind, intención)',0,0,1],
   ['Historial de datos','12 meses','24 meses','24 meses'],
 ];
 const idx = {insight:1,optimize:2,accelerate:3};
@@ -861,7 +860,6 @@ const FULL = [
   {t:'Trade Marketing',r:[['Surtido por cliente y tienda',1,1,1],['Floor Share por góndola',1,1,1],['Performance por cliente y tienda',1,1,1],['Sugerencias de surtido / reposición',1,1,1],['Evolución semanal',1,1,1]]},
   {t:'Resultados Comerciales',r:[['Facturación mensual',1,1,1],['Share (por segmento y evolución)',1,1,1],['Evolución y acumulado',1,1,1]]},
   {t:'Inversión de Marketing',r:[['Ejecución del presupuesto vs BGT',1,1,1],['Inversión / Facturación',1,1,1],['Comparador de presupuestos (versión / período / cuenta)',1,1,1]]},
-  {t:'Research de mercado',r:[['Top of Mind',0,0,1],['Share of Mind',0,0,1],['Intención de compra',0,0,1],['Funnel de decisión de compra',0,0,1]]},
   {t:'Consultoría estratégica',r:[['Diagnósticos y planes de acción específicos',0,1,1],['Consultoría y acompañamiento estratégico',0,1,1]]},
 ];
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
