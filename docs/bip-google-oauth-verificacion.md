@@ -1,5 +1,21 @@
 # BIP · Verificación OAuth de Google — diagnóstico DEFINITIVO (14-sep-2026)
 
+## 🚨 DATO CRÍTICO (no re-equivocarse): la app usa Nango SELF-HOST, NO Cloud
+La app (`bip-platform.vercel.app`) apunta a **`NANGO_HOST=https://nango.bip-go.com`** (Nango
+**self-host** en Railway, dashboard con basic-auth user `bip`). **NO usa `app.nango.dev` (Cloud).**
+Cualquier cambio de **scopes de la integración google se hace en `nango.bip-go.com` → Integrations →
+google**, NUNCA en app.nango.dev. Editar en Cloud NO afecta la app (nos hizo perder horas 14-sep).
+Diag útil (staff): `/api/diag/google-token` muestra los scopes reales del token.
+
+## ✅ RONDA 1 FUNCIONANDO (14-sep): GA4 + drive.file validados end-to-end
+- **`analytics.readonly` (GA4)** → `/web` trae data real (roque-in.com). ✅
+- **`drive.file` (Picker)** → "Conectar Google Sheet" abre el Picker y arma el tablero. ✅
+- **Cómo se destrabó:** cambiar los scopes de google en el **self-host** (`nango.bip-go.com`) a
+  `analytics.readonly` + `drive.file` (estaban los viejos: adwords + spreadsheets) → **revocar** el
+  grant en `myaccount.google.com/connections` → **reconectar** en BIP → el token trajo `drive.file`.
+- **Falta para cerrar la verificación (Ronda 1):** grabar el **video** (GA4 + Picker), crear **cuenta
+  de prueba sin bloqueos**, y **responder el hilo de T&S** (guión + texto ya entregados en el chat).
+
 ## ✅ DECISIÓN + PLAN EN EJECUCIÓN: RONDA 1 = GA4 + Drive (el user confirmó)
 > Verificar la app con **2 scopes demostrables hoy**: `analytics.readonly` (GA4) + `drive.file`
 > (Google Sheet por Picker, reemplaza `spreadsheets.readonly`). **`adwords` → Ronda 2** (con cuenta de
