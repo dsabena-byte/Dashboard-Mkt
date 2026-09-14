@@ -273,6 +273,8 @@
   .trialnote2 .ti .tm{color:var(--cyan-ink);font-weight:800;flex:none;line-height:1.5}
   .trialnote2 b{color:var(--navy)}
   .trialcta-sub{font-size:11.5px;color:var(--cyan-ink);text-align:center;margin-top:9px;font-weight:600;line-height:1.4}
+  .pcta-alt{display:block;text-align:center;margin-top:11px;font-family:"Poppins";font-weight:700;font-size:13.5px;color:var(--navy);text-decoration:none;padding:10px 12px;border:1.5px solid var(--navy);border-radius:11px;transition:background .16s ease, color .16s ease}
+  .pcta-alt:hover{background:var(--navy);color:#fff}
   /* expertise / knowledge */
   .exp{background:linear-gradient(180deg,#0a4da0,#073c80);color:#eaf1fb}
   .exp .kicker{color:#8fc4f4}
@@ -837,7 +839,7 @@ document.getElementById('tiers').innerHTML = PLANS.map(p => {
     <div class="setup-row"><div class="sr-top"><span class="sr-k">Set-up de implementación</span><span class="sr-p">USD ${p.setup}</span></div><div class="sr-promo">✓ Bonificado (sin cargo) si contratás 6 meses</div></div>
     <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
     <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
-    ${p.trial ? `<a class="pcta" href="https://bip-platform.vercel.app/signup">Probá Insight 15 días →</a><div class="trialcta-sub">15 días de acceso completo, sobre tu propia operación. Lo ves andando antes de decidir — sin tarjeta.</div>` : `<a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Empezá con ${p.name} →</a>`}</article>`;
+    ${p.trial ? `<a class="pcta" href="https://bip-platform.vercel.app/signup">Probá Insight 15 días →</a><div class="trialcta-sub">15 días de acceso completo, sobre tu propia operación. Lo ves andando antes de decidir — sin tarjeta.</div><a class="pcta-alt" href="https://bip-platform.vercel.app/signup?plan=${p.key}">o contratá ${p.name} ahora →</a>` : `<a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Empezá con ${p.name} →</a>`}</article>`;
 }).join('');
 
 const FULL = [
