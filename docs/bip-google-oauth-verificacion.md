@@ -97,6 +97,32 @@ Items a resolver (del mail):
 3. **Google Ads** en la plataforma (requiere developer token — tramitarlo en paralelo).
 4. **Video** cubriendo los 3 + **test creds** + responder el mail.
 
+### 🔧 EJECUCIÓN Opción B — estado detallado (14-sep)
+**Prerrequisitos EXTERNOS (los hace el user; son el cuello largo, empezar YA):**
+- **Google Ads API developer token (Basic Access)** a nombre de ROQUÉ/BIP (Google Ads → API Center).
+  Sin esto NO se puede llamar a la Ads API. Tarda días. → set `GOOGLE_ADS_DEVELOPER_TOKEN` en Vercel.
+- **Scopes en Nango + consent screen:** en la integración Google de Nango sumar `drive.file` (y, para
+  el Picker, mantener el flujo). En la consent screen de Google Cloud: agregar `drive.file`; **dejar**
+  `analytics.readonly` + `adwords`; sobre `spreadsheets.readonly` responder al mail (Opción 1
+  "Confirming narrower scopes" usando `drive.file`). **No** borrar scopes aprobados; **no** llamar a
+  `drive.file` en prod hasta que aprueben (Google lo pide).
+- **Google Picker API + API key de navegador:** habilitar "Google Picker API" en el proyecto; crear
+  una **API key** restringida por dominio → `NEXT_PUBLIC_GOOGLE_API_KEY`. App id = **279230041069**
+  (project number) → `NEXT_PUBLIC_GOOGLE_APP_ID`.
+
+**Lo que construye Claude (código):**
+- **Sheets vía Picker → dataset** *(en curso 14-sep)*: `GoogleSheetPicker` (cliente, abre el Picker con
+  el token del cliente) + `/api/connect/google/token` (devuelve el access token para el Picker) +
+  `/api/datasets/google-sheet` (lee el Sheet con `getToken` y lo guarda como `tenant_datasets`,
+  `source:"google_sheet"`). Se engancha al builder existente (el dataset alimenta los tableros).
+- **Google Ads → /performance (Google)** *(pendiente, gate por `GOOGLE_ADS_DEVELOPER_TOKEN`)*: `lib/
+  google-ads.ts` (GAQL con `getToken(tenant,"google")` + developer token + login-customer-id) + sección
+  Google en `/performance`. Portar la lógica de Drean (`google_ads_creatives`). Queda listo para
+  funcionar apenas exista el developer token.
+
+**Video (cubre los 3 scopes):** consent → `/web` (GA4) → conectar un Google Sheet vía Picker (drive.file)
+→ `/performance` sección Google Ads. Test creds sin bloqueos + pasos, y responder el hilo de T&S.
+
 ## Estado por requisito (tras validar)
 | Requisito | Estado |
 |---|---|
