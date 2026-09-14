@@ -199,7 +199,7 @@
   .sec-head p{color:var(--muted); font-size:17px; margin:0}
   .sec-h{font-weight:800; font-size:clamp(24px,3.2vw,38px); margin:.35em 0 .2em; color:var(--navy)}
   .sec-p{color:var(--muted); font-size:16px; margin:0}
-  .secgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; margin-top:22px}
+  .secgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); grid-auto-rows:1fr; gap:14px; margin-top:22px}
   .seccard{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:6px}
   .seccard b{font-family:"Poppins"; font-weight:700; font-size:15px; color:var(--navy)}
   .seccard span{font-size:13.5px; color:var(--ink); line-height:1.5}
@@ -743,9 +743,9 @@
       <div class="seccard"><b>🔑 Vos tenés el control</b><span>Los accesos se guardan cifrados y podés revocarlos o pedir el borrado cuando quieras.</span></div>
       <div class="seccard"><b>🚫 Nunca se venden</b><span>No vendemos tus datos ni los usamos para entrenar modelos de IA. Solo para tu tablero.</span></div>
       <div class="seccard"><b>📄 Google Drive acotado</b><span>Con Drive accedemos <b>solo a la planilla que elegís</b>, no a todo tu Drive.</span></div>
-      <div class="seccard"><b>📊 SharePoint / Excel acotado</b><span>Igual que con Drive: accedemos <b>solo al archivo que compartís</b>, no a todo tu SharePoint u OneDrive.</span></div>
-      <div class="seccard"><b>✅ Cumplimiento</b><span>Cumplimos la Google API Services User Data Policy (Limited Use) y las políticas de Meta.</span></div>
-      <div class="seccard"><b>🗑️ Baja y borrado total</b><span>Cuando te das de baja, revocamos los accesos a tus cuentas y <b>borramos definitivamente</b> tu cuenta, datos, tableros y conexiones. Sin vueltas.</span></div>
+      <div class="seccard"><b>📊 SharePoint / Excel acotado</b><span>Solo el <b>archivo que compartís</b>, no todo tu SharePoint u OneDrive.</span></div>
+      <div class="seccard"><b>✅ Cumplimiento</b><span>Cumplimos la Google API Services User Data Policy (Limited Use), las políticas de Meta y los términos de Microsoft (Microsoft Graph / Azure AD).</span></div>
+      <div class="seccard"><b>🗑️ Baja y borrado total</b><span>Cuando te das de baja, revocamos los accesos a tus cuentas y <b>borramos definitivamente</b> tu cuenta, datos, tableros y conexiones.</span></div>
     </div>
     <p class="sec-p" style="margin-top:16px">Más detalle en nuestra <a href="https://bip-go.com/privacy" target="_blank" rel="noopener" style="color:var(--cyan-ink);font-weight:700">Política de Privacidad</a> y <a href="https://bip-go.com/terms" target="_blank" rel="noopener" style="color:var(--cyan-ink);font-weight:700">Términos</a>.</p>
   </div>

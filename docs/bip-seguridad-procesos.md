@@ -44,15 +44,19 @@
 
 ## 5. Ciclo de vida de tokens y revocación
 - Tokens almacenados/rotados por Nango; refresh automático. **[OK]**
-- **Desconexión** desde *Conexiones* → revocar el token en Nango + **purgar** los datos derivados de esa
-  fuente. La revocación existe; el **purgado automático de datos derivados es (PENDIENTE)**.
+- **Desconexión** desde *Conexiones* → `api/connections/disconnect`: **revoca el token en Nango**
+  (`deleteConnection`) + borra la conexión + **purga los datos derivados** de esa fuente
+  (`web_snapshot`/`redes_snapshot`). **[OK — implementado 14-sep]** (pauta_snapshot es mixto Meta+Google
+  → se purga en la baja total, no en la desconexión de una sola fuente.)
 
 ## 6. Retención y eliminación de datos
-- **Baja de cuenta / borrado a pedido** (bip.explore@gmail.com) dentro de 30 días. **Flujo de borrado
-  end-to-end (auth + tenant + datos + conexiones) es (PENDIENTE)** — hoy se haría manual; hay que
-  automatizarlo (endpoint + cascada `on delete` ya existe en las FKs, falta el disparador y el revoke
-  de Nango).
-- Eliminación/desautorización de Meta: mismo canal + (PENDIENTE) el data-deletion callback de Meta.
+- **Baja total de cuenta** → `api/account/delete` (solo owner): revoca **todas** las conexiones en
+  Nango, purga logs sin FK (connection_events, billing_events), **borra el tenant → cascada de TODAS
+  las tablas por-tenant** y borra los usuarios de Auth. UI en *Mi cuenta → Zona de peligro* (confirma
+  con "ELIMINAR"). **[OK — implementado 14-sep]**
+- Borrado a pedido por email (bip.explore@gmail.com) dentro de 30 días. **[OK]**
+- Eliminación/desautorización de Meta: mismo canal + **(PENDIENTE)** el data-deletion callback de Meta
+  (webhook aparte; menor).
 
 ## 7. IA / Limited Use
 - Datos a OpenAI **solo para inferencia**; la API de OpenAI **no entrena** con datos de API. **No** se
@@ -63,13 +67,17 @@
   (`lead_events`). Logs de plataforma (Vercel) y DB (Supabase). **[OK, básico]**
 - **PENDIENTE:** alerta ante accesos anómalos / errores de auth repetidos.
 
-## 9. Consentimiento (NUEVO — gap detectado 14-sep)
-- **Aceptación de Términos + Política de Privacidad en el alta** (checkbox obligatorio, con versión y
-  timestamp guardados). **(IMPLEMENTANDO — migración 0015 + SignupForm.)**
-- **Consentimiento de comunicaciones** (email / WhatsApp) como **opt-in** separado y revocable; las
-  comunicaciones de marketing solo se envían a quienes optaron. **(IMPLEMENTANDO.)**
-- **Disclosure in-product en la conexión OAuth**: antes de conectar, se informa qué datos se acceden y
-  para qué (solo lectura). Reforzar el texto en *Conexiones*. **(IMPLEMENTANDO.)**
+## 9. Consentimiento (gap detectado 14-sep — RESUELTO)
+- **Aceptación de Términos + Política de Privacidad en el alta**: checkbox **obligatorio** en
+  `SignupForm` (bloquea el alta si no se acepta); se guarda `legal_version` + `legal_accepted_at` en
+  user_metadata y se espeja al tenant (migración **0015**). **[OK]**
+- **Consentimiento de comunicaciones** (email / WhatsApp): **opt-in** separado (`comms_email_optin`/
+  `comms_wa_optin`), revocable; las comunicaciones solo van a quienes optaron. **[OK — capturado; falta
+  respetarlo en el motor de envíos cuando se construya Alertas/reportes]**
+- **Disclosure in-product**: bloque "Cómo protegemos tus datos" en *Conexiones* (solo lectura, cifrado,
+  tokens revocables, aislamiento, no venta/IA, Drive/SharePoint acotado) + links legales. **[OK]**
+- **Web**: sección "Seguridad y privacidad" (8 cards) + links legales en el footer + `privacy.html`
+  publicable. **[OK]**
 
 ## 10. Ciclo de desarrollo seguro (SDLC)
 - Revisión de código; gate de `tsc`/`build` antes de deploy; dependencias actualizadas. **[OK]**
@@ -83,11 +91,35 @@ política §9. **PENDIENTE:** registro formal de subprocesadores + DPA donde apl
 - Contacto: bip.explore@gmail.com. **PENDIENTE:** runbook de incidentes (detección → contención →
   erradicación → notificación a afectados y a las plataformas según sus plazos).
 
+## 13. Microsoft / SharePoint (app de Microsoft Graph) — cumplimiento futuro
+> Cuando se active el conector de SharePoint/Excel, la app de Microsoft Graph tendrá su propio proceso
+> (análogo a Google). Lo que Microsoft pide y hay que cumplir:
+- **Registro de app en Microsoft Entra ID (Azure AD)** con **permisos de Graph de mínimo privilegio**,
+  delegados (en nombre del usuario). Para leer **solo el archivo que el cliente elige**, usar el
+  **Microsoft File Picker (OneDrive/SharePoint)** + permisos acotados (evitar `Files.Read.All`/
+  `Sites.Read.All` amplios; preferir el picker que otorga acceso al ítem elegido).
+- **Publisher Verification (Verified Publisher / MPN)** para sacar el cartel de "app no verificada" en
+  el consentimiento (equivalente al de Google) y habilitar consentimiento de admin en organizaciones.
+- **URLs de Política de Privacidad y Términos** en el registro de la app (las mismas de `bip-go.com`).
+- **Microsoft APIs Terms of Use** + **cumplimiento de manejo de datos** (cifrado, retención, borrado,
+  no reventa, no entrenamiento de IA) — ya cubierto por §1-§12 y la política publicada.
+- **Consentimiento del usuario/administrador** (delegado o admin-consent) según el tenant de Microsoft
+  del cliente; disclosure in-product antes de conectar (ya está el patrón en *Conexiones*).
+- **Data handling / DSR:** atender solicitudes de acceso/borrado por el mismo canal (§6/§10).
+> Estado: **conector SharePoint en desarrollo**; este bloque es el checklist para cuando se publique la
+> app de Graph. Ver también `docs/bip-platform-handoff.md` (SharePoint) y `docs/bip-google-oauth-verificacion.md`.
+
 ---
 ## ✅ Checklist para reenviar la verificación (lo que hay que cerrar sí o sí)
-1. **Política publicada** con §7 (protección de datos sensibles) + §8 (no IA training). **[hecha,
-   falta publicar en `bip-go.com/privacidad`]**
-2. **Consentimiento en el alta** (legal + comunicaciones) implementado. **(en curso)**
-3. **Purgado/borrado** de datos al desconectar y en baja de cuenta (automatizar). **(PENDIENTE)**
-4. **Disclosure in-product** reforzada en Conexiones. **(en curso)**
-5. Para Google Option B: demostrar Ads + Sheets(`drive.file`) funcionando (build) + video + test creds.
+1. **Política redactada** con §7 (protección de datos sensibles) + §8 (no IA training). **[OK]** ·
+   `privacy.html` publicable listo en `apps/web/public/bip-privacy.html` → **falta PUBLICARLO en
+   `bip-go.com/privacy`** (copiar a `privacy.html` del bip-site/Netlify). **(acción del user)**
+2. **Consentimiento en el alta** (legal obligatorio + comunicaciones opt-in). **[OK]** (migración 0015).
+3. **Purgado/borrado** al desconectar (`api/connections/disconnect`) y baja total (`api/account/delete`).
+   **[OK]**
+4. **Disclosure in-product** en Conexiones + web (8 cards). **[OK]**
+5. **Google Option B** (pendiente de build): demostrar **Ads** + **Sheets (`drive.file` + Picker)**
+   funcionando con el token del cliente + **video** + **test creds** + responder el hilo de T&S.
+   → ver `docs/bip-google-oauth-verificacion.md`.
+6. **Menores pendientes:** Meta data-deletion callback; respetar el opt-in de comms en el motor de
+   envíos (cuando se construya Alertas/reportes); automatizaciones del §2/§8/§10/§12 marcadas PENDIENTE.
