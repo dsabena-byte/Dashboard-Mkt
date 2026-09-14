@@ -49,36 +49,53 @@ Items a resolver (del mail):
 - ⇒ **Solo GA4 es demostrable hoy.** Por eso Google marca "no usa los permisos mínimos" y "demostrá
   cada scope": **está pidiendo Sheets y Ads que la app no ejercita**.
 
-## ✅ PLAN DEFINITIVO — Opción A (recomendada: rápida y sin iterar)
-**Reducir la consent screen a lo que la app REALMENTE usa hoy: `analytics.readonly`** (+ `openid`,
-`email`, `profile`). Así **cada scope solicitado es demostrable** → cierra A y D de una.
-1. **Cloud Console → OAuth consent screen:** dejar **solo `analytics.readonly`** (sacar
-   `spreadsheets.readonly` y `adwords` del pedido, que aún no se usan). "Save & submit".
-2. **Política de privacidad** (`bip-go.com/privacy`, editar `privacy.html`): agregar
-   - **Sección "Protección de datos sensibles / Seguridad":** cifrado **en tránsito (TLS)** y **en
-     reposo**; **tokens OAuth cifrados y revocables** (Nango); **control de acceso por roles**;
-     **aislamiento por cliente (RLS multi-tenant en Supabase)**; acceso restringido al personal;
-     **retención limitada + borrado a pedido / al desconectar**.
-   - **Disclosure AI/ML:** los datos obtenidos vía APIs de Google **no se usan para entrenar ni
-     mejorar modelos de IA/ML** (aclarar que NO se envían a OpenAI para entrenamiento).
-   - (Mantener las cláusulas Limited Use + qué datos se acceden/usan/guardan/comparten/borran, que ya
-     tiene.) **Reenviar** la app en Console con el link actualizado.
-3. **Video demo (YouTube no listado):** mostrar (a) la URL/dominio de BIP, (b) "Conectar Google" → el
-   **consent screen** con el scope, (c) el dashboard **`/web` con la data real de GA4**. Solo cubre GA4
-   (que es el único scope que queda). Linkearlo en la respuesta al mail.
-4. **Test credentials + pasos (responder el mail):** crear una **cuenta de prueba en BIP sin bloqueos**
-   (sin teléfono/tarjeta), idealmente con la conexión Google ya hecha o lista para hacer, + pasos:
-   "Ingresá en bip-platform… → Conexiones → Conectar Google → autorizá → ver `/web`". Aclarar que **BIP
-   es una plataforma de integración: cada cliente conecta SU propia cuenta de Google bajo mínimo
-   privilegio (solo lectura de GA4)** ← esto es lo que Google pide que informemos.
-5. **Responder el mail** con: link del video + instrucciones de test + (para el scope) como sacamos
-   Sheets/Ads, decir que **"only analytics.readonly is required for current functionality"**.
+## ✅ PLAN DEFINITIVO — Opción B (ELEGIDA POR EL USER): DEMOSTRAR el uso de cada scope
+> Decisión del user (14-sep): **NO se dropean scopes.** Ads y Sheets son necesarios para el producto
+> (mostrar TODA la pauta de Google como Drean, y leer las planillas del cliente para CB / Floor Share).
+> "No es pedir menos permisos, es mostrar cómo los voy a usar." Google verifica **funcionalidad**: hay
+> que **construir/mostrar** cada scope funcionando con el token OAuth del cliente conectado.
 
-### Opción B (si se QUIERE Sheets y/o Ads ya)
-Hay que **construir** primero esas funciones para poder demostrarlas: (Ads) un dashboard que llame a la
-Google Ads API; (Sheets) leer planillas del cliente **con `drive.file` + Google Picker** (el scope
-recomendado por Google) en vez de `spreadsheets.readonly`. Más trabajo y más riesgo de iterar → **no
-recomendado ahora**. Se suma después con una nueva verificación.
+**Requisito por scope (qué tiene que existir y verse en el video + test):**
+1. **`analytics.readonly` (GA4):** YA funciona (`/web`). ✓ Mostrar el dashboard con data real del GA4
+   conectado.
+2. **`adwords` (Google Ads):** hay que **implementar la lectura de Google Ads con el token OAuth del
+   cliente** (vía Nango) y mostrar la **pauta de Google** en `/performance` (portar la lógica de Drean
+   `google_ads_creatives`, pero alimentada por el token del tenant, no por cron/service token).
+   **Prerrequisito externo:** **Google Ads API developer token** (Basic Access) a nombre de ROQUÉ/BIP
+   — es una aprobación aparte de Google Ads (MCC). Sin developer token no hay llamada a la Ads API.
+3. **Sheets / Drive (CB + Floor Share):** el cliente **conecta y elige su planilla** de Drive y BIP la
+   lee. **Recomendación fuerte (= lo que Google pидió):** usar **`drive.file` + Google Picker** en vez
+   de `spreadsheets.readonly`. NO es "menos funcionalidad": `drive.file` permite leer **exactamente la
+   planilla que el cliente elige** (que es el caso de uso real de CB/Floor Share); es más privado y es
+   **el scope que Google va a aprobar**. `spreadsheets.readonly` (leer TODAS las planillas) es lo que
+   rechazan por amplio. Implementar el Picker → el cliente tilda su sheet → BIP la ingiere como dataset.
+   - En el mail: **Opción 1** (agregar `drive.file`, "save & submit", responder *"Confirming narrower
+     scopes"*, NO llamarlo en prod hasta que lo aprueben). Si por algo `drive.file` no alcanzara,
+     Opción 2 (*"Unable to use narrower scopes"* + justificación) — pero para CB/Floor Share drive.file
+     alcanza.
+
+**Además (para cualquier variante):**
+- **Política de privacidad** (`bip-go.com/privacy`, editar `privacy.html`): agregar
+  - **Sección "Protección de datos sensibles / Seguridad":** cifrado en tránsito (TLS) y en reposo;
+    **tokens OAuth cifrados y revocables** (Nango); control de acceso por roles; **aislamiento por
+    cliente (RLS multi-tenant Supabase)**; acceso restringido al personal; retención limitada + borrado
+    a pedido / al desconectar.
+  - **Disclosure AI/ML:** los datos de las APIs de Google (incl. Workspace/Sheets) **no se usan para
+    entrenar ni mejorar modelos de IA/ML** (NO se envían a OpenAI para entrenamiento).
+- **Video demo (YouTube no listado):** un recorrido que muestre, con la cuenta conectada, la
+  funcionalidad de **los 3 scopes**: consent → `/web` (GA4) → `/performance` (Ads) → carga de planilla
+  (Sheets/Drive). Debe verse la URL/dominio y el flujo OAuth completo.
+- **Test credentials + pasos:** cuenta de prueba en BIP **sin bloqueos** (sin teléfono/tarjeta), con la
+  conexión Google lista, + pasos claros. Aclarar que **BIP es una plataforma de integración de mínimo
+  privilegio: cada cliente conecta SUS cuentas en solo lectura** (Google lo pide explícito).
+- **Reenviar** en Console + **responder el mail** con: link del video, cómo testear el consentimiento,
+  y la opción de scope elegida para Sheets.
+
+### Orden sugerido (el user pidió "ir por parte")
+1. **Política de privacidad** (rápido, desbloquea el item C; no depende de build). ← empezar acá.
+2. **Sheets vía `drive.file` + Picker** en la plataforma (ingesta de la planilla del cliente).
+3. **Google Ads** en la plataforma (requiere developer token — tramitarlo en paralelo).
+4. **Video** cubriendo los 3 + **test creds** + responder el mail.
 
 ## Estado por requisito (tras validar)
 | Requisito | Estado |
