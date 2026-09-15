@@ -102,12 +102,17 @@ demostrar `instagram_manage_comments` + `pages_read_user_content` en el video. (
 4. **Cuenta de prueba** con Página FB + IG Business (vinculado) + ad account, sin bloqueos, con datos.
 5. **`META_LOGIN_CONFIG_ID`** no está en `.env.example` (documentarla; ya se usa en `lib/nango.ts`).
 
-## 4-bis. BUG a arreglar ANTES del video (dic-2026)
-- **FB orgánico en /redes: "Please reduce the amount of data you're asking for, then retry your
-  request"** (Graph API límite). La query de FB orgánico (`lib/meta-social.ts` `getFbOrganicLive`)
-  pide demasiado en una sola llamada (muchos posts con insights anidados) → sección FB en error/ceros.
-  Fix: paginar/reducir el batch (menos posts por request, o insights en llamadas separadas). No puede
-  verse un error en el dash durante el video del App Review.
+## 4-bis. ✅ RESUELTO — robustez Meta "reduce amount of data" (dic-2026)
+El error **"Please reduce the amount of data you're asking for"** (Graph API: la respuesta con
+campos anidados pesados excede el límite) se tapó en las **3 lecturas pesadas** de Meta, cada una
+reintentando la MISMA página con un `limit` menor antes de rendirse:
+- **FB posts** (`lib/meta-social.ts` `getFbOrganicLive`): 25→10→5.
+- **IG media** (`getIgOrganicLive`): 50→25→10.
+- **Ads/creativos de pauta** (`lib/meta-pauta.ts`): 50→25→10.
+Sumado a la degradación elegante existente (cada sección en su try/catch, `.catch(() => [])`), un
+cliente con cuenta grande no pierde la sección entera. **Patrón para futuras lecturas Meta:** si el
+fetch trae edges/campos anidados, envolver la página en un retry con limit decreciente sobre el match
+`/reduce the amount of data/i`.
 
 ## 5. Plan de video (un tramo/clip por permiso, cuenta de prueba conectada)
 1. **Login FLB** → selección de Página / IG / ad account (`pages_show_list`, `business_management`).
