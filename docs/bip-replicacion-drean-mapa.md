@@ -49,6 +49,19 @@
 | **Dash de Monitoreo** (frescura/watchdog) | parcial (`sync-runs` sí, vista no) | `getHealth` sobre `sync_runs` | **Chico-medio** |
 | **mkt-canal** (retailers) | no existe | `mkt_canal_acciones` | **Medio** |
 
+## C-bis. Alcance / prioridad (decisión user, dic-2026)
+**Los dashboards específicos de Drean NO son replicación estándar** → se construyen **a medida por
+cliente** (builder o bespoke), porque dependen de **fuentes no-API específicas** de cada uno. No
+preocuparse por portarlos como producto estándar:
+- **A medida / bespoke (NO replicación estándar):** Trade (CB + Floor Share, fuente Apps Script/Drive),
+  Inversión/funnel BGT (SharePoint), Resultados Comerciales (facturación del cliente), mkt-canal
+  (retailers), Salud de Marca (Kantar manual), Mercado/GfK (ya excluido). El **builder** cubre la
+  mayoría de estos casos subiendo la planilla del cliente.
+- **Replicación de PRODUCTO (core, corre sobre conectores self-serve Meta/Google/GA4/DataForSEO):**
+  **Copiloto IA**, **Alertas + reportes**, **Influencia/UGC + sentimiento** (Meta), **SEO/Share of
+  Search** (DataForSEO), **Performance→Conversión** (GA4+PMax), **Seguimiento por categoría**, **Capa
+  de Competencia**, **Monitoreo**. Estos SÍ son el foco de la replicación estándar.
+
 ## D. Funciones potenciales NUEVAS (no existen en ninguno de los dos)
 1. **Motor de Alertas + reportes automáticos con IA** (email/WhatsApp) — prometido, inexistente. **Grande.**
 2. **CRM / nurturing de leads** — existe solo en BIP (`/consultor`); scoring/nurturing saliente pendiente. Nuevo vs Drean.
