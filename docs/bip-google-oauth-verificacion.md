@@ -18,7 +18,14 @@ acceso a los datos de tu app."** La app BIP quedó verificada para `analytics.re
    `connectors.ts` (covers `["Analytics 4","Google Ads","Sheets"]`), `cuenta/plan` y `onboarding.tsx`
    (3 menciones). El lector `lib/google-ads.ts` + tabla en `/performance` siguen gated por
    `googleAdsEnabled()` → NO llaman la Ads API hasta que haya developer token / `GOOGLE_ADS_ENABLED=1`.
-2. **Del user en Google (pendiente):**
+2. **ORDEN CORRECTO (el user lo marcó — NO re-litigar):** el bloqueo real de Google Ads NO era el
+   scope OAuth, era el **acceso a la Google Ads API (Explorer/producción)** que salía "denegado
+   automático" porque la app no estaba verificada. **Ahora que la app está verificada (15-sep),
+   PRIMERO se activa/re-solicita ese acceso** (Google Ads API Center / access level Test→Basic;
+   post-cambio 10-sep el acceso va atado al proyecto Cloud BIP-GO 279230041069). SIN ese acceso no
+   se puede EJECUTAR Google Ads en la app para demostrarlo. El scope `adwords` en la consent va
+   DESPUÉS / en paralelo, no primero.
+3. **Del user en Google (pendiente):**
    - Consent screen (Acceso a los datos): **agregar `.../auth/adwords`** (dejar los 2 ya aprobados) +
      Guardar y enviar → nueva revisión de ese scope. NO llamar `adwords` en prod hasta que aprueben.
    - Mismo scope en la integración Google de **Nango** (`nango.bip-go.com`).
