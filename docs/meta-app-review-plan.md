@@ -72,7 +72,13 @@ demostrar `instagram_manage_comments` + `pages_read_user_content` en el video. (
 - **Tiempos 2026:** el review se enlenteció — reportes de ~20 días (antes 2-7 días hábiles).
 
 ## 4. GAPS a resolver antes de submit (lo que falta construir/hacer)
-0. **Feature de SENTIMIENTO de comentarios en bip-platform — viene con la replicación de Drean.**
+0. **Feature de SENTIMIENTO de comentarios en bip-platform — ✅ CONSTRUIDA (dic-2026).**
+   Se agregó al final de **/redes** la sección **"Sentimiento de comentarios"**: `lib/meta-comments.ts`
+   (lee texto de comentarios IG con `instagram_manage_comments` + FB con `pages_read_user_content`
+   usando el token del tenant, page token; análisis con OpenAI gpt-4o-mini, SOLO lectura) +
+   `app/api/meta/comment-sentiment` + `components/social/comment-sentiment.tsx`. **Requiere
+   `OPENAI_API_KEY` en Vercel** (sin key lee comentarios pero no analiza). Demuestra los 2 permisos
+   de comentarios en el video. Historia previa (por si hace falta contexto):
    **Contexto (user, dic-2026):** BIP va a **replicar el 100% de la funcionalidad de los dashboards de
    Drean** → el análisis de sentimiento de comentarios (UGC) llega como parte de eso, no es un build
    aislado. Hoy en bip-platform los comentarios son solo conteo + texto en diag; la feature de
@@ -95,6 +101,13 @@ demostrar `instagram_manage_comments` + `pages_read_user_content` en el video. (
 3. **Business Verification de ROQUÉ** (config del user: subir doc AFIP que matchee el BM).
 4. **Cuenta de prueba** con Página FB + IG Business (vinculado) + ad account, sin bloqueos, con datos.
 5. **`META_LOGIN_CONFIG_ID`** no está en `.env.example` (documentarla; ya se usa en `lib/nango.ts`).
+
+## 4-bis. BUG a arreglar ANTES del video (dic-2026)
+- **FB orgánico en /redes: "Please reduce the amount of data you're asking for, then retry your
+  request"** (Graph API límite). La query de FB orgánico (`lib/meta-social.ts` `getFbOrganicLive`)
+  pide demasiado en una sola llamada (muchos posts con insights anidados) → sección FB en error/ceros.
+  Fix: paginar/reducir el batch (menos posts por request, o insights en llamadas separadas). No puede
+  verse un error en el dash durante el video del App Review.
 
 ## 5. Plan de video (un tramo/clip por permiso, cuenta de prueba conectada)
 1. **Login FLB** → selección de Página / IG / ad account (`pages_show_list`, `business_management`).
