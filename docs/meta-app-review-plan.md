@@ -76,8 +76,8 @@ demostrar `instagram_manage_comments` + `pages_read_user_content` en el video. (
    **Contexto (user, dic-2026):** BIP va a **replicar el 100% de la funcionalidad de los dashboards de
    Drean** → el análisis de sentimiento de comentarios (UGC) llega como parte de eso, no es un build
    aislado. Hoy en bip-platform los comentarios son solo conteo + texto en diag; la feature de
-   sentimiento vive en el legacy Drean (`app/api/cron/ugc-comments-analysis` + dashboards influencia/
-   contenido). Para demostrar `instagram_manage_comments` + `pages_read_user_content` en el video,
+   sentimiento vive en el legacy Drean (`app/api/cron/ugc-comments-analysis` + dashboard **/influencia**,
+   NO /contenido). Para demostrar `instagram_manage_comments` + `pages_read_user_content` en el video,
    esa feature tiene que estar **portada y visible en bip-platform** con la cuenta conectada. Sincronizar
    el submit de Meta con ese hito de la replicación (o portar al menos la vista de sentimiento antes del
    video). Mapa de la funcionalidad Meta de Drean a portar: ver relevamiento en curso.
