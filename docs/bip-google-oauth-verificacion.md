@@ -7,6 +7,34 @@ Cualquier cambio de **scopes de la integración google se hace en `nango.bip-go.
 google**, NUNCA en app.nango.dev. Editar en Cloud NO afecta la app (nos hizo perder horas 14-sep).
 Diag útil (staff): `/api/diag/google-token` muestra los scopes reales del token.
 
+## ✅✅✅ GOOGLE ADS FUNCIONANDO END-TO-END (15-sep) — validado con diag
+La lectura de Google Ads en BIP quedó **andando** (tenant bip.explore). Diag
+`/api/diag/google-ads` (owner/admin) devolvió `has_adwords:true`, la sub-cuenta correcta y
+`campaigns_count:1` (Campaign #1). Cadena: scope adwords ✓ + acceso Ads API Explorer ✓ +
+MCC→sub-cuenta ✓ + lectura de campaña ✓. Falta solo que la campaña de test junte impresiones.
+
+**Cómo se prendió:** (1) Nango self-host `nango.bip-go.com` → integración google → sumar scope
+`https://www.googleapis.com/auth/adwords`; (2) Vercel `bip-platform`: `GOOGLE_ADS_ENABLED=1`
+(developer token NO hace falta, se discontinuó 9-sep); (3) reconectar Google en BIP (el token trae
+adwords); (4) elegir la cuenta en Conexiones → Google (selector nuevo).
+
+**⚠️ GOTCHA MCC (nos costó — NO repetir):** la cuenta de test de Google Ads se creó como **cuenta
+ADMINISTRADORA (Manager/MCC)** — esas **no tienen campañas propias** → consultar campañas sobre el
+MCC da **"Ads search 400"**. `listAccessibleCustomers` con bip.explore (usuario del MCC) devuelve
+**solo el MCC**, no las sub-cuentas. Fix en `lib/google-ads.ts` (MCC-aware): si una cuenta accesible
+es manager, se baja a sus sub-cuentas con `SELECT ... FROM customer_client WHERE level>0` (usando el
+manager como **`login-customer-id`**), y esas sub-cuentas se listan con `login_customer_id` guardado
+en la selección; toda query a la sub-cuenta manda ese header. **Cuentas de test:** MCC `2068802546`
+("BIP"), sub-cuenta operable **`8320768997`** ("BIP", ARS) — ambas con el mismo nombre (confunde,
+pero son IDs distintos). Campaña = "Campaign #1" (Performance Max, budget ARS500/día, promociona
+bip-go.com; esperando aprobación de Google).
+
+**Selector de cuenta (Conexiones → Google):** `components/google-ads-account-picker.tsx` +
+`app/api/google/ads-accounts` + `lib/google-ads.ts` (`listGoogleAdsAccounts`/`get`/`setGoogleAdsSelection`,
+cache `google_ads_cache_v2`). Regla de negocio = Meta: **una sola cuenta, fija al guardar**
+(bloqueada); para cambiar, reconectar Google (la desconexión borra `connections.config.google_ads`).
+El picker se desbloquea solo si la cuenta guardada dejó de estar en la lista. Diag: `/api/diag/google-ads`.
+
 ## ✅✅ RONDA 1 VERIFICADA (15-sep) → ARRANCA RONDA 2 (Google Ads)
 Google Auth Platform → Centro de verificación: **Branding ✅** y **Data access ✅ "Se verificó el
 acceso a los datos de tu app."** La app BIP quedó verificada para `analytics.readonly` + `drive.file`.
