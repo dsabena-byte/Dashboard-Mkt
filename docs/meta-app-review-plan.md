@@ -30,24 +30,27 @@ Todas las llamadas de "BIP Connector" son **GET (lectura)**. Fuentes: `lib/meta-
 | `instagram_manage_insights` | insights por post IG + demografía de seguidores | Redes | **SÍ** |
 | `ads_read` | insights de pauta (`/act_/insights`), campañas, creativos, VTR | Plan de Medios | **SÍ** |
 | `business_management` | enumerar Páginas/IG/ad accounts por Business Manager | ambos | **SÍ** (habilitador) |
-| `pages_read_user_content` | leer **texto** de posts/comentarios FB | solo diag (no en dashboards) | opcional (community/UGC) |
-| `instagram_manage_comments` | leer **texto** de comentarios IG | solo diag (no en dashboards) | opcional (community/UGC) |
+| `pages_read_user_content` | leer **texto** de posts/comentarios FB → **análisis de sentimiento (FB)** | (falta feature en UI) | **SÍ (VITAL, sentimiento)** |
+| `instagram_manage_comments` | leer **texto** de comentarios IG → **análisis de sentimiento (IG)** | (falta feature en UI) | **SÍ (VITAL, sentimiento)** |
 
-**7 permisos NÚCLEO** cubren 100% de los dashboards Redes (orgánico) + Plan de Medios (pauta).
-**2 permisos de comentarios** (`pages_read_user_content`, `instagram_manage_comments`) hoy solo se
-usan en rutas de diagnóstico, NO en los dashboards → son para una feature de **community/UGC** futura.
+**Decisión del user (dic-2026):** el **análisis de sentimiento de comentarios** (IG + FB) es una
+feature **vital** de BIP → los 2 permisos de comentarios **ENTRAN** en esta ronda. Set = **9 (Tanda A)**.
+
+**⚠️ GAP verificado:** en bip-platform los comentarios hoy solo se muestran como **conteo**; el
+**texto** de comentarios solo se lee en rutas **diag**. **No existe la feature de sentimiento** en la
+plataforma multi-tenant (vive en el legacy Drean: cron `ugc-comments-analysis`). Meta exige **mostrar
+cada permiso en uso** → **hay que construir la feature de sentimiento en bip-platform** para poder
+demostrar `instagram_manage_comments` + `pages_read_user_content` en el video. (Ver §4, build nuevo.)
 
 **Tanda B del guion** (`pages_manage_engagement`, `pages_manage_metadata`, `leads_retrieval`):
 **cero llamadas en el código** — declarados pero no ejercidos. NO pedir todavía.
 
-## 2. Set recomendado para ESTA ronda
-**Pedir los 7 núcleo** (orgánico + pauta, todo lectura demostrable hoy en los dashboards):
+## 2. Set para ESTA ronda: 9 permisos (Tanda A, todo lectura)
 `pages_show_list`, `pages_read_engagement`, `read_insights`, `instagram_basic`,
-`instagram_manage_insights`, `ads_read`, `business_management`.
+`instagram_manage_insights`, `ads_read`, `business_management` (7 núcleo orgánico+pauta) **+**
+`pages_read_user_content`, `instagram_manage_comments` (sentimiento de comentarios FB+IG, vital).
 
-**Diferir:** los 2 de comentarios (hasta que haya feature de community management en la UI) y la
-Tanda B. Menos permisos = review más liviano y menos superficie de rechazo. (Si el user quiere
-community management ya, se suman los 2 de comentarios + un tramo de video que lea comentarios.)
+**Diferir:** solo la Tanda B (3, sin código). Todos los de esta ronda son de **lectura**.
 
 > Regla de Meta: hay que hacer **≥1 llamada exitosa por permiso dentro de los 30 días** previos al
 > submit. Los 7 se ejercen conectando la cuenta de prueba y abriendo Redes + Plan de Medios. El diag
@@ -69,6 +72,15 @@ community management ya, se suman los 2 de comentarios + un tramo de video que l
 - **Tiempos 2026:** el review se enlenteció — reportes de ~20 días (antes 2-7 días hábiles).
 
 ## 4. GAPS a resolver antes de submit (lo que falta construir/hacer)
+0. **Feature de SENTIMIENTO de comentarios en bip-platform — viene con la replicación de Drean.**
+   **Contexto (user, dic-2026):** BIP va a **replicar el 100% de la funcionalidad de los dashboards de
+   Drean** → el análisis de sentimiento de comentarios (UGC) llega como parte de eso, no es un build
+   aislado. Hoy en bip-platform los comentarios son solo conteo + texto en diag; la feature de
+   sentimiento vive en el legacy Drean (`app/api/cron/ugc-comments-analysis` + dashboard **/influencia**,
+   NO /contenido). Para demostrar `instagram_manage_comments` + `pages_read_user_content` en el video,
+   esa feature tiene que estar **portada y visible en bip-platform** con la cuenta conectada. Sincronizar
+   el submit de Meta con ese hito de la replicación (o portar al menos la vista de sentimiento antes del
+   video). Mapa de la funcionalidad Meta de Drean a portar: ver relevamiento en curso.
 1. **Data Deletion de Meta — FALTA (build).** Hoy hay disconnect por fuente
    (`api/connections/disconnect`, revoca token en Nango + borra `redes_snapshot`) y baja total
    (`api/account/delete`). Pero **no existe el callback/URL que Meta exige**. Dos opciones:
@@ -102,12 +114,18 @@ El guion detallado (con textos de justificación por permiso) está en `docs/met
    verificar con `/api/diag/meta` que los 7 estén concedidos/funcionando.
 6. **Grabar** el video (7 permisos), completar el submit por permiso en App Review, reenviar.
 
-## 7. Decisiones pendientes del user
-- **A) Set de permisos:** ¿los **7 núcleo** (recomendado), o sumamos los 2 de comentarios para
-  community management ya?
-- **B) Data deletion:** ¿callback firmado (A, recomendado) o instructions URL (B)?
-- **C) Business Verification:** ¿ROQUÉ ya está verificado en Meta, o hay que hacerlo? (definir la
-  entidad legal + doc AFIP que matchee el Business Manager).
+## 7. Decisiones (RESUELTAS dic-2026)
+- **A) Set de permisos:** ✅ **9 (Tanda A)** — incluye los 2 de comentarios (sentimiento IG+FB, vital).
+- **B) Data deletion:** ✅ **callback firmado** (`/api/meta/data-deletion`).
+- **C) Business Verification:** ✅ **ROQUÉ ya verificado** como negocio en Meta.
+
+**Builds pendientes en bip-platform (Claude):**
+1. Feature de **sentimiento de comentarios** (IG+FB) en la UI — para demostrar los 2 perms de comentarios.
+2. **Data-deletion callback** (`/api/meta/data-deletion`) + captura del app-scoped user id de Meta al
+   conectar + endpoint de status + migración. Requiere env `META_APP_SECRET` (para verificar el
+   signed_request) — la carga el user en Vercel.
+**Del user:** app "BIP Connector" a Live; configurar el data-deletion URL en Facebook Login; cuenta de
+prueba (Página+IG Business+ad account con datos y comentarios); cargar `META_APP_SECRET`.
 
 ## Fuentes oficiales (Meta, 2026)
 - App Review / Permissions Reference — developers.facebook.com/docs/permissions/
