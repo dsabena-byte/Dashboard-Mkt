@@ -102,6 +102,32 @@ demostrar `instagram_manage_comments` + `pages_read_user_content` en el video. (
 4. **Cuenta de prueba** con Página FB + IG Business (vinculado) + ad account, sin bloqueos, con datos.
 5. **`META_LOGIN_CONFIG_ID`** no está en `.env.example` (documentarla; ya se usa en `lib/nango.ts`).
 
+## 4-ter. ✅ RESUELTO — FB orgánico "reduce amount of data" era SNAPSHOT VIEJO (dic-2026)
+El error persistía en `/redes` **aunque las llamadas live de FB funcionan** (diag `posts_full_50: ok`).
+Causa raíz validada: los insights de `getFbOrganicLive` están en try/catch → no propagan; la función
+no tira el error. El dash mostraba un `redes_snapshot` **viejo** que un cron guardó con `fb.ok=false`
+(corrió antes del fix de retry). Fixes (bip-platform):
+- **Self-heal en `app/(app)/redes/page.tsx`:** si el snapshot trae una fuente en error, se re-trae
+  LIVE en el momento (`getFbOrganicLive`/`getIgOrganicLive`) → un error viejo nunca queda pegado.
+- **Guard en el cron `sync-redes`:** si una fuente falla pero la anterior estaba OK, se conserva (no
+  se degrada el snapshot). Diag permanente: `/api/diag/fb-organic` (snapshot vs live).
+- **Patrón:** todo dash que lea de un snapshot debería self-healear las fuentes en error a live.
+
+## 4-quater. Sentimiento de comentarios — arquitectura final (dic-2026)
+NO se procesa en tiempo real en el dash (era carísimo: OpenAI en cada refresh). Ahora:
+- **Cron GitHub `sync-comment-sentiment.yml`** (cada 12h) analiza y guarda en `meta_comment_sentiment`
+  (mig 0016). Analiza con OpenAI SOLO los posts cuya cantidad de comentarios cambió (los demás reusan).
+- El dash **solo lee** la tabla (costo cero). La **barra de sentimiento va DEBAJO de cada post** (IG+FB),
+  expandible a conteos+resumen+temas (`components/social/sentiment-bar.tsx`), no como sección aparte.
+- Requiere `OPENAI_API_KEY` en Vercel. Lee texto de comentarios → ejerce `instagram_manage_comments`
+  + `pages_read_user_content` (los 2 permisos vitales del App Review).
+
+**PENDIENTES (el user pidió "luego"):**
+- Portar la barra de sentimiento por post a **Drean `/redes`** (IG + FB orgánico; Drean usa system-user
+  token; FB orgánico no tiene sentimiento hoy). El componente `sentiment-bar` se reusa.
+- **Pauta en redes:** barra de sentimiento por creativo/ad (los ads son posts reales con comentarios;
+  en Drean ya existe algo para UGC en `/influencia` — generalizar). Aplica en BIP `/performance` + Drean.
+
 ## 4-bis. ✅ RESUELTO — robustez Meta "reduce amount of data" (dic-2026)
 El error **"Please reduce the amount of data you're asking for"** (Graph API: la respuesta con
 campos anidados pesados excede el límite) se tapó en las **3 lecturas pesadas** de Meta, cada una
