@@ -7,6 +7,26 @@ Cualquier cambio de **scopes de la integración google se hace en `nango.bip-go.
 google**, NUNCA en app.nango.dev. Editar en Cloud NO afecta la app (nos hizo perder horas 14-sep).
 Diag útil (staff): `/api/diag/google-token` muestra los scopes reales del token.
 
+## ✅✅ RONDA 1 VERIFICADA (15-sep) → ARRANCA RONDA 2 (Google Ads)
+Google Auth Platform → Centro de verificación: **Branding ✅** y **Data access ✅ "Se verificó el
+acceso a los datos de tu app."** La app BIP quedó verificada para `analytics.readonly` + `drive.file`.
+
+**RONDA 2 = agregar `adwords` (Google Ads).** OJO: agregar un scope sensible a una app ya verificada
+**dispara una nueva revisión SOLO para ese scope** (la consent aprobada de los 2 sigue en uso). Pasos:
+1. **Contenido restaurado (15-sep, HECHO):** se re-agregó Google Ads a la web y la plataforma desde el
+   backup. `apps/web/public/bip.html` ← `cp bip-full.html` (5 menciones de vuelta). Plataforma:
+   `connectors.ts` (covers `["Analytics 4","Google Ads","Sheets"]`), `cuenta/plan` y `onboarding.tsx`
+   (3 menciones). El lector `lib/google-ads.ts` + tabla en `/performance` siguen gated por
+   `googleAdsEnabled()` → NO llaman la Ads API hasta que haya developer token / `GOOGLE_ADS_ENABLED=1`.
+2. **Del user en Google (pendiente):**
+   - Consent screen (Acceso a los datos): **agregar `.../auth/adwords`** (dejar los 2 ya aprobados) +
+     Guardar y enviar → nueva revisión de ese scope. NO llamar `adwords` en prod hasta que aprueben.
+   - Mismo scope en la integración Google de **Nango** (`nango.bip-go.com`).
+   - **Re-pedir "Explorer" (Ads API producción):** se destraba ahora que la app está verificada
+     (antes salía denegado automático). Con eso + (opcional) developer token, las llamadas Ads funcionan.
+   - Para DEMOSTRAR el scope en la verificación: mostrar `/performance` con pauta de Google real (o
+     cuenta de PRUEBA de Ads con Test access) → nuevo video/creds si Google lo pide.
+
 ## 🚀 RONDA 1 REENVIADA A VERIFICACIÓN (14-sep)
 El user reenvió el formulario de verificación en Google Auth Platform (proyecto BIP-GO
 279230041069) con **scopes = solo 2**: `analytics.readonly` + `drive.file` (sacados `adwords` y
