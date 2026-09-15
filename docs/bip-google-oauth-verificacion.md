@@ -193,6 +193,18 @@ Items a resolver (del mail):
 3. **Google Ads** en la plataforma (requiere developer token — tramitarlo en paralelo).
 4. **Video** cubriendo los 3 + **test creds** + responder el mail.
 
+### 📍 DÓNDE se activa el acceso a la Ads API (buscado 15-sep en Google — DEFINITIVO)
+Post cambio del **9-sep-2026**: los **developer tokens se discontinuaron** (header opcional, ignorado).
+El **nivel de acceso ahora se otorga al PROYECTO de Google Cloud** (el que genera las credenciales
+OAuth = BIP-GO), no al token. **NO es MCC ni API Center de Google Ads** (ese camino quedó viejo —
+me equivoqué sugiriéndolo). Se **re-aplica a Basic access desde la página "Overview" de la Google Ads
+API del proyecto en Cloud Console:**
+👉 `https://console.cloud.google.com/apis/api/googleads.googleapis.com/overview?project=279230041069`
+Pasos: (1) habilitar la Google Ads API en el proyecto si no está; (2) en Overview ver el nivel actual
+(Test) y **aplicar a Basic access**; ahora que la app está verificada, la solicitud procede. Basic ya
+lee cuentas de producción (límite 15.000 ops/día). Niveles: Test (solo test accounts) → Basic (test+
+prod, 15k/día) → Standard (ilimitado). Fuente: Google Ads API docs "access-levels" + "developer-token".
+
 ### ⚠️ SECUENCIA CORRECTA del acceso a Google Ads (corregido 14-sep — NO re-litigar)
 - El **nivel de acceso de la Ads API para BIP-GO (proyecto 279230041069) es "Prueba" (Test)** y la
   solicitud de **"Explorer" (producción) fue DENEGADA AUTOMÁTICAMENTE**. **Esto es ESPERADO, no un
