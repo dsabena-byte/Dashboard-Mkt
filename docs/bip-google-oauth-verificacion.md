@@ -35,7 +35,22 @@ cache `google_ads_cache_v2`). Regla de negocio = Meta: **una sola cuenta, fija a
 (bloqueada); para cambiar, reconectar Google (la desconexión borra `connections.config.google_ads`).
 El picker se desbloquea solo si la cuenta guardada dejó de estar en la lista. Diag: `/api/diag/google-ads`.
 
-## ✅✅ RONDA 1 VERIFICADA (15-sep) → ARRANCA RONDA 2 (Google Ads)
+## 🚀 RONDA 2 (Google Ads / adwords) ENVIADA A VERIFICACIÓN (16-sep-2026)
+Submit del scope `adwords` sobre la app ya verificada (los otros 2 siguen aprobados). Detalles:
+- **Video:** `https://youtu.be/SGBu7fKG-zg` (no listado). Subtítulos EN = `bip-googleads-review-en.srt`.
+  Muestra: login → Conexiones → reconectar Google (consent con el permiso de Google Ads) → elegir
+  cuenta de Ads → Plan de Medios con la tabla "Google Ads · pauta" (Campaign #1) → desconectar+borrar.
+- **Cuenta de prueba:** `bip.explore@gmail.com` (Google conectado con `adwords`, cuenta de Ads de prueba
+  `8320768997` con Campaign #1 corriendo, Eligible/Limited, 1 impresión — alcanza para demostrar el scope).
+- **Data:** se usó la campaña de prueba de BIP (no Drean) — con 1 impresión ya demuestra el scope; Google
+  no pide data abundante, solo el scope en uso. (Para data rica de Drean habría que sumar bip.explore a la
+  MCC Mabe 201-365-7015 + re-wire — no se hizo, innecesario para verificar.)
+- **Texto de respuesta EN** (adwords = solo lectura, nunca crea/edita/borra, no comparte, no entrena IA)
+  entregado en el chat. Privacy: bip-go.com/privacy.
+- **Tiempos:** ~días/semanas (T&S). **NO cambiar la contraseña de bip.explore ni desconectar Google hasta
+  que aprueben; no borrar el video de YouTube.**
+
+## ✅✅ RONDA 1 VERIFICADA (15-sep) → RONDA 2 (Google Ads) — ver arriba
 Google Auth Platform → Centro de verificación: **Branding ✅** y **Data access ✅ "Se verificó el
 acceso a los datos de tu app."** La app BIP quedó verificada para `analytics.readonly` + `drive.file`.
 
