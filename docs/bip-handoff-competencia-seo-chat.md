@@ -133,3 +133,62 @@ where p.tenant_id=tu.tenant_id and u.email='bip.explore@gmail.com';
 `docs/bip-competencia-seo-chat-plan.md` (plan), `docs/bip-tiktok-app-plan.md`,
 `docs/bip-google-oauth-verificacion.md`, `docs/meta-app-review-plan.md`.
 </content>
+
+---
+
+## SEO v2 — RÉPLICA COMPLETA DE DREAN, AUTOMÁTICA POR TENANT (sesión sep-2026)
+
+Reescritura total del SEO de BIP para igualar el `/seo-search` de Drean pero **sin nada
+hardcodeado** (Drean tenía 490 keywords fijas + lista fija de retailers/marcas). Todo por tenant.
+
+### Decisiones del usuario (definiciones cerradas)
+- **Retailers = INPUT del cliente, hasta 5** (además de las 4 marcas competidoras). Se cargan en el
+  form **después** de los competidores. No auto-harvest del SERP (se descartó): el cliente elige.
+- **Multi-categoría**: hasta el tope del plan (`PLANS[].categorias`: insight 1 / optimize 2 /
+  accelerate 3, + addon "categoria"). Helper `maxCategorias(plan, addons)` en `lib/plan.ts`.
+  El dash muestra **tabs de categoría** cuando hay >1; todo (share, YoY, mapa, matriz, buckets,
+  LLMO) se calcula y filtra por categoría.
+- **Keywords automáticas**: se generan en vivo con DataForSEO `keywords_for_keywords/live`
+  (misma familia Google Ads que `search_volume`, mismo crédito) desde el término de la categoría →
+  top 45 por volumen, piso 70/mes. Fallback: OpenAI genera + `search_volume` real. (Reemplaza el
+  "OpenAI inventa 12" viejo.)
+- **Mapa por provincia**: geometría propia sin librerías (`lib/argentina-provinces.ts`, 24 paths
+  pre-proyectados copiados de Drean, viewBox 0 0 520 1107) + `components/seo/argentina-map.tsx`
+  (choropleth azul monocromático, hover, leyenda). Data por Google Trends `explore/live` leyendo
+  el bloque de **subregiones** (`type` incluye "map"). **OJO: sin validar en vivo** (el sandbox no
+  tiene DATAFORSEO_AUTH; en Drean la carga por provincia era MANUAL, sin cron). Parseo defensivo +
+  estado vacío elegante. Si no viene, plan B = carga manual. `provinciaAlias()` normaliza nombres
+  de Trends → names de AR_PROVINCES (CABA→"Capital Federal", saca " Province").
+
+### Archivos tocados (bip-platform)
+- `lib/seo.ts` — reescrito. `SeoData` multi-categoría: cada fila (`share/demanda/trends/serp/
+  regions/llmo`) lleva `categoria`. `serp` lleva `tipo: propio|marca|retail` + `own`. Campos compat
+  (`categoria`, `brands`, `generic_volume`, `monthly` = 1ª categoría) para no romper chat/diag/page.
+  `syncSeo` loopea categorías; por cada una: universo (keyword-ideas) → SERP (dominios propio+marca+
+  retail, CONC 8) → share/demanda (search_volume) → trends+regiones (explore) → LLMO. Snapshot único
+  en `seo_snapshot` (json, sin tablas nuevas).
+- `components/seo/seo-full.tsx` — reescrito. Tabs categoría + KPI row + Share of Search (barras+evol)
+  + **Crecimiento YoY** (barras divergentes) + **mapa provincia** (RegionSection: selector Genérico/
+  marca + mapa + ranking) + Trends + **SEO competitivo** (KPIs + índice conglomerado con filtro
+  Todos/Marcas/Retail, colores propio #1e40af/marca #94a3b8/retail #a855f7 + buckets Faltantes/
+  Débiles/Fuertes con "Líder" + matriz keyword×dominio) + LLMO. ExportMenu en cada card. Tipografía
+  unificada (h2 16/700, h3 14/600, no-uppercase salvo KPI labels).
+- `components/seo/argentina-map.tsx` + `lib/argentina-provinces.ts` — nuevos.
+- **Perfil (gap tapado):** el form NO guardaba categoría ni web/redes propias (se seteaban a mano).
+  Ahora sí. `lib/profile.ts` (+ `categorias: string[]`, `retailers: Retailer[]`, compat `categoria`
+  =categorias[0]). `app/api/profile/route.ts` valida+guarda todo (categorías 1..cap, own_website
+  obligatorio en optimize, retailers hasta 5). `components/welcome-profile.tsx` reescrito (web/redes
+  propias + categorías dinámicas 1..cap + competidores + retailers, con pre-fill + modo "settings").
+  **Página nueva `/cuenta/perfil`** (editable) + link en el sidebar (`Perfil del negocio`).
+- `app/api/cron/sync-seo/route.ts` (rows=r.serp) y `app/api/diag/seo/route.ts` (multi-cat + retailers).
+
+### Migración 0023 (corrida por el usuario en SQL Editor de BIP)
+`supabase/migrations/0023_categorias_retailers.sql`: agrega `categorias jsonb` + `retailers jsonb`
+a `tenant_profile` + backfill de `categoria` singular al array. El usuario ya la corrió + cargó los
+5 retailers de Drean (Mercado Libre, Frávega, Oncity, Cetrogar, Naldo) por SQL directo.
+
+### PENDIENTE de validar (con DataForSEO real, corriendo `/api/diag/seo` en bip-go.com)
+- que `keywords_for_keywords` devuelva keywords+volumen (mirar largo de `data.serp`),
+- que el mapa traiga data (`data.regions` no vacío) — si vacío, plan B carga manual.
+- Costo: SERP = N keywords × llamada. maxDuration 300; con 2 categorías ~60-90s. OK por ahora.
+Commit: `cd3a928` (bip-platform).
