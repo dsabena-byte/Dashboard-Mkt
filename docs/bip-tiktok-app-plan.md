@@ -4,9 +4,10 @@
 >
 > Estado (16-sep-2026): developer registration hecho con email de ROQUÉ
 > (`bip@roque-in.com`, tipo **Technology Company**, verticals Service+Technology).
-> App **"BIP Connector" CREADA y configurada** — estado TikTok **"pending approval"**
-> (App ID/Secret todavía en "--", los libera TikTok al aprobar el registro).
-> Callback Nango: `https://nango.bip-go.com/oauth/callback`.
+> **DOS apps creadas, ambas "pending approval"** (App ID/Secret en "--" hasta aprobar):
+> **"BIP Connector"** (pauta, Marketing API) + **"BIP Organic"** (orgánico, Accounts API).
+> Revisiones en paralelo. Callback Nango (ambas, los 2 redirect fields):
+> `https://nango.bip-go.com/oauth/callback`. Logo 512×512 subido.
 > **Dominios TikTok bloqueados desde el sandbox de Claude** (business-api / developers) →
 > proceso verificado vía guías + resúmenes oficiales (fuentes al pie).
 >
