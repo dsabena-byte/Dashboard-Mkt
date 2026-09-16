@@ -99,9 +99,11 @@ Marketing API** (mismo console "My Apps", distinto producto):
   Cron `sync-comment-sentiment` extendido. Diag `/api/diag/tiktok-organic`. Gate `TIKTOK_ORGANIC_ENABLED=1`.
 - **Gotchas:** delay 24-48h; cuenta debe ser Business/Creator con Analytics activado; reach/retención
   requieren actividad del video en 7 días; retención de data 365 días; paginación por cursor.
-- **PENDIENTE de wiring UI:** botón "Conectar TikTok (orgánico)" para `tiktok-accounts` + captura de
-  `business_id` en el callback + sección orgánica en `/redes` (perfil, videos, barra de sentimiento por
-  post estilo Meta). Se hace cuando el reader se valide en sandbox.
+- **Sección `/redes` HECHA:** `TikTokOrganicSection` (perfil+stats, KPIs de cuenta, grilla de videos con
+  métricas + barra de sentimiento por video estilo Meta). Gated por `tiktokOrganicEnabled()`+`tt.ok`.
+- **ÚNICO pendiente (sandbox):** botón "Conectar TikTok orgánico" para `tiktok-accounts` + **captura de
+  `business_id` en el callback** (== open_id del token — cómo lo expone Nango se ve en sandbox). Es el
+  único punto que NO se construye blind por la regla validá-no-asumas.
 
 ## Pasos para SOLICITAR el orgánico ahora (ganar tiempo, sin arriesgar la pauta)
 
