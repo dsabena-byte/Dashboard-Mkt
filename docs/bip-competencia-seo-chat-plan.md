@@ -72,6 +72,14 @@ competidores. Componentes reutilizan `components/social/*`. Gate: feature `compe
 
 ## FEATURE 2 — Competencia WEB (estilo SimilarWeb, SIN Apify, con DataForSEO)
 
+### ⚠️ ACLARADO (validado en código Drean): SimilarWeb en Drean = APIFY, no DataForSEO
+La data de SimilarWeb en Drean viene de **Apify** (actors `tri_angle/similar-web-scraper` +
+`radeance/similarweb-scraper`, `source:'apify_similarweb'`), NO de DataForSEO Traffic Analytics.
+La cuenta DataForSEO se usa para **SEO** (volumen/SERP/keywords). **Decisión tomada:** como Apify
+está OK (solo se saca n8n), la competencia WEB reusa el **actor SimilarWeb de Apify por REST desde
+el cron** (probado) → NO hace falta verificar precio de DataForSEO Traffic Analytics. DataForSEO
+queda para SEO. (La opción DataForSEO Traffic Analytics queda documentada abajo como alternativa futura.)
+
 ### Fuente: DataForSEO (YA hay cuenta) — dos capas, misma credencial
 1. **DataForSEO Labs** (barato, POST `live` síncrono): Domain Rank Overview (tráfico orgánico
    estimado + rank + nº keywords + tráfico por país), Ranked Keywords ($0,132/1k), Competitors
