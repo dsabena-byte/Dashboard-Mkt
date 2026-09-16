@@ -111,7 +111,7 @@ function MiniMarkdown({ text }: { text: string }) {
   );
 }
 
-export function DataChat({ dashboard, suggestions = [] }: { dashboard: string; suggestions?: string[] }) {
+export function DataChat({ dashboard }: { dashboard: string; suggestions?: string[] }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -173,17 +173,8 @@ export function DataChat({ dashboard, suggestions = [] }: { dashboard: string; s
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
             {msgs.length === 0 && (
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <p>Preguntame sobre tus datos o pedime un gráfico. Ejemplos:</p>
-                {suggestions.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => send(s)}
-                    className="block w-full rounded border bg-card p-2 text-left transition hover:bg-muted"
-                  >
-                    {s}
-                  </button>
-                ))}
+              <div className="text-xs text-muted-foreground">
+                <p>Preguntame sobre tus datos o pedime un gráfico.</p>
               </div>
             )}
             {msgs.map((m, i) => (
