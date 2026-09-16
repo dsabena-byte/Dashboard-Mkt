@@ -47,6 +47,9 @@ Submit del scope `adwords` sobre la app ya verificada (los otros 2 siguen aproba
   MCC Mabe 201-365-7015 + re-wire — no se hizo, innecesario para verificar.)
 - **Texto de respuesta EN** (adwords = solo lectura, nunca crea/edita/borra, no comparte, no entrena IA)
   entregado en el chat. Privacy: bip-go.com/privacy.
+- **ENVIADO 16-sep:** cuestionario de verificación respondido (4 preguntas en **No** — no personal/interno/
+  dev/SMTP) → "Enviar para la verificación". Info adicional con creds de test. **Email a Google T&S
+  respondido** (mismo hilo Ronda 1) con video + creds + justificación adwords. Ambos lados en cola.
 - **Tiempos:** ~días/semanas (T&S). **NO cambiar la contraseña de bip.explore ni desconectar Google hasta
   que aprueben; no borrar el video de YouTube.**
 
