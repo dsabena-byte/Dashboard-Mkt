@@ -5,6 +5,27 @@
 > código (`bip-platform`), los docs, y los requisitos oficiales de Meta. **No re-litigar sin leer esto.**
 > Complementa (no reemplaza) `docs/meta-app-review-guion.md` (guion de video con las 12 justificaciones).
 
+## ✅✅✅ APP REVIEW DE META ENVIADO (16-sep-2026)
+Submit hecho con los **9 permisos de lectura** (Tanda A). Detalles del envío:
+- **Video:** `https://youtu.be/js1IwBJIWfc` (YouTube no listado). Subtítulos EN = `bip-meta-review-en.srt`.
+- **Cuenta de prueba para el revisor:** `bip.explore@gmail.com` (tenant con **Drean/Meta conectado** →
+  dashboards poblados). Se le **seteó contraseña** en Mi cuenta → Contraseña (BIP entra por magic link;
+  el revisor necesita email+password). **⚠️ CAMBIAR la contraseña después de que aprueben.** NO
+  desconectar Drean/Meta ni tocar bip.explore hasta que termine la revisión (el revisor debe entrar).
+- **Instagram — gotcha clave:** `instagram_manage_comments` NO aparecía en App Review hasta configurar
+  el producto **"Instagram API con inicio de sesión de Facebook"** (NO la variante "Instagram Business
+  Login", que usa otros nombres `instagram_business_*`). BIP accede a IG vía la Página de FB (FLB).
+- **Data deletion:** URL de instrucciones = `https://bip-go.com/privacy` (se corrigió el placeholder
+  `facebook.com`). Plataforma declarada: Website `bip-platform.vercel.app`. Login del revisor:
+  `bip-platform.vercel.app/login`.
+- **Tratamiento de datos:** processors declarados = Supabase, Vercel, Nango, OpenAI (GitHub NO — no
+  accede a datos de Meta). Responsable = razón social legal de ROQUÉ. País = Argentina.
+- **PENDIENTE en paralelo:** **Verificación de acceso (Tech Provider)** — el banner de App Review dice
+  que el acceso avanzado la requiere para proveedores de tecnología (BIP lo es). Business Verification
+  ya está ✅. Iniciar la Access Verification (Config app → Portfolio comercial → Verificación de acceso).
+- **Tiempos:** ~2-7 días hábiles (2026 puede tardar más). Ronda 2 futura: `leads_retrieval`,
+  `pages_manage_engagement`, `pages_manage_metadata` (necesitan features + demo).
+
 ## 0. Encuadre crítico: DOS apps de Meta
 | | **"BIP Connector"** (bip-platform, multi-tenant) | "Dashboard-mkt" (legacy Drean) |
 |---|---|---|
