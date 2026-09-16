@@ -20,9 +20,15 @@ Submit hecho con los **9 permisos de lectura** (Tanda A). Detalles del envío:
   `bip-platform.vercel.app/login`.
 - **Tratamiento de datos:** processors declarados = Supabase, Vercel, Nango, OpenAI (GitHub NO — no
   accede a datos de Meta). Responsable = razón social legal de ROQUÉ. País = Argentina.
-- **PENDIENTE en paralelo:** **Verificación de acceso (Tech Provider)** — el banner de App Review dice
-  que el acceso avanzado la requiere para proveedores de tecnología (BIP lo es). Business Verification
-  ya está ✅. Iniciar la Access Verification (Config app → Portfolio comercial → Verificación de acceso).
+- **"Verificación de acceso / Tech Provider" — NO confirmado como obligatorio (corregido 16-sep):**
+  hubo idas y vueltas. Validación: los requisitos CIERTOS para servir clientes externos con Graph API
+  son (1) **Business Verification** (✅ ROQUÉ) + (2) **App Review con "Advanced Access"** en cada permiso
+  (✅ enviado). El paso "Tech Provider Access Verification" en la doc pública de Meta es sobre todo del
+  **WhatsApp Business Platform** (`whatsapp_business_messaging`) → BIP NO usa WhatsApp, así que
+  probablemente NO aplica. El App Review se pudo **enviar** sin ese paso → no es bloqueante del submit.
+  **Acción:** NO perseguirlo preventivamente. Chequear en el panel si hay una tarea/banner BLOQUEANTE
+  activa; si no, esperar la respuesta de Meta (si les falta algo, lo nombran). Único chequeo real: que
+  los 9 permisos estén en **Advanced Access** (no Standard).
 - **Tiempos:** ~2-7 días hábiles (2026 puede tardar más). Ronda 2 futura: `leads_retrieval`,
   `pages_manage_engagement`, `pages_manage_metadata` (necesitan features + demo).
 
