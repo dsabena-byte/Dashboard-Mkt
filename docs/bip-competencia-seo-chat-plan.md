@@ -190,6 +190,16 @@ overview/dashboards sin que el user pregunte. Mismo motor, disparado por cron (n
 3. **Chat IA transversal + insights** (mayor complejidad + seguridad): capa de tools genéricas
    sobre accessors tenant-scopeados + `render_table` + guardrails + gate server-side.
 
+## DECISIONES TOMADAS
+- ✅ **Chat transversal = enfoque B** (tools genéricas tenant-scopeadas, NO text-to-SQL). El
+  cliente pregunta LIBRE en lenguaje natural (chat abierto, sin preguntas pre-armadas); las
+  "tools" son funciones internas invisibles que traen la data de forma segura. Cross-domain
+  (inversión × tráfico × VTR × etc.) funciona: el modelo llama varias tools y correlaciona las
+  series mensuales en su razonamiento. Camino abierto a sumar SQL-seguro (rol RLS per-tenant) después.
+- ✅ **Sin n8n** (Apify u otro por REST desde el cron).
+- ✅ **Competencia web:** SimilarWeb en Drean = Apify (no DataForSEO). Opción 1 Apify-REST (probado)
+  o Opción 2 DataForSEO Traffic Analytics (verificar precio) — a definir en Feature 2.
+
 ## DECISIONES QUE NECESITO DEL USER antes de construir
 1. **Proveedor social:** ¿ScrapeCreators (barato, conmutable) o reusar Apify por REST?
 2. **DataForSEO Traffic Analytics:** validar su precio por request (yo no pude, dominio bloqueado)
