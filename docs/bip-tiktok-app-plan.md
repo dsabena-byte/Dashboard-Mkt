@@ -80,5 +80,40 @@ path" del selector de scopes y agregar exactamente esas 3 rutas.
   + el ⚠️ de "TikTok accounts" puede pedir qualification extra + el orgánico necesita una
   cuenta business real con Analytics activado para poder demostrarlo).
 
+## ORGÁNICO (Accounts API) — VERIFICADO + CONSTRUIDO (16-sep-2026)
+
+Investigado con agente (dominios TikTok bloqueados → SDKs + mirror de la doc del portal:
+`sns-sdks/python-tiktok`, `henry-md/ad-mcps`, SDK Rust). **Es un producto OAuth SEPARADO del
+Marketing API** (mismo console "My Apps", distinto producto):
+- Autoriza un **titular de cuenta TikTok** (no advertiser). Identidad `business_id` (== `open_id`
+  del token — ÚNICO punto a confirmar en sandbox). Token endpoint `/tt_user/oauth2/token/`.
+  Provider Nango = **`tiktok-accounts`**.
+- **Scopes (producto "TikTok Accounts", read-only):** `user.info.basic/username/profile/stats`,
+  `user.account.type`, `user.insights`, `video.list`, `video.insights`, `comment.list`.
+  (`comment.list.manage` = moderar → NO. `biz.brand.insights` = Mentions → opcional/después.)
+- **Endpoints:** `/business/get/` (perfil+stats+métricas diarias), `/business/video/list/`
+  (videos con insights, cursor, max 20), `/business/comment/list/` (comentarios, max 30).
+- **Construido en BIP:** `lib/tiktok-organic.ts` (reader + `getTikTokBusinessId`/`set`), sentimiento
+  reusa `analyzeSentiment` de Meta → tabla `meta_comment_sentiment` `network='TT'` (SIN migración).
+  Cron `sync-comment-sentiment` extendido. Diag `/api/diag/tiktok-organic`. Gate `TIKTOK_ORGANIC_ENABLED=1`.
+- **Gotchas:** delay 24-48h; cuenta debe ser Business/Creator con Analytics activado; reach/retención
+  requieren actividad del video en 7 días; retención de data 365 días; paginación por cursor.
+- **PENDIENTE de wiring UI:** botón "Conectar TikTok (orgánico)" para `tiktok-accounts` + captura de
+  `business_id` en el callback + sección orgánica en `/redes` (perfil, videos, barra de sentimiento por
+  post estilo Meta). Se hace cuando el reader se valide en sandbox.
+
+## Pasos para SOLICITAR el orgánico ahora (ganar tiempo, sin arriesgar la pauta)
+
+1. En la app **"BIP Connector"** (o una app nueva "BIP Organic" si se prefiere aislar la revisión):
+   agregar el **producto "TikTok Accounts"** y tildar los scopes read-only de arriba.
+2. Copiar la **"TikTok account holder authorization URL"** (App Detail → Basic Information) y la
+   redirect `https://nango.bip-go.com/oauth/callback`.
+3. En **Nango** (`nango.bip-go.com` → Integrations): crear/configurar la integración **`tiktok-accounts`**
+   con el App ID/Secret (cuando TikTok los libere) y esos scopes.
+4. **NO enviar orgánico a revisión hasta tener el wiring UI + una cuenta business real para demostrarlo**
+   (regla TikTok: cada scope debe verse en el video). El orgánico se envía como **revisión aparte** para
+   no frenar la aprobación de pauta.
+
 Fuentes: developers.tiktok.com/docs (App Review Guidelines, App Review FAQ, Scopes Overview,
-Add a Sandbox); business-api.tiktok.com/portal/docs (Marketing/Organic API overview).
+Add a Sandbox); business-api.tiktok.com/portal/docs (Marketing/Organic API overview); SDKs
+`sns-sdks/python-tiktok`, `aoyagikouhei/tiktok-business`; mirror `henry-md/ad-mcps`.
