@@ -1,10 +1,27 @@
 # BIP · TikTok — registro de app + revisión (plan para NO iterar)
 
+> **Camino elegido: A (PAUTA primero).** Orgánico (Accounts+Mentions) = 2da revisión.
+>
 > Estado (16-sep-2026): developer registration hecho con email de ROQUÉ
 > (`bip@roque-in.com`, tipo **Technology Company**, verticals Service+Technology).
-> App "BIP Connector" en creación. Callback Nango: `https://nango.bip-go.com/oauth/callback`.
+> App **"BIP Connector" CREADA y configurada** — estado TikTok **"pending approval"**
+> (App ID/Secret todavía en "--", los libera TikTok al aprobar el registro).
+> Callback Nango: `https://nango.bip-go.com/oauth/callback`.
 > **Dominios TikTok bloqueados desde el sandbox de Claude** (business-api / developers) →
 > proceso verificado vía guías + resúmenes oficiales (fuentes al pie).
+>
+> **Scopes VALIDADOS (read-only, mínimos):** Ad account management → *Ad account
+> information* (cubre `/oauth2/advertiser/get/` + `/advertiser/info/`) · Reporting →
+> *Consolidated report* (`/report/integrated/get/`) · Ads management = VACÍO. El buscador
+> de scopes de TikTok NO indexa todas las rutas (dio vacío para info/ e integrated/get/)
+> → validar por sub-nodo tildado, no por el buscador.
+>
+> **Reader construido (BIP):** `lib/tiktok-pauta.ts` — mismas shapes que Meta
+> (PautaSummary/PautaFull) para reusar los componentes de `/performance`. Token del cliente
+> por Nango (`tiktok-ads`) en header `Access-Token`; `/oauth2/advertiser/get/` además pide
+> `TIKTOK_APP_ID`+`TIKTOK_APP_SECRET` (env Vercel, se cargan cuando TikTok libere las creds).
+> **Pendiente de wiring:** API route de selección de advertiser + picker en Conexiones +
+> sección TikTok en `/performance` + diag. Test recién con App ID/Secret + Sandbox Ad Account.
 
 ## Lo que confirmé de la doc oficial (lo que evita iterar)
 
