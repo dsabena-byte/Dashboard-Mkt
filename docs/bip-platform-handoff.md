@@ -1053,3 +1053,72 @@ con este self-host. No bloquea onboardear los primeros clientes.
 Leer este doc. El código vive en los zips que tiene el user (pedirle que los suba si hace falta
 continuarlo, o regenerar desde el README del `bip-mvp`). Próximo paso natural: **Google Cloud**
 (la verificación lenta) una vez propagado el dominio.
+
+---
+
+## Sesión sep-2026 (2) — Comando staff, onboarding en 2 pasos, planes por tier, verificaciones
+
+Todo en el repo **bip-platform** (deploy = push a `main`, Vercel). Commits clave: `181ede4`
+(menú+histórico), `e8a043e` (gate bienvenida), `9d74f4e`/`5e0a22e` (comando+impersonación),
+`d2d293c` (staff), `b25398b` (review bypass), `c3abbc8` (onboarding 2 pasos), `69983e6` (6/12).
+
+### Tablero de COMANDO del staff + "ver como cliente" (impersonación)
+- **Staff = `dsabena@gmail.com`** (env `BIP_STAFF_EMAILS`, default en código = solo dsabena).
+  **`bip.explore` YA NO es staff** (es la cuenta cliente/demo que usan los revisores de Meta →
+  tiene que ver dashboards, no el CRM).
+- Staff sin impersonar → **shell de comando** (nav propia: "Comando · Clientes" = `/consultor` CRM;
+  sin la vista cliente). Layout `app/(app)/layout.tsx`: `if (isStaff && !acting)` renderiza
+  `<Sidebar staffCommand>`. `/dashboard` redirige staff→/consultor salvo que esté impersonando.
+- **Impersonación:** cookie `bip_act_as` (const `ACT_AS_COOKIE` en `lib/tenant.ts`). `getCurrentTenant()`
+  la respeta **solo si el user es staff** → devuelve ESE tenant con `acting:true` → todos los
+  dashboards renderizan la data del cliente. Se setea/limpia en `/api/staff/act-as?tenant=<id>` /
+  `?exit=1`. Botón "👁️ Entrar al tablero de <cliente>" en el CRM (`components/crm-board.tsx`,
+  fila expandida). Banner `components/act-as-banner.tsx` + link "Volver al comando" (limpia cookie).
+- **Cuentas de VALIDACIÓN (Google/Meta):** env `BIP_REVIEW_EMAILS` (CSV) → saltean el gate de
+  onboarding pero NO son staff (ven la vista cliente). `bip.explore` no necesita estar ahí porque
+  ya saltea el gate por tener Meta conectado. (helpers en `lib/profile.ts`.)
+
+### Pantalla inicial "Bienvenidos" (gate) + onboarding en 2 pasos, DENTRO de la plataforma
+- Se **re-activó** el gate (estaba off desde 14-sep). Mientras el perfil no esté `completed`, el
+  layout renderiza el shell con **Sidebar en modo `locked` (preview)** + `WelcomeProfile` en el main
+  → el cliente ve el menú/interfaz mientras carga (no una pantalla pelada). **Lo saltean:** staff,
+  review accounts y cualquier tenant con conexión activa.
+- **Form en 2 pasos** (`components/welcome-profile.tsx`, `mode="onboarding"`): **Paso 1 = empresa**
+  (nombre, sector, marca+web/redes, categorías) → "Continuar" (guarda `phase="core"`, `completed=true`,
+  desbloquea). **Paso 2 = competencia** (4 competidores nombre+redes/web + retailers). Optimize/
+  Accelerate lo exigen; **Insight = gancho opcional** ("🎁 Sumá la mirada competitiva" + "Quizás
+  después"). Route `/api/profile` valida competidores SOLO en `phase="competitive"` + `needCompetitive`.
+  `/cuenta/perfil` (`mode="settings"`) = una pantalla con todo.
+
+### Planes por tier (menú + histórico)
+- **"Mkt de Influencia" SACADO del menú** (todos los planes) — era `soon:true`; reactivar cuando
+  el tablero exista (`lib/plan.ts` NAV).
+- **Histórico 6 / 12 meses** (NO 12/24): `historyMonths(plan)` (Insight/Trial 6, Optimize+ 12) +
+  `historyStartDate` en `lib/plan.ts`. Cableado: rango live de `/redes` y `/performance`
+  (los tenants nuevos sin snapshot caen a live); selector de período de `/web`
+  (`monthOptions(historyMonths(plan))`); copy de `PLAN_FEATURES` y de `/cuenta/plan` (6/12).
+  **Pendiente opcional:** recortar duro el eje de los gráficos mensuales de web a 6/12 (hoy dibujan
+  el año calendario y muestran solo meses con dato). Snapshots (web/seo) toman la ventana del cron.
+- **Matriz de dashboards por plan (confirmada por el user):** Insight = Mapa, Seguimiento, Plan de
+  Medios, Redes/Web base, Resultados, Inversión, IA, Alertas. **Insight NO tiene SEO ni Trade.**
+  Optimize = + SEO + Trade + capa de competencia (Redes/Web/SEO). Accelerate = + 3 categorías.
+
+### Verificaciones (estado sep-2026)
+- **Google OAuth (scope `adwords`) = APROBADO** (email "We've approved… .../auth/adwords",
+  project 279230041069). Ojo: no se hereda — un scope nuevo o cambio en la consent screen pide
+  re-verificación.
+- **Meta App Review** (9 permisos) = enviado, esperando. Login de prueba = `bip.explore`.
+- **TikTok** = las 2 apps (BIP Connector/Organic) **RECHAZADAS** por el PERFIL de negocio:
+  "company name no coincide con email domain/website". Fix: consistencia empresa↔web↔email +
+  Description con prueba de relevancia a BIP (bip-go.com), completar Additional Information, y
+  reenviar. Company actual = "Roque Research Solutions" / roque-in.com.
+
+### Los 3 usuarios de validación (los crea el user, con su plan)
+`insight@bip.com` (Basico), `optimize@bip.com` (Intermedio), `accelerate@bip.com` (Full) +
+`google.review@bip-go.com`. Al setear el `plan` del tenant, el onboarding, menú e histórico se
+adaptan solos.
+
+### PENDIENTE de validar (sin cerrar de la sesión anterior)
+- SEO nuevo: correr `bip-go.com/api/diag/seo` logueado → confirmar `data.serp` (keyword-ideas) y
+  `data.regions` (mapa por provincia). Migración 0023 ya corrida + retailers de Drean cargados.
+- Trial competitivo para Insight (habilitar la capa gratis con vencimiento) — no armado aún.
