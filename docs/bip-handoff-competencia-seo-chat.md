@@ -192,3 +192,31 @@ a `tenant_profile` + backfill de `categoria` singular al array. El usuario ya la
 - que el mapa traiga data (`data.regions` no vacío) — si vacío, plan B carga manual.
 - Costo: SERP = N keywords × llamada. maxDuration 300; con 2 categorías ~60-90s. OK por ahora.
 Commit: `cd3a928` (bip-platform).
+
+---
+
+## Onboarding en DOS instancias + gancho competitivo (sesión sep-2026, commit bip-platform bc6b68a)
+
+Pedido del usuario: el alta debe sentirse terminada y DESPUÉS aparecer un pedido nuevo, para
+usar la data competitiva como gancho de upgrade — sobre todo en **Insight** (que no la necesita:
+"ese plan no tiene por qué darte esa info, pero luego se la vamos a ofrecer gratis un tiempo para
+seducirlo y que haga el upgrade").
+
+- **`components/welcome-profile.tsx`** (`mode="onboarding"`) = 2 pasos con `step` state:
+  - **Paso 1 (core, todos los planes):** datos + marca (web/redes) + categorías + **nombres** de
+    4 competidores → guarda `phase="core"` → pantalla **"🎉 ¡Tu cuenta ya está configurada!"**.
+  - **Paso 2 (aparece después):** redes/web de los competidores + retailers.
+    · Optimize/Accelerate: se exige ("Terminá de activar la mirada competitiva").
+    · **Insight: GANCHO opcional** — card azul "🎁 Sumá la mirada competitiva" (incluida en
+      Optimize) + botón **"Quizás después"** (→ /dashboard). Planta el valor para el upgrade.
+- **`app/api/profile/route.ts`**: acepta `phase: "core" | "competitive"`. La validación dura de la
+  capa competitiva (own_website + IG/web de cada competidor) solo corre en `phase==="competitive"`
+  Y en planes que la incluyen (needCompetitive) → Insight nunca queda bloqueado. El upsert guarda
+  siempre lo que llega (paso 1 = nombres; paso 2 = redes/web + retailers, pisa).
+- **`/cuenta/perfil`** (`mode="settings"`): una sola pantalla editable con todo, guarda `phase="core"`
+  (leniente, sin forzar completitud competitiva).
+
+**PENDIENTE (mencionado por el usuario como "luego"):** el mecanismo de gating que le habilite a
+Insight la capa competitiva **gratis con vencimiento** (un flag/trial de "competencia" temporal en
+`tenants`/addons + chequeo en `hasFeature`). El gancho de captura ya está; falta la habilitación
+temporal + su expiración. Definir con la promo.
