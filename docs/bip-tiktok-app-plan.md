@@ -2,8 +2,11 @@
 
 > **Camino elegido: A (PAUTA primero).** Orgánico (Accounts+Mentions) = 2da revisión.
 >
-> Estado (16-sep-2026): developer registration hecho con email de ROQUÉ
+> Estado (16-sep-2026): developer registration hecho con **Communication Email** de ROQUÉ
 > (`bip@roque-in.com`, tipo **Technology Company**, verticals Service+Technology).
+> **⚠️ LOGIN al portal TikTok = `bip.explore@gmail.com`** (confirmado por el user 18-sep). El
+> `bip@roque-in.com` es SOLO el email de comunicación del perfil de negocio, NO el usuario de
+> ingreso. Portal: `https://business-api.tiktok.com` → login con `bip.explore@gmail.com`.
 > **DOS apps creadas, ambas "pending approval"** (App ID/Secret en "--" hasta aprobar):
 > **"BIP Connector"** (pauta, Marketing API) + **"BIP Organic"** (orgánico, Accounts API).
 > Revisiones en paralelo. Callback Nango (ambas, los 2 redirect fields):
