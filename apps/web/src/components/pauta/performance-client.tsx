@@ -355,6 +355,12 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   // ===== Datos de los procesos AUTOMÁTICOS (Meta API + DV360), conectados a los
   // filtros de arriba. DV360/Meta son digitales: si se filtra solo TV/OOH, quedan vacíos.
   const digitalOk = selMedios.length === 0 || selMedios.includes("Digital");
+  // Filtro PLATAFORMA (medio granular): debe aplicarse TAMBIÉN a las fuentes API
+  // (Meta/DV360/Google), no solo a OMD, para que la tabla maestra, las tablas de
+  // detalle y los gráficos respeten el filtro. Mapea cada fuente a su nombre de medio.
+  const DVMED_PLAT: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
+  const metaPlatMedio = (p: string): string | null => (p === "meta" ? "Meta" : p === "tiktok" ? "TikTok" : p === "youtube" ? "YouTube" : p === "programmatic" ? "Programmatic" : null);
+  const platOk = (m: string | null): boolean => selPlats.length === 0 || (m != null && selPlats.includes(m));
   const selMesesISO = useMemo(() => new Set(selMeses.map(mesLabelToISO)), [selMeses]);
   const metaPaidF = useMemo(
     () =>
@@ -362,9 +368,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         (r) =>
           (selMeses.length === 0 || selMeses.includes(r.mes)) &&
           (selCats.length === 0 || (r.categoria != null && selCats.includes(r.categoria))) &&
-          (selRoles.length === 0 || selRoles.includes(tipoCompraToRol(r.tipo_compra) ?? "")),
+          (selRoles.length === 0 || selRoles.includes(tipoCompraToRol(r.tipo_compra) ?? "")) &&
+          platOk(metaPlatMedio(r.plataforma)),
       ),
-    [metaPaid, digitalOk, selMeses, selCats, selRoles],
+    [metaPaid, digitalOk, selMeses, selCats, selRoles, selPlats],
   );
   const dv360F = useMemo(
     () =>
@@ -372,9 +379,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         (r) =>
           (selMesesISO.size === 0 || selMesesISO.has(r.mes)) &&
           (selCats.length === 0 || selCats.includes(r.categoria)) &&
-          (selRoles.length === 0 || selRoles.includes(r.rol)),
+          (selRoles.length === 0 || selRoles.includes(r.rol)) &&
+          platOk(DVMED_PLAT[r.canal] ?? r.canal),
       ),
-    [dv360, digitalOk, selMesesISO, selCats, selRoles],
+    [dv360, digitalOk, selMesesISO, selCats, selRoles, selPlats],
   );
 
   // ¿Hay piezas de esta plataforma bajo los filtros activos? Se usa para no
@@ -394,9 +402,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       !digitalOk ? [] : googleAdsOmd.filter(
         (r) =>
           (selMeses.length === 0 || selMeses.includes(r.mes)) &&
-          (selCats.length === 0 || selCats.includes(r.categoria)),
+          (selCats.length === 0 || selCats.includes(r.categoria)) &&
+          platOk(r.canal),
       ),
-    [googleAdsOmd, digitalOk, selMeses, selCats],
+    [googleAdsOmd, digitalOk, selMeses, selCats, selPlats],
   );
   // Embudo de visibilidad real de video (Meta Marketing API): cuántas impresiones
   // llegan a cada % del video. Solo Meta (el cron meta-paid-sync trae los cuartiles).
@@ -517,8 +526,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   // anuncios de video (los que tienen cuartiles).
   const gadsCreativesF = useMemo(() => googleAdsCreatives.filter((r) =>
     (selMeses.length === 0 || selMeses.includes(r.mes)) &&
-    (selCats.length === 0 || (r.account_label != null && selCats.includes(r.account_label))),
-  ), [googleAdsCreatives, selMeses, selCats]);
+    (selCats.length === 0 || (r.account_label != null && selCats.includes(r.account_label))) &&
+    platOk("Google Demand Gen"),
+  ), [googleAdsCreatives, selMeses, selCats, selPlats]);
   const gadsVideoFunnel = useMemo(() => {
     let impr = 0, v25 = 0, v50 = 0, v75 = 0, v100 = 0, spend = 0, count = 0;
     for (const r of gadsCreativesF) {
