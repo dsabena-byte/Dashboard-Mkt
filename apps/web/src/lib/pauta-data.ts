@@ -146,6 +146,10 @@ export const PAUTA_INSIGHTS: Record<string, PautaInsight> = {
 // Colores por plataforma
 export const MEDIO_COLORS: Record<string, string> = {
   "TV Cable": "#7C3AED",
+  TV: "#EF4444",
+  Radio: "#A855F7",
+  Digital: "#2563EB",
+  OOH: "#F59E0B",
   DOOH: "#EC4899",
   Meta: "#0866FF",
   TikTok: "#000000",

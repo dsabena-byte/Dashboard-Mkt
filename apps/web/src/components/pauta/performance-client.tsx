@@ -8,7 +8,6 @@ import {
   MEDIO_COLORS,
   CATEGORIA_COLORS,
   computeByMedio,
-  investmentByCategoria,
   extractMeses,
   defaultMes,
 } from "@/lib/pauta-data";
@@ -64,12 +63,13 @@ const CAT_META_MIX: Record<string, number> = { Lavado: 35, "Refrigeración": 20,
 type MetasPauta = Record<string, MetaKpiData>;
 const META_FALLBACK: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
 
-type TipoMedio = "Digital" | "TV Cable" | "DOOH" | "OOH";
+type TipoMedio = "Digital" | "TV Cable" | "TV" | "Radio" | "DOOH" | "OOH";
+// Medios OFFLINE (sin medición digital). Todo lo demás = Digital (ON). TV y Radio (PNT) son
+// offline, cada uno su propio bucket. Este set define qué NO es digital en TODAS las vistas.
+const OFFLINE_MEDIOS = new Set<string>(["TV Cable", "TV", "Radio", "DOOH", "OOH"]);
+const OFFLINE_COLORS: Record<string, string> = { "TV Cable": "#e63946", "TV": "#ef4444", "Radio": "#a855f7", "DOOH": "#ec4899", "OOH": "#f59e0b" };
 function tipoMedio(m: string): TipoMedio {
-  if (m === "TV Cable") return "TV Cable";
-  if (m === "DOOH") return "DOOH";
-  if (m === "OOH") return "OOH";
-  return "Digital";
+  return (OFFLINE_MEDIOS.has(m) ? m : "Digital") as TipoMedio;
 }
 
 // Orden cronológico de un mes "Mayo 2026" → 202605 (para detectar el último mes cerrado).
@@ -170,7 +170,7 @@ function buildDimModel(omd: PautaRow[], dv: Dv360CreativeRow[], meta: MetaPaidCr
       vtr: e.vimpr > 0 ? (e.comp / e.vimpr) * 100 : 0,
       cpmEf: e.comp > 0 ? (e.inv / e.comp) * 1000 : 0,
     }))
-    .filter((i) => i.impresiones > 0)
+    .filter((i) => i.impresiones > 0 || i.inversion > 0)
     .sort((a, b) => b.inversion - a.inversion);
   const posMin = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const posMax = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
@@ -333,7 +333,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   // Vista por categoría del tab Impacto Campaña (General o una categoría core).
   const [catImp, setCatImp] = useState<string>("General");
 
-  const opMedios: TipoMedio[] = ["Digital", "TV Cable", "DOOH", "OOH"];
+  const opMedios: TipoMedio[] = ["Digital", "TV Cable", "TV", "Radio", "DOOH", "OOH"];
   const opCats = useMemo(() => [...new Set(data.map((r) => r.categoria))].sort(), [data]);
   const opRoles = ["Awareness", "Consideración"];
   const opPlats = useMemo(() => [...new Set(data.map((r) => r.medio))].sort(), [data]);
@@ -610,9 +610,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     if (gadsVideoFunnel.count > 0) arr.push({ name: "Google Demand Gen", impr: gadsVideoFunnel.impr, v25: gadsVideoFunnel.v25, v50: gadsVideoFunnel.v50, v75: gadsVideoFunnel.v75, v100: gadsVideoFunnel.v100, spend: gadsVideoFunnel.spend });
     return arr.filter(coherentFunnel).sort((a, b) => b.impr - a.impr);
   }, [dv360Conv, metaPaidF, tiktokVideoFunnel, gadsVideoFunnel, arsMode]);
-  // Categoría/rol: solo medios digitales. Volumen OMD + gap-fill de ejecución real
-  // (mismos medios que la tabla maestra) para que los totales cuadren.
-  const digitalRows = useMemo(() => rows.filter((r) => tipoMedio(r.medio) === "Digital"), [rows]);
+  // Categoría/rol: TODOS los medios (digital + offline). Volumen OMD + gap-fill de ejecución
+  // real (mismos medios que la tabla maestra) para que TODAS las vistas sumen el mismo total.
   // Medios que se ejecutan pero NO tienen plan OMD en el período → su volumen real
   // se suma (igual que el gap-fill de la tabla maestra).
   const dvGapMedios = useMemo(() => {
@@ -625,8 +624,8 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
     for (const r of gadsOmdF) { if (!omdMedios.has(r.canal)) s.add(r.canal); }
     return s;
   }, [byMedio, dv360Conv, metaPaidF, gadsOmdF]);
-  const catModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, gadsOmdF, "categoria", dvGapMedios), [digitalRows, dv360Conv, metaPaidF, gadsOmdF, dvGapMedios]);
-  const rolModel = useMemo(() => buildDimModel(digitalRows, dv360Conv, metaPaidF, gadsOmdF, "rol", dvGapMedios), [digitalRows, dv360Conv, metaPaidF, gadsOmdF, dvGapMedios]);
+  const catModel = useMemo(() => buildDimModel(rows, dv360Conv, metaPaidF, gadsOmdF, "categoria", dvGapMedios), [rows, dv360Conv, metaPaidF, gadsOmdF, dvGapMedios]);
+  const rolModel = useMemo(() => buildDimModel(rows, dv360Conv, metaPaidF, gadsOmdF, "rol", dvGapMedios), [rows, dv360Conv, metaPaidF, gadsOmdF, dvGapMedios]);
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
   const minPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const maxPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
@@ -696,10 +695,10 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         const v = r.inversion ?? 0;
         if (v > 0 || (r.impresiones ?? 0) > 0) present.add(r.medio);
         const k = tipoMedio(r.medio);
-        if (k === "TV Cable") row.tvCable += v;
-        else if (k === "DOOH") row.dooh += v;
+        if (k === "DOOH") row.dooh += v;
         else if (k === "OOH") row.ooh += v;
-        else row.digital += v;
+        else if (k === "Digital") row.digital += v;
+        else row.tvCable += v; // TV Cable / TV / Radio → línea offline (no OOH/DOOH)
       }
       // Gap-fill del DIGITAL con la ejecución REAL (Meta/DV360/Google) de los
       // medios que NO están en el plan OMD de ese mes — mismo criterio que
@@ -1022,13 +1021,13 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
         ...videoMetrics(comp, vimpr, m.impresiones, m.inversion), // vtr + cpmEf (solo si es video real)
       };
     };
-    const fromOmd = byMedio.filter((m) => m.impresiones > 0).map(mk);
+    const fromOmd = byMedio.filter((m) => m.impresiones > 0 || m.inversion > 0).map(mk);
     // Gap-fill: medios que se están ejecutando (data automática) pero NO tienen
     // plan de OMD en el período → se agregan con el volumen real. No duplica:
     // si el medio ya vino por OMD, se respeta el plan.
     const present = new Set(fromOmd.map((i) => i.medio));
     const autoItems = [...autoVolByMedio.entries()]
-      .filter(([medio, vol]) => !present.has(medio) && vol.impresiones > 0)
+      .filter(([medio, vol]) => !present.has(medio) && (vol.impresiones > 0 || vol.inversion > 0))
       .map(([medio, vol]) => {
         const v = vtrByMedio.get(medio);
         const comp = v?.comp ?? 0, vimpr = v?.vimpr ?? 0;
@@ -1062,16 +1061,18 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   // Inversión del Overview, derivada de medioModel (OMD + ejecución real) para que
   // cuadre con la tabla maestra de Por Medio.
   const totalInv = medioModel.total.inv;
-  const { invDigital, invTv, invDooh, invOoh } = useMemo(() => {
-    let d = 0, t = 0, dh = 0, o = 0;
+  // Digital (ON) + buckets OFFLINE dinámicos (TV Cable / TV / Radio / DOOH / OOH — los que
+  // haya). Todo sale de medioModel → la suma Digital + offline = totalInv (mismo total en
+  // todas las vistas).
+  const { invDigital, offlineBuckets } = useMemo(() => {
+    let d = 0;
+    const g = new Map<string, number>();
     for (const m of medioModel.items) {
       const k = tipoMedio(m.medio);
-      if (k === "TV Cable") t += m.inversion;
-      else if (k === "DOOH") dh += m.inversion;
-      else if (k === "OOH") o += m.inversion;
-      else d += m.inversion;
+      if (k === "Digital") d += m.inversion;
+      else g.set(k, (g.get(k) ?? 0) + m.inversion);
     }
-    return { invDigital: d, invTv: t, invDooh: dh, invOoh: o };
+    return { invDigital: d, offlineBuckets: [...g.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value) };
   }, [medioModel]);
 
   // Motor de insights desde los datos AUTOMÁTICOS + efectivos (medioModel/catModel/
@@ -1116,24 +1117,15 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
 
   const donutData = medioModel.items.map((m) => ({ name: m.medio, value: m.inversion, color: MEDIO_COLORS[m.medio] ?? "#94a3b8" }));
-  const catDonutData = useMemo(() => {
-    // OMD (sin Meta) + Meta por categoría desde la API (spend real).
-    const map = new Map<string, number>();
-    for (const d of investmentByCategoria(rows)) map.set(d.name, d.value);
-    for (const r of metaPaidF) {
-      if (r.plataforma !== "meta") continue;
-      const cat = r.categoria ?? "Sin categoría";
-      map.set(cat, (map.get(cat) ?? 0) + (r.spend ?? 0));
-    }
-    return [...map.entries()]
-      .map(([name, value]) => ({ name, value, color: CATEGORIA_COLORS[name] ?? "#94a3b8" }))
-      .sort((a, b) => b.value - a.value);
-  }, [rows, metaPaidF]);
+  // Donut por categoría: MISMA fuente que la tabla "Detalle por categoría" (catModel) para
+  // que sumen igual (todos los medios, digital + offline + API).
+  const catDonutData = catModel.items
+    .map((i) => ({ name: i.nombre, value: i.inversion, color: CATEGORIA_COLORS[i.nombre] ?? "#94a3b8" }))
+    .filter((d) => d.value > 0)
+    .sort((a, b) => b.value - a.value);
   const mixData = [
     { name: "Digital", value: invDigital, color: "#2b4dff" },
-    { name: "TV Cable", value: invTv, color: "#e63946" },
-    { name: "DOOH", value: invDooh, color: "#ec4899" },
-    { name: "OOH", value: invOoh, color: "#f59e0b" },
+    ...offlineBuckets.map((b) => ({ name: b.name, value: b.value, color: OFFLINE_COLORS[b.name] ?? "#94a3b8" })),
   ].filter((d) => d.value > 0);
   // Todo desde los datos AUTOMÁTICOS (Meta + DV360) vía medioModel.
   const autoTot = medioModel.items.reduce(
@@ -1328,9 +1320,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
           <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <KpiCard title="Inversión total" value={fmtARS(totalInv)} hint={totalHint} />
             <KpiCard title="Digital (ON)" value={fmtARS(invDigital)} hint={totalInv > 0 ? `${((invDigital / totalInv) * 100).toFixed(1)}% del total` : ""} />
-            <KpiCard title="TV Cable" value={fmtARS(invTv)} hint={totalInv > 0 ? `${((invTv / totalInv) * 100).toFixed(1)}% del total` : ""} />
-            <KpiCard title="DOOH" value={fmtARS(invDooh)} hint={totalInv > 0 ? `${((invDooh / totalInv) * 100).toFixed(1)}% del total` : ""} />
-            <KpiCard title="OOH" value={fmtARS(invOoh)} hint={totalInv > 0 ? `${((invOoh / totalInv) * 100).toFixed(1)}% del total` : ""} />
+            {offlineBuckets.map((b) => (
+              <KpiCard key={b.name} title={b.name} value={fmtARS(b.value)} hint={totalInv > 0 ? `${((b.value / totalInv) * 100).toFixed(1)}% del total` : ""} />
+            ))}
           </section>
 
           <SectionTitle>Distribución de inversión</SectionTitle>
@@ -1527,7 +1519,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
 
           {medioModel.offline.length > 0 && (
             <>
-              <SectionTitle>Medios offline · TV Cable / DOOH / OOH</SectionTitle>
+              <SectionTitle>Medios offline · TV / Radio / TV Cable / DOOH / OOH</SectionTitle>
               <p className="mb-3 text-[10px] text-muted-foreground">
                 Fuente: <strong>OMD</strong> (no tienen medición de visibilidad de video como el digital). Se evalúan por inversión,
                 impresiones y alcance.
