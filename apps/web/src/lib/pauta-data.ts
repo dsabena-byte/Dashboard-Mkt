@@ -159,6 +159,7 @@ export const MEDIO_COLORS: Record<string, string> = {
   "Google Demand Gen": "#34A853",
   "Geo Mobile": "#9333EA",
   "Google Search": "#FBBC05",
+  Ecommerce: "#10B981",
 };
 
 export const CATEGORIA_COLORS: Record<string, string> = {
@@ -167,6 +168,7 @@ export const CATEGORIA_COLORS: Record<string, string> = {
   Refrigeración: "#06b6d4",
   Cocción: "#f59e0b",
   Promoción: "#e63946",
+  Ecommerce: "#10b981",
 };
 
 export function investmentByCategoria(rows: PautaRow[]): Array<{ name: string; value: number; color: string }> {

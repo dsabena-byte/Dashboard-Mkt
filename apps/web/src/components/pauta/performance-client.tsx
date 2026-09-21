@@ -86,6 +86,7 @@ function mesLabelToISO(label: string): string {
 function tipoCompraToRol(tc: string | null): string | null {
   if (tc === "CPC") return "Consideración";
   if (tc === "CPM" || tc === "CPV") return "Awareness";
+  if (tc === "CPA") return "Conversión"; // ecommerce / rol Conversión
   return null;
 }
 
@@ -319,7 +320,19 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {} }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [] }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+  // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
+  // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
+  // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
+  // filtros (por medio, categoría, rol, evolución, metas) y todo suma el mismo total del funnel.
+  const data = useMemo(() => {
+    const M = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const ecom: PautaRow[] = [];
+    ecommerceInv.forEach((v, i) => {
+      if (v && v > 0) ecom.push({ mes: `${M[i]} 2026`, categoria: "Ecommerce", medio: "Ecommerce", objetivo: "Conversión", tipo_compra: "CPA", alcance_plan: null, alcance: null, frecuencia_plan: null, frecuencia: null, impresiones_plan: null, impresiones: null, clics_plan: null, clics: null, views_plan: null, views: null, inversion_plan: null, inversion: v, costo_plan: null, costo: null, ctr_plan: null, ctr: null });
+    });
+    return ecom.length ? [...rawData, ...ecom] : rawData;
+  }, [rawData, ecommerceInv]);
   const meses = useMemo(() => extractMeses(data), [data]);
   const [selMeses, setSelMeses] = useState<string[]>(() => {
     const d = defaultMes(meses);
@@ -335,7 +348,7 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
 
   const opMedios: TipoMedio[] = ["Digital", "TV Cable", "TV", "Radio", "DOOH", "OOH"];
   const opCats = useMemo(() => [...new Set(data.map((r) => r.categoria))].sort(), [data]);
-  const opRoles = ["Awareness", "Consideración"];
+  const opRoles = ["Awareness", "Consideración", "Conversión"];
   const opPlats = useMemo(() => [...new Set(data.map((r) => r.medio))].sort(), [data]);
 
   const rows = useMemo(
@@ -859,9 +872,9 @@ export function PerformanceClient({ data, metaPaid = [], dv360 = [], dv360Reach 
       }
       for (const r of googleAdsOmd) { if (r.mes === mesLabel && catOk(r.categoria)) addAuto(r.canal, r.impresiones, 0, r.clicks, r.costo); }
       for (const [medio, e] of auto) { if (!present.has(medio) && e.impr > 0) { impr += e.impr; alc += e.alc; clic += e.clic; inv += e.inv; } }
-      // NOTA: la inversión de ECOMMERCE (rol Conversión, PMax/shopping) NO se suma acá — el dash
-      // brand no mezcla ecommerce (va en /performance-conversion). Sumarla rompía la consistencia:
-      // el gráfico "Inversión real vs meta" daba más que el total por medio/categoría del mismo mes.
+      // NOTA: el ecommerce (rol Conversión) ya entra por `data` (filas sintéticas medio/categoría
+      // "Ecommerce") → se suma acá vía el loop OMD, igual que en el resto de las vistas. Así el
+      // total del funnel (Awareness+Consideración+Conversión) cuadra en TODAS las tablas.
       // VTR ≥50% (tasa de calidad de video; sin gap-fill).
       let v50 = 0, vbase = 0;
       for (const r of metaPaid) {
