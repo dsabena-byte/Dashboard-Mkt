@@ -6,6 +6,34 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-09-21 · Cuadros Básicos — "Atrasado" hace 13d (Apps Script sin correr, no es un cron de este repo)
+
+- **Alarma (reportada por el user desde `/monitoreo`):** fila "Cuadros Básicos" en
+  **Atrasado**, última actualización `08/09/2026, 08:47 a.m.` (hace 13 días),
+  cadencia esperada semanal (168h → umbral atrasado a partir de 10.5 días).
+- **Diagnóstico:** `cuadro_basico_semanal` (proyecto Supabase **CB**) se alimenta
+  por el **Apps Script "Sync Drive Tablero CB"** (Drive → Supabase CB), NO por un
+  GitHub Action — no hay workflow de este repo que lo dispare, así que no aparece
+  en el checklist de syncs (A) ni se puede re-disparar con `gh run rerun`.
+  Confirmado que el downstream sí está sano: `cb-mirror.yml` (copia CB → mirror
+  del proyecto principal) y `trade-agg.yml` (precalcula CB/Floor Share mensual)
+  corren **1x/día en success** sin cortes (últimas corridas 21/9 13:19 y 13:23 UTC) —
+  el cron de este repo nunca se cayó, simplemente no tiene una fila nueva que
+  copiar porque la fuente (CB) no recibió datos nuevos.
+- **Acción tomada:** ninguna en código — no hay nada de este repo para arreglar.
+  Este entorno no tiene acceso a Google Apps Script / Drive para diagnosticar el
+  trigger directamente (solo GitHub).
+- **Pendiente (manual):** revisar del lado de Google:
+  1. Si se subió/actualizó el archivo "Cuadro Básico" semanal en el Drive en las
+     últimas 2 semanas (lo más probable: nadie cargó el reporte nuevo).
+  2. Si no se subió nada y aun así se esperaba, revisar el trigger del Apps
+     Script "Sync Drive Tablero CB" (Apps Script → Ejecuciones/Triggers) por si
+     expiró la autorización o quedó desactivado.
+  Floor Share usa el mismo mecanismo (Apps Script, semanal) — vale la pena
+  chequear su frescura en `/monitoreo` de paso.
+
+---
+
 ## 2026-09-07 · BGT Inversión — sigue sin actualizar, ahora 98h (~4 días)
 
 - **Chequeo de rutina:** Issue #632 sigue abierto, ahora en su 10ª actualización
