@@ -212,9 +212,18 @@ reporte_existencia/cb_homologos).
     + `getMetaPaidCreatives(true)`, param `includeUgc`). UGC **también** sigue en `/influencia`
     (`getInfluenciaPerformance`/`getMetaUgcCreatives`) — se muestra en los dos. `brand-build-queries`
     NO incluye UGC (usa el default `includeUgc=false`) para no cambiar el overview estratégico.
-  - Cargado **jun+jul 2026** (TikTok por categoría; Mercado/Geo como total del mes en categoría
-    "Brand" — los reportes OMD no los abren por categoría). En jun/jul **no corrieron** DOOH ni
-    Geo Mobile (jun) ni TV Cable (offline) — no son huecos de carga, no hubo pauta.
+  - Cargado **jun+jul 2026** desde los **reportes OMD mensuales** (PDF "Drean Report"): inversión +
+    **performance** (impresiones/alcance/frecuencia/clics/views) por categoría. TikTok abre por
+    categoría (Cocción/Lavado/UGC/Refri); Mercado Ads y Geo Mobile (="Medios directos"/Tap Tap)
+    reparten impr/clics proporcional a la inversión ya cargada (el reporte da el total, no lo abre
+    por categoría). Jul Geo Mobile se actualizó al real del reporte ($9,62M, era $9,19M del plan);
+    jun no tiene Tap Tap en el reporte. **OJO fuentes jun/jul:** `meta_paid_creatives` trae SOLO
+    `meta` y `dv360_creatives` solo YouTube+Programmatic → TikTok/Mercado Ads/Geo NO tienen
+    contraparte API, son 100% OMD-manual (sin riesgo de doble conteo en el gap-fill). El `views` de
+    `pauta_performance` es **inerte para el VTR** (el VTR≥50% de las cards sale de `video_p50`/`q50`
+    de Meta+DV360, no de esta columna). En jun/jul **no corrieron** TV/Radio/Streaming/Diarios ni
+    Geo Mobile (jun) — no son huecos de carga, no hubo pauta. **OOH = dato fijo (gran formato), no
+    cambia** ($10M jun / $35,5M jul) — no tocar.
   - **Metas de Pauta Mkt (Impacto Campaña, dic-2026):** los tabs del dash se renombraron
     **Overview → "Impacto Campaña"** y **Por Medio → "Eficiencia Medios"** (las métricas de
     eficiencia se definen después). El tab Impacto Campaña arranca con **6 MetaKpiCards + 6 gráficos
