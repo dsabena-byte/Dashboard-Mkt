@@ -340,33 +340,40 @@ de cómo se montó / cómo reproducirlo si hay que reinstalar:
 Si en algún momento la data deja de actualizarse, empezá por el bloque
 **Troubleshooting** y por las queries de **Cómo verificar el estado**.
 
-## ⚠️ Bug estructural — meses viejos TRUNCADOS (ventana móvil + delete-por-mes, sep-2026)
+## ⚠️ DV360 subcuenta meses viejos (VALIDADO sep-2026; mecanismo AÚN SIN confirmar)
 
-**Síntoma:** los meses con más de ~2-3 meses de antigüedad muestran inversión DV360
-ridículamente baja y **quedan congelados**. Validado (YouTube+Programmatic ARS, `rev×fx`):
-abril **$578K** (`updated_at` frozen 29-jul), mayo **$1,48M** (frozen 29-ago), junio
-**$11,66M** (parcial, ~1 semana, vs OMD ~$23,8M), **julio $58,1M completo** (dentro de la
-ventana). O sea el dash **subcuenta DV360 en todo mes viejo**, no solo uno.
+**Verificado con la DB** (`dv360_creatives`, YouTube+Programmatic en ARS = `revenue_usd × fx`):
 
-**Causa raíz:** el reporte "DV360 Video Drean" tiene **rango de fechas MÓVIL (~últimos 90
-días)**, y `syncDv360` hace **`delete WHERE mes IN (meses del CSV) + insert`**. Cuando un mes
-sale *parcialmente* de la ventana, el run diario **borra el mes entero y reinserta solo los
-días que quedan dentro** → el mes queda truncado a su cola; al salir del todo de la ventana,
-congelado en ese valor mutilado. (Diagnóstico: mirá `updated_at` + `impresiones` por mes; si
-un mes viejo tiene volumen de pocos días y `updated_at` viejo, es esto — no el contenido.)
+| Mes | ARS (rev×fx) | `updated_at` | vs OMD |
+|-----|-------------|--------------|--------|
+| Abril | $578K | 29-jul (frozen) | muy por debajo |
+| Mayo | $1,48M | 29-ago (frozen) | muy por debajo |
+| Junio | $11,66M | 21-sep | OMD ~$23,8M → **subcuenta** |
+| Julio | $58,1M | 21-sep | ≈ OMD ($55,1M) → **OK** |
 
-**Fix (en DV360 / Apps Script, no en este repo):**
-1. **Preferido:** cambiar el rango del reporte "DV360 Video Drean" (y el de Reach) a **fijo/
-   largo** — ej `1-ene-2026 → hoy` o "últimos 365 días" — para que **cada CSV diario traiga
-   toda la historia**. Así el `delete+insert` reescribe **cada mes completo** todos los días y
-   no se trunca nunca. Una corrida con ese rango **backfillea** los meses ya rotos (abril–jun).
-2. **Alternativa (endurecer el sync):** en `syncDv360`/`syncDv360Reach`, borrar+reinsertar un
-   mes **solo si el CSV cubre el mes entero** (min(Date) del CSV ≤ primer día del mes); si el
-   CSV solo tiene una cola del mes, **no** borrar ese mes (dejar lo que ya está). Evita la
-   truncación aunque el rango sea corto. El fix del rango (opción 1) es más simple y robusto.
+O sea: los meses viejos subcuentan y julio (reciente) está bien. **Meta (API) matchea OMD al
+peso**, así que el problema es del pipeline DV360, no del cálculo del dash.
 
-> Nota: Meta (API, `meta_paid_creatives`) **no** tiene este problema — su inversión matchea la
-> planilla OMD al peso. El bug es exclusivo del pipeline DV360 (ventana móvil + delete-por-mes).
+**Lo que hace el sync (código real, `dv360Upsert_`):** `delete WHERE mes IN (meses presentes
+en el CSV del día) + insert`. O sea **solo toca los meses que vienen en el CSV** — no borra
+meses ausentes. Abril/mayo ya no se reescriben (no vienen más en el CSV); junio SÍ se reescribió
+el 21-sep pero quedó bajo.
+
+**MECANISMO NO CONFIRMADO — no afirmar sin validar.** Por qué junio sale bajo pese a
+reescribirse es una **pregunta abierta**. Hipótesis a descartar (NINGUNA verificada):
+el Date Range del reporte, line items de junio archivados que dejan de aparecer en el reporte,
+un tope de filas del reporte, etc.
+
+**Cómo validar de verdad (hacer ESTO antes de escribir una causa):**
+1. Abrir el CSV del reporte "DV360 Video Drean" (adjunto `.zip` en Gmail, etiqueta `dv360`) y
+   mirar (a) la fila **"Date Range"** del encabezado = qué período trae; (b) las filas con
+   `Date` de **junio** = cuánta inversión/impresiones de junio realmente contiene hoy.
+   - Si el CSV **no** trae junio (o trae poco) → el problema es el reporte (rango/filtro/filas).
+   - Si el CSV **sí** trae junio completo pero la DB está baja → el problema es el sync.
+2. Alternativa rápida: mirar el **Date Range configurado del reporte** en la UI de DV360.
+
+> (El adjunto de Gmail NO se puede bajar desde el sandbox de Claude Code → esta validación la
+> hace el usuario, o se pasa el CSV para leerlo acá.)
 
 ## Troubleshooting
 

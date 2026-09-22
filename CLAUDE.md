@@ -233,22 +233,19 @@ reporte_existencia/cb_homologos).
     (approach aproximado). Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
     (workflow_dispatch, aditivo). No cargar DV360/Google a mano en `pauta_performance` (rompe la regla
     "medio con API → volumen de la API").
-  - **BUG ESTRUCTURAL DV360 — meses viejos TRUNCADOS por ventana móvil + delete-por-mes (validado
-    sep-2026, LEER).** DV360 NO se carga manual: el Apps Script "Sync Drive Tablero CB" (`syncDv360`)
-    lee el CSV del reporte "DV360 Video Drean" desde Gmail (`.zip`) y hace **`delete WHERE mes IN
-    (meses del CSV) + insert`** (idempotente). PERO el reporte tiene **rango de fechas MÓVIL (~últimos
-    90 días)** → cuando un mes sale *parcialmente* de la ventana, el run diario **borra el mes entero y
-    reinserta solo los días que quedan dentro** → el mes queda truncado a su cola y, al salir del todo,
-    **congelado** en ese valor mutilado. Validado por `updated_at`+volumen en `dv360_creatives`
-    (YouTube+Prog ARS): abril $578K (frozen 29-jul), mayo $1,48M (frozen 29-ago), junio $11,66M (parcial,
-    ~1 semana, vs OMD ~$23,8M), **julio $58,1M completo** (dentro de ventana). O sea el dash **subcuenta
-    DV360 en TODO mes >~2-3 meses de antigüedad**, no solo junio. **FIX (en DV360/Apps Script, no en
-    este repo):** cambiar el rango del reporte "DV360 Video Drean" a **fijo/largo** (ej 1-ene-2026→hoy o
-    últimos 365 días) → cada CSV diario trae toda la historia → el borrar+insertar reescribe cada mes
-    completo; una corrida con ese rango backfillea abril–agosto. (Alternativa: endurecer `syncDv360`
-    para borrar+reinsertar un mes SOLO si el CSV cubre el mes entero — el fix del rango es más simple.)
-    Detalle en `docs/dv360-sync.md` (Troubleshooting). Meta (API) NO tiene este problema (matchea OMD
-    al peso).
+  - **DV360 subcuenta meses viejos (VALIDADO sep-2026; MECANISMO AÚN NO CONFIRMADO — no afirmar el
+    porqué sin ver el CSV).** DV360 NO se carga manual: el Apps Script "Sync Drive Tablero CB"
+    (`syncDv360`) lee el CSV del reporte "DV360 Video Drean" desde Gmail (`.zip`) y hace `delete WHERE
+    mes IN (meses del CSV) + insert` → **solo toca los meses presentes en el CSV** (no borra meses que
+    no vienen). **Verificado con la DB** (`dv360_creatives`, YouTube+Prog en ARS `rev×fx`): abril $578K
+    (`updated_at` 29-jul), mayo $1,48M (29-ago) — ya NO se reescriben; junio $11,66M (updated 21-sep) vs
+    OMD ~$23,8M; **julio $58,1M ≈ OMD** (updated 21-sep). O sea junio/meses viejos subcuentan y Meta
+    (API) matchea OMD al peso → el problema es del pipeline DV360, no del cálculo del dash. **NO está
+    confirmado POR QUÉ** junio sale bajo pese a reescribirse (hipótesis posibles sin validar: rango del
+    reporte, line items archivados que caen del reporte, tope de filas). **Para diagnosticar de verdad
+    hay que LEER el CSV real** (su fila "Date Range" + filas de junio) o mirar el Date Range del reporte
+    en la UI de DV360 — no se puede bajar el adjunto de Gmail desde el sandbox. NO documentar un
+    mecanismo como hecho sin esa validación.
   - **Metas de Pauta Mkt (Impacto Campaña, dic-2026):** los tabs del dash se renombraron
     **Overview → "Impacto Campaña"** y **Por Medio → "Eficiencia Medios"** (las métricas de
     eficiencia se definen después). El tab Impacto Campaña arranca con **6 MetaKpiCards + 6 gráficos
