@@ -230,10 +230,25 @@ reporte_existencia/cb_homologos).
     está完整); (2) **Google jun SIN sincronizar** (`google_ads_creatives`/`ga4_google_ads_daily`
     vacíos en junio → $0 vs $4,02M); (3) Programmatic jun −$0,8M. Julio, al revés, queda **+$3,4M por
     ARRIBA**: DV360 se convierte `revenue_usd × fx` del mes y da ~5-8% más que el costo booked de OMD
-    (approach aproximado). **Fixes:** Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
-    (workflow_dispatch, aditivo). **DV360 NO tiene workflow** (carga manual/Apps Script) → el export
-    completo de junio lo resube el usuario. No cargar DV360/Google a mano en `pauta_performance` (rompe
-    la regla "medio con API → volumen de la API").
+    (approach aproximado). Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
+    (workflow_dispatch, aditivo). No cargar DV360/Google a mano en `pauta_performance` (rompe la regla
+    "medio con API → volumen de la API").
+  - **BUG ESTRUCTURAL DV360 — meses viejos TRUNCADOS por ventana móvil + delete-por-mes (validado
+    sep-2026, LEER).** DV360 NO se carga manual: el Apps Script "Sync Drive Tablero CB" (`syncDv360`)
+    lee el CSV del reporte "DV360 Video Drean" desde Gmail (`.zip`) y hace **`delete WHERE mes IN
+    (meses del CSV) + insert`** (idempotente). PERO el reporte tiene **rango de fechas MÓVIL (~últimos
+    90 días)** → cuando un mes sale *parcialmente* de la ventana, el run diario **borra el mes entero y
+    reinserta solo los días que quedan dentro** → el mes queda truncado a su cola y, al salir del todo,
+    **congelado** en ese valor mutilado. Validado por `updated_at`+volumen en `dv360_creatives`
+    (YouTube+Prog ARS): abril $578K (frozen 29-jul), mayo $1,48M (frozen 29-ago), junio $11,66M (parcial,
+    ~1 semana, vs OMD ~$23,8M), **julio $58,1M completo** (dentro de ventana). O sea el dash **subcuenta
+    DV360 en TODO mes >~2-3 meses de antigüedad**, no solo junio. **FIX (en DV360/Apps Script, no en
+    este repo):** cambiar el rango del reporte "DV360 Video Drean" a **fijo/largo** (ej 1-ene-2026→hoy o
+    últimos 365 días) → cada CSV diario trae toda la historia → el borrar+insertar reescribe cada mes
+    completo; una corrida con ese rango backfillea abril–agosto. (Alternativa: endurecer `syncDv360`
+    para borrar+reinsertar un mes SOLO si el CSV cubre el mes entero — el fix del rango es más simple.)
+    Detalle en `docs/dv360-sync.md` (Troubleshooting). Meta (API) NO tiene este problema (matchea OMD
+    al peso).
   - **Metas de Pauta Mkt (Impacto Campaña, dic-2026):** los tabs del dash se renombraron
     **Overview → "Impacto Campaña"** y **Por Medio → "Eficiencia Medios"** (las métricas de
     eficiencia se definen después). El tab Impacto Campaña arranca con **6 MetaKpiCards + 6 gráficos

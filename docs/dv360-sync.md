@@ -340,6 +340,34 @@ de cómo se montó / cómo reproducirlo si hay que reinstalar:
 Si en algún momento la data deja de actualizarse, empezá por el bloque
 **Troubleshooting** y por las queries de **Cómo verificar el estado**.
 
+## ⚠️ Bug estructural — meses viejos TRUNCADOS (ventana móvil + delete-por-mes, sep-2026)
+
+**Síntoma:** los meses con más de ~2-3 meses de antigüedad muestran inversión DV360
+ridículamente baja y **quedan congelados**. Validado (YouTube+Programmatic ARS, `rev×fx`):
+abril **$578K** (`updated_at` frozen 29-jul), mayo **$1,48M** (frozen 29-ago), junio
+**$11,66M** (parcial, ~1 semana, vs OMD ~$23,8M), **julio $58,1M completo** (dentro de la
+ventana). O sea el dash **subcuenta DV360 en todo mes viejo**, no solo uno.
+
+**Causa raíz:** el reporte "DV360 Video Drean" tiene **rango de fechas MÓVIL (~últimos 90
+días)**, y `syncDv360` hace **`delete WHERE mes IN (meses del CSV) + insert`**. Cuando un mes
+sale *parcialmente* de la ventana, el run diario **borra el mes entero y reinserta solo los
+días que quedan dentro** → el mes queda truncado a su cola; al salir del todo de la ventana,
+congelado en ese valor mutilado. (Diagnóstico: mirá `updated_at` + `impresiones` por mes; si
+un mes viejo tiene volumen de pocos días y `updated_at` viejo, es esto — no el contenido.)
+
+**Fix (en DV360 / Apps Script, no en este repo):**
+1. **Preferido:** cambiar el rango del reporte "DV360 Video Drean" (y el de Reach) a **fijo/
+   largo** — ej `1-ene-2026 → hoy` o "últimos 365 días" — para que **cada CSV diario traiga
+   toda la historia**. Así el `delete+insert` reescribe **cada mes completo** todos los días y
+   no se trunca nunca. Una corrida con ese rango **backfillea** los meses ya rotos (abril–jun).
+2. **Alternativa (endurecer el sync):** en `syncDv360`/`syncDv360Reach`, borrar+reinsertar un
+   mes **solo si el CSV cubre el mes entero** (min(Date) del CSV ≤ primer día del mes); si el
+   CSV solo tiene una cola del mes, **no** borrar ese mes (dejar lo que ya está). Evita la
+   truncación aunque el rango sea corto. El fix del rango (opción 1) es más simple y robusto.
+
+> Nota: Meta (API, `meta_paid_creatives`) **no** tiene este problema — su inversión matchea la
+> planilla OMD al peso. El bug es exclusivo del pipeline DV360 (ventana móvil + delete-por-mes).
+
 ## Troubleshooting
 
 - **HTTP 404** → falta correr las migraciones 0058 / 0059 (la tabla no existe).
