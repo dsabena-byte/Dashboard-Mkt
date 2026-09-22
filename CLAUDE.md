@@ -233,19 +233,24 @@ reporte_existencia/cb_homologos).
     (approach aproximado). Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
     (workflow_dispatch, aditivo). No cargar DV360/Google a mano en `pauta_performance` (rompe la regla
     "medio con API → volumen de la API").
-  - **DV360 subcuenta meses viejos (VALIDADO sep-2026; MECANISMO AÚN NO CONFIRMADO — no afirmar el
-    porqué sin ver el CSV).** DV360 NO se carga manual: el Apps Script "Sync Drive Tablero CB"
-    (`syncDv360`) lee el CSV del reporte "DV360 Video Drean" desde Gmail (`.zip`) y hace `delete WHERE
-    mes IN (meses del CSV) + insert` → **solo toca los meses presentes en el CSV** (no borra meses que
-    no vienen). **Verificado con la DB** (`dv360_creatives`, YouTube+Prog en ARS `rev×fx`): abril $578K
-    (`updated_at` 29-jul), mayo $1,48M (29-ago) — ya NO se reescriben; junio $11,66M (updated 21-sep) vs
-    OMD ~$23,8M; **julio $58,1M ≈ OMD** (updated 21-sep). O sea junio/meses viejos subcuentan y Meta
-    (API) matchea OMD al peso → el problema es del pipeline DV360, no del cálculo del dash. **NO está
-    confirmado POR QUÉ** junio sale bajo pese a reescribirse (hipótesis posibles sin validar: rango del
-    reporte, line items archivados que caen del reporte, tope de filas). **Para diagnosticar de verdad
-    hay que LEER el CSV real** (su fila "Date Range" + filas de junio) o mirar el Date Range del reporte
-    en la UI de DV360 — no se puede bajar el adjunto de Gmail desde el sandbox. NO documentar un
-    mecanismo como hecho sin esa validación.
+  - **DV360 subcuenta meses viejos — CONFIRMADO con el CSV real (sep-2026).** DV360 NO se carga
+    manual: el Apps Script "Sync Drive Tablero CB" (`syncDv360`) lee el CSV del reporte "DV360 Video
+    Drean" desde Gmail (`.zip`) y hace `delete WHERE mes IN (meses del CSV) + insert` → solo toca los
+    meses presentes en el CSV. **Validado bajando un export ad-hoc de junio COMPLETO (01→30) de DV360
+    (Advertiser Drean Argentina):** junio real = **US$17.108 (YouTube US$11.722 + Programmatic
+    US$5.386) = $25,35M ARS** (≈ OMD $23,8M). La base tenía solo **US$7.868 ($11,66M)** → subcontaba
+    ~$13,7M (sobre todo YouTube: real US$11.722 vs base US$3.475). O sea el undercount es REAL, no
+    diferencia de definición. **CORREGIDO:** se cargó junio en `dv360_creatives` desde ese CSV
+    (agregando `mes|canal|categoría|rol|creative` como el Apps Script; delete jun + insert 46 filas) →
+    junio quedó en US$17.108/$25,35M. Google junio también estaba vacío → se re-disparó
+    `google-ads-sync` (days=150) y cargó ($4,02M = OMD). **Meta (API) siempre matcheó OMD al peso** —
+    el bug es solo del pipeline DV360. **PENDIENTES:** (1) **abril ($578K) y mayo ($1,48M) siguen
+    truncados** — mismo fix: bajar su CSV mensual completo de DV360 y recargar igual. (2) **Recurrencia:
+    el reporte "DV360 Video Drean" (ID 1693465149) entrega junio PARCIAL en la corrida diaria** (por
+    eso la base quedaba baja) → hay que **revisar/ampliar el Date Range del reporte** (fijo/largo) o
+    endurecer `syncDv360` para no reescribir un mes con CSV parcial. El export ad-hoc de mes completo
+    SÍ trae todo, así que el fix es el rango del reporte programado. **DV360 se ve en
+    displayvideo.google.com → Insights → Reports.**
   - **Metas de Pauta Mkt (Impacto Campaña, dic-2026):** los tabs del dash se renombraron
     **Overview → "Impacto Campaña"** y **Por Medio → "Eficiencia Medios"** (las métricas de
     eficiencia se definen después). El tab Impacto Campaña arranca con **6 MetaKpiCards + 6 gráficos

@@ -359,21 +359,28 @@ en el CSV del día) + insert`. O sea **solo toca los meses que vienen en el CSV*
 meses ausentes. Abril/mayo ya no se reescriben (no vienen más en el CSV); junio SÍ se reescribió
 el 21-sep pero quedó bajo.
 
-**MECANISMO NO CONFIRMADO — no afirmar sin validar.** Por qué junio sale bajo pese a
-reescribirse es una **pregunta abierta**. Hipótesis a descartar (NINGUNA verificada):
-el Date Range del reporte, line items de junio archivados que dejan de aparecer en el reporte,
-un tope de filas del reporte, etc.
+**CONFIRMADO con el CSV real (sep-2026):** se bajó un export ad-hoc de **junio completo (01→30)**
+del reporte "DV360 Video Drean" (Advertiser Drean Argentina). Junio real = **US$17.108**
+(YouTube US$11.722 + Programmatic US$5.386) = **$25,35M ARS** (≈ OMD $23,8M), con **8 creativos
+de YouTube** y los 30 días. La DB tenía solo **US$7.868 ($11,66M)** con **6 creativos de YouTube**
+→ la corrida DIARIA del reporte entregaba junio **parcial**, y el `delete+insert` lo dejaba bajo.
+O sea el undercount es REAL (no diferencia de definición): la base subcontaba ~$13,7M.
 
-**Cómo validar de verdad (hacer ESTO antes de escribir una causa):**
-1. Abrir el CSV del reporte "DV360 Video Drean" (adjunto `.zip` en Gmail, etiqueta `dv360`) y
-   mirar (a) la fila **"Date Range"** del encabezado = qué período trae; (b) las filas con
-   `Date` de **junio** = cuánta inversión/impresiones de junio realmente contiene hoy.
-   - Si el CSV **no** trae junio (o trae poco) → el problema es el reporte (rango/filtro/filas).
-   - Si el CSV **sí** trae junio completo pero la DB está baja → el problema es el sync.
-2. Alternativa rápida: mirar el **Date Range configurado del reporte** en la UI de DV360.
+**CORREGIDO (jun):** se cargó junio en `dv360_creatives` desde ese CSV completo, replicando la
+agregación del Apps Script (`mes|canal|categoria|rol|creative`, delete jun + insert). Junio quedó
+en US$17.108/$25,35M. (Script de carga: parsear el CSV, `canal_/categoria_/rol_` por Line Item,
+sumar Impressions/Clicks/Revenue/Starts/quartiles, `Math.round`, `source='dv360_scheduled'`.)
 
-> (El adjunto de Gmail NO se puede bajar desde el sandbox de Claude Code → esta validación la
-> hace el usuario, o se pasa el CSV para leerlo acá.)
+**PENDIENTE — recurrencia + otros meses:**
+1. **Abril ($578K) y mayo ($1,48M) siguen truncados** → mismo fix: bajar de DV360 el export
+   mensual **completo** de cada uno y recargar igual que junio.
+2. **Evitar que se re-trunque:** la corrida DIARIA del reporte entrega el mes parcial. Revisar el
+   **Date Range del reporte programado** (ID 1693465149) en displayvideo.google.com → Insights →
+   Reports; ponerlo **fijo/largo** para que cada CSV traiga el mes completo. Alternativa: endurecer
+   `syncDv360` para no borrar+reinsertar un mes si el CSV trae ese mes parcial.
+
+> El adjunto `.zip` del mail diario NO se puede bajar desde el sandbox; el export ad-hoc de mes
+> completo se corre en la UI de DV360 y se pasa el CSV para cargarlo.
 
 ## Troubleshooting
 
