@@ -216,14 +216,24 @@ reporte_existencia/cb_homologos).
     **performance** (impresiones/alcance/frecuencia/clics/views) por categoría. TikTok abre por
     categoría (Cocción/Lavado/UGC/Refri); Mercado Ads y Geo Mobile (="Medios directos"/Tap Tap)
     reparten impr/clics proporcional a la inversión ya cargada (el reporte da el total, no lo abre
-    por categoría). Jul Geo Mobile se actualizó al real del reporte ($9,62M, era $9,19M del plan);
-    jun no tiene Tap Tap en el reporte. **OJO fuentes jun/jul:** `meta_paid_creatives` trae SOLO
-    `meta` y `dv360_creatives` solo YouTube+Programmatic → TikTok/Mercado Ads/Geo NO tienen
-    contraparte API, son 100% OMD-manual (sin riesgo de doble conteo en el gap-fill). El `views` de
-    `pauta_performance` es **inerte para el VTR** (el VTR≥50% de las cards sale de `video_p50`/`q50`
-    de Meta+DV360, no de esta columna). En jun/jul **no corrieron** TV/Radio/Streaming/Diarios ni
-    Geo Mobile (jun) — no son huecos de carga, no hubo pauta. **OOH = dato fijo (gran formato), no
-    cambia** ($10M jun / $35,5M jul) — no tocar.
+    por categoría). Jul Medios directos (Tap Tap) = **$9.189.124,60** (valor oficial de la planilla
+    OMD digital; NO el "MEDIA COST" $9,62M del PDF, que es bruto/con fee). Jun no tiene Tap Tap en el
+    reporte. **OJO fuentes jun/jul:** `meta_paid_creatives` trae SOLO `meta` y `dv360_creatives` solo
+    YouTube+Programmatic → TikTok/Mercado Ads/Geo NO tienen contraparte API, son 100% OMD-manual (sin
+    riesgo de doble conteo en el gap-fill). El `views` de `pauta_performance` es **inerte para el VTR**
+    (el VTR≥50% de las cards sale de `video_p50`/`q50` de Meta+DV360, no de esta columna). **OOH = dato
+    fijo (gran formato), no cambia** ($10M jun / $35,5M jul) — no tocar.
+  - **Reconciliación vs planilla OMD (solo digital, sep-2026): dash < OMD por DATA FALTANTE en JUNIO,
+    no por cálculo.** OMD digital jun $44,17M / jul $109,86M. **Meta matchea al peso** (API) y los
+    manuales también. El hueco es 100% API/DV360 de junio: (1) **DV360 YouTube jun cargó PARCIAL**
+    (`dv360_creatives` jun = 6 creativos, US$3.475 ≈ $5,15M ARS vs OMD $16,5M → faltan ~$11,4M; jul
+    está完整); (2) **Google jun SIN sincronizar** (`google_ads_creatives`/`ga4_google_ads_daily`
+    vacíos en junio → $0 vs $4,02M); (3) Programmatic jun −$0,8M. Julio, al revés, queda **+$3,4M por
+    ARRIBA**: DV360 se convierte `revenue_usd × fx` del mes y da ~5-8% más que el costo booked de OMD
+    (approach aproximado). **Fixes:** Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
+    (workflow_dispatch, aditivo). **DV360 NO tiene workflow** (carga manual/Apps Script) → el export
+    completo de junio lo resube el usuario. No cargar DV360/Google a mano en `pauta_performance` (rompe
+    la regla "medio con API → volumen de la API").
   - **Metas de Pauta Mkt (Impacto Campaña, dic-2026):** los tabs del dash se renombraron
     **Overview → "Impacto Campaña"** y **Por Medio → "Eficiencia Medios"** (las métricas de
     eficiencia se definen después). El tab Impacto Campaña arranca con **6 MetaKpiCards + 6 gráficos
