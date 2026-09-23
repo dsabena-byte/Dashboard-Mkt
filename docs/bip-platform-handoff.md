@@ -1183,3 +1183,18 @@ con el acceso de `dsabena-byte`) quedaron firmados por `dsabena-byte` → deploy
 **Regla (acordada con el user, en `bip-platform/CLAUDE.md`):** commits firmados `bip-explore
 <bip.explore@gmail.com>` + merge con **rebase** (PR #5 = primero así; autor bip-explore, committer
 dsabena-byte). Si igual queda Blocked: Vercel → preview "Ready" → "…" → **Promote to Production**.
+
+## ✅ REDISEÑO UX DEL RECORRIDO DEL CLIENTE (23-sep-2026, bip-platform PR #7)
+Propuesta aprobada por el user (artifact "BIP · Primeros pasos": `claude.ai/artifact/R2gQ1RVZCsGXS5XGWCwnss`)
+e implementada completa. Decisiones del user: **sí** "Continuar con Google"; **competidores dentro del
+tablero**, no en el onboarding; **Conexiones → "Fuentes de datos"**.
+- **Antes:** 7 pantallas y ~45 campos antes del primer dato (nombre pedido 2 veces, 20–30 campos de
+  competencia antes de ver valor, Inicio = 3 guías y 5 CTAs, Conexiones organizada por tecnología).
+- **Ahora:** `/signup` (3 campos + 1 casilla, o Google) → **`/empezar`**: Tu marca → ¿Qué querés ver
+  primero? (`tenant_profile.intents`, migración **0027**) → conectar SOLO lo necesario, de a una, con
+  la elección de cuenta ahí mismo. Inicio = "Tu próximo paso" (`lib/journey.ts` → `homeSteps`),
+  `/ayuda` = Centro de ayuda, Fuentes de datos = lista con estado + `SheetAdder` (detecta link
+  Google/Microsoft). Competidores/categorías/sitio → `CompetitivePrompt` en Redes/Web/SEO.
+- **PENDIENTE USER:** (1) correr la migración 0027; (2) habilitar **Google** en Supabase → Authentication
+  → Providers (Client ID/Secret de un OAuth client Web de Google Cloud BIP-GO, con redirect
+  `https://czcfrzqioulhjfqkagcb.supabase.co/auth/v1/callback`); (3) probar el alta completa con un email nuevo.
