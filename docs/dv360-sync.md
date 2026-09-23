@@ -340,6 +340,48 @@ de cómo se montó / cómo reproducirlo si hay que reinstalar:
 Si en algún momento la data deja de actualizarse, empezá por el bloque
 **Troubleshooting** y por las queries de **Cómo verificar el estado**.
 
+## ⚠️ DV360 subcuenta meses viejos (VALIDADO sep-2026; mecanismo AÚN SIN confirmar)
+
+**Verificado con la DB** (`dv360_creatives`, YouTube+Programmatic en ARS = `revenue_usd × fx`):
+
+| Mes | ARS (rev×fx) | `updated_at` | vs OMD |
+|-----|-------------|--------------|--------|
+| Abril | $578K | 29-jul (frozen) | muy por debajo |
+| Mayo | $1,48M | 29-ago (frozen) | muy por debajo |
+| Junio | $11,66M | 21-sep | OMD ~$23,8M → **subcuenta** |
+| Julio | $58,1M | 21-sep | ≈ OMD ($55,1M) → **OK** |
+
+O sea: los meses viejos subcuentan y julio (reciente) está bien. **Meta (API) matchea OMD al
+peso**, así que el problema es del pipeline DV360, no del cálculo del dash.
+
+**Lo que hace el sync (código real, `dv360Upsert_`):** `delete WHERE mes IN (meses presentes
+en el CSV del día) + insert`. O sea **solo toca los meses que vienen en el CSV** — no borra
+meses ausentes. Abril/mayo ya no se reescriben (no vienen más en el CSV); junio SÍ se reescribió
+el 21-sep pero quedó bajo.
+
+**CONFIRMADO con el CSV real (sep-2026):** se bajó un export ad-hoc de **junio completo (01→30)**
+del reporte "DV360 Video Drean" (Advertiser Drean Argentina). Junio real = **US$17.108**
+(YouTube US$11.722 + Programmatic US$5.386) = **$25,35M ARS** (≈ OMD $23,8M), con **8 creativos
+de YouTube** y los 30 días. La DB tenía solo **US$7.868 ($11,66M)** con **6 creativos de YouTube**
+→ la corrida DIARIA del reporte entregaba junio **parcial**, y el `delete+insert` lo dejaba bajo.
+O sea el undercount es REAL (no diferencia de definición): la base subcontaba ~$13,7M.
+
+**CORREGIDO (jun):** se cargó junio en `dv360_creatives` desde ese CSV completo, replicando la
+agregación del Apps Script (`mes|canal|categoria|rol|creative`, delete jun + insert). Junio quedó
+en US$17.108/$25,35M. (Script de carga: parsear el CSV, `canal_/categoria_/rol_` por Line Item,
+sumar Impressions/Clicks/Revenue/Starts/quartiles, `Math.round`, `source='dv360_scheduled'`.)
+
+**PENDIENTE — recurrencia + otros meses:**
+1. **Abril ($578K) y mayo ($1,48M) siguen truncados** → mismo fix: bajar de DV360 el export
+   mensual **completo** de cada uno y recargar igual que junio.
+2. **Evitar que se re-trunque:** la corrida DIARIA del reporte entrega el mes parcial. Revisar el
+   **Date Range del reporte programado** (ID 1693465149) en displayvideo.google.com → Insights →
+   Reports; ponerlo **fijo/largo** para que cada CSV traiga el mes completo. Alternativa: endurecer
+   `syncDv360` para no borrar+reinsertar un mes si el CSV trae ese mes parcial.
+
+> El adjunto `.zip` del mail diario NO se puede bajar desde el sandbox; el export ad-hoc de mes
+> completo se corre en la UI de DV360 y se pasa el CSV para cargarlo.
+
 ## Troubleshooting
 
 - **HTTP 404** → falta correr las migraciones 0058 / 0059 (la tabla no existe).

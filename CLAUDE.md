@@ -212,9 +212,45 @@ reporte_existencia/cb_homologos).
     + `getMetaPaidCreatives(true)`, param `includeUgc`). UGC **también** sigue en `/influencia`
     (`getInfluenciaPerformance`/`getMetaUgcCreatives`) — se muestra en los dos. `brand-build-queries`
     NO incluye UGC (usa el default `includeUgc=false`) para no cambiar el overview estratégico.
-  - Cargado **jun+jul 2026** (TikTok por categoría; Mercado/Geo como total del mes en categoría
-    "Brand" — los reportes OMD no los abren por categoría). En jun/jul **no corrieron** DOOH ni
-    Geo Mobile (jun) ni TV Cable (offline) — no son huecos de carga, no hubo pauta.
+  - Cargado **jun+jul 2026** desde los **reportes OMD mensuales** (PDF "Drean Report"): inversión +
+    **performance** (impresiones/alcance/frecuencia/clics/views) por categoría. TikTok abre por
+    categoría (Cocción/Lavado/UGC/Refri); Mercado Ads y Geo Mobile (="Medios directos"/Tap Tap)
+    reparten impr/clics proporcional a la inversión ya cargada (el reporte da el total, no lo abre
+    por categoría). Jul Medios directos (Tap Tap) = **$9.189.124,60** (valor oficial de la planilla
+    OMD digital; NO el "MEDIA COST" $9,62M del PDF, que es bruto/con fee). Jun no tiene Tap Tap en el
+    reporte. **OJO fuentes jun/jul:** `meta_paid_creatives` trae SOLO `meta` y `dv360_creatives` solo
+    YouTube+Programmatic → TikTok/Mercado Ads/Geo NO tienen contraparte API, son 100% OMD-manual (sin
+    riesgo de doble conteo en el gap-fill). El `views` de `pauta_performance` es **inerte para el VTR**
+    (el VTR≥50% de las cards sale de `video_p50`/`q50` de Meta+DV360, no de esta columna). **OOH = dato
+    fijo (gran formato), no cambia** ($10M jun / $35,5M jul) — no tocar.
+  - **Reconciliación vs planilla OMD (solo digital, sep-2026): dash < OMD por DATA FALTANTE en JUNIO,
+    no por cálculo.** OMD digital jun $44,17M / jul $109,86M. **Meta matchea al peso** (API) y los
+    manuales también. El hueco es 100% API/DV360 de junio: (1) **DV360 YouTube jun cargó PARCIAL**
+    (`dv360_creatives` jun = 6 creativos, US$3.475 ≈ $5,15M ARS vs OMD $16,5M → faltan ~$11,4M; jul
+    está完整); (2) **Google jun SIN sincronizar** (`google_ads_creatives`/`ga4_google_ads_daily`
+    vacíos en junio → $0 vs $4,02M); (3) Programmatic jun −$0,8M. Julio, al revés, queda **+$3,4M por
+    ARRIBA**: DV360 se convierte `revenue_usd × fx` del mes y da ~5-8% más que el costo booked de OMD
+    (approach aproximado). Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
+    (workflow_dispatch, aditivo). No cargar DV360/Google a mano en `pauta_performance` (rompe la regla
+    "medio con API → volumen de la API").
+  - **DV360 subcuenta meses viejos — CONFIRMADO con el CSV real (sep-2026).** DV360 NO se carga
+    manual: el Apps Script "Sync Drive Tablero CB" (`syncDv360`) lee el CSV del reporte "DV360 Video
+    Drean" desde Gmail (`.zip`) y hace `delete WHERE mes IN (meses del CSV) + insert` → solo toca los
+    meses presentes en el CSV. **Validado bajando un export ad-hoc de junio COMPLETO (01→30) de DV360
+    (Advertiser Drean Argentina):** junio real = **US$17.108 (YouTube US$11.722 + Programmatic
+    US$5.386) = $25,35M ARS** (≈ OMD $23,8M). La base tenía solo **US$7.868 ($11,66M)** → subcontaba
+    ~$13,7M (sobre todo YouTube: real US$11.722 vs base US$3.475). O sea el undercount es REAL, no
+    diferencia de definición. **CORREGIDO:** se cargó junio en `dv360_creatives` desde ese CSV
+    (agregando `mes|canal|categoría|rol|creative` como el Apps Script; delete jun + insert 46 filas) →
+    junio quedó en US$17.108/$25,35M. Google junio también estaba vacío → se re-disparó
+    `google-ads-sync` (days=150) y cargó ($4,02M = OMD). **Meta (API) siempre matcheó OMD al peso** —
+    el bug es solo del pipeline DV360. **PENDIENTES:** (1) **abril ($578K) y mayo ($1,48M) siguen
+    truncados** — mismo fix: bajar su CSV mensual completo de DV360 y recargar igual. (2) **Recurrencia:
+    el reporte "DV360 Video Drean" (ID 1693465149) entrega junio PARCIAL en la corrida diaria** (por
+    eso la base quedaba baja) → hay que **revisar/ampliar el Date Range del reporte** (fijo/largo) o
+    endurecer `syncDv360` para no reescribir un mes con CSV parcial. El export ad-hoc de mes completo
+    SÍ trae todo, así que el fix es el rango del reporte programado. **DV360 se ve en
+    displayvideo.google.com → Insights → Reports.**
   - **Metas de Pauta Mkt (Impacto Campaña, dic-2026):** los tabs del dash se renombraron
     **Overview → "Impacto Campaña"** y **Por Medio → "Eficiencia Medios"** (las métricas de
     eficiencia se definen después). El tab Impacto Campaña arranca con **6 MetaKpiCards + 6 gráficos
@@ -424,6 +460,48 @@ reporte_existencia/cb_homologos).
   token real — no compartirlo. **Adaptación de piezas** (reframe IA, `lib/pauta-formatos.ts`): imagen
   1:1/4:5/9:16/1.91:1, video 9:16/1:1/16:9 (Meta, Demand Gen, YouTube/DV360, TikTok). Detalle completo en
   `docs/calendario-publicacion-meta.md`.
+
+## Entorno de trabajo y herramientas (setup sep-2026)
+> Skills, plugins y Setup script se cargan al **INICIAR la sesión**. Si algo no aparece, abrí una
+> sesión nueva. Al dar pasos de setup/tooling: **leer la doc oficial** (`code.claude.com/docs`, tool
+> `read_documentation`) ANTES — no adivinar la UI (error recurrente).
+- **MarkItDown** instalado por el **Setup script del environment** (`pip install 'markitdown[all]'`
+  **+ `pip install --force-reinstall cffi`**). OJO: `cffi`/`_cffi_backend` viene **roto** en el
+  contenedor base → markitdown/pypdf crashean sin ese reinstall. Convierte PDF/Office/imágenes →
+  Markdown (ahorra tokens; usar para leer reportes OMD y demás).
+- **Perplexity** = MCP en claude.ai (OAuth; Sonar API paga, ~US$10 cargados). Tools
+  `perplexity_search/ask/reason/research`.
+- **Plugins (cuenta):** `addyosmani/agent-skills` (metodología general: Source/Doubt-Driven, Code
+  Review, Security, Performance, TDD…) + oficiales Anthropic (Marketing, Data, etc.). Addy declara
+  "can run code without asking".
+- **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
+  irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
+- **Gotchas del entorno:** (1) un proyecto **multi-repo** NO lee el `.claude/settings.json` (hooks)
+  de ningún repo → las deps van en el **Setup script del environment**, no en un hook del repo (las
+  `.claude/skills/` sí cargan). (2) Editar el Setup script: **selector de environment en la pantalla
+  de sesión NUEVA → hover sobre "Default" → engranaje** (el dropdown del título de la sesión es solo
+  indicador, no edita). (3) Muchos MCP por API key (Perplexity Sonar) requieren **billing** en la
+  consola del vendor; no van con cuenta gratis.
+
+## BIP — base de conocimiento (vault Obsidian en git)
+Todo lo generado para **BIP** se guarda en el repo privado **`bip-knowledge`** (= vault Obsidian),
+con estructura **raw → wiki → output por cliente** + `wiki/frameworks/` (reutilizable) + `_templates/`;
+reglas en su `CONVENCIONES.md`. Claude escribe por GitHub; el usuario lo ve en Obsidian (compu
+personal/celular) con el plugin **Obsidian Git** (no instala nada en la compu del laburo). **Regla:**
+al trabajar algo de un cliente de BIP, guardarlo ahí siguiendo esas convenciones, sin que lo pidan.
+(El usuario es cloud-only y no puede instalar apps en el laburo → por eso el vault vive en git, no
+en Obsidian local ni en Obsidian Sync.)
+
+## Salud de Marca — metodología y correlaciones (mockup, dic-2026)
+Dashboard nuevo (mockup artifact, réplica del estilo real de `/salud-marca`, fondo blanco, **tono
+técnico SIN relleno marketinero**): tab **Metodología y correlaciones** (modelo share→equity: scatter
+driver→equity con recta MCO + R²/p, co-movimiento temporal, tabla de estadísticos α/β/SE/t/p/R²) +
+tab **Datos y Proyecciones** (tabla Kantar por marca con hélice y desvíos + **proyección nov-26 POR
+MARCA** con su ecuación propia; tabla GfK por segmento). El vínculo share→equity ya existe en el
+código (`dreanEstNov26` + `EST_LAVADO/REFRI/COCCION` en `app/salud-marca/page.tsx`); el mockup lo
+expone, no inventa nada (el R² y los estadísticos se calcularon sobre esos mismos datos). Artifact:
+`https://claude.ai/artifact/6bNygQqm1Nsjcuhu28H2rC`. **PENDIENTE:** decidir si se cablea como dashboard
+real (ruta nueva, leyendo `mercado_share` + `salud-marca-model.ts` en vivo).
 
 ## Punteros a docs/
 `docs/architecture.md`, `docs/crons-github-actions.md`, `docs/guia-replicacion-y-seguridad.md`,
