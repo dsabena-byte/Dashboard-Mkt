@@ -1219,3 +1219,22 @@ embebida en cada paso. Propuesta: artifact `RFg4dSrCEh3YDqPdq92HZD`. Implementad
 - **Se borraron `/ayuda` y el Inicio viejo.** `SourceHelp` = "¿No tenés acceso?" + mensaje copiable
   al admin. Bienvenida del consultor al liberar = `WelcomeNote` cerrable (14 días).
 - Validado tsc + build. Detalle vivo en el `CLAUDE.md` de bip-platform.
+
+## ✅ ONBOARDING v3 "MODELO DE IMPACTO" (23-sep-2026, bip-platform PRs #16–#26)
+Iteración en vivo con el user (probando con cuentas nuevas `dsabena+pruebaN@gmail.com` en incógnito):
+- **Concepto:** BIP NO es reporting (storytelling bip-go.com). Paso 3 = "Construyamos tu modelo de
+  impacto": planes que trabaja hoy (multi) — Redes Sociales (orgánico FB+IG; TikTok cuando esté la app),
+  Publicidad (Meta Ads + Google Ads al mismo nivel), Web/Ecommerce — cada uno con su promesa de valor.
+  Inversión fuera del arranque. Sitio web de la marca OBLIGATORIO (base competitiva).
+- **Paso 4** conecta y elige TODAS las cuentas en una secuencia (Página, Meta Ads, propiedad GA4,
+  cuenta Google Ads; autoselección si hay una) → cierre "Listo, tus datos están conectados" (validar
+  cuentas + tus tableros con tiempos: métricas en minutos, sentimiento/imágenes en horas) → Mapa en
+  un solo paso (plantilla del sector con objetivos+KPIs) → "Tu modelo quedó armado" + metas.
+- **Sacado por ruido:** centro de ayuda, pill/panel "Configuración", guía (`HowToRead`) en tableros
+  vacíos. Menú: cuenta/Salir siempre visible.
+- **Fix Plan de Medios:** serie mensual de Meta a nivel cuenta (a nivel ad se truncaba en cuentas
+  grandes → tarjetas en "—").
+- **Relevamiento de dashboards (gaps pendientes):** Google Ads en `/performance` es una tarjeta suelta
+  (portar como Drean: el próximo desarrollo), offline no existe, Web con categorías/PDPs hardcodeados de
+  Drean, IA de Insights con datos incompletos, "Alertas" vendidas sin existir. Detalle en el CLAUDE.md
+  de bip-platform.
