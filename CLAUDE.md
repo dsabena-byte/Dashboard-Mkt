@@ -475,9 +475,15 @@ reporte_existencia/cb_homologos).
   23-sep-2026, incl. Data, Marketing, Engineering, Design, Productivity, Finance…), **activados ANTES de
   abrir la sesión**. Pero en la sesión cloud de Claude Code **NO llegan**: `ListPlugins` vacío y el
   directorio de sync del contenedor (`~/.claude/plugins/synced/<org>/`) vacío. O sea, no es un tema
-  de timing: los plugins de la cuenta no se están sincronizando a las sesiones de Claude Code en la
-  nube (causa no confirmada). No afirmar que un plugin está disponible sin chequear `ListPlugins` en
-  la sesión.
+  de timing. **Evidencia (log de diagnóstico del contenedor, `$CLAUDE_CODE_DIAGNOSTICS_FILE`):** al
+  arrancar corre `plugins_sync_starting` → `plugins_sync_no_changes` con **`count:0`** → el servidor
+  de Anthropic devuelve **0 plugins** para la cuenta/org de la sesión, mientras los skills sí se
+  sincronizan (`~/.claude/skills/synced/`). La doc oficial (code.claude.com/docs/en/plugins-reference
+  "Plugins synced from claude.ai" + cloud-environments) dice que en cloud sessions SÍ deberían
+  descargarse al iniciar → es del lado del servidor/cuenta, no del repo ni del environment (sin
+  `syncClaudeAiPlugins:false`). `/plugin` no existe en cloud y el `enabledPlugins` del repo NO se
+  aplica en cloud (doc). Siguiente paso: reportarlo a soporte de Anthropic con esa evidencia. No
+  afirmar que un plugin está disponible sin chequear `ListPlugins` en la sesión.
 - **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
   irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
 - **Gotchas del entorno:** (1) un proyecto **multi-repo** NO lee el `.claude/settings.json` (hooks)
