@@ -1205,3 +1205,17 @@ tablero**, no en el onboarding; **Conexiones → "Fuentes de datos"**.
   "Editar" junto a los competidores en Redes/Web/SEO; (c) **"Inicio" → "Primeros pasos"** con avance
   (3/5), visible solo mientras falten pasos; con todo configurado `/dashboard` redirige al
   **Seguimiento de Objetivos** (pantalla principal).
+
+## ✅ UX v2 "GUIADO Y SIMPLE" (23-sep-2026, bip-platform PR #15)
+Pedido del user: el flujo fuentes/planillas/ayuda seguía confuso → **sin centro de ayuda**, ayuda
+embebida en cada paso. Propuesta: artifact `RFg4dSrCEh3YDqPdq92HZD`. Implementado:
+- `/empezar`: **un solo objetivo** (Publicidad / Redes / Web / Presupuesto) → **mini-stepper del
+  setup de ese objetivo** (`SETUP_STEPS`), autoselección de cuenta/página si hay una sola.
+- **Tableros que se configuran solos:** `ConnectInPlace` (Web/Redes/Performance vacíos conectan ahí
+  mismo) y `TableroSetup` (tableros de planilla: elegir planilla → preview → widgets sugeridos).
+  Las planillas se suman desde el tablero, no desde Fuentes de datos (queda como lista de estado).
+- **Pill "Configuración N/5"** con drawer (conectar · cuenta · objetivos · metas · seguimiento);
+  `/dashboard` solo redirige. **Plantillas de Mapa Estratégico** por sector.
+- **Se borraron `/ayuda` y el Inicio viejo.** `SourceHelp` = "¿No tenés acceso?" + mensaje copiable
+  al admin. Bienvenida del consultor al liberar = `WelcomeNote` cerrable (14 días).
+- Validado tsc + build. Detalle vivo en el `CLAUDE.md` de bip-platform.
