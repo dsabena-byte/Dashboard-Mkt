@@ -1122,3 +1122,25 @@ adaptan solos.
 - SEO nuevo: correr `bip-go.com/api/diag/seo` logueado → confirmar `data.serp` (keyword-ideas) y
   `data.regions` (mapa por provincia). Migración 0023 ya corrida + retailers de Drean cargados.
 - Trial competitivo para Insight (habilitar la capa gratis con vencimiento) — no armado aún.
+
+## Etapa de REVISIÓN previa al lanzamiento (sep-2026) — bip-platform PR #2 (mergeado)
+Pedido del user: **curar la primera experiencia** → el cliente nuevo NO ve sus tableros hasta que
+el staff los revisa y los **libera TODOS JUNTOS** (decisión del user: no por tablero). **El trial de
+15 días arranca al LIBERAR** (decisión del user), no al registrarse.
+- **Estado** `tenants.review_status`: `pending` (sin fuentes) → `in_review` (conectó la 1ª fuente
+  en `connect/[provider]/callback` → email al staff) → `released`. Migración **0025_launch_review.sql**
+  (existentes quedan `released`; altas nuevas nacen `pending`). **⚠️ PENDIENTE USER: correr 0025 en
+  el SQL Editor de bip-platform** — sin ella el gate es fail-open (nadie queda bloqueado).
+- **Cliente**: gate en `app/(app)/layout.tsx` → `LaunchPending` ("Estamos preparando tus tableros",
+  checklist de pasos) con sidebar locked; `/cuenta/*` sigue accesible. Saltean: staff impersonando y
+  `BIP_REVIEW_EMAILS`.
+- **Staff**: `/consultor` → cola **"Revisión de lanzamiento"** (`components/review-queue.tsx`,
+  `lib/launch-review.ts` `getReviewQueue`): espera con semáforo 24/48h, chequeo automático (perfil,
+  fuentes, último `sync_runs` por fuente, page/ad account de Meta, Mapa), "Revisar como cliente"
+  (banner azul "en revisión"), "Correr sync ahora" (`/api/staff/review` action `sync` → crons con
+  `?tenant=`), "Liberar tableros" + mensaje de bienvenida (email al cliente + card en Inicio 14 días).
+  Action `reopen` para volver a revisión.
+- **Emails**: `lib/notify.ts` (Resend REST). **Opcional/PENDIENTE USER:** `RESEND_API_KEY` +
+  `NOTIFY_FROM` en Vercel con dominio `bip-go.com` verificado en Resend; sin eso el aviso es solo in-app.
+- Detalle menor: el trial se setea también en el onboarding (15d) y se **resetea al liberar**; mientras
+  está en revisión `/cuenta/plan` muestra una cuenta regresiva que no aplica todavía.
