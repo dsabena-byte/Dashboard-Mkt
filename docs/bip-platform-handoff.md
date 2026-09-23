@@ -1129,8 +1129,8 @@ el staff los revisa y los **libera TODOS JUNTOS** (decisión del user: no por ta
 15 días arranca al LIBERAR** (decisión del user), no al registrarse.
 - **Estado** `tenants.review_status`: `pending` (sin fuentes) → `in_review` (conectó la 1ª fuente
   en `connect/[provider]/callback` → email al staff) → `released`. Migración **0025_launch_review.sql**
-  (existentes quedan `released`; altas nuevas nacen `pending`). **⚠️ PENDIENTE USER: correr 0025 en
-  el SQL Editor de bip-platform** — sin ella el gate es fail-open (nadie queda bloqueado).
+  (existentes quedan `released`; altas nuevas nacen `pending`). **✅ 0025 CORRIDA (23-sep-2026)** —
+  validado: los 6 tenants existentes quedaron `released` → la etapa está ACTIVA para altas nuevas.
 - **Cliente**: gate en `app/(app)/layout.tsx` → `LaunchPending` ("Estamos preparando tus tableros",
   checklist de pasos) con sidebar locked; `/cuenta/*` sigue accesible. Saltean: staff impersonando y
   `BIP_REVIEW_EMAILS`.
