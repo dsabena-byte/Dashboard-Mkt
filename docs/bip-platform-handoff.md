@@ -1159,6 +1159,16 @@ el staff los revisa y los **libera TODOS JUNTOS** (decisión del user: no por ta
   delegados (ninguno pide admin consent por default), secreto 24 meses (vence ~sep-2028 → renovar). Nango
   self-host (env `dev`): proveedor **Microsoft Excel** (NO el "Client Credentials"), Integration ID
   renombrado a **`sharepoint`**. Falta: probar conectar desde BIP con una cuenta M365 de EMPRESA.
+- **CUENTAS PERSONALES (decisión user 23-sep-2026, bip-platform PR #4):** la app pasa a aceptar
+  "Cualquier inquilino de Entra ID + cuentas personales" (manifest `requestedAccessTokenVersion: 2`).
+  Microsoft: en cuentas personales **NO existe `Sites.Read.All`** (el login falla si se pide) y **NO
+  anda la API `/workbook`** → se SACÓ `Sites.Read.All` (Entra + scopes de Nango; `Files.Read.All`
+  alcanza para `/shares` + leer archivos) y `readSharepointRange` cae a **descargar `/content` +
+  parsear con SheetJS** si `/workbook` falla. Prueba: cuenta Microsoft personal `bip.explore` con un
+  Excel en su OneDrive. **Mabe (cuenta corporativa del user) pidió aprobación de admin → NO usar
+  cuentas de Mabe/Drean para probar BIP** (es otro proyecto; requeriría autorización formal).
+  Para clientes empresa grandes: tramitar **Publisher Verification** (dominio `bip-go.com` en Entra
+  + ID Microsoft AI Cloud Partner Program) para sacar el "sin comprobar".
 - **(histórico) PENDIENTE USER:** (1) correr 0026; (2) **app Microsoft Entra ID** "BIP Connector" multitenant,
   plataforma Web, redirect `https://nango.bip-go.com/oauth/callback`, permisos delegados Graph
   `Files.Read.All`, `Sites.Read.All`, `offline_access`, `User.Read`; (3) en Nango self-host crear
