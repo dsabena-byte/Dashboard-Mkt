@@ -1256,3 +1256,9 @@ Iteración en vivo con el user (probando con cuentas nuevas `dsabena+pruebaN@gma
     **Google Ads integrado** (serie mensual + campañas + filtro Medio; monedas distintas no se suman).
 - Nada de esto se probó contra las APIs reales desde el sandbox (sin credenciales): validar con cuentas
   reales y mirar los avisos "datos parciales" si aparecen.
+
+## ▶ Para retomar (cierre 23-sep-2026)
+- Estado vivo y próximos pasos en el **CLAUDE.md de bip-platform** (sección "Estado y próximos pasos").
+- Último cambio: el sitio web ya NO se pide en el onboarding (bip-platform #33); se pide en Web/SEO.
+- Siguiente: el user prueba los tableros con cuentas reales y manda capturas → ajustar campos de API
+  que fallen. Después: offline por planilla, IA de Insights con datos completos, alertas reales.
