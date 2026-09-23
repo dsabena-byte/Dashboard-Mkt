@@ -461,6 +461,48 @@ reporte_existencia/cb_homologos).
   1:1/4:5/9:16/1.91:1, video 9:16/1:1/16:9 (Meta, Demand Gen, YouTube/DV360, TikTok). Detalle completo en
   `docs/calendario-publicacion-meta.md`.
 
+## Entorno de trabajo y herramientas (setup sep-2026)
+> Skills, plugins y Setup script se cargan al **INICIAR la sesión**. Si algo no aparece, abrí una
+> sesión nueva. Al dar pasos de setup/tooling: **leer la doc oficial** (`code.claude.com/docs`, tool
+> `read_documentation`) ANTES — no adivinar la UI (error recurrente).
+- **MarkItDown** instalado por el **Setup script del environment** (`pip install 'markitdown[all]'`
+  **+ `pip install --force-reinstall cffi`**). OJO: `cffi`/`_cffi_backend` viene **roto** en el
+  contenedor base → markitdown/pypdf crashean sin ese reinstall. Convierte PDF/Office/imágenes →
+  Markdown (ahorra tokens; usar para leer reportes OMD y demás).
+- **Perplexity** = MCP en claude.ai (OAuth; Sonar API paga, ~US$10 cargados). Tools
+  `perplexity_search/ask/reason/research`.
+- **Plugins (cuenta):** `addyosmani/agent-skills` (metodología general: Source/Doubt-Driven, Code
+  Review, Security, Performance, TDD…) + oficiales Anthropic (Marketing, Data, etc.). Addy declara
+  "can run code without asking".
+- **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
+  irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
+- **Gotchas del entorno:** (1) un proyecto **multi-repo** NO lee el `.claude/settings.json` (hooks)
+  de ningún repo → las deps van en el **Setup script del environment**, no en un hook del repo (las
+  `.claude/skills/` sí cargan). (2) Editar el Setup script: **selector de environment en la pantalla
+  de sesión NUEVA → hover sobre "Default" → engranaje** (el dropdown del título de la sesión es solo
+  indicador, no edita). (3) Muchos MCP por API key (Perplexity Sonar) requieren **billing** en la
+  consola del vendor; no van con cuenta gratis.
+
+## BIP — base de conocimiento (vault Obsidian en git)
+Todo lo generado para **BIP** se guarda en el repo privado **`bip-knowledge`** (= vault Obsidian),
+con estructura **raw → wiki → output por cliente** + `wiki/frameworks/` (reutilizable) + `_templates/`;
+reglas en su `CONVENCIONES.md`. Claude escribe por GitHub; el usuario lo ve en Obsidian (compu
+personal/celular) con el plugin **Obsidian Git** (no instala nada en la compu del laburo). **Regla:**
+al trabajar algo de un cliente de BIP, guardarlo ahí siguiendo esas convenciones, sin que lo pidan.
+(El usuario es cloud-only y no puede instalar apps en el laburo → por eso el vault vive en git, no
+en Obsidian local ni en Obsidian Sync.)
+
+## Salud de Marca — metodología y correlaciones (mockup, dic-2026)
+Dashboard nuevo (mockup artifact, réplica del estilo real de `/salud-marca`, fondo blanco, **tono
+técnico SIN relleno marketinero**): tab **Metodología y correlaciones** (modelo share→equity: scatter
+driver→equity con recta MCO + R²/p, co-movimiento temporal, tabla de estadísticos α/β/SE/t/p/R²) +
+tab **Datos y Proyecciones** (tabla Kantar por marca con hélice y desvíos + **proyección nov-26 POR
+MARCA** con su ecuación propia; tabla GfK por segmento). El vínculo share→equity ya existe en el
+código (`dreanEstNov26` + `EST_LAVADO/REFRI/COCCION` en `app/salud-marca/page.tsx`); el mockup lo
+expone, no inventa nada (el R² y los estadísticos se calcularon sobre esos mismos datos). Artifact:
+`https://claude.ai/artifact/6bNygQqm1Nsjcuhu28H2rC`. **PENDIENTE:** decidir si se cablea como dashboard
+real (ruta nueva, leyendo `mercado_share` + `salud-marca-model.ts` en vivo).
+
 ## Punteros a docs/
 `docs/architecture.md`, `docs/crons-github-actions.md`, `docs/guia-replicacion-y-seguridad.md`,
 `docs/meta-fb-reach-deprecation.md`, **`docs/mercado-gfk-carga.md`** (carga mensual de mercado
