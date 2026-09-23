@@ -482,8 +482,13 @@ reporte_existencia/cb_homologos).
   "Plugins synced from claude.ai" + cloud-environments) dice que en cloud sessions SÍ deberían
   descargarse al iniciar → es del lado del servidor/cuenta, no del repo ni del environment (sin
   `syncClaudeAiPlugins:false`). `/plugin` no existe en cloud y el `enabledPlugins` del repo NO se
-  aplica en cloud (doc). Siguiente paso: reportarlo a soporte de Anthropic con esa evidencia. No
-  afirmar que un plugin está disponible sin chequear `ListPlugins` en la sesión.
+  aplica en cloud (doc). **WORKAROUND (23-sep-2026):** los skills de los 6 plugins oficiales
+  (Marketing, Data, Engineering, Design, Productivity, Finance — repo público
+  `anthropics/knowledge-work-plugins`, Apache 2.0) se copiaron a **`.claude/skills/<plugin>-<skill>/`**
+  (47 skills; `CONNECTORS.md`/LICENSE en `.claude/vendor/<plugin>/`) → cargan en toda sesión de este
+  repo. NO traen los conectores MCP. Solo Dashboard-Mkt (no BIP). **`addyosmani/agent-skills` NO se
+  copió** (el filtro del modo auto lo bloquea como código de terceros). Actualizar = re-clonar y
+  re-copiar. No afirmar que un plugin está disponible sin chequear `ListPlugins` en la sesión.
 - **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
   irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
 - **Gotchas del entorno:** (1) un proyecto **multi-repo** NO lee el `.claude/settings.json` (hooks)
