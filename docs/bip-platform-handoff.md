@@ -1144,3 +1144,17 @@ el staff los revisa y los **libera TODOS JUNTOS** (decisión del user: no por ta
   `NOTIFY_FROM` en Vercel con dominio `bip-go.com` verificado en Resend; sin eso el aviso es solo in-app.
 - Detalle menor: el trial se setea también en el onboarding (15d) y se **resetea al liberar**; mientras
   está en revisión `/cuenta/plan` muestra una cuenta regresiva que no aplica todavía.
+
+## Archivos VINCULADOS con auto-sync — SharePoint/OneDrive + Google Sheets (sep-2026, bip-platform PR #3)
+- Datasets vinculados guardan `source_ref` (`{fileUrl,sheet,range}` o `{spreadsheetId}`); el cron
+  **`sync-datasets` (cada 30 min)** consulta la fecha de modificación y, si cambió, **pisa el MISMO
+  dataset** (mismo id → los tableros del builder se actualizan solos). `lib/dataset-sync.ts`,
+  `lib/google-sheets.ts`, `lib/ms-graph.ts` (`getSharepointLastModified`). UI: en Conexiones, con
+  SharePoint conectado → pegar link para compartir (+ hoja opcional); tabla "Tus archivos" con estado
+  + "↻ Actualizar". Migración **0026_dataset_autosync.sql** (fail-safe: sin ella guarda copia fija).
+- **PENDIENTE USER:** (1) correr 0026; (2) **app Microsoft Entra ID** "BIP Connector" multitenant,
+  plataforma Web, redirect `https://nango.bip-go.com/oauth/callback`, permisos delegados Graph
+  `Files.Read.All`, `Sites.Read.All`, `offline_access`, `User.Read`; (3) en Nango self-host crear
+  integración proveedor **Microsoft Excel** (o "Microsoft") con **Integration ID = `sharepoint`**
+  (el código usa ese id literal) + Client ID/Secret + esos scopes. Clientes con tenant M365 que
+  bloquee consentimiento de usuario → su admin tiene que aprobar la app.
