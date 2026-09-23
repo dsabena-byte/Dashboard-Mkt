@@ -1175,3 +1175,11 @@ el staff los revisa y los **libera TODOS JUNTOS** (decisión del user: no por ta
   integración proveedor **Microsoft Excel** (o "Microsoft") con **Integration ID = `sharepoint`**
   (el código usa ese id literal) + Client ID/Secret + esos scopes. Clientes con tenant M365 que
   bloquee consentimiento de usuario → su admin tiene que aprobar la app.
+
+## ⚠️ GOTCHA DEPLOY bip-platform (23-sep-2026): Vercel Hobby BLOQUEA commits de otro autor
+Vercel de bip-platform es de la cuenta **`bip-explore`** (plan Hobby). Los merges #1–#4 (squash vía API
+con el acceso de `dsabena-byte`) quedaron firmados por `dsabena-byte` → deploys de producción **"Blocked"**
+(los previews sí "Ready") → producción quedó en el commit previo (sin etapa de revisión ni SharePoint).
+**Regla (acordada con el user, en `bip-platform/CLAUDE.md`):** commits firmados `bip-explore
+<bip.explore@gmail.com>` + merge con **rebase** (PR #5 = primero así; autor bip-explore, committer
+dsabena-byte). Si igual queda Blocked: Vercel → preview "Ready" → "…" → **Promote to Production**.
