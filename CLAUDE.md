@@ -471,13 +471,13 @@ reporte_existencia/cb_homologos).
   Markdown (ahorra tokens; usar para leer reportes OMD y demás).
 - **Perplexity** = MCP en claude.ai (OAuth; Sonar API paga, ~US$10 cargados). Tools
   `perplexity_search/ask/reason/research`.
-- **Plugins (cuenta):** instalados en claude.ai → Settings → Plugins → "Yours" (**14** al 23-sep-2026;
-  12 "From Anthropic & Partners": Productivity, Finance, **Data**, **Marketing**, Engineering, Design,
-  Sanity, Fastly, Figma, SearchFit SEO, Product Tracking…). **OJO:** los plugins cargan al INICIAR la
-  sesión → una sesión abierta antes de activarlos ve `ListPlugins` vacío (pasó el 23-sep y se
-  concluyó mal que no había ninguno). Fuente de verdad = la pantalla Settings → Plugins, no una sesión
-  vieja. `addyosmani/agent-skills` no aparece en el catálogo buscable (confirmar si es uno de los 2
-  "Yours" que no son de Anthropic).
+- **Plugins (cuenta):** instalados y activos en claude.ai → Settings → Plugins → "Yours" (**14** al
+  23-sep-2026, incl. Data, Marketing, Engineering, Design, Productivity, Finance…), **activados ANTES de
+  abrir la sesión**. Pero en la sesión cloud de Claude Code **NO llegan**: `ListPlugins` vacío y el
+  directorio de sync del contenedor (`~/.claude/plugins/synced/<org>/`) vacío. O sea, no es un tema
+  de timing: los plugins de la cuenta no se están sincronizando a las sesiones de Claude Code en la
+  nube (causa no confirmada). No afirmar que un plugin está disponible sin chequear `ListPlugins` en
+  la sesión.
 - **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
   irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
 - **Gotchas del entorno:** (1) un proyecto **multi-repo** NO lee el `.claude/settings.json` (hooks)
