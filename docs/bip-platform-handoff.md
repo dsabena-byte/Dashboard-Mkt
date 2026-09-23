@@ -1152,7 +1152,14 @@ el staff los revisa y los **libera TODOS JUNTOS** (decisión del user: no por ta
   `lib/google-sheets.ts`, `lib/ms-graph.ts` (`getSharepointLastModified`). UI: en Conexiones, con
   SharePoint conectado → pegar link para compartir (+ hoja opcional); tabla "Tus archivos" con estado
   + "↻ Actualizar". Migración **0026_dataset_autosync.sql** (fail-safe: sin ella guarda copia fija).
-- **PENDIENTE USER:** (1) correr 0026; (2) **app Microsoft Entra ID** "BIP Connector" multitenant,
+- **✅ HECHO (23-sep-2026):** cuenta Microsoft `bip.explore@gmail.com` + alta Azure (quedó "pendiente de
+  revisión" anti-fraude, pero Entra ya funcionaba) → app Entra **"BIP Connector"**, **Client ID
+  `fe112911-4bb7-4f6b-ab6d-5f8d51ad95d4`**, "Varios inquilinos de Entra ID" + "Mostrar todos los
+  inquilinos" (sin cuentas personales), redirect Web `https://nango.bip-go.com/oauth/callback`, 4 permisos
+  delegados (ninguno pide admin consent por default), secreto 24 meses (vence ~sep-2028 → renovar). Nango
+  self-host (env `dev`): proveedor **Microsoft Excel** (NO el "Client Credentials"), Integration ID
+  renombrado a **`sharepoint`**. Falta: probar conectar desde BIP con una cuenta M365 de EMPRESA.
+- **(histórico) PENDIENTE USER:** (1) correr 0026; (2) **app Microsoft Entra ID** "BIP Connector" multitenant,
   plataforma Web, redirect `https://nango.bip-go.com/oauth/callback`, permisos delegados Graph
   `Files.Read.All`, `Sites.Read.All`, `offline_access`, `User.Read`; (3) en Nango self-host crear
   integración proveedor **Microsoft Excel** (o "Microsoft") con **Integration ID = `sharepoint`**
