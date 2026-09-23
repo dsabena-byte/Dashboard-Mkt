@@ -1238,3 +1238,21 @@ Iteración en vivo con el user (probando con cuentas nuevas `dsabena+pruebaN@gma
   (portar como Drean: el próximo desarrollo), offline no existe, Web con categorías/PDPs hardcodeados de
   Drean, IA de Insights con datos incompletos, "Alertas" vendidas sin existir. Detalle en el CLAUDE.md
   de bip-platform.
+
+## ✅ SIN REVISIÓN + DATOS COMPLETOS EN LOS TABLEROS (23-sep-2026, bip-platform PRs #29–#32)
+- **Sin etapa de revisión/curado** (decisión del user): la 1ª fuente libera sola al tenant, arranca el
+  trial y avisa al staff; el cliente ve sus tableros apenas conecta.
+- **3 auditorías del camino API → tablero** (Web/GA4, Redes, Plan de Medios) y fixes:
+  - **Web (#30):** propiedad GA4 ELEGIDA (paginada, nunca "la primera"), errores visibles, snapshot v2
+    por propiedad+período, reportes aditivos (sin usuarios inflados), categorías = secciones reales del
+    sitio (o las de electro si aplican), top productos desde ítems de ecommerce o PDPs de cualquier
+    plataforma, sitios sin ecommerce → conversión por eventos clave, día 1 → mes anterior.
+  - **Redes (#31):** sin tope de 200 posts (FB `published_posts` since/until, IG por fecha), ventana =
+    año en curso (hora AR), fallas de insights visibles y sin pisar datos buenos, token de Página en vivo,
+    pautados marcados (regla relativa) en vez de borrados, sentimiento por conteo real + permisos
+    visibles, primer sync al elegir la Página.
+  - **Plan de Medios (#32):** sin ceros silenciosos (warnings + snapshot que no se degrada), consultas
+    aptas para cuentas grandes, alcance de-duplicado, rango único, primer sync al elegir cuentas,
+    **Google Ads integrado** (serie mensual + campañas + filtro Medio; monedas distintas no se suman).
+- Nada de esto se probó contra las APIs reales desde el sandbox (sin credenciales): validar con cuentas
+  reales y mirar los avisos "datos parciales" si aparecen.
