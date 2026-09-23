@@ -471,9 +471,12 @@ reporte_existencia/cb_homologos).
   Markdown (ahorra tokens; usar para leer reportes OMD y demás).
 - **Perplexity** = MCP en claude.ai (OAuth; Sonar API paga, ~US$10 cargados). Tools
   `perplexity_search/ask/reason/research`.
-- **Plugins (cuenta):** `addyosmani/agent-skills` (metodología general: Source/Doubt-Driven, Code
-  Review, Security, Performance, TDD…) + oficiales Anthropic (Marketing, Data, etc.). Addy declara
-  "can run code without asking".
+- **Plugins (cuenta) — VERIFICADO 23-sep-2026 con `ListPlugins`: NINGUNO habilitado** (lo que decía
+  antes era falso). Oficiales Anthropic **Marketing** y **Data** existen en el catálogo
+  (`knowledge-work-plugins`) → se instalan desde la tarjeta de install (Claude no puede instalarlos
+  solo). **`addyosmani/agent-skills` NO está en el catálogo** de la cuenta → habría que agregar su
+  marketplace a mano (URL del repo de GitHub) o descartarlo. Antes de afirmar que un plugin está,
+  correr `ListPlugins`.
 - **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
   irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
 - **Gotchas del entorno:** (1) un proyecto **multi-repo** NO lee el `.claude/settings.json` (hooks)
