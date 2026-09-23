@@ -1198,3 +1198,10 @@ tablero**, no en el onboarding; **Conexiones → "Fuentes de datos"**.
 - **PENDIENTE USER:** (1) correr la migración 0027; (2) habilitar **Google** en Supabase → Authentication
   → Providers (Client ID/Secret de un OAuth client Web de Google Cloud BIP-GO, con redirect
   `https://czcfrzqioulhjfqkagcb.supabase.co/auth/v1/callback`); (3) probar el alta completa con un email nuevo.
+- **Ajustes post-prueba del user (bip-platform PR #9 y #10):** (a) pie del menú = Fuentes de datos ·
+  Centro de ayuda · **botón de cuenta** (marca + plan/días de prueba) → Mi cuenta · Plan · Salir;
+  (b) **Perfil del negocio NO va en el menú** (decisión user: se pregunta una vez) → es una pestaña de
+  **Mi cuenta** (Usuarios · Contraseña · Perfil), con subpestañas Tu marca / Competencia y SEO, y links
+  "Editar" junto a los competidores en Redes/Web/SEO; (c) **"Inicio" → "Primeros pasos"** con avance
+  (3/5), visible solo mientras falten pasos; con todo configurado `/dashboard` redirige al
+  **Seguimiento de Objetivos** (pantalla principal).
