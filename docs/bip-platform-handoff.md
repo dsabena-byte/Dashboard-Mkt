@@ -1275,3 +1275,12 @@ Iteración en vivo con el user (probando con cuentas nuevas `dsabena+pruebaN@gma
   atados al ciclo Construir/Aprender/Optimizar/Acelerar, 44 KPIs con fórmula/benchmark/palancas, y el
   chat cita módulos (`get_guia`). Pendiente: pasar el contenido a tabla `kb_content` (edición sin deploy).
 - Nada probado contra OpenAI/APIs reales desde el sandbox.
+
+## ✅ MOTOR DE TABLEROS DE PLANILLA v2 (24-sep-2026, bip-platform #39)
+Motor tipo Tableau con la simpleza de BIP: `lib/viz/*` (parsing es-AR, calculados seguros, filtros,
+granularidad, top N, % total, acumulado, media móvil, vs anterior/YoY, metas, pivot, blend por clave),
+`components/viz/*` (15 tipos de visual con el sistema de BIP), builder `components/viz-builder/*`
+(estantes + "Mostrame", drag&drop, filtros de tablero y cruzados, "Armalo con IA", tablero automático,
+plantillas Inversión/Resultados/Trade), modo reporte (PDF + Excel) y "Mis tableros" (`/tableros`).
+Config v2 en `tenant_dashboards.config` (upgrade de configs viejas al leer). Miembros = solo lectura.
+Detalle en el CLAUDE.md de bip-platform.
