@@ -1,6 +1,6 @@
 # Meta App Review — guion listo para "BIP Connector"
 
-> App **BIP Connector** (App ID `1413533137383885`), portfolio **ROQUÉ Marketing Insights**,
+> App **BIP Connector** (App ID `1413533137383885`), portfolio **ROQUÉ Marketing Insights** (nombre anterior de **ROQUÉ Research Solutions**),
 > tipo Negocios, **Facebook Login for Business** (`config_id 1349490046995897`).
 > Objetivo: pasar de **Standard/Development** a **Advanced Access** de los 12 permisos para
 > que clientes externos conecten sus propias cuentas por OAuth (self-serve).

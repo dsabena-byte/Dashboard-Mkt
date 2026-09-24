@@ -1,5 +1,11 @@
 # BIP Platform — Handoff (proyecto APARTE de Drean)
 
+> **Nombre de la empresa (24-sep-2026):** la empresa detrás de BIP hoy es **ROQUÉ Research Solutions**.
+> "ROQUÉ Marketing Insights" era el nombre de fantasía / razón social **anterior** (así figura todavía en el
+> portfolio de Meta que hospeda la app y en textos legales viejos). Al actualizar docs legales / Meta Business,
+> usar el nombre nuevo y cuidar que coincida con la documentación de la verificación del negocio.
+
+
 > Proyecto NUEVO: convertir el dashboard de Drean en un **SaaS self-serve multi-tenant**
 > (BIP). **NO se toca nada de Drean.** Este doc es la memoria para retomar en cualquier
 > sesión. El código se entregó al user como zips (ver abajo); el scratchpad es efímero.
