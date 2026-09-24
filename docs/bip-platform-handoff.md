@@ -1262,3 +1262,16 @@ Iteración en vivo con el user (probando con cuentas nuevas `dsabena+pruebaN@gma
 - Último cambio: el sitio web ya NO se pide en el onboarding (bip-platform #33); se pide en Web/SEO.
 - Siguiente: el user prueba los tableros con cuentas reales y manda capturas → ajustar campos de API
   que fallen. Después: offline por planilla, IA de Insights con datos completos, alertas reales.
+
+## ✅ IA + MÉTODO BIP (24-sep-2026, bip-platform PRs #35–#38)
+- **Copiloto "Preguntale a tus datos" (#35):** gpt-4o, 10 pasos, tools por dominio con parámetros, `calc`
+  determinístico (correlación, elasticidad, proyección, CPA/ROAS/CPCV, reasignación), método de cruce,
+  contexto de tablero, markdown + tarjetas de posts, pasos en vivo (NDJSON), rate limit.
+- **Insights por tablero (#36):** motor de señales determinísticas `lib/signals` (umbrales relativos a la
+  data propia) para Redes/Pauta/Web/SEO/Overview + Diagnóstico IA con data pack y sección "Oportunidades
+  de optimización"; el chat consulta las señales (`get_senales`).
+- **IA en todos los planes (#37)** (incluida la prueba).
+- **Método BIP (#38):** `/guia` con 44 módulos (estratégico/táctico/operativo paso a paso por plataforma)
+  atados al ciclo Construir/Aprender/Optimizar/Acelerar, 44 KPIs con fórmula/benchmark/palancas, y el
+  chat cita módulos (`get_guia`). Pendiente: pasar el contenido a tabla `kb_content` (edición sin deploy).
+- Nada probado contra OpenAI/APIs reales desde el sandbox.
