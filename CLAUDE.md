@@ -270,7 +270,7 @@ reporte_existencia/cb_homologos).
     `search-console-sync.yml` (martes 06:40 UTC + manual), registrado en `PROCS` (monitoreo/watchdog). UI al final
     de `/seo-search` con estados `no_table / empty / no_creds / no_scope / api_disabled / no_site`. Señales
     `cruce_sc_*` ya leen el snapshot (`loadCruces`). Error transitorio NO pisa un snapshot bueno.
-  - **PASOS para habilitarlo (el token actual NO tiene el scope → estado `no_scope`):** (1) Google Cloud del
+  - **HABILITADO 24-sep-2026:** refresh token regenerado con 4 scopes (analytics.readonly + adwords + webmasters.readonly + spreadsheets.readonly) y pegado en Vercel. Validado en prod: SC `estado ok` (site `https://www.drean.com.ar/`, 13 meses, 250 queries, 25 páginas); GA4 y Google Ads siguen `auth OK`. Alertas: tablas 0106-0109 corridas, destinatarios cargados en `/alerts` (dry-run 12 alertas → 1 destinatario). Pasos de referencia (por si hay que regenerar): (1) Google Cloud del
     cliente OAuth (proyecto `994976985`) → habilitar **Google Search Console API**. (2) OAuth Playground
     (developers.google.com/oauthplayground) → ⚙ "Use your own OAuth credentials" con `GOOGLE_CLIENT_ID/SECRET`
     (el cliente debe tener `https://developers.google.com/oauthplayground` como redirect URI) → scopes
