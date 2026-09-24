@@ -1,6 +1,6 @@
 import { getSeguimientoCompleto } from "@/lib/objetivos-por-categoria";
 import { SeguimientoView } from "@/components/objetivos/seguimiento-view";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 // Seguimiento Objetivos = Estado de KPIs (Mapa Estratégico → cumplimiento por
@@ -27,6 +27,7 @@ export default async function OverviewPage() {
         </p>
       </header>
       <HowToRead slug="overview" />
+      <DashTabBar />
       <SeguimientoView data={seg} />
     </DashTabs>
   );

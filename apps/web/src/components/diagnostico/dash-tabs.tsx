@@ -1,32 +1,33 @@
 "use client";
-// Tabs arriba de cada tablero: "Tablero" | (sub-vistas opcionales) | "Diagnóstico e inteligencia".
-// Mismo estilo que el selector de Plan de Medios. El contenido del tablero queda MONTADO (solo se
-// oculta por CSS: `.dash-tabs[data-vista=…]` en globals.css) → no se pierden filtros ni se re-renderiza.
-// El diagnóstico se monta recién la primera vez que se abre el tab (no pide nada antes).
-// La vista se refleja en la URL (?vista=diagnostico) para poder linkearla.
+// ============================================================================
+// MENÚ ESTÁNDAR de los tableros (un solo renglón de pestañas, sin barras arriba/abajo):
+//   título → "Cómo leer" → <DashTabBar …/> → contenido.
+// <DashTabs> envuelve la página y guarda la vista (tablero | diagnóstico). <DashTabBar> es el renglón
+// de pestañas: las vistas propias del tablero (links/botones) + "Diagnóstico e Inteligencia" (que
+// absorbe los viejos "Insights": `diagExtra`). Estilo = el de Plan de Medios (subrayado ámbar).
+// En la vista diagnóstico se oculta por CSS TODO lo que está DESPUÉS del renglón (el título y el
+// "Cómo leer" quedan), sin desmontar el tablero (no pierde filtros). URL: ?vista=diagnostico.
+// ============================================================================
 import Link from "next/link";
 import type { Route } from "next";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { DashDiagnostico } from "./dash-diagnostico";
 
-type NavItem = { href: string; label: string };
-const ACTIVE = "#1e40af";
+type Vista = "tablero" | "diagnostico";
+const Ctx = createContext<{ vista: Vista; setVista: (v: Vista) => void } | null>(null);
 
-export function DashTabs({
-  dash,
-  className,
-  nav,
-  children,
-}: {
+export function DashTabs({ dash, className, children, diagExtra, startDiag = false }: {
   dash: string;
   className?: string;
-  /** Sub-vistas del tablero (rutas). La primera es este tablero; las demás se navegan con Link. */
-  nav?: readonly NavItem[];
   children: ReactNode;
+  /** Contenido extra de la pestaña Diagnóstico (ej. los ex "Insights" del tablero). */
+  diagExtra?: ReactNode;
+  /** Abrir directo en Diagnóstico (ej. links viejos ?tab=insights). */
+  startDiag?: boolean;
 }) {
   const params = useSearchParams();
-  const [vista, setVista] = useState<"tablero" | "diagnostico">(params?.get("vista") === "diagnostico" ? "diagnostico" : "tablero");
+  const [vista, setVista] = useState<Vista>(startDiag || params?.get("vista") === "diagnostico" ? "diagnostico" : "tablero");
   const [diagMounted, setDiagMounted] = useState(vista === "diagnostico");
 
   useEffect(() => {
@@ -37,31 +38,58 @@ export function DashTabs({
     window.history.replaceState(window.history.state, "", url.toString());
   }, [vista]);
 
-  const btn = (on: boolean) =>
-    `rounded-md px-3 py-1.5 font-medium transition-colors ${on ? "text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`;
-  const [first, ...rest] = nav ?? [];
-
   return (
-    <div className={`dash-tabs ${className ?? ""}`} data-vista={vista}>
-      <nav data-dash-keep aria-label="Vistas del tablero" className={`${className ? "" : "mb-4 "}flex w-fit max-w-full flex-wrap items-center gap-1 rounded-lg border bg-card p-1 text-sm`}>
-        <button type="button" onClick={() => setVista("tablero")} className={btn(vista === "tablero")} style={vista === "tablero" ? { background: ACTIVE } : undefined}>
-          {first?.label ?? "Tablero"}
+    <Ctx.Provider value={{ vista, setVista }}>
+      <div className={`dash-tabs ${className ?? ""}`} data-vista={vista}>
+        {children}
+        {diagMounted && (
+          <div data-dash-keep data-dash-diag className="space-y-4">
+            {diagExtra}
+            <DashDiagnostico dash={dash} embedded />
+          </div>
+        )}
+      </div>
+    </Ctx.Provider>
+  );
+}
+
+export interface DashTabItem { key: string; label: string; href?: string; badge?: number | string }
+
+const cls = (on: boolean) =>
+  `relative whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${on ? "border-amber-500 text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`;
+function Badge({ v, on }: { v: number | string; on: boolean }) {
+  return <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${on ? "bg-foreground text-background" : "bg-muted text-foreground"}`}>{v}</span>;
+}
+
+/** Renglón único de pestañas. `items` = vistas propias (sin href = botón "Tablero"); `after` = herramientas
+ *  que van después de Diagnóstico (ej. Pauta Competencia / Simulador). `active` = key de la vista actual. */
+export function DashTabBar({ items = [{ key: "tablero", label: "Tablero" }], active, after = [], diagBadge }: {
+  items?: DashTabItem[]; active?: string; after?: DashTabItem[]; diagBadge?: number | string;
+}) {
+  const ctx = useContext(Ctx);
+  const diag = ctx?.vista === "diagnostico";
+  const cur = active ?? items[0]?.key;
+  const render = (t: DashTabItem) => {
+    const on = !diag && t.key === cur;
+    return t.href ? (
+      <Link key={t.key} href={t.href as Route} scroll={false} onClick={() => ctx?.setVista("tablero")} className={cls(on)}>
+        {t.label}{t.badge != null && <Badge v={t.badge} on={on} />}
+      </Link>
+    ) : (
+      <button key={t.key} type="button" onClick={() => ctx?.setVista("tablero")} className={cls(on)}>
+        {t.label}{t.badge != null && <Badge v={t.badge} on={on} />}
+      </button>
+    );
+  };
+  return (
+    <nav data-dash-bar data-dash-keep aria-label="Vistas del tablero" className="flex gap-1 overflow-x-auto border-b">
+      {items.map(render)}
+      {ctx && (
+        <button type="button" onClick={() => ctx.setVista("diagnostico")} className={cls(diag)}>
+          Diagnóstico e Inteligencia{diagBadge != null && <Badge v={diagBadge} on={diag} />}
         </button>
-        {rest.map((t) => (
-          <Link key={t.href} href={t.href as Route} className={btn(false)}>
-            {t.label}
-          </Link>
-        ))}
-        <button type="button" onClick={() => setVista("diagnostico")} className={btn(vista === "diagnostico")} style={vista === "diagnostico" ? { background: ACTIVE } : undefined}>
-          Diagnóstico e inteligencia
-        </button>
-      </nav>
-      {children}
-      {diagMounted && (
-        <div data-dash-keep data-dash-diag>
-          <DashDiagnostico dash={dash} embedded />
-        </div>
       )}
-    </div>
+      {after.map(render)}
+    </nav>
   );
 }

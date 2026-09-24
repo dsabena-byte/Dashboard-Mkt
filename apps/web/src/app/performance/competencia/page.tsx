@@ -17,7 +17,6 @@ export default async function CompetenciaPautaPage() {
   const engagement = st.status === "ok" ? await getAdEngagement(st.data).catch(() => ({})) : {};
   return (
     <div className="space-y-4">
-      <PlanMediosSubnav current="/performance/competencia" />
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Plan de Medios</h2>
         <p className="text-sm text-muted-foreground">
@@ -37,6 +36,7 @@ export default async function CompetenciaPautaPage() {
           { titulo: "Qué NO muestra", texto: <>Meta no publica inversión, impresiones ni alcance de los anuncios comerciales en Argentina: todo lo anterior son <b>estimaciones sobre actividad</b>, no gasto. Solo cubre Meta (no Google, TikTok ni offline).</> },
         ]}
       />
+      <PlanMediosSubnav current="/performance/competencia" />
       {st.status !== "ok" ? (
         <div className="rounded-xl border bg-card p-6 text-sm">
           <div className="font-semibold">{st.status === "no_config" ? "Monitoreo en preparación" : "Todavía no hay anuncios para mostrar"}</div>

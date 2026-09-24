@@ -39,7 +39,7 @@ import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 import { getPautaInversionTotalMensual } from "@/lib/objetivos-kpis";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -470,6 +470,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
       <HowToRead slug="web" />
+      <DashTabBar />
 
       {!hasData && (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">

@@ -1,34 +1,34 @@
 import Link from "next/link";
+import type { Route } from "next";
 
-// Vistas del Plan de Medios (portado de BIP, sep-2026): Tablero · Simulador · Pauta de la competencia.
-// Cada vista es una ruta propia bajo /performance → el ítem "Plan de Medios" del sidebar queda activo
-// en las sub-rutas y el control de acceso por prefijo (isPathAllowed) las habilita a quien ve /performance.
+// Pestañas de Plan de Medios (mismo renglón y estilo que los tabs del Tablero, ámbar = activa):
+// Impacto Campaña · Eficiencia Medios · Diagnóstico e Inteligencia (vistas de /performance, ?tab=) ·
+// Pauta Competencia · Simulador de Presupuesto (rutas propias). El sidebar y `isPathAllowed` matchean
+// por prefijo → quien ve /performance ve las sub-rutas.
 export const PLAN_MEDIOS_TABS = [
-  { href: "/performance", label: "Tablero" },
-  { href: "/performance/simulador", label: "Simulador de presupuesto" },
-  { href: "/performance/competencia", label: "Pauta de la competencia" },
+  { href: "/performance?tab=impacto", label: "Impacto Campaña" },
+  { href: "/performance?tab=eficiencia", label: "Eficiencia Medios" },
+  { href: "/performance?tab=diagnostico", label: "Diagnóstico e Inteligencia" },
+  { href: "/performance/competencia", label: "Pauta Competencia" },
+  { href: "/performance/simulador", label: "Simulador de Presupuesto" },
 ] as const;
 
-export function PlanMediosSubnav({ current }: { current: (typeof PLAN_MEDIOS_TABS)[number]["href"] }) {
+export function PlanMediosSubnav({ current }: { current: "/performance/simulador" | "/performance/competencia" }) {
   return (
-    <nav aria-label="Vistas del Plan de Medios" className="mb-4 flex flex-wrap items-center gap-1 rounded-lg border bg-card p-1 text-sm w-fit max-w-full">
+    <nav aria-label="Vistas del Plan de Medios" className="flex flex-wrap gap-1 border-b">
       {PLAN_MEDIOS_TABS.map((t) => {
         const on = t.href === current;
         return (
           <Link
             key={t.href}
-            href={t.href}
+            href={t.href as Route}
             aria-current={on ? "page" : undefined}
-            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${on ? "text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-            style={on ? { background: "#1e40af" } : undefined}
+            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${on ? "border-amber-500 text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             {t.label}
           </Link>
         );
       })}
-      <Link href="/performance?vista=diagnostico" className="rounded-md px-3 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-        Diagnóstico e inteligencia
-      </Link>
     </nav>
   );
 }

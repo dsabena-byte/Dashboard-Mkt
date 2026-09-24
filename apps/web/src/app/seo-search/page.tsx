@@ -3,7 +3,7 @@ import { SeoCompetitivoSection } from "@/components/seo-search/seo-competitivo-s
 import { RegionSection } from "@/components/seo-search/region-section";
 import { LlmoSection } from "@/components/seo-search/llmo-section";
 import { getShareOfSearch, getTrendsInterest, getDemandaGenerica, getSeoCompetitivo, getSearchRegion, getSeoIndexHistory, getLlmo, getSeoFreshness } from "@/lib/competitive-queries";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { MercadoMetasSection } from "@/components/seo-search/mercado-metas-section";
 import { SearchConsoleSection } from "@/components/seo-search/search-console-section";
 import { getMercadoSeries, getMercadoMetas } from "@/lib/mercado-kpis-server";
@@ -63,6 +63,7 @@ export default async function SeoSearchPage() {
         </div>
       </header>
       <HowToRead slug="seo-search" />
+      <DashTabBar />
 
       {/* KPIs de mercado vs meta (plan "Mercado y competencia" del Mapa) — máxima jerarquía */}
       <MercadoMetasSection />

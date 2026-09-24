@@ -2,7 +2,7 @@ import { getBgtData, hasVersion } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
 import { computeCuatris, MAX_DESVIO, MAX_INV_FACT } from "@/lib/bgt-dashboard";
 import { InversionComparador } from "@/components/inversion/inversion-comparador";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -163,6 +163,7 @@ export default async function InversionMarketingPage() {
         <span className={linkColor}>{linkTexto}</span>
       </p>
       <HowToRead slug="funnel" />
+      <DashTabBar />
 
       {/* ===== Ejecución del Presupuesto (por cuatrimestre) ===== */}
       <section className="space-y-4">

@@ -15,7 +15,6 @@ export default async function SimuladorPage() {
   const { model, demanda } = await getSimuladorData();
   return (
     <div className="space-y-4">
-      <PlanMediosSubnav current="/performance/simulador" />
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Plan de Medios</h2>
         <p className="text-sm text-muted-foreground">
@@ -34,6 +33,7 @@ export default async function SimuladorPage() {
           { titulo: "Demanda de la categoría", texto: <>Al final, la proyección de búsquedas genéricas de cada categoría (Google) para anticipar los meses de mayor demanda y concentrar la pauta ahí.</> },
         ]}
       />
+      <PlanMediosSubnav current="/performance/simulador" />
       {model.channels.length === 0 ? (
         <div className="rounded-xl border bg-card p-6 text-sm">
           <div className="font-semibold">Todavía no hay pauta para simular.</div>

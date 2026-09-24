@@ -107,7 +107,7 @@
 .bip-viz .sh-opt span { font-size: 12px; color: var(--muted); }
 .bip-viz .sh-opt.on { border-color: var(--navy); background: var(--navy-soft); }
 
-/* Tabs "Tablero | Diagnóstico e inteligencia" (components/diagnostico/dash-tabs.tsx): el tablero queda montado
-   y se oculta por CSS para no perder filtros al cambiar de tab. */
-.dash-tabs[data-vista="diagnostico"] > :not([data-dash-keep]) { display: none !important; }
+/* Menú estándar de tableros (components/diagnostico/dash-tabs.tsx): en Diagnóstico se oculta todo lo que está
+   DESPUÉS del renglón de pestañas (título y "Cómo leer" quedan); el tablero no se desmonta. */
+.dash-tabs[data-vista="diagnostico"] [data-dash-bar] ~ :not([data-dash-keep]) { display: none !important; }
 .dash-tabs[data-vista="tablero"] > [data-dash-diag] { display: none !important; }

@@ -83,12 +83,17 @@ reporte_existencia/cb_homologos).
     sola llamada, sin tools. Modelo env **`OPENAI_INSIGHTS_MODEL`** (default `gpt-4o-mini`). Señales:
     `/api/insights/signals?dash=`. Versiones en **`insights_report`** → **correr migración
     `0106_insights_report.sql`** (sin ella funciona pero no guarda historial).
-  - **UI = TAB ARRIBA (pedido del user, sep-2026):** cada uno de los 11 tableros envuelve su contenido en
-    `<DashTabs dash=… className=…>` (`components/diagnostico/dash-tabs.tsx`) → barra "Tablero | Diagnóstico e
-    inteligencia" (estilo del selector de Plan de Medios; en `/performance` suma Simulador/Competencia vía `nav`).
-    El tablero queda montado y se oculta por CSS (`.dash-tabs[data-vista]` en globals.css) → no pierde filtros;
-    `DashDiagnostico embedded` se monta recién al abrir el tab (cero costo antes). URL `?vista=diagnostico`.
-    NO volver a poner el diagnóstico al pie de la página.
+  - **MENÚ ESTÁNDAR (pedido del user, sep-2026 — "que no haya tantas opciones de menú, arriba/abajo"):** en TODOS los
+    tableros el orden es **título → "Cómo leer" → UN solo renglón de pestañas → contenido**. `<DashTabs dash=…>` envuelve
+    la página (estado tablero|diagnóstico, `?vista=diagnostico`) y `<DashTabBar items=… active=… after=… diagBadge=…/>`
+    (`components/diagnostico/dash-tabs.tsx`) es el renglón: vistas propias + **"Diagnóstico e Inteligencia"** (absorbe
+    los viejos "Insights": Redes pasa su TopContent+Insights por `diagExtra`; `?tab=insights` abre Diagnóstico). Estilo
+    = subrayado ámbar (el de Plan de Medios). En Diagnóstico se oculta por CSS todo lo que está DESPUÉS del renglón
+    (`[data-dash-bar] ~ …` en globals.css), sin desmontar. Plan de Medios: su renglón interno = Impacto Campaña ·
+    Eficiencia Medios · Diagnóstico e Inteligencia (reemplazó "Insights Pauta", el motor viejo se borró) · Pauta
+    Competencia · Simulador (`PlanMediosSubnav` en las sub-rutas, mismo renglón; `/performance?tab=impacto|eficiencia|
+    diagnostico`). CB (Overview/Sugerencias) y Salud de Marca (Lavado/Refri/Cocción/Marca) usan el mismo renglón.
+    NO volver a poner barras de tabs arriba del título ni un segundo nivel de pestañas.
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
 - **Simulador, Pauta de la competencia, Alertas (portado de BIP, sep-2026):**
   - **Plan de Medios con sub-rutas** (`components/pauta/plan-medios-subnav.tsx`): `/performance` (Tablero, sin
