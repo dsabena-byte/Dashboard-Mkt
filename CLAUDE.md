@@ -109,7 +109,10 @@ reporte_existencia/cb_homologos).
     emergentes, máx 10). Match por PALABRA completa del nombre de página ("LG" ≠ "algo"); Florencia/Orbis exigen
     contexto (cocinas/electro…). Tabla `competitor_ads_snapshot` = UNA FILA POR MARCA; cron
     `/api/cron/ad-library` (`?list=1` / `?marca=`) + workflow `ad-library.yml` (lunes 06:00 ART, fan-out por marca).
-    Miniaturas espejadas con `mirrorMetaImage` (`adlib/<marca>/<id>.jpg`). **Nunca se corrió contra Apify real.**
+    Miniaturas espejadas con `mirrorMetaImage` (`adlib/<marca>/<id>.jpg`). **Primera corrida real (24-sep-2026): Apify 403
+    "Monthly usage hard limit exceeded"** → la cuenta de Apify de Drean está al tope mensual; hay que subir el límite/plan
+    en Apify y re-correr el workflow. La página muestra el motivo (`motivoError` en `lib/ad-library.ts`) en vez de "vacío".
+    Ambas pantallas (Simulador y Competencia) tienen un bloque **"Cómo funciona"** (`components/knowledge/como-funciona.tsx`).
   - **Alertas y reportes** (`/alerts`, reemplazó el placeholder; sidebar "Alertas y reportes"): `lib/alerts.ts`
     (server) + `lib/alerts-shared.ts` (puro) + `lib/notify.ts` (Resend REST). Candidatas = `computeSignals()` +
     KPIs del Seguimiento bajo `umbralAmarillo` (solo meses CERRADOS) + anuncios nuevos 7d de la competencia.
