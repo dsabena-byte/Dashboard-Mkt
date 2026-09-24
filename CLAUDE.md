@@ -112,6 +112,11 @@ reporte_existencia/cb_homologos).
     Miniaturas espejadas con `mirrorMetaImage` (`adlib/<marca>/<id>.jpg`). **Primera corrida real (24-sep-2026): Apify 403
     "Monthly usage hard limit exceeded"** → la cuenta de Apify de Drean está al tope mensual; hay que subir el límite/plan
     en Apify y re-correr el workflow. La página muestra el motivo (`motivoError` en `lib/ad-library.ts`) en vez de "vacío".
+    **Performance estimada (sep-2026, `lib/ad-intensity.ts` puro + `scripts/ad-intensity.test.ts`, MISMO archivo en BIP):** índice de
+    intensidad por marca (activos 35% · mensajes distintos 20% · lanzados 30d 20% · sostenidos 30+ días 15% · plataformas 10%, 100 = máx del
+    set), "avisos que más sostienen" (días al aire + versiones) y cruce aviso↔posteo orgánico (`social_posts` IG con `copy`, similitud de
+    texto ≥0,5) → me gusta/comentarios/views reales (`getAdEngagement`). Validado 24-sep: 17 avisos cruzados. Meta NO publica alcance/
+    inversión de anuncios comerciales en AR (verificado: el actor no trae métricas).
     Ambas pantallas (Simulador y Competencia) tienen un bloque **"Cómo funciona"** (`components/knowledge/como-funciona.tsx`).
   - **Alertas y reportes** (`/alerts`, reemplazó el placeholder; sidebar "Alertas y reportes"): `lib/alerts.ts`
     (server) + `lib/alerts-shared.ts` (puro) + `lib/notify.ts` (Resend REST). Candidatas = `computeSignals()` +
