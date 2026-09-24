@@ -2,6 +2,7 @@ import { getBgtData, hasVersion } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
 import { computeCuatris, MAX_DESVIO, MAX_INV_FACT } from "@/lib/bgt-dashboard";
 import { InversionComparador } from "@/components/inversion/inversion-comparador";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -182,6 +183,7 @@ export default async function InversionMarketingPage() {
 
       {/* ===== Comparador libre A vs B ===== */}
       <InversionComparador rows={bgt.rows} facturacion={factRows} year={YEAR} />
+      <DashDiagnostico dash="funnel" />
     </div>
   );
 }

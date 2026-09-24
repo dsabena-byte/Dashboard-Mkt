@@ -15,7 +15,8 @@ import type { ChartSpec } from "@/lib/chat/types";
 
 // Renderer GENÉRICO: dibuja cualquier ChartSpec (bar/line/composed) que devuelva
 // el copiloto. Reutilizable en todos los dashboards, sin cambios.
-const COLORS = ["#2b4dff", "#dc2626", "#059669", "#d97706", "#7c3aed", "#0891b2"];
+// Paleta sobria del sistema visual (datos azul, secundarias pizarra/tinta).
+const COLORS = ["#1e40af", "#64748b", "#0ea5e9", "#94a3b8", "#0f172a", "#6366f1"];
 
 export function DynamicChart({ spec }: { spec: ChartSpec }) {
   if (!spec?.data?.length || !spec.series?.length) {

@@ -1,7 +1,8 @@
 // ============================================================================
-// Copiloto de datos — tipos compartidos (chat + gráficos dinámicos).
-// GENÉRICO y reutilizable por cualquier dashboard: el motor se construye una vez;
-// cada dashboard solo aporta su set de TOOLS (ver lib/chat/registry.ts).
+// Copiloto de datos — tipos compartidos (motor v2, portado de BIP).
+// GENÉRICO: el motor (app/api/chat) y la UI (components/data-chat) no conocen los
+// dashboards; cada dashboard aporta su set de TOOLS (lib/chat/registry.ts).
+// Client-safe (solo tipos).
 // ============================================================================
 
 export interface ChartSeries {
@@ -20,16 +21,39 @@ export interface ChartSpec {
   series: ChartSeries[];
 }
 
-/** Tarjeta visual de un posteo (miniatura + métricas), para "mostrame los posts". */
+/** Tabla para rankings/comparativos (render_table). */
+export interface TableSpec {
+  title?: string;
+  columns: string[];
+  rows: Array<Array<string | number | null>>;
+}
+
+/**
+ * Tarjeta visual de un post/creativo (render_posts). El modelo solo pasa `ref`s: la
+ * tarjeta (miniatura, link, métricas) la arma el servidor con lo que devolvieron las
+ * tools → el modelo no puede inventar imágenes ni links.
+ */
 export interface PostCard {
-  titulo?: string;
-  plataforma?: string;
-  fecha?: string;
-  tipo?: string;
-  alcance?: number;
-  engagement?: number;
-  thumbnail?: string;
-  url?: string;
+  ref: string;
+  red: string; // "Instagram" | "Facebook" | "Meta Ads" | "YouTube" …
+  titulo: string;
+  fecha?: string | null;
+  formato?: string | null;
+  thumbnail?: string | null;
+  url?: string | null;
+  metricas: { label: string; valor: string }[];
+  badge?: string | null;
+}
+
+/** Contexto por request compartido entre tools (registro de posts vistos). */
+export interface ToolCtx {
+  posts: Map<string, PostCard>;
+}
+
+/** Paso del motor (qué dato consultó), para la UI ("Consultando…"). */
+export interface ChatStep {
+  tool: string;
+  label: string;
 }
 
 /** Una herramienta que el modelo puede llamar: una query function envuelta. */

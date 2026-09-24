@@ -1,172 +1,155 @@
 import { NextResponse } from "next/server";
-import { getDashboardChat } from "@/lib/chat/registry";
-import type { ChartSpec, PostCard } from "@/lib/chat/types";
+import { getServerSupabase } from "@/lib/supabase-server";
+import { allowedFromRows } from "@/lib/dashboard-access";
+import { buildChatTools } from "@/lib/chat/registry";
+import { RENDER_TOOLS, systemPrompt, chatModel } from "@/lib/chat/copiloto";
+import { contextoDe, toolLabel, GENERAL } from "@/lib/chat/contexto";
+import { checkRateLimit } from "@/lib/chat/rate-limit";
+import type { ChartSpec, TableSpec, PostCard, ChatStep, ToolCtx } from "@/lib/chat/types";
 
 // ============================================================================
-// Motor GENÉRICO del copiloto. Loop de function-calling (OpenAI) sobre las tools
-// del dashboard pedido. Devuelve { text, charts }. No es específico de Redes:
-// sirve para cualquier dashboard registrado en lib/chat/registry.ts.
+// Motor del copiloto "Preguntale a tus datos" (v2, portado de BIP). Loop de
+// function-calling (OpenAI) sobre TODOS los sets de tools que el usuario tiene
+// permitidos, con el del dashboard actual primero. Respuesta en NDJSON:
+//   {"type":"step","tool","label"}  … a medida que consulta datos (para la UI)
+//   {"type":"final","text","charts","tables","posts","steps"}  al terminar.
+// Errores previos al loop (auth, config, rate limit) salen como JSON común.
 // ============================================================================
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const fetchCache = "force-no-store";
+export const runtime = "nodejs";
+export const maxDuration = 120;
 
-interface OAIToolCall {
-  id: string;
-  function: { name: string; arguments: string };
-}
-interface OAIMessage {
-  role: string;
-  content: string | null;
-  tool_calls?: OAIToolCall[];
-  tool_call_id?: string;
-}
+const MAX_STEPS = 10;
+const MAX_TOOL_CHARS = 20_000;
+const MAX_HISTORY = 12;
+
+type InMsg = { role: "user" | "assistant"; content: string };
 interface ChatRequest {
-  dashboard?: string;
-  messages?: Array<{ role: "user" | "assistant"; content: string }>;
+  pathname?: string;
+  dashboard?: string; // legacy (v1): id del dashboard
+  messages?: InMsg[];
 }
-
-const RENDER_CHART_TOOL = {
-  type: "function" as const,
-  function: {
-    name: "render_chart",
-    description:
-      "Renderiza un gráfico para el usuario. Llamalo cuando pida graficar/visualizar. Armá el spec con la data que ya obtuviste de las otras tools; no inventes valores.",
-    parameters: {
-      type: "object",
-      required: ["type", "data", "xKey", "series"],
-      properties: {
-        type: { type: "string", enum: ["bar", "line", "composed"] },
-        title: { type: "string" },
-        xKey: { type: "string", description: "clave del eje X en cada objeto de data" },
-        data: { type: "array", items: { type: "object" } },
-        series: {
-          type: "array",
-          items: {
-            type: "object",
-            required: ["key", "label"],
-            properties: {
-              key: { type: "string" },
-              label: { type: "string" },
-              type: { type: "string", enum: ["bar", "line"] },
-              axis: { type: "string", enum: ["left", "right"] },
-            },
-          },
-        },
-      },
-    },
-  },
-};
-
-const RENDER_POSTS_TOOL = {
-  type: "function" as const,
-  function: {
-    name: "render_posts",
-    description:
-      "Muestra posteos como TARJETAS VISUALES con su miniatura. Usalo cuando el usuario pida ver/mostrar los posts (ej. 'mostrame los posteos', 'quiero verlos'). Pasá los posts con su thumbnail y url tal como vinieron de las tools; no los listes también en texto.",
-    parameters: {
-      type: "object",
-      required: ["posts"],
-      properties: {
-        posts: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              titulo: { type: "string", description: "primeras palabras del mensaje del post" },
-              plataforma: { type: "string", enum: ["Instagram", "Facebook"] },
-              fecha: { type: "string" },
-              tipo: { type: "string" },
-              alcance: { type: "number" },
-              engagement: { type: "number" },
-              thumbnail: { type: "string", description: "url de la miniatura tal cual vino de la tool" },
-              url: { type: "string", description: "permalink del post" },
-            },
-          },
-        },
-      },
-    },
-  },
-};
 
 export async function POST(req: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "OPENAI_API_KEY no configurada" }, { status: 500 });
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return NextResponse.json({ error: "OPENAI_API_KEY no configurada" }, { status: 500 });
 
-  const body = (await req.json()) as ChatRequest;
-  const dash = getDashboardChat(body.dashboard ?? "");
-  if (!dash) return NextResponse.json({ error: "dashboard desconocido" }, { status: 400 });
-
-  const toolMap = new Map(dash.tools.map((t) => [t.name, t]));
-  const tools = [
-    ...dash.tools.map((t) => ({
-      type: "function" as const,
-      function: { name: t.name, description: t.description, parameters: t.parameters },
-    })),
-    RENDER_CHART_TOOL,
-    RENDER_POSTS_TOOL,
-  ];
-
-  // Fecha de hoy (zona Argentina, UTC-3) para que el modelo resuelva rangos
-  // relativos ("últimos N meses/días", "este mes/año") desde HOY y no desde su
-  // conocimiento previo (cutoff), que devolvía rangos sin data.
-  const nowAr = new Date(Date.now() - 3 * 60 * 60 * 1000);
-  const today = nowAr.toISOString().slice(0, 10);
-  const dateCtx =
-    `Fecha de hoy: ${today} (zona horaria Argentina, el año en curso es ${nowAr.getUTCFullYear()}). ` +
-    `Para cualquier rango relativo ("últimos N meses/días", "este mes", "este año", "año pasado"), ` +
-    `calculá las fechas from/to (YYYY-MM-DD) a partir de HOY, nunca de tu conocimiento previo. `;
-
-  const messages: OAIMessage[] = [
-    { role: "system", content: dateCtx + dash.context },
-    ...(body.messages ?? []).map((m) => ({ role: m.role, content: m.content })),
-  ];
-
-  const charts: ChartSpec[] = [];
-  const posts: PostCard[] = [];
-
-  for (let step = 0; step < 6; step++) {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "gpt-4o-mini", messages, tools, temperature: 0.2 }),
-    });
-    if (!res.ok) {
-      return NextResponse.json({ error: `OpenAI ${res.status}: ${await res.text()}` }, { status: 502 });
-    }
-    const json = (await res.json()) as { choices?: Array<{ message?: OAIMessage }> };
-    const msg = json.choices?.[0]?.message;
-    if (!msg) return NextResponse.json({ error: "OpenAI sin respuesta" }, { status: 502 });
-    messages.push(msg);
-
-    const calls = msg.tool_calls ?? [];
-    if (calls.length === 0) {
-      return NextResponse.json({ text: msg.content ?? "", charts, posts });
-    }
-
-    for (const call of calls) {
-      const name = call.function?.name;
-      let args: Record<string, unknown> = {};
-      try {
-        args = JSON.parse(call.function?.arguments || "{}") as Record<string, unknown>;
-      } catch {
-        args = {};
-      }
-      let result: unknown;
-      if (name === "render_chart") {
-        charts.push(args as unknown as ChartSpec);
-        result = { ok: true };
-      } else if (name === "render_posts") {
-        const arr = Array.isArray(args.posts) ? (args.posts as PostCard[]) : [];
-        posts.push(...arr);
-        result = { ok: true };
-      } else {
-        const tool = toolMap.get(name);
-        result = tool ? await tool.run(args) : { error: `tool desconocida: ${name}` };
-      }
-      messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
-    }
+  // Usuario + dashboards permitidos (misma regla que el middleware/sidebar).
+  const supabase = getServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "no autenticado" }, { status: 401 });
+  let allowed: string[] | null = null;
+  try {
+    const { data } = await supabase.from("dashboard_access").select("dashboard_path");
+    allowed = allowedFromRows(data as { dashboard_path: string }[] | null);
+  } catch {
+    allowed = null;
   }
 
-  return NextResponse.json({ text: "No pude completar la respuesta (demasiados pasos).", charts, posts });
+  const rl = checkRateLimit(user.id);
+  if (!rl.ok) return NextResponse.json({ error: `Llegaste al límite de consultas por un rato. Probá de nuevo en ${Math.ceil(rl.retryInSec / 60)} min.` }, { status: 429 });
+
+  const body = (await req.json().catch(() => ({}))) as ChatRequest;
+  const pathname = typeof body.pathname === "string" ? body.pathname.slice(0, 200) : typeof body.dashboard === "string" ? `/${body.dashboard}` : "/";
+  const dash = contextoDe(pathname) ?? GENERAL;
+  const history = (Array.isArray(body.messages) ? body.messages : [])
+    .filter((m) => (m?.role === "user" || m?.role === "assistant") && typeof m.content === "string" && m.content.trim())
+    .slice(-MAX_HISTORY)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 6000) }));
+  if (!history.length || history[history.length - 1]!.role !== "user") return NextResponse.json({ error: "Mensaje vacío." }, { status: 400 });
+
+  const ctx: ToolCtx = { posts: new Map() };
+  const { tools } = buildChatTools(dash.key, allowed, ctx);
+  const toolMap = new Map(tools.map((t) => [t.name, t]));
+  const openaiTools = [...tools.map((t) => ({ type: "function" as const, function: { name: t.name, description: t.description, parameters: t.parameters } })), ...RENDER_TOOLS];
+  const model = chatModel();
+
+  const messages: Array<Record<string, unknown>> = [{ role: "system", content: systemPrompt({ dash, pathname, restringido: allowed !== null }) }, ...history];
+  const charts: ChartSpec[] = [];
+  const tables: TableSpec[] = [];
+  const posts: PostCard[] = [];
+  const steps: ChatStep[] = [];
+  const t0 = Date.now();
+  let tokens = 0;
+  const enc = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (o: unknown) => {
+        try { controller.enqueue(enc.encode(`${JSON.stringify(o)}\n`)); } catch { /* cliente cerró */ }
+      };
+      const final = (text: string) => send({ type: "final", text, charts, tables, posts, steps });
+      let ok = false;
+      try {
+        for (let step = 0; step < MAX_STEPS; step++) {
+          const last = step === MAX_STEPS - 1;
+          const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model, temperature: 0.2, messages, tools: openaiTools, parallel_tool_calls: true, ...(last ? { tool_choice: "none" } : {}) }),
+            cache: "no-store",
+          });
+          const json = await res.json().catch(() => null);
+          tokens += Number(json?.usage?.total_tokens ?? 0);
+          const msg = json?.choices?.[0]?.message;
+          if (!msg) {
+            final(json?.error?.message ? `No pude procesar la consulta (${String(json.error.message).slice(0, 160)}).` : "No pude procesar la consulta.");
+            return;
+          }
+          if (!msg.tool_calls?.length) { ok = true; final(msg.content ?? ""); return; }
+
+          messages.push(msg);
+          // Aviso de progreso (un paso por fuente distinta).
+          for (const tc of msg.tool_calls) {
+            const name = String(tc.function?.name ?? "");
+            let label = toolLabel(name);
+            if (name === "calc") {
+              try { label = `Cálculo: ${JSON.parse(tc.function.arguments || "{}").operacion ?? ""}`.replace(/_/g, " "); } catch { /* label genérico */ }
+            }
+            if (!steps.some((s) => s.label === label)) { const s = { tool: name, label }; steps.push(s); send({ type: "step", ...s }); }
+          }
+          // Tools en paralelo; las respuestas se agregan en el orden de las llamadas.
+          const outs = await Promise.all(msg.tool_calls.map(async (tc: { id: string; function?: { name?: string; arguments?: string } }) => {
+            const name = String(tc.function?.name ?? "");
+            let out: unknown;
+            try {
+              const args = tc.function?.arguments ? JSON.parse(tc.function.arguments) : {};
+              if (name === "render_chart") {
+                const spec = args as ChartSpec;
+                if (Array.isArray(spec?.data) && spec.data.length && Array.isArray(spec.series) && spec.series.length) { charts.push({ ...spec, data: spec.data.slice(0, 60) }); out = { ok: true }; }
+                else out = { error: "data y series requeridos" };
+              } else if (name === "render_table") {
+                const t = args as TableSpec;
+                if (Array.isArray(t?.columns) && Array.isArray(t.rows)) { tables.push({ ...t, rows: t.rows.slice(0, 50) }); out = { ok: true }; }
+                else out = { error: "columns y rows requeridos" };
+              } else if (name === "render_posts") {
+                const refs: string[] = Array.isArray(args.refs) ? args.refs.map(String).slice(0, 12) : [];
+                const found = refs.map((r) => ctx.posts.get(r)).filter((p): p is PostCard => !!p && !posts.some((x) => x.ref === p.ref));
+                posts.push(...found);
+                out = { ok: true, mostrados: found.length, ...(found.length < refs.length ? { aviso: "Algunos ref no existen: usá los ref que devolvió la última consulta de posts/creativos." } : {}) };
+              } else if (toolMap.has(name)) {
+                out = await toolMap.get(name)!.run(args);
+              } else out = { error: "tool desconocida o no disponible para este usuario" };
+            } catch (e) {
+              out = { error: (e as Error).message };
+            }
+            let content = JSON.stringify(out) ?? "null";
+            if (content.length > MAX_TOOL_CHARS) content = `${content.slice(0, MAX_TOOL_CHARS)}… [recortado: pedí menos filas con top o un período más acotado]`;
+            return { role: "tool", tool_call_id: tc.id, content };
+          }));
+          messages.push(...outs);
+        }
+        final("La consulta necesitó demasiados pasos; probá con algo más específico.");
+      } catch (e) {
+        final(`Hubo un error al consultar tus datos (${(e as Error).message?.slice(0, 120) ?? "error"}). Probá de nuevo.`);
+      } finally {
+        try { controller.close(); } catch { /* ya cerrado */ }
+        console.log(JSON.stringify({ evt: "chat_query", path: pathname, tools: steps.map((s) => s.tool), ms: Date.now() - t0, tokens, ok, model }));
+      }
+    },
+  });
+
+  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store, no-transform", "X-Accel-Buffering": "no" } });
 }

@@ -3,6 +3,7 @@ import { SeoCompetitivoSection } from "@/components/seo-search/seo-competitivo-s
 import { RegionSection } from "@/components/seo-search/region-section";
 import { LlmoSection } from "@/components/seo-search/llmo-section";
 import { getShareOfSearch, getTrendsInterest, getDemandaGenerica, getSeoCompetitivo, getSearchRegion, getSeoIndexHistory, getLlmo, getSeoFreshness } from "@/lib/competitive-queries";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -79,6 +80,7 @@ export default async function SeoSearchPage() {
           <LlmoSection rows={llmo} />
         </div>
       )}
+      <DashDiagnostico dash="seo-search" />
     </div>
   );
 }

@@ -39,6 +39,7 @@ import {
   getSocialFollowers,
   getSocialPosts,
 } from "@/lib/social-posts-queries";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -495,6 +496,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <CompetenciaPostsPanel posts={competenciaPosts} />
         </>
       )}
+      <DashDiagnostico dash="redes" />
     </div>
   );
 }

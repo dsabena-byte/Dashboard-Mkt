@@ -64,6 +64,52 @@ reporte_existencia/cb_homologos).
   (loop de function-calling OpenAI). Extender a un dashboard = escribir `lib/chat/tools-<dash>.ts`
   (envolver query functions existentes) + registrarlo en `lib/chat/registry.ts` + sumar entrada
   en `global-data-chat.tsx`. El motor NO se toca.
+- **Inteligencia (señales + Diagnóstico IA), portado de BIP (sep-2026):**
+  - **Motor de señales** `lib/signals/` (determinístico, sin IA, sin tabla): reglas de BIP casi literales
+    (`pauta/redes/web/seo/overview/cruces.ts`, entrada = `model.ts`) + reglas propias de Drean (`drean.ts`:
+    CB, Floor Share, UGC, GfK, Kantar con cruce share↔TOM, Mkt Canal, ecommerce, BGT). `adapters.ts` (puro,
+    testeado) arma las formas BIP desde las tablas de Drean; `sources.ts` (server) lee SOLO fuentes baratas/
+    precalculadas (trade_monthly, fs_precomputed, vistas web mensuales, web_daily_by_category, …). Entrada:
+    `computeSignals(dash?)` / `signalsSummaryForChat(dash, limit)` / `isSignalScope` en `lib/signals/index.ts`.
+  - **Pauta = mismo modelo que el Seguimiento:** el gap-fill por medio se extrajo a `lib/pauta-medios-model.ts`
+    (`buildPautaMediosMensual`); `computePautaImpacto` (objetivos-kpis) lo usa y da totales IDÉNTICOS (test).
+    Señales: PMax fuera, OOH/TV/DOOH/radio = offline (contactos aparte), CPM mensual solo con medios con
+    impresiones (`invConImpr`), filas OMD con inversión y sin impresiones → aviso `pauta_omd_sin_performance`.
+    Validado con data real: ago-2026 Meta = $62,72M (API), la fila OMD $13,4M se ignora.
+  - **Redes:** IG por pieza sin Stories; **FB solo posts ≥60 días** (reach lifetime inmaduro/no confiable).
+  - **Diagnóstico IA** `/api/insights` (GET última versión / `?list=1` / `?version=id`; POST genera): pack por
+    tablero (`lib/insights/datapack.ts`, tope 16k) + Seguimiento real vs meta + señales como "HALLAZGOS
+    PRE-CALCULADOS" → JSON (diagnóstico, evolución, metas, correlaciones, hallazgos, plan, oportunidades). Una
+    sola llamada, sin tools. Modelo env **`OPENAI_INSIGHTS_MODEL`** (default `gpt-4o-mini`). Señales:
+    `/api/insights/signals?dash=`. Versiones en **`insights_report`** → **correr migración
+    `0106_insights_report.sql`** (sin ella funciona pero no guarda historial).
+  - **UI** `components/diagnostico/dash-diagnostico.tsx` (`<DashDiagnostico dash=… />` al final de 11 páginas):
+    colapsable y CERRADO → no pide nada hasta abrirse (cero costo en el render; la IA solo corre en la API).
+  - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
+- **Copiloto v2 (motor de BIP) — sep-2026 ("Preguntale a tus datos"):** `app/api/chat/route.ts`
+  responde **NDJSON** (`{"type":"step"}` en vivo "Consultando X…" + `{"type":"final",text,charts,
+  tables,posts,steps}`), hasta **10 pasos**, tools **en paralelo**, rate limit 30/10min por usuario
+  (`lib/chat/rate-limit.ts`, en memoria). Modelo por env **`OPENAI_CHAT_MODEL`** (default
+  `gpt-4o-mini` por costo; se permite `gpt-4o`). **Cross-dashboard:** en cualquier dash el modelo ve
+  TODOS los sets permitidos por `dashboard_access` (el de la página primero); `get_cruce_mensual`
+  (series mensuales alineadas pauta/web/IG/SoS/demanda/trade/facturación/GfK/ecommerce) y
+  `get_senales` solo para usuarios sin restricción. Piezas: `registry.ts` (sets por dash →
+  `buildChatTools`), `copiloto.ts` (system prompt con método de cruce + `render_chart/table/posts`),
+  `contexto.ts` (client-safe: ruta → label/foco/**sugerencias**; también define en qué rutas aparece
+  el chat), `calc.ts` (copia pura de BIP: correlación/elasticidad/variación/participación/
+  proyección a cierre/CPA/ROAS/reasignación), `pauta-model.ts` (mismo gap-fill del dash: Meta=API vía
+  `lib/pauta-medios.ts` `esMedioApi`, OMD solo meses cerrados, PMax excluido), `tools-senales.ts`
+  (contrato `signalsSummaryForChat`/`isSignalScope` de `@/lib/signals`; hoy `lib/signals/index.ts`
+  es PLACEHOLDER vacío). UI: `components/data-chat.tsx` (lee NDJSON) + `components/chat/{mini-markdown,
+  post-cards}.tsx`; `render_posts` recibe solo `ref`s (la tarjeta la arma el server). **No se perdió
+  ninguna tool:** mismos nombres v1, ahora parametrizados (período/nivel/medio/categoría/top) y
+  compactos; CB/FS leen mirror/`fs_precomputed`/`trade_monthly` (antes paginaban el proyecto CB). Se
+  sumaron `get_seguimiento`, `get_mapa_estrategico`, `get_web_mensual/detalle`, `get_pauta_creativos`,
+  `get_redes_competencia`, `get_ugc_piezas`, `get_inversion_mkt` (funnel) y chat en `/funnel` y
+  `/mapa-estrategico`. Agregar un dash = `tools-<dash>.ts` + entrada en `registry.ts` + contexto en
+  `contexto.ts`. **Gotchas de data vistos al validar:** `trade_monthly` trae un "Dic" del año en curso
+  (semanas de dic del año anterior) y `mercado_share` tiene filas con mes futuro (2026-11) → las tools
+  ignoran meses > hoy; `getIgOrganicSummary` corta en 200 posts (YTD subestimado).
 - **Metas por KPI + sistema visual (SEGUIR SIEMPRE, valida ANTES de ejecutar — error recurrente):**
   Cuando se agregan metas a un dashboard NO alcanza con poner el `MetaPanel` (configurador):
   hay que **cablear la meta al gráfico y a los cards**, si no el usuario guarda y no cambia nada.
@@ -236,7 +282,11 @@ reporte_existencia/cb_homologos).
     (approach aproximado). Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
     (workflow_dispatch, aditivo). No cargar DV360/Google a mano en `pauta_performance` (rompe la regla
     "medio con API → volumen de la API").
-  - **DV360 subcuenta meses viejos — CONFIRMADO con el CSV real (sep-2026).** DV360 NO se carga
+  - **DV360 junio VOLVIÓ a quedar truncado (validado REST 24-sep-2026):** `dv360_creatives` jun-26 = **US$4.514**
+  (Programmatic 2.557 + YouTube 1.957) vs la recarga completa de US$17.108 → el `syncDv360` diario lo re-pisó con
+  CSV parcial (el pendiente de "recurrencia" se materializó). Ago-26 también sospechoso (US$9.081 vs jul US$39.073).
+  Fix de fondo = rango fijo/largo en el reporte "DV360 Video Drean" o que `syncDv360` no reescriba un mes con CSV parcial.
+- **DV360 subcuenta meses viejos — CONFIRMADO con el CSV real (sep-2026).** DV360 NO se carga
     manual: el Apps Script "Sync Drive Tablero CB" (`syncDv360`) lee el CSV del reporte "DV360 Video
     Drean" desde Gmail (`.zip`) y hace `delete WHERE mes IN (meses del CSV) + insert` → solo toca los
     meses presentes en el CSV. **Validado bajando un export ad-hoc de junio COMPLETO (01→30) de DV360

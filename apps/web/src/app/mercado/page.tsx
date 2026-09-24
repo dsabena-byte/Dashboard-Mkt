@@ -4,6 +4,7 @@ import { LastUpdated } from "@/components/last-updated";
 import { MercadoBrandChart, type BrandChartPoint } from "@/components/mercado/mercado-brand-chart";
 import { MercadoStackedBars, type StackedPoint } from "@/components/mercado/mercado-stacked-bars";
 import Link from "next/link";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -398,6 +399,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
           </section>
         );
       })}
+      <DashDiagnostico dash="mercado" />
     </div>
   );
 }

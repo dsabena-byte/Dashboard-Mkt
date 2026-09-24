@@ -9,6 +9,7 @@ import {
   computeDreanConsolidado, SM_DIMS,
   type SMState,
 } from "@/lib/salud-marca-model";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -95,6 +96,7 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
           catLabel={smCfg.label}
           tabKey={smCfg.tabKey}
         />
+        <DashDiagnostico dash="salud-marca" />
       </div>
     );
   }
@@ -110,6 +112,7 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
     <div className="space-y-5">
       <Header tab={tab} lastUpdated={lastUpdated} />
       <DreanSaludConsolidada series={dreanSeries} />
+      <DashDiagnostico dash="salud-marca" />
     </div>
   );
 }
