@@ -93,6 +93,8 @@ reporte_existencia/cb_homologos).
     Eficiencia Medios · Diagnóstico e Inteligencia (reemplazó "Insights Pauta", el motor viejo se borró) · Pauta
     Competencia · Simulador (`PlanMediosSubnav` en las sub-rutas, mismo renglón; `/performance?tab=impacto|eficiencia|
     diagnostico`). CB (Overview/Sugerencias) y Salud de Marca (Lavado/Refri/Cocción/Marca) usan el mismo renglón.
+    Pauta Ecommerce y Mkt Canal (iframe en un recuadro) también tienen Tablero · Diagnóstico; Contenido = título →
+    Cómo leer → RRSS · UGC · Biblioteca UGC · Adaptación (mismo estilo). Monitoreo = una sola vista, sin pestañas.
     NO volver a poner barras de tabs arriba del título ni un segundo nivel de pestañas.
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
 - **Simulador, Pauta de la competencia, Alertas (portado de BIP, sep-2026):**
@@ -315,7 +317,7 @@ reporte_existencia/cb_homologos).
 - UI: `components/knowledge/` → `HowToRead` (franja `<details>` bajo el título de 14 dashboards; sin
   "use client", sirve en server y client), `LearnButton` (🎓; prop opcional **`learnKey`** en `MetaKpiCard`,
   cableado en Redes IG/FB, Plan de Medios y Web), `KnowledgePanel` (drawer, montado una vez en el layout,
-  evento `bip:learn`). Sin HowToRead: `/mkt-canal` (iframe a pantalla completa) y `/contenido`.
+  evento `bip:learn`). Todos los tableros tienen HowToRead (Mkt Canal y Contenido desde sep-2026).
 - Acceso: `/guia` está en `ALWAYS_ALLOWED_PATHS` (`lib/dashboard-access.ts`) → visible aunque el usuario
   tenga `dashboard_access` restringido (no expone datos).
 - Copiloto: tool `get_guia` (`lib/chat/tools-guia.ts`, buscar por texto/KPI/tablero o traer por id) en

@@ -1,5 +1,6 @@
 import { getConversionDaily, getConversionItems } from "@/lib/pauta-conversion-queries";
 import { PerformanceConversionClient } from "@/components/pauta/performance-conversion-client";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -17,5 +18,9 @@ export default async function PerformancePautaConversionPage() {
     safe(getConversionDaily(), [] as Awaited<ReturnType<typeof getConversionDaily>>),
     safe(getConversionItems(), [] as Awaited<ReturnType<typeof getConversionItems>>),
   ]);
-  return <PerformanceConversionClient rows={rows} items={items} />;
+  return (
+    <DashTabs dash="performance-conversion">
+      <PerformanceConversionClient rows={rows} items={items} />
+    </DashTabs>
+  );
 }

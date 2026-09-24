@@ -26,6 +26,7 @@ import {
   monthKeys,
 } from "@/lib/pauta-conversion-data";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { DashTabBar } from "@/components/diagnostico/dash-tabs";
 
 const fmtNum = (n: number) => formatNumber(Math.round(n));
 const fmtARS = formatCurrency;
@@ -194,6 +195,7 @@ export function PerformanceConversionClient({
         </div>
       </header>
       <HowToRead slug="performance-conversion" />
+      <DashTabBar />
 
       {/* Aviso de inversión pendiente */}
       {hayDatos && !kpis.hasCosto && (
