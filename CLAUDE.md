@@ -206,6 +206,9 @@ reporte_existencia/cb_homologos).
     sigue como opción de filtro). Regla general: **medio con API conectada → volumen de la API;
     OMD solo para medios SIN API** (OOH, TV, DOOH, TikTok, Mercado Ads, Geo). Si algún día OMD
     carga otro medio-API (ej Google), sumarlo al set `API_MEDIOS`.
+  - **Regla compartida (sep-2026):** `API_MEDIOS`/`esMedioApi` viven en `lib/pauta-medios.ts` y los usan
+    `performance-client.tsx` **y** `objetivos-kpis.ts` (Seguimiento). Antes el Seguimiento NO excluía la fila
+    OMD de Meta → **ago-2026 subcontaba $49,3M** (OMD $13,4M vs API $62,7M, validado por REST). No duplicar la regla.
   - **OJO 2:** `pauta_performance.tipo_compra` es **NOT NULL** (usar "CPM"). Categorías válidas:
     Brand/Cocción/Lavado/Refrigeración/UGC/Promoción. Objetivos: Awareness/Consideración/Build.
   - **UGC:** el dash de Pauta Mkt **INCLUYE UGC** como una categoría más (`getPautaPerformance(true)`
