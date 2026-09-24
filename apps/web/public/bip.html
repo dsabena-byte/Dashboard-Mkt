@@ -913,7 +913,7 @@ const PLANS = [
 const SU = 'https://bip-platform.vercel.app/signup';
 document.getElementById('tiers').innerHTML = PLANS.map(p => {
   const feats = p.feats.map(([l,n])=>`<li>${CHECK}<span>${l}${n?' <span class="plus">nuevo</span>':''}</span></li>`).join('');
-  const ctas = `<a class="pcta${p.reco?' pcta-reco':''}" href="${SU}?plan=${p.key}">Empezar con ${p.name} →</a><div class="trialcta-sub">Set-up sin cargo · activación en días</div>`;
+  const ctas = `<a class="pcta${p.reco?' pcta-reco':''}" href="${SU}?plan=${p.key}">Empezar con ${p.name} →</a><div class="trialcta-sub">Set-up sin cargo · activación en 24 hs</div>`;
   return `<article class="card${p.reco?' card-reco':''} card-${p.key}" id="plan-${p.key}">${p.reco?'<div class="ribbon">Recomendado</div>':''}
     <div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
     <div class="prices2">
