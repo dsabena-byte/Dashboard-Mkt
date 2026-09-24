@@ -18,6 +18,7 @@ import { getIgOrganicSummary } from "./meta-ig-queries";
 import { generalPonderado } from "./categorias";
 import { getTradeMonthly, emptyTradeMonthly } from "./trade-monthly";
 import type { MetaKpiData } from "./metas-server";
+import { esMedioApi } from "@/lib/pauta-medios";
 
 export type KpiUnit = "$" | "" | "x" | "%" | "s";
 
@@ -153,7 +154,9 @@ function computePautaImpacto(
 
     const omd = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
     for (const r of data) {
-      if (r.mes !== mesLabel) continue;
+      // Meta (medio con API) NO se toma de OMD: entra por la API en el gap-fill de abajo (misma regla
+      // que /performance). Antes el Seguimiento usaba la fila OMD de Meta → ago-2026 subcontaba $49M.
+      if (r.mes !== mesLabel || esMedioApi(r.medio)) continue;
       const e = omd.get(r.medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
       e.impr += r.impresiones ?? 0; e.alc += r.alcance ?? 0; e.clic += r.clics ?? 0; e.inv += r.inversion ?? 0;
       omd.set(r.medio, e);

@@ -36,6 +36,7 @@ import { MetaEvolChart, type MetaEvolUnidad } from "@/components/pauta/meta-evol
 import { InversionToggleChart } from "@/components/pauta/inversion-toggle-chart";
 import type { MetaKpiData } from "@/lib/metas-server";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { esMedioApi } from "@/lib/pauta-medios";
 
 const fmtUSD = (n: number): string =>
   `US$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -122,8 +123,6 @@ function videoMetrics(comp: number, vimpr: number, impr: number, inv: number): {
 // entra por el gap-fill de la API en todos los modelos (medio/categoría/rol/impacto/
 // ejecución de presupuesto). YouTube/Programmatic/Google ya venían por API (no
 // están en OMD). Meta SIGUE siendo opción de filtro (data cruda intacta).
-const API_MEDIOS = new Set(["Meta"]);
-const esMedioApi = (medio: string) => API_MEDIOS.has(medio);
 
 // Agrega por dimensión (categoría o rol) con la MISMA estructura/fuentes que la tabla
 // maestra: VOLUMEN (inversión, impresiones, alcance, clicks) desde OMD; EFECTIVO
