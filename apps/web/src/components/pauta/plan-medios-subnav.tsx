@@ -26,6 +26,9 @@ export function PlanMediosSubnav({ current }: { current: (typeof PLAN_MEDIOS_TAB
           </Link>
         );
       })}
+      <Link href="/performance?vista=diagnostico" className="rounded-md px-3 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        Diagnóstico e inteligencia
+      </Link>
     </nav>
   );
 }

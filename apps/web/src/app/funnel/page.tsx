@@ -2,7 +2,7 @@ import { getBgtData, hasVersion } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
 import { computeCuatris, MAX_DESVIO, MAX_INV_FACT } from "@/lib/bgt-dashboard";
 import { InversionComparador } from "@/components/inversion/inversion-comparador";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -150,7 +150,7 @@ export default async function InversionMarketingPage() {
   const linkTexto = diasRestantes <= 0 ? `Link SharePoint VENCIDO (${venceLabel}) — renovar` : `Renovar link SharePoint antes del ${venceLabel} (faltan ${diasRestantes} días)`;
 
   return (
-    <div className="space-y-5">
+    <DashTabs dash="funnel" className="space-y-5">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Inversión de Marketing</h2>
         <p className="text-sm text-muted-foreground">
@@ -185,7 +185,6 @@ export default async function InversionMarketingPage() {
 
       {/* ===== Comparador libre A vs B ===== */}
       <InversionComparador rows={bgt.rows} facturacion={factRows} year={YEAR} />
-      <DashDiagnostico dash="funnel" />
-    </div>
+    </DashTabs>
   );
 }

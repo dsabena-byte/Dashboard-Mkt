@@ -9,8 +9,8 @@ import { getGoogleAdsCreatives } from "@/lib/google-ads-creatives-queries";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { PerformanceClient } from "@/components/pauta/performance-client";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
-import { PlanMediosSubnav } from "@/components/pauta/plan-medios-subnav";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { PLAN_MEDIOS_TABS } from "@/components/pauta/plan-medios-subnav";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -98,10 +98,8 @@ export default async function PerformancePautaPage() {
   const metasArr = await Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK)));
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
   return (
-    <>
-      <PlanMediosSubnav current="/performance" />
+    <DashTabs dash="performance" nav={PLAN_MEDIOS_TABS}>
       <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} />
-      <div className="mt-5"><DashDiagnostico dash="performance" /></div>
-    </>
+    </DashTabs>
   );
 }

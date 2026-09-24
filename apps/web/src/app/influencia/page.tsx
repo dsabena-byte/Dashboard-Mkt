@@ -3,7 +3,7 @@ import { getMetaUgcCreatives } from "@/lib/meta-paid-queries";
 import { getUgcAnalysis } from "@/lib/ugc-analysis-queries";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { InfluenciaClient } from "@/components/pauta/influencia-client";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -25,9 +25,8 @@ export default async function InfluenciaPage() {
   ]);
 
   return (
-    <>
+    <DashTabs dash="influencia">
       <InfluenciaClient rows={rows} ugcCreatives={ugcCreatives} ugcAnalysis={ugcAnalysis} lastUpdated={lastUpdated} />
-      <div className="mt-5"><DashDiagnostico dash="influencia" /></div>
-    </>
+    </DashTabs>
   );
 }

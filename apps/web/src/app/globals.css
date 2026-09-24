@@ -106,3 +106,8 @@
 .bip-viz .sh-opt { display: flex; flex-direction: column; gap: 4px; text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; cursor: pointer; font-family: inherit; color: var(--ink); }
 .bip-viz .sh-opt span { font-size: 12px; color: var(--muted); }
 .bip-viz .sh-opt.on { border-color: var(--navy); background: var(--navy-soft); }
+
+/* Tabs "Tablero | Diagnóstico e inteligencia" (components/diagnostico/dash-tabs.tsx): el tablero queda montado
+   y se oculta por CSS para no perder filtros al cambiar de tab. */
+.dash-tabs[data-vista="diagnostico"] > :not([data-dash-keep]) { display: none !important; }
+.dash-tabs[data-vista="tablero"] > [data-dash-diag] { display: none !important; }

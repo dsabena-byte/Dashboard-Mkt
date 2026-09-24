@@ -1,6 +1,6 @@
 import { getSeguimientoCompleto } from "@/lib/objetivos-por-categoria";
 import { SeguimientoView } from "@/components/objetivos/seguimiento-view";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 // Seguimiento Objetivos = Estado de KPIs (Mapa Estratégico → cumplimiento por
@@ -19,7 +19,7 @@ export default async function OverviewPage() {
   const curYear = new Date().getUTCFullYear();
   const seg = await safe(getSeguimientoCompleto(curYear), { disponible: false, refMes: "", vistas: [] });
   return (
-    <div className="space-y-5">
+    <DashTabs dash="overview" className="space-y-5">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Seguimiento Objetivos</h2>
         <p className="text-sm text-muted-foreground">
@@ -28,7 +28,6 @@ export default async function OverviewPage() {
       </header>
       <HowToRead slug="overview" />
       <SeguimientoView data={seg} />
-      <DashDiagnostico dash="overview" />
-    </div>
+    </DashTabs>
   );
 }

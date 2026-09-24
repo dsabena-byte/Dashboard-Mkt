@@ -9,7 +9,7 @@ import {
   computeDreanConsolidado, SM_DIMS,
   type SMState,
 } from "@/lib/salud-marca-model";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { getKantarData, KANTAR_CONST, type KantarData } from "@/lib/kantar-sheet";
 
@@ -91,7 +91,7 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
   if (smCfg) {
     const marca = (smCfg.brands as readonly string[]).includes(searchParams?.marca ?? "") ? searchParams!.marca! : "Drean";
     return (
-      <div className="space-y-5">
+      <DashTabs dash="salud-marca" className="space-y-5">
         <Header tab={tab} lastUpdated={lastUpdated} />
         <KantarSourceNote k={kantar} />
         <EvolucionView
@@ -103,8 +103,7 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
           catLabel={smCfg.label}
           tabKey={smCfg.tabKey}
         />
-        <DashDiagnostico dash="salud-marca" />
-      </div>
+      </DashTabs>
     );
   }
 
@@ -116,12 +115,11 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
   };
 
   return (
-    <div className="space-y-5">
+    <DashTabs dash="salud-marca" className="space-y-5">
       <Header tab={tab} lastUpdated={lastUpdated} />
       <KantarSourceNote k={kantar} />
       <DreanSaludConsolidada series={dreanSeries} kantar={kantar.source === "planilla" ? kantar.tables : undefined} />
-      <DashDiagnostico dash="salud-marca" />
-    </div>
+    </DashTabs>
   );
 }
 
