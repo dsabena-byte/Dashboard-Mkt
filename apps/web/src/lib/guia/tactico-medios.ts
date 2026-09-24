@@ -146,7 +146,7 @@ Cómo leerlo: el CPP **se compara dentro del mismo medio, target y franja**. El 
       { metrica: "CPM de contactos offline", valor: "orden de magnitud vs tu CPM digital", nota: "No son unidades idénticas: sirve para detectar desvíos grandes, no para reasignar punto a punto." },
     ],
     enBip: "En **Plan de Medios** los medios sin API entran desde el reporte de OMD y los medios con API desde su plataforma (gap-fill por medio). Suman a la **Inversión** (cards, metas y Seguimiento de objetivos) y al mix por medio. El presupuesto total, contra el BGT, se controla en **Inversión de Marketing**.",
-    relacionados: ["plan-de-medios", "alcance-frecuencia", "benchmarks-medios", "reasignacion-inversion", "bip-tableros-planilla"],
+    relacionados: ["plan-de-medios", "alcance-frecuencia", "benchmarks-medios", "reasignacion-inversion", "tableros-planilla"],
   },
   {
     id: "alcance-frecuencia",
@@ -192,7 +192,7 @@ Como regla de control mensual por campaña, una frecuencia **de 2 a 4** es sana;
       },
     ],
     benchmarks: [
-      { metrica: "Frecuencia mensual por campaña", valor: "2-4 sano · >4 alerta · >6 exceso", nota: "Criterio de alertas de BIP para campañas de awareness. Ajustalo según la complejidad del mensaje." },
+      { metrica: "Frecuencia mensual por campaña", valor: "2-4 sano · >4 alerta · >6 exceso", nota: "Criterio de alertas de la plataforma para campañas de awareness. Ajustalo según la complejidad del mensaje." },
       { metrica: "Alcance vs plan", valor: "≥ 80% del planificado", nota: "Por debajo, revisá presupuesto, pujas o tamaño de audiencia." },
       { metrica: "Rotación creativa", valor: "cada 2-4 semanas", nota: "En campañas de alta presión; antes si cae el CTR/VTR de la pieza." },
     ],
@@ -232,7 +232,7 @@ Y la vara apunta a lo mejor, no al promedio: **benchmark = máximo entre la refe
       },
       {
         titulo: "Meta: ThruPlay como referencia",
-        cuerpo: `En Meta, ThruPlay cuenta las reproducciones de 15 segundos o completas si el video es más corto. Es la medida más estable de atención en el feed. Como referencia de BIP: tasa de ThruPlay sobre impresiones de **15% o más** es un buen objetivo; **menos de 8%** es alerta y **menos de 3%** indica que la pieza no está reteniendo.`,
+        cuerpo: `En Meta, ThruPlay cuenta las reproducciones de 15 segundos o completas si el video es más corto. Es la medida más estable de atención en el feed. Como referencia: tasa de ThruPlay sobre impresiones de **15% o más** es un buen objetivo; **menos de 8%** es alerta y **menos de 3%** indica que la pieza no está reteniendo.`,
       },
       {
         titulo: "Alcance, tráfico y conversión",
@@ -251,11 +251,11 @@ Y la vara apunta a lo mejor, no al promedio: **benchmark = máximo entre la refe
     ],
     benchmarks: [
       { metrica: "Completación en formato forzado", valor: "≥ 90% · crítico < 85%", nota: "Bumper y no saltable. Por la física del formato, no por percentil." },
-      { metrica: "ThruPlay rate (Meta)", valor: "≥ 15% · alerta < 8% · crítico < 3%", nota: "Referencia de BIP sobre campañas reales de video en Meta." },
+      { metrica: "ThruPlay rate (Meta)", valor: "≥ 15% · alerta < 8% · crítico < 3%", nota: "Referencia sobre campañas reales de video en Meta." },
       { metrica: "CPCV de una pieza", valor: "alerta > 3× mediana · crítico > 8×", nota: "Mediana del mismo formato, medio y mes. Auto-escala por cliente." },
       { metrica: "CTR búsqueda", valor: "≈ 3-6%", nota: "Varía por categoría y por marca vs genérico. La marca propia suele estar por encima." },
       { metrica: "CTR tráfico en redes", valor: "≥ 1% · alerta < 0,6%", nota: "Campañas con objetivo tráfico. En awareness, 0,1-0,4% es normal y no es un problema." },
-      { metrica: "CPM relativo entre plataformas", valor: "TikTok < Meta < YouTube", nota: "En campañas analizadas por BIP: TikTok ≈ 0,4× y YouTube ≈ 1,7× el CPM de Meta. Compará siempre dentro del medio." },
+      { metrica: "CPM relativo entre plataformas", valor: "TikTok < Meta < YouTube", nota: "En campañas reales analizadas: TikTok ≈ 0,4× y YouTube ≈ 1,7× el CPM de Meta. Compará siempre dentro del medio." },
       { metrica: "Frecuencia", valor: "alerta > 4 · exceso > 6", nota: "Mensual por campaña de awareness." },
     ],
     checklist: [
@@ -420,7 +420,7 @@ En eventos de descuento la conversión sube, los CPM y CPC también (hay más an
     secciones: [
       {
         titulo: "Un brief conectado al Mapa",
-        cuerpo: `Un brief es el puente entre la estrategia y la ejecución. En el Método BIP, **todo brief arranca citando el objetivo del Mapa que la campaña tiene que mover y los KPIs con los que se va a medir**. Si la campaña no mueve ningún objetivo del Mapa, la pregunta es por qué se hace.`,
+        cuerpo: `Un brief es el puente entre la estrategia y la ejecución. En el Proceso Estratégico, **todo brief arranca citando el objetivo del Mapa que la campaña tiene que mover y los KPIs con los que se va a medir**. Si la campaña no mueve ningún objetivo del Mapa, la pregunta es por qué se hace.`,
       },
       {
         titulo: "Las partes",

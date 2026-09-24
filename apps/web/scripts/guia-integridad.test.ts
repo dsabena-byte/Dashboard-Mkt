@@ -1,4 +1,4 @@
-// Integridad del Método BIP (lib/guia + lib/knowledge): ids, títulos espejo, KPIs, tableros.
+// Integridad del Proceso Estratégico (lib/guia + lib/knowledge): ids, títulos espejo, KPIs, tableros.
 // Correr: cd apps/web && npx tsx scripts/guia-integridad.test.ts
 import { MODULOS, DASH_HREF, dashLinks } from "../src/lib/guia";
 import { MODULO_TITULO } from "../src/lib/guia/titulos";
@@ -20,8 +20,8 @@ for (const m of MODULOS) {
   for (const k of m.kpiKeys) check(Boolean(KPI_KNOW[k]), `${m.id}: kpiKey inexistente ${k}`);
   for (const s of m.dashSlugs) check(dashLinks([s]).length > 0, `${m.id}: dashSlug sin ruta ${s}`);
   const txt = JSON.stringify(m);
-  for (const bad of ["Optimize", "Accelerate", "**Fuentes de datos**", "entrá a Fuentes de datos", "pestaña **Insights**", "/tablero/", "/cuenta/", "Nango", "SharePoint"])
-    check(!txt.includes(bad), `${m.id}: referencia BIP-only "${bad}"`);
+  for (const bad of ["Optimize", "Accelerate", "**Fuentes de datos**", "entrá a Fuentes de datos", "pestaña **Insights**", "/tablero/", "/cuenta/", "Nango", "SharePoint", "BIP"])
+    check(!txt.includes(bad), `${m.id}: término de otra plataforma "${bad}"`);
 }
 for (const id of Object.keys(MODULO_TITULO)) check(ids.has(id), `titulos.ts tiene id huérfano ${id}`);
 for (const [slug, d] of Object.entries(DASH_KNOW)) {

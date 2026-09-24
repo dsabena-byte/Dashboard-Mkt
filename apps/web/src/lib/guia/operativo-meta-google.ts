@@ -202,7 +202,7 @@ Una pieza con VTR alto pero CPM muy alto puede tener peor CPCV que una con VTR m
     ],
     benchmarks: [
       { metrica: "Completación formato forzado", valor: "≥ 90%", nota: "Bumper y no saltable. < 85% indica un problema." },
-      { metrica: "ThruPlay rate (Meta)", valor: "≥ 15%", nota: "Referencia BIP. < 8% alerta, < 3% crítico." },
+      { metrica: "ThruPlay rate (Meta)", valor: "≥ 15%", nota: "Referencia de mercado. < 8% alerta, < 3% crítico." },
       { metrica: "Caída antes del 25%", valor: "comparar con p10 del bucket", nota: "Si la pieza está debajo del peor 10% de su formato, el hook es débil." },
     ],
     checklist: [

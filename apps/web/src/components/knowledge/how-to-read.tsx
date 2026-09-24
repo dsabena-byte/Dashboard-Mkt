@@ -3,7 +3,7 @@ import { DASH_KNOW } from "@/lib/knowledge";
 import { MODULO_TITULO } from "@/lib/guia/titulos";
 import { ETAPA_LABEL, ETAPA_NUM } from "@/lib/guia/types";
 
-// Franja "Cómo leer este tablero" (Método BIP) — debajo del título de cada dashboard, colapsable
+// Franja "Cómo leer este tablero" (Proceso Estratégico) — debajo del título de cada dashboard, colapsable
 // con <details> nativo (sin JS, arranca cerrada: no empuja el contenido). Orienta antes de mirar
 // un número: etapa del ciclo, cómo leerlo, cómo aplicarlo y a qué módulos ir para profundizar.
 // Sin "use client": sirve en server y client components. `slug` = clave de DASH_KNOW (= ruta).
@@ -18,7 +18,7 @@ export function HowToRead({ slug }: { slug: string }) {
         <span className="min-w-0">Cómo leer este tablero</span>
         <span className="hidden min-w-0 truncate font-normal text-slate-500 sm:inline">· {k.title}</span>
         {k.etapa && (
-          <span title="Etapa del ciclo del Método BIP" className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-[#1e40af]">
+          <span title="Etapa del ciclo del Proceso Estratégico" className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-[#1e40af]">
             {ETAPA_NUM[k.etapa]} · {ETAPA_LABEL[k.etapa]}
           </span>
         )}
@@ -52,7 +52,7 @@ export function HowToRead({ slug }: { slug: string }) {
             </Link>
           ))}
           <Link href="/guia" className="text-[13px] font-semibold text-slate-500 hover:text-[#1e40af] hover:underline">
-            Método BIP →
+            Proceso Estratégico →
           </Link>
         </div>
       </div>

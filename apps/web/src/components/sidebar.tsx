@@ -69,7 +69,7 @@ const TREE: NavNode[] = [
   { type: "link", href: "/monitoreo", label: "Monitoreo conexiones", icon: Activity },
   { type: "link", href: "/alerts", label: "Alertas y reportes", icon: Bell },
   { type: "divider" },
-  { type: "link", href: "/guia", label: "Método BIP", icon: GraduationCap },
+  { type: "link", href: "/guia", label: "Proceso Estratégico", icon: GraduationCap },
 ];
 
 // Poda el árbol según los dashboards permitidos (link no permitido → fuera;

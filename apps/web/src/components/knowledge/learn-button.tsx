@@ -1,7 +1,7 @@
 "use client";
 import { kpiKnowFor, KPI_KNOW } from "@/lib/knowledge";
 
-// Disparador de la capa de conocimiento del Método BIP (portado de BIP). Dos variantes:
+// Disparador de la capa de conocimiento del Proceso Estratégico (portado de BIP). Dos variantes:
 //  · "icon" (default): ícono chico y sutil (🎓) en la esquina de cada card.
 //  · "chip": pastilla con el nombre del KPI (listas de métricas, p. ej. en /guia/[id]).
 // Al tocarlo abre el panel lateral (KnowledgePanel, montado una vez en el layout) vía el
@@ -39,7 +39,7 @@ export function LearnButton({
     <button
       type="button"
       onClick={open}
-      title="Aprendé a leer esta métrica (Método BIP)"
+      title="Aprendé a leer esta métrica (Proceso Estratégico)"
       aria-label="Aprendé a leer esta métrica"
       className={`${corner ? "absolute right-2 top-2 " : ""}inline-grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border bg-card p-0 text-[11px] leading-none text-slate-500 shadow-sm transition-colors hover:border-[#1e40af] hover:text-[#1e40af]`}
     >

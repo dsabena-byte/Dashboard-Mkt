@@ -461,7 +461,7 @@ export const TEMPLATE: Record<ResearchKind, { headers: string[]; rows: (string |
     ],
     instr: [
       "Una fila por mes, marca, categoría y segmento. Borrá las filas de ejemplo.",
-      "Obligatorias: Mes y Marca, y el share o las ventas (en valor o unidades). Con ventas, BIP calcula el share.",
+      "Obligatorias: Mes y Marca, y el share o las ventas (en valor o unidades). Con ventas, el tablero calcula el share.",
       "Incluí la fila \"Otras\" (el resto del mercado) para que el total sume 100%.",
       "Si tu dato ya es año móvil (MAT / U12M), marcalo al sumar la planilla.",
       "Precio: promedio de la marca o índice de precio (base 100). Mes: 2026-03, mar-26 o 01/03/2026.",

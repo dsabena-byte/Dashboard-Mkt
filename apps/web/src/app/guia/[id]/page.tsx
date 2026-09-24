@@ -7,11 +7,11 @@ import { KPI_KNOW } from "@/lib/knowledge";
 import { LearnButton } from "@/components/knowledge/learn-button";
 import { MdLite, MdInline } from "../_components/md-lite";
 
-// Detalle de un módulo del Método BIP: secciones, paso a paso, checklist, referencias y el
+// Detalle de un módulo del Proceso Estratégico: secciones, paso a paso, checklist, referencias y el
 // bloque "En la plataforma" con los tableros de Drean donde se aplica.
 export function generateMetadata({ params }: { params: { id: string } }) {
   const m = getModulo(params.id);
-  return { title: m ? `${m.titulo} · Método BIP` : "Método BIP" };
+  return { title: m ? `${m.titulo} · Proceso Estratégico` : "Proceso Estratégico" };
 }
 
 const K = "mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400";
@@ -29,7 +29,7 @@ export default function ModuloPage({ params }: { params: { id: string } }) {
     <div>
       <div className="mb-2.5 text-[12.5px] text-slate-400">
         <Link href="/guia" className="font-semibold text-[#1e40af] hover:underline">
-          Método BIP
+          Proceso Estratégico
         </Link>{" "}
         <span aria-hidden="true">/</span> {NIVEL_LABEL[m.nivel]}
       </div>

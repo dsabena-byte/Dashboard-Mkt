@@ -80,7 +80,7 @@ Por eso, dos posteos con el mismo engagement total pueden valer muy distinto.`,
       },
       {
         titulo: "Engagement rate: cómo calcularlo",
-        cuerpo: `- **Sobre alcance** (interacciones ÷ personas alcanzadas): mide resonancia del contenido. Es el que usa BIP.
+        cuerpo: `- **Sobre alcance** (interacciones ÷ personas alcanzadas): mide resonancia del contenido. Es el que usa este tablero.
 - **Sobre seguidores:** útil para comparar con competidores (no se conoce su alcance), pero castiga a las cuentas grandes.
 - **Por pieza y por pilar**, no solo total del mes: el total se infla por volumen de publicaciones.
 
@@ -321,7 +321,7 @@ Al revés, si tu exhibición supera ampliamente tu venta, revisá si ese espacio
       "Las campañas grandes se coordinan con stock y exhibición.",
     ],
     enBip: "En **Cuadros Básicos** (cumplimiento del surtido por tienda, objetivo 80%, con sugerencias de tiendas a sumar) y **Floor Share** (share de góndola por categoría y ranking de marcas; objetivos Lavado 32% · Refrigeración 25% · Cocción 23%), a partir del relevamiento semanal. El contraste con la venta se hace en **Resultados Comerciales** (GfK) y con las acciones en retailers en **Mkt Canal Comercial**.",
-    relacionados: ["bip-tableros-planilla", "salud-de-marca", "funnel-360", "campanas-estacionales"],
+    relacionados: ["tableros-planilla", "salud-de-marca", "funnel-360", "campanas-estacionales"],
   },
   {
     id: "plan-de-accion",
@@ -337,7 +337,7 @@ Al revés, si tu exhibición supera ampliamente tu venta, revisá si ese espacio
         titulo: "Un insight no es un dato",
         cuerpo: `Un **dato** es "el CTR de Meta fue 0,4%". Un **hallazgo** es "el CTR de Meta está 40% debajo de su meta por tres meses seguidos, concentrado en las piezas de producto". Un **insight** agrega el por qué y el qué hacer: "las piezas de producto usan el mismo formato estático que en febrero; las de uso en video rinden el doble. Hay fatiga del formato y una alternativa probada."
 
-La cadena que exige BIP para cada hallazgo es: **Objetivo → KPI → Meta → Evidencia → Causa → Acción**.`,
+La cadena que exige el Proceso Estratégico para cada hallazgo es: **Objetivo → KPI → Meta → Evidencia → Causa → Acción**.`,
       },
       {
         titulo: "Priorizar",
@@ -369,7 +369,7 @@ Al mes siguiente, la primera parte de la revisión es verificar el plan anterior
       "La revisión mensual empieza verificando el plan anterior.",
     ],
     enBip: "El **Diagnóstico IA** (al pie de cada tablero) genera el diagnóstico (evolución, cumplimiento de metas, correlaciones, qué funcionó y qué no) y un **plan de acción priorizado** con porqué e impacto esperado, siempre con los números reales. Las versiones quedan guardadas para comparar mes a mes.",
-    relacionados: ["ciclo-aprender", "ciclo-optimizar", "bip-insights-chat", "reporte-mensual"],
+    relacionados: ["ciclo-aprender", "ciclo-optimizar", "insights-chat", "reporte-mensual"],
   },
   {
     id: "reporte-mensual",
@@ -383,7 +383,7 @@ Al mes siguiente, la primera parte de la revisión es verificar el plan anterior
     secciones: [
       {
         titulo: "De reporte a decisión",
-        cuerpo: `Una revisión mensual típica pasa 50 minutos mirando gráficos y 10 decidiendo. El Método BIP lo invierte: **los números ya están en la plataforma, la reunión es para decidir**. Cada participante llega habiendo mirado su tablero.`,
+        cuerpo: `Una revisión mensual típica pasa 50 minutos mirando gráficos y 10 decidiendo. El Proceso Estratégico lo invierte: **los números ya están en la plataforma, la reunión es para decidir**. Cada participante llega habiendo mirado su tablero.`,
       },
       {
         titulo: "Agenda de 60 minutos",
@@ -408,6 +408,6 @@ Al mes siguiente, la primera parte de la revisión es verificar el plan anterior
       "Queda registrado para la próxima revisión.",
     ],
     enBip: "La reunión se proyecta desde **Seguimiento Objetivos** y baja a cada tablero. El **Diagnóstico IA** sirve como documento de base (y su historial de versiones como registro); el copiloto («Preguntale a tus datos») responde preguntas puntuales en la reunión.",
-    relacionados: ["ciclo-aprender", "plan-de-accion", "bip-insights-chat", "metodo-bip"],
+    relacionados: ["ciclo-aprender", "plan-de-accion", "insights-chat", "proceso-estrategico"],
   },
 ];

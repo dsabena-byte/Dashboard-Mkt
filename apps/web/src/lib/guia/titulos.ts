@@ -2,7 +2,7 @@
 // contenido (p. ej. el drawer de KPI, montado en el layout). Espejo de lib/guia/index.ts:
 // si agregás o renombrás un módulo, actualizá esta lista (mismo id y título).
 export const MODULO_TITULO: Record<string, string> = {
-  "metodo-bip": "El Método BIP",
+  "proceso-estrategico": "El Proceso Estratégico",
   "ciclo-construir": "01 · Construir: la base del trimestre",
   "ciclo-aprender": "02 · Aprender: leer real vs meta y entender por qué",
   "ciclo-optimizar": "03 · Optimizar: reasignar con evidencia",
@@ -43,8 +43,8 @@ export const MODULO_TITULO: Record<string, string> = {
   "ga4-configuracion": "GA4: propiedad, eventos clave y ecommerce",
   "utm-nomenclatura": "UTM y nomenclatura de campañas",
   "search-console": "Search Console: diagnóstico del SEO",
-  "bip-conectar-fuentes": "Fuentes de datos, monitoreo y carga de metas",
-  "bip-mapa-estrategico": "Armar el Mapa Estratégico paso a paso",
-  "bip-insights-chat": "Usar el Diagnóstico IA y el copiloto para decidir",
-  "bip-tableros-planilla": "Inversión, Resultados y Trade: de dónde sale cada dato",
+  "conectar-fuentes": "Fuentes de datos, monitoreo y carga de metas",
+  "mapa-estrategico": "Armar el Mapa Estratégico paso a paso",
+  "insights-chat": "Usar el Diagnóstico IA y el copiloto para decidir",
+  "tableros-planilla": "Inversión, Resultados y Trade: de dónde sale cada dato",
 };

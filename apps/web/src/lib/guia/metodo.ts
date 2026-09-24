@@ -1,10 +1,10 @@
 import type { Modulo } from "./types";
 
-// Método BIP: el ciclo trimestral que ordena toda la plataforma.
+// Proceso Estratégico: el ciclo trimestral que ordena toda la plataforma.
 export const METODO: Modulo[] = [
   {
-    id: "metodo-bip",
-    titulo: "El Método BIP",
+    id: "proceso-estrategico",
+    titulo: "El Proceso Estratégico",
     resumen: "Cómo pasar de medir mucho a decidir bien: el ciclo Datos → Aprendizaje → Decisiones → Resultados, los 4 pilares y el trimestre como unidad de gestión.",
     nivel: "estrategico",
     etapa: "construir",
@@ -16,7 +16,7 @@ export const METODO: Modulo[] = [
         titulo: "El problema que resuelve",
         cuerpo: `La mayoría de los equipos de marketing mide mucho y decide poco. Hay un reporte de redes, otro de pauta, un export de GA4, una planilla de presupuesto y una encuesta de marca una vez por año. Cada uno dice algo cierto, pero ninguno responde la pregunta que importa: **qué acción concreta movió el objetivo del negocio, y cuánto costó moverlo**.
 
-El Método BIP existe para cerrar esa brecha. No agrega más métricas: conecta las que ya tenés con los objetivos que las justifican, y les pone una meta mensual. A partir de ahí, cada número tiene una lectura clara: acerca o aleja el objetivo.`,
+El Proceso Estratégico existe para cerrar esa brecha. No agrega más métricas: conecta las que ya tenés con los objetivos que las justifican, y les pone una meta mensual. A partir de ahí, cada número tiene una lectura clara: acerca o aleja el objetivo.`,
       },
       {
         titulo: "Datos → Aprendizaje → Decisiones → Resultados",
@@ -111,7 +111,7 @@ El entregable de Construir no es un documento: es un modelo cargado en la plataf
       "Cobertura de cada objetivo ≥ 80% en Seguimiento.",
     ],
     enBip: "Se hace en **Monitoreo conexiones** (estado de las fuentes), **Mapa Estratégico** y el panel **Metas** de cada tablero. Se valida en **Seguimiento Objetivos**, mirando la cobertura de cada objetivo antes que el porcentaje de cumplimiento.",
-    relacionados: ["metodo-bip", "bip-conectar-fuentes", "bip-mapa-estrategico", "metas-mensuales", "objetivos-negocio-marketing"],
+    relacionados: ["proceso-estrategico", "conectar-fuentes", "mapa-estrategico", "metas-mensuales", "objetivos-negocio-marketing"],
   },
   {
     id: "ciclo-aprender",
@@ -156,7 +156,7 @@ El entregable de Construir no es un documento: es un modelo cargado en la plataf
       "Registraste también lo que funciona mejor que lo esperado.",
     ],
     enBip: "Empezá en **Seguimiento Objetivos** (hero de objetivos + scorecard por plan, con desvío mes y YTD). Después bajá al tablero del plan y abrí el **Diagnóstico IA** (al pie del tablero): correlaciona KPIs con metas y objetivos y deja la evidencia numérica de cada hallazgo.",
-    relacionados: ["ciclo-optimizar", "plan-de-accion", "bip-insights-chat", "reporte-mensual"],
+    relacionados: ["ciclo-optimizar", "plan-de-accion", "insights-chat", "reporte-mensual"],
   },
   {
     id: "ciclo-optimizar",
@@ -238,6 +238,6 @@ Ejemplo: "Pasamos 25% del presupuesto de la campaña de video de YouTube a Reels
       "Contrastaste marketing contra facturación y share.",
     ],
     enBip: "Se hace en **Seguimiento Objetivos** (cierre del trimestre), **Mapa Estratégico** (pesos), el panel **Metas** de cada tablero (próximo trimestre) e **Inversión de Marketing** y **Resultados Comerciales** (GfK) para cerrar contra el negocio.",
-    relacionados: ["metodo-bip", "reasignacion-inversion", "presupuesto-marketing", "metas-mensuales", "medicion-atribucion"],
+    relacionados: ["proceso-estrategico", "reasignacion-inversion", "presupuesto-marketing", "metas-mensuales", "medicion-atribucion"],
   },
 ];
