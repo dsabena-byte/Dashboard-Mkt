@@ -39,7 +39,7 @@ import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 import { getPautaInversionTotalMensual } from "@/lib/objetivos-kpis";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -456,7 +456,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     : null);
 
   return (
-    <div className="space-y-6">
+    <DashTabs dash="web" className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Web · Drean</h2>
@@ -1217,7 +1217,6 @@ export default async function WebPage({ searchParams }: PageProps) {
           </section>
         );
       })()}
-      <DashDiagnostico dash="web" />
-    </div>
+    </DashTabs>
   );
 }

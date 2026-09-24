@@ -39,7 +39,7 @@ import {
   getSocialFollowers,
   getSocialPosts,
 } from "@/lib/social-posts-queries";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { ShareEngagementSection } from "@/components/social/share-engagement";
 import { getMercadoSeries } from "@/lib/mercado-kpis-server";
 import { lastIdx } from "@/lib/mercado-kpis";
@@ -190,7 +190,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const organicBuildup = computeOrganicBuildup([...igOrganic.topPosts, ...fbOrganic.topPosts]);
 
   return (
-    <div className="space-y-4">
+    <DashTabs dash="redes" className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Redes Sociales</h2>
@@ -511,7 +511,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <CompetenciaPostsPanel posts={competenciaPosts} />
         </>
       )}
-      <DashDiagnostico dash="redes" />
-    </div>
+    </DashTabs>
   );
 }

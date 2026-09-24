@@ -4,7 +4,7 @@ import { LastUpdated } from "@/components/last-updated";
 import { MercadoBrandChart, type BrandChartPoint } from "@/components/mercado/mercado-brand-chart";
 import { MercadoStackedBars, type StackedPoint } from "@/components/mercado/mercado-stacked-bars";
 import Link from "next/link";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -252,7 +252,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
   }
 
   return (
-    <div className="space-y-5">
+    <DashTabs dash="mercado" className="space-y-5">
       <header>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-2xl font-semibold tracking-tight">Análisis de Mercado</h2>
@@ -401,7 +401,6 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
           </section>
         );
       })}
-      <DashDiagnostico dash="mercado" />
-    </div>
+    </DashTabs>
   );
 }

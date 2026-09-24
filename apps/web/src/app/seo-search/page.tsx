@@ -3,7 +3,7 @@ import { SeoCompetitivoSection } from "@/components/seo-search/seo-competitivo-s
 import { RegionSection } from "@/components/seo-search/region-section";
 import { LlmoSection } from "@/components/seo-search/llmo-section";
 import { getShareOfSearch, getTrendsInterest, getDemandaGenerica, getSeoCompetitivo, getSearchRegion, getSeoIndexHistory, getLlmo, getSeoFreshness } from "@/lib/competitive-queries";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { MercadoMetasSection } from "@/components/seo-search/mercado-metas-section";
 import { SearchConsoleSection } from "@/components/seo-search/search-console-section";
 import { getMercadoSeries, getMercadoMetas } from "@/lib/mercado-kpis-server";
@@ -46,7 +46,7 @@ export default async function SeoSearchPage() {
   const sinData = share.length === 0;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 p-4 md:p-6">
+    <DashTabs dash="seo-search" className="mx-auto max-w-7xl space-y-5 p-4 md:p-6">
       <header>
         <h1 className="text-xl font-bold">Análisis SEO / Search</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -97,7 +97,6 @@ export default async function SeoSearchPage() {
       <div className="border-t pt-6">
         <SearchConsoleSection />
       </div>
-      <DashDiagnostico dash="seo-search" />
-    </div>
+    </DashTabs>
   );
 }

@@ -16,7 +16,7 @@ import { computeFsView, isFsDefault, type FsView, type FsEnrichedRow } from "@/l
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -122,7 +122,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   })();
 
   return (
-    <div className="space-y-4">
+    <DashTabs dash="floor-share" className="space-y-4">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Floor Share</h2>
         <p className="text-sm text-muted-foreground">
@@ -225,8 +225,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           <TiendaTable rows={byTienda} />
         </>
       )}
-      <DashDiagnostico dash="floor-share" />
-    </div>
+    </DashTabs>
   );
 }
 

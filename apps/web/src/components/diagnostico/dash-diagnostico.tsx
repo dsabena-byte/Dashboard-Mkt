@@ -1,7 +1,8 @@
 "use client";
 // ============================================================================
 // Sección "Diagnóstico e inteligencia" de un tablero (portado de BIP, sep-2026).
-// Colapsable y CERRADA por defecto: no pide nada hasta que se abre (cero costo en el render).
+// Se muestra como tab "Diagnóstico e inteligencia" arriba del tablero (DashTabs, prop `embedded`); se monta
+// recién al abrir el tab → no pide nada antes (cero costo en el render). Sin `embedded` = colapsable cerrado.
 // Al abrir: (1) "Señales detectadas" = motor de reglas determinístico (/api/insights/signals);
 // (2) Diagnóstico IA: muestra la última versión guardada (GET /api/insights) y genera una nueva
 // con "Generar diagnóstico IA" (POST). La IA corre solo en la API, nunca en el render.
@@ -164,8 +165,8 @@ function InsightsView({ data }: { data: Insights }) {
   );
 }
 
-export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia" }: { dash: string; titulo?: string }) {
-  const [open, setOpen] = useState(false);
+export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", embedded = false }: { dash: string; titulo?: string; /** Dentro del tab "Diagnóstico e inteligencia" (DashTabs): abierto y sin colapsar. */ embedded?: boolean }) {
+  const [open, setOpen] = useState(embedded);
   const [signals, setSignals] = useState<Signal[] | null>(null);
   const [sigErr, setSigErr] = useState(false);
   const [data, setData] = useState<Insights | null>(null);
@@ -219,8 +220,8 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia" }
 
   return (
     <div className="rounded-lg border bg-card p-4">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-start gap-2 text-left">
-        <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition ${open ? "" : "-rotate-90"}`} />
+      <button type="button" onClick={() => !embedded && setOpen((o) => !o)} className={`flex w-full items-start gap-2 text-left ${embedded ? "cursor-default" : ""}`}>
+        {!embedded && <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition ${open ? "" : "-rotate-90"}`} />}
         <div className="flex-1">
           <h3 className="text-sm font-semibold tracking-tight">{titulo}</h3>
           <p className="text-[11px] text-muted-foreground">Señales automáticas sobre los datos del tablero + diagnóstico IA (evolución, metas, correlaciones, oportunidades y plan de acción).</p>

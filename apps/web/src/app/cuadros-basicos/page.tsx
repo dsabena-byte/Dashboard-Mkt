@@ -21,7 +21,7 @@ import {
   type CbFilter,
   type CbRow,
 } from "@/lib/cb-queries";
-import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { DashTabs } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -160,7 +160,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const lastUpdated = await maxUpdatedAt("cuadro_basico_semanal", "cb").catch(() => null);
 
   return (
-    <div className="space-y-4">
+    <DashTabs dash="cuadros-basicos" className="space-y-4">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Cuadros Básicos</h2>
         <p className="text-sm text-muted-foreground">
@@ -321,8 +321,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           </section>
         </>
       )}
-      <DashDiagnostico dash="cuadros-basicos" />
-    </div>
+    </DashTabs>
   );
 }
 
