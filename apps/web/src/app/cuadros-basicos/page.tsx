@@ -21,6 +21,7 @@ import {
   type CbFilter,
   type CbRow,
 } from "@/lib/cb-queries";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -318,6 +319,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           </section>
         </>
       )}
+      <DashDiagnostico dash="cuadros-basicos" />
     </div>
   );
 }

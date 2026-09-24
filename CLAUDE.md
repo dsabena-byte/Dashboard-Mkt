@@ -64,6 +64,28 @@ reporte_existencia/cb_homologos).
   (loop de function-calling OpenAI). Extender a un dashboard = escribir `lib/chat/tools-<dash>.ts`
   (envolver query functions existentes) + registrarlo en `lib/chat/registry.ts` + sumar entrada
   en `global-data-chat.tsx`. El motor NO se toca.
+- **Inteligencia (señales + Diagnóstico IA), portado de BIP (sep-2026):**
+  - **Motor de señales** `lib/signals/` (determinístico, sin IA, sin tabla): reglas de BIP casi literales
+    (`pauta/redes/web/seo/overview/cruces.ts`, entrada = `model.ts`) + reglas propias de Drean (`drean.ts`:
+    CB, Floor Share, UGC, GfK, Kantar con cruce share↔TOM, Mkt Canal, ecommerce, BGT). `adapters.ts` (puro,
+    testeado) arma las formas BIP desde las tablas de Drean; `sources.ts` (server) lee SOLO fuentes baratas/
+    precalculadas (trade_monthly, fs_precomputed, vistas web mensuales, web_daily_by_category, …). Entrada:
+    `computeSignals(dash?)` / `signalsSummaryForChat(dash, limit)` / `isSignalScope` en `lib/signals/index.ts`.
+  - **Pauta = mismo modelo que el Seguimiento:** el gap-fill por medio se extrajo a `lib/pauta-medios-model.ts`
+    (`buildPautaMediosMensual`); `computePautaImpacto` (objetivos-kpis) lo usa y da totales IDÉNTICOS (test).
+    Señales: PMax fuera, OOH/TV/DOOH/radio = offline (contactos aparte), CPM mensual solo con medios con
+    impresiones (`invConImpr`), filas OMD con inversión y sin impresiones → aviso `pauta_omd_sin_performance`.
+    Validado con data real: ago-2026 Meta = $62,72M (API), la fila OMD $13,4M se ignora.
+  - **Redes:** IG por pieza sin Stories; **FB solo posts ≥60 días** (reach lifetime inmaduro/no confiable).
+  - **Diagnóstico IA** `/api/insights` (GET última versión / `?list=1` / `?version=id`; POST genera): pack por
+    tablero (`lib/insights/datapack.ts`, tope 16k) + Seguimiento real vs meta + señales como "HALLAZGOS
+    PRE-CALCULADOS" → JSON (diagnóstico, evolución, metas, correlaciones, hallazgos, plan, oportunidades). Una
+    sola llamada, sin tools. Modelo env **`OPENAI_INSIGHTS_MODEL`** (default `gpt-4o-mini`). Señales:
+    `/api/insights/signals?dash=`. Versiones en **`insights_report`** → **correr migración
+    `0106_insights_report.sql`** (sin ella funciona pero no guarda historial).
+  - **UI** `components/diagnostico/dash-diagnostico.tsx` (`<DashDiagnostico dash=… />` al final de 11 páginas):
+    colapsable y CERRADO → no pide nada hasta abrirse (cero costo en el render; la IA solo corre en la API).
+  - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
 - **Metas por KPI + sistema visual (SEGUIR SIEMPRE, valida ANTES de ejecutar — error recurrente):**
   Cuando se agregan metas a un dashboard NO alcanza con poner el `MetaPanel` (configurador):
   hay que **cablear la meta al gráfico y a los cards**, si no el usuario guarda y no cambia nada.

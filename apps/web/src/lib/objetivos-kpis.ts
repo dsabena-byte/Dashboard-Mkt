@@ -18,7 +18,7 @@ import { getIgOrganicSummary } from "./meta-ig-queries";
 import { generalPonderado } from "./categorias";
 import { getTradeMonthly, emptyTradeMonthly } from "./trade-monthly";
 import type { MetaKpiData } from "./metas-server";
-import { esMedioApi } from "@/lib/pauta-medios";
+import { buildPautaMediosMensual, type PautaMes } from "@/lib/pauta-medios-model";
 
 export type KpiUnit = "$" | "" | "x" | "%" | "s";
 
@@ -130,8 +130,8 @@ const getWebMonthlySeguimiento = unstable_cache(
 );
 
 // ===== Pauta Mkt: mismo modelo gap-fill que impactoMensual (performance-client) =====
-interface PautaMes { inv: number; alc: number; impr: number; clic: number; v50: number; vbase: number }
-
+// La lógica vive en lib/pauta-medios-model.ts (pura, compartida con el motor de señales):
+// acá solo se toma el total mensual (`tot`), idéntico al cálculo anterior.
 function computePautaImpacto(
   data: Awaited<ReturnType<typeof getPautaPerformance>>,
   metaPaid: Awaited<ReturnType<typeof getMetaPaidCreatives>>,
@@ -142,55 +142,8 @@ function computePautaImpacto(
   anio: number,
   currentMonth: number,
 ): (PautaMes | null)[] {
-  const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
-  const fxVals = Object.values(fxRates);
-  const fxFallback = fxVals.length ? fxVals[fxVals.length - 1]! : 1;
-
-  return MES_FULL.map((full, i) => {
-    if (i + 1 >= currentMonth) return null; // solo meses cerrados
-    const mesLabel = `${full} ${anio}`;
-    const iso = `${anio}-${String(i + 1).padStart(2, "0")}-01`;
-    const fx = fxRates[iso] ?? fxFallback;
-
-    const omd = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
-    for (const r of data) {
-      // Meta (medio con API) NO se toma de OMD: entra por la API en el gap-fill de abajo (misma regla
-      // que /performance). Antes el Seguimiento usaba la fila OMD de Meta → ago-2026 subcontaba $49M.
-      if (r.mes !== mesLabel || esMedioApi(r.medio)) continue;
-      const e = omd.get(r.medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
-      e.impr += r.impresiones ?? 0; e.alc += r.alcance ?? 0; e.clic += r.clics ?? 0; e.inv += r.inversion ?? 0;
-      omd.set(r.medio, e);
-    }
-    let inv = 0, impr = 0, alc = 0, clic = 0;
-    for (const e of omd.values()) { inv += e.inv; impr += e.impr; alc += e.alc; clic += e.clic; }
-    const present = new Set([...omd].filter(([, e]) => e.impr > 0).map(([m]) => m));
-
-    const auto = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
-    const addAuto = (medio: string, im: number, al: number, cl: number, iv: number) => {
-      const e = auto.get(medio) ?? { impr: 0, alc: 0, clic: 0, inv: 0 };
-      e.impr += im; e.alc += al; e.clic += cl; e.inv += iv; auto.set(medio, e);
-    };
-    for (const r of dv360) { if (r.mes === iso) addAuto(DVMED[r.canal] ?? r.canal, r.impresiones ?? 0, 0, r.clicks ?? 0, (r.revenue_usd ?? 0) * fx); }
-    for (const r of dv360Reach) { if (r.mes === iso) { const e = auto.get(DVMED[r.canal] ?? r.canal); if (e) e.alc += r.reach ?? 0; } }
-    for (const r of metaPaid) {
-      if (r.mes !== mesLabel) continue;
-      const medio = r.plataforma === "meta" ? "Meta" : r.plataforma === "tiktok" ? "TikTok" : null;
-      if (!medio) continue;
-      addAuto(medio, r.impresiones ?? 0, r.alcance ?? 0, r.clicks ?? 0, r.spend ?? 0);
-    }
-    for (const r of googleAdsOmd) { if (r.mes === mesLabel) addAuto(r.canal, r.impresiones, 0, r.clicks, r.costo); }
-    for (const [medio, e] of auto) { if (!present.has(medio) && e.impr > 0) { impr += e.impr; alc += e.alc; clic += e.clic; inv += e.inv; } }
-
-    let v50 = 0, vbase = 0;
-    for (const r of metaPaid) {
-      if (r.mes !== mesLabel) continue;
-      if ((r.video_p25 ?? 0) + (r.video_p50 ?? 0) + (r.video_p75 ?? 0) > 0) { vbase += r.impresiones ?? 0; v50 += r.video_p50 ?? 0; }
-    }
-    for (const r of dv360) { if (r.mes === iso && (r.starts ?? 0) > 0) { vbase += r.impresiones ?? 0; v50 += r.q50 ?? 0; } }
-
-    if (impr === 0 && inv === 0) return null;
-    return { inv, alc, impr, clic, v50, vbase };
-  });
+  return buildPautaMediosMensual({ pauta: data, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, anio, currentMonth })
+    .map((m) => (m ? m.tot : null));
 }
 
 // Extrae una serie de 12 desde un array de PautaMes con un accessor (sum) o num/den (rate).

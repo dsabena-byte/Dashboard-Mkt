@@ -39,6 +39,7 @@ import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 import { getPautaInversionTotalMensual } from "@/lib/objetivos-kpis";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -1208,6 +1209,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           </section>
         );
       })()}
+      <DashDiagnostico dash="web" />
     </div>
   );
 }

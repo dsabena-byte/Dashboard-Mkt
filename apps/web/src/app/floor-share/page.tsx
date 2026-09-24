@@ -16,6 +16,7 @@ import { computeFsView, isFsDefault, type FsView, type FsEnrichedRow } from "@/l
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -222,6 +223,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           <TiendaTable rows={byTienda} />
         </>
       )}
+      <DashDiagnostico dash="floor-share" />
     </div>
   );
 }

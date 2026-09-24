@@ -1,5 +1,6 @@
 import { getSeguimientoCompleto } from "@/lib/objetivos-por-categoria";
 import { SeguimientoView } from "@/components/objetivos/seguimiento-view";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 
 // Seguimiento Objetivos = Estado de KPIs (Mapa Estratégico → cumplimiento por
 // categoría). El viejo tab "OKR Mkt" se removió: Obj.1 (presupuesto) vive en
@@ -25,6 +26,7 @@ export default async function OverviewPage() {
         </p>
       </header>
       <SeguimientoView data={seg} />
+      <DashDiagnostico dash="overview" />
     </div>
   );
 }
