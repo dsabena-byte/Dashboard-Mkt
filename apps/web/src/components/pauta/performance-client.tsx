@@ -37,6 +37,7 @@ import { InversionToggleChart } from "@/components/pauta/inversion-toggle-chart"
 import type { MetaKpiData } from "@/lib/metas-server";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { esMedioApi } from "@/lib/pauta-medios";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 const fmtUSD = (n: number): string =>
   `US$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -1232,6 +1233,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
           )}
         </div>
       </header>
+      <HowToRead slug="performance" />
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">
@@ -1279,6 +1281,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
             {impactoCards.map((c) => (
               <MetaKpiCard
                 key={c.key}
+                learnKey={c.key}
                 title={c.title}
                 medida={c.medida}
                 headlineActual={c.headlineActual}

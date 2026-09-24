@@ -40,6 +40,7 @@ import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 import { getPautaInversionTotalMensual } from "@/lib/objetivos-kpis";
 import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -468,6 +469,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
+      <HowToRead slug="web" />
 
       {!hasData && (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
@@ -479,6 +481,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       {/* Cards PRINCIPALES con meta (los KPIs del Mapa Estratégico: Tráfico, Avg Session, Conversión) */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <MetaKpiCard
+          learnKey="trafico"
           title="Tráfico web (usuarios)"
           medida="Usuarios del mes"
           headlineActual={usersRef}
@@ -492,6 +495,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           ]}
         />
         <MetaKpiCard
+          learnKey="frecuencia_sesion"
           title="Avg Session (segundos)"
           medida="Duración media de sesión (período)"
           headlineActual={avgSessionActual}
@@ -506,6 +510,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           ]}
         />
         <MetaKpiCard
+          learnKey="conversion"
           title="Conversion rate"
           medida="Conversiones ÷ sesiones"
           headlineActual={convRef}
@@ -524,6 +529,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       {/* Cards ECOMMERCE con meta (misma jerarquía): Transacciones, Total Ingresos, ROAS */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <MetaKpiCard
+          learnKey="transacciones"
           title="Transacciones"
           medida="Compras del mes (GA4)"
           headlineActual={transRef}
@@ -537,6 +543,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           ]}
         />
         <MetaKpiCard
+          learnKey="ingresos"
           title="Total Ingresos"
           medida="Ingresos ecommerce del mes (GA4)"
           headlineActual={ingRef}
@@ -551,6 +558,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           ]}
         />
         <MetaKpiCard
+          learnKey="roas"
           title="ROAS"
           medida="Ingresos ÷ inversión total de medios (Pauta Mkt + Ecommerce)"
           headlineActual={roasRef}

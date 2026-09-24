@@ -5,6 +5,7 @@ import { MercadoBrandChart, type BrandChartPoint } from "@/components/mercado/me
 import { MercadoStackedBars, type StackedPoint } from "@/components/mercado/mercado-stacked-bars";
 import Link from "next/link";
 import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -284,6 +285,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
           </p>
         )}
       </header>
+      <HowToRead slug="mercado" />
 
       {rows.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">

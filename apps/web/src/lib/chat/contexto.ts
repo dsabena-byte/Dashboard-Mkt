@@ -199,6 +199,7 @@ export const TOOL_LABELS: Record<string, string> = {
   get_redes_competencia: "Redes: competencia",
   get_cruce_mensual: "Cruce mensual",
   get_senales: "Alertas y oportunidades",
+  get_guia: "Método BIP",
   calc: "Cálculo",
   render_chart: "Armando gráfico",
   render_table: "Armando tabla",

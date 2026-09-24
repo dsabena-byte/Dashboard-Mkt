@@ -246,6 +246,30 @@ reporte_existencia/cb_homologos).
     GitHub secrets, actualizarlo). (4) Actions → "Search Console sync" → Run workflow. Validar: `ga4-sync` y
     `google-ads-sync` siguen OK.
 
+## Método BIP (capa de aprendizaje) — portado sep-2026
+- `/guia` ("Método BIP", último ítem del sidebar) + `/guia/[id]`: 45 módulos estáticos en `lib/guia/*`
+  (estratégico/táctico/operativo, atados a etapa Construir/Aprender/Optimizar/Acelerar, funnel, tableros y
+  KPIs). Contenido de BIP **adaptado a Drean**: sin planes (Insight/Optimize/Accelerate), sin "Fuentes de
+  datos"/Nango/planillas; "pestaña Insights" → **Diagnóstico IA**; los 4 módulos `bip-*` y `medios-offline`
+  reescritos (Monitoreo conexiones, regla API vs OMD, Mapa TOM/SOM/Intención/Poder, BGT/GfK/CB). Ids
+  heredados (`bip-*`, slugs `trade/inversion/resultados/conexiones`) se mapean en `DASH_HREF`/`dashLinks`
+  (`lib/guia/index.ts`) a rutas reales de Drean. **`lib/guia/titulos.ts` es espejo manual** de títulos.
+- `lib/knowledge.ts` (client-safe): `DASH_KNOW` por **slug de ruta de Drean** (16 tableros, incl. CB, Floor
+  Share, Influencia, Mercado, Salud de Marca, Mkt Canal, Performance Conversión, Contenido, Monitoreo) +
+  `KPI_KNOW` (54 KPIs; suma share valor/unidades, índice de precio, salud de marca, UGC credibilidad/
+  intención/percepción) + `kpiKnowFor` por alias exacto.
+- UI: `components/knowledge/` → `HowToRead` (franja `<details>` bajo el título de 14 dashboards; sin
+  "use client", sirve en server y client), `LearnButton` (🎓; prop opcional **`learnKey`** en `MetaKpiCard`,
+  cableado en Redes IG/FB, Plan de Medios y Web), `KnowledgePanel` (drawer, montado una vez en el layout,
+  evento `bip:learn`). Sin HowToRead: `/mkt-canal` (iframe a pantalla completa) y `/contenido`.
+- Acceso: `/guia` está en `ALWAYS_ALLOWED_PATHS` (`lib/dashboard-access.ts`) → visible aunque el usuario
+  tenga `dashboard_access` restringido (no expone datos).
+- Copiloto: tool `get_guia` (`lib/chat/tools-guia.ts`, buscar por texto/KPI/tablero o traer por id) en
+  TODOS los dashboards y usuarios (`buildChatTools`); el prompt la usa para citar `[Título](/guia/<id>)` y
+  `mini-markdown` renderiza links internos `/guia/...`.
+- Test: `cd apps/web && npx tsx scripts/guia-integridad.test.ts` (ids, títulos espejo, KPIs, rutas, términos
+  BIP-only). Pendiente (igual que BIP): pasar el contenido a tabla para editar sin deploy.
+
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
 - **Inversión de Marketing (`/funnel`) — dash NATIVO (dic-2026, reemplazó el iframe).** Antes era
   un iframe a un HTML estático (`public/bgt-mkt/index.html`, Chart.js, cargaba `data.json` de

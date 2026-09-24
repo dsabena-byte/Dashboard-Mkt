@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Direccion } from "@/lib/metas";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 export interface CmpRow {
   label: string; // "Mes Ago" / "Acum. YTD"
@@ -19,6 +20,8 @@ interface Props {
   rows: CmpRow[]; // comparaciones (mes, acumulado)
   /** Contenido opcional al pie de la card (ej. gráfico real vs meta DENTRO de la card). */
   children?: ReactNode;
+  /** Método BIP: clave de KPI_KNOW (o nombre/alias del KPI) → muestra el 🎓 que abre la guía. Opcional. */
+  learnKey?: string;
 }
 
 function fmt(v: number | null, unidad: "%" | "s" | "$" | "x" | "pts" | ""): string {
@@ -39,12 +42,15 @@ const SEM_BG: Record<string, string> = {
   "sin-meta": "rgba(100,116,139,.10)",
 };
 
-export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unidad = "", direccion = "up", umbralVerde = 100, umbralAmarillo = 90, rows, children }: Props) {
+export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unidad = "", direccion = "up", umbralVerde = 100, umbralAmarillo = 90, rows, children, learnKey }: Props) {
   return (
     <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
-        {medida && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{medida}</div>}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+          {medida && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{medida}</div>}
+        </div>
+        {learnKey && <LearnButton k={learnKey} title={learnKey} />}
       </div>
 
       <div className="mt-2 flex items-baseline gap-2">

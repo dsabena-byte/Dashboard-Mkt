@@ -43,6 +43,7 @@ import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 import { ShareEngagementSection } from "@/components/social/share-engagement";
 import { getMercadoSeries } from "@/lib/mercado-kpis-server";
 import { lastIdx } from "@/lib/mercado-kpis";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -199,6 +200,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
+      <HowToRead slug="redes" />
 
       <RedesTabs
         current={tab}

@@ -17,6 +17,7 @@ import { MetaPanel } from "@/components/metas/meta-panel";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
 import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -129,6 +130,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         </p>
         <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
+      <HowToRead slug="floor-share" />
 
       <MetaPanel
         plan="Floor Share"

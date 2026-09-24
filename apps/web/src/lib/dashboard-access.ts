@@ -11,7 +11,12 @@ export function allowedFromRows(
   return rows.map((r) => r.dashboard_path);
 }
 
+// Rutas de contenido abiertas a TODO usuario logueado, aunque tenga dashboard_access restringido
+// (no exponen datos: /guia = Método BIP, capa de aprendizaje estática).
+export const ALWAYS_ALLOWED_PATHS = ["/guia"];
+
 export function isPathAllowed(pathname: string, allowed: string[] | null): boolean {
   if (allowed === null) return true; // sin restricción
+  if (ALWAYS_ALLOWED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
   return allowed.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }

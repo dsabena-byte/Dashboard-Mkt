@@ -10,6 +10,7 @@ import {
   type SMState,
 } from "@/lib/salud-marca-model";
 import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -819,6 +820,7 @@ function Header({ tab, lastUpdated }: { tab: (typeof TABS)[number]; lastUpdated?
           cada marca. El tab <b>Marca</b> consolida a Drean ponderando las categorías.
         </p>
       </header>
+      <HowToRead slug="salud-marca" />
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <Link

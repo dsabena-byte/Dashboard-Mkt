@@ -22,6 +22,7 @@ import {
   type CbRow,
 } from "@/lib/cb-queries";
 import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -167,6 +168,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         </p>
         <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
+      <HowToRead slug="cuadros-basicos" />
 
       <CbTabsNav />
 

@@ -1,5 +1,6 @@
 import { getHealth } from "@/lib/monitoreo-queries";
 import { BADGE, fmtDate, fmtAge, fmtCadencia } from "@/lib/monitoreo-config";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -18,6 +19,7 @@ export default async function MonitoreoPage() {
           esto cada 6h, reintenta los syncs que fallan y abre una alerta (GitHub Issue) ante un desvío.
         </p>
       </header>
+      <HowToRead slug="monitoreo" />
 
       {alertas.length > 0 ? (
         <div className="rounded-xl border border-l-[5px] border-l-red-500 bg-red-50/50 p-4">
