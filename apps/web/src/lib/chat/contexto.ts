@@ -146,6 +146,14 @@ const CTX: DashContexto[] = [
       "¿La inversión en medios acompaña a la facturación mes a mes?",
     ],
   },
+  {
+    key: "tableros", path: "/tableros", label: "Mis tableros",
+    foco: "Planillas propias cargadas en Mis tableros (list_tableros_datasets / query_dataset): qué datos hay, totales y aperturas; cruzalas con los dashboards nativos cuando aplique.",
+    sugerencias: [
+      "¿Qué planillas hay cargadas y qué columnas tienen?",
+      "Sumá la planilla principal por mes y decime la tendencia",
+    ],
+  },
 ];
 
 export const GENERAL: DashContexto = {
@@ -200,6 +208,8 @@ export const TOOL_LABELS: Record<string, string> = {
   get_cruce_mensual: "Cruce mensual",
   get_senales: "Alertas y oportunidades",
   get_guia: "Método BIP",
+  list_tableros_datasets: "Planillas de Mis tableros",
+  query_dataset: "Consultando planilla",
   calc: "Cálculo",
   render_chart: "Armando gráfico",
   render_table: "Armando tabla",

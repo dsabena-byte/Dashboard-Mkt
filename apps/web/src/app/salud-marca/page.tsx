@@ -11,6 +11,7 @@ import {
 } from "@/lib/salud-marca-model";
 import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { getKantarData, KANTAR_CONST, type KantarData } from "@/lib/kantar-sheet";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -58,15 +59,17 @@ const SM_BRANDS_REFRI = ["Drean", "Samsung", "Gafa", "Whirlpool", "LG", "Philco"
 const SM_BRANDS_COCCION = ["Drean", "Whirlpool", "Escorial", "Gafa", "Electrolux", "Longvie", "Florencia"] as const;
 // Config de Salud de Marca por categoría (la vista EvolucionView es la misma).
 // Las tablas Kantar y el modelo de consolidación viven en @/lib/salud-marca-model.
+// `kantar` = constantes por defecto; si hay "Kantar por planilla" configurado (Mis tableros),
+// la página las reemplaza por constantes + planilla (getKantarData, abajo).
 const SM_CAT: Record<string, {
-  categoria: string; label: string; tabKey: string;
+  categoria: string; label: string; tabKey: string; catKey: "lav" | "ref" | "coc";
   waves: ReadonlyArray<{ label: string; mes: string }>;
   brands: readonly string[];
   kantar: Record<string, Record<string, KVals>>;
 }> = {
-  lavado: { categoria: "Lavado", label: "Lavado", tabKey: "lavado", waves: WAVES_LAVADO, brands: SM_BRANDS_LAVADO, kantar: KANTAR_LAVADO },
-  refrigeracion: { categoria: "Refrigeración", label: "Refrigeración", tabKey: "refrigeracion", waves: WAVES_REFRI, brands: SM_BRANDS_REFRI, kantar: KANTAR_REFRI },
-  coccion: { categoria: "Cocción", label: "Cocción", tabKey: "coccion", waves: WAVES_COCCION, brands: SM_BRANDS_COCCION, kantar: KANTAR_COCCION },
+  lavado: { categoria: "Lavado", label: "Lavado", tabKey: "lavado", catKey: "lav", waves: WAVES_LAVADO, brands: SM_BRANDS_LAVADO, kantar: KANTAR_LAVADO },
+  refrigeracion: { categoria: "Refrigeración", label: "Refrigeración", tabKey: "refrigeracion", catKey: "ref", waves: WAVES_REFRI, brands: SM_BRANDS_REFRI, kantar: KANTAR_REFRI },
+  coccion: { categoria: "Cocción", label: "Cocción", tabKey: "coccion", catKey: "coc", waves: WAVES_COCCION, brands: SM_BRANDS_COCCION, kantar: KANTAR_COCCION },
 };
 
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
@@ -80,6 +83,8 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 export default async function SaludMarcaPage({ searchParams }: { searchParams?: { tab?: string; view?: string; marca?: string } }) {
   const tab = TABS.find((t) => t.key === searchParams?.tab) ?? TABS[0];
   const lastUpdated = await maxUpdatedAt("mercado_share").catch(() => null);
+  // Kantar: constantes del código, o constantes + planilla si está configurada (fail-safe).
+  const kantar: KantarData = await getKantarData().catch(() => ({ source: "constantes" as const, tables: KANTAR_CONST }));
 
   // ===== Lavado / Refrigeración: Evolución (Salud de Marca vs Mercado) =====
   const smCfg = SM_CAT[tab.key];
@@ -88,12 +93,13 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
     return (
       <div className="space-y-5">
         <Header tab={tab} lastUpdated={lastUpdated} />
+        <KantarSourceNote k={kantar} />
         <EvolucionView
           marca={marca}
           serieU12={await safe(getDreanSerie(smCfg.categoria, "MAT", marca.toUpperCase()), new Map<string, DreanMesSeg>())}
           waves={smCfg.waves}
           brands={smCfg.brands}
-          kantarData={smCfg.kantar}
+          kantarData={kantar.tables[smCfg.catKey] ?? smCfg.kantar}
           catLabel={smCfg.label}
           tabKey={smCfg.tabKey}
         />
@@ -112,12 +118,31 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
   return (
     <div className="space-y-5">
       <Header tab={tab} lastUpdated={lastUpdated} />
-      <DreanSaludConsolidada series={dreanSeries} />
+      <KantarSourceNote k={kantar} />
+      <DreanSaludConsolidada series={dreanSeries} kantar={kantar.source === "planilla" ? kantar.tables : undefined} />
       <DashDiagnostico dash="salud-marca" />
     </div>
   );
 }
 
+
+// Fuente de los valores Kantar: solo se muestra si hay planilla configurada (o un aviso).
+// Sin planilla → no se renderiza nada (la página queda igual que antes).
+function KantarSourceNote({ k }: { k: KantarData }) {
+  if (k.source === "constantes" && !k.warning) return null;
+  return (
+    <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+      {k.source === "planilla" ? (
+        <>Valores Kantar: fijos del tablero <strong>+ planilla “{k.datasetName}”</strong>
+          {k.report ? <> ({k.report.celdas} valores en {k.report.olasAplicadas.join(", ") || "—"})</> : null}
+          {k.updatedAt ? <> · configurada el {new Date(k.updatedAt).toLocaleDateString("es-AR")}</> : null}.{" "}
+          <Link href="/tableros#kantar" className="text-blue-700 hover:underline">Cambiar</Link></>
+      ) : (
+        <>{k.warning} <Link href="/tableros#kantar" className="text-blue-700 hover:underline">Revisar</Link></>
+      )}
+    </p>
+  );
+}
 
 // Vista evolución: Salud de Marca Kantar (Drean Lavado) vs variables de mercado,
 // por ola de medición (columnas = momentos). Sirve para ver qué variable de
@@ -153,9 +178,9 @@ function Delta({ curr, prev }: { curr: number | null; prev: number | null }) {
 // Para nov-26: se usan los valores proyectados (mismos coeficientes que EST_* de
 // EvolucionView); donde no hay proyección de marca se ARRASTRA el último real
 // (nov-25) y se muestra en otro color (ámbar) con su aclaración.
-function DreanSaludConsolidada({ series }: { series: Record<"lav" | "ref" | "coc", Map<string, DreanMesSeg>> }) {
+function DreanSaludConsolidada({ series, kantar }: { series: Record<"lav" | "ref" | "coc", Map<string, DreanMesSeg>>; kantar?: KantarData["tables"] }) {
   // Cálculo compartido con el card Obj.4 de /overview (una sola fuente de verdad).
-  const rows = computeDreanConsolidado(series); // solo olas de noviembre (anuales)
+  const rows = computeDreanConsolidado(series, true, kantar); // solo olas de noviembre (anuales)
   const waves = rows.map((r) => r.w);
   const dims = SM_DIMS;
   const cls = (s: SMState) => s === "proj" ? "text-blue-600" : s === "carry" ? "text-amber-600" : "text-foreground";

@@ -270,6 +270,40 @@ reporte_existencia/cb_homologos).
 - Test: `cd apps/web && npx tsx scripts/guia-integridad.test.ts` (ids, títulos espejo, KPIs, rutas, términos
   BIP-only). Pendiente (igual que BIP): pasar el contenido a tabla para editar sin deploy.
 
+- **Mis tableros (motor de planillas) + Kantar por planilla — sep-2026 (portado de BIP, ADITIVO):**
+  - **Qué es:** `/tableros` (lista + "Nuevo tablero" + Planillas + Kantar), `/tableros/[slug]` (vista: filtros de
+    tablero, filtros cruzados, "Modo reporte" → imprimir/PDF, "Descargar datos" → Excel) y `/tableros/[slug]/editar`
+    (builder 3 pasos: planilla → armar con **Tablero automático / Armalo con IA / + Gráfico** → guardar). Entrada
+    "Mis tableros" en el sidebar (respeta `dashboard_access` vía `/tableros`). **No reemplaza** ningún dash nativo.
+  - **Piezas:** motor PURO `lib/viz/*` (copia de BIP, client-safe; único cambio: `!` por `noUncheckedIndexedAccess`,
+    solo tipos) · UI `components/viz/*` + `components/viz-builder/*` (recharts 2.12 OK; `ExportMenu` solo Excel, sin
+    PNG porque Drean no tiene html-to-image) · persistencia `lib/tableros-server.ts` (REST service key) · API
+    `app/api/tableros/{route,dataset,datasets,datasets/google-sheet,ai,kantar,kantar/plantilla}`. IA = OpenAI por
+    fetch, modelo `OPENAI_INSIGHTS_MODEL` (default gpt-4o-mini), rate limit compartido del chat.
+  - **CSS:** los componentes de BIP usan variables `--line/--ink/--navy/--muted…` → definidas SOLO bajo `.bip-viz`
+    en `globals.css` (wrapper de las páginas; el portal del Modo reporte también lleva la clase). NO sacar el
+    scope: `--muted`/`--card` de shadcn son HSL y se romperían en el resto del dash.
+  - **DB:** migración **`0109_tableros.sql`** (principal): `tableros_datasets` (id uuid, name, columns/rows jsonb,
+    row_count, source, updated_at) + `tableros` (slug pk, title, config jsonb v2). **Correrla en el SQL Editor**; sin
+    ella las páginas muestran el aviso y todo lo demás sigue igual (validado: PostgREST da 404/PGRST205 →
+    `TablerosMissingError`). Subida: 1ª hoja, fila 1 = encabezados, tope 20k filas / 4 MB. Dep nueva **`xlsx`**.
+  - **Google Sheets:** usa el OAuth de GA4 (`GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN`). Ese token se generó con
+    `analytics.readonly` (+`adwords`) → la UI muestra **`no_scope`** y ofrece solo archivo. Habilitarlo: regenerar
+    el refresh token en OAuth Playground con el client propio sumando `https://www.googleapis.com/auth/spreadsheets.readonly`
+    (conservando los scopes actuales), pegarlo en `GOOGLE_REFRESH_TOKEN` de Vercel + redeploy, y compartir cada
+    planilla con esa cuenta Google. No verificado desde el sandbox (no hay env de Google acá).
+  - **Kantar por planilla (opcional):** config en la fila reservada `tableros.slug='cfg-kantar'` (mapeo de columnas
+    con `lib/research-core.ts` de BIP + categorías). `lib/kantar-sheet.ts` → `getKantarData()`: sin config (o
+    cualquier error) = **constantes de `salud-marca-model.ts` sin tocar**; con config = constantes + planilla **celda
+    por celda** (solo pisa lo que la planilla trae). Solo olas medidas del eje actual (nov-23…nov-25 + jun);
+    **nov-26 (proyección) y olas nuevas NO se aplican** (se informan) → para una ola nueva hay que extender el eje en
+    el código. Aplica a `/salud-marca` (tabs por categoría + Marca vía `computeDreanConsolidado(series, true, kantar)`);
+    **`/overview` Obj.4, el chat y las señales siguen con las constantes.** Plantilla: `/api/tableros/kantar/plantilla`.
+  - **Copiloto:** `lib/chat/tools-archivos.ts` (`list_tableros_datasets` / `query_dataset`, como `list_archivos`/
+    `query_archivo` de BIP), set `tableros` en `registry.ts` + contexto `/tableros` en `contexto.ts`.
+  - **Tests:** `cd apps/web && npx tsx scripts/viz-engine.test.ts` (110 OK) · `npx tsx scripts/kantar-sheet.test.ts`
+    (sin planilla = mismos números) · `npx tsx scripts/tableros-smoke.ts` (solo lectura contra la DB).
+
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
 - **Inversión de Marketing (`/funnel`) — dash NATIVO (dic-2026, reemplazó el iframe).** Antes era
   un iframe a un HTML estático (`public/bgt-mkt/index.html`, Chart.js, cargaba `data.json` de

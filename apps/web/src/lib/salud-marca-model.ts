@@ -204,11 +204,13 @@ export const SM_DIMS: ReadonlyArray<{ key: "tom" | "som" | "int" | "poder"; labe
 export function computeDreanConsolidado(
   series: Record<"lav" | "ref" | "coc", Map<string, DreanMesSeg>>,
   novOnly = true,
+  // Opcional: tablas Kantar a usar (Kantar por planilla, lib/kantar-sheet). Sin esto → constantes.
+  kantar?: Record<"lav" | "ref" | "coc", Record<string, Record<string, KVals>>>,
 ): SMRow[] {
   const waves = (novOnly ? SM_WAVES.filter((w) => w.startsWith("nov")) : [...SM_WAVES]);
-  const CAT_LAV: CatDef = { key: "lav", kantar: KANTAR_LAVADO };
-  const CAT_REF: CatDef = { key: "ref", kantar: KANTAR_REFRI };
-  const CAT_COC: CatDef = { key: "coc", kantar: KANTAR_COCCION };
+  const CAT_LAV: CatDef = { key: "lav", kantar: kantar?.lav ?? KANTAR_LAVADO };
+  const CAT_REF: CatDef = { key: "ref", kantar: kantar?.ref ?? KANTAR_REFRI };
+  const CAT_COC: CatDef = { key: "coc", kantar: kantar?.coc ?? KANTAR_COCCION };
   const catWave = (cat: CatDef, w: string): SMCatWave => {
     const real = cat.kantar["Drean"]?.[w];
     const a25 = cat.kantar["Drean"]?.["nov-25"];
