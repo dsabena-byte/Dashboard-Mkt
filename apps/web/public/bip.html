@@ -1,4 +1,15 @@
-<title>BIP — Estrategia que se convierte en resultados</title>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BIP — Sabé qué acción de marketing mueve tus resultados</title>
+<meta name="description" content="BIP conecta tus medios, redes, web y ventas con tus objetivos de negocio. Medí contra la meta, comparate con tu competencia y anticipá dónde invertir. Probalo 15 días con tus datos.">
+<meta property="og:title" content="BIP — Business Impact Platform">
+<meta property="og:description" content="Medí contra la meta, comparate con tu mercado y anticipá dónde invertir. Con IA y el método de ROQUÉ adentro.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://bip-go.com/">
+<meta property="og:image" content="https://bip-go.com/bip/hero.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
@@ -190,7 +201,7 @@
   .node .n{font-family:"Poppins"; font-weight:800; font-size:12px; color:var(--cyan-ink)}
   .node .l{font-family:"Poppins"; font-weight:700; font-size:16px; margin-top:1px; color:var(--navy)}
   .node.n1{left:50%;top:0}.node.n2{left:100%;top:50%}.node.n3{left:50%;top:100%}.node.n4{left:0;top:50%}
-  @media(max-width:520px){.node .l{font-size:14px}}
+  @media(max-width:520px){.node .l{font-size:14px}.cycle{width:min(440px,72vw)}}
 
   /* MODULES + shared heads */
   .sec-head{max-width:60ch}
@@ -392,7 +403,63 @@
   .vframe .bar i{width:10px;height:10px;border-radius:50%;background:var(--line)}
   .vframe .bar .url{margin-left:12px; font-size:11px; color:var(--faint); font-family:"Poppins"; letter-spacing:.03em}
   .vplayer{display:block; width:100%; height:auto; background:#eef4fb}
+
+  /* ---- v2 venta (sep-2026) ---- */
+  .scwrap{max-width:calc(100vw - 36px)}
+  .hero-content{max-width:680px}
+  .proof{display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:22px; font-size:13px; color:rgba(255,255,255,.78)}
+  .proof span{display:inline-flex; align-items:center; gap:7px}
+  .proof span::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--cyan)}
+  .proof b{color:#fff; font-weight:700}
+  .mod{position:relative}
+  .mtier{position:absolute; top:12px; right:12px; font-family:"Poppins"; font-weight:700; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; padding:3px 8px; border-radius:999px}
+  .t-optimize{background:var(--cyan-soft); color:var(--cyan-ink)}
+  .t-accelerate{background:#0f1e36; color:#fff}
+  .mod-optimize{border-color:color-mix(in srgb,var(--cyan) 35%,var(--line))}
+  .mod-accelerate{border-color:color-mix(in srgb,var(--navy) 35%,var(--line)); background:linear-gradient(180deg,#fff, var(--navy-soft))}
+  .modlegend{display:flex; justify-content:center; flex-wrap:wrap; gap:8px 20px; margin-top:14px; font-size:12.5px; color:var(--muted)}
+  .modlegend span{display:inline-flex; align-items:center; gap:7px}
+  .modlegend i{width:10px; height:10px; border-radius:3px; display:inline-block}
+  .lg-b{background:var(--line)} .lg-o{background:var(--cyan)} .lg-a{background:#0f1e36}
+  .ladder{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; align-items:end; margin:40px auto 0; max-width:980px}
+  .ladder .step{display:flex; flex-direction:column; gap:6px; text-decoration:none; color:var(--ink); border-radius:14px; padding:18px 18px 16px; border:1px solid var(--line); background:var(--panel); box-shadow:var(--shadow); transition:transform .16s ease}
+  .ladder .step:hover{transform:translateY(-2px)}
+  .ladder .s1{min-height:150px}
+  .ladder .s2{min-height:185px; border-color:var(--cyan); background:linear-gradient(180deg,#fff,#eef7ff)}
+  .ladder .s3{min-height:220px; background:linear-gradient(160deg,var(--navy),#0f1e36); color:#fff; border-color:transparent}
+  .ladder .sk{font-family:"Poppins"; font-weight:700; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--cyan-ink)}
+  .ladder .s3 .sk{color:#8fd0fb}
+  .ladder .sq{font-family:"Poppins"; font-weight:800; font-size:18px; line-height:1.25; color:var(--navy); margin-top:auto}
+  .ladder .s3 .sq{color:#fff}
+  .ladder .sp{font-family:"Poppins"; font-weight:700; font-size:13px}
+  .ladder .sd{font-size:12.5px; color:var(--muted)}
+  .ladder .s3 .sd{color:rgba(255,255,255,.75)}
+  @media(max-width:760px){.ladder{grid-template-columns:1fr; max-width:440px}.ladder .step{min-height:0 !important}}
+  .card{position:relative}
+  .card-reco{border:2px solid var(--cyan); box-shadow:0 1px 2px rgba(10,77,160,.06), 0 24px 44px -24px rgba(18,166,244,.45)}
+  @media(min-width:901px){.card-reco{transform:translateY(-10px)}}
+  .card-accelerate{background:linear-gradient(180deg,#fff 0%, #fff 60%, var(--navy-soft) 100%)}
+  .ribbon{position:absolute; top:-13px; left:50%; transform:translateX(-50%); background:var(--cyan); color:#fff; font-family:"Poppins"; font-weight:700; font-size:11px; letter-spacing:.12em; text-transform:uppercase; padding:5px 14px; border-radius:999px; white-space:nowrap}
+  .pq{font-family:"Poppins"; font-weight:800; font-size:19px; line-height:1.25; color:var(--ink); min-height:48px}
+  .specs{display:grid; grid-template-columns:repeat(3,1fr); gap:6px}
+  .specs div{background:var(--ground-2); border:1px solid var(--line-2); border-radius:9px; padding:8px 6px; text-align:center; display:flex; flex-direction:column; gap:1px}
+  .specs b{font-family:"Poppins"; font-weight:800; font-size:14px; color:var(--navy); white-space:nowrap}
+  .specs span{font-size:11px; color:var(--muted); line-height:1.2}
+  .pitch b{color:var(--ink)}
+  .ctas{margin-top:auto; display:flex; flex-direction:column; gap:0}
+  .ctas .pcta{margin-top:0}
+  .pcta-sec{background:transparent !important; color:var(--navy) !important; border:1.5px solid var(--line) !important; margin-top:10px !important; font-size:14px; padding:11px 16px}
+  .pcta-reco{background:var(--cyan)}
+  .nextup{display:flex; flex-direction:column; gap:6px; text-decoration:none; font-size:12.5px; line-height:1.4; color:var(--muted); background:var(--ground-2); border:1px dashed color-mix(in srgb,var(--cyan) 45%,var(--line)); border-radius:10px; padding:11px 13px}
+  .nextup b{color:var(--navy)}
+  .nextup:hover{border-style:solid}
+  .nextup.top{border-style:solid; border-color:var(--line)}
+  .upgrade{display:flex; gap:14px; align-items:flex-start; max-width:820px; margin:34px auto 0; padding:16px 20px; border-radius:14px; background:var(--cyan-soft); border:1px solid #bfe3fb; font-size:14.5px; line-height:1.5; color:var(--ink)}
+  .up-ic{flex:none; width:34px; height:34px; border-radius:50%; background:var(--navy); color:#fff; display:grid; place-items:center}
+  .up-ic svg{width:18px; height:18px}
 </style>
+</head>
+<body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
   <path id="triPath" d="M14 8 C14 3.5 17 2.2 20.5 4.3 L54 25.5 C58 27.8 58 32.2 54 34.5 L20.5 55.7 C17 57.8 14 56.5 14 52 Z"/>
@@ -402,14 +469,14 @@
   <div class="row">
     <a class="brand" href="#top">BIP<svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg><span class="rs">Business<br>Impact<br>Platform</span></a>
     <div class="links">
-      <a href="#expertise">Conocimiento</a>
-      <a href="#como">Cómo funciona</a>
       <a href="#modulos">Qué medís</a>
+      <a href="#como">Cómo funciona</a>
+      <a href="#expertise">Expertise</a>
       <a href="#planes">Planes</a>
       <a href="#faq">Preguntas</a>
     </div>
     <div class="spacer"></div>
-    <a class="btn primary sm" href="https://bip-platform.vercel.app/signup"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Probá 15 días</a>
+    <a class="btn primary sm" href="https://bip-platform.vercel.app/signup"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Probar gratis</a>
   </div>
 </nav>
 
@@ -419,13 +486,17 @@
   <div class="hero-ov"></div>
   <div class="wrap hero-content">
     <span class="kicker">Business Impact Platform</span>
-    <h1>Tener una estrategia no te asegura <span class="hl">lograr tus resultados</span>.</h1>
-    <p class="lede">BIP conecta cada acción de marketing con el impacto real en el negocio. No accedés solo a una tecnología: accedés a un <b>universo de conocimiento y expertise world-class</b> que te guía en cada decisión.</p>
+    <h1>Sabé qué acción de marketing <span class="hl">mueve tus resultados</span>.</h1>
+    <p class="lede">BIP conecta tus medios, redes, web y ventas con tus objetivos de negocio: ves en un solo lugar qué está funcionando contra la meta, qué no, y qué mover. Con IA y el <b>método de ROQUÉ</b> adentro.</p>
     <div class="cta-row">
-      <a class="btn primary" href="https://bip-platform.vercel.app/signup"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Probá Insight 15 días</a>
-      <a class="btn ghost" href="#como">Ver cómo funciona</a>
+      <a class="btn primary" href="https://bip-platform.vercel.app/signup"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Probalo 15 días con tus datos</a>
+      <a class="btn ghost" href="#planes">Ver planes</a>
     </div>
-    <p class="microcopy">Sin instalaciones · Se conecta con tus fuentes de datos · Primer ciclo en semanas</p>
+    <div class="proof">
+      <span><b>15 días</b> gratis · sin tarjeta</span>
+      <span><b>Set-up</b> sin cargo</span>
+      <span>Meta · Google · GA4 · DV360 · TikTok · planillas</span>
+    </div>
   </div>
 </section>
 
@@ -671,12 +742,13 @@
     <div class="sec-head center">
       <span class="kicker">Qué medís</span>
       <h2>Todo tu marketing, conectado al negocio.</h2>
-      <p>Cada disciplina, con sus KPIs vinculados a tus objetivos estratégicos.</p>
+      <p>Cada disciplina, con sus KPIs vinculados a tus objetivos. Lo que ves con tus datos desde el primer día, lo que suma la mirada de mercado y lo que te deja anticipar.</p>
     </div>
     <div class="modgrid" id="modgrid"></div>
     <div class="center" style="margin-top:40px">
       <div class="ints" id="ints"></div>
-      <p style="color:var(--faint);font-size:13px;margin-top:16px">Se conecta con tus fuentes de datos. Sin migraciones ni cargas manuales interminables.</p>
+      <p style="color:var(--faint);font-size:13px;margin-top:16px">Conectás en solo lectura, en minutos. Lo que no tiene API (reportes de agencia, TV, vía pública, ventas) entra por planilla.</p>
+      <div class="modlegend"><span><i class="lg-b"></i>Todos los planes</span><span><i class="lg-o"></i>Desde Optimize</span><span><i class="lg-a"></i>Accelerate</span></div>
     </div>
   </div>
 </section>
@@ -691,7 +763,7 @@
       <div class="res"><div class="ck"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12.5 9.5 18 20 6"/></svg></div><h3>Optimización con evidencia</h3><p>Reasignás inversión y esfuerzo donde realmente mueve la aguja, no por intuición.</p></div>
       <div class="res"><div class="ck"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12.5 9.5 18 20 6"/></svg></div><h3>Previsibilidad y confianza</h3><p>Un método iterativo que cada trimestre te hace más preciso y hace previsible el resultado.</p></div>
     </div>
-    <div style="margin-top:38px"><a class="btn primary" href="#demo"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Quiero verlo en acción</a></div>
+    <div style="margin-top:38px"><a class="btn primary" href="https://bip-platform.vercel.app/signup"><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Probalo con tus datos</a> <a class="btn ghost" href="#planes" style="margin-left:8px">Comparar planes</a></div>
   </div>
 </section>
 
@@ -700,14 +772,23 @@
   <div class="wrap">
     <div class="sec-head center">
       <span class="kicker">Planes</span>
-      <h2>Elegí con cuánta profundidad querés empezar.</h2>
-      <p>Cada plan es autocontenido. Podés escalar cuando quieras.</p>
+      <h2>Cada plan responde una pregunta más grande.</h2>
+      <p>Empezás midiendo tu operación, sumás el contexto de tu mercado y terminás anticipando. Mismo método, más profundidad.</p>
+    </div>
+    <div class="ladder" aria-label="Escalera de valor">
+      <a class="step s1" href="#plan-insight"><span class="sk">01 · Medí</span><span class="sq">¿Cómo me va contra mi meta?</span><span class="sp">Insight</span><span class="sd">Tus datos conectados a tus objetivos</span></a>
+      <a class="step s2" href="#plan-optimize"><span class="sk">02 · Compará</span><span class="sq">¿Le estoy ganando a mi competencia?</span><span class="sp">Optimize</span><span class="sd">+ Tu mercado: redes, web, búsquedas y trade</span></a>
+      <a class="step s3" href="#plan-accelerate"><span class="sk">03 · Anticipá</span><span class="sq">¿Dónde pongo el próximo peso?</span><span class="sp">Accelerate</span><span class="sd">+ Simulador, pauta de la competencia y research</span></a>
     </div>
     <div class="tiers" id="tiers"></div>
-    <details class="compare" open>
+    <div class="upgrade">
+      <div class="up-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+      <div><b>Subí de plan sin saltar al vacío.</b> Si estás en un plan y querés el siguiente, te lo habilitamos unos días <b>sobre tus propios datos</b> para que lo compruebes antes de decidir. Tus conexiones, metas y tableros siguen donde estaban.</div>
+    </div>
+    <details class="compare">
       <summary><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Ver comparación completa, plan por plan</summary>
       <div class="tablewrap"><table>
-        <thead><tr><th>Incluye</th><th><span class="thn">Insight</span><span class="tht">base</span></th><th><span class="thn">Optimize</span><span class="tht">intermedio</span></th><th><span class="thn">Accelerate</span><span class="tht">full</span></th></tr></thead>
+        <thead><tr><th>Incluye</th><th><span class="thn">Insight</span><span class="tht">Medí</span></th><th><span class="thn">Optimize</span><span class="tht">Compará</span></th><th><span class="thn">Accelerate</span><span class="tht">Anticipá</span></th></tr></thead>
         <tbody id="matrix"></tbody>
       </table></div>
     </details>
@@ -722,12 +803,13 @@
   <div class="wrap">
     <div class="sec-head center"><span class="kicker">Preguntas frecuentes</span><h2>Lo que suelen preguntarnos.</h2></div>
     <div class="faq">
-      <details open><summary>¿Se conecta con las herramientas que ya uso?</summary><div class="a">Sí. BIP se integra con tus fuentes de datos —Meta, Google Ads, GA4, DV360, SharePoint, Google Drive y más— para consolidar todo en un solo lugar, sin cargas manuales interminables.</div></details>
-      <details><summary>¿Necesito un equipo técnico para implementarlo?</summary><div class="a">No. Nosotros configuramos las conexiones y el modelo estratégico con vos. Tu equipo se dedica a decidir y optimizar, no a armar reportes.</div></details>
-      <details><summary>¿Cuánto tarda en estar funcionando?</summary><div class="a">El primer ciclo arranca en semanas. A partir de ahí, cada 3 meses el sistema se vuelve más preciso con tu propia experiencia de mercado.</div></details>
-      <details><summary>¿Puedo empezar con un plan y escalar después?</summary><div class="a">Sí. Podés empezar con Insight (todos tus dashboards + IA + alertas) y subir a Optimize para sumar la mirada competitiva y consultoría, o a Accelerate para el research de mercado, cuando lo necesites.</div></details>
-      <details><summary>¿Puedo comprobarlo antes de contratar?</summary><div class="a">Sí. Arrancás con <b>15 días de acceso completo a Insight</b> sobre tu propia operación: primero ves el valor en tu caso, después decidís. Y como cliente de Insight, a partir del 4.º mes accedés <b>15 días a Optimize</b> para comprobar la mirada competitiva. Estamos tan seguros del resultado que te dejamos verlo antes. Optimize y Accelerate se contratan de forma directa.</div></details>
-      <details><summary>¿Qué diferencia a BIP de un tablero de métricas?</summary><div class="a">Un tablero muestra números. BIP conecta cada métrica y acción con un objetivo estratégico, <b>trae embebidas las mejores prácticas de ejecución del mercado</b> —el know-how de ROQUÉ, consultora experta en investigación y marketing— y te dice qué mover para lograrlo. Es conocimiento y método para generar impacto real.</div></details>
+      <details open><summary>¿Qué plan me conviene?</summary><div class="a">Depende de la pregunta que necesitás responder. <b>Insight</b>: ¿cómo me va contra mi meta? <b>Optimize</b>: ¿le estoy ganando a mi competencia? <b>Accelerate</b>: ¿dónde pongo el próximo peso? La mayoría arranca probando Insight con sus datos y sube cuando la pregunta crece.</div></details>
+      <details><summary>¿Se conecta con las herramientas que ya uso?</summary><div class="a">Sí. Meta (Facebook + Instagram), Google Ads, GA4, DV360 / YouTube, TikTok, Google Sheets, Excel y SharePoint; Search Console desde Optimize. Todo en solo lectura. Lo que no tiene API (reportes de agencia, TV, vía pública, ventas) entra por planilla.</div></details>
+      <details><summary>¿Necesito un equipo técnico para implementarlo?</summary><div class="a">No. Conectás tus cuentas en minutos y te acompañamos a armar tu modelo estratégico. El set-up y la configuración inicial no tienen cargo.</div></details>
+      <details><summary>¿Cómo funciona la prueba de 15 días?</summary><div class="a">Creás tu cuenta y usás <b>Insight completo sobre tu propia operación</b> durante 15 días, sin tarjeta. Al terminar elegís un plan para seguir; no se cobra nada automáticamente.</div></details>
+      <details><summary>¿Puedo probar un plan superior antes de pasarme?</summary><div class="a">Sí. Si estás en Insight u Optimize y querés el siguiente, te lo habilitamos unos días <b>sobre tus propios datos</b>: ves tu competencia, tu simulador o tu research con tu información real, no con una demo. Si decidís quedarte, no perdés nada de lo configurado.</div></details>
+      <details><summary>¿Qué diferencia a BIP de un tablero de métricas?</summary><div class="a">Un tablero muestra números. BIP conecta cada métrica con un objetivo de negocio, te dice qué está funcionando contra la meta y qué mover, y <b>trae embebido el know-how de ROQUÉ</b>, consultora experta en investigación y marketing. Es método y criterio, no solo gráficos.</div></details>
+      <details><summary>¿Qué pasa con mis datos?</summary><div class="a">Se usan solo para tus tableros: no se comparten, no se venden y no se usan para entrenar modelos de IA. Accedemos en solo lectura y, si te das de baja, borramos todo. Detalle abajo.</div></details>
     </div>
   </div>
 </section>
@@ -759,14 +841,13 @@
       <div>
         <span class="kicker">Empezá hoy</span>
         <h2>¿Listo para descubrir qué mueve <span style="color:#bfe0fb">realmente</span> tus KPIs?</h2>
-        <p class="p">Creá tu cuenta y arrancá tu trial de 15 días. Vas a ver tu estrategia dentro de BIP —con el criterio experto de ROQUÉ— sobre tu propia operación.</p>
+        <p class="p">Creá tu cuenta y en minutos ves tu propia operación medida contra tus objetivos, con el criterio experto de ROQUÉ. Si te sirve, elegís plan; si no, no pagaste nada.</p>
         <ul class="checklist">
           <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> 15 días de acceso completo</li>
           <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Sobre tu propia operación · sin tarjeta</li>
-          <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> El upgrade lo hacés adentro cuando quieras</li>
+          <li><svg class="tri" viewBox="0 0 64 60"><use href="#triPath"/></svg> Set-up sin cargo · subís de plan cuando quieras</li>
         </ul>
         <div class="alt">
-          <a id="waLink" href="#" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.7 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.7.7-2.8-.2-.3A8 8 0 1 1 12 20Zm4.5-5.6c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7.2 7.2 0 0 1-1.4-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4a.5.5 0 0 0 0-.4L8.9 8c-.2-.4-.3-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 4.9 4.9 0 0 0 1 2.6 11.2 11.2 0 0 0 4.3 3.8c.6.3 1.1.4 1.5.5a3.6 3.6 0 0 0 1.6.1 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg> WhatsApp</a>
           <a id="mailLink" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg> Email</a>
         </div>
       </div>
@@ -791,7 +872,7 @@
       <div>
         <div class="fbrand">BIP<span class="rs">Business<br>Impact<br>Platform</span></div>
         <div class="contact">
-          <span class="em" id="footEmail">hola@bip.com</span>
+          <span class="em" id="footEmail">bip.explore@gmail.com</span>
           <span>Estrategia que se convierte en resultados.</span>
         </div>
         <div class="fbtn"><a href="https://bip-platform.vercel.app/signup">Empezá tu trial →</a></div>
@@ -810,28 +891,32 @@
   </div>
 </footer>
 
-<a class="wa" id="waFloat" href="#" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.7 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.7.7-2.8-.2-.3A8 8 0 1 1 12 20Zm4.5-5.6c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7.2 7.2 0 0 1-1.4-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4a.5.5 0 0 0 0-.4L8.9 8c-.2-.4-.3-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 4.9 4.9 0 0 0 1 2.6 11.2 11.2 0 0 0 4.3 3.8c.6.3 1.1.4 1.5.5a3.6 3.6 0 0 0 1.6.1 2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg></a>
 
 <script>
-const SALES_EMAIL = "hola@bip.com";
+const SALES_EMAIL = "bip.explore@gmail.com";
 const WA_NUMBER = "5491100000000";
 const CHECK = '<svg class="ck" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12.5 9.5 18 20 6"/></svg>';
 document.getElementById('yr').textContent = new Date().getFullYear();
 
 const MODS = [
-  ['Seguimiento de Objetivos','Real vs meta, por categoría y acumulado','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
-  ['Plan de Medios','ON + OFF: funnel, eficiencia e insights de pauta','<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>'],
-  ['Redes Sociales','Engagement, audiencias, sentimiento y KPIs por post','<path d="M7 15a4 4 0 1 0 0-6 4 4 0 0 0 0 6Z"/><path d="M17 9a3 3 0 1 0 0 6M10.5 10.5 15 8M10.5 13.5 15 16"/>'],
-  ['Web / Ecommerce','Tráfico, fuentes, performance y KPIs de ecommerce','<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M7 13h4"/>'],
-  ['Optimización SEO','Posicionamiento, volumen y tendencias de búsqueda','<circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/>'],
-  ['Trade Marketing','Cuadros Básicos y Floor Share por cliente y tienda','<path d="M3 9 5 4h14l2 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M4 9h16"/>'],
-  ['Inversión','Ejecución del presupuesto e Inversión / Facturación','<path d="M12 2v20M6 6h9a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h9"/>'],
-  ['Resultados Comerciales','Facturación mensual y share','<path d="M3 3v18h18M8 15l3-4 3 3 4-6"/>'],
+  ['Seguimiento de Objetivos','Real vs meta por KPI y objetivo, con semáforo y acumulado','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',''],
+  ['Plan de Medios','Online + offline: inversión, alcance, frecuencia, eficiencia por medio','<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',''],
+  ['Redes Sociales','Engagement, audiencias, sentimiento y rendimiento por posteo','<path d="M7 15a4 4 0 1 0 0-6 4 4 0 0 0 0 6Z"/><path d="M17 9a3 3 0 1 0 0 6M10.5 10.5 15 8M10.5 13.5 15 16"/>',''],
+  ['Web / Ecommerce','Tráfico, fuentes, conversión e ingresos','<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M7 13h4"/>',''],
+  ['Diagnóstico con IA','Preguntale a tus datos y recibí diagnóstico y señales por tablero','<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/><circle cx="12" cy="12" r="3"/>',''],
+  ['Resultados e Inversión','Facturación, ejecución del presupuesto e Inversión / Facturación','<path d="M12 2v20M6 6h9a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h9"/>',''],
+  ['Tu mercado','Tu marca vs tu competencia en redes, web y búsquedas','<path d="M3 21h18M6 21V10M11 21V4M16 21v-7M21 21V8"/>','optimize'],
+  ['SEO + Search Console','Share of search, posiciones, keywords y oportunidades','<circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/>','optimize'],
+  ['Trade Marketing','Surtido y Floor Share por cliente y tienda','<path d="M3 9 5 4h14l2 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M4 9h16"/>','optimize'],
+  ['Simulador de presupuesto','Cuánto rinde cada medio y cómo repartir el próximo peso','<path d="M4 19c4 0 5-12 9-12s4 6 7 6"/><path d="M4 5v14h16"/>','accelerate'],
+  ['Pauta de la competencia','Qué anuncia cada competidor, con qué intensidad y qué sostiene','<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4M8 11l2 2 4-4"/>','accelerate'],
+  ['Research de marca y mercado','Salud de Marca y Share de mercado, cruzados con tu marketing','<path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10Z"/>','accelerate'],
 ];
+const TIERN = {optimize:'Optimize',accelerate:'Accelerate'};
 document.getElementById('modgrid').innerHTML = MODS.map(m =>
-  `<div class="mod"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${m[2]}</svg></div><div class="t">${m[0]}</div><div class="d">${m[1]}</div></div>`).join('');
+  `<div class="mod${m[3]?' mod-'+m[3]:''}">${m[3]?`<span class="mtier t-${m[3]}">${TIERN[m[3]]}</span>`:''}<div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${m[2]}</svg></div><div class="t">${m[0]}</div><div class="d">${m[1]}</div></div>`).join('');
 document.getElementById('ints').innerHTML =
-  ['Meta','Google Ads','GA4 Analytics','DV360','SharePoint','Google Drive'].map(n=>`<span class="int"><i></i>${n}</span>`).join('');
+  ['Meta (Facebook + Instagram)','Google Ads','GA4','DV360 / YouTube','TikTok','Search Console','Google Sheets','Excel / SharePoint'].map(n=>`<span class="int"><i></i>${n}</span>`).join('');
 
 const ICON = {
   insight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10.5 21h3"/><path d="M12 3a6 6 0 0 0-3.8 10.7c.7.6 1.1 1.4 1.2 2.3h5.2c.1-.9.5-1.7 1.2-2.3A6 6 0 0 0 12 3Z"/></svg>',
@@ -840,61 +925,62 @@ const ICON = {
 };
 const USERS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3"/><path d="M20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4M15.5 5.2a3 3 0 0 1 0 5.6"/></svg>';
 const PLANS = [
-  {key:'insight',name:'Insight',tag:'plan base',price6:'199',price3:'249',users:'1 usuario',cats:'1 marca · 1 categoría',trial:'Comprobalo 15 días',pitch:'Toda tu operación medida contra la meta —con IA y alertas automáticas incluidas—, sobre tus propios datos.'},
-  {key:'optimize',name:'Optimize',tag:'plan intermedio',price6:'399',price3:'499',users:'2 a 4 usuarios',cats:'1 marca · 2 categorías',trial:'',pitch:'Sumás la mirada competitiva (redes, web y SEO) y consultoría estratégica para convertir esa data en planes de acción.'},
-  {key:'accelerate',name:'Accelerate',tag:'plan full',price6:'695',price3:'869',users:'+4 usuarios',cats:'1 marca · 3 categorías',trial:'',pitch:'Con 3 categorías cubrís TODO tu negocio bajo la misma metodología, con mirada competitiva y consultoría completa.'}
+  {key:'insight',name:'Insight',tag:'Medí',price6:'199',price3:'249',
+   q:'¿Cómo me va contra mi meta?',promesa:'Dejá de reportar y empezá a decidir.',
+   ideal:'querés tener todo tu marketing medido contra la meta, en un solo lugar y sin armar reportes a mano.',
+   spec:[['1','usuario'],['1','categoría'],['6','meses de historia']],
+   incl:'Incluye',
+   feats:[['Mapa Estratégico + Seguimiento de Objetivos (real vs meta)'],['Plan de Medios online + offline'],['Redes Sociales (tu marca)'],['Web / Ecommerce'],['Resultados Comerciales e Inversión de Marketing'],['Mis tableros: armá los tuyos con tus planillas'],['IA: preguntale a tus datos + diagnóstico y señales por tablero'],['Alertas en la plataforma']],
+   next:{k:'optimize',t:'Con <b>Optimize</b> además sabés si le estás ganando a tu competencia en redes, web y búsquedas.'}},
+  {key:'optimize',name:'Optimize',tag:'Compará',price6:'399',price3:'499',reco:true,
+   q:'¿Le estoy ganando a mi competencia?',promesa:'Decidí con contexto de mercado.',
+   ideal:'ya medís tu operación y necesitás saber cómo te va contra tu competencia, y defenderlo con datos ante la dirección.',
+   spec:[['4','usuarios'],['2','categorías'],['12','meses de historia']],
+   incl:'Todo Insight, más:',
+   feats:[['Tu mercado: tu marca vs hasta 5 competidores en redes, web y búsquedas',1],['SEO: share of search, posiciones y oportunidades',1],['Search Console conectado',1],['Trade Mkt: Surtido + Floor Share',1],['KPIs de mercado en tu Mapa y cruces con la competencia en el diagnóstico',1],['Resumen semanal de alertas por email',1]],
+   next:{k:'accelerate',t:'Con <b>Accelerate</b> además simulás dónde poner cada peso antes de invertirlo y ves la pauta de tu competencia.'}},
+  {key:'accelerate',name:'Accelerate',tag:'Anticipá',price6:'695',price3:'869',
+   q:'¿Dónde pongo el próximo peso?',promesa:'Anticipá, no solo reacciones.',
+   ideal:'manejás varias categorías y un presupuesto relevante: necesitás simular escenarios y reportar a la dirección sin armar nada.',
+   spec:[['10','usuarios'],['3','categorías'],['24','meses de historia']],
+   incl:'Todo Optimize, más:',
+   feats:[['Simulador de presupuesto por medio + proyección de demanda',1],['Pauta de la competencia: qué anuncia cada marca, con qué intensidad y qué sostiene',1],['Hasta 10 competidores + retailers',1],['Research: Salud de Marca y Share de mercado',1],['Todos los tableros abiertos por categoría',1],['Alertas diarias + reporte ejecutivo mensual por email',1]],
+   next:null},
 ];
-const MODULES = [
-  ['Núcleo estratégico · Mapa + Seguimiento de Objetivos',1,1,1],
-  ['Conexiones de datos (Meta, Google Ads, GA4, DV360, SharePoint, Drive)',1,1,1],
-  ['Plan de Medios · ON + OFF',1,1,1],
-  ['Redes Sociales',1,'adv','adv'],
-  ['Web / Ecommerce',1,'adv','adv'],
-  ['Optimización SEO',0,'adv','adv'],
-  ['Resultados Comerciales (facturación + share)',1,1,1],
-  ['Inversión de Marketing',1,1,1],
-  ['Trade · Surtido + Floor Share',0,1,1],
-  ['Capa de inteligencia (IA) · chat + insights',1,1,1],
-  ['Alertas + reportes automatizados (email / WhatsApp)',1,1,1],
-  ['Consultoría estratégica',0,1,1],
-  ['Historial de datos','12 meses','24 meses','24 meses'],
-];
-const idx = {insight:1,optimize:2,accelerate:3};
-const has = v => v===1 || v==='adv' || typeof v==='string';
+const SU = 'https://bip-platform.vercel.app/signup';
 document.getElementById('tiers').innerHTML = PLANS.map(p => {
-  const c = idx[p.key];
-  const mods = MODULES.filter(m=>has(m[c]) && !m[4]).map(m=>{
-    let chip=''; if(m[c]==='adv') chip=` <span class="plus">+ Competencia</span>`; else if(typeof m[c]==='string') chip=` <span class="valc">${m[c]}</span>`;
-    return `<li>${CHECK}<span>${m[0]}${chip}</span></li>`;
-  }).join('');
-  const iaMods = MODULES.filter(m=>has(m[c]) && m[4]==='ia');
-  const iaBlock = iaMods.length ? `<div class="iacap"><div class="iacap-h"><span>Capa de inteligencia</span><span class="iatag">Solo Accelerate</span></div>${iaMods.map(m=>`<div class="iacap-i">${m[0]}</div>`).join('')}</div>` : '';
-  return `<article class="card"><div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
-    <div class="trialslot">${p.trial ? `<div class="trialbadge">✦ ${p.trial}</div>` : ''}</div>
+  const feats = p.feats.map(([l,n])=>`<li>${CHECK}<span>${l}${n?' <span class="plus">nuevo</span>':''}</span></li>`).join('');
+  const ctas = p.key==='insight'
+    ? `<a class="pcta pcta-trial" href="${SU}">Probalo 15 días gratis →</a><div class="trialcta-sub">Sobre tu propia operación · sin tarjeta</div><a class="pcta pcta-sec" href="${SU}?plan=insight">Contratar Insight</a>`
+    : `<a class="pcta${p.reco?' pcta-reco':''}" href="${SU}?plan=${p.key}">Empezar con ${p.name} →</a><div class="trialcta-sub">Set-up sin cargo · activación en días</div>`;
+  const next = p.next ? `<a class="nextup" href="#plan-${p.next.k}"><span>${p.next.t}</span><b>Ver ${p.next.k==='optimize'?'Optimize':'Accelerate'} →</b></a>` : `<div class="nextup top"><span>El plan más completo: <b>todo BIP</b>, sobre todo tu negocio.</span></div>`;
+  return `<article class="card${p.reco?' card-reco':''} card-${p.key}" id="plan-${p.key}">${p.reco?'<div class="ribbon">Recomendado</div>':''}
+    <div class="chead"><span class="glyph">${ICON[p.key]}</span><div><div class="name">${p.name}</div><div class="tag">${p.tag}</div></div></div>
+    <div class="pq">${p.q}</div>
     <div class="prices2">
       <div class="pcol"><div class="pk">3 meses</div><div class="pv">USD ${p.price3}<span>/mes</span></div></div>
       <div class="pcol pcol-hl"><div class="pk">6 meses <span class="poff">−20%</span></div><div class="pv">USD ${p.price6}<span>/mes</span></div></div>
     </div>
-    <div class="setupfree">✓ Set-up y configuración inicial, sin cargo</div>
-    <div class="spec">${USERS}<span class="n">${p.users}</span><span class="sp2">${p.cats}</span></div>
-    <p class="pitch">${p.pitch}</p><div class="inc">Incluye</div><ul class="mods2">${mods}</ul>${iaBlock}
-    ${p.trial ? `<a class="pcta pcta-trial" href="https://bip-platform.vercel.app/signup">Probá Insight 15 días →</a><div class="trialcta-sub">15 días de acceso completo, sobre tu propia operación. Lo ves andando antes de decidir — sin tarjeta.</div><a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Activar ${p.name} →</a>` : `<a class="pcta" href="https://bip-platform.vercel.app/signup?plan=${p.key}">Activar ${p.name} →</a>`}</article>`;
+    <div class="specs">${p.spec.map(([n,l])=>`<div><b>${n==='1'||p.key==='insight'?n:'Hasta '+n}</b><span>${l}</span></div>`).join('')}</div>
+    <p class="pitch"><b>${p.promesa}</b> Ideal si: ${p.ideal}</p>
+    <div class="inc">${p.incl}</div><ul class="mods2">${feats}</ul>
+    <div class="ctas">${ctas}</div>
+    ${next}</article>`;
 }).join('');
 
 const FULL = [
-  {t:'Núcleo estratégico',r:[['Mapa Estratégico (objetivos, pesos y KPIs)',1,1,1],['Seguimiento de Objetivos · real vs meta',1,1,1],['Cumplimiento por categoría',1,1,1],['Metas mensuales por KPI',1,1,1],['Semáforos y alertas de desvío',1,1,1]]},
-  {t:'Capa de inteligencia (IA) · incluida en todos',r:[['Preguntá a tus datos con IA (análisis libre)',1,1,1],['Insights automáticos por dashboard',1,1,1],['Detección de oportunidades y desvíos',1,1,1]]},
-  {t:'Alertas + reportes automatizados · incluidos en todos',r:[['Insights inteligentes con IA dentro de tus informes',1,1,1],['Alertas de rendimiento de Metas y Objetivos',1,1,1],['Envío recurrente de informes por email o WhatsApp',1,1,1]]},
-  {t:'Conexiones de datos',r:[['API Meta Business · Facebook + Instagram',1,1,1],['API Google Ads',1,1,1],['API GA4 Analytics',1,1,1],['API DV360',1,1,1],['SharePoint',1,1,1],['Google Drive',1,1,1]]},
-  {t:'Plan de Medios · ON + OFF',r:[['Funnel de Marketing / Conversión',1,1,1],['Inversión y performance por medio (Meta, Google, DV360, YouTube, TikTok…)',1,1,1],['Análisis de eficiencia de medios (CPM, CPC, CTR, VTR, CPA)',1,1,1],['KPIs de campaña (alcance, frecuencia, impresiones, clicks)',1,1,1],['Medios ON + OFF (digital + TV / OOH / DOOH)',1,1,1],['Performance por objetivo (Awareness / Consideración / Conversión)',1,1,1],['Performance por categoría de producto',1,1,1],['Insights de mejora de pauta',1,1,1]]},
-  {t:'Redes Sociales · orgánico',r:[['Engagement por interacción (likes, comentarios, guardados, compartidos)',1,1,1],['Análisis de engagement por tipo de interacción',1,1,1],['KPIs por posteo (alcance, impresiones, views)',1,1,1],['Análisis de performance por posteo',1,1,1],['Clasificación de posteos por tipo de contenido (imagen / video / sidecar)',1,1,1],['Clasificación por pilar (Branding, Producto, Promoción, Educativo, Influencer)',1,1,1],['Análisis demográfico de audiencias',1,1,1],['Alcance e interacciones orgánicas (Instagram + Facebook)',1,1,1],['Seguidores y evolución',1,1,1],['Tendencia mensual de engagement',1,1,1],['Análisis de sentimiento de comentarios (Instagram)',1,1,1],['Insights de comentarios',1,1,1]]},
-  {t:'Redes Sociales · competencia',r:[['Benchmark de marcas · KPIs comparados',0,1,1],['Cantidad de posteos por semana vs competencia',0,1,1],['Engagement promedio por pilar (marca vs competencia)',0,1,1],['Distribución por tipo de contenido de la competencia',0,1,1],['Sentimiento por marca (Instagram)',0,1,1],['Análisis cualitativo del sentimiento por marca',0,1,1],['Feed de posteos de la competencia (por engagement, tipo y pilar)',0,1,1]]},
-  {t:'Web / Ecommerce',r:[['Tráfico y alcance (usuarios, sesiones)',1,1,1],['Fuentes de tráfico (orgánico, pago, social, directo, referral)',1,1,1],['Performance web (páginas vistas, rebote, duración)',1,1,1],['KPIs de ecommerce (transacciones, ingresos, ROAS, tasa de conversión)',1,1,1],['Análisis por categoría de producto',1,1,1],['Categorías y top landings',1,1,1],['Demografía de usuarios web',1,1,1],['Embudo de conversión',1,1,1],['Análisis competitivo web · SimilarWeb (tráfico y share of visits)',0,1,1]]},
-  {t:'Optimización SEO',r:[['Posicionamiento y visibilidad',1,1,1],['Volumen de búsqueda y tendencias',1,1,1],['Keywords y oportunidades',1,1,1],['Search Console (clicks, impresiones, CTR, posición)',1,1,1],['Share of search vs competencia',0,1,1]]},
-  {t:'Trade Marketing',r:[['Surtido por cliente y tienda',1,1,1],['Floor Share por góndola',1,1,1],['Performance por cliente y tienda',1,1,1],['Sugerencias de surtido / reposición',1,1,1],['Evolución semanal',1,1,1]]},
-  {t:'Resultados Comerciales',r:[['Facturación mensual',1,1,1],['Share (por segmento y evolución)',1,1,1],['Evolución y acumulado',1,1,1]]},
-  {t:'Inversión de Marketing',r:[['Ejecución del presupuesto vs BGT',1,1,1],['Inversión / Facturación',1,1,1],['Comparador de presupuestos (versión / período / cuenta)',1,1,1]]},
-  {t:'Consultoría estratégica',r:[['Diagnósticos y planes de acción específicos',0,1,1],['Consultoría y acompañamiento estratégico',0,1,1]]},
+  {t:'Núcleo estratégico',r:[['Mapa Estratégico (objetivos, pesos y KPIs)',1,1,1],['Seguimiento de Objetivos · real vs meta',1,1,1],['Metas mensuales por KPI',1,1,1],['Semáforos de cumplimiento, mes y acumulado',1,1,1],['KPIs de mercado en el Mapa (share of search, share of engagement, SEO)',0,1,1]]},
+  {t:'Capa de inteligencia (IA)',r:[['Preguntale a tus datos (chat que cruza todos tus tableros)',1,1,1],['Diagnóstico IA por tablero (evolución, metas, plan de acción)',1,1,1],['Señales automáticas (desvíos y oportunidades)',1,1,1],['Cruces con la competencia en el diagnóstico',0,1,1],['Simulador de presupuesto por medio (curva de rendimiento y reparto óptimo)',0,0,1],['Proyección de demanda',0,0,1]]},
+  {t:'Alertas y reportes',r:[['Alertas dentro de la plataforma',1,1,1],['Resumen semanal de alertas por email',0,1,1],['Alertas diarias por email (solo si hay algo nuevo o importante)',0,0,1],['Reporte ejecutivo mensual automático',0,0,1]]},
+  {t:'Conexiones de datos',r:[['Meta Business · Facebook + Instagram',1,1,1],['Google Ads',1,1,1],['GA4',1,1,1],['DV360 / YouTube',1,1,1],['TikTok',1,1,1],['Google Sheets, Excel y SharePoint',1,1,1],['Search Console',0,1,1]]},
+  {t:'Plan de Medios · online + offline',r:[['Inversión y performance por medio (Meta, Google, DV360, YouTube, TikTok…)',1,1,1],['Eficiencia de medios (CPM, CPC, CTR, VTR, CPA)',1,1,1],['KPIs de campaña (alcance, frecuencia, impresiones, clicks)',1,1,1],['Medios offline (TV / OOH / DOOH) por planilla',1,1,1],['Performance por objetivo y por categoría',1,1,1],['Funnel de marketing / conversión',1,1,1]]},
+  {t:'Redes Sociales',r:[['Engagement por tipo de interacción',1,1,1],['KPIs y performance por posteo',1,1,1],['Contenido por tipo y por pilar',1,1,1],['Audiencias, seguidores y evolución',1,1,1],['Sentimiento e insights de comentarios',1,1,1],['Benchmark vs competencia (KPIs, frecuencia, pilares, sentimiento)',0,1,1],['Feed de posteos de la competencia',0,1,1],['Share of engagement',0,1,1]]},
+  {t:'Pauta de la competencia',r:[['Anuncios activos por marca (Biblioteca de anuncios de Meta)',0,0,1],['Índice de intensidad de pauta por marca',0,0,1],['Avisos que más sostienen',0,0,1],['Cruce aviso ↔ posteo: me gusta, comentarios y views reales',0,0,1]]},
+  {t:'Web / Ecommerce',r:[['Tráfico, fuentes y performance web',1,1,1],['KPIs de ecommerce (transacciones, ingresos, conversión)',1,1,1],['Por categoría, top landings y demografía',1,1,1],['Embudo de conversión',1,1,1],['Competencia web (tráfico y share of visits)',0,1,1]]},
+  {t:'SEO y búsquedas',r:[['Share of search vs competencia',0,1,1],['Posiciones, volumen y tendencias',0,1,1],['Keywords y oportunidades',0,1,1],['Search Console (clicks, impresiones, CTR, posición)',0,1,1]]},
+  {t:'Trade Marketing',r:[['Surtido por cliente y tienda',0,1,1],['Floor Share',0,1,1],['Sugerencias de surtido',0,1,1]]},
+  {t:'Research',r:[['Salud de Marca (TOM, consideración, preferencia) por planilla',0,0,1],['Share de mercado por segmento',0,0,1]]},
+  {t:'Negocio',r:[['Resultados Comerciales (facturación y share)',1,1,1],['Inversión de Marketing (ejecución vs presupuesto, Inversión / Facturación)',1,1,1],['Mis tableros: motor de tableros con tus planillas, armado con IA',1,1,1],['Todos los tableros abiertos por categoría',0,0,1]]},
 ];
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
 document.getElementById('matrix').innerHTML =
@@ -903,13 +989,15 @@ document.getElementById('matrix').innerHTML =
   `<tr><td>Contratación 3 meses</td><td><span class="val">249</span></td><td><span class="val">499</span></td><td><span class="val">869</span></td></tr>`+
   `<tr><td>Set-up y configuración inicial</td><td><span class="val">sin cargo</span></td><td><span class="val">sin cargo</span></td><td><span class="val">sin cargo</span></td></tr>`+
   `<tr class="section"><td colspan="4">Acceso</td></tr>`+
-  `<tr><td>Usuarios incluidos</td><td><span class="val">1</span></td><td><span class="val">2 a 4</span></td><td><span class="val">+4</span></td></tr>`+
+  `<tr><td>Usuarios incluidos</td><td><span class="val">1</span></td><td><span class="val">Hasta 4</span></td><td><span class="val">Hasta 10</span></td></tr>`+
+  `<tr><td>Competidores</td><td><span class="no">—</span></td><td><span class="val">Hasta 5</span></td><td><span class="val">Hasta 10 + retailers</span></td></tr>`+
+  `<tr><td>Historial de datos</td><td><span class="val">6 meses</span></td><td><span class="val">12 meses</span></td><td><span class="val">24 meses</span></td></tr>`+
   `<tr><td>Marca</td><td><span class="val">1</span></td><td><span class="val">1</span></td><td><span class="val">1</span></td></tr>`+
   `<tr><td>Categorías incluidas</td><td><span class="val">1</span></td><td><span class="val">2</span></td><td><span class="val">3</span></td></tr>` +
   FULL.map(s=>`<tr class="section"><td colspan="4">${s.t}</td></tr>`+s.r.map(([l,a,b,c])=>`<tr><td>${l}</td><td>${cell(a)}</td><td>${cell(b)}</td><td>${cell(c)}</td></tr>`).join('')).join('');
 
-const waUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent("Hola BIP, quiero agendar una demo de la plataforma.")}`;
-['waLink','waFloat'].forEach(id=>document.getElementById(id).href=waUrl);
+const waUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent("Hola BIP, quiero conocer la plataforma.")}`;
+['waLink','waFloat'].forEach(id=>{const el=document.getElementById(id); if(el) el.href=waUrl;});
 document.getElementById('mailLink').href = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent("Quiero una demo de BIP")}`;
 document.getElementById('footEmail').textContent = SALES_EMAIL;
 document.getElementById('footEmail').style.cursor='pointer';
@@ -975,3 +1063,5 @@ document.getElementById('footEmail').onclick=()=>location.href=`mailto:${SALES_E
 })();
 
 </script>
+</body>
+</html>

@@ -645,6 +645,13 @@ reporte_existencia/cb_homologos).
   hacía wrap a 2 líneas en Optimize y desalineaba el "Incluye" → se forzó a 1 línea (`white-space:nowrap`
   + `min-height:44px`) y se igualaron alturas de `.pitch` (min-height) y `.sr-k` (nowrap). `pricing.html`
   (racional de precios) es otra estructura, no tiene esas tarjetas.
+  **Reescritura de venta (sep-2026):** contenido alineado a `lib/plan.ts` de BIP (FUENTE ÚNICA: usuarios 1/4/10,
+  historial 6/12/24, cat 1/2/3, competidores —/5/10+retailers, alertas in-app / +semanal email / +diarias+reporte
+  ejecutivo; SEO/Search Console/Trade desde Optimize; Simulador/Ad Library/Research en Accelerate). Escalera de valor
+  Medí→Compará→Anticipá (Insight/Optimize/Accelerate), tarjetas con "Todo X, más:" + teaser del plan siguiente, Optimize
+  "Recomendado", módulos con badge de plan, FAQ nueva. Se sacó "Consultoría estratégica" (no está en plan.ts), el
+  WhatsApp (número placeholder) y `hola@bip.com` (dominio ajeno → `bip.explore@gmail.com`). Se agregó doctype +
+  `<meta charset>` (había mojibake). bip-go.com (Netlify) NO se actualiza solo: re-subir `bip.html`.
 
 - **Generador de Contenido — Calendario + publicación IG/FB (dic-2026):** `/contenido` →
   `/contenido/calendario` (tabs: RRSS, UGC, Biblioteca UGC, Adaptación de piezas). Las piezas viven en
