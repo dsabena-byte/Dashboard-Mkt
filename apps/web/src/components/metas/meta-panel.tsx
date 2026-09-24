@@ -27,6 +27,8 @@ export interface KpiSpec {
   unidad?: string;
   /** Valor real del mes en curso, para el semáforo. */
   actual?: number | null;
+  /** Dirección por defecto si el KPI aún no tiene config guardada (ej. índice SEO = "down"). */
+  direccion?: Direccion;
 }
 
 interface Props {
@@ -100,6 +102,8 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
     if (c) return c;
     const d = defaultConfig(plan, kpi, cat);
     if (unidad) d.unidad = unidad;
+    const dir = kpis.find((k) => k.nombre === kpi)?.direccion;
+    if (dir) d.direccion = dir;
     return d;
   };
 

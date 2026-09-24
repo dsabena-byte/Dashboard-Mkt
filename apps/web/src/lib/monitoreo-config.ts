@@ -39,6 +39,7 @@ export const PROCS: Proc[] = [
   { id: "seo_indice", proceso: "SEO · Índice de posición (histórico)", fuente: "Cálculo interno (SERP)", conexion: "GitHub Action", detalle: "/api/cron/seo-index-snapshot · con seo-sync", cadenciaH: 720, tabla: "seo_index_history", col: "updated_at", workflow: "seo-sync.yml", nota: "Snapshot mensual del índice; lo dispara el workflow de seo-sync al terminar." },
   { id: "seo_region", proceso: "SEO · Interés por provincia", fuente: "DataForSEO Trends (subregion)", conexion: "Carga manual", detalle: "subregion_interests · carga puntual", cadenciaH: 2160, tabla: "search_region", col: "fetched_at" },
   { id: "llmo", proceso: "SEO · Visibilidad en IA (LLMO)", fuente: "OpenAI (gpt-4o-mini)", conexion: "GitHub Action", detalle: "/api/cron/llmo-sync · 1x/mes", cadenciaH: 720, tabla: "seo_llmo", col: "updated_at", workflow: "llmo-sync.yml" },
+  { id: "search_console", proceso: "SEO · Search Console (drean.com.ar)", fuente: "Google Search Console API", conexion: "GitHub Action", detalle: "/api/cron/search-console · semanal", cadenciaH: 168, tabla: "search_console_snapshot", col: "updated_at", workflow: "search-console-sync.yml", nota: "Snapshot único (id=1, migración 0107). Si el estado guardado es no_scope/api_disabled/no_site la frescura sale OK pero la sección de /seo-search explica qué falta (scope webmasters.readonly en GOOGLE_REFRESH_TOKEN)." },
 ];
 
 export function estadoDe(date: string | null, cadenciaH: number, nowMs: number): { estado: Estado; ageH: number | null } {

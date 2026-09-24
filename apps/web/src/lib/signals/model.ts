@@ -6,7 +6,7 @@
 // Solo imports relativos (compilable suelto para scripts/signals-drean.test.ts).
 // Contiene: tipos de plan de medios (pauta-model), redes (IG/FB + competencia social),
 // web (reportes estilo GA4 + competencia web), SEO (share of search, SERP, IA, regiones),
-// KPIs de mercado, Search Console (vacío en Drean) y el Seguimiento de objetivos.
+// KPIs de mercado, Search Console (snapshot search_console_snapshot, lib/search-console.ts) y el Seguimiento.
 // ============================================================================
 
 // ─────────────────────────── PLAN DE MEDIOS ───────────────────────────
@@ -394,7 +394,7 @@ export function shareOfEngagement(posts: CompetitorPost[] | null | undefined, ow
   return { desde: gDesde, hasta: gHasta, dias: Math.round((Date.parse(gHasta) - Date.parse(gDesde)) / 864e5), propia: ownBrand, sharePropio: porMarca.find((b) => b.propia)?.share ?? 0, total, porMarca, mensual, redes: usadas };
 }
 
-// ─────────────────────────── SEARCH CONSOLE (Drean no lo tiene: siempre null) ───────────────────────────
+// ─────────────────────────── SEARCH CONSOLE (snapshot de lib/search-console.ts; null si no hay dato OK) ───────────────────────────
 export interface ScRow { key: string; clicks: number; impressions: number; ctr: number; position: number }
 export interface ScQueryPage { query: string; page: string; clicks: number; impressions: number; ctr: number; position: number }
 export interface ScMonth { mes: string; clicks: number; impressions: number; ctr: number; position: number; dias: number }

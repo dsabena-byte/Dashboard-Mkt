@@ -1,0 +1,31 @@
+name: Search Console sync (semanal)
+
+# Google Search Console de drean.com.ar (clicks, impresiones, CTR y posición por búsqueda y
+# por página) → snapshot search_console_snapshot (migración 0107). Lo lee /seo-search y las
+# señales cruce_sc_*. Usa el OAuth de Google de GA4 (GOOGLE_* en Vercel): el refresh token
+# tiene que incluir el scope webmasters.readonly (pasos en CLAUDE.md). Semanal: SC tiene 2-3
+# días de demora y las oportunidades (CTR bajo / quick wins) cambian lento.
+on:
+  schedule:
+    - cron: "40 6 * * 2" # martes 06:40 UTC
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger /api/cron/search-console
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/search-console"
+          ok=0
+          for attempt in 1 2 3; do
+            HTTP=$(curl -s -o resp.json -w '%{http_code}' --max-time 120 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL" || echo 000)
+            echo "intento $attempt → HTTP $HTTP"; cat resp.json || true; echo ""
+            if [ "$HTTP" = "200" ] && python3 -c "import json,sys; sys.exit(0 if json.load(open('resp.json')).get('ok') else 1)"; then ok=1; break; fi
+            sleep $((attempt * attempt * 5))
+          done
+          [ $ok = 1 ] || { echo "::error::search-console sync falló (ver respuesta: estado/hint)"; exit 1; }
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

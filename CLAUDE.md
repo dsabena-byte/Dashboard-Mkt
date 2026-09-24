@@ -212,6 +212,39 @@ reporte_existencia/cb_homologos).
     **total-only** (el proyecto CB no es alcanzable desde el sandbox; para CB por categoría hay que
     mapear la división de cada tienda). Componentes: `components/objetivos/{objetivos-hero,
     kpi-scorecard}.tsx`, `components/mapa-estrategico/mapa-editor.tsx`.
+- **KPIs de mercado con metas + Search Console (sep-2026, portado de BIP):**
+  - **Plan del Mapa "Mercado y competencia"** (`mapa-catalogo.ts`; claves exactas = `MERCADO_KPIS` en
+    `lib/mercado-kpis.ts`, puro/client-safe): **Share of Search** (Σvol Drean ÷ Σvol set, `vw_share_of_search`;
+    por cat lavarropas→Lavado/heladeras→Refri/cocinas→Cocción; meses cerrados), **Share of engagement**
+    (likes+coment. de `dreanargentina` ÷ set en `social_posts` IG+FB, ventana común — `shareOfEngagement` de
+    `lib/signals/model`, total-only), **Visibilidad en IA** (`seo_llmo`, ignora corridas con 0 prompts: **sep-2026
+    vino todo en 0** → usa ago y la card lo avisa), **Índice de posición SEO** (`seo_index_history`, **dirección
+    "down"**). IA e índice: total = Σcat × `CATEGORIA_PESOS` renormalizado; son fotos (cuentan en el mes del
+    relevamiento, incluso el en curso). Unidad del índice = `KpiUnit "pts"`. Real cableado en `getSeguimientoKpis`
+    (con `realCatM` salvo SoE) vía `lib/mercado-kpis-server.ts` (REST service key + React `cache()`, ~1s). Solo
+    suman al rollup si el usuario los conecta en el Mapa (hoy NO están conectados ni tienen metas).
+  - **UI:** `/seo-search` arriba = `MercadoMetasSection` (MetaKpiCard con gráfico real vs meta DENTRO — prop
+    `children` nueva — + MetaPanel plan "Mercado y competencia"); `/redes` = `ShareEngagementSection` antes del
+    competitivo. `getMetaKpi(..., defaults)` y `MetaPanel` `KpiSpec.direccion` = dirección por defecto sin config.
+    Valores reales (24-sep-2026): SoS ago 23,8% (Lav 41,8/Refri 9,7/Cocc 12,9); SoE ~1% (Gafa se lleva ~89%);
+    IA ago 12,4%; índice ago 15,8 → sep 12,3.
+  - **Search Console** (`lib/search-console.ts`): OAuth de env (`GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN`, el de
+    GA4), propiedad `sc-domain:drean.com.ar` o URL-prefix (`pickSite`). Snapshot en **`search_console_snapshot`**
+    (id=1) → **correr migración `0107_search_console.sql`**. Cron `/api/cron/search-console` + workflow
+    `search-console-sync.yml` (martes 06:40 UTC + manual), registrado en `PROCS` (monitoreo/watchdog). UI al final
+    de `/seo-search` con estados `no_table / empty / no_creds / no_scope / api_disabled / no_site`. Señales
+    `cruce_sc_*` ya leen el snapshot (`loadCruces`). Error transitorio NO pisa un snapshot bueno.
+  - **PASOS para habilitarlo (el token actual NO tiene el scope → estado `no_scope`):** (1) Google Cloud del
+    cliente OAuth (proyecto `994976985`) → habilitar **Google Search Console API**. (2) OAuth Playground
+    (developers.google.com/oauthplayground) → ⚙ "Use your own OAuth credentials" con `GOOGLE_CLIENT_ID/SECRET`
+    (el cliente debe tener `https://developers.google.com/oauthplayground` como redirect URI) → scopes
+    **los 3**: `https://www.googleapis.com/auth/analytics.readonly` + `https://www.googleapis.com/auth/adwords` +
+    `https://www.googleapis.com/auth/webmasters.readonly` (si falta uno se rompe GA4 o Google Ads) → autorizar
+    con la cuenta Google que ve GA4, las cuentas de Ads **y** la propiedad drean.com.ar en Search Console (si no,
+    darle acceso en SC → Configuración → Usuarios y permisos) → "Exchange authorization code for tokens".
+    (3) Pegar el refresh token en Vercel `GOOGLE_REFRESH_TOKEN` (Production) + redeploy (si también está en
+    GitHub secrets, actualizarlo). (4) Actions → "Search Console sync" → Run workflow. Validar: `ga4-sync` y
+    `google-ads-sync` siguen OK.
 
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
 - **Inversión de Marketing (`/funnel`) — dash NATIVO (dic-2026, reemplazó el iframe).** Antes era
