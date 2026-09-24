@@ -86,6 +86,30 @@ reporte_existencia/cb_homologos).
   - **UI** `components/diagnostico/dash-diagnostico.tsx` (`<DashDiagnostico dash=… />` al final de 11 páginas):
     colapsable y CERRADO → no pide nada hasta abrirse (cero costo en el render; la IA solo corre en la API).
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
+- **Copiloto v2 (motor de BIP) — sep-2026 ("Preguntale a tus datos"):** `app/api/chat/route.ts`
+  responde **NDJSON** (`{"type":"step"}` en vivo "Consultando X…" + `{"type":"final",text,charts,
+  tables,posts,steps}`), hasta **10 pasos**, tools **en paralelo**, rate limit 30/10min por usuario
+  (`lib/chat/rate-limit.ts`, en memoria). Modelo por env **`OPENAI_CHAT_MODEL`** (default
+  `gpt-4o-mini` por costo; se permite `gpt-4o`). **Cross-dashboard:** en cualquier dash el modelo ve
+  TODOS los sets permitidos por `dashboard_access` (el de la página primero); `get_cruce_mensual`
+  (series mensuales alineadas pauta/web/IG/SoS/demanda/trade/facturación/GfK/ecommerce) y
+  `get_senales` solo para usuarios sin restricción. Piezas: `registry.ts` (sets por dash →
+  `buildChatTools`), `copiloto.ts` (system prompt con método de cruce + `render_chart/table/posts`),
+  `contexto.ts` (client-safe: ruta → label/foco/**sugerencias**; también define en qué rutas aparece
+  el chat), `calc.ts` (copia pura de BIP: correlación/elasticidad/variación/participación/
+  proyección a cierre/CPA/ROAS/reasignación), `pauta-model.ts` (mismo gap-fill del dash: Meta=API vía
+  `lib/pauta-medios.ts` `esMedioApi`, OMD solo meses cerrados, PMax excluido), `tools-senales.ts`
+  (contrato `signalsSummaryForChat`/`isSignalScope` de `@/lib/signals`; hoy `lib/signals/index.ts`
+  es PLACEHOLDER vacío). UI: `components/data-chat.tsx` (lee NDJSON) + `components/chat/{mini-markdown,
+  post-cards}.tsx`; `render_posts` recibe solo `ref`s (la tarjeta la arma el server). **No se perdió
+  ninguna tool:** mismos nombres v1, ahora parametrizados (período/nivel/medio/categoría/top) y
+  compactos; CB/FS leen mirror/`fs_precomputed`/`trade_monthly` (antes paginaban el proyecto CB). Se
+  sumaron `get_seguimiento`, `get_mapa_estrategico`, `get_web_mensual/detalle`, `get_pauta_creativos`,
+  `get_redes_competencia`, `get_ugc_piezas`, `get_inversion_mkt` (funnel) y chat en `/funnel` y
+  `/mapa-estrategico`. Agregar un dash = `tools-<dash>.ts` + entrada en `registry.ts` + contexto en
+  `contexto.ts`. **Gotchas de data vistos al validar:** `trade_monthly` trae un "Dic" del año en curso
+  (semanas de dic del año anterior) y `mercado_share` tiene filas con mes futuro (2026-11) → las tools
+  ignoran meses > hoy; `getIgOrganicSummary` corta en 200 posts (YTD subestimado).
 - **Metas por KPI + sistema visual (SEGUIR SIEMPRE, valida ANTES de ejecutar — error recurrente):**
   Cuando se agregan metas a un dashboard NO alcanza con poner el `MetaPanel` (configurador):
   hay que **cablear la meta al gráfico y a los cards**, si no el usuario guarda y no cambia nada.
