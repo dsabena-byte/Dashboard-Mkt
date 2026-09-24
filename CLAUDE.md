@@ -86,6 +86,42 @@ reporte_existencia/cb_homologos).
   - **UI** `components/diagnostico/dash-diagnostico.tsx` (`<DashDiagnostico dash=… />` al final de 11 páginas):
     colapsable y CERRADO → no pide nada hasta abrirse (cero costo en el render; la IA solo corre en la API).
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
+- **Simulador, Pauta de la competencia, Alertas (portado de BIP, sep-2026):**
+  - **Plan de Medios con sub-rutas** (`components/pauta/plan-medios-subnav.tsx`): `/performance` (Tablero, sin
+    cambios) · `/performance/simulador` · `/performance/competencia`. El sidebar y `isPathAllowed` ya matchean
+    por prefijo → quien ve `/performance` ve las sub-rutas.
+  - **Simulador** (`lib/simulador.ts` puro + `lib/simulador-server.ts` + `components/simulador/`): curva
+    `a·inversión^b` por MEDIO (log-log con ≥4 meses y R²≥0,3; si no, eficiencia promedio con b=0,8), calibrada al
+    promedio de los últimos 3 meses cerrados; optimización greedy por retorno marginal con topes 50–200% (los
+    medios sin la métrica quedan FIJOS). Meses por medio = `buildPautaMediosMensual` (año actual + anterior,
+    PMax fuera, UGC dentro). Offline (TV/OOH/DOOH/radio, `OFFLINE_RE` de señales) = solo contactos. Alcance =
+    suma por medio. "Geo Mobile" + "Medios directos" = un medio ("Geo Mobile (Tap Tap)"). Demanda: `search_volume`
+    genérico → `forecastDemand`. Data real (sep-26): hay pauta solo desde abr-2026; ago trae muchas filas OMD con
+    inversión y sin performance → esos medios se proyectan con su eficiencia de meses con dato (nota en la UI).
+    Test: `npx tsx scripts/simulador.test.ts`.
+  - **Pauta de la competencia** (`lib/ad-library{,-shared}.ts`, `lib/apify.ts`, `components/competencia-pauta/`):
+    Biblioteca de anuncios de Meta vía Apify (`APIFY_API_TOKEN` + `APIFY_ACTOR_AD_LIBRARY`, default
+    `apify~facebook-ads-scraper`). Marcas = propia + socialAccounts del tenant + `MARCAS` de competitive-config (sin
+    emergentes, máx 10). Match por PALABRA completa del nombre de página ("LG" ≠ "algo"); Florencia/Orbis exigen
+    contexto (cocinas/electro…). Tabla `competitor_ads_snapshot` = UNA FILA POR MARCA; cron
+    `/api/cron/ad-library` (`?list=1` / `?marca=`) + workflow `ad-library.yml` (lunes 06:00 ART, fan-out por marca).
+    Miniaturas espejadas con `mirrorMetaImage` (`adlib/<marca>/<id>.jpg`). **Nunca se corrió contra Apify real.**
+  - **Alertas y reportes** (`/alerts`, reemplazó el placeholder; sidebar "Alertas y reportes"): `lib/alerts.ts`
+    (server) + `lib/alerts-shared.ts` (puro) + `lib/notify.ts` (Resend REST). Candidatas = `computeSignals()` +
+    KPIs del Seguimiento bajo `umbralAmarillo` (solo meses CERRADOS) + anuncios nuevos 7d de la competencia.
+    Frecuencia (`alert_prefs`): `auto` = resumen semanal los lunes + diario SOLO si hay algo nuevo de prioridad alta.
+    Reporte ejecutivo el 1er día hábil (mes cerrado: objetivos, KPIs con brecha, share of search Drean promedio de
+    categorías, top alertas, Diagnóstico IA de `overview` si tiene <40 días). Crons `/api/cron/alertas` +
+    `/api/cron/reporte-ejecutivo` (`?dry=1`, `?force=1`) + workflow `alertas.yml` (08:00 ART). "Qué te avisaríamos
+    hoy" se pide por API al abrir (no en el render). Latido de crons en `alert_log` canal `cron` → `/monitoreo`.
+    Validado con data real (dry-run): 12 alertas en ~10s; reporte ago-26 con 4 objetivos, 13 KPIs, SoS 21,5%.
+  - **Pendiente para activar:** (1) correr **`supabase/migrations/0108_alertas.sql`** (competitor_ads_snapshot,
+    alert_log, alert_prefs) — sin ella: snapshot vacío con aviso, prefs no se guardan, el diario no se envía;
+    (2) env vars en **Vercel, proyecto Dashboard-Mkt** (`dashboard-mkt-seven.vercel.app`): **`RESEND_API_KEY`**,
+    **`NOTIFY_FROM`** (remitente con dominio verificado en Resend; default `onboarding@resend.dev` solo entrega a la
+    casilla de la cuenta Resend), **`ALERT_RECIPIENTS`** (CSV, fallback si /alerts no tiene destinatarios),
+    **`APIFY_ACTOR_AD_LIBRARY`** (opcional) + `APIFY_API_TOKEN` (ya existe) + `NEXT_PUBLIC_APP_URL` (opcional, links).
+    Test puro: `npx tsx scripts/alertas-adlib.test.ts`.
 - **Copiloto v2 (motor de BIP) — sep-2026 ("Preguntale a tus datos"):** `app/api/chat/route.ts`
   responde **NDJSON** (`{"type":"step"}` en vivo "Consultando X…" + `{"type":"final",text,charts,
   tables,posts,steps}`), hasta **10 pasos**, tools **en paralelo**, rate limit 30/10min por usuario
@@ -269,6 +305,40 @@ reporte_existencia/cb_homologos).
   `mini-markdown` renderiza links internos `/guia/...`.
 - Test: `cd apps/web && npx tsx scripts/guia-integridad.test.ts` (ids, títulos espejo, KPIs, rutas, términos
   BIP-only). Pendiente (igual que BIP): pasar el contenido a tabla para editar sin deploy.
+
+- **Mis tableros (motor de planillas) + Kantar por planilla — sep-2026 (portado de BIP, ADITIVO):**
+  - **Qué es:** `/tableros` (lista + "Nuevo tablero" + Planillas + Kantar), `/tableros/[slug]` (vista: filtros de
+    tablero, filtros cruzados, "Modo reporte" → imprimir/PDF, "Descargar datos" → Excel) y `/tableros/[slug]/editar`
+    (builder 3 pasos: planilla → armar con **Tablero automático / Armalo con IA / + Gráfico** → guardar). Entrada
+    "Mis tableros" en el sidebar (respeta `dashboard_access` vía `/tableros`). **No reemplaza** ningún dash nativo.
+  - **Piezas:** motor PURO `lib/viz/*` (copia de BIP, client-safe; único cambio: `!` por `noUncheckedIndexedAccess`,
+    solo tipos) · UI `components/viz/*` + `components/viz-builder/*` (recharts 2.12 OK; `ExportMenu` solo Excel, sin
+    PNG porque Drean no tiene html-to-image) · persistencia `lib/tableros-server.ts` (REST service key) · API
+    `app/api/tableros/{route,dataset,datasets,datasets/google-sheet,ai,kantar,kantar/plantilla}`. IA = OpenAI por
+    fetch, modelo `OPENAI_INSIGHTS_MODEL` (default gpt-4o-mini), rate limit compartido del chat.
+  - **CSS:** los componentes de BIP usan variables `--line/--ink/--navy/--muted…` → definidas SOLO bajo `.bip-viz`
+    en `globals.css` (wrapper de las páginas; el portal del Modo reporte también lleva la clase). NO sacar el
+    scope: `--muted`/`--card` de shadcn son HSL y se romperían en el resto del dash.
+  - **DB:** migración **`0109_tableros.sql`** (principal): `tableros_datasets` (id uuid, name, columns/rows jsonb,
+    row_count, source, updated_at) + `tableros` (slug pk, title, config jsonb v2). **Correrla en el SQL Editor**; sin
+    ella las páginas muestran el aviso y todo lo demás sigue igual (validado: PostgREST da 404/PGRST205 →
+    `TablerosMissingError`). Subida: 1ª hoja, fila 1 = encabezados, tope 20k filas / 4 MB. Dep nueva **`xlsx`**.
+  - **Google Sheets:** usa el OAuth de GA4 (`GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN`). Ese token se generó con
+    `analytics.readonly` (+`adwords`) → la UI muestra **`no_scope`** y ofrece solo archivo. Habilitarlo: regenerar
+    el refresh token en OAuth Playground con el client propio sumando `https://www.googleapis.com/auth/spreadsheets.readonly`
+    (conservando los scopes actuales), pegarlo en `GOOGLE_REFRESH_TOKEN` de Vercel + redeploy, y compartir cada
+    planilla con esa cuenta Google. No verificado desde el sandbox (no hay env de Google acá).
+  - **Kantar por planilla (opcional):** config en la fila reservada `tableros.slug='cfg-kantar'` (mapeo de columnas
+    con `lib/research-core.ts` de BIP + categorías). `lib/kantar-sheet.ts` → `getKantarData()`: sin config (o
+    cualquier error) = **constantes de `salud-marca-model.ts` sin tocar**; con config = constantes + planilla **celda
+    por celda** (solo pisa lo que la planilla trae). Solo olas medidas del eje actual (nov-23…nov-25 + jun);
+    **nov-26 (proyección) y olas nuevas NO se aplican** (se informan) → para una ola nueva hay que extender el eje en
+    el código. Aplica a `/salud-marca` (tabs por categoría + Marca vía `computeDreanConsolidado(series, true, kantar)`);
+    **`/overview` Obj.4, el chat y las señales siguen con las constantes.** Plantilla: `/api/tableros/kantar/plantilla`.
+  - **Copiloto:** `lib/chat/tools-archivos.ts` (`list_tableros_datasets` / `query_dataset`, como `list_archivos`/
+    `query_archivo` de BIP), set `tableros` en `registry.ts` + contexto `/tableros` en `contexto.ts`.
+  - **Tests:** `cd apps/web && npx tsx scripts/viz-engine.test.ts` (110 OK) · `npx tsx scripts/kantar-sheet.test.ts`
+    (sin planilla = mismos números) · `npx tsx scripts/tableros-smoke.ts` (solo lectura contra la DB).
 
 ## Gotchas / decisiones (lo que costó tiempo — no re-litigar)
 - **Inversión de Marketing (`/funnel`) — dash NATIVO (dic-2026, reemplazó el iframe).** Antes era

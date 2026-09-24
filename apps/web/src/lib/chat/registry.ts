@@ -15,6 +15,7 @@ import { inversionTools } from "./tools-inversion";
 import { crucesTools } from "./tools-cruces";
 import { senalesTools } from "./tools-senales";
 import { guiaTools } from "./tools-guia";
+import { archivosTools } from "./tools-archivos";
 import { calc, CALC_TOOL_PARAMS } from "./calc";
 import { dashPath } from "./contexto";
 import { isPathAllowed } from "@/lib/dashboard-access";
@@ -45,6 +46,7 @@ const SETS: Record<string, Factory> = {
   "salud-marca": fijo(saludMarcaTools),
   mercado: fijo([...mercadoTools, overviewTools.find((t) => t.name === "get_facturacion_mensual")!]),
   funnel: fijo(inversionTools),
+  tableros: fijo(archivosTools), // planillas propias de Mis tableros
 };
 
 const CALC_TOOL: ChatTool = {

@@ -1,0 +1,47 @@
+name: Ad Library (pauta de la competencia, semanal)
+
+# Plan de Medios → Pauta de la competencia (portado de BIP, sep-2026): anuncios activos de la
+# competencia en la Biblioteca de anuncios de Meta vía Apify. Fan-out: ?list=1 → marcas → una
+# llamada por marca (cada corrida de Apify puede tardar minutos; la ruta tiene 300 s).
+# Corre los lunes ANTES de alertas.yml (08:00 ART) para que los anuncios nuevos entren al resumen.
+# Requiere CRON_SECRET (igual que en Vercel) + APIFY_API_TOKEN en Vercel + migración 0108.
+on:
+  schedule:
+    - cron: "0 9 * * 1"   # lunes 09:00 UTC (06:00 ART)
+  workflow_dispatch:
+    inputs:
+      marca:
+        description: "Solo esta marca (opcional, ej. Whirlpool)"
+        required: false
+        default: ""
+
+jobs:
+  ad-library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      BASE: https://dashboard-mkt-seven.vercel.app
+      MARCA: ${{ github.event.inputs.marca }}
+    steps:
+      - name: Sincronizar marcas (una request por marca)
+        run: |
+          set -uo pipefail
+          if [ -n "${MARCA:-}" ]; then
+            brands="$MARCA"
+          else
+            brands=$(curl -sS -m 60 -H "Authorization: Bearer ${CRON_SECRET:-}" "$BASE/api/cron/ad-library?list=1" \
+              | python3 -c 'import sys,json; d=json.load(sys.stdin); print("\n".join(d.get("brands",[])))')
+          fi
+          [ -n "$brands" ] || { echo "::error::No se pudo obtener la lista de marcas"; exit 1; }
+          ok=0; fail=0
+          while IFS= read -r b; do
+            [ -z "$b" ] && continue
+            q=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$b")
+            code=$(curl -sS -m 320 -o out.json -w "%{http_code}" -H "Authorization: Bearer ${CRON_SECRET:-}" "$BASE/api/cron/ad-library?marca=$q" || echo 000)
+            echo "· $b → HTTP $code"; cat out.json || true; echo
+            if [ "$code" = "200" ] && ! grep -q '"ok":false' out.json; then ok=$((ok+1)); else fail=$((fail+1)); fi
+          done <<< "$brands"
+          echo "OK: $ok · con error: $fail"
+          # Falla el job solo si NINGUNA marca se guardó (una marca caída conserva su snapshot anterior).
+          [ "$ok" -gt 0 ] || { echo "::error::Ninguna marca se pudo sincronizar"; exit 1; }
