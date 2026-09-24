@@ -4,6 +4,10 @@ import { RegionSection } from "@/components/seo-search/region-section";
 import { LlmoSection } from "@/components/seo-search/llmo-section";
 import { getShareOfSearch, getTrendsInterest, getDemandaGenerica, getSeoCompetitivo, getSearchRegion, getSeoIndexHistory, getLlmo, getSeoFreshness } from "@/lib/competitive-queries";
 import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import { MercadoMetasSection } from "@/components/seo-search/mercado-metas-section";
+import { SearchConsoleSection } from "@/components/seo-search/search-console-section";
+import { getMercadoSeries, getMercadoMetas } from "@/lib/mercado-kpis-server";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -23,6 +27,11 @@ function Fresh({ label, date }: { label: string; date: string | null }) {
 }
 
 export default async function SeoSearchPage() {
+  // Precarga (React cache por request): los KPIs de mercado arrancan EN PARALELO con el resto,
+  // y MercadoMetasSection reusa la misma promesa.
+  const anio = new Date().getFullYear();
+  void getMercadoSeries(anio).catch(() => null);
+  void getMercadoMetas(anio).catch(() => null);
   const [share, trends, demanda, seoCompetitivo, region, indexHist, llmo, fresh] = await Promise.all([
     getShareOfSearch().catch(() => []),
     getTrendsInterest().catch(() => []),
@@ -53,6 +62,10 @@ export default async function SeoSearchPage() {
           <Fresh label="Visibilidad IA" date={fresh.llmo} />
         </div>
       </header>
+      <HowToRead slug="seo-search" />
+
+      {/* KPIs de mercado vs meta (plan "Mercado y competencia" del Mapa) — máxima jerarquía */}
+      <MercadoMetasSection />
 
       {sinData ? (
         <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -80,6 +93,10 @@ export default async function SeoSearchPage() {
           <LlmoSection rows={llmo} />
         </div>
       )}
+      {/* SEO propio real (Google Search Console de drean.com.ar) */}
+      <div className="border-t pt-6">
+        <SearchConsoleSection />
+      </div>
       <DashDiagnostico dash="seo-search" />
     </div>
   );

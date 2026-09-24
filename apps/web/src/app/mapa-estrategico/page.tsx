@@ -1,5 +1,6 @@
 import { MapaEditor } from "@/components/mapa-estrategico/mapa-editor";
 import { getMapaConfig } from "@/lib/mapa-server";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const metadata = { title: "Mapa Estratégico" };
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function MapaEstrategicoPage() {
           tablero de Seguimiento lea el mapa.
         </p>
       </header>
+      <HowToRead slug="mapa-estrategico" />
 
       <MapaEditor initial={initial} />
     </div>

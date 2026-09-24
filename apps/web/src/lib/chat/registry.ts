@@ -14,6 +14,7 @@ import { mktCanalTools } from "./tools-mkt-canal";
 import { inversionTools } from "./tools-inversion";
 import { crucesTools } from "./tools-cruces";
 import { senalesTools } from "./tools-senales";
+import { guiaTools } from "./tools-guia";
 import { calc, CALC_TOOL_PARAMS } from "./calc";
 import { dashPath } from "./contexto";
 import { isPathAllowed } from "@/lib/dashboard-access";
@@ -88,6 +89,7 @@ export function buildChatTools(pageKey: string, allowed: string[] | null, ctx: T
     crucesTools.forEach(push);
     senalesTools.forEach(push);
   }
+  guiaTools.forEach(push); // Método BIP: contenido estático, en todos los dashboards y para todo usuario
   push(CALC_TOOL);
   return { tools, sets: ordered };
 }

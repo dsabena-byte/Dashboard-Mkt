@@ -149,6 +149,7 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
           {/* KPIs estratégicos con meta (mes de referencia = último con dato) */}
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-3">
             <MetaKpiCard
+              learnKey="alcance"
               title="Alcance (personas)"
               medida="Reach de los posts del mes"
               headlineActual={alcRef}
@@ -162,6 +163,7 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
               ]}
             />
             <MetaKpiCard
+              learnKey="engagement"
               title="Engagement %"
               medida="Interacciones ÷ alcance (sin video views)"
               headlineActual={engRef}

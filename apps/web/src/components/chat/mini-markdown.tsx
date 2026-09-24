@@ -3,7 +3,7 @@ import { Fragment, type ReactNode } from "react";
 
 // Markdown MÍNIMO para las respuestas del copiloto (sin dependencias): títulos (#..###),
 // **negrita**, *itálica*, `código`, listas (- * • y 1.), tablas simples con pipes,
-// separador (---) y links http(s). Las imágenes se descartan. (Portado de BIP.)
+// separador (---), links http(s) y links internos a /guia (Método BIP). Las imágenes se descartan. (Portado de BIP.)
 
 const AZUL = "#1e40af";
 
@@ -23,7 +23,9 @@ function inline(text: string, kb: string): ReactNode[] {
       const href = lm?.[2] ?? "";
       out.push(/^https?:\/\//.test(href)
         ? <a key={`${kb}a${i++}`} href={href} target="_blank" rel="noreferrer" style={{ color: AZUL }} className="underline-offset-2 hover:underline">{lm?.[1]}</a>
-        : <Fragment key={`${kb}a${i++}`}>{lm?.[1]}</Fragment>);
+        : /^\/guia(\/[a-z0-9-]+)?$/.test(href) // Método BIP: link interno a un módulo (misma pestaña)
+          ? <a key={`${kb}a${i++}`} href={href} style={{ color: AZUL }} className="font-semibold underline-offset-2 hover:underline">{lm?.[1]}</a>
+          : <Fragment key={`${kb}a${i++}`}>{lm?.[1]}</Fragment>);
     } else out.push(<em key={`${kb}i${i++}`}>{tok.slice(1, -1)}</em>);
     last = idx + tok.length;
   }

@@ -17,13 +17,16 @@ export async function getMetaKpi(
   kpi: string,
   anio: number,
   categoria: string = CAT_GENERAL,
+  // Defaults cuando el KPI todavía NO tiene config guardada (ej. "Índice de posición
+  // SEO" es "menor es mejor" → direccion "down" aunque nadie haya abierto el MetaPanel).
+  defaults?: { direccion?: Direccion; unidad?: string | null },
 ): Promise<MetaKpiData> {
   const base: MetaKpiData = {
     valores: Array.from({ length: 12 }, () => null),
-    direccion: "up",
+    direccion: defaults?.direccion ?? "up",
     umbralVerde: 100,
     umbralAmarillo: 90,
-    unidad: null,
+    unidad: defaults?.unidad ?? null,
   };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

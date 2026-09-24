@@ -21,6 +21,7 @@ import { getSocialPosts, getSocialFollowers, OWN_BRAND, BRAND_LABELS } from "@/l
 import { getCompetitorMonthlyHistory } from "@/lib/competitor-web-queries";
 import { getShareOfSearch, getSeoCompetitivo, getSearchRegion, getLlmo, getDemandaGenerica } from "@/lib/competitive-queries";
 import { getSeguimientoObjetivos } from "@/lib/objetivos-rollup";
+import { getSearchConsoleData } from "@/lib/search-console";
 import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
 import { getTradeMonthly } from "@/lib/trade-monthly";
 import { getMetaKpi } from "@/lib/metas-server";
@@ -150,14 +151,15 @@ export function loadOverview(ctx: LoadCtx): Promise<SeguimientoObjetivos | null>
 // ── Cruces propios × mercado (Drean tiene la capa competitiva completa) ──
 export function loadCruces(ctx: LoadCtx): Promise<CrucesInput | null> {
   return ctx.once("cruces", async () => {
-    const [pauta, seo, redes, web] = await Promise.all([loadPauta(ctx), loadSeo(ctx), loadRedes(ctx), loadWeb(ctx)]);
+    // Search Console: snapshot de search_console_snapshot (null si no hay dato OK → cruce_sc_* no dispara).
+    const [pauta, seo, redes, web, sc] = await Promise.all([loadPauta(ctx), loadSeo(ctx), loadRedes(ctx), loadWeb(ctx), safe(getSearchConsoleData())]);
     const inp: CrucesInput = {
       ownBrand: "Drean",
       pauta: pauta ? { monthly: pauta.monthly, currency: pauta.currency, year: year() } : null,
       seo, social: redes?.competitor ? { posts: redes.competitor.posts, ownBrand: redes.competitor.ownBrand } : null,
-      web: web?.reports ?? null, competitorWeb: web?.competitor ?? null, searchConsole: null,
+      web: web?.reports ?? null, competitorWeb: web?.competitor ?? null, searchConsole: sc ?? null,
     };
-    return inp.seo || inp.social || inp.competitorWeb ? inp : null;
+    return inp.seo || inp.social || inp.competitorWeb || inp.searchConsole ? inp : null;
   });
 }
 

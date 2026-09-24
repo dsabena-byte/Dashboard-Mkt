@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Direccion } from "@/lib/metas";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 export interface CmpRow {
   label: string; // "Mes Ago" / "Acum. YTD"
@@ -11,15 +13,20 @@ interface Props {
   medida?: string; // cómo se mide
   headlineActual: number | null; // valor grande (mes de referencia)
   headlineLabel: string; // ej "Ago 26"
-  unidad?: "%" | "s" | "$" | "x" | "";
+  unidad?: "%" | "s" | "$" | "x" | "pts" | "";
   direccion?: Direccion;
   umbralVerde?: number;
   umbralAmarillo?: number;
   rows: CmpRow[]; // comparaciones (mes, acumulado)
+  /** Contenido opcional al pie de la card (ej. gráfico real vs meta DENTRO de la card). */
+  children?: ReactNode;
+  /** Método BIP: clave de KPI_KNOW (o nombre/alias del KPI) → muestra el 🎓 que abre la guía. Opcional. */
+  learnKey?: string;
 }
 
-function fmt(v: number | null, unidad: "%" | "s" | "$" | "x" | ""): string {
+function fmt(v: number | null, unidad: "%" | "s" | "$" | "x" | "pts" | ""): string {
   if (v == null || !Number.isFinite(v)) return "—";
+  if (unidad === "pts") return v.toFixed(1); // índice (ej. posición SEO)
   if (unidad === "%") return `${v.toFixed(2)}%`;
   if (unidad === "s") return `${Math.round(v)}s`;
   if (unidad === "x") return v.toFixed(1); // frecuencia (ratio, 1 decimal)
@@ -35,12 +42,15 @@ const SEM_BG: Record<string, string> = {
   "sin-meta": "rgba(100,116,139,.10)",
 };
 
-export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unidad = "", direccion = "up", umbralVerde = 100, umbralAmarillo = 90, rows }: Props) {
+export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unidad = "", direccion = "up", umbralVerde = 100, umbralAmarillo = 90, rows, children, learnKey }: Props) {
   return (
     <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
-        {medida && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{medida}</div>}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+          {medida && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{medida}</div>}
+        </div>
+        {learnKey && <LearnButton k={learnKey} title={learnKey} />}
       </div>
 
       <div className="mt-2 flex items-baseline gap-2">
@@ -84,6 +94,7 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
           );
         })}
       </div>
+      {children ? <div className="mt-3 border-t pt-3">{children}</div> : null}
     </div>
   );
 }

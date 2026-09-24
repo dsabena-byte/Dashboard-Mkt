@@ -13,6 +13,7 @@ import {
   CircleDollarSign,
   Sparkles,
   Activity,
+  GraduationCap,
   ChevronRight,
   Menu,
   X,
@@ -63,6 +64,8 @@ const TREE: NavNode[] = [
   { type: "divider" },
   { type: "link", href: "/contenido", label: "Generador de Contenido", icon: Sparkles },
   { type: "link", href: "/monitoreo", label: "Monitoreo conexiones", icon: Activity },
+  { type: "divider" },
+  { type: "link", href: "/guia", label: "Método BIP", icon: GraduationCap },
 ];
 
 // Poda el árbol según los dashboards permitidos (link no permitido → fuera;

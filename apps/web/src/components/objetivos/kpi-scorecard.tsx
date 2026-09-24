@@ -9,7 +9,7 @@ import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/li
 import type { KpiSeguimiento, KpiUnit } from "@/lib/objetivos-kpis";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const PLAN_ORDER = ["Pauta Mkt", "Web / Ecommerce", "Instagram", "Cuadros Básicos", "Floor Share"];
+const PLAN_ORDER = ["Pauta Mkt", "Web / Ecommerce", "Instagram", "Cuadros Básicos", "Floor Share", "Mercado y competencia"];
 
 const SEM_BG: Record<Semaforo, string> = {
   verde: "rgba(22,163,74,.12)",
@@ -23,6 +23,7 @@ function fmt(v: number | null, u: KpiUnit): string {
   if (u === "%") return `${v.toFixed(2)}%`;
   if (u === "s") return `${Math.round(v)}s`;
   if (u === "x") return `${v.toFixed(1)}×`;
+  if (u === "pts") return v.toFixed(1); // índice (ej. posición SEO, menor es mejor)
   const a = Math.abs(v);
   const s = a >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : a >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : String(Math.round(v));
   return u === "$" ? `$${s}` : s;

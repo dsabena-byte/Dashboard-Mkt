@@ -57,6 +57,13 @@ export const CATALOGO_PLANES: CatPlan[] = [
     kpis: ["Share of Search", "Tráfico orgánico", "Posición media", "Visibilidad SEO"],
   },
   {
+    // KPIs de mercado/competencia (ver lib/mercado-kpis.ts). Claves EXACTAS = MERCADO_KPIS.
+    // Real mensual cableado en lib/objetivos-kpis (Seguimiento); metas en /seo-search.
+    nombre: "Mercado y competencia",
+    href: "/seo-search",
+    kpis: ["Share of Search", "Share of engagement", "Visibilidad en IA", "Índice de posición SEO"],
+  },
+  {
     nombre: "Resultados Comerciales",
     href: "/mercado",
     kpis: [

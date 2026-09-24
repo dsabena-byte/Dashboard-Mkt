@@ -165,6 +165,7 @@ export function IgOrganicSection({
       {/* KPIs estratégicos con meta (mes de referencia = último con dato) */}
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-3">
         <MetaKpiCard
+          learnKey="alcance"
           title="Alcance (personas)"
           medida="Suma del reach de los posts del mes"
           headlineActual={alcRef}
@@ -178,6 +179,7 @@ export function IgOrganicSection({
           ]}
         />
         <MetaKpiCard
+          learnKey="engagement"
           title="Engagement %"
           medida="Interacciones ÷ alcance"
           headlineActual={engRef}

@@ -19,8 +19,10 @@ import { generalPonderado } from "./categorias";
 import { getTradeMonthly, emptyTradeMonthly } from "./trade-monthly";
 import type { MetaKpiData } from "./metas-server";
 import { buildPautaMediosMensual, type PautaMes } from "@/lib/pauta-medios-model";
+import { getMercadoSeries, getMercadoMetas } from "./mercado-kpis-server";
+import { MERCADO_KPIS, MERCADO_PLAN, type MercadoResult } from "./mercado-kpis";
 
-export type KpiUnit = "$" | "" | "x" | "%" | "s";
+export type KpiUnit = "$" | "" | "x" | "%" | "s" | "pts"; // pts = índice (ej. posición SEO)
 
 export interface KpiSeguimiento {
   plan: string;
@@ -196,6 +198,9 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
   const tradeP = skipTrade ? Promise.resolve(emptyTradeMonthly()) : getTradeMonthly(anio);
   const cbP = tradeP.then((t) => t.cb);
   const fsP = tradeP.then((t) => ({ general: t.fsGeneral, cat: t.fsCat }));
+  // Mercado y competencia (SoS / SoE / IA / índice SEO): REST barato, memo por request.
+  const mercadoP = safe(getMercadoSeries(anio), null as MercadoResult | null);
+  const mercadoMetasP = getMercadoMetas(anio);
 
   const [
     pauta, metaPaid, dv360, dv360Reach, gads, fx,
@@ -318,6 +323,16 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
     Lavado: mFsLav.valores, Refrigeración: mFsRef.valores, Cocción: mFsCoc.valores,
   };
 
+  // ---- Mercado y competencia (4, tasas): real total + por categoría cuando la fuente lo trae ----
+  const [mercado, mercadoMetas] = await Promise.all([mercadoP, mercadoMetasP]);
+  const mercadoKpis: KpiSeguimiento[] = MERCADO_KPIS.map((spec) => {
+    const serie = mercado?.series[spec.key];
+    return mk(
+      MERCADO_PLAN, spec.key, spec.medida, spec.unidad, "rate",
+      serie?.realM ?? Array.from({ length: 12 }, () => null), mercadoMetas[spec.key]!, serie?.realCatM,
+    );
+  });
+
   const pautaAlcM = serieSum(pm, (m) => m.alc);
   const pautaImprM = serieSum(pm, (m) => m.impr);
   const pautaClicM = serieSum(pm, (m) => m.clic);
@@ -340,5 +355,8 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
     // Trade Mkt (Floor Share = real POR categoría directo; CB total-only)
     mk("Cuadros Básicos", "% Cumplimiento CB", "% CB del mes", "%", "rate", cbRealM, mCb),
     mk("Floor Share", "Floor Share (exhibición)", "Share Drean góndola (Σ cat × peso)", "%", "rate", fsRealM, mFs, fsCatReal, fsMetaCat),
+    // Mercado y competencia (plan del Mapa; ver lib/mercado-kpis.ts). Solo cuentan en el
+    // rollup si el usuario los conecta a un objetivo en el Mapa.
+    ...mercadoKpis,
   ];
 }
