@@ -647,7 +647,8 @@ reporte_existencia/cb_homologos).
   (racional de precios) es otra estructura, no tiene esas tarjetas.
   **Reescritura de venta (sep-2026):** contenido alineado a `lib/plan.ts` de BIP (FUENTE ÚNICA: usuarios 1/4/10,
   historial 6/12/24, cat 1/2/3, competidores —/5/10+retailers, alertas in-app / +semanal email / +diarias+reporte
-  ejecutivo; SEO/Search Console/Trade desde Optimize; Simulador/Ad Library/Research en Accelerate). Escalera de preguntas
+  ejecutivo; SEO/Search Console/Trade desde Optimize; Simulador/Ad Library/Salud de Marca en Accelerate). **Share de mercado =
+  dato de Resultados Comerciales (ventas, share, índice de precio, cobertura) en TODOS los planes, no es Research** (pedido del user). Escalera de preguntas
   **(se revirtió a pedido del user: NO tocar portada/storytelling/mensajes madre ni usar la palabra "gratis" — el
   concepto central es "Tener una estrategia no te asegura lograr tus resultados"; solo se retrabajan los planes)**,
   tarjetas con "Todo X, más:" + teaser del plan siguiente, Optimize

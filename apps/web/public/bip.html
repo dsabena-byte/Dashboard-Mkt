@@ -871,7 +871,7 @@ const MODS = [
   ['Redes Sociales','Engagement, audiencias, sentimiento y rendimiento por posteo','<path d="M7 15a4 4 0 1 0 0-6 4 4 0 0 0 0 6Z"/><path d="M17 9a3 3 0 1 0 0 6M10.5 10.5 15 8M10.5 13.5 15 16"/>',''],
   ['Web / Ecommerce','Tráfico, fuentes, conversión e ingresos','<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M7 13h4"/>',''],
   ['Diagnóstico con IA','Preguntale a tus datos y recibí diagnóstico y señales por tablero','<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/><circle cx="12" cy="12" r="3"/>',''],
-  ['Resultados e Inversión','Facturación, ejecución del presupuesto e Inversión / Facturación','<path d="M12 2v20M6 6h9a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h9"/>',''],
+  ['Resultados e Inversión','Ventas, share, índice de precio, cobertura y ejecución del presupuesto','<path d="M12 2v20M6 6h9a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h9"/>',''],
   ['Tu mercado','Tu marca vs tu competencia en redes, web y búsquedas','<path d="M3 21h18M6 21V10M11 21V4M16 21v-7M21 21V8"/>','optimize'],
   ['SEO + Search Console','Share of search, posiciones, keywords y oportunidades','<circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/>','optimize'],
   ['Trade Marketing','Surtido y Floor Share por cliente y tienda','<path d="M3 9 5 4h14l2 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M4 9h16"/>','optimize'],
@@ -896,7 +896,7 @@ const PLANS = [
    ideal:'querés tener todo tu marketing medido contra la meta, en un solo lugar y sin armar reportes a mano.',
    spec:[['1','usuario'],['1','categoría'],['6','meses de historia']],
    incl:'Incluye',
-   feats:[['Mapa Estratégico + Seguimiento de Objetivos (real vs meta)'],['Plan de Medios online + offline'],['Redes Sociales (tu marca)'],['Web / Ecommerce'],['Resultados Comerciales e Inversión de Marketing'],['Mis tableros: armá los tuyos con tus planillas'],['IA: preguntale a tus datos + diagnóstico y señales por tablero'],['Alertas en la plataforma']],},
+   feats:[['Mapa Estratégico + Seguimiento de Objetivos (real vs meta)'],['Plan de Medios online + offline'],['Redes Sociales (tu marca)'],['Web / Ecommerce'],['Resultados Comerciales (ventas, share, precio, cobertura) e Inversión de Marketing'],['Mis tableros: armá los tuyos con tus planillas'],['IA: preguntale a tus datos + diagnóstico y señales por tablero'],['Alertas en la plataforma']],},
   {key:'optimize',name:'Optimize',tag:'plan intermedio',price6:'399',price3:'499',reco:true,
    q:'¿Le estoy ganando a mi competencia?',promesa:'Decidí con contexto de mercado.',
    ideal:'ya medís tu operación y necesitás saber cómo te va contra tu competencia, y defenderlo con datos ante la dirección.',
@@ -938,7 +938,7 @@ const FULL = [
   {t:'Web / Ecommerce',r:[['Tráfico, fuentes y performance web',1,1,1],['KPIs de ecommerce (transacciones, ingresos, conversión)',1,1,1],['Por categoría, top landings y demografía',1,1,1],['Embudo de conversión',1,1,1],['Competencia web (tráfico y share of visits)',0,1,1]]},
   {t:'SEO y búsquedas',r:[['Share of search vs competencia',0,1,1],['Posiciones, volumen y tendencias',0,1,1],['Keywords y oportunidades',0,1,1],['Search Console (clicks, impresiones, CTR, posición)',0,1,1]]},
   {t:'Trade Marketing',r:[['Surtido por cliente y tienda',0,1,1],['Floor Share',0,1,1],['Sugerencias de surtido',0,1,1]]},
-  {t:'Negocio',r:[['Resultados Comerciales (facturación y share)',1,1,1],['Inversión de Marketing (ejecución vs presupuesto, Inversión / Facturación)',1,1,1],['Mis tableros: motor de tableros con tus planillas, armado con IA',1,1,1],['Todos los tableros abiertos por categoría',0,0,1]]},
+  {t:'Negocio',r:[['Resultados Comerciales (ventas, share, índice de precio, cobertura de distribución)',1,1,1],['Inversión de Marketing (ejecución vs presupuesto, Inversión / Facturación)',1,1,1],['Mis tableros: motor de tableros con tus planillas, armado con IA',1,1,1],['Todos los tableros abiertos por categoría',0,0,1]]},
 ];
 const cell = v => v===1?'<span class="yes">✓</span>':v==='adv'?'<span class="adv">+ Comp.</span>':typeof v==='string'?`<span class="val">${v}</span>`:'<span class="no">—</span>';
 document.getElementById('matrix').innerHTML =
