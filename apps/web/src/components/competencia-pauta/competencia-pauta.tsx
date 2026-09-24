@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import type { BrandAds, BrandSummary, CompetitorAd } from "@/lib/ad-library-shared";
+import type { AdEngagement, BrandIntensity, SustainedAd } from "@/lib/ad-intensity";
 
 // Pauta de la competencia (cliente) — portado de BIP (sep-2026): resumen por marca + grilla de
 // creativos filtrable. Sistema visual de Drean: marca propia en azul #1e40af; ámbar solo para estado.
@@ -11,7 +12,10 @@ const start = (a: CompetitorAd) => a.startDate ?? a.firstSeen;
 const daysSince = (s: string) => Math.max(0, Math.floor((Date.now() - new Date(s).getTime()) / 86_400_000));
 const SEL = "rounded-md border bg-background px-2 py-1.5 text-sm";
 
-export function CompetenciaPauta({ brands, summaries, updatedAt }: { brands: BrandAds[]; summaries: BrandSummary[]; updatedAt: string | null }) {
+const k = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(Math.round(n)));
+
+export function CompetenciaPauta({ brands, summaries, updatedAt, intensity = [], sustained = [], engagement = {} }: { brands: BrandAds[]; summaries: BrandSummary[]; updatedAt: string | null; intensity?: BrandIntensity[]; sustained?: SustainedAd[]; engagement?: Record<string, AdEngagement> }) {
+  const [sortEng, setSortEng] = useState(false);
   const [marca, setMarca] = useState<string>("__all");
   const [win, setWin] = useState<"7" | "30" | "all">("30");
   const [fmt, setFmt] = useState<string>("__all");
@@ -22,8 +26,10 @@ export function CompetenciaPauta({ brands, summaries, updatedAt }: { brands: Bra
       .filter((a) => a.active)
       .filter((a) => win === "all" || now - new Date(start(a)).getTime() <= Number(win) * 86_400_000)
       .filter((a) => fmt === "__all" || a.format === fmt)
-      .sort((x, y) => start(y).localeCompare(start(x)));
-  }, [brands, marca, win, fmt]);
+      .sort((x, y) => sortEng ? ((engagement[y.id]?.likes ?? -1) + (engagement[y.id]?.comentarios ?? 0)) - ((engagement[x.id]?.likes ?? -1) + (engagement[x.id]?.comentarios ?? 0)) : start(y).localeCompare(start(x)));
+  }, [brands, marca, win, fmt, sortEng, engagement]);
+  const adById = useMemo(() => new Map(brands.flatMap((b) => b.ads.map((a) => [a.id, a] as const))), [brands]);
+  const matched = Object.keys(engagement).length;
   const formatos = [...new Set(brands.flatMap((b) => b.ads.map((a) => a.format)))];
   const comp = summaries.filter((s) => !s.own);
   const tot = { activos: comp.reduce((a, s) => a + s.activos, 0), n7: comp.reduce((a, s) => a + s.nuevos7, 0), n30: comp.reduce((a, s) => a + s.nuevos30, 0) };
@@ -45,6 +51,48 @@ export function CompetenciaPauta({ brands, summaries, updatedAt }: { brands: Bra
           </div>
         ))}
       </div>
+
+      {intensity.length > 0 && (
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <h3 className="text-sm font-semibold">Índice de intensidad de pauta</h3>
+            <p className="mb-3 text-[11px] text-muted-foreground">Estimado con lo público (avisos, mensajes, lanzamientos, días al aire, plataformas). 100 = la marca que más pauta.</p>
+            <div className="space-y-2">
+              {intensity.map((b) => (
+                <div key={b.marca} className="grid grid-cols-[110px_1fr_36px] items-center gap-2 text-xs" title={`${b.activos} avisos · ${b.creatividades} mensajes · ${b.versionesPorCreatividad} versiones por mensaje · ${b.diasPromedio} días al aire prom. · ${b.sostenidos} sostenidos 30+ días · ${b.lanzamientos30} lanzados en 30 días`}>
+                  <span className={`truncate ${b.own ? "font-semibold" : ""}`} style={b.own ? { color: "#1e40af" } : undefined}>{b.marca}</span>
+                  <span className="h-2.5 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full" style={{ width: `${b.indice}%`, background: b.own ? "#1e40af" : "#64748b" }} /></span>
+                  <span className="text-right font-semibold tabular-nums">{b.indice}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[420px] text-[11px]">
+                <thead><tr className="text-muted-foreground">{["Marca", "Mensajes", "Versiones/msj", "Días al aire", "Sostenidos", "Nuevos 30d"].map((h, i) => <th key={h} className={`py-1 font-semibold ${i ? "text-right" : "text-left"}`}>{h}</th>)}</tr></thead>
+                <tbody>{intensity.filter((b) => b.activos).map((b) => (
+                  <tr key={b.marca} className="border-t"><td className="py-1">{b.marca}</td><td className="text-right tabular-nums">{b.creatividades}</td><td className="text-right tabular-nums">{b.versionesPorCreatividad}</td><td className="text-right tabular-nums">{b.diasPromedio}</td><td className="text-right tabular-nums">{b.sostenidos}</td><td className="text-right tabular-nums">{b.lanzamientos30}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <h3 className="text-sm font-semibold">Avisos que más sostienen</h3>
+            <p className="mb-3 text-[11px] text-muted-foreground">Los que llevan más días activos (y en cuántas versiones corren): la mejor pista de qué mensaje les rinde.</p>
+            <div className="space-y-2">
+              {sustained.slice(0, 8).map((s) => { const a = adById.get(s.id); const e = engagement[s.id]; return a ? (
+                <a key={s.id} href={a.url} target="_blank" rel="noreferrer" className="flex gap-2.5 rounded-lg border p-2 hover:bg-muted/50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {a.thumb ? <img src={a.thumb} alt="" className="h-12 w-12 shrink-0 rounded object-cover" referrerPolicy="no-referrer" /> : <span className="h-12 w-12 shrink-0 rounded bg-muted" />}
+                  <span className="min-w-0 text-xs">
+                    <span className="font-semibold">{s.marca}</span> <span className="text-muted-foreground">· {s.dias} días al aire{s.versiones > 1 ? ` · ${s.versiones} versiones` : ""}{e ? ` · ♥ ${k(e.likes)} · 💬 ${k(e.comentarios)}` : ""}</span>
+                    <span className="line-clamp-2 block text-muted-foreground">{a.body || a.title || "(sin texto)"}</span>
+                  </span>
+                </a>) : null; })}
+              {!sustained.length && <p className="text-xs text-muted-foreground">Sin avisos activos de la competencia.</p>}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 pb-1 pt-3">
@@ -94,7 +142,8 @@ export function CompetenciaPauta({ brands, summaries, updatedAt }: { brands: Bra
           <option value="__all">Todos los formatos</option>
           {formatos.map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
-        <span className="text-xs text-muted-foreground">{ads.length} {ads.length === 1 ? "anuncio" : "anuncios"}</span>
+        <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={sortEng} onChange={(e) => setSortEng(e.target.checked)} />Ordenar por me gusta + comentarios</label>
+        <span className="text-xs text-muted-foreground">{ads.length} {ads.length === 1 ? "anuncio" : "anuncios"} · {matched} con métricas del posteo</span>
       </div>
 
       {ads.length === 0 ? (
@@ -116,6 +165,11 @@ export function CompetenciaPauta({ brands, summaries, updatedAt }: { brands: Bra
                 </div>
                 {a.title && <div className="text-xs font-semibold leading-snug">{a.title}</div>}
                 <div className="line-clamp-4 text-xs leading-snug text-muted-foreground">{a.body || "(sin texto)"}</div>
+                {engagement[a.id] && (
+                  <div className="mt-0.5 flex flex-wrap gap-x-2 rounded-md bg-muted/60 px-2 py-1 text-[11px] font-medium" title={`Métricas del posteo en ${engagement[a.id]!.red === "INSTAGRAM" ? "Instagram" : "Facebook"} del ${fd(engagement[a.id]!.fecha)} (mismo texto que el anuncio)`}>
+                    <span>♥ {k(engagement[a.id]!.likes)}</span><span>💬 {k(engagement[a.id]!.comentarios)}</span>{engagement[a.id]!.views > 0 && <span>▶ {k(engagement[a.id]!.views)}</span>}<span className="font-normal text-muted-foreground">posteo {engagement[a.id]!.red === "INSTAGRAM" ? "IG" : "FB"}</span>
+                  </div>
+                )}
                 <div className="mt-0.5 text-[11px] text-muted-foreground/80">
                   Desde {fd(start(a))} · {daysSince(start(a))} días{a.platforms.length ? ` · ${a.platforms.map((p) => PLAT[p] ?? p).join(", ")}` : ""}{a.cta ? ` · ${a.cta}` : ""}
                 </div>
@@ -124,7 +178,7 @@ export function CompetenciaPauta({ brands, summaries, updatedAt }: { brands: Bra
           ))}
         </div>
       )}
-      <p className="text-[11px] text-muted-foreground">Fuente: Biblioteca de anuncios de Meta (pública), vía Apify. Muestra anuncios activos en Argentina de páginas cuyo nombre coincide con la marca; no incluye inversión (Meta no la publica para anuncios comerciales).</p>
+      <p className="text-[11px] text-muted-foreground">Fuente: Biblioteca de anuncios de Meta (pública), vía Apify. Muestra anuncios activos en Argentina de páginas cuyo nombre coincide con la marca; no incluye inversión ni alcance (Meta no los publica para anuncios comerciales). Me gusta y comentarios: solo de los avisos que coinciden con un posteo orgánico de la marca.</p>
     </div>
   );
 }

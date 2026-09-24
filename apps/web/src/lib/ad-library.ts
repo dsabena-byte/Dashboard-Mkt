@@ -14,6 +14,8 @@ import "server-only";
 // ============================================================================
 import { apifyEnabled, runActor } from "@/lib/apify";
 import { mirrorMetaImage } from "@/lib/meta-image-mirror";
+import { matchAdsToPosts, type AdEngagement, type OrganicPost } from "@/lib/ad-intensity";
+import { getTenant } from "@/lib/tenant/current";
 import { adLibraryBrands, adSearchUrl, matchesBrand, norm, parseAdItem, type AdBrand, type AdLibraryData, type BrandAds, type CompetitorAd } from "@/lib/ad-library-shared";
 
 export const AD_LIBRARY_ACTOR = process.env.APIFY_ACTOR_AD_LIBRARY || "apify~facebook-ads-scraper";
@@ -72,6 +74,24 @@ function motivoError(err: string): string {
     return "La última búsqueda no pudo correr: la cuenta de Apify (el servicio que consulta la Biblioteca de anuncios de Meta) llegó a su límite mensual de uso. Subí el límite o el plan en la consola de Apify (Billing → límites de uso) o esperá al reinicio del ciclo mensual; después se actualiza sola el lunes (o corré a mano el workflow “Ad Library (pauta de la competencia)”).";
   if (/\b401\b|token/i.test(err)) return "La última búsqueda falló por el token de Apify (APIFY_API_TOKEN inválido o vencido). Revisalo en Vercel.";
   return `La última búsqueda falló (${err.replace(/\s+/g, " ").slice(0, 160)}). Se reintenta el próximo lunes.`;
+}
+
+/** Cruce anuncio ↔ posteo orgánico (IG/FB, últimos 180 días) de cada marca con cuenta social
+ *  monitoreada → me gusta / comentarios / visualizaciones reales de los avisos que son posteos potenciados. */
+export async function getAdEngagement(data: AdLibraryData): Promise<Record<string, AdEngagement>> {
+  const handles = new Map(getTenant().socialAccounts.map((a) => [norm(a.label), a.handle]));
+  const since = new Date(Date.now() - 180 * 86_400_000).toISOString().slice(0, 10);
+  const out: Record<string, AdEngagement> = {};
+  await Promise.all(data.brands.map(async (b) => {
+    const h = handles.get(norm(b.marca));
+    if (!h || !b.ads.length) return;
+    const res = await rest(`social_posts?select=copy,likes,comentarios,views,fecha,url,red_social&marca=eq.${encodeURIComponent(h)}&fecha=gte.${since}&copy=not.is.null&limit=2000`);
+    if (!res?.ok) return;
+    const rows = (await res.json().catch(() => [])) as { copy: string | null; likes: number | null; comentarios: number | null; views: number | null; fecha: string; url: string | null; red_social: string }[];
+    const posts: OrganicPost[] = rows.map((r) => ({ copy: r.copy, likes: Number(r.likes) || 0, comentarios: Number(r.comentarios) || 0, views: Number(r.views) || 0, fecha: r.fecha, url: r.url, red: r.red_social }));
+    Object.assign(out, matchAdsToPosts(b.ads, posts));
+  }));
+  return out;
 }
 
 async function fetchBrand(b: AdBrand, nowIso: string): Promise<CompetitorAd[]> {
