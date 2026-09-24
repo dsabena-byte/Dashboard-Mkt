@@ -1284,3 +1284,13 @@ granularidad, top N, % total, acumulado, media móvil, vs anterior/YoY, metas, p
 plantillas Inversión/Resultados/Trade), modo reporte (PDF + Excel) y "Mis tableros" (`/tableros`).
 Config v2 en `tenant_dashboards.config` (upgrade de configs viejas al leer). Miembros = solo lectura.
 Detalle en el CLAUDE.md de bip-platform.
+
+## ✅ MEDIOS OFFLINE EN PLAN DE MEDIOS (24-sep-2026, bip-platform #41)
+TV, radio, vía pública, DOOH, cine, gráfica y BTL se cargan por **planilla** (plantilla Excel descargable
+en `/api/pauta-offline/plantilla`; tarjeta "Medios offline" `#offline` en `/performance`, mapeo con
+auto-detección + preview). Config en fila reservada `tenant_dashboards` slug `pauta-offline` (sin
+migración). Se integra con todo: `mergePauta(meta, google, offline)`, filtro Online/Offline, mix de
+inversión por medio, eficiencia (contactos, CPM contactos, GRPs, costo/GRP), Seguimiento, señales, IA y
+chat, módulo del Método BIP. **Reglas:** Inversión = online+offline; **contactos offline NO se suman a
+impresiones digitales** salvo marcarlos "comparables"; el alcance nunca se suma entre medios; monedas
+distintas no se suman (aviso). Pendiente: metas de GRPs/contactos; prueba con datos reales.
