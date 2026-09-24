@@ -5,6 +5,19 @@
 > código (`bip-platform`), los docs, y los requisitos oficiales de Meta. **No re-litigar sin leer esto.**
 > Complementa (no reemplaza) `docs/meta-app-review-guion.md` (guion de video con las 12 justificaciones).
 
+## 🟡 RESULTADO APP REVIEW (24-sep-2026): 8 de 9 APROBADOS
+Aprobados (Advanced Access): `pages_read_user_content`, `pages_show_list`, `business_management`,
+`read_insights`, `ads_read`, `pages_read_engagement`, `instagram_manage_insights`, `instagram_basic`.
+**Rechazado: `instagram_manage_comments`** — "La captura de video no coincide con los detalles del caso
+de uso". Nota del revisor: *"We need to see a complete comment moderation loop. Please re-record: add a
+comment from your app, edit that comment, and delete it, then open the native client to confirm the
+final state on that post."* → BIP solo LEÍA comentarios (sentimiento); Meta quiere ver moderación.
+**Plan:** construir "Gestionar comentarios" de IG en /redes (comentar, responder, ocultar/mostrar,
+editar = reemplazar porque la API de IG NO tiene edición, eliminar) y re-grabar el video en inglés con
+subtítulos, confirmando en la app nativa de Instagram. Guion en bip-platform `docs/meta-review-ig-comments.md`.
+**Consecuencia mientras tanto:** para clientes externos el texto de comentarios de IG (sentimiento IG)
+no funciona; FB sí (`pages_read_user_content` aprobado).
+
 ## ✅✅✅ APP REVIEW DE META ENVIADO (16-sep-2026)
 Submit hecho con los **9 permisos de lectura** (Tanda A). Detalles del envío:
 - **Video:** `https://youtu.be/js1IwBJIWfc` (YouTube no listado). Subtítulos EN = `bip-meta-review-en.srt`.
