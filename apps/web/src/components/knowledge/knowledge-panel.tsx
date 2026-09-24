@@ -5,7 +5,7 @@ import { KPI_KNOW, type KpiKnow } from "@/lib/knowledge";
 import { MODULO_TITULO } from "@/lib/guia/titulos";
 import { FUNNEL_LABEL } from "@/lib/guia/types";
 
-// Panel lateral de la guía por KPI (Método BIP) — se monta UNA vez en el layout. Escucha el
+// Panel lateral de la guía por KPI (Proceso Estratégico) — se monta UNA vez en el layout. Escucha el
 // evento `bip:learn` (que dispara cada LearnButton) y muestra fórmula, referencia, las 4 capas
 // (cómo leer · mejor práctica · oportunidad · marco) y las palancas con link al módulo.
 // Importa solo el índice liviano de títulos (no todo el contenido de la guía).
@@ -54,7 +54,7 @@ export function KnowledgePanel() {
         <div className="flex items-start gap-3 border-b px-5 py-4">
           <div className="min-w-0">
             <div className={K11}>
-              🎓 Métrica · Método BIP{know?.funnel && know.funnel !== "transversal" ? ` · ${FUNNEL_LABEL[know.funnel]}` : ""}
+              🎓 Métrica · Proceso Estratégico{know?.funnel && know.funnel !== "transversal" ? ` · ${FUNNEL_LABEL[know.funnel]}` : ""}
             </div>
             <h3 className="mt-0.5 text-lg font-semibold tracking-tight text-slate-900">{know?.name ?? ""}</h3>
           </div>

@@ -6,7 +6,7 @@ import {
   type Etapa, type Nivel, type Funnel, type Plataforma,
 } from "@/lib/guia/types";
 
-// Explorador del Método BIP: ciclo (filtra por etapa) + filtros + búsqueda + tarjetas por nivel.
+// Explorador del Proceso Estratégico: ciclo (filtra por etapa) + filtros + búsqueda + tarjetas por nivel.
 // Recibe solo metadatos livianos (el contenido completo se lee en /guia/[id]).
 
 export interface GuiaCard {
@@ -98,7 +98,7 @@ export function GuiaExplorer({ cards, initial }: { cards: GuiaCard[]; initial: G
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscá un tema, una métrica o una plataforma"
-          aria-label="Buscar en el Método BIP"
+          aria-label="Buscar en el Proceso Estratégico"
           className="min-w-0 flex-[1_1_260px] rounded-lg border bg-card px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#1e40af] focus:ring-2 focus:ring-blue-100"
         />
         <div className="inline-flex overflow-hidden rounded-lg border bg-card" role="group" aria-label="Nivel">

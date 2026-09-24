@@ -12,7 +12,7 @@ export function allowedFromRows(
 }
 
 // Rutas de contenido abiertas a TODO usuario logueado, aunque tenga dashboard_access restringido
-// (no exponen datos: /guia = Método BIP, capa de aprendizaje estática).
+// (no exponen datos: /guia = Proceso Estratégico, capa de aprendizaje estática).
 export const ALWAYS_ALLOWED_PATHS = ["/guia"];
 
 export function isPathAllowed(pathname: string, allowed: string[] | null): boolean {

@@ -282,8 +282,9 @@ reporte_existencia/cb_homologos).
     GitHub secrets, actualizarlo). (4) Actions → "Search Console sync" → Run workflow. Validar: `ga4-sync` y
     `google-ads-sync` siguen OK.
 
-## Método BIP (capa de aprendizaje) — portado sep-2026
-- `/guia` ("Método BIP", último ítem del sidebar) + `/guia/[id]`: 45 módulos estáticos en `lib/guia/*`
+## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026
+- **Marca: en Drean NO aparece "BIP"** (BIP es un proyecto aparte). La capa se llama **"Proceso Estratégico"** (sidebar, `/guia`, 🎓, copiloto). Ids de módulo sin `bip-`: `proceso-estrategico`, `conectar-fuentes`, `mapa-estrategico`, `insights-chat`, `tableros-planilla`. El test `guia-integridad` falla si un módulo dice "BIP". Solo quedan comentarios de código e identificadores internos (`.bip-viz`, evento `bip:learn`) y la landing `public/bip.html` (es de BIP, no del dash).
+- `/guia` ("Proceso Estratégico", último ítem del sidebar) + `/guia/[id]`: 45 módulos estáticos en `lib/guia/*`
   (estratégico/táctico/operativo, atados a etapa Construir/Aprender/Optimizar/Acelerar, funnel, tableros y
   KPIs). Contenido de BIP **adaptado a Drean**: sin planes (Insight/Optimize/Accelerate), sin "Fuentes de
   datos"/Nango/planillas; "pestaña Insights" → **Diagnóstico IA**; los 4 módulos `bip-*` y `medios-offline`

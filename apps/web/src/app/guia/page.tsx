@@ -5,10 +5,10 @@ import {
 } from "@/lib/guia";
 import { GuiaExplorer, type GuiaCard, type GuiaFiltros } from "./_components/guia-explorer";
 
-// Método BIP (portado de BIP, sep-2026) — el método que ordena la plataforma. Contenido
+// Proceso Estratégico (portado de BIP, sep-2026) — el método que ordena la plataforma. Contenido
 // estático (lib/guia, sin DB); los filtros iniciales vienen por query (?etapa=aprender&…)
 // para poder linkear desde los tableros.
-export const metadata = { title: "Método BIP" };
+export const metadata = { title: "Proceso Estratégico" };
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const pick = <T extends string>(v: string | undefined, allowed: readonly T[]): T | undefined =>
@@ -40,12 +40,12 @@ export default function Guia({ searchParams }: { searchParams: Record<string, st
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Método BIP</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Proceso Estratégico</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
           El método con el que funciona la plataforma:{" "}
           <b className="font-semibold text-slate-900">datos → aprendizaje → decisiones → resultados</b>, en ciclos de tres meses. De la
           estrategia al paso a paso en cada plataforma, siempre conectado a los tableros.{" "}
-          <Link href="/guia/metodo-bip" className="whitespace-nowrap font-semibold text-[#1e40af] hover:underline">
+          <Link href="/guia/proceso-estrategico" className="whitespace-nowrap font-semibold text-[#1e40af] hover:underline">
             Cómo funciona el ciclo
           </Link>
         </p>

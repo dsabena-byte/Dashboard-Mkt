@@ -91,7 +91,7 @@ export function buildChatTools(pageKey: string, allowed: string[] | null, ctx: T
     crucesTools.forEach(push);
     senalesTools.forEach(push);
   }
-  guiaTools.forEach(push); // Método BIP: contenido estático, en todos los dashboards y para todo usuario
+  guiaTools.forEach(push); // Proceso Estratégico: contenido estático, en todos los dashboards y para todo usuario
   push(CALC_TOOL);
   return { tools, sets: ordered };
 }

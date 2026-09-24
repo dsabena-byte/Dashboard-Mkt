@@ -207,7 +207,7 @@ export const TOOL_LABELS: Record<string, string> = {
   get_redes_competencia: "Redes: competencia",
   get_cruce_mensual: "Cruce mensual",
   get_senales: "Alertas y oportunidades",
-  get_guia: "Método BIP",
+  get_guia: "Proceso Estratégico",
   list_tableros_datasets: "Planillas de Mis tableros",
   query_dataset: "Consultando planilla",
   calc: "Cálculo",

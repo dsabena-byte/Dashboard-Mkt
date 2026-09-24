@@ -1,5 +1,5 @@
 // ============================================================================
-// Método BIP — modelo de contenido de la guía (client-safe, sin server-only).
+// Proceso Estratégico — modelo de contenido de la guía (client-safe, sin server-only).
 //
 // El contenido vive en TS (lib/guia/*.ts) pero está modelado como DATOS planos para poder
 // migrarlo sin cambios de forma a una tabla `kb_content` en Supabase (una fila por módulo,

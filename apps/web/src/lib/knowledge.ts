@@ -1,5 +1,5 @@
 // ============================================================================
-// Capa de Conocimiento del Método BIP (capa micro y meso) — portada a Drean (sep-2026).
+// Capa de Conocimiento del Proceso Estratégico (capa micro y meso) — portada a Drean (sep-2026).
 //   Claves de DASH_KNOW = slug de la ruta de Drean (/overview → "overview", /funnel → "funnel", …).
 //   · DASH_KNOW: cómo leer cada TABLERO + etapa del ciclo + módulos del Método recomendados.
 //   · KPI_KNOW: guía por KPI en 4 capas (cómo leer · mejor práctica · oportunidad · marco)
@@ -32,7 +32,7 @@ export interface DashKnow {
   practicas?: { nombre: string; detalle: string }[];
   etapa?: Etapa;
   funnel?: Funnel[];
-  /** ids de módulos del Método BIP (lib/guia) para profundizar. */
+  /** ids de módulos del Proceso Estratégico (lib/guia) para profundizar. */
   modulos?: string[];
 }
 
@@ -134,7 +134,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
   "mapa-estrategico": {
     etapa: "construir",
     funnel: ["transversal"],
-    modulos: ["metodo-bip", "objetivos-negocio-marketing", "modelo-objetivos-kpis", "bip-mapa-estrategico"],
+    modulos: ["proceso-estrategico", "objetivos-negocio-marketing", "modelo-objetivos-kpis", "mapa-estrategico"],
     title: "Cómo diseñar tu estrategia en el Mapa",
     intro: "Es la tesis que ordena todo el sistema: vincula cada KPI con los objetivos del negocio mediante <b>pesos</b>, de modo que el cumplimiento ponderado de los indicadores determina el de la estrategia. Diseñar bien este mapa es diseñar bien la estrategia: define qué se prioriza, cómo se mide y cómo la ejecución diaria se traduce en avance estratégico.",
     bullets: [
@@ -152,7 +152,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
   "cuadros-basicos": {
     etapa: "optimizar",
     funnel: ["conversion"],
-    modulos: ["trade-marketing", "bip-tableros-planilla", "plan-de-accion"],
+    modulos: ["trade-marketing", "tableros-planilla", "plan-de-accion"],
     title: "Cómo leer el cumplimiento del Cuadro Básico",
     intro: "El Cuadro Básico es el surtido que cada tienda se comprometió a exhibir. Este tablero mide, semana a semana y tienda por tienda, cuánto de ese surtido está efectivamente en el piso: es la condición física de la venta. Sin el producto exhibido, toda la demanda construida arriba del embudo <b>se pierde en el último metro</b>.",
     bullets: [
@@ -186,7 +186,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
   funnel: {
     etapa: "construir",
     funnel: ["transversal"],
-    modulos: ["presupuesto-marketing", "reasignacion-inversion", "bip-tableros-planilla"],
+    modulos: ["presupuesto-marketing", "reasignacion-inversion", "tableros-planilla"],
     title: "Cómo gobernar y desplegar tu inversión de marketing",
     intro: "La inversión es el recurso con el que se ejecuta la estrategia, y debe gobernarse como una <b>inversión, no como un gasto</b>: cada peso se asigna esperando un retorno. Este tablero contrasta lo ejecutado contra el presupuesto vigente (BGT y sus reforecasts) y su proporción respecto de la facturación, para reasignar con evidencia donde el desvío —o el retorno— lo justifica.",
     bullets: [
@@ -302,7 +302,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
   monitoreo: {
     etapa: "construir",
     funnel: ["transversal"],
-    modulos: ["bip-conectar-fuentes", "ciclo-construir"],
+    modulos: ["conectar-fuentes", "ciclo-construir"],
     title: "Cómo leer el estado de las fuentes de datos",
     intro: "Antes de interpretar un número hay que saber si está al día. Este tablero muestra cada proceso que alimenta los dashboards (fuente, tipo de conexión, periodicidad esperada y última actualización real) con un <b>semáforo por antigüedad</b>.",
     bullets: [
@@ -387,7 +387,7 @@ export const KPI_KNOW: Record<string, KpiKnow> = {
     oportunidad: "Si el alcance se estanca mientras sube la inversión, estás re-impactando a la misma gente: sumá <b>audiencias nuevas</b> o un medio distinto.",
     marco: "El alcance es la base del embudo: el crecimiento de una marca viene sobre todo de sumar compradores, y eso empieza por llegar a más personas.",
     formula: "Personas únicas alcanzadas (dato de la plataforma; no se suma entre medios sin deduplicar)",
-    benchmark: "≥ 80% del alcance planificado (criterio de alertas BIP).",
+    benchmark: "≥ 80% del alcance planificado (criterio de alertas de la plataforma).",
     funnel: "awareness",
     palancas: [
       { accion: "Ampliar audiencias y ubicaciones", modulo: "meta-ads-audiencias" },
@@ -438,7 +438,7 @@ export const KPI_KNOW: Record<string, KpiKnow> = {
     oportunidad: "Un soporte con costo por GRP muy arriba de la mediana del medio y sin alcance incremental es el primero a renegociar o recortar.",
     marco: "El precio de la presión en medios masivos; lo que importa es cuánto alcance efectivo (3+) compra.",
     formula: "Inversión ÷ GRPs",
-    benchmark: "Relativo: vs la mediana de tus soportes del mismo medio (señal de BIP a partir de 1,5×).",
+    benchmark: "Relativo: vs la mediana de tus soportes del mismo medio (señal a partir de 1,5×).",
     funnel: "awareness",
     palancas: [
       { accion: "Renegociar o mover a franjas más eficientes", modulo: "medios-offline" },
@@ -462,7 +462,7 @@ export const KPI_KNOW: Record<string, KpiKnow> = {
     oportunidad: "Un CPM que sube semana a semana en la misma campaña suele indicar audiencia saturada o creatividad fatigada.",
     marco: "El CPM es el precio de la atención; lo que importa es cuánto de esa atención se convierte en recuerdo o acción (CPCV, CPC, CPA).",
     formula: "Inversión ÷ Impresiones × 1.000",
-    benchmark: "Relativo por medio: en campañas analizadas por BIP, TikTok ≈ 0,4× y YouTube ≈ 1,7× el CPM de Meta. Alerta si supera tu mediana del medio.",
+    benchmark: "Relativo por medio: en campañas reales analizadas, TikTok ≈ 0,4× y YouTube ≈ 1,7× el CPM de Meta. Alerta si supera tu mediana del medio.",
     funnel: "awareness",
     palancas: [
       { accion: "Ampliar audiencia y ubicaciones", modulo: "meta-ads-audiencias" },
@@ -505,7 +505,7 @@ export const KPI_KNOW: Record<string, KpiKnow> = {
     oportunidad: "Piezas con tasa de ThruPlay muy baja están comprando impresiones que nadie mira: reemplazalas por otras con mejor hook.",
     marco: "En Meta, ThruPlay es la medida más estable de atención de video; los cuartiles pueden venir incompletos.",
     formula: "ThruPlays ÷ Impresiones",
-    benchmark: "≥ 15% objetivo · < 8% alerta · < 3% crítico (referencia BIP sobre campañas reales).",
+    benchmark: "≥ 15% objetivo · < 8% alerta · < 3% crítico (referencia sobre campañas reales).",
     funnel: "consideracion",
     palancas: [
       { accion: "Rediseñar los primeros segundos", modulo: "creatividades" },

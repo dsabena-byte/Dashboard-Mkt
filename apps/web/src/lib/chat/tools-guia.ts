@@ -3,7 +3,7 @@ import { MODULOS, textoBusqueda, getModulo } from "@/lib/guia";
 import { KPI_KNOW } from "@/lib/knowledge";
 import type { ChatTool } from "./types";
 
-// Método BIP (capa de aprendizaje, portada de BIP): el copiloto busca módulos por tema/KPI/tablero
+// Proceso Estratégico (capa de aprendizaje, portada de BIP): el copiloto busca módulos por tema/KPI/tablero
 // o trae uno por id, para recomendar CÓMO ejecutar una acción y citarlo con su link (/guia/<id>).
 // Contenido estático (lib/guia): sin DB, disponible en todos los dashboards y para todo usuario.
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -12,7 +12,7 @@ export const guiaTools: ChatTool[] = [
   {
     name: "get_guia",
     description:
-      "Método BIP (base de conocimiento): módulos de estrategia, táctica y paso a paso operativo (plan de medios, alcance/frecuencia, creatividades, Meta Ads, Google Search/PMax/Demand Gen/YouTube, TikTok, GA4, UTM, SEO/Share of Search, redes, UGC/influencers, trade marketing (CB y Floor Share), salud de marca, presupuesto, medición) conectados al ciclo Construir/Aprender/Optimizar/Acelerar. Buscá por tema, KPI o tablero para recomendar CÓMO ejecutar una acción y citá el módulo con su link [Título](/guia/<id>). Con `id` devuelve el contenido completo. También devuelve la guía del KPI (cómo leerlo, fórmula, referencia) si pasás `kpi`.",
+      "Proceso Estratégico (base de conocimiento): módulos de estrategia, táctica y paso a paso operativo (plan de medios, alcance/frecuencia, creatividades, Meta Ads, Google Search/PMax/Demand Gen/YouTube, TikTok, GA4, UTM, SEO/Share of Search, redes, UGC/influencers, trade marketing (CB y Floor Share), salud de marca, presupuesto, medición) conectados al ciclo Construir/Aprender/Optimizar/Acelerar. Buscá por tema, KPI o tablero para recomendar CÓMO ejecutar una acción y citá el módulo con su link [Título](/guia/<id>). Con `id` devuelve el contenido completo. También devuelve la guía del KPI (cómo leerlo, fórmula, referencia) si pasás `kpi`.",
     parameters: {
       type: "object",
       properties: {

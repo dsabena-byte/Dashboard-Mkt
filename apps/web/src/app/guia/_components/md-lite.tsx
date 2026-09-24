@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 
-// Renderer "markdown-lite" del contenido del Método BIP (sin dependencias, sin HTML crudo):
+// Renderer "markdown-lite" del contenido del Proceso Estratégico (sin dependencias, sin HTML crudo):
 // párrafos (separados por línea en blanco), viñetas "- ", numeradas "1. ", **negrita** y `código`.
 
 function inline(text: string, keyBase: string): ReactNode[] {

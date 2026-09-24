@@ -25,7 +25,7 @@ La lógica es de embudo: sin saliencia (TOM/SOM) no hay consideración; sin cons
       },
       {
         titulo: "El problema de medir una vez por año",
-        cuerpo: `Los estudios de marca llegan una o dos veces por año. Entre ola y ola, el equipo ejecuta a ciegas. La respuesta de BIP es una **brújula**: señales vivas del mercado, siempre **relativas a la competencia**, que anticipan hacia dónde se mueven esas variables.
+        cuerpo: `Los estudios de marca llegan una o dos veces por año. Entre ola y ola, el equipo ejecuta a ciegas. La respuesta del Proceso Estratégico es una **brújula**: señales vivas del mercado, siempre **relativas a la competencia**, que anticipan hacia dónde se mueven esas variables.
 
 Principio rector: **el posicionamiento es relativo**. Subís cuando te movés más que tus competidores, no en valor absoluto. Por eso ninguna señal se lee sola: todas se leen como share.`,
       },
@@ -111,7 +111,7 @@ Criterios para asignarlo:
       "Cada objetivo tiene al menos 2 KPIs con fuente de datos.",
     ],
     enBip: "Los objetivos se crean en **Mapa Estratégico** (objetivos, pesos y mix por categoría). Su cumplimiento ponderado se ve en **Seguimiento Objetivos**; el contraste con el negocio, en **Resultados Comerciales**.",
-    relacionados: ["modelo-objetivos-kpis", "salud-de-marca", "funnel-360", "bip-mapa-estrategico"],
+    relacionados: ["modelo-objetivos-kpis", "salud-de-marca", "funnel-360", "mapa-estrategico"],
   },
   {
     id: "modelo-objetivos-kpis",
@@ -125,7 +125,7 @@ Criterios para asignarlo:
     secciones: [
       {
         titulo: "La tesis",
-        cuerpo: `Si cada objetivo está explicado por un conjunto de KPIs, y cada KPI tiene una meta coherente, entonces **cumplir el 100% de las metas de los KPIs equivale a cumplir el 100% de los objetivos**. Esa es la tesis que ordena BIP.
+        cuerpo: `Si cada objetivo está explicado por un conjunto de KPIs, y cada KPI tiene una meta coherente, entonces **cumplir el 100% de las metas de los KPIs equivale a cumplir el 100% de los objetivos**. Esa es la tesis que ordena el Proceso Estratégico.
 
 El modelo tiene cuatro piezas:
 
@@ -169,7 +169,7 @@ La cobertura es tan importante como el porcentaje: un objetivo al 95% con cobert
       "Revisás los pesos al cierre de cada trimestre con evidencia.",
     ],
     enBip: "Se arma en **Mapa Estratégico**: el editor fuerza que los pesos por objetivo cierren en 100% y solo deja vincular KPIs del catálogo con fuente de datos. El cálculo se ve en **Seguimiento Objetivos** (cumplimiento, cobertura y aporte de cada KPI).",
-    relacionados: ["objetivos-negocio-marketing", "metas-mensuales", "bip-mapa-estrategico", "medicion-atribucion"],
+    relacionados: ["objetivos-negocio-marketing", "metas-mensuales", "mapa-estrategico", "medicion-atribucion"],
   },
   {
     id: "metas-mensuales",
@@ -221,7 +221,7 @@ Para KPIs de tasa (conversión, engagement rate, VTR), la estacionalidad es meno
       "Revisás al cierre del trimestre si las metas fueron alcanzables.",
     ],
     enBip: "Las metas se cargan en el panel **Metas** de cada tablero (Plan de Medios, Redes, Web): 12 valores mensuales por KPI más dirección y umbrales. Se reflejan al instante en las cards (Mes y Acumulado YTD) y en **Seguimiento Objetivos**.",
-    relacionados: ["modelo-objetivos-kpis", "campanas-estacionales", "presupuesto-marketing", "bip-conectar-fuentes"],
+    relacionados: ["modelo-objetivos-kpis", "campanas-estacionales", "presupuesto-marketing", "conectar-fuentes"],
   },
   {
     id: "presupuesto-marketing",
@@ -276,7 +276,7 @@ Señales de desbalance:
       "Se revisa la ejecución contra plan todos los meses.",
     ],
     enBip: "Se sigue en **Inversión de Marketing** (real vs presupuesto por cuenta y concepto, ratio sobre facturación) y se contrasta con **Resultados Comerciales**. La ejecución de pauta mes a mes está en **Plan de Medios**.",
-    relacionados: ["reasignacion-inversion", "plan-de-medios", "medicion-atribucion", "bip-tableros-planilla"],
+    relacionados: ["reasignacion-inversion", "plan-de-medios", "medicion-atribucion", "tableros-planilla"],
   },
   {
     id: "medicion-atribucion",

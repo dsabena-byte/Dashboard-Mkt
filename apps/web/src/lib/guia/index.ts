@@ -1,5 +1,5 @@
 // ============================================================================
-// Método BIP (portado a Drean, sep-2026) — índice de la guía. Junta los módulos de cada nivel y expone helpers.
+// Proceso Estratégico (portado a Drean, sep-2026) — índice de la guía. Junta los módulos de cada nivel y expone helpers.
 // Client-safe, pero pesado (todo el contenido): importarlo solo desde server components
 // o desde páginas de /guia. Para el cliente liviano (drawer de KPI) usar lib/guia/titulos.ts.
 // ============================================================================

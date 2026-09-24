@@ -20,7 +20,7 @@ interface Props {
   rows: CmpRow[]; // comparaciones (mes, acumulado)
   /** Contenido opcional al pie de la card (ej. gráfico real vs meta DENTRO de la card). */
   children?: ReactNode;
-  /** Método BIP: clave de KPI_KNOW (o nombre/alias del KPI) → muestra el 🎓 que abre la guía. Opcional. */
+  /** Proceso Estratégico: clave de KPI_KNOW (o nombre/alias del KPI) → muestra el 🎓 que abre la guía. Opcional. */
   learnKey?: string;
 }
 
