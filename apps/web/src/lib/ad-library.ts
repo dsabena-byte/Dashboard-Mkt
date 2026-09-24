@@ -61,7 +61,17 @@ export async function getAdLibrary(): Promise<AdLibraryStatus> {
   if (snap && snap.brands.some((b) => b.ads.length > 0 || b.fetchedAt)) return { status: "ok", data: snap };
   if (!snap) return { status: "empty", motivo: "Falta crear la tabla del snapshot (migración 0108_alertas.sql en el SQL Editor de Supabase)." };
   if (!adLibraryEnabled()) return { status: "no_config", motivo: "Falta configurar APIFY_API_TOKEN en Vercel para consultar la Biblioteca de anuncios de Meta." };
+  const err = snap.brands.find((b) => b.error)?.error;
+  if (err) return { status: "empty", motivo: motivoError(err) };
   return { status: "empty", motivo: "Todavía no corrió la primera búsqueda. Se actualiza una vez por semana (lunes) con el workflow “Ad Library (pauta de la competencia)”." };
+}
+
+/** Error de la última corrida → explicación para el usuario. */
+function motivoError(err: string): string {
+  if (/usage hard limit|limit exceeded/i.test(err))
+    return "La última búsqueda no pudo correr: la cuenta de Apify (el servicio que consulta la Biblioteca de anuncios de Meta) llegó a su límite mensual de uso. Subí el límite o el plan en la consola de Apify (Billing → límites de uso) o esperá al reinicio del ciclo mensual; después se actualiza sola el lunes (o corré a mano el workflow “Ad Library (pauta de la competencia)”).";
+  if (/\b401\b|token/i.test(err)) return "La última búsqueda falló por el token de Apify (APIFY_API_TOKEN inválido o vencido). Revisalo en Vercel.";
+  return `La última búsqueda falló (${err.replace(/\s+/g, " ").slice(0, 160)}). Se reintenta el próximo lunes.`;
 }
 
 async function fetchBrand(b: AdBrand, nowIso: string): Promise<CompetitorAd[]> {
