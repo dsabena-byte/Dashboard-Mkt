@@ -1,4 +1,6 @@
 "use client";
+import { DashDiagnostico } from "@/components/diagnostico/dash-diagnostico";
+import Link from "next/link";
 
 import { useMemo, useState } from "react";
 import { LastUpdated } from "@/components/last-updated";
@@ -48,7 +50,13 @@ function fmtNum(n: number): string {
 }
 const fmtARS = formatCurrency;
 
-const TABS = ["Impacto Campaña", "Eficiencia Medios", "Insights Pauta"] as const;
+const TABS = ["Impacto Campaña", "Eficiencia Medios", "Diagnóstico e Inteligencia"] as const;
+// Pestañas que son rutas propias de Plan de Medios (mismo renglón de tabs).
+const TAB_LINKS = [
+  { label: "Pauta Competencia", href: "/performance/competencia" },
+  { label: "Simulador de Presupuesto", href: "/performance/simulador" },
+] as const;
+const TAB_PARAM: Record<string, Tab> = { impacto: "Impacto Campaña", eficiencia: "Eficiencia Medios", diagnostico: "Diagnóstico e Inteligencia" };
 type Tab = (typeof TABS)[number];
 
 // Vista por categoría del Impacto Campaña (label "Cocinas" = categoría "Cocción").
@@ -320,7 +328,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [] }: { data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], initialTab }: { initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
   // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
   // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
   // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
@@ -342,7 +350,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
   const [selCats, setSelCats] = useState<string[]>([]);
   const [selRoles, setSelRoles] = useState<string[]>([]);
   const [selPlats, setSelPlats] = useState<string[]>([]);
-  const [tab, setTab] = useState<Tab>("Impacto Campaña");
+  const [tab, setTab] = useState<Tab>(TAB_PARAM[initialTab ?? ""] ?? "Impacto Campaña");
   // Vista por categoría del tab Impacto Campaña (General o una categoría core).
   const [catImp, setCatImp] = useState<string>("General");
 
@@ -1089,43 +1097,6 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
     return { invDigital: d, offlineBuckets: [...g.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value) };
   }, [medioModel]);
 
-  // Motor de insights desde los datos AUTOMÁTICOS + efectivos (medioModel/catModel/
-  // rolModel). Genera Fortalezas, Oportunidades y Optimizaciones accionables.
-  const pautaInsights = useMemo(() => {
-    type Ins = { kind: "fortaleza" | "oportunidad" | "optimizacion"; title: string; text: string };
-    const out: Ins[] = [];
-    const meds = medioModel.items;
-    const totalInv = meds.reduce((s, m) => s + m.inversion, 0);
-    const vid = meds.filter((m) => m.vtr > 0 && m.cpmEf > 0); // medios con video medido (cuartiles reales)
-    if (vid.length) {
-      const byEff = [...vid].sort((a, b) => a.cpmEf - b.cpmEf);
-      const best = byEff[0]!, worst = byEff[byEff.length - 1]!;
-      out.push({ kind: "fortaleza", title: `${best.medio}: el video más eficiente`, text: `VTR ${best.vtr.toFixed(0)}% y CPM efectivo ${fmtARS(best.cpmEf)} (el más bajo). Cada peso compra más views completos reales — el medio a priorizar para awareness de video.` });
-      if (worst.medio !== best.medio && worst.cpmEf > best.cpmEf * 1.5) {
-        const ratio = worst.cpmEf / best.cpmEf;
-        const pctInv = totalInv > 0 ? (worst.inversion / totalInv) * 100 : 0;
-        const mover = worst.inversion * 0.3;
-        const gain = mover / best.cpmEf * 1000 - mover / worst.cpmEf * 1000;
-        out.push({ kind: "optimizacion", title: `${worst.medio}: costo efectivo ${ratio.toFixed(1)}× el mejor`, text: `VTR ${worst.vtr.toFixed(0)}% → CPM efectivo ${fmtARS(worst.cpmEf)}, ${ratio.toFixed(1)}× el de ${best.medio}. Concentra ${pctInv.toFixed(0)}% de la inversión. Mover ~${fmtARS(mover)} (30%) hacia ${best.medio} sumaría ≈${fmtNum(gain)} views completos al mismo costo.` });
-      }
-      for (const m of vid) {
-        const pct = totalInv > 0 ? (m.inversion / totalInv) * 100 : 0;
-        if (m.vtr >= 50 && pct < 12 && m.medio !== best.medio) out.push({ kind: "oportunidad", title: `${m.medio}: eficiente y escalable`, text: `Buena visibilidad (VTR ${m.vtr.toFixed(0)}%, CPM efectivo ${fmtARS(m.cpmEf)}) pero solo ${pct.toFixed(0)}% de la inversión. Margen para escalar sin perder eficiencia.` });
-      }
-    }
-    const byCtr = meds.filter((m) => m.ctr > 0).sort((a, b) => b.ctr - a.ctr);
-    if (byCtr[0]) out.push({ kind: "fortaleza", title: `${byCtr[0].medio}: mejor CTR (${byCtr[0].ctr.toFixed(2)}%)`, text: `Es el medio que mejor genera clicks/tráfico — fuerte para objetivos de consideración.` });
-    const cats = catModel.items.filter((c) => c.cpmEf > 0);
-    if (cats.length > 1) {
-      const cB = [...cats].sort((a, b) => a.cpmEf - b.cpmEf)[0]!, cW = [...cats].sort((a, b) => b.cpmEf - a.cpmEf)[0]!;
-      if (cW.cpmEf > cB.cpmEf * 1.4) out.push({ kind: "oportunidad", title: `Categorías: ${cB.nombre} rinde, ${cW.nombre} no`, text: `${cB.nombre} tiene el mejor costo efectivo (${fmtARS(cB.cpmEf)}, VTR ${cB.vtr.toFixed(0)}%); ${cW.nombre} el peor (${fmtARS(cW.cpmEf)}). Revisar formato/targeting de ${cW.nombre}.` });
-    }
-    if (videoQuality.hasData && videoQuality.pct50 < 50) out.push({ kind: "optimizacion", title: `${(100 - videoQuality.pct50).toFixed(0)}% del video se desperdicia`, text: `Solo ${videoQuality.pct50.toFixed(0)}% de las impresiones de video llega al 50%. Priorizar formatos cortos / no-skippables y los medios de mejor VTR para no pagar por impresiones que no se ven.` });
-    const tt = meds.find((m) => m.medio === "TikTok");
-    if (tt && tt.vtr === 0 && tt.impresiones > 0) out.push({ kind: "oportunidad", title: "TikTok: falta conectar la medición de video", text: `Hoy viene de OMD/Looker (sin API), así que no tenemos su visibilidad real. Conectarlo automáticamente permitiría saber si sus ${fmtNum(tt.impresiones)} impresiones realmente se ven (y compararlo bien).` });
-    if (out.length === 0) out.push({ kind: "fortaleza", title: "Sin alertas críticas", text: "Los indicadores de la selección están dentro de rangos esperables." });
-    return out;
-  }, [medioModel, catModel, rolModel, videoQuality]);
 
   // Insights: solo si hay una sola categoría seleccionada
   const insight = selCats.length === 1 ? PAUTA_INSIGHTS[selCats[0]!] : null;
@@ -1236,7 +1207,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       <HowToRead slug="performance" />
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b">
+      <div className="flex flex-wrap gap-1 border-b">
         {TABS.map((t) => (
           <button
             key={t}
@@ -1247,6 +1218,11 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
           >
             {t}
           </button>
+        ))}
+        {TAB_LINKS.map((l) => (
+          <Link key={l.href} href={l.href} className="border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            {l.label}
+          </Link>
         ))}
       </div>
 
@@ -1933,41 +1909,8 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
         </div>
       )}
 
-      {/* ===== INSIGHTS PAUTA ===== */}
-      {tab === "Insights Pauta" && (
-        <div>
-          <div className="mb-4">{filtros}</div>
-          <SectionTitle>Insights de pauta · qué optimizar, dónde hay oportunidad, qué funciona</SectionTitle>
-          <p className="mb-4 text-xs text-muted-foreground">
-            Análisis automático sobre los datos de <strong>Meta + DV360</strong> (responde a los filtros). Lee el impacto{" "}
-            <strong>efectivo real</strong> (VTR, CPM efectivo, completions), no solo impresiones, para detectar dónde reasignar
-            inversión, qué escalar y qué medios/categorías funcionan.
-          </p>
-          {(["fortaleza", "oportunidad", "optimizacion"] as const).map((kind) => {
-            const items = pautaInsights.filter((i) => i.kind === kind);
-            if (items.length === 0) return null;
-            const cfg = {
-              fortaleza: { titulo: "✅ Fortalezas — qué funciona", type: "good" as const },
-              oportunidad: { titulo: "🚀 Oportunidades — dónde escalar / mejorar", type: "info" as const },
-              optimizacion: { titulo: "⚠️ Optimizaciones — qué reasignar", type: "warn" as const },
-            }[kind];
-            return (
-              <div key={kind} className="mb-4">
-                <h3 className="mb-2 text-sm font-bold">{cfg.titulo}</h3>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {items.map((it, i) => (
-                    <Insight key={i} type={cfg.type} title={it.title} text={it.text} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          <p className="mt-2 text-[10px] text-muted-foreground/70">
-            Las recomendaciones de reasignación estiman el resultado a igual costo (views completos = inversión ÷ CPM efectivo).
-            TikTok queda fuera de las comparaciones de video hasta conectarlo por API (hoy viene de OMD/Looker, sin cuartiles).
-          </p>
-        </div>
-      )}
+      {/* ===== DIAGNÓSTICO E INTELIGENCIA (reemplazó a "Insights Pauta") ===== */}
+      {tab === "Diagnóstico e Inteligencia" && <DashDiagnostico dash="performance" embedded />}
     </div>
   );
 }

@@ -13,7 +13,6 @@ import { IgOrganicSection } from "@/components/social/ig-organic-section";
 import { OrganicBuildupPanel } from "@/components/social/organic-buildup-panel";
 import { InsightsPanel } from "@/components/insights/insights-panel";
 import { TopContentPanel } from "@/components/insights/top-content-panel";
-import { RedesTabs } from "@/components/social/redes-tabs";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { getInsightsByCategoria, getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
@@ -39,7 +38,7 @@ import {
   getSocialFollowers,
   getSocialPosts,
 } from "@/lib/social-posts-queries";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { ShareEngagementSection } from "@/components/social/share-engagement";
 import { getMercadoSeries } from "@/lib/mercado-kpis-server";
 import { lastIdx } from "@/lib/mercado-kpis";
@@ -190,7 +189,21 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const organicBuildup = computeOrganicBuildup([...igOrganic.topPosts, ...fbOrganic.topPosts]);
 
   return (
-    <DashTabs dash="redes" className="space-y-4">
+    <DashTabs
+      dash="redes"
+      className="space-y-4"
+      startDiag={tab === "insights"}
+      diagExtra={
+        <>
+          <p className="text-xs text-muted-foreground">
+            Top contenidos del período + análisis automático comparando los últimos 30 días vs los 30 días previos
+            (el cron corre 1x/día). Abajo, las señales y el Diagnóstico IA del tablero.
+          </p>
+          <TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />
+          <InsightsPanel insights={insightsOrganico} titulo="📊 Insights orgánico Drean (últimos 30d vs 30d previos)" />
+        </>
+      }
+    >
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Redes Sociales</h2>
@@ -202,27 +215,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
       </header>
       <HowToRead slug="redes" />
 
-      <RedesTabs
-        current={tab}
-        tabs={[
-          { key: "analitica", label: "📊 Analítica" },
-          { key: "insights", label: "💡 Insights Drean", badge: insightsOrganico.length || undefined },
-        ]}
-        preserveParams={searchParams}
-      />
+      <DashTabBar items={[{ key: "analitica", label: "Analítica" }]} diagBadge={insightsOrganico.length || undefined} />
 
-      {tab === "insights" && (
-        <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            Top contenidos del período + análisis automático comparando los últimos 30 días vs los 30 días previos.
-            El cron corre 1x/día. Para forzar una recorrida: GitHub → Actions → &quot;Organic insights&quot; → Run workflow.
-          </p>
-          <TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />
-          <InsightsPanel insights={insightsOrganico} titulo="📊 Insights orgánico Drean (últimos 30d vs 30d previos)" />
-        </div>
-      )}
-
-      {tab !== "analitica" ? null : (
+      {(
         <>
 
       {/* ===== Instagram orgánico (Drean mide SOLO IG) ===== */}

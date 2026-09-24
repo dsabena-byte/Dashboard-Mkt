@@ -11,6 +11,7 @@ import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import type { UgcPieceAnalysis } from "@/lib/ugc-analysis-queries";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { DashTabBar } from "@/components/diagnostico/dash-tabs";
 
 const fmtNum = (n: number) => formatNumber(Math.round(n));
 const fmtARS = formatCurrency;
@@ -155,6 +156,7 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpd
         </div>
       </header>
       <HowToRead slug="influencia" />
+      <DashTabBar />
 
       {rows.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center text-sm text-muted-foreground">

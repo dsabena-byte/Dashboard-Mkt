@@ -5,7 +5,6 @@ import { LastUpdated } from "@/components/last-updated";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
 import { CbCategoryChart } from "@/components/cb/cb-category-chart";
-import { CbTabsNav } from "@/components/cb/cb-tabs-nav";
 import { CbSuggestionsTab } from "@/components/cb/cb-suggestions-tab";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import {
@@ -21,7 +20,7 @@ import {
   type CbFilter,
   type CbRow,
 } from "@/lib/cb-queries";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -78,14 +77,15 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       sugError = err instanceof Error ? err.message : String(err);
     }
     return (
-      <div className="space-y-4">
+      <DashTabs dash="cuadros-basicos" className="space-y-4">
         <header>
           <h2 className="text-2xl font-semibold tracking-tight">Cuadros Básicos</h2>
           <p className="text-sm text-muted-foreground">
             Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
           </p>
         </header>
-        <CbTabsNav />
+        <HowToRead slug="cuadros-basicos" />
+        <DashTabBar items={[{ key: "overview", label: "Overview", href: "/cuadros-basicos" }, { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" }]} active={tab} />
         {sugError && (
           <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">
             <strong>Error cargando sugerencias:</strong> <code>{sugError}</code>
@@ -97,7 +97,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           </div>
         )}
         <CbSuggestionsTab baseline={baseline} suggestions={suggestions} details={details} />
-      </div>
+      </DashTabs>
     );
   }
 
@@ -170,7 +170,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       </header>
       <HowToRead slug="cuadros-basicos" />
 
-      <CbTabsNav />
+      <DashTabBar items={[{ key: "overview", label: "Overview", href: "/cuadros-basicos" }, { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" }]} active={tab} />
 
       <MetaPanel
         plan="Cuadros Básicos"

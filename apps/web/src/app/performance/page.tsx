@@ -9,8 +9,6 @@ import { getGoogleAdsCreatives } from "@/lib/google-ads-creatives-queries";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { PerformanceClient } from "@/components/pauta/performance-client";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
-import { PLAN_MEDIOS_TABS } from "@/components/pauta/plan-medios-subnav";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -75,7 +73,7 @@ async function getPlanningMonthly(): Promise<PlanningByMes> {
 const PAUTA_KPIS = ["Inversión", "Alcance único", "Frecuencia", "Impresiones", "VTR (≥50%)", "Clicks"] as const;
 const META_FALLBACK: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
 
-export default async function PerformancePautaPage() {
+export default async function PerformancePautaPage({ searchParams }: { searchParams?: { tab?: string; vista?: string } }) {
   const currentYear = new Date().getFullYear();
   const [data, metaPaid, dv360, dv360Reach, fxRates, planningMonthly, googleAdsOmd, googleAdsCreatives, fDv360, fMeta, fOmd, fGads, ecomInv] = await Promise.all([
     getPautaPerformance(true), // Pauta Mkt incluye UGC como una categoría más
@@ -98,8 +96,6 @@ export default async function PerformancePautaPage() {
   const metasArr = await Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK)));
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
   return (
-    <DashTabs dash="performance" nav={PLAN_MEDIOS_TABS}>
-      <PerformanceClient data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} />
-    </DashTabs>
+    <PerformanceClient initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} />
   );
 }

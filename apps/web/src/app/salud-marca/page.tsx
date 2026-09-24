@@ -9,7 +9,7 @@ import {
   computeDreanConsolidado, SM_DIMS,
   type SMState,
 } from "@/lib/salud-marca-model";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { getKantarData, KANTAR_CONST, type KantarData } from "@/lib/kantar-sheet";
 
@@ -844,22 +844,7 @@ function Header({ tab, lastUpdated }: { tab: (typeof TABS)[number]; lastUpdated?
         </p>
       </header>
       <HowToRead slug="salud-marca" />
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={`/salud-marca?tab=${t.key}`}
-            scroll={false}
-            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-              t.key === tab.key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </div>
+      <DashTabBar items={TABS.map((t) => ({ key: t.key, label: t.label, href: `/salud-marca?tab=${t.key}` }))} active={tab.key} />
     </>
   );
 }

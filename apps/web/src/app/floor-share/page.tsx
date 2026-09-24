@@ -16,7 +16,7 @@ import { computeFsView, isFsDefault, type FsView, type FsEnrichedRow } from "@/l
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
-import { DashTabs } from "@/components/diagnostico/dash-tabs";
+import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -131,6 +131,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
       <HowToRead slug="floor-share" />
+      <DashTabBar />
 
       <MetaPanel
         plan="Floor Share"
