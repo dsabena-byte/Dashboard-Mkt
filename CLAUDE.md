@@ -282,7 +282,11 @@ reporte_existencia/cb_homologos).
     (approach aproximado). Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
     (workflow_dispatch, aditivo). No cargar DV360/Google a mano en `pauta_performance` (rompe la regla
     "medio con API → volumen de la API").
-  - **DV360 subcuenta meses viejos — CONFIRMADO con el CSV real (sep-2026).** DV360 NO se carga
+  - **DV360 junio VOLVIÓ a quedar truncado (validado REST 24-sep-2026):** `dv360_creatives` jun-26 = **US$4.514**
+  (Programmatic 2.557 + YouTube 1.957) vs la recarga completa de US$17.108 → el `syncDv360` diario lo re-pisó con
+  CSV parcial (el pendiente de "recurrencia" se materializó). Ago-26 también sospechoso (US$9.081 vs jul US$39.073).
+  Fix de fondo = rango fijo/largo en el reporte "DV360 Video Drean" o que `syncDv360` no reescriba un mes con CSV parcial.
+- **DV360 subcuenta meses viejos — CONFIRMADO con el CSV real (sep-2026).** DV360 NO se carga
     manual: el Apps Script "Sync Drive Tablero CB" (`syncDv360`) lee el CSV del reporte "DV360 Video
     Drean" desde Gmail (`.zip`) y hace `delete WHERE mes IN (meses del CSV) + insert` → solo toca los
     meses presentes en el CSV. **Validado bajando un export ad-hoc de junio COMPLETO (01→30) de DV360
