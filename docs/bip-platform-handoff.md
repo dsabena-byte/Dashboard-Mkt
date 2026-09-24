@@ -1294,3 +1294,15 @@ inversión por medio, eficiencia (contactos, CPM contactos, GRPs, costo/GRP), Se
 chat, módulo del Método BIP. **Reglas:** Inversión = online+offline; **contactos offline NO se suman a
 impresiones digitales** salvo marcarlos "comparables"; el alcance nunca se suma entre medios; monedas
 distintas no se suman (aviso). Pendiente: metas de GRPs/contactos; prueba con datos reales.
+
+## ✅ OPTIMIZE / ACCELERATE CON VALOR REAL (24-sep-2026, bip-platform #43)
+5 frentes: (A) datos de competencia sólidos (engagement FB/TT real, marca propia auto, DataForSEO sin
+saldo no pisa, historial mensual, crons por tenant, fixes SEO); (B) **Tu mercado** `/mercado` (sugiere
+categorías/competidores/retailers, 1..N competidores, sync inmediato); (C) **22 señales cruzadas**
+propio×mercado + KPIs de mercado con metas en el Mapa + **Search Console**; (D) gating por plan real,
+**alertas email** (semanal Optimize / diaria Accelerate) + **reporte ejecutivo mensual**, **simulador de
+presupuesto**, **Research** (Salud de Marca + Share de mercado por planilla), **pauta de la competencia**
+(Ad Library vía Apify); (E) **categorías en todos los tableros** (Accelerate). Migraciones a correr:
+**0028–0031**. Config pendiente: Search Console (API + scope `webmasters.readonly` en Google Cloud y Nango,
+clientes reconectan Google), `RESEND_API_KEY`/`NOTIFY_FROM`, `APIFY_ACTOR_AD_LIBRARY` opcional.
+Pendiente: alinear landing (`bip.html`) con los planes nuevos. Nada probado con APIs reales.
