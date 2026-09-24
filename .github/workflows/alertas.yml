@@ -1,0 +1,58 @@
+name: Alertas y reporte ejecutivo (1x/día)
+
+# Portado de BIP (sep-2026). Todos los días a las 08:00 ART:
+#  · /api/cron/alertas → lunes = resumen semanal; resto de los días = solo si aparece algo NUEVO de
+#    prioridad alta (según la frecuencia elegida en /alerts).
+#  · /api/cron/reporte-ejecutivo → solo el 1er día hábil del mes (mes cerrado anterior); no se repite.
+# Requiere CRON_SECRET (igual que en Vercel) + RESEND_API_KEY / NOTIFY_FROM / ALERT_RECIPIENTS en
+# Vercel + migración 0108 (sin ella no hay dedupe y el diario no se envía).
+on:
+  schedule:
+    - cron: "0 11 * * *"   # 11:00 UTC = 08:00 ART
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Forzar: 1 = manda el resumen semanal y el reporte hoy (ignora día y dedupe)"
+        required: false
+        default: "0"
+      dry:
+        description: "Dry-run: 1 = no envía, solo muestra la selección"
+        required: false
+        default: "0"
+
+jobs:
+  alertas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      BASE: https://dashboard-mkt-seven.vercel.app
+      FORCE: ${{ github.event.inputs.force }}
+      DRY: ${{ github.event.inputs.dry }}
+    steps:
+      - name: Alertas por email (con reintentos)
+        run: |
+          set -uo pipefail
+          q="force=${FORCE:-0}&dry=${DRY:-0}"
+          code=000
+          for attempt in 1 2 3; do
+            code=$(curl -sS -m 300 -o out.json -w "%{http_code}" -H "Authorization: Bearer ${CRON_SECRET:-}" "$BASE/api/cron/alertas?$q" || echo 000)
+            echo "Intento $attempt → HTTP $code"; cat out.json || true; echo
+            [ "$code" = "200" ] && break
+            sleep $((attempt * attempt * 10))
+          done
+          [ "$code" = "200" ] || { echo "::error::alertas falló (HTTP $code)"; exit 1; }
+
+      - name: Reporte ejecutivo mensual (1er día hábil)
+        if: always()
+        run: |
+          set -uo pipefail
+          q="force=${FORCE:-0}&dry=${DRY:-0}"
+          code=000
+          for attempt in 1 2 3; do
+            code=$(curl -sS -m 300 -o out.json -w "%{http_code}" -H "Authorization: Bearer ${CRON_SECRET:-}" "$BASE/api/cron/reporte-ejecutivo?$q" || echo 000)
+            echo "Intento $attempt → HTTP $code"; cat out.json || true; echo
+            [ "$code" = "200" ] && exit 0
+            sleep $((attempt * attempt * 10))
+          done
+          echo "::error::reporte-ejecutivo falló (HTTP $code)"; exit 1

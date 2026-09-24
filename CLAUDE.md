@@ -86,6 +86,42 @@ reporte_existencia/cb_homologos).
   - **UI** `components/diagnostico/dash-diagnostico.tsx` (`<DashDiagnostico dash=… />` al final de 11 páginas):
     colapsable y CERRADO → no pide nada hasta abrirse (cero costo en el render; la IA solo corre en la API).
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
+- **Simulador, Pauta de la competencia, Alertas (portado de BIP, sep-2026):**
+  - **Plan de Medios con sub-rutas** (`components/pauta/plan-medios-subnav.tsx`): `/performance` (Tablero, sin
+    cambios) · `/performance/simulador` · `/performance/competencia`. El sidebar y `isPathAllowed` ya matchean
+    por prefijo → quien ve `/performance` ve las sub-rutas.
+  - **Simulador** (`lib/simulador.ts` puro + `lib/simulador-server.ts` + `components/simulador/`): curva
+    `a·inversión^b` por MEDIO (log-log con ≥4 meses y R²≥0,3; si no, eficiencia promedio con b=0,8), calibrada al
+    promedio de los últimos 3 meses cerrados; optimización greedy por retorno marginal con topes 50–200% (los
+    medios sin la métrica quedan FIJOS). Meses por medio = `buildPautaMediosMensual` (año actual + anterior,
+    PMax fuera, UGC dentro). Offline (TV/OOH/DOOH/radio, `OFFLINE_RE` de señales) = solo contactos. Alcance =
+    suma por medio. "Geo Mobile" + "Medios directos" = un medio ("Geo Mobile (Tap Tap)"). Demanda: `search_volume`
+    genérico → `forecastDemand`. Data real (sep-26): hay pauta solo desde abr-2026; ago trae muchas filas OMD con
+    inversión y sin performance → esos medios se proyectan con su eficiencia de meses con dato (nota en la UI).
+    Test: `npx tsx scripts/simulador.test.ts`.
+  - **Pauta de la competencia** (`lib/ad-library{,-shared}.ts`, `lib/apify.ts`, `components/competencia-pauta/`):
+    Biblioteca de anuncios de Meta vía Apify (`APIFY_API_TOKEN` + `APIFY_ACTOR_AD_LIBRARY`, default
+    `apify~facebook-ads-scraper`). Marcas = propia + socialAccounts del tenant + `MARCAS` de competitive-config (sin
+    emergentes, máx 10). Match por PALABRA completa del nombre de página ("LG" ≠ "algo"); Florencia/Orbis exigen
+    contexto (cocinas/electro…). Tabla `competitor_ads_snapshot` = UNA FILA POR MARCA; cron
+    `/api/cron/ad-library` (`?list=1` / `?marca=`) + workflow `ad-library.yml` (lunes 06:00 ART, fan-out por marca).
+    Miniaturas espejadas con `mirrorMetaImage` (`adlib/<marca>/<id>.jpg`). **Nunca se corrió contra Apify real.**
+  - **Alertas y reportes** (`/alerts`, reemplazó el placeholder; sidebar "Alertas y reportes"): `lib/alerts.ts`
+    (server) + `lib/alerts-shared.ts` (puro) + `lib/notify.ts` (Resend REST). Candidatas = `computeSignals()` +
+    KPIs del Seguimiento bajo `umbralAmarillo` (solo meses CERRADOS) + anuncios nuevos 7d de la competencia.
+    Frecuencia (`alert_prefs`): `auto` = resumen semanal los lunes + diario SOLO si hay algo nuevo de prioridad alta.
+    Reporte ejecutivo el 1er día hábil (mes cerrado: objetivos, KPIs con brecha, share of search Drean promedio de
+    categorías, top alertas, Diagnóstico IA de `overview` si tiene <40 días). Crons `/api/cron/alertas` +
+    `/api/cron/reporte-ejecutivo` (`?dry=1`, `?force=1`) + workflow `alertas.yml` (08:00 ART). "Qué te avisaríamos
+    hoy" se pide por API al abrir (no en el render). Latido de crons en `alert_log` canal `cron` → `/monitoreo`.
+    Validado con data real (dry-run): 12 alertas en ~10s; reporte ago-26 con 4 objetivos, 13 KPIs, SoS 21,5%.
+  - **Pendiente para activar:** (1) correr **`supabase/migrations/0108_alertas.sql`** (competitor_ads_snapshot,
+    alert_log, alert_prefs) — sin ella: snapshot vacío con aviso, prefs no se guardan, el diario no se envía;
+    (2) env vars en **Vercel, proyecto Dashboard-Mkt** (`dashboard-mkt-seven.vercel.app`): **`RESEND_API_KEY`**,
+    **`NOTIFY_FROM`** (remitente con dominio verificado en Resend; default `onboarding@resend.dev` solo entrega a la
+    casilla de la cuenta Resend), **`ALERT_RECIPIENTS`** (CSV, fallback si /alerts no tiene destinatarios),
+    **`APIFY_ACTOR_AD_LIBRARY`** (opcional) + `APIFY_API_TOKEN` (ya existe) + `NEXT_PUBLIC_APP_URL` (opcional, links).
+    Test puro: `npx tsx scripts/alertas-adlib.test.ts`.
 - **Copiloto v2 (motor de BIP) — sep-2026 ("Preguntale a tus datos"):** `app/api/chat/route.ts`
   responde **NDJSON** (`{"type":"step"}` en vivo "Consultando X…" + `{"type":"final",text,charts,
   tables,posts,steps}`), hasta **10 pasos**, tools **en paralelo**, rate limit 30/10min por usuario
