@@ -1,4 +1,5 @@
 "use client";
+import { HowToRead } from "@/components/knowledge/how-to-read";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS } from "@/lib/contenido-shared";
@@ -274,11 +275,16 @@ export default function CalendarioPage() {
   const ugcActive = useMemo(() => ugcDrafts.find((i) => i.id === ugcActiveId) ?? ugcDrafts[0] ?? null, [ugcDrafts, ugcActiveId]);
 
   const tabCls = (active: boolean) =>
-    `-mb-px border-b-2 px-4 py-2 text-sm font-medium ${active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`;
+    `whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${active ? "border-amber-500 text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`; // = menú estándar (DashTabBar)
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-1 border-b">
+      <header>
+        <h2 className="text-2xl font-semibold tracking-tight">Generador de Contenido</h2>
+        <p className="text-sm text-muted-foreground">Generá, diseñá y programá piezas para redes (RRSS y UGC), guardalas en la Biblioteca y adaptalas a cada formato de pauta.</p>
+      </header>
+      <HowToRead slug="contenido" />
+      <div className="flex gap-1 overflow-x-auto border-b">
         <button onClick={() => setCanal("rrss")} className={tabCls(canal === "rrss")}>Generación de Contenidos RRSS</button>
         <button onClick={() => setCanal("ugc")} className={tabCls(canal === "ugc")}>Generación de Contenidos UGC</button>
         <button onClick={() => setCanal("biblioteca")} className={tabCls(canal === "biblioteca")}>Biblioteca UGC</button>
@@ -292,7 +298,7 @@ export default function CalendarioPage() {
       <>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{canal === "ugc" ? "Generador UGC (persona hablando)" : "Generación de Contenidos RRSS"}</h2>
+          <h3 className="text-lg font-semibold tracking-tight">{canal === "ugc" ? "Generador UGC (persona hablando)" : "Generación de Contenidos RRSS"}</h3>
           <p className="text-sm text-muted-foreground">{canal === "ugc" ? "Generá videos UGC nativos (guion → video) con perfiles, escenarios y configuraciones. Lo generado se guarda en la Biblioteca UGC. La marca va en el copy, no hablada." : "Elegí el día en el calendario y trabajá las piezas de esa fecha; la hora y las redes de publicación se definen en el paso Distribuir de cada pieza."}</p>
         </div>
       </header>
