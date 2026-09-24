@@ -652,7 +652,7 @@ reporte_existencia/cb_homologos).
   concepto central es "Tener una estrategia no te asegura lograr tus resultados"; solo se retrabajan los planes)**,
   tarjetas con "Todo X, más:" + teaser del plan siguiente, Optimize
   "Recomendado", módulos con badge de plan, FAQ nueva. Se sacó "Consultoría estratégica" (no está en plan.ts), el
-  WhatsApp (número placeholder) y `hola@bip.com` (dominio ajeno → `bip.explore@gmail.com`). Se agregó doctype +
+  WhatsApp (número placeholder) y `hola@bip.com` (dominio ajeno → `info@roque-in.com`, pedido del user). Se agregó doctype +
   `<meta charset>` (había mojibake). bip-go.com (Netlify) NO se actualiza solo: re-subir `bip.html`.
 
 - **Generador de Contenido — Calendario + publicación IG/FB (dic-2026):** `/contenido` →
