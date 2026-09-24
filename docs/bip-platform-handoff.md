@@ -1153,7 +1153,9 @@ el staff los revisa y los **libera TODOS JUNTOS** (decisión del user: no por ta
   SharePoint conectado → pegar link para compartir (+ hoja opcional); tabla "Tus archivos" con estado
   + "↻ Actualizar". Migración **0026_dataset_autosync.sql** (fail-safe: sin ella guarda copia fija).
 - **✅ HECHO (23-sep-2026):** cuenta Microsoft `bip.explore@gmail.com` + alta Azure (quedó "pendiente de
-  revisión" anti-fraude, pero Entra ya funcionaba) → app Entra **"BIP Connector"**, **Client ID
+  revisión" anti-fraude, pero Entra ya funcionaba; **24-sep-2026: Azure APROBADA** — "Tu cuenta ya está
+  lista", la revisión anti-fraude terminó. OJO: eso es la cuenta/suscripción Azure, NO la Publisher Verification
+  de la app, que sigue pendiente) → app Entra **"BIP Connector"**, **Client ID
   `fe112911-4bb7-4f6b-ab6d-5f8d51ad95d4`**, "Varios inquilinos de Entra ID" + "Mostrar todos los
   inquilinos" (sin cuentas personales), redirect Web `https://nango.bip-go.com/oauth/callback`, 4 permisos
   delegados (ninguno pide admin consent por default), secreto 24 meses (vence ~sep-2028 → renovar). Nango
