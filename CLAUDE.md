@@ -643,6 +643,17 @@ reporte_existencia/cb_homologos).
   ("solo lee tus datos para mostrártelos en tus tableros"). Marca ficticia "Aurora". Espejo de
   `lib/access-requirements.ts` de BIP. Detalle en su README.
 
+- **Video "Sumá tus planillas a BIP" (`marketing/video-planillas/`, sep-2026, 80s):** Google Sheets (Picker) /
+  Excel OneDrive-SharePoint (Nango + ventanas reales de Microsoft) / archivo → columnas → tablero. Mismo motor.
+- **Videos en BIP (momentos de verdad):** se copian a `bip-platform/public/videos/<id>.mp4` + `<id>-poster.jpg` y se
+  muestran con `components/video-guide.tsx` (`VIDEOS`); el de primeros pasos está en Fuentes de datos, `/empezar`
+  (Conectar) y el mail de bienvenida (miniatura → `/video/primeros-pasos`, pública). Regla del user: **video en
+  cada momento de verdad de los primeros minutos**.
+- **TONO de toda comunicación al cliente de BIP (mails, pantallas; pedido del user sep-2026):** minimalista, cálida,
+  que empuje a avanzar. Siempre **saludar, agradecer, UN paso claro, cerrar con un mensaje lindo** (cliente
+  "mimado", acompañado, foco en mejorar su negocio). Nada de listas largas ni de "lo que no hacemos"; el detalle va
+  plegado en la app. Sin "gratis". TikTok = "muy pronto" (landing y Fuentes de datos).
+
 - **Web comercial BIP (`apps/web/public/bip.html` + artifact):** landing de venta. Los 3 planes
   (Insight/Optimize/Accelerate) se arman por JS (arrays `PLANS`/`MODULES`/`FULL`). El artifact
   compartible **`bip-web.html`** (id `f98ddfbe-b163-4a01-84bc-9dfde6456c6b`) es self-contained: se
