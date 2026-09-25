@@ -664,6 +664,9 @@ reporte_existencia/cb_homologos).
   "mimado", acompañado, foco en mejorar su negocio). Nada de listas largas ni de "lo que no hacemos"; el detalle va
   plegado en la app. Sin "gratis". TikTok = "muy pronto" (landing y Fuentes de datos).
 
+- **Web BIP para la agencia Roque (`marketing/web-roque/bip/`, sep-2026):** copia de `bip.html` para que Roque la
+  suba en SU web (NO toca bip-go.com): WhatsApp **+54 9 11 2188-0437** (botón flotante + link en el cierre y el pie),
+  email info@roque-in.com, rutas de assets relativas (`bip/hero.png`, `bip/demo.mp4`). Se entrega como zip.
 - **Web comercial BIP (`apps/web/public/bip.html` + artifact):** landing de venta. Los 3 planes
   (Insight/Optimize/Accelerate) se arman por JS (arrays `PLANS`/`MODULES`/`FULL`). El artifact
   compartible **`bip-web.html`** (id `f98ddfbe-b163-4a01-84bc-9dfde6456c6b`) es self-contained: se

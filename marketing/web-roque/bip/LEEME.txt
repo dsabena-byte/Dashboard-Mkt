@@ -1,0 +1,14 @@
+BIP · Business Impact Platform — landing para la web de Roque
+
+Contenido de la carpeta (subirla completa, tal cual):
+  index.html     la página
+  bip/hero.png   imagen principal
+  bip/demo.mp4   video demo
+
+Contacto configurado:
+  WhatsApp  +54 9 11 2188-0437  (botón flotante verde + link en "¿Listo para...?" y en el pie)
+  Email     info@roque-in.com
+
+Los botones "Empezar" llevan al alta de BIP (https://bip-platform.vercel.app/signup).
+Las rutas de imagen y video son relativas: la carpeta se puede publicar en cualquier ruta
+del sitio (ej. roque-in.com/bip/).
