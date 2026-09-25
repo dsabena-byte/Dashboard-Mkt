@@ -109,8 +109,8 @@ scene('s1', 0, 4.5, `
   <div class="hero-glow"></div>
   <div class="logo on-dark intro-logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div>
   <div class="hero-copy">
-    <div class="eyebrow">Primeros pasos</div>
-    <h1>Tus primeros minutos<br><span class="grad">en BIP, bien hechos.</span></h1>
+    <div class="eyebrow">Ya creaste tu cuenta</div>
+    <h1>Tus primeros minutos<br><span class="grad">en BIP. Bien simple.</span></h1>
     <p>Qué tener a mano, cómo conectar y qué sigue.</p>
   </div>`,
   (node) => {
@@ -130,7 +130,6 @@ const REQS = [
   ['Instagram', 'Cuenta profesional (Empresa o Creador) vinculada a tu Página de Facebook.'],
   ['Google Analytics (GA4)', 'Rol “Lector” en la propiedad de tu sitio.'],
   ['Google Ads', 'Acceso de “Solo lectura” a tu cuenta.'],
-  ['TikTok Ads', 'Acceso a tu cuenta publicitaria en el Business Center.'],
   ['Planillas', 'Ventas, share, presupuesto o pauta offline: Excel, Google Sheets o SharePoint.'],
 ];
 scene('s2', 4.5, 14, `
@@ -188,7 +187,7 @@ scene('s3', 14, 21, `
    ========================================================================= */
 const OPTS = [
   ['Redes Sociales', 'Alcance, engagement y sentimiento de tus comentarios.', 'Conectás: Facebook + Instagram'],
-  ['Publicidad', 'Inversión, alcance, frecuencia y eficiencia por medio.', 'Conectás: Meta Ads, Google Ads o TikTok'],
+  ['Publicidad', 'Inversión, alcance, frecuencia y eficiencia por medio.', 'Conectás: Meta Ads o Google Ads'],
   ['Web / Ecommerce', 'Tráfico, conversión y ventas de tu sitio.', 'Conectás: Google Analytics'],
 ];
 scene('s4', 21, 28, `
@@ -323,7 +322,7 @@ scene('s8', 55, 59, `
   </div>
   <div class="help">
     <h3 style="font-size:30px;font-weight:700">Ayuda</h3>
-    ${[['Tus primeros pasos', '4 de 6 hechos'], ['Qué acceso necesitás en cada fuente', 'Meta, Google, TikTok y planillas'], ['Cuándo se actualiza cada dato', 'Publicidad 2 veces por día · Redes cada 12 h'], ['¿Necesitás una mano?', 'info@roque-in.com']].map(h => `<div class="req on"><div class="ck">${CK}</div><div><b>${h[0]}</b><span>${h[1]}</span></div></div>`).join('')}
+    ${[['Tus primeros pasos', '4 de 6 hechos'], ['Qué acceso necesitás en cada fuente', 'Meta, Google y planillas'], ['Cuándo se actualiza cada dato', 'Publicidad 2 veces por día · Redes cada 12 h'], ['¿Necesitás una mano?', 'info@roque-in.com']].map(h => `<div class="req on"><div class="ck">${CK}</div><div><b>${h[0]}</b><span>${h[1]}</span></div></div>`).join('')}
   </div>`,
   (node) => {
     const side = node.querySelector('.side'), help = node.querySelector('.help'), rows = [...help.querySelectorAll('.req')];
