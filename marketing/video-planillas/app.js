@@ -305,12 +305,11 @@ scene('s8', 72, 80, `
   <div class="out-wrap"></div>
   <div class="out-copy">
     <h1>Listo. <span class="grad" style="background-image:linear-gradient(92deg,#0a4da0,#12a6f4)">Tus datos, juntos.</span></h1><p style="margin-top:26px;font-size:34px;color:var(--muted);font-weight:500;text-align:center">Ahora podés cruzar tus resultados con tu marketing<br>y decidir mejor.</p>
-    <div class="cta">bip-go.com</div>
   </div>
   <div class="out-foot"><div class="logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div></div>`,
   (node) => {
-    const h = node.querySelector('h1'), pp = node.querySelector('.out-copy p'), c = node.querySelector('.cta'), f = node.querySelector('.out-foot');
-    return (lt) => { inUp(h, eo(S(lt, .1, .9)), 30); inUp(pp, eo(S(lt, .4, 1.1)), 20); inUp(c, eo(S(lt, .8, 1.5)), 20); inUp(f, eo(S(lt, 1.2, 1.8)), 14); };
+    const h = node.querySelector('h1'), pp = node.querySelector('.out-copy p'), f = node.querySelector('.out-foot');
+    return (lt) => { inUp(h, eo(S(lt, .1, .9)), 30); inUp(pp, eo(S(lt, .4, 1.1)), 20); inUp(f, eo(S(lt, 1.2, 1.8)), 14); };
   });
 /* ==========================================================================
       MOTOR — window.__seek(t) deja el DOM en el estado exacto del segundo t

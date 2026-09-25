@@ -384,12 +384,11 @@ scene('s13', 103, 108, `
   <div class="out-wrap"></div>
   <div class="out-copy">
     <h1>Listo. <span class="grad" style="background-image:linear-gradient(92deg,#0a4da0,#12a6f4)">Así de simple.</span></h1><p style="margin-top:26px;font-size:34px;color:var(--muted);font-weight:500;text-align:center">Ya podés empezar a usar BIP para mejorar tus resultados.</p>
-    <div class="cta">bip-go.com</div>
   </div>
   <div class="out-foot"><div class="logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div></div>`,
   (node) => {
-    const h = node.querySelector('h1'), c = node.querySelector('.cta'), f = node.querySelector('.out-foot');
-    return (lt) => { inUp(h, eo(S(lt, .1, .9)), 30); inUp(c, eo(S(lt, .6, 1.3)), 20); inUp(f, eo(S(lt, 1, 1.6)), 14); };
+    const h = node.querySelector('h1'), f = node.querySelector('.out-foot');
+    return (lt) => { inUp(h, eo(S(lt, .1, .9)), 30); inUp(f, eo(S(lt, 1, 1.6)), 14); };
   });
 /* ==========================================================================
       MOTOR — window.__seek(t) deja el DOM en el estado exacto del segundo t
