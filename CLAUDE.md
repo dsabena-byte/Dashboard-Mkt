@@ -645,6 +645,9 @@ reporte_existencia/cb_homologos).
 
 - **Video "Sumá tus planillas a BIP" (`marketing/video-planillas/`, sep-2026, 80s):** Google Sheets (Picker) /
   Excel OneDrive-SharePoint (Nango + ventanas reales de Microsoft) / archivo → columnas → tablero. Mismo motor.
+- **Videos "Armá tu Mapa Estratégico" (`marketing/video-objetivos/`, 35s) y "Cargá tus metas" (`marketing/video-metas/`,
+  39s), sep-2026:** separados a pedido del user (el mapa por un lado, las metas por otro). Ritmo ÁGIL (la v1 de 78s fue
+  "lentísima": en estos videos, escenas de 4-12s). El del mapa muestra agregar objetivo → agregar PLAN → agregar KPIs.
 - **Videos en BIP (momentos de verdad):** se copian a `bip-platform/public/videos/<id>.mp4` + `<id>-poster.jpg` y se
   muestran con `components/video-guide.tsx` (`VIDEOS`); el de primeros pasos está en Fuentes de datos, `/empezar`
   (Conectar) y el mail de bienvenida (miniatura → `/video/primeros-pasos`, pública). Regla del user: **video en
