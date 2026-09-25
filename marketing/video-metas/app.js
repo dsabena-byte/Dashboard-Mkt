@@ -176,24 +176,27 @@ flowScene('s2', 2.5, 8, lead('Paso 1', 'Abrí la<br>configuración', 'Cada table
   { t0: 4.5, t1: 5.5, html: tab(true) },
 ], FULL);
 
-/* 3 · Metas del mes (8 – 15) */
+/* 3 · Metas mes a mes, de enero a diciembre (8 – 15) */
 const MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-const METAS = [['Alcance único', '1.200.000'], ['Clicks', '18.000'], ['VTR (≥50%)', '32%']];
+const MR = [['Alcance único', ['0,9M', '0,9M', '1,0M', '1,0M', '1,1M', '1,1M', '1,1M', '1,2M', '1,2M', '1,3M', '1,5M', '1,4M']], ['Clicks', ['12K', '12K', '13K', '14K', '15K', '15K', '16K', '17K', '18K', '19K', '22K', '20K']], ['VTR (≥50%)', ['30%', '30%', '30%', '31%', '31%', '31%', '32%', '32%', '32%', '32%', '33%', '33%']]];
 scene('s3', 8, 15, `
-  ${lead('Paso 2', 'La meta<br>de cada KPI', 'Escribís la meta del mes. En la grilla ves y cargás los 12 meses.')}
-  ${card(150, 0, `<div style="display:flex;align-items:center"><div><h3 style="font-size:24px">Configuración de objetivos — Plan de Medios</h3><div class="sub" style="font-size:16px">El semáforo compara el real de cada mes vs la meta.</div></div><div class="gsv" style="margin-left:auto;height:50px;padding:0 22px;border-radius:11px;background:var(--pri);color:#fff;display:flex;align-items:center;font-size:18px;font-weight:700">Guardar</div></div>
-    ${METAS.map((m, i) => `<div style="margin-top:12px;border:1.5px solid var(--line);border-radius:14px;padding:12px 18px"><div style="display:flex;align-items:center;gap:14px"><b style="flex:1;font-size:19px">${m[0]}</b><span style="font-size:15px;color:var(--muted)">Meta Sep</span><div class="fin mi" style="width:180px;height:44px;font-size:18px;justify-content:flex-end;padding:0 12px"><span class="mt"></span></div></div>${i === 0 ? `<div style="display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:10px">${MES.map((mm, k) => `<div style="text-align:center"><div style="font-size:12px;color:var(--muted)">${mm}</div><div class="gm" style="height:34px;border:1.5px solid ${k === 8 ? 'var(--cyan)' : 'var(--line)'};border-radius:8px;font-size:13px;display:flex;align-items:center;justify-content:center"></div></div>`).join('')}</div>` : ''}</div>`).join('')}`)}`,
+  ${lead('Paso 2', 'La meta<br>de cada KPI', 'Cargás la meta de cada mes, de enero a diciembre. Si es la misma todo el año, la copiás.')}
+  ${card(150, 0, `<div style="display:flex;align-items:center"><div><h3 style="font-size:24px">Configuración de objetivos — Plan de Medios</h3><div class="sub" style="font-size:16px">La meta de cada mes. El semáforo compara el real contra la meta.</div></div><div class="gsv" style="margin-left:auto;height:50px;padding:0 22px;border-radius:11px;background:var(--pri);color:#fff;display:flex;align-items:center;font-size:18px;font-weight:700">Guardar</div></div>
+    ${MR.map((m, i) => `<div style="margin-top:12px;border:1.5px solid var(--line);border-radius:14px;padding:12px 18px"><b style="font-size:19px">${m[0]}</b><div style="display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:8px">${MES.map((mm, k) => `<div style="text-align:center"><div style="font-size:12px;color:var(--muted)">${mm}</div><div class="gm r${i}" style="height:36px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;display:flex;align-items:center;justify-content:center"></div></div>`).join('')}</div></div>`).join('')}`)}`,
   (node) => {
-    const c = node.querySelector('.pp-card'), mts = [...node.querySelectorAll('.mt')], fins = [...node.querySelectorAll('.mi')], gms = [...node.querySelectorAll('.gm')], sv = node.querySelector('.gsv');
-    const G = ['0,9M', '0,9M', '1,0M', '1,0M', '1,1M', '1,1M', '1,1M', '1,2M', '1,2M', '1,3M', '1,5M', '1,4M'];
+    const c = node.querySelector('.pp-card'), sv = node.querySelector('.gsv');
+    const rows = [0, 1, 2].map(i => [...node.querySelectorAll('.r' + i)]);
     const ab = (el) => { const r = el.getBoundingClientRect(), st = stage.getBoundingClientRect(); return { x: r.left - st.left + r.width / 2, y: r.top - st.top + r.height / 2 }; };
+    // fila 1: mes a mes (Ene → Dic), con el cursor; filas 2 y 3: rápido
+    const T = (i, k) => i === 0 ? .8 + k * .28 : 4.3 + (i - 1) * .7 + k * .05;
     return (lt, a) => {
       leadIn(node, lt); inUp(c, eo(S(lt, 0, .4)), 30);
-      METAS.forEach((m, i) => { const s0 = .8 + i * 1.3; mts[i].textContent = typed(m[1], S(lt, s0, s0 + .7)); fins[i].classList.toggle('act', lt > s0 - .15 && lt < s0 + .9); });
-      gms.forEach((g, k) => { g.textContent = lt > 4.4 + k * .06 ? G[k] : ''; });
-      sv.style.filter = lt > 5.6 && lt < 5.85 ? 'brightness(1.2)' : 'none';
-      const f = fins.map(ab), s1 = ab(sv);
-      runCursor([{ t: .2, x: 1500, y: 900 }, { t: .7, x: f[0].x, y: f[0].y, click: 1 }, { t: 2.0, x: f[1].x, y: f[1].y, click: 1 }, { t: 3.3, x: f[2].x, y: f[2].y, click: 1 }, { t: 5.0, x: f[2].x, y: f[2].y }, { t: 5.6, x: s1.x, y: s1.y, click: 1 }, { t: 7, x: s1.x, y: s1.y }], lt, a);
+      rows.forEach((r, i) => r.forEach((g, k) => { const on = lt > T(i, k); g.textContent = on ? MR[i][1][k] : ''; const act = i === 0 && lt > T(i, k) - .2 && lt < T(i, k) + .1; g.style.borderColor = act ? 'var(--pri)' : 'var(--line)'; g.style.boxShadow = act ? '0 0 0 4px rgba(10,77,160,.12)' : 'none'; }));
+      sv.style.filter = lt > 6.2 && lt < 6.45 ? 'brightness(1.2)' : 'none';
+      const kf = [{ t: .2, x: 1500, y: 900 }];
+      rows[0].forEach((g, k) => { const p = ab(g); kf.push({ t: T(0, k) - .1, x: p.x, y: p.y, click: k === 0 ? 1 : 0 }); });
+      const s1 = ab(sv); kf.push({ t: 5.6, x: s1.x - 40, y: s1.y + 40 }, { t: 6.2, x: s1.x, y: s1.y, click: 1 }, { t: 7, x: s1.x, y: s1.y });
+      runCursor(kf, lt, a);
     };
   });
 

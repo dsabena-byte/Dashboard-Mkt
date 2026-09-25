@@ -208,30 +208,29 @@ scene('s3', 6.5, 15, `
   });
 
 /* 4 · Agregar plan + KPIs y vincularlos (15 – 27) */
-const OW4 = [['Notoriedad', '#7c3aed'], ['Consideración', '#2563eb'], ['Conversión', '#16a34a'], ['Preferencia', '#ea580c']];
+// Minimalista (pedido del user): 2 objetivos y pocos KPIs, lo justo para entender el gesto.
+const OW4 = [['Notoriedad', '#7c3aed'], ['Preferencia de marca', '#ea580c']];
 const K4 = [
-  ['Plan de Medios', [['Alcance único', [40, 0, 0, 0]], ['Impresiones', [30, 0, 0, 0]], ['Clicks', [0, 40, 0, 0]], ['VTR (≥50%)', [0, 30, 0, 0]]]],
-  ['Redes Sociales', [['Alcance orgánico', [30, 0, 0, 0]], ['Engagement rate', [0, 30, 0, 0]]]],
-  ['Web / Ecommerce', [['Tráfico web', [0, 0, 40, 0]], ['Tasa de conversión', [0, 0, 60, 0]]]],
+  ['Plan de Medios', [['Alcance único', [60, 0]], ['Impresiones', [40, 0]]]],
 ];
 const PLANS = ['Mercado y competencia'];
-const KNEW = ['Share of Search', 'Share of engagement', 'Visibilidad en IA', 'Índice de posición SEO'];
-const cellsRow = (vs) => vs.map((v, j) => `<td style="padding:5px 6px"><div style="display:flex;gap:6px;align-items:center">${slider('', OW4[j][1], v)}<span class="kv" style="width:28px;text-align:right;font-size:14px;font-variant-numeric:tabular-nums;color:${v ? 'var(--ink)' : 'var(--faint)'}">${v}</span></div></td>`).join('');
+const KNEW = ['Share of Search', 'Share of engagement', 'Visibilidad en IA'];
+const cellsRow = (vs) => vs.map((v, j) => `<td style="padding:10px 10px"><div style="display:flex;gap:10px;align-items:center">${slider('', OW4[j][1], v)}<span class="kv" style="width:40px;text-align:right;font-size:18px;font-variant-numeric:tabular-nums;color:${v ? 'var(--ink)' : 'var(--faint)'}">${v}</span></div></td>`).join('');
 scene('s4', 15, 27, `
   ${lead('Paso 3', 'Qué KPIs<br>explican cada objetivo', 'Primero sumás el plan (el tablero donde está el dato) y después elegís sus KPIs. Le das a cada uno su peso en el objetivo.')}
-  ${card(60, 0, `${H(2, 'Qué KPIs explican cada objetivo', 'Por objetivo, la suma llega a 100%.')}
-    <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:15.5px">
-      <tr><th style="text-align:left;padding:4px 6px;font-size:13px;color:var(--muted)">KPI</th>${OW4.map((o, j) => `<th style="padding:4px 6px;width:170px"><div style="display:flex;gap:5px;align-items:center;justify-content:center;font-size:14px"><span style="width:10px;height:10px;border-radius:3px;background:${o[1]}"></span>${o[0]}</div><div class="hd" style="font-size:12px;color:var(--faint);font-weight:600">${j < 3 ? '100% · libre 0%' : '0% · libre 100%'}</div></th>`).join('')}</tr>
-      ${K4.map(([pl, ks]) => `<tr><td colspan="5" style="padding:8px 6px 2px;border-top:1px solid var(--line)"><b style="color:var(--pri);font-size:15px">${pl}</b></td></tr>${ks.map(([k, vs]) => `<tr><td style="padding:5px 6px">${k}</td>${cellsRow(vs)}</tr>`).join('')}`).join('')}
-      <tr class="np" style="opacity:0"><td colspan="5" style="padding:8px 6px 2px;border-top:1px solid var(--line)"><div style="display:flex;align-items:center;gap:10px"><b style="color:var(--pri);font-size:15px">Mercado y competencia</b><div class="selk" style="margin-left:auto;height:36px;border:1.5px solid var(--line);border-radius:9px;padding:0 12px;display:flex;align-items:center;font-size:14px;color:var(--ink);background:#fff">+ Agregar KPI… ▾</div></div></td></tr>
-      <tr class="nk" style="opacity:0"><td style="padding:5px 6px">Share of Search</td>${cellsRow([0, 0, 0, 0])}</tr>
+  ${card(150, 0, `${H(2, 'Qué KPIs explican cada objetivo', 'Por objetivo, la suma llega a 100%.')}
+    <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:20px">
+      <tr><th style="text-align:left;padding:6px 10px;font-size:15px;color:var(--muted)">KPI</th>${OW4.map((o, j) => `<th style="padding:6px 10px;width:300px"><div style="display:flex;gap:8px;align-items:center;justify-content:center;font-size:18px"><span style="width:13px;height:13px;border-radius:4px;background:${o[1]}"></span>${o[0]}</div><div class="hd" style="font-size:14px;color:var(--faint);font-weight:600">${j < 1 ? '100% · libre 0%' : '0% · libre 100%'}</div></th>`).join('')}</tr>
+      ${K4.map(([pl, ks]) => `<tr><td colspan="3" style="padding:14px 10px 4px;border-top:1px solid var(--line)"><b style="color:var(--pri);font-size:19px">${pl}</b></td></tr>${ks.map(([k, vs]) => `<tr><td style="padding:10px 10px">${k}</td>${cellsRow(vs)}</tr>`).join('')}`).join('')}
+      <tr class="np" style="opacity:0"><td colspan="3" style="padding:14px 10px 4px;border-top:1px solid var(--line)"><div style="display:flex;align-items:center;gap:10px"><b style="color:var(--pri);font-size:19px">Mercado y competencia</b><div class="selk" style="margin-left:auto;height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 14px;display:flex;align-items:center;font-size:17px;color:var(--ink);background:#fff">+ Agregar KPI… ▾</div></div></td></tr>
+      <tr class="nk" style="opacity:0"><td style="padding:10px 10px">Share of Search</td>${cellsRow([0, 0])}</tr>
     </table>
-    <div style="display:flex;gap:10px;align-items:center;margin-top:12px"><div class="selp" style="height:40px;border:1.5px solid var(--line);border-radius:9px;padding:0 14px;display:flex;align-items:center;font-size:15px;color:var(--ink);background:#fff;min-width:300px">+ Agregar plan / dashboard… ▾</div><div class="addp" style="height:40px;padding:0 18px;border-radius:9px;border:1.5px solid var(--pri);color:var(--pri);display:flex;align-items:center;font-size:15px;font-weight:700">Agregar</div></div>
-    <div class="ddp" style="position:absolute;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,.15);padding:6px;font-size:15px;z-index:3">${PLANS.map(x => `<div class="opp" style="padding:8px 12px;border-radius:7px">${x}</div>`).join('')}</div>
-    <div class="ddk" style="position:absolute;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,.15);padding:6px;font-size:14px;z-index:3">${KNEW.map((x, i) => `<div class="opk" style="padding:7px 12px;border-radius:7px">${x}</div>`).join('')}</div>`)}`,
+    <div style="display:flex;gap:12px;align-items:center;margin-top:18px"><div class="selp" style="height:48px;border:1.5px solid var(--line);border-radius:10px;padding:0 16px;display:flex;align-items:center;font-size:18px;color:var(--ink);background:#fff;min-width:340px">+ Agregar plan / dashboard… ▾</div><div class="addp" style="height:48px;padding:0 22px;border-radius:10px;border:1.5px solid var(--pri);color:var(--pri);display:flex;align-items:center;font-size:18px;font-weight:700">Agregar</div></div>
+    <div class="ddp" style="position:absolute;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,.15);padding:6px;font-size:18px;z-index:3">${PLANS.map(x => `<div class="opp" style="padding:8px 12px;border-radius:7px">${x}</div>`).join('')}</div>
+    <div class="ddk" style="position:absolute;display:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(15,23,42,.15);padding:6px;font-size:17px;z-index:3">${KNEW.map((x, i) => `<div class="opk" style="padding:7px 12px;border-radius:7px">${x}</div>`).join('')}</div>`)}`,
   (node) => {
     const c = node.querySelector('.pp-card'), np = node.querySelector('.np'), nk = node.querySelector('.nk'), selp = node.querySelector('.selp'), addp = node.querySelector('.addp'), selk = node.querySelector('.selk'), ddp = node.querySelector('.ddp'), ddk = node.querySelector('.ddk'), hds = [...node.querySelectorAll('.hd')];
-    const nkSl = nk.querySelectorAll('.sl')[3], nkV = nk.querySelectorAll('.kv')[3], opp = node.querySelector('.opp'), opk = node.querySelector('.opk');
+    const nkSl = nk.querySelectorAll('.sl')[1], nkV = nk.querySelectorAll('.kv')[1], opp = node.querySelector('.opp'), opk = node.querySelector('.opk');
     const rel = (el) => { const r = el.getBoundingClientRect(), cr = c.getBoundingClientRect(); return { x: r.left - cr.left, y: r.top - cr.top, w: r.width, h: r.height }; };
     const abs = (el) => { const r = el.getBoundingClientRect(), st = stage.getBoundingClientRect(); return { x: r.left - st.left + r.width / 2, y: r.top - st.top + r.height / 2 }; };
     let P = null;
@@ -245,12 +244,12 @@ scene('s4', 15, 27, `
       inUp(np, eo(S(lt, 3, 3.3)), 8);
       // dropdown de KPIs
       const dk = lt > 4.2 && lt < 5.4;
-      if (dk) { const r = rel(selk); ddk.style.display = 'block'; ddk.style.left = (r.x + r.w - 260) + 'px'; ddk.style.top = (r.y + r.h + 4) + 'px'; ddk.style.width = '260px'; } else ddk.style.display = 'none';
+      if (dk) { const r = rel(selk); ddk.style.display = 'block'; ddk.style.left = (r.x + r.w - 300) + 'px'; ddk.style.top = (r.y + r.h + 4) + 'px'; ddk.style.width = '300px'; } else ddk.style.display = 'none';
       opk.style.background = lt > 4.8 ? 'var(--pri-soft)' : 'transparent';
       inUp(nk, eo(S(lt, 5.5, 5.8)), 8);
       const v = Math.round(lerp(0, 100, eio(S(lt, 6.8, 8.2))));
       setSl(nkSl, v); nkV.textContent = v; nkV.style.color = v ? 'var(--ink)' : 'var(--faint)';
-      hds[3].textContent = `${v}% · libre ${100 - v}%`; hds[3].style.color = v < 100 ? '#b45309' : 'var(--faint)';
+      hds[1].textContent = `${v}% · libre ${100 - v}%`; hds[1].style.color = v < 100 ? '#b45309' : 'var(--faint)';
       nk.style.background = lt > 5.5 && lt < 9.5 ? 'var(--pri-soft)' : 'transparent';
       if (!P) P = { sp: abs(selp), ad: abs(addp), op: null };
       const op = dp ? abs(opp) : P.op || P.sp; if (dp) P.op = op;
@@ -262,9 +261,9 @@ scene('s4', 15, 27, `
   });
 
 /* 5 · Composición + guardar (27 – 31.5) */
-const COMP4 = [['Notoriedad', '#7c3aed', [['Alcance único', 40], ['Impresiones', 30], ['Alcance orgánico', 30]]], ['Consideración', '#2563eb', [['Clicks', 40], ['VTR (≥50%)', 30], ['Engagement rate', 30]]], ['Conversión', '#16a34a', [['Tasa de conversión', 60], ['Tráfico web', 40]]], ['Preferencia de marca', '#ea580c', [['Share of Search', 100]]]];
+const COMP4 = [['Notoriedad', '#7c3aed', [['Alcance único', 60], ['Impresiones', 40]]], ['Preferencia de marca', '#ea580c', [['Share of Search', 100]]]];
 const compHtml = (ok) => card(170, 0, `${H(3, 'Composición de cada objetivo')}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px">${COMP4.map(o => `<div style="border:1.5px solid var(--line);border-radius:14px;padding:14px"><div style="display:flex;gap:8px;align-items:center"><span style="width:13px;height:13px;border-radius:4px;background:${o[1]}"></span><b style="font-size:16px;white-space:nowrap">${o[0]}</b></div><div style="display:flex;height:11px;border-radius:999px;overflow:hidden;margin:10px 0">${o[2].map((k, i) => `<i style="width:${k[1]}%;background:${o[1]};opacity:${1 - i * .2}"></i>`).join('')}</div>${o[2].map(k => `<div style="display:flex;justify-content:space-between;font-size:14px;margin-top:3px"><span>${k[0]}</span><span style="color:var(--muted)">${k[1]}%</span></div>`).join('')}</div>`).join('')}</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:18px">${COMP4.map(o => `<div style="border:1.5px solid var(--line);border-radius:14px;padding:14px"><div style="display:flex;gap:8px;align-items:center"><span style="width:13px;height:13px;border-radius:4px;background:${o[1]}"></span><b style="font-size:16px;white-space:nowrap">${o[0]}</b></div><div style="display:flex;height:11px;border-radius:999px;overflow:hidden;margin:10px 0">${o[2].map((k, i) => `<i style="width:${k[1]}%;background:${o[1]};opacity:${1 - i * .2}"></i>`).join('')}</div>${o[2].map(k => `<div style="display:flex;justify-content:space-between;font-size:14px;margin-top:3px"><span>${k[0]}</span><span style="color:var(--muted)">${k[1]}%</span></div>`).join('')}</div>`).join('')}</div>
     <div style="display:flex;gap:16px;align-items:center;margin-top:20px"><div class="go" style="height:56px;padding:0 24px;border-radius:12px;background:var(--pri);color:#fff;display:flex;align-items:center;font-size:20px;font-weight:700">Guardar mapa</div><span style="font-size:19px;color:#15803D;font-weight:600;opacity:${ok ? 1 : 0}">✓ Guardado</span></div>`);
 flowScene('s5', 27, 31.5, lead('Listo tu mapa', 'Así se compone<br>cada objetivo', 'Guardás y queda aplicado en todos tus tableros.'), [
   { t0: 0, t1: 3, at: 2.4, click: '.go', html: compHtml(false) },
