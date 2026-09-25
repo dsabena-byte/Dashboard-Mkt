@@ -1,0 +1,273 @@
+/* =========================================================================
+   Video "Seguimiento de objetivos en BIP" — Mapa Estratégico: plantilla → pesos de objetivos →
+   KPIs que explican cada objetivo → metas mensuales → seguimiento. Réplica de
+   components/mapa/mapa-editor.tsx + mapa-plantilla.tsx + components/web/meta-panel.tsx (BIP).
+   ========================================================================= */
+const DUR = 41.0;
+const BASE = DUR;
+const SPEED = DUR / BASE;    // 1: los tiempos de este archivo son segundos reales
+const LEAD = 0.34;           // solape del cross-fade entre escenas
+/* ---------------------------- utilidades ---------------------------- */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const S  = (t, a, b) => clamp((t - a) / (b - a), 0, 1);      // progreso 0..1
+const eo = p => 1 - Math.pow(1 - p, 3);                       // ease-out cúbico
+const ei = p => p * p * p;                                    // ease-in
+const eio = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const lerp = (a, b, p) => a + (b - a) * p;
+const nf = (n, d = 0) => n.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const typed = (str, p) => str.slice(0, Math.round(clamp(p, 0, 1) * str.length));
+
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+function mk(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html.trim();
+  return d.firstElementChild;
+}
+/* opacidad + desplazamiento vertical de entrada, en un solo helper */
+function inUp(node, p, dist = 26) {
+  node.style.opacity = p;
+  node.style.transform = `translateY(${(1 - p) * dist}px)`;
+}
+
+/* ---------------------------- iconos ---------------------------- */
+const ICON = {
+  star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.6 6.1 6.6.55-5 4.35 1.5 6.45L12 16.7l-5.7 3.35 1.5-6.45-5-4.35 6.6-.55z"/></svg>',
+  bag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5.6 8h12.8l-1 11.4a1.6 1.6 0 0 1-1.6 1.45H8.2a1.6 1.6 0 0 1-1.6-1.45z"/><path d="M8.7 8V6.6a3.3 3.3 0 0 1 6.6 0V8"/></svg>',
+  bars: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4.4" height="9" rx="1.4"/><rect x="9.8" y="7" width="4.4" height="14" rx="1.4"/><rect x="16.6" y="3" width="4.4" height="18" rx="1.4"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  plus: '<svg style="width:26px;height:26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
+};
+
+/* ---------------------------- motor de escenas ---------------------------- */
+const stage = document.getElementById('stage');
+const SCENES = [];
+function scene(id, start, end, html, init) {
+  const node = mk(`<div class="scene" id="${id}">${html}</div>`);
+  stage.appendChild(node);
+  // start/end vienen en escala original y se estiran; init/draw trabajan en escala original
+  const o = { id, start: start * SPEED, end: end * SPEED, node, dur: (end - start) * SPEED };
+  o.draw = init(node, o) || (() => {});
+  SCENES.push(o);
+  return o;
+}
+
+/* ---------------------------- cursor ---------------------------- */
+const cursorEl = mk(`<div id="cursor"><svg viewBox="0 0 24 24" width="34" height="34">
+  <path d="M5 2.4l13.2 8.1-5.9.9 3.3 6.6-2.6 1.3-3.3-6.6-4.7 3.7z" fill="#fff" stroke="#0F172A" stroke-width="1.5" stroke-linejoin="round"/></svg></div>`);
+const ringEl = mk('<div id="ring"></div>');
+stage.appendChild(ringEl);
+stage.appendChild(cursorEl);
+let cursorUsed = false;
+
+/* kfs: [{t, x, y, click?}] — mueve el cursor por keyframes y dibuja el click */
+function runCursor(kfs, lt, alpha = 1) {
+  cursorUsed = true;
+  let x = kfs[0].x, y = kfs[0].y;
+  if (lt >= kfs[kfs.length - 1].t) { x = kfs[kfs.length - 1].x; y = kfs[kfs.length - 1].y; }
+  else for (let i = 0; i < kfs.length - 1; i++) {
+    const a = kfs[i], b = kfs[i + 1];
+    if (lt >= a.t && lt < b.t) { const p = eio(S(lt, a.t, b.t)); x = lerp(a.x, b.x, p); y = lerp(a.y, b.y, p); break; }
+  }
+  let press = 0, ringP = -1, rx = 0, ry = 0;
+  for (const k of kfs) {
+    if (!k.click) continue;
+    if (lt >= k.t - .07 && lt <= k.t + .12) press = 1;
+    const p = S(lt, k.t, k.t + .34);
+    if (p > 0 && p < 1) { ringP = p; rx = k.x; ry = k.y; }
+  }
+  cursorEl.style.opacity = alpha;
+  cursorEl.style.transform = `translate(${x}px,${y}px) scale(${press ? .84 : 1})`;
+  if (ringP >= 0) {
+    ringEl.style.opacity = (1 - ringP) * .8 * alpha;
+    ringEl.style.transform = `translate(${rx - 39}px,${ry - 39}px) scale(${lerp(.32, 1.15, eo(ringP))})`;
+  } else ringEl.style.opacity = 0;
+}
+
+
+/* ---------------------------- helpers de este video ---------------------------- */
+const CK = ICON.check;
+const lead = (step, h2, p) => `<div class="lead" style="top:250px"><div class="step">${step}</div><h2>${h2}</h2><p>${p}</p></div>`;
+const A = (top, extra = '') => `position:absolute;left:38px;right:38px;top:${top}px;${extra}`;
+const CX = 720, CY = 150;                        // origen de la tarjeta (.pp-card)
+function leadIn(node, lt) {
+  const l = node.querySelector('.lead');
+  [...l.children].forEach((c, i) => inUp(c, eo(S(lt, .1 + i * .18, .8 + i * .18)), 26));
+}
+
+/* Escena "flujo": una secuencia de pantallas con cursor que toca el botón de cada una. */
+function flowScene(id, start, end, leadH, screens, wrap = '') {
+  const html = `${leadH}<div class="popwrap" style="${wrap}">${screens.map(sc => `<div class="scr">${sc.html}</div>`).join('')}${wrap ? '' : '<div class="cap"><span></span></div>'}</div>`;
+  return scene(id, start, end, html, (node) => {
+    const scrs = [...node.querySelectorAll('.scr')], capw = node.querySelector('.cap'), cap = capw && capw.querySelector('span');
+    const pos = [];
+    const at = (el) => { const r = el.getBoundingClientRect(), st = stage.getBoundingClientRect(); return { x: r.left - st.left + r.width / 2, y: r.top - st.top + r.height / 2 }; };
+    return (lt, a) => {
+      leadIn(node, lt);
+      let cur = screens.findIndex(sc => lt >= sc.t0 && lt < sc.t1);
+      if (cur < 0) cur = lt < screens[0].t0 ? 0 : screens.length - 1;
+      scrs.forEach((el, k) => { el.style.display = k === cur ? 'block' : 'none'; });
+      const sc = screens[cur];
+      const p = cur === 0 ? eo(S(lt, .15, .6)) : eo(S(lt, sc.t0, sc.t0 + .3));
+      scrs[cur].style.opacity = p; scrs[cur].style.transform = `translateY(${(1 - p) * 14}px)`;
+      if (cap) { cap.textContent = sc.cap || ''; capw.style.opacity = sc.cap ? eo(S(lt, sc.t0 + .2, sc.t0 + .6)) : 0; }
+      if (sc.click) {
+        const btn = scrs[cur].querySelector(sc.click);
+        if (!pos[cur] && lt > sc.t0 + .45) pos[cur] = at(btn);
+        const q = pos[cur], prev = pos[cur - 1] || (q ? { x: q.x + 180, y: q.y + 150 } : null);
+        if (q) runCursor([{ t: sc.t0 + .45, x: prev.x, y: prev.y }, { t: sc.at, x: q.x, y: q.y, click: 1 }, { t: sc.t1, x: q.x, y: q.y }], lt, a);
+        btn.style.filter = lt > sc.at - .04 && lt < sc.at + .22 ? 'brightness(1.15)' : 'none';
+      }
+    };
+  });
+}
+
+/* Tarjeta de /empezar paso 4 (réplica): lista de pasos + contenido del paso actual */
+const PASOS = ['Conectar Facebook', 'Elegir tu Facebook e Instagram', 'Elegir cuenta de Meta Ads', 'Conectar Google', 'Elegir tu sitio (GA4)', 'Elegir cuenta de Google Ads'];
+const connectCard = (cur, h, p, body) => `<div class="pp-card" style="height:640px">
+  <div style="position:absolute;left:38px;top:44px;width:330px">${PASOS.map((x, k) => `<div class="seq ${k < cur ? 'done' : k === cur ? 'cur' : ''}" style="font-size:20px;padding:13px 2px"><i>${k < cur ? CK : k + 1}</i>${x}</div>`).join('')}</div>
+  <div style="position:absolute;left:410px;right:38px;top:44px;border-left:1px solid var(--line);padding-left:36px">
+    <div style="font-size:18px;color:var(--muted);font-weight:600">Redes Sociales · Publicidad · Web / Ecommerce</div>
+    <h3 style="margin-top:18px;font-size:34px">${h}</h3>
+    <p style="margin-top:14px;font-size:21px;line-height:1.5;color:#334155">${p}</p>
+    ${body}
+    <div style="margin-top:22px;font-size:19px;color:var(--pri);font-weight:600">▸ ¿No tenés acceso? Te decimos cómo pedirlo</div>
+    <div style="margin-top:14px;font-size:19px;color:var(--muted);font-weight:600">Lo hago después</div>
+  </div></div>`;
+const pick = (val, btn) => `<div style="display:flex;gap:14px;margin-top:24px"><div class="sel">${val}<span style="margin-left:auto">▾</span></div><div class="go" style="height:58px;padding:0 26px;border-radius:12px;background:var(--pri);color:#fff;display:flex;align-items:center;font-size:21px;font-weight:700">${btn}</div></div>`;
+const primary = (label) => `<div class="go" style="margin-top:26px;display:inline-flex;height:66px;padding:0 34px;border-radius:13px;background:var(--pri);color:#fff;align-items:center;font-size:23px;font-weight:700;box-shadow:0 10px 24px rgba(10,77,160,.28)">${label}</div>`;
+const FULL = 'left:0;top:0;width:1920px;height:1080px';
+/* =========================================================================
+   Objetivos — helpers propios
+   ========================================================================= */
+const OBJ = [['Notoriedad', '#7c3aed', 50, 'Alcance único · Impresiones · Alcance orgánico'], ['Consideración', '#2563eb', 30, 'Clicks · VTR (≥50%) · Engagement rate'], ['Conversión', '#16a34a', 20, 'Tráfico web · Tasa de conversión · Ingresos']];
+const slider = (id, color, v) => `<div class="sl" id="${id}" style="position:relative;height:10px;border-radius:999px;background:#e2e8f0;flex:1"><i style="position:absolute;left:0;top:0;bottom:0;width:${v}%;border-radius:999px;background:${color}"></i><b style="position:absolute;top:50%;left:${v}%;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:#fff;border:3px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,.15)"></b></div>`;
+function setSl(el, v) { el.querySelector('i').style.width = v + '%'; el.querySelector('b').style.left = v + '%'; }
+const card = (top, h, inner) => `<div class="pp-card" style="top:${top}px;${h ? `height:${h}px;` : ''}">${inner}</div>`;
+const H = (n, t, sub) => `<div style="font-size:17px;color:var(--muted);font-weight:600">Mapa Estratégico</div><h3 style="margin-top:8px">${n} · ${t}</h3>${sub ? `<div class="sub">${sub}</div>` : ''}`;
+
+/* 1 · Intro (0 – 2.5) */
+scene('s1', 0, 2.5, `
+  <div class="dark" style="position:absolute;inset:0"></div>
+  <div class="hero-glow"></div>
+  <div class="logo on-dark intro-logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div>
+  <div class="hero-copy">
+    <div class="eyebrow">Seguimiento de objetivos</div>
+    <h1>¿Vas bien con tus objetivos?<br><span class="grad">Así se lee. Bien simple.</span></h1>
+    <p>Qué necesitás antes, cómo se arma y cómo se lee.</p>
+  </div>`,
+  (node) => {
+    const logo = node.querySelector('.logo');
+    const parts = [node.querySelector('.eyebrow'), node.querySelector('h1'), node.querySelector('.hero-copy p')];
+    return (lt) => { inUp(logo, eo(S(lt, 0, .4)), 20); parts.forEach((p, i) => inUp(p, eo(S(lt, .15 + i * .15, .7 + i * .15)), 30)); };
+  });
+
+/* 2 · Antes, tres cosas (2.5 – 12) */
+const MES = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+const HIST = [38, 44, 41, 52, 49, 58, 61, 57, 66];
+const PRE = [
+  ['Tus tableros, con datos', 'Tus fuentes conectadas y su histórico: el “real” de cada mes.', `<div style="display:flex;align-items:flex-end;gap:6px;height:70px">${HIST.map(h => `<i class="hb" data-h="${h}" style="width:18px;height:0;background:#1e40af;border-radius:3px 3px 0 0"></i>`).join('')}</div>`],
+  ['Tu Mapa Estratégico', 'Tus objetivos, sus planes y los KPIs que los explican, con su peso.', `<div style="display:flex;gap:8px;align-items:center;font-size:15px"><span style="padding:6px 12px;border-radius:999px;background:#ede9fe;color:#6d28d9;font-weight:700">Notoriedad</span><span style="color:var(--muted)">←</span><span style="padding:6px 10px;border:1.5px solid var(--line);border-radius:999px">Alcance único 60%</span><span style="padding:6px 10px;border:1.5px solid var(--line);border-radius:999px">Impresiones 40%</span></div>`],
+  ['Las metas de cada KPI', 'La meta de cada mes, de enero a diciembre.', `<div style="display:grid;grid-template-columns:repeat(12,26px);gap:4px">${MES.map(m => `<div style="text-align:center;font-size:11px;color:var(--muted)">${m}<div class="mg" style="height:22px;border:1.5px solid var(--line);border-radius:5px;margin-top:2px;background:#f8fafc"></div></div>`).join('')}</div>`],
+];
+scene('s2', 2.5, 12, `
+  ${lead('Antes', 'Tres cosas<br>cargadas', 'El Seguimiento se arma solo, pero necesita estas tres cosas. Si falta una, BIP te avisa qué completar.')}
+  ${card(170, 0, `<h3>Para ver tu Seguimiento</h3>${PRE.map((p, i) => `<div class="pr" style="margin-top:16px;border:1.5px solid var(--line);border-radius:16px;padding:16px 20px;display:flex;gap:18px;align-items:center"><div class="ck2" style="width:40px;height:40px;flex:0 0 40px;border-radius:50%;border:2.5px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px">${i + 1}</div><div style="flex:1"><b style="font-size:21px">${p[0]}</b><div style="font-size:16px;color:var(--muted);margin-top:4px">${p[1]}</div></div><div style="flex:0 0 auto">${p[2]}</div></div>`).join('')}`)}`,
+  (node) => {
+    const c = node.querySelector('.pp-card'), prs = [...node.querySelectorAll('.pr')], cks = [...node.querySelectorAll('.ck2')], hbs = [...node.querySelectorAll('.hb')];
+    return (lt) => {
+      leadIn(node, lt); inUp(c, eo(S(lt, 0, .4)), 30);
+      prs.forEach((p, i) => { const t = 1 + i * 2.4; inUp(p, eo(S(lt, t - .6, t)), 14); const on = lt > t + 1; cks[i].style.background = on ? '#16a34a' : '#fff'; cks[i].style.borderColor = on ? '#16a34a' : 'var(--line)'; cks[i].style.color = on ? '#fff' : 'var(--muted)'; cks[i].innerHTML = on ? '✓' : String(i + 1); p.style.borderColor = on ? '#bbf7d0' : 'var(--line)'; });
+      hbs.forEach((b, k) => { b.style.height = b.dataset.h * eo(S(lt, 1 + k * .08, 1.8 + k * .08)) + 'px'; });
+      node.querySelectorAll('.mg').forEach((d, k) => { d.style.background = lt > 5.8 + k * .08 ? '#dbeafe' : '#f8fafc'; });
+    };
+  });
+
+/* 3 · Cómo se arma (12 – 24) */
+const KR = [['Alcance único', '1,13M', '1,20M', 94, 60], ['Impresiones', '3,8M', '4,5M', 84, 40]];
+const OB = [['Notoriedad', '#7c3aed', 90, 50], ['Consideración', '#2563eb', 81, 30], ['Conversión', '#16a34a', 67, 20]];
+const box = (inner, cls, extra = '') => `<div class="${cls}" style="border:1.5px solid var(--line);border-radius:14px;padding:12px 16px;background:#fff;${extra}">${inner}</div>`;
+scene('s3', 12, 24, `
+  ${lead('Cómo se arma', 'De tus KPIs<br>a tus objetivos', 'Cada KPI: real ÷ meta. Cada objetivo: el promedio de sus KPIs según su peso. Y el global, según el peso de cada objetivo.')}
+  ${card(130, 0, `<h3>Cómo se calcula</h3>
+    <div style="display:grid;grid-template-columns:1.2fr .5fr 1fr;gap:18px;align-items:center;margin-top:18px">
+      <div style="display:flex;flex-direction:column;gap:12px">${KR.map(k => box(`<div style="display:flex;justify-content:space-between"><b style="font-size:18px">${k[0]}</b><b class="kp" style="font-size:20px;color:#1e40af">${k[3]}%</b></div><div style="font-size:15px;color:var(--muted);margin-top:4px">real ${k[1]} ÷ meta ${k[2]}</div>`, 'a1')).join('')}</div>
+      <div style="display:flex;flex-direction:column;gap:12px;align-items:center">${KR.map(k => `<div class="a2" style="font-size:20px;font-weight:700;color:#6d28d9;padding:30px 0">× ${k[4]}%</div>`).join('')}</div>
+      ${box(`<div style="display:flex;gap:8px;align-items:center"><span style="width:14px;height:14px;border-radius:4px;background:#7c3aed"></span><b style="font-size:19px">Notoriedad</b></div><div class="nv" style="font-size:46px;font-weight:700;font-family:var(--disp);margin-top:6px">90%</div><div style="font-size:14px;color:var(--muted)">94×0,6 + 84×0,4</div>`, 'a3', 'border-color:#c4b5fd')}
+    </div>
+    <div class="a4" style="margin-top:20px;border-top:1px dashed var(--line);padding-top:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">${OB.map(o => `<span style="display:inline-flex;gap:8px;align-items:center;font-size:17px;border:1.5px solid var(--line);border-radius:999px;padding:8px 14px"><i style="width:12px;height:12px;border-radius:3px;background:${o[1]}"></i>${o[0]} <b>${o[2]}%</b> <span style="color:var(--muted)">× ${o[3]}%</span></span>`).join('<b style="color:var(--muted)">+</b>')}<b style="font-size:18px;color:var(--muted)">=</b><span style="font-size:19px;font-weight:700;background:var(--pri);color:#fff;border-radius:999px;padding:9px 16px">Cumplimiento global 83%</span></div>`)}`,
+  (node) => {
+    const c = node.querySelector('.pp-card'), a1 = [...node.querySelectorAll('.a1')], a2 = [...node.querySelectorAll('.a2')], a3 = node.querySelector('.a3'), a4 = node.querySelector('.a4');
+    return (lt) => {
+      leadIn(node, lt); inUp(c, eo(S(lt, 0, .4)), 30);
+      a1.forEach((e, i) => inUp(e, eo(S(lt, .8 + i * .3, 1.4 + i * .3)), 12));
+      a2.forEach((e, i) => inUp(e, eo(S(lt, 2.6 + i * .3, 3.2 + i * .3)), 12));
+      inUp(a3, eo(S(lt, 4.2, 4.9)), 12);
+      inUp(a4, eo(S(lt, 6.4, 7.2)), 12);
+    };
+  });
+
+/* 4 · Cómo se lee (24 – 37) */
+const SG = [['Notoriedad', '#7c3aed', 90, '#16a34a'], ['Consideración', '#2563eb', 81, '#f59e0b'], ['Conversión', '#16a34a', 67, '#dc2626']];
+const SC = [['Alcance único', '1,13M', '1,20M', -6, '9,4M', '9,8M', -4, '#16a34a', [5, 6, 6, 7, 7, 8, 8, 9]], ['Clicks', '14.600', '18.000', -19, '118K', '128K', -8, '#f59e0b', [6, 7, 7, 6, 8, 7, 8, 7]], ['Tasa de conversión', '1,3%', '2,0%', -35, '1,5%', '2,0%', -25, '#dc2626', [8, 7, 7, 6, 6, 5, 5, 4]]];
+const spark = (v, col) => `<svg width="90" height="26" viewBox="0 0 90 26"><polyline fill="none" stroke="${col}" stroke-width="2.4" points="${v.map((y, i) => `${i * 12.5 + 2},${26 - y * 2.6}`).join(' ')}"/></svg>`;
+scene('s4', 24, 37, `
+  ${lead('Cómo se lee', 'Arriba el resultado,<br>abajo el porqué', 'El semáforo marca cada objetivo. En la tabla ves qué KPI lo explica, en el mes y en el año. El rojo es donde actuar.')}
+  ${card(90, 0, `<div style="display:flex;align-items:center"><h3>Seguimiento Objetivos</h3><span style="margin-left:auto;font-size:13px;color:var(--muted);background:#f1f5f9;border-radius:999px;padding:5px 12px;margin-right:12px">Datos ilustrativos</span><span style="border:1.5px solid var(--line);border-radius:10px;padding:8px 14px;font-size:16px">Septiembre ▾</span></div>
+    <div style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:12px;margin-top:16px">
+      <div style="border-radius:14px;padding:14px;background:var(--pri);color:#fff"><div style="font-size:15px;opacity:.85">Cumplimiento Global</div><div class="gv" style="font-size:44px;font-weight:700;font-family:var(--disp)">0%</div></div>
+      ${SG.map(o => `<div style="border:1.5px solid var(--line);border-radius:14px;padding:14px"><div style="display:flex;gap:7px;align-items:center"><span style="width:12px;height:12px;border-radius:4px;background:${o[1]}"></span><b style="font-size:16px">${o[0]}</b><i style="margin-left:auto;width:13px;height:13px;border-radius:50%;background:${o[3]}"></i></div><div class="ov" style="font-size:36px;font-weight:700;font-family:var(--disp);margin-top:4px">0%</div><div style="height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden"><i class="ob" style="display:block;height:100%;width:0;background:#1e40af"></i></div></div>`).join('')}
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:16px"><tr style="color:var(--muted);font-size:13px">${['KPI', 'Real mes', 'Meta mes', 'Desv.', 'Real YTD', 'Meta YTD', 'Desv.', 'Evolución'].map((h, i) => `<th style="padding:6px;text-align:${i ? (i === 3 || i === 6 || i === 7 ? 'center' : 'right') : 'left'}">${h}</th>`).join('')}</tr>
+      ${SC.map(k => `<tr class="sr" style="border-top:1px solid var(--line-2)"><td style="padding:9px 6px;font-weight:600">${k[0]}</td><td style="text-align:right">${k[1]}</td><td style="text-align:right;color:var(--muted)">${k[2]}</td><td style="text-align:center"><span style="color:${k[7]};font-weight:700">${k[3]}%</span></td><td style="text-align:right">${k[4]}</td><td style="text-align:right;color:var(--muted)">${k[5]}</td><td style="text-align:center;font-weight:700;color:${k[6] < -15 ? '#dc2626' : k[6] < -5 ? '#b45309' : '#15803D'}">${k[6]}%</td><td style="text-align:center">${spark(k[8], k[7])}</td></tr>`).join('')}
+    </table>
+    <div class="call" style="margin-top:12px;display:inline-flex;gap:10px;align-items:center;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:10px 14px;font-size:16px;font-weight:600">● Tasa de conversión: 35% bajo la meta. Ahí conviene actuar.</div>`)}`,
+  (node) => {
+    const c = node.querySelector('.pp-card'), gv = node.querySelector('.gv'), ovs = [...node.querySelectorAll('.ov')], obs = [...node.querySelectorAll('.ob')], srs = [...node.querySelectorAll('.sr')], call = node.querySelector('.call');
+    return (lt, a) => {
+      leadIn(node, lt); inUp(c, eo(S(lt, 0, .4)), 30);
+      gv.textContent = Math.round(83 * eo(S(lt, .6, 1.8))) + '%';
+      SG.forEach((o, i) => { const p = eo(S(lt, .8 + i * .15, 2 + i * .15)); ovs[i].textContent = Math.round(o[2] * p) + '%'; obs[i].style.width = o[2] * p + '%'; });
+      srs.forEach((r, i) => { inUp(r, eo(S(lt, 2.6 + i * .25, 3.1 + i * .25)), 8); r.style.background = i === 2 && lt > 6 ? '#fef2f2' : 'transparent'; });
+      inUp(call, eo(S(lt, 6.4, 7)), 10);
+      const r = srs[2].getBoundingClientRect(), st = stage.getBoundingClientRect();
+      runCursor([{ t: 4.5, x: 1600, y: 950 }, { t: 5.8, x: r.left - st.left + 120, y: r.top - st.top + r.height / 2, click: 1 }, { t: 12, x: r.left - st.left + 120, y: r.top - st.top + r.height / 2 }], lt, a);
+    };
+  });
+
+/* 5 · Cierre (37 – 41) */
+scene('s5', 37, 41, `
+  <div class="out-wrap"></div>
+  <div class="out-copy">
+    <h1>Listo. <span class="grad" style="background-image:linear-gradient(92deg,#0a4da0,#12a6f4)">Sabés dónde estás.</span></h1><p style="margin-top:26px;font-size:34px;color:var(--muted);font-weight:500;text-align:center">Y dónde actuar para llegar<br>a tus objetivos.</p>
+  </div>
+  <div class="out-foot"><div class="logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div></div>`,
+  (node) => {
+    const h = node.querySelector('h1'), pp = node.querySelector('.out-copy p'), f = node.querySelector('.out-foot');
+    return (lt) => { inUp(h, eo(S(lt, .1, .7)), 30); inUp(pp, eo(S(lt, .3, .9)), 20); inUp(f, eo(S(lt, .6, 1.2)), 14); };
+  });
+
+/* ==========================================================================
+      MOTOR — window.__seek(t) deja el DOM en el estado exacto del segundo t
+   ========================================================================= */
+window.__DURATION = DUR;
+window.__seek = function (t) {
+  cursorUsed = false;
+  for (const s of SCENES) {
+    const ai = s.start <= 0 ? 1 : eo(S(t, s.start - LEAD, s.start + .04));
+    const ao = s.end >= DUR ? 1 : 1 - eo(S(t, s.end - LEAD, s.end + .04));
+    const a = Math.min(ai, ao);
+    if (a <= .002) { s.node.style.display = 'none'; continue; }
+    s.node.style.display = 'block';
+    s.node.style.opacity = a;
+    s.node.style.transform = `translateY(${(1 - ai) * 20 - (1 - ao) * 12}px) scale(${lerp(.995, 1, ai)})`;
+    s.draw(Math.max(0, (t - s.start) / SPEED), a);
+  }
+  if (!cursorUsed) { cursorEl.style.opacity = 0; ringEl.style.opacity = 0; }
+};
+window.__seek(0);
+window.__ready = true;
