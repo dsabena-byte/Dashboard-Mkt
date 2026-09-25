@@ -648,6 +648,7 @@ reporte_existencia/cb_homologos).
 - **Videos "Armá tu Mapa Estratégico" (`marketing/video-objetivos/`, 35s) y "Cargá tus metas" (`marketing/video-metas/`,
   39s), sep-2026:** separados a pedido del user (el mapa por un lado, las metas por otro). Ritmo ÁGIL (la v1 de 78s fue
   "lentísima": en estos videos, escenas de 4-12s). El del mapa muestra agregar objetivo → agregar PLAN → agregar KPIs.
+- **Video "Tu mercado" (`marketing/video-mercado/`, 45s, sep-2026):** competencia (sugeridos → tildar), sus redes/sitios, categorías y retailers → guardar → resultado. En BIP en `/mercado` + mail `activar_mercado`.
 - **Video "Seguimiento de objetivos" (`marketing/video-seguimiento/`, 41s):** qué tiene que estar cargado antes → cómo se
   arma → cómo se lee. En BIP en /overview. Las metas del video de metas se cargan **de enero a diciembre** (pedido del user).
 - **Videos en BIP (momentos de verdad):** se copian a `bip-platform/public/videos/<id>.mp4` + `<id>-poster.jpg` y se
