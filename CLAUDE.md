@@ -654,6 +654,11 @@ reporte_existencia/cb_homologos).
   muestran con `components/video-guide.tsx` (`VIDEOS`); el de primeros pasos está en Fuentes de datos, `/empezar`
   (Conectar) y el mail de bienvenida (miniatura → `/video/primeros-pasos`, pública). Regla del user: **video en
   cada momento de verdad de los primeros minutos**.
+- **Mails del recorrido con video (BIP, sep-2026):** si falta un paso de configuración, el mail del CRM lleva la
+  miniatura del video (▶ → `/video/<id>`, pública): `activar_conexion` (sin fuentes, 1+ día) → primeros-pasos ·
+  `activar_mapa` → objetivos · `activar_metas` → metas · `sumar_fuente` → planillas · `inactivo_7d` (con mapa y
+  metas) → seguimiento. Catálogo único en `bip-platform/lib/videos.ts`; `journeyHtml(lines, cta, video)` arma todos los
+  mails con el tono (saludo, gracias, un botón, cierre cálido + info@roque-in.com).
 - **TONO de toda comunicación al cliente de BIP (mails, pantallas; pedido del user sep-2026):** minimalista, cálida,
   que empuje a avanzar. Siempre **saludar, agradecer, UN paso claro, cerrar con un mensaje lindo** (cliente
   "mimado", acompañado, foco en mejorar su negocio). Nada de listas largas ni de "lo que no hacemos"; el detalle va
