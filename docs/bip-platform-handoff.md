@@ -1314,3 +1314,20 @@ presupuesto**, **Research** (Salud de Marca + Share de mercado por planilla), **
 **0028–0031**. Config pendiente: Search Console (API + scope `webmasters.readonly` en Google Cloud y Nango,
 clientes reconectan Google), `RESEND_API_KEY`/`NOTIFY_FROM`, `APIFY_ACTOR_AD_LIBRARY` opcional.
 Pendiente: alinear landing (`bip.html`) con los planes nuevos. Nada probado con APIs reales.
+
+## Finanzas de BIP (CRM → Finanzas, solo staff) — sep-2026
+- **Qué es:** tablero de viabilidad económico-financiera en `/consultor/finanzas` (iframe `srcDoc`, alto por
+  `postMessage` + ping al montar) + Excel descargable `/api/staff/modelo-financiero`. 3 caminos: **A Consultivo**
+  (socio vende los primeros meses), **B Digital** (pauta), **C Autofinanciado** (consultivo + reinversión de un % de la
+  ganancia en pauta, solo si LTV/CAC digital ≥ umbral). Unipersonal: IIBB Córdoba 4,75%, Ganancias persona humana
+  (escala art. 94, anual), autónomos.
+- **Fuentes en `bip-platform/scripts/finanzas/`** (README): `model.js` (motor, espejo del Excel; `node parity.js`),
+  `ui.js`, `know.js` (🎓 + glosario), `head.html`/`body.html`, `build.py` (Excel con fórmulas), `gen.py` (genera
+  `lib/finanzas/*.ts`). Los `.ts` son salida: NO editarlos a mano. Artifact espejo: `UH1XF6Ze41ixgHsq5PGkPi`.
+- **Reglas del user:** (1) orden de lo general a lo particular (Resumen → Cómo funciona → Sensibles → Ajustá →
+  Cómo definirlas/punto óptimo → Detalle → Plan → Riesgos → Glosario); (2) **ningún análisis fijo**: todo texto con
+  números/conclusiones se recalcula con los supuestos; (3) paleta sobria (color de camino solo en puntos/líneas, verde
+  solo "mejor"); (4) 🎓 en cada indicador + "Cómo leer" + glosario; (5) sin barra de scroll propia.
+- **Modelo de demanda (supuestos, no medidos):** alcance del servicio por plan (IA/competencia/SEO → costo y valor
+  percibido), ventas = exp(−s·(precio rel./valor − 1)), churn × precio^η × valor^−k, esfuerzo comercial por plan.
+  El óptimo depende sobre todo de la sensibilidad al precio → recomendación: medirla con pruebas de precio.
