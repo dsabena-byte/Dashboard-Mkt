@@ -2,10 +2,10 @@
    Video "Primeros pasos en BIP" — el primer momento de verdad del cliente.
    Mismo motor que marketing/video-demo (animación determinística: todo el estado
    sale de window.__seek(t)). Acá los tiempos están escritos en SEGUNDOS REALES.
-   Contenido alineado al producto: lib/access-requirements.ts (accesos por fuente),
-   /empezar (marca → modelo de impacto → conectar → "Tus próximos pasos") y /ayuda.
+   Para quien ya creó su cuenta: sign in → marca → modelo de impacto → accesos → conexión
+   Meta/Google (réplica de las pantallas reales) → tableros. Espejo de lib/access-requirements.ts.
    ========================================================================= */
-const DUR = 63.0;
+const DUR = 108.0;
 const BASE = DUR;
 const SPEED = DUR / BASE;    // 1: los tiempos de este archivo son segundos reales
 const LEAD = 0.34;           // solape del cross-fade entre escenas
@@ -104,7 +104,7 @@ function leadIn(node, lt) {
 /* =========================================================================
    1 · Intro (0 – 4.5)
    ========================================================================= */
-scene('s1', 0, 4.5, `
+scene('s1', 0, 4, `
   <div class="dark" style="position:absolute;inset:0"></div>
   <div class="hero-glow"></div>
   <div class="logo on-dark intro-logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div>
@@ -123,138 +123,238 @@ scene('s1', 0, 4.5, `
   });
 
 /* =========================================================================
-   2 · Antes de empezar: los accesos (4.5 – 14)
+   2 · Entrá a BIP (4 – 10)
+   ========================================================================= */
+scene('s2', 4, 10, `
+  ${lead('Paso 1', 'Entrá a BIP', 'Con el email y la contraseña con los que creaste tu cuenta, o con Google.')}
+  <div class="pp-card" style="height:560px">
+    <h3>Ingresá a BIP</h3>
+    <div class="sub">Business Impact Platform</div>
+    <div class="gbtn" style="${A(120)}"><b style="color:#4285f4">G</b> Continuar con Google</div>
+    <div style="${A(206, 'text-align:center;font-size:18px;color:var(--muted);font-weight:600')}">o con tu email</div>
+    <div class="fin" id="f1" style="${A(250)}"><span id="t1"></span><i class="caret" id="c1"></i></div>
+    <div class="fin" id="f2" style="${A(336)}"><span id="t2" style="letter-spacing:.2em"></span><i class="caret" id="c2"></i></div>
+    <div class="pbtn" style="${A(440, 'margin:0')}" id="cta">Ingresar</div>
+  </div>`,
+  (node) => {
+    const card = node.querySelector('.pp-card');
+    const t1 = node.querySelector('#t1'), t2 = node.querySelector('#t2'), c1 = node.querySelector('#c1'), c2 = node.querySelector('#c2');
+    const f1 = node.querySelector('#f1'), f2 = node.querySelector('#f2'), cta = node.querySelector('#cta');
+    const K = [{ t: .5, x: 1500, y: 760 }, { t: 1.0, x: 1100, y: CY + 283, click: 1 }, { t: 2.3, x: 1100, y: CY + 283 }, { t: 2.6, x: 1100, y: CY + 369, click: 1 }, { t: 3.6, x: 1100, y: CY + 369 }, { t: 4.1, x: 1254, y: CY + 475, click: 1 }, { t: 6, x: 1254, y: CY + 475 }];
+    return (lt, a) => {
+      leadIn(node, lt); inUp(card, eo(S(lt, .1, .7)), 30);
+      t1.textContent = typed('laura@aurora.com.ar', S(lt, 1.05, 2.2)) || 'Email';
+      t1.style.color = S(lt, 1.05, 2.2) > 0 ? 'var(--ink)' : '#94a3b8';
+      t2.textContent = typed('••••••••', S(lt, 2.7, 3.5)) || '';
+      f1.classList.toggle('act', lt > 1 && lt < 2.6); f2.classList.toggle('act', lt > 2.6 && lt < 4.1);
+      c1.style.opacity = lt > 1 && lt < 2.6 ? 1 : 0; c2.style.opacity = lt > 2.6 && lt < 4.1 ? 1 : 0;
+      cta.style.filter = lt > 4.05 && lt < 4.3 ? 'brightness(1.2)' : 'none';
+      runCursor(K, lt, a);
+    };
+  });
+
+/* =========================================================================
+   3 · Contanos de tu marca (10 – 17) — réplica de /empezar paso 2
+   ========================================================================= */
+const SECTORES = ['Electrodomésticos', 'Indumentaria y moda', 'Alimentos y bebidas', 'Belleza y cuidado personal', 'Retail / comercio', 'Tecnología y electrónica', 'Automotriz', 'Salud y farma', 'Servicios financieros', 'Turismo y hotelería', 'Educación', 'Hogar y construcción', 'Entretenimiento y medios', 'Bienes de consumo (CPG)', 'Otro'];
+scene('s3', 10, 17, `
+  ${lead('Paso 2', 'Contanos de<br>tu marca', 'El nombre de la marca que vas a medir y su sector. Con esto armamos tu espacio, y lo podés cambiar cuando quieras.')}
+  <div class="pp-card" style="height:660px">
+    <h3>Contanos de tu marca</h3>
+    <div class="sub">Con esto armamos tu espacio. Lo podés cambiar cuando quieras.</div>
+    <div class="fl" style="${A(120, 'margin:0')}">Nombre de la marca</div>
+    <div class="fin" id="b1" style="${A(150)}"><span id="bt"></span><i class="caret" id="bc"></i></div>
+    <div class="fl" style="${A(232, 'margin:0')}">Sector</div>
+    <div style="${A(264, 'display:flex;flex-wrap:wrap;gap:10px')}">${SECTORES.map(x => `<span class="chip" style="border:1.5px solid var(--line);border-radius:999px;padding:9px 16px;font-size:18px;font-weight:600;color:#334155;background:#fff">${x}</span>`).join('')}</div>
+    <div class="pbtn" style="${A(560, 'margin:0')}" id="bcta">Continuar</div>
+  </div>`,
+  (node) => {
+    const card = node.querySelector('.pp-card'), bt = node.querySelector('#bt'), bc = node.querySelector('#bc'), b1 = node.querySelector('#b1');
+    const chips = [...node.querySelectorAll('.chip')], pick = chips[3], cta = node.querySelector('#bcta');
+    let px = 0, py = 0;
+    return (lt, a) => {
+      leadIn(node, lt); inUp(card, eo(S(lt, .1, .7)), 30);
+      if (!px) { const r = pick.getBoundingClientRect(), st = document.getElementById('stage').getBoundingClientRect(); px = r.left - st.left + r.width / 2; py = r.top - st.top + r.height / 2; }
+      bt.textContent = typed('Aurora Cosmética', S(lt, 1.1, 2.4));
+      b1.classList.toggle('act', lt > 1 && lt < 3.2); bc.style.opacity = lt > 1 && lt < 3.2 ? 1 : 0;
+      const on = lt > 3.6;
+      pick.style.background = on ? 'var(--pri-soft)' : '#fff'; pick.style.borderColor = on ? 'var(--pri)' : 'var(--line)'; pick.style.color = on ? 'var(--pri)' : '#334155';
+      cta.style.filter = lt > 5.0 && lt < 5.25 ? 'brightness(1.2)' : 'none';
+      runCursor([{ t: .5, x: 1500, y: 800 }, { t: 1.0, x: 1100, y: CY + 183, click: 1 }, { t: 2.8, x: 1100, y: CY + 183 }, { t: 3.6, x: px, y: py, click: 1 }, { t: 4.3, x: px, y: py }, { t: 5.0, x: 1254, y: CY + 595, click: 1 }, { t: 7, x: 1254, y: CY + 595 }], lt, a);
+    };
+  });
+
+/* =========================================================================
+   4 · Tu modelo de impacto (17 – 24) — réplica de /empezar paso 3
+   ========================================================================= */
+const OPTS = [
+  ['Redes Sociales', 'Qué contenido construye tu marca y cuál no.', 'Conectás: Facebook + Instagram'],
+  ['Publicidad', 'Cuánto rinde cada peso que invertís.', 'Conectás: Meta Ads y Google Ads'],
+  ['Web / Ecommerce', 'Cómo la atención se convierte en ventas.', 'Conectás: Google Analytics'],
+];
+scene('s4', 17, 24, `
+  ${lead('Paso 3', 'Elegí qué<br>querés medir', 'Marcás los planes con los que trabajás hoy. BIP te pide conectar solo lo necesario para eso.')}
+  <div class="pp-card" style="height:620px">
+    <h3>Construyamos tu modelo de impacto</h3>
+    <div class="sub">Marcá los planes con los que trabajás hoy.</div>
+    ${OPTS.map((o, i) => `<div class="opt" style="${A(120 + i * 150, 'margin:0')}"><div class="box">${CK}</div><div><b>${o[0]}</b><span>${o[1]}</span><em>${o[2]}</em></div></div>`).join('')}
+  </div>`,
+  (node) => {
+    const card = node.querySelector('.pp-card'), opts = [...node.querySelectorAll('.opt')];
+    const bx = CX + 38 + 24 + 17, by = i => CY + 120 + i * 150 + 40;
+    const K = [{ t: .8, x: 1500, y: 800 }, { t: 1.5, x: bx, y: by(0), click: 1 }, { t: 2.3, x: bx, y: by(0) }, { t: 2.9, x: bx, y: by(1), click: 1 }, { t: 3.7, x: bx, y: by(1) }, { t: 4.3, x: bx, y: by(2), click: 1 }, { t: 6, x: bx + 200, y: by(2) + 60 }];
+    return (lt, a) => {
+      leadIn(node, lt); inUp(card, eo(S(lt, .15, .8)), 30);
+      opts.forEach((o, i) => inUp(o, eo(S(lt, .4 + i * .2, 1 + i * .2)), 16));
+      opts[0].classList.toggle('on', lt > 1.5); opts[1].classList.toggle('on', lt > 2.9); opts[2].classList.toggle('on', lt > 4.3);
+      runCursor(K, lt, a);
+    };
+  });
+
+/* =========================================================================
+   5 · Antes de conectar: qué necesitás (24 – 35) — mismo texto que lib/access-requirements.ts (BIP)
    ========================================================================= */
 const REQS = [
-  ['Meta · Facebook y Meta Ads', 'Acceso a tu Página (“Analizar”) y a tu cuenta publicitaria (“Analista”) en el Business Manager.'],
-  ['Instagram', 'Cuenta profesional (Empresa o Creador) vinculada a tu Página de Facebook.'],
-  ['Google Analytics (GA4)', 'Rol “Lector” en la propiedad de tu sitio.'],
-  ['Google Ads', 'Acceso de “Solo lectura” a tu cuenta.'],
-  ['Planillas', 'Ventas, share, presupuesto o pauta offline: Excel, Google Sheets o SharePoint.'],
+  ['Facebook e Instagram', 'Tu usuario de Facebook tiene que tener acceso a la Página de la marca que querés medir, en el Business Manager, como mínimo con permiso para ver estadísticas (tarea “Analizar”). Si sos Administrador de esa Página, ya lo tenés. El Instagram de esa marca tiene que ser una cuenta profesional, vinculada a esa Página.'],
+  ['Meta Ads', 'El mismo usuario de Facebook, con acceso a la cuenta publicitaria de esa marca: como mínimo rol “Analista”. Si sos Anunciante o Administrador, ya lo tenés.'],
+  ['Google Analytics', 'Tu usuario de Google, con acceso a la propiedad GA4 del sitio de esa marca: como mínimo rol “Lector”.'],
+  ['Google Ads', 'El mismo usuario de Google, con acceso a la cuenta de Google Ads de esa marca: como mínimo “Solo lectura”.'],
 ];
-scene('s2', 4.5, 14, `
-  ${lead('Paso 1 · Antes de empezar', 'Tené a mano<br>tus accesos', 'Es lo que hace que todo conecte a la primera. Todo es de solo lectura: BIP nunca publica, edita ni gasta en tus cuentas.')}
-  <div class="pp-card" style="top:120px">
-    <h3>Qué acceso necesitás en cada fuente</h3>
+scene('s5', 24, 35, `
+  ${lead('Paso 4 · Antes de conectar', 'Revisá tus<br>accesos', 'La persona que conecte entra con su propio usuario de Facebook y de Google. Estos son los accesos que tiene que tener.')}
+  <div class="pp-card" style="top:110px">
+    <h3>Antes de conectar: qué necesitás</h3>
     ${REQS.map(r => `<div class="req"><div class="ck">${CK}</div><div><b>${r[0]}</b><span>${r[1]}</span></div></div>`).join('')}
-    <div class="note">¿Te falta alguno? BIP te da el mensaje listo para pedírselo a quien administra la cuenta.</div>
+    <div class="note">Si te falta alguno, pedíselo a quien administra la cuenta: BIP te da el mensaje listo para copiar.</div>
   </div>`,
   (node) => {
     const card = node.querySelector('.pp-card'), reqs = [...node.querySelectorAll('.req')], note = node.querySelector('.note');
     return (lt) => {
       leadIn(node, lt);
       inUp(card, eo(S(lt, .2, .9)), 30);
-      reqs.forEach((r, i) => { inUp(r, eo(S(lt, .6 + i * .55, 1.1 + i * .55)), 16); r.classList.toggle('on', lt > 1.3 + i * .55); });
-      inUp(note, eo(S(lt, 4.4, 5.0)), 14);
+      reqs.forEach((r, i) => { inUp(r, eo(S(lt, .6 + i * 1.6, 1.2 + i * 1.6)), 16); r.classList.toggle('on', lt > 1.6 + i * 1.6); });
+      inUp(note, eo(S(lt, 7.4, 8.0)), 14);
     };
   });
 
-/* =========================================================================
-   3 · Creá tu cuenta (14 – 21)
-   ========================================================================= */
-scene('s3', 14, 21, `
-  ${lead('Paso 2', 'Creá tu cuenta', 'Con tu email o con Google, en un minuto. Te llega un mail de bienvenida con los accesos que vas a necesitar.')}
-  <div class="pp-card" style="height:660px">
-    <h3>Creá tu cuenta</h3>
-    <div class="sub">Datos de tu marca y tus fuentes, siempre tuyos.</div>
-    <div class="gbtn" style="${A(130)}"><b style="color:#4285f4">G</b> Continuar con Google</div>
-    <div style="${A(218, 'text-align:center;font-size:18px;color:var(--muted);font-weight:600')}">o con tu email</div>
-    <div class="fl" style="${A(250, 'margin:0')}">Nombre</div>
-    <div class="fin" id="f1" style="${A(282)}"><span id="t1"></span><i class="caret" id="c1"></i></div>
-    <div class="fl" style="${A(368, 'margin:0')}">Email</div>
-    <div class="fin" id="f2" style="${A(400)}"><span id="t2"></span><i class="caret" id="c2"></i></div>
-    <div class="pbtn" style="${A(500, 'margin:0')}" id="cta">Crear cuenta</div>
-    <div style="${A(590, 'font-size:18px;color:var(--muted);font-weight:500;text-align:center')}">Al crearla te llega el mail “Qué necesitás para conectar tus datos”.</div>
-  </div>`,
-  (node) => {
-    const card = node.querySelector('.pp-card');
-    const t1 = node.querySelector('#t1'), t2 = node.querySelector('#t2'), c1 = node.querySelector('#c1'), c2 = node.querySelector('#c2');
-    const f1 = node.querySelector('#f1'), f2 = node.querySelector('#f2'), cta = node.querySelector('#cta');
-    const K = [{ t: .6, x: 1500, y: 700 }, { t: 1.2, x: 1100, y: CY + 315, click: 1 }, { t: 2.7, x: 1100, y: CY + 315 }, { t: 3.1, x: 1100, y: CY + 433, click: 1 }, { t: 5.0, x: 1100, y: CY + 433 }, { t: 5.5, x: 1254, y: CY + 535, click: 1 }, { t: 7, x: 1254, y: CY + 535 }];
+/* ---------------------------- ventanas (réplicas de las pantallas reales) ---------------------------- */
+const FBI = '<svg viewBox="0 0 24 24" width="42" height="42"><rect width="24" height="24" rx="3" fill="#1877f2"/><path d="M16.5 24v-9h3l.5-3.5h-3.5V9.3c0-1 .3-1.7 1.8-1.7h1.9V4.5c-.3 0-1.4-.1-2.7-.1-2.7 0-4.5 1.6-4.5 4.6v2.5h-3V15h3v9z" fill="#fff"/></svg>';
+const GI = (sz = 44) => `<span style="font-size:${sz}px;font-weight:700;font-family:Arial,sans-serif;background:conic-gradient(from -45deg,#ea4335 0 25%,#4285f4 0 50%,#34a853 0 75%,#fbbc05 0);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1">G</span>`;
+const ng = (icon, title, text, btn, ok) => `<div class="ng"><div class="x">×</div><div class="ic">${icon}${ok ? `<span class="ok">${CK}</span>` : ''}</div><h6>${title}</h6><p>${text}</p><div class="cb">${btn}</div><div class="ft">Secured by <b style="color:#111827">nango</b></div></div>`;
+const winFB = (prog, inner, next) => `<div class="win"><div class="tb"><span style="color:#1877f2;font-weight:700">f</span> Inicio de sesión con Facebook para empresas - Google Chrome<div class="dots">—&nbsp;☐&nbsp;✕</div></div><div class="ub">facebook.com/v22.0/dialog/oauth?response_type=code&amp;client_id=…</div><div class="fbh"><span class="inf">∞</span><span style="color:#65676b;font-size:20px">⇄</span><span class="bipb">BIP▸</span><span class="av"></span></div><div class="fbp"><i style="width:${prog}%"></i></div><div class="fbc">${inner}</div>${next ? `<div class="fbfoot"><div class="lg">Política de privacidad y Condiciones del servicio de BIP Connector</div><div class="fbb g">Atrás</div><div class="fbb b go">${next}</div></div>` : ''}</div>`;
+const fbChoose = (what) => `<h5>Elige los ${what} a los que quieres que acceda BIP Connector</h5><div class="s">Más tarde podrás revisar lo que BIP Connector podrá hacer con los ${what} que selecciones.</div><div class="rad"><i class="on"></i><div><b>Activar todos los ${what} actuales y futuros</b><span>Se dará acceso a BIP Connector a tus ${what} actuales y a ${what} que crees en el futuro.</span></div></div><div class="rad"><i></i><div><b>Activar solo los ${what} actuales</b><span>Se dará acceso a BIP Connector solo a los ${what} que selecciones.</span></div></div>`;
+const PERMS = [['Acceder a las estadísticas de tu página y app', ''], ['Acceder a tus anuncios de Facebook y estadísticas relacionadas', ''], ['Administrar tu negocio', 'Se activaron todos los activos (Negocios) actuales y futuros'], ['Acceder al perfil y las publicaciones desde la cuenta de Instagram seleccionada', 'Se activaron todos los activos (Cuentas de Instagram) actuales y futuros'], ['Administrar los comentarios de la cuenta de Instagram seleccionada', 'Se activaron todos los activos (Cuentas de Instagram) actuales y futuros'], ['Acceder a las estadísticas de la cuenta de Instagram', 'Se activaron todos los activos (Cuentas de Instagram) actuales y futuros'], ['Leer el contenido publicado en la página', 'Se activaron todos los activos (Páginas) actuales y futuros']];
+const winG = (inner, btns) => `<div class="win gw"><div class="tb">${GI(18)} Inicia sesión: Cuentas de Google - Google Chrome<div class="dots">—&nbsp;☐&nbsp;✕</div></div><div class="ub">accounts.google.com/v3/signin/…</div><div class="gh">${GI(20)} Iniciar sesión con Google</div><div class="gc">${inner}</div>${btns || ''}</div>`;
+
+/* Escena "flujo": una secuencia de pantallas con cursor que toca el botón de cada una. */
+function flowScene(id, start, end, leadH, screens, wrap = '') {
+  const html = `${leadH}<div class="popwrap" style="${wrap}">${screens.map(sc => `<div class="scr">${sc.html}</div>`).join('')}${wrap ? '' : '<div class="cap"><span></span></div>'}</div>`;
+  return scene(id, start, end, html, (node) => {
+    const scrs = [...node.querySelectorAll('.scr')], capw = node.querySelector('.cap'), cap = capw && capw.querySelector('span');
+    const pos = [];
+    const at = (el) => { const r = el.getBoundingClientRect(), st = stage.getBoundingClientRect(); return { x: r.left - st.left + r.width / 2, y: r.top - st.top + r.height / 2 }; };
     return (lt, a) => {
-      leadIn(node, lt); inUp(card, eo(S(lt, .15, .8)), 30);
-      t1.textContent = typed('Laura Gómez', S(lt, 1.3, 2.5));
-      t2.textContent = typed('laura@aurora.com.ar', S(lt, 3.2, 4.8));
-      f1.classList.toggle('act', lt > 1.2 && lt < 3.1); f2.classList.toggle('act', lt > 3.1 && lt < 5.5);
-      c1.style.opacity = lt > 1.2 && lt < 3.1 ? 1 : 0; c2.style.opacity = lt > 3.1 && lt < 5.5 ? 1 : 0;
-      cta.style.filter = lt > 5.45 && lt < 5.7 ? 'brightness(1.2)' : 'none';
-      runCursor(K, lt, a);
+      leadIn(node, lt);
+      let cur = screens.findIndex(sc => lt >= sc.t0 && lt < sc.t1);
+      if (cur < 0) cur = lt < screens[0].t0 ? 0 : screens.length - 1;
+      scrs.forEach((el, k) => { el.style.display = k === cur ? 'block' : 'none'; });
+      const sc = screens[cur];
+      const p = cur === 0 ? eo(S(lt, .15, .6)) : eo(S(lt, sc.t0, sc.t0 + .3));
+      scrs[cur].style.opacity = p; scrs[cur].style.transform = `translateY(${(1 - p) * 14}px)`;
+      if (cap) { cap.textContent = sc.cap || ''; capw.style.opacity = sc.cap ? eo(S(lt, sc.t0 + .2, sc.t0 + .6)) : 0; }
+      if (sc.click) {
+        const btn = scrs[cur].querySelector(sc.click);
+        if (!pos[cur] && lt > sc.t0 + .45) pos[cur] = at(btn);
+        const q = pos[cur], prev = pos[cur - 1] || (q ? { x: q.x + 180, y: q.y + 150 } : null);
+        if (q) runCursor([{ t: sc.t0 + .45, x: prev.x, y: prev.y }, { t: sc.at, x: q.x, y: q.y, click: 1 }, { t: sc.t1, x: q.x, y: q.y }], lt, a);
+        btn.style.filter = lt > sc.at - .04 && lt < sc.at + .22 ? 'brightness(1.15)' : 'none';
+      }
     };
   });
+}
+
+/* Tarjeta de /empezar paso 4 (réplica): lista de pasos + contenido del paso actual */
+const PASOS = ['Conectar Facebook', 'Elegir tu Facebook e Instagram', 'Elegir cuenta de Meta Ads', 'Conectar Google', 'Elegir tu sitio (GA4)', 'Elegir cuenta de Google Ads'];
+const connectCard = (cur, h, p, body) => `<div class="pp-card" style="height:640px">
+  <div style="position:absolute;left:38px;top:44px;width:330px">${PASOS.map((x, k) => `<div class="seq ${k < cur ? 'done' : k === cur ? 'cur' : ''}" style="font-size:20px;padding:13px 2px"><i>${k < cur ? CK : k + 1}</i>${x}</div>`).join('')}</div>
+  <div style="position:absolute;left:410px;right:38px;top:44px;border-left:1px solid var(--line);padding-left:36px">
+    <div style="font-size:18px;color:var(--muted);font-weight:600">Redes Sociales · Publicidad · Web / Ecommerce</div>
+    <h3 style="margin-top:18px;font-size:34px">${h}</h3>
+    <p style="margin-top:14px;font-size:21px;line-height:1.5;color:#334155">${p}</p>
+    ${body}
+    <div style="margin-top:22px;font-size:19px;color:var(--pri);font-weight:600">▸ ¿No tenés acceso? Te decimos cómo pedirlo</div>
+    <div style="margin-top:14px;font-size:19px;color:var(--muted);font-weight:600">Lo hago después</div>
+  </div></div>`;
+const pick = (val, btn) => `<div style="display:flex;gap:14px;margin-top:24px"><div class="sel">${val}<span style="margin-left:auto">▾</span></div><div class="go" style="height:58px;padding:0 26px;border-radius:12px;background:var(--pri);color:#fff;display:flex;align-items:center;font-size:21px;font-weight:700">${btn}</div></div>`;
+const primary = (label) => `<div class="go" style="margin-top:26px;display:inline-flex;height:66px;padding:0 34px;border-radius:13px;background:var(--pri);color:#fff;align-items:center;font-size:23px;font-weight:700;box-shadow:0 10px 24px rgba(10,77,160,.28)">${label}</div>`;
+const FULL = 'left:0;top:0;width:1920px;height:1080px';
 
 /* =========================================================================
-   4 · Elegí qué querés ver (21 – 28)
+   6 · Conectá tu Facebook (35 – 40)
    ========================================================================= */
-const OPTS = [
-  ['Redes Sociales', 'Alcance, engagement y sentimiento de tus comentarios.', 'Conectás: Facebook + Instagram'],
-  ['Publicidad', 'Inversión, alcance, frecuencia y eficiencia por medio.', 'Conectás: Meta Ads o Google Ads'],
-  ['Web / Ecommerce', 'Tráfico, conversión y ventas de tu sitio.', 'Conectás: Google Analytics'],
-];
-scene('s4', 21, 28, `
-  ${lead('Paso 3', 'Elegí qué<br>querés medir', 'Tu marca, tu sector y tu modelo de impacto. BIP te pide conectar solo lo que hace falta para eso.')}
-  <div class="pp-card" style="height:620px">
-    <h3>Construyamos tu modelo de impacto</h3>
-    <div class="sub">Podés elegir más de uno.</div>
-    ${OPTS.map((o, i) => `<div class="opt" style="${A(120 + i * 150, 'margin:0')}"><div class="box">${CK}</div><div><b>${o[0]}</b><span>${o[1]}</span><em>${o[2]}</em></div></div>`).join('')}
-    <div class="pbtn" style="${A(578, 'margin:0;height:0;opacity:0')}"></div>
-  </div>`,
-  (node) => {
-    const card = node.querySelector('.pp-card'), opts = [...node.querySelectorAll('.opt')];
-    const bx = CX + 38 + 24 + 17, by = i => CY + 120 + i * 150 + 40;
-    const K = [{ t: .8, x: 1500, y: 800 }, { t: 1.6, x: bx, y: by(0), click: 1 }, { t: 2.6, x: bx, y: by(0) }, { t: 3.2, x: bx, y: by(1), click: 1 }, { t: 5, x: bx + 200, y: by(1) + 60 }];
-    return (lt, a) => {
-      leadIn(node, lt); inUp(card, eo(S(lt, .15, .8)), 30);
-      opts.forEach((o, i) => inUp(o, eo(S(lt, .4 + i * .2, 1 + i * .2)), 16));
-      opts[0].classList.toggle('on', lt > 1.6); opts[1].classList.toggle('on', lt > 3.2);
-      runCursor(K, lt, a);
-    };
-  });
+flowScene('s6', 35, 40, lead('Paso 5', 'Conectá tus<br>fuentes', 'Un paso a la vez: primero Facebook y después Google. Si tenés una sola cuenta, BIP la elige sola.'), [
+  { t0: 0, t1: 5, at: 2.8, click: '.go', html: connectCard(0, 'Conectá tu Facebook', 'Entrá con el usuario de Facebook con el que manejás la Página y los anuncios de la marca que querés medir. BIP solo lee tus datos para mostrártelos en tus tableros.', primary('Continuar con Facebook')) },
+], FULL);
 
 /* =========================================================================
-   5 · Conectá en una sola secuencia (28 – 38)
+   7 · Ventanas de Meta (40 – 61)
    ========================================================================= */
-const SEQ = ['Conectar Facebook (una sola vez)', 'Elegir tu Página e Instagram', 'Elegir tu cuenta publicitaria', 'Conectar Google Ads'];
-scene('s5', 28, 38, `
-  ${lead('Paso 4', 'Conectá tus<br>fuentes', 'Facebook una sola vez. Si tenés una sola Página o cuenta, BIP la elige sola. Todo en unos 5 minutos.')}
-  <div class="pp-card" style="height:620px">
-    <h3>Conectá tus datos</h3>
-    <div class="sub">Redes Sociales · Publicidad</div>
-    <div style="${A(120, 'right:540px')}">${SEQ.map(s => `<div class="seq"><i>${CK}</i>${s}</div>`).join('')}</div>
-    <div class="fb" style="top:120px">
-      <div class="hd">Facebook Login for Business</div>
-      <div class="it"><div class="cb">${CK}</div><div>Aurora Cosmética<small>Página de Facebook</small></div></div>
-      <div class="it"><div class="cb">${CK}</div><div>@auroracosmetica<small>Instagram profesional vinculado</small></div></div>
-      <div class="it"><div class="cb">${CK}</div><div>Aurora · Ads<small>Cuenta publicitaria</small></div></div>
-      <div class="ok">Guardar</div>
-    </div>
-    <div class="note" style="${A(520, 'margin:0')}">Solo lectura. Podés desconectar y borrar tus datos cuando quieras.</div>
-  </div>`,
-  (node) => {
-    const card = node.querySelector('.pp-card'), seq = [...node.querySelectorAll('.seq')], fb = node.querySelector('.fb'), note = node.querySelector('.note');
-    const items = [...fb.querySelectorAll('.it')];
-    const DONE = [2.6, 4.6, 6.0, 7.4];
-    const okx = CX + 1068 - 38 - 235, oky = CY + 457;
-    const K = [{ t: 1.2, x: 1400, y: 820 }, { t: 3.6, x: okx, y: oky - 40 }, { t: 4.3, x: okx, y: oky, click: 1 }, { t: 6, x: okx, y: oky }];
-    return (lt, a) => {
-      leadIn(node, lt); inUp(card, eo(S(lt, .15, .8)), 30);
-      seq.forEach((s, i) => {
-        const prev = i === 0 ? .6 : DONE[i - 1];
-        s.classList.toggle('done', lt > DONE[i]); s.classList.toggle('cur', lt > prev && lt <= DONE[i]);
-      });
-      inUp(fb, eo(S(lt, 2.7, 3.2)) * (1 - eo(S(lt, 4.5, 4.9))), 20);
-      items.forEach((it, i) => inUp(it, eo(S(lt, 3.0 + i * .2, 3.4 + i * .2)), 8));
-      inUp(note, eo(S(lt, 7.8, 8.4)), 14);
-      runCursor(K, lt, a * (1 - S(lt, 5, 5.4)));
-    };
-  });
+flowScene('s7', 40, 61, lead('Paso 5 · Facebook', 'La ventana oficial<br>de Facebook', 'Es la pantalla de Meta. Elegís el negocio, la Página y el Instagram de la marca, revisás y guardás. Son un par de clics.'), [
+  { t0: 0, t1: 2.8, at: 2.0, click: '.cb', cap: 'Tocá “Conectar”: se abre la ventana de Facebook', html: ng(FBI, 'Vincular cuenta de Facebook', 'Te conectaremos a Facebook. Se abrirá una ventana emergente, asegúrate de que tu navegador no bloquee las ventanas emergentes', 'Conectar') },
+  { t0: 2.8, t1: 5.4, at: 4.7, click: '.b', cap: 'Entrás con tu usuario de Facebook', html: winFB(8, `<h5>¿Continuar como Laura Gómez?</h5><div class="s">BIP Connector recibirá acceso a la información que elijas.</div><div class="fbbtns"><div class="fbb g">Editar configuración</div><div class="fbb b">Continuar</div></div><div class="s" style="margin-top:24px">¿No eres Laura Gómez? <span style="color:#1877f2">Iniciar sesión en otra cuenta</span></div>`) },
+  { t0: 5.4, t1: 8.0, at: 7.3, click: '.go', cap: 'Elegís el negocio de la marca', html: winFB(30, fbChoose('Negocios'), 'Continuar') },
+  { t0: 8.0, t1: 10.6, at: 9.9, click: '.go', cap: 'La Página de Facebook', html: winFB(50, fbChoose('Páginas'), 'Continuar') },
+  { t0: 10.6, t1: 13.2, at: 12.5, click: '.go', cap: 'Y su cuenta de Instagram', html: winFB(70, fbChoose('Cuentas de Instagram'), 'Continuar') },
+  { t0: 13.2, t1: 17.0, at: 16.3, click: '.go', cap: 'Revisás y tocás “Guardar”', html: winFB(90, `<h5>Revisa la solicitud de acceso de BIP Connector</h5>${PERMS.map(q => `<div class="perm"><b>${q[0]}</b>${q[1] ? `<span>${q[1]}</span>` : ''}</div>`).join('')}`, 'Guardar') },
+  { t0: 17.0, t1: 19.0, at: 18.4, click: '.go', cap: 'Listo: conectado', html: winFB(100, `<h5>Laura Gómez se conectó a BIP Connector</h5><div class="s">Para administrar esta conexión, <span style="color:#1877f2">ir a las integraciones comerciales</span></div>`, 'De acuerdo').replace('<div class="fbb g">Atrás</div>', '') },
+  { t0: 19.0, t1: 21, at: 20.3, click: '.cb', cap: 'Tocá “Finalizar”', html: ng(FBI, '¡Éxito!', 'Has configurado exitosamente tu integración con Facebook.', 'Finalizar', true) },
+]);
 
 /* =========================================================================
-   6 · Tus tableros, en minutos (38 – 46)
+   8 · Elegí qué medimos en Meta (61 – 68)
    ========================================================================= */
+flowScene('s8', 61, 68, lead('Paso 5 · Facebook', 'Elegí qué<br>medimos', 'La Página de la marca (su Instagram viene con ella) y la cuenta de anuncios. Si hay una sola, BIP la elige sola.'), [
+  { t0: 0, t1: 3.5, at: 2.6, click: '.go', html: connectCard(1, '¿Qué Facebook e Instagram medimos?', 'Elegí la Página de Facebook de tu marca. El Instagram vinculado a esa Página se suma con ella: con una sola elección quedan los dos.', pick('Aurora Cosmética', 'Usar esta')) },
+  { t0: 3.5, t1: 7, at: 6.0, click: '.go', html: connectCard(2, '¿Qué cuenta de anuncios analizamos?', 'Elegí la cuenta con la que hacés los anuncios de tu marca.', pick('Aurora · Ads', 'Usar esta')) },
+], FULL);
+
+/* =========================================================================
+   9 · Google (68 – 82)
+   ========================================================================= */
+flowScene('s9', 68, 82, lead('Paso 6 · Google', 'Y después,<br>Google', 'La ventana oficial de Google: elegís tu cuenta y confirmás. Con una sola conexión quedan Google Analytics y Google Ads.'), [
+  { t0: 0, t1: 3, at: 2.2, click: '.go', html: connectCard(3, 'Conectá tu cuenta de Google', 'Entrá con la cuenta de Google con la que ves las estadísticas de tu sitio (Google Analytics) y tus anuncios de Google. BIP solo lee tus datos para mostrártelos en tus tableros.', primary('Conectar con Google')) },
+  { t0: 3, t1: 5.6, at: 4.9, click: '.cb', html: `<div style="position:absolute;left:860px;top:96px;width:700px;height:860px">${ng(GI(), 'Vincular cuenta de Google', 'Te conectaremos a Google. Se abrirá una ventana emergente, asegúrate de que tu navegador no bloquee las ventanas emergentes', 'Conectar')}</div>` },
+  { t0: 5.6, t1: 8.4, at: 7.6, click: '.acc', html: `<div style="position:absolute;left:860px;top:96px;width:700px;height:860px">${winG(`<div style="font-family:var(--disp);font-weight:800;color:var(--ink);font-size:22px">BIP<span style="color:var(--cyan)">▸</span></div><h5 style="margin-top:20px">Selecciona una cuenta</h5><div style="margin-top:12px;font-size:18px;color:#0b57d0">Ir a BIP</div><div style="margin-top:26px"><div class="acc"><i>L</i><div><b>Laura Gómez</b><span>laura@aurora.com.ar</span></div></div><div class="acc"><i style="background:#94a3b8">+</i><div><b>Usar otra cuenta</b></div></div></div><div style="margin-top:28px;font-size:15px;color:#444746;line-height:1.5">Antes de usar esta aplicación, puedes leer la <span style="color:#0b57d0">Política de Privacidad</span> y los <span style="color:#0b57d0">Términos del Servicio</span> de BIP.</div>`)}</div>` },
+  { t0: 8.4, t1: 11.6, at: 10.9, click: '.gc2', html: `<div style="position:absolute;left:860px;top:96px;width:700px;height:860px">${winG(`<h5>BIP quiere acceder a tu cuenta de Google</h5><div style="margin-top:18px;display:flex;gap:10px;align-items:center;font-size:17px"><span style="width:28px;height:28px;border-radius:50%;background:#6d28d9;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px">L</span>laura@aurora.com.ar</div><div style="margin-top:34px;font-size:24px;color:#1f1f1f">Confirma que confías en BIP</div><div style="margin-top:14px;font-size:16px;color:#444746;line-height:1.6">Revisa la <span style="color:#0b57d0">Política de Privacidad</span> y los <span style="color:#0b57d0">Términos del Servicio</span> de BIP para saber cómo tratará y protegerá BIP tus datos.<br><br>Para hacer cambios en cualquier momento, ve a tu <span style="color:#0b57d0">cuenta de Google</span>.</div>`, `<div class="gbtns"><div>Cancelar</div><div class="gc2">Continuar</div></div>`)}</div>` },
+  { t0: 11.6, t1: 14, at: 13.1, click: '.cb', html: `<div style="position:absolute;left:860px;top:96px;width:700px;height:860px">${ng(GI(), '¡Éxito!', 'Has configurado exitosamente tu integración con Google.', 'Finalizar', true)}</div>` },
+], FULL);
+
+/* =========================================================================
+   10 · Elegí tu sitio y tu cuenta de Google Ads (82 – 89)
+   ========================================================================= */
+flowScene('s10', 82, 89, lead('Paso 6 · Google', 'Elegí tu sitio<br>y tu cuenta', 'La propiedad de Google Analytics de tu sitio y la cuenta de Google Ads de la marca.'), [
+  { t0: 0, t1: 3.5, at: 2.6, click: '.go', html: connectCard(4, '¿Qué sitio medimos?', 'Elegí la propiedad de Google Analytics de tu sitio. Si ves varias, es la de tu marca (no la de pruebas).', pick('Aurora · GA4', 'Usar este')) },
+  { t0: 3.5, t1: 7, at: 6.0, click: '.go', html: connectCard(5, '¿Qué cuenta de Google Ads analizamos?', 'Elegí la cuenta con la que hacés los anuncios de tu marca en Google.', pick('Aurora', 'Usar esta')) },
+], FULL);
+
+/* =========================================================================
+   11 · Listo, tus datos están conectados (89 – 95)
+   ========================================================================= */
+const HECHOS = [['Facebook', 'Aurora Cosmética'], ['Instagram', '@auroracosmetica'], ['Meta Ads', 'Aurora · Ads'], ['Google Analytics', 'Aurora · GA4'], ['Google Ads', 'Aurora']];
+flowScene('s11', 89, 95, lead('Listo', 'Tus datos,<br>conectados', 'Revisás que sean las cuentas correctas y vas directo a tus tableros.'), [
+  { t0: 0, t1: 6, at: 4.2, click: '.go', html: `<div class="pp-card" style="top:40px;height:1000px">
+    <h3>Listo, tus datos están conectados</h3><div class="sub">Revisá que sean las cuentas correctas:</div>
+    ${HECHOS.map(h => `<div class="req on" style="padding:11px 18px;margin-top:9px"><div class="ck" style="width:32px;height:32px;flex-basis:32px">${CK}</div><div><b style="font-size:20px">${h[0]}</b><span style="font-size:17px">${h[1]}</span></div></div>`).join('')}
+    <div class="fl" style="margin-top:18px">Tus tableros</div>
+    ${[['Redes Sociales', 'Métricas en minutos · el sentimiento de los comentarios, en unas horas.'], ['Publicidad', 'Inversión y campañas en minutos · las imágenes de las piezas, en unas horas.'], ['Web / Ecommerce', 'Tráfico, conversión y ventas en minutos.']].map(t => `<div class="req" style="padding:11px 18px;margin-top:9px;align-items:center"><div style="flex:1"><b style="font-size:20px">${t[0]}</b><span style="font-size:16px">${t[1]}</span></div><div style="border:2px solid var(--pri);color:var(--pri);border-radius:10px;padding:8px 16px;font-size:17px;font-weight:700">Ver tablero</div></div>`).join('')}
+    ${primary('Ver mis tableros →')}
+  </div>` },
+], FULL);
+
 const KP = [['Alcance', 184300, ''], ['Interacciones', 9420, ''], ['Inversión', 1.82, 'M'], ['Clicks', 3150, '']];
 const BARS = [38, 52, 47, 61, 58, 74, 69, 83];
-scene('s6', 38, 46, `
-  ${lead('Paso 5', 'Tus tableros,<br>en minutos', 'Las métricas aparecen enseguida. El análisis de los comentarios y las imágenes de las piezas, en unas horas. Después se actualiza solo.')}
+scene('s12', 95, 103, `
+  ${lead('Listo', 'Tus tableros,<br>en minutos', 'Las métricas aparecen enseguida y después se actualizan solas. Ya podés empezar a explorar.')}
   <div class="pp-card" style="height:640px">
     <h3>Tus tableros · Aurora</h3>
     <div class="sub">Últimos 30 días</div>
@@ -278,67 +378,12 @@ scene('s6', 38, 46, `
   });
 
 /* =========================================================================
-   7 · Tus próximos pasos (46 – 55)
+   10 · Cierre (64 – 68)
    ========================================================================= */
-const NX = [
-  ['Definí tu mercado', 'Competidores y categorías. El análisis tarda unas horas: arrancalo primero.', 'Optimize y Accelerate'],
-  ['Definí tus objetivos', 'Con una plantilla de tu sector, en 5 minutos.', ''],
-  ['Cargá tus metas', 'Y cada mes ves con semáforo si vas bien o mal.', ''],
-];
-scene('s7', 46, 55, `
-  ${lead('Paso 6', 'Lo que sigue', 'BIP te muestra tus próximos pasos. Así cada número de tus tableros se lee contra lo que querés lograr.')}
-  <div class="pp-card" style="height:640px">
-    <h3>Tus próximos pasos</h3>
-    <div class="sub">Te los recordamos en la plataforma y por mail.</div>
-    ${NX.map((x, i) => `<div class="nx"><div class="n">${i + 1}</div><div><b>${x[0]}</b><span>${x[1]}</span></div>${x[2] ? `<div class="tagp">${x[2]}</div>` : ''}</div>`).join('')}
-    <div class="sem">
-      <div><i style="background:var(--green)"></i>Alcance 104%</div>
-      <div><i style="background:var(--amber)"></i>Engagement 91%</div>
-      <div><i style="background:var(--red)"></i>Clicks 72%</div>
-    </div>
-  </div>`,
-  (node) => {
-    const card = node.querySelector('.pp-card'), nx = [...node.querySelectorAll('.nx')], nums = [...node.querySelectorAll('.nx .n')], sem = node.querySelector('.sem');
-    const DONE = [2.4, 3.8, 5.2];
-    return (lt) => {
-      leadIn(node, lt); inUp(card, eo(S(lt, .15, .8)), 30);
-      nx.forEach((x, i) => {
-        inUp(x, eo(S(lt, .5 + i * .3, 1.1 + i * .3)), 16);
-        const on = lt > DONE[i];
-        x.classList.toggle('on', on); nums[i].innerHTML = on ? CK : String(i + 1);
-      });
-      inUp(sem, eo(S(lt, 5.8, 6.5)), 14);
-    };
-  });
-
-/* =========================================================================
-   8 · Siempre a mano: Ayuda (55 – 59)
-   ========================================================================= */
-scene('s8', 55, 59, `
-  ${lead('Siempre a mano', 'Ayuda, cuando<br>la necesites', 'Tus primeros pasos, qué acceso pide cada fuente y cuándo se actualiza cada dato. Y un equipo que te acompaña.')}
-  <div class="side">
-    <div class="logo on-dark" style="transform:scale(.62);transform-origin:left top;margin-bottom:6px"><div class="bip">BIP<span class="tri"></span></div></div>
-    ${['Seguimiento', 'Plan de Medios', 'Redes Sociales', 'Web', 'Fuentes de datos', 'Ayuda'].map(x => `<div class="si ${x === 'Ayuda' ? 'on' : ''}">${x}</div>`).join('')}
-  </div>
-  <div class="help">
-    <h3 style="font-size:30px;font-weight:700">Ayuda</h3>
-    ${[['Tus primeros pasos', '4 de 6 hechos'], ['Qué acceso necesitás en cada fuente', 'Meta, Google y planillas'], ['Cuándo se actualiza cada dato', 'Publicidad 2 veces por día · Redes cada 12 h'], ['¿Necesitás una mano?', 'info@roque-in.com']].map(h => `<div class="req on"><div class="ck">${CK}</div><div><b>${h[0]}</b><span>${h[1]}</span></div></div>`).join('')}
-  </div>`,
-  (node) => {
-    const side = node.querySelector('.side'), help = node.querySelector('.help'), rows = [...help.querySelectorAll('.req')];
-    return (lt) => {
-      leadIn(node, lt); inUp(side, eo(S(lt, .15, .7)), 24); inUp(help, eo(S(lt, .35, .9)), 24);
-      rows.forEach((r, i) => inUp(r, eo(S(lt, .8 + i * .3, 1.3 + i * .3)), 12));
-    };
-  });
-
-/* =========================================================================
-   9 · Cierre (59 – 63)
-   ========================================================================= */
-scene('s9', 59, 63, `
+scene('s13', 103, 108, `
   <div class="out-wrap"></div>
   <div class="out-copy">
-    <h1>Listo: ya decidís<br><span class="grad" style="background-image:linear-gradient(92deg,#0a4da0,#12a6f4)">con tus datos.</span></h1>
+    <h1>Listo. <span class="grad" style="background-image:linear-gradient(92deg,#0a4da0,#12a6f4)">Así de simple.</span></h1><p style="margin-top:26px;font-size:34px;color:var(--muted);font-weight:500;text-align:center">Ya podés empezar a usar BIP para mejorar tus resultados.</p>
     <div class="cta">bip-go.com</div>
   </div>
   <div class="out-foot"><div class="logo"><div class="bip">BIP<span class="tri"></span></div><div class="tag">Business<br>Impact<br>Platform</div></div></div>`,
