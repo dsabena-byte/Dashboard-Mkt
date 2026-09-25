@@ -635,6 +635,11 @@ reporte_existencia/cb_homologos).
   los próximos cambios); **Trade** se armó desde memoria (falta screenshot del user para calibrar); el
   user seguirá con más ajustes. Detalle y plan en `marketing/video-tour/HANDOFF.md` + `README.md`.
 
+- **Video "Primeros pasos en BIP" (`marketing/video-primeros-pasos/`, sep-2026, 63s):** onboarding del cliente
+  (accesos por fuente → cuenta → modelo de impacto → conectar → tableros → próximos pasos → Ayuda). Mismo motor/estilo
+  que video-demo; marca ficticia "Aurora". Salida `export/primeros-pasos.mp4`. Contenido espejo de
+  `lib/access-requirements.ts` de BIP: si cambian los requisitos, actualizar el video. Detalle en su README.
+
 - **Web comercial BIP (`apps/web/public/bip.html` + artifact):** landing de venta. Los 3 planes
   (Insight/Optimize/Accelerate) se arman por JS (arrays `PLANS`/`MODULES`/`FULL`). El artifact
   compartible **`bip-web.html`** (id `f98ddfbe-b163-4a01-84bc-9dfde6456c6b`) es self-contained: se
