@@ -668,6 +668,9 @@ reporte_existencia/cb_homologos).
 - **Web BIP para la agencia Roque (`marketing/web-roque/bip/`, sep-2026):** copia de `bip.html` para que Roque la
   suba en SU web (NO toca bip-go.com): WhatsApp **+54 9 11 2188-0437** (botón flotante + link en el cierre y el pie),
   email info@roque-in.com, rutas de assets relativas (`bip/hero.png`, `bip/demo.mp4`). Se entrega como zip.
+- **Tracking del funnel en la web de BIP (sep-2026):** `bip.html` y `marketing/web-roque/bip/index.html` tienen al final un
+  script (anon id en localStorage + UTM) que manda visitas/clicks a `bip-platform/api/track` y agrega `?a=` + UTM a los links
+  de `/signup` → el CRM de BIP atribuye cada registro a su canal. **bip-go.com (Netlify) hay que re-subirlo** para que mida.
 - **Web comercial BIP (`apps/web/public/bip.html` + artifact):** landing de venta. Los 3 planes
   (Insight/Optimize/Accelerate) se arman por JS (arrays `PLANS`/`MODULES`/`FULL`). El artifact
   compartible **`bip-web.html`** (id `f98ddfbe-b163-4a01-84bc-9dfde6456c6b`) es self-contained: se
