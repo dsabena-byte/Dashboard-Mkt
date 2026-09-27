@@ -21,6 +21,7 @@ import type { MetaKpiData } from "./metas-server";
 import { buildPautaMediosMensual, type PautaMes } from "@/lib/pauta-medios-model";
 import { getMercadoSeries, getMercadoMetas } from "./mercado-kpis-server";
 import { MERCADO_KPIS, MERCADO_PLAN, type MercadoResult } from "./mercado-kpis";
+import { getWebMonthlyByChannelRows } from "@/lib/web-monthly-channel";
 
 export type KpiUnit = "$" | "" | "x" | "%" | "s" | "pts"; // pts = índice (ej. posición SEO)
 
@@ -124,7 +125,7 @@ const getWebMonthlySeguimiento = unstable_cache(
   async (anio: number): Promise<WebMonthAgg> => {
     const [mon, chan] = await Promise.all([
       safe(fetchRows<{ mes: string; sesiones: number | null; avg_session_duration: number | null }>(`vw_drean_web_monthly?mes=gte.${anio}-01-01&mes=lte.${anio}-12-31&select=mes,sesiones,avg_session_duration`), []),
-      safe(fetchRows<{ mes: string; conversiones: number | null }>(`vw_drean_web_monthly_by_channel?mes=gte.${anio}-01-01&mes=lte.${anio}-12-31&select=mes,conversiones`), []),
+      safe(getWebMonthlyByChannelRows(`${anio}-01-01`, `${anio}-12-31`), []), // tabla precalculada (0121), fallback a la vista
     ]);
     const ses = Array<number>(12).fill(0), avg = Array<number>(12).fill(0), conv = Array<number>(12).fill(0), has = Array<boolean>(12).fill(false);
     for (const r of mon) { const i = Number(r.mes?.slice(5, 7)) - 1; if (i >= 0 && i < 12) { ses[i] = r.sesiones ?? 0; avg[i] = r.avg_session_duration ?? 0; has[i] = true; } }

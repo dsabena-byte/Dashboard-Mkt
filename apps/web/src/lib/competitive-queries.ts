@@ -90,8 +90,26 @@ export interface SerpRow {
   posicion: number | null;
   search_volume: number | null;
 }
-export async function getSeoCompetitivo(): Promise<SerpRow[]> {
+/** `soloUltimaFecha`: solo la ÚLTIMA foto de cada categoría (seo_rankings acumula ~4,3k filas por
+ *  relevamiento; sin filtro se mezclan fotos y el tope de 20k corta filas arbitrarias cuando la tabla
+ *  crece). Lee una ventana de 60 días antes de la última foto y se queda con la fecha máxima por categoría
+ *  (una categoría relevada solo en una foto anterior — ej. lavavajillas — no se pierde). */
+export async function getSeoCompetitivo(opts: { soloUltimaFecha?: boolean } = {}): Promise<SerpRow[]> {
   const sb = getServerSupabase();
+  if (opts.soloUltimaFecha) {
+    const { data: last } = await sb.from("seo_rankings").select("fecha").order("fecha", { ascending: false }).limit(1).returns<{ fecha: string | null }[]>();
+    const max = last?.[0]?.fecha;
+    if (max) {
+      const desde = new Date(Date.parse(`${max.slice(0, 10)}T00:00:00Z`) - 60 * 864e5).toISOString().slice(0, 10);
+      const { data, error } = await sb.from("seo_rankings").select("fecha, marca, keyword, categoria, posicion, search_volume")
+        .gte("fecha", desde).limit(20000).returns<(SerpRow & { fecha: string | null })[]>();
+      if (error) throw new Error(`seo_rankings: ${error.message}`);
+      const rows = data ?? [];
+      const maxCat = new Map<string, string>();
+      for (const r of rows) { const c = r.categoria ?? "", f = r.fecha ?? ""; if (f > (maxCat.get(c) ?? "")) maxCat.set(c, f); }
+      return rows.filter((r) => (r.fecha ?? "") === maxCat.get(r.categoria ?? "")).map((r) => ({ marca: r.marca, keyword: r.keyword, categoria: r.categoria, posicion: r.posicion, search_volume: r.search_volume }));
+    }
+  }
   const { data, error } = await sb
     .from("seo_rankings")
     .select("marca, keyword, categoria, posicion, search_volume")

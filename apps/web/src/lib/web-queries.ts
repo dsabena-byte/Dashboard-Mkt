@@ -1,5 +1,6 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
+import { getWebMonthlyByChannelRows } from "./web-monthly-channel";
 
 export interface DailyKpiRow {
   fecha: string;
@@ -157,10 +158,10 @@ export async function getWebMonthlyKpis(range: WebRange): Promise<DailyKpiRow[]>
   const supabase = getServerSupabase();
   const [monRes, chanRes] = await Promise.all([
     supabase.from("vw_drean_web_monthly").select("mes, sesiones, avg_session_duration").gte("mes", from).lte("mes", range.to).returns<Array<{ mes: string; sesiones: number | null; avg_session_duration: number | null }>>(),
-    supabase.from("vw_drean_web_monthly_by_channel").select("mes, conversiones").gte("mes", from).lte("mes", range.to).returns<Array<{ mes: string; conversiones: number | null }>>(),
+    getWebMonthlyByChannelRows(from, range.to), // tabla precalculada (0121); la vista tardaba ~5 s
   ]);
   const conv = new Map<string, number>();
-  for (const r of chanRes.data ?? []) conv.set(r.mes, (conv.get(r.mes) ?? 0) + (r.conversiones ?? 0));
+  for (const r of chanRes) conv.set(r.mes, (conv.get(r.mes) ?? 0) + (r.conversiones ?? 0));
   return (monRes.data ?? []).map((r) => ({
     fecha: r.mes,
     sesiones: r.sesiones ?? 0,
@@ -304,17 +305,10 @@ export async function getMonthlyUsers(monthStart: string): Promise<MonthlyUsersR
 }
 
 export async function getWebMonthlyByChannel(monthsBack = 12): Promise<MonthlyByChannelRow[]> {
-  const supabase = getServerSupabase();
-  const { data, error } = await supabase
-    .from("vw_drean_web_monthly_by_channel")
-    .select("mes, canal, sesiones, conversiones, pageviews")
-    .order("mes", { ascending: true })
-    .returns<MonthlyByChannelRow[]>();
-  if (error) {
-    if (/relation .* does not exist/i.test(error.message)) return [];
-    throw new Error(`vw_drean_web_monthly_by_channel: ${error.message}`);
-  }
-  const rows = data ?? [];
+  // Tabla precalculada (0121) con fallback a la vista; se piden los últimos monthsBack+1 meses calendario.
+  const d = new Date();
+  const desde = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - monthsBack, 1)).toISOString().slice(0, 10);
+  const rows = (await getWebMonthlyByChannelRows(desde)) as MonthlyByChannelRow[];
   // Quedarse con los últimos monthsBack meses
   const meses = [...new Set(rows.map((r) => r.mes))].sort();
   const keep = new Set(meses.slice(-monthsBack));

@@ -94,7 +94,7 @@ export async function POST(req: Request) {
   const f = FOCO[dash]!;
   const model = process.env.OPENAI_INSIGHTS_MODEL || "gpt-4o-mini";
   const year = new Date().getFullYear();
-  const ctx = new LoadCtx();
+  const ctx = new LoadCtx({ timeoutMs: 25_000 }); // más margen que las señales sueltas: el pack de la IA espera más fuentes
 
   // Contexto ADN: Seguimiento real vs meta (best-effort).
   const seg = await loadOverview(ctx).catch(() => null);
