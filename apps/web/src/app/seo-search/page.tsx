@@ -8,6 +8,7 @@ import { MercadoMetasSection } from "@/components/seo-search/mercado-metas-secti
 import { SearchConsoleSection } from "@/components/seo-search/search-console-section";
 import { getMercadoSeries, getMercadoMetas } from "@/lib/mercado-kpis-server";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { DataHealth } from "@/components/data-health";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -62,6 +63,7 @@ export default async function SeoSearchPage() {
           <Fresh label="Visibilidad IA" date={fresh.llmo} />
         </div>
       </header>
+      <DataHealth dash="seo-search" className="-mt-2" />
       <HowToRead slug="seo-search" />
       <DashTabBar />
 

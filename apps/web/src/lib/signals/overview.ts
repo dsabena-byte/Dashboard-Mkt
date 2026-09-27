@@ -4,7 +4,9 @@
 // alejan de la meta, metas laxas y KPIs sin meta. Puro: recibe el rollup ya calculado.
 import type { SeguimientoObjetivos } from "./model";
 import { cumplimientoPct } from "./model";
-import { type Signal, sortSignals, sum, fPct, r2 } from "./types";
+import { type Signal, sortSignals, sum, fPct, fNum, r2 } from "./types";
+import { pronosticoMeta } from "../stats/meta";
+import { histParaPronostico } from "../objetivos-pronostico";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -73,7 +75,22 @@ export function computeOverviewSignals(seg: SeguimientoObjetivos | null | undefi
     const serie = k.realM.map((r, i) => (r != null && k.metaM[i] != null ? cumplimientoPct(r, k.metaM[i]!, k.direccion) : null));
     const pts = serie.map((v, i) => ({ v, i })).filter((x) => x.v != null) as { v: number; i: number }[];
     const last3 = pts.slice(-3) as [{ v: number; i: number }, { v: number; i: number }, { v: number; i: number }];
-    if (last3.length === 3 && last3[0].v > last3[1].v && last3[1].v > last3[2].v && last3[2].v < 100 && last3[0].v - last3[2].v >= 10) S({
+    // Pace to goal (lib/stats, portado de BIP): con pronóstico confiable, la señal es la PROBABILIDAD
+    // de llegar a la meta anual (reemplaza a "se aleja 3 meses", que solo mira la dirección).
+    const pr = k.metaM.some((v) => v != null) ? pronosticoMeta({ realM: k.realM, metaM: k.metaM, histM: histParaPronostico(k.histM), tipo: k.tipo, direccion: k.direccion, seed: `${k.plan}|${k.kpi}` }).resumen : null;
+    const conPace = !!pr && pr.suficiente && !pr.cerrado && pr.probabilidad != null;
+    if (pr && conPace && pr.probabilidad! < 0.3 && pr.mensual.length >= 3 && pr.cierre && pr.metaAnual != null) {
+      const u = (v: number) => (k.unit === "%" ? fPct(v, 2) : k.unit === "$" ? `$${fNum(v)}` : k.unit === "x" ? `${v.toFixed(2)}x` : k.unit === "s" ? `${Math.round(v)}s` : fNum(v));
+      const c = pr.cierre, nec = pr.necesarioVsRitmoPct;
+      S({
+        key: `overview_kpi_off_pace_${k.plan}_${k.kpi}`, tipo: "alerta", prioridad: pr.probabilidad! < 0.1 ? "alta" : "media",
+        titulo: `"${k.kpi}": ${Math.round(pr.probabilidad! * 100)}% de probabilidad de llegar a la meta anual`,
+        descripcion: `${k.plan}. ${k.tipo === "sum" ? "Cierre" : "Promedio"} proyectado ${u(c.p50)}${c.p10 != null && c.p90 != null ? ` (rango ${u(c.p10)}–${u(c.p90)})` : ""} vs meta ${u(pr.metaAnual)}.${nec != null && Number.isFinite(nec) && k.direccion === "up" && nec > 0 ? ` Para llegar hace falta +${nec.toFixed(0)}% sobre el ritmo proyectado de los ${pr.mensual.length} meses que quedan.` : ""} Método: ${pr.metodoTexto}, ${pr.n} meses con dato.`,
+        acciones: [`Revisar en ${k.plan} qué palanca mueve ${k.kpi} (inversión, contenido, conversión)`, "Si la meta ya no es alcanzable con el presupuesto actual, recalibrarla y decirlo"],
+        datos: { kpi: k.kpi, plan: k.plan, probabilidad: r2(pr.probabilidad!), cierreP50: r2(c.p50), rango: c.p10 != null && c.p90 != null ? [r2(c.p10), r2(c.p90)] : null, metaAnual: r2(pr.metaAnual), metodo: pr.metodo, meses: pr.n },
+      });
+    }
+    if (!conPace && last3.length === 3 && last3[0].v > last3[1].v && last3[1].v > last3[2].v && last3[2].v < 100 && last3[0].v - last3[2].v >= 10) S({
       key: `overview_kpi_diverging_${k.plan}_${k.kpi}`, tipo: "alerta", prioridad: "media",
       titulo: `"${k.kpi}" se aleja de la meta 3 meses seguidos (${last3.map((x) => `${MES[x.i]} ${fPct(x.v, 0)}`).join(" → ")})`,
       descripcion: `${k.plan}. La tendencia anticipa incumplimiento del cierre si no se corrige.`,

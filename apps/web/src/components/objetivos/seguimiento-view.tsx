@@ -56,7 +56,7 @@ export function SeguimientoView({ data }: { data: SeguimientoCompleto }) {
           KPIs por plan
           <span className="text-[11px] font-normal text-muted-foreground"> · {esGeneral ? "indicadores que alimentan los objetivos" : `cumplimiento en ${sel.label}`}</span>
         </div>
-        <KpiScorecard kpis={sel.kpis} />
+        <KpiScorecard kpis={sel.kpis} pronosticos={sel.seg.pronosticos} />
       </div>
     </div>
   );

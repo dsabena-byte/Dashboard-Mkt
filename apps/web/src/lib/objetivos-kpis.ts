@@ -41,6 +41,10 @@ export interface KpiSeguimiento {
   // Meta POR categoría (solo KPIs con meta propia por categoría, ej. Floor Share).
   // Undefined = la meta por categoría se deriva del mix del Mapa (SUM) o es total (rate).
   metaCatM?: Record<string, (number | null)[]>;
+  // Serie del AÑO ANTERIOR (12, Ene..Dic) para el pronóstico (pace-to-goal, lib/stats): habilita la
+  // estacionalidad. Solo de fuentes baratas que ya se leen (pauta, GA4 mensual, trade_monthly) + 1
+  // query chica de posts IG. null = sin historia (el pronóstico usa solo el año en curso).
+  histM?: (number | null)[] | null;
 }
 
 // Categorías del desglose (deben matchear MIX_CATEGORIAS del mapa).
@@ -201,6 +205,11 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
   // Mercado y competencia (SoS / SoE / IA / índice SEO): REST barato, memo por request.
   const mercadoP = safe(getMercadoSeries(anio), null as MercadoResult | null);
   const mercadoMetasP = getMercadoMetas(anio);
+  // Historia del año anterior (pronóstico): trade_monthly (~12 filas) + posts IG del año (≤200). Barato.
+  const tradePrevP = skipTrade ? Promise.resolve(emptyTradeMonthly()) : safe(getTradeMonthly(anio - 1), emptyTradeMonthly());
+  const igPrevP = safe(fetchRows<{ fecha_post: string; reach: number | null; engagement: number | null }>(
+    `meta_posts?platform=eq.instagram&fecha_post=gte.${anio - 1}-01-01&fecha_post=lt.${anio}-01-01&select=fecha_post,reach,engagement&order=engagement.desc&limit=200`,
+  ), []);
 
   const [
     pauta, metaPaid, dv360, dv360Reach, gads, fx,
@@ -333,11 +342,35 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
     );
   });
 
+  // ---- Historia del año anterior (para el pronóstico; mismas definiciones que el año en curso) ----
+  const pmPrev = computePautaImpacto(pauta, metaPaid, dv360, dv360Reach, gads, fx, anio - 1, 13);
+  // Historia CRUDA (puede tener huecos). El pronóstico la usa solo si está casi completa
+  // (histParaPronostico en lib/objetivos-pronostico); la validación de pesos del Mapa la usa entera.
+  const conDato = (a: (number | null)[]) => (a.some((v) => v != null && v !== 0) ? a : null);
+  const usersPrev = new Map<number, number>();
+  for (const u of monthlyUsers) if (u.mes?.startsWith(String(anio - 1))) usersPrev.set(Number(u.mes.slice(5, 7)) - 1, u.total_users ?? 0);
+  const [tradePrev, igPrevRows] = await Promise.all([tradePrevP, igPrevP]);
+  const igPrevAcc = Array.from({ length: 12 }, () => ({ alc: 0, eng: 0, n: 0 }));
+  for (const p of igPrevRows) { const i = Number(p.fecha_post?.slice(5, 7)) - 1; if (i >= 0 && i < 12) { igPrevAcc[i]!.alc += p.reach ?? 0; igPrevAcc[i]!.eng += p.engagement ?? 0; igPrevAcc[i]!.n++; } }
+  const hist: Record<string, (number | null)[] | null> = {
+    "Inversión": conDato(serieSum(pmPrev, (m) => m.inv)),
+    "Alcance único": conDato(serieSum(pmPrev, (m) => m.alc)),
+    "Frecuencia": conDato(serieRate(pmPrev, (m) => m.impr, (m) => m.alc)),
+    "Impresiones": conDato(serieSum(pmPrev, (m) => m.impr)),
+    "VTR (≥50%)": conDato(serieRate(pmPrev, (m) => m.v50, (m) => m.vbase, 100)),
+    "Clicks": conDato(serieSum(pmPrev, (m) => m.clic)),
+    "Tráfico web (usuarios)": conDato(Array.from({ length: 12 }, (_, i) => usersPrev.get(i) ?? null)),
+    "Alcance orgánico": conDato(igPrevAcc.map((m) => (m.n ? m.alc : null))),
+    "Engagement rate": conDato(igPrevAcc.map((m) => (m.n && m.alc > 0 ? (m.eng / m.alc) * 100 : null))),
+    "% Cumplimiento CB": conDato(tradePrev.cb),
+    "Floor Share (exhibición)": conDato(tradePrev.fsGeneral),
+  };
+
   const pautaAlcM = serieSum(pm, (m) => m.alc);
   const pautaImprM = serieSum(pm, (m) => m.impr);
   const pautaClicM = serieSum(pm, (m) => m.clic);
 
-  return [
+  const out: KpiSeguimiento[] = [
     // Pauta Mkt (share por impresiones). Inversión/Frecuencia/VTR no se desglosan por categoría.
     mk("Pauta Mkt", "Inversión", "Inversión ejecutada (ARS)", "$", "sum", serieSum(pm, (m) => m.inv), mInv),
     mk("Pauta Mkt", "Alcance único", "Personas alcanzadas", "", "sum", pautaAlcM, mAlc, applyShare(pautaAlcM, pautaShare)),
@@ -359,4 +392,6 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
     // rollup si el usuario los conecta a un objetivo en el Mapa.
     ...mercadoKpis,
   ];
+  for (const k of out) k.histM = hist[k.kpi] ?? null;
+  return out;
 }

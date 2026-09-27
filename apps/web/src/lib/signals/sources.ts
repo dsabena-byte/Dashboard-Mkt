@@ -144,7 +144,7 @@ export function loadOverview(ctx: LoadCtx): Promise<SeguimientoObjetivos | null>
     const y = year();
     const [seg, kpis] = await Promise.all([safe(getSeguimientoObjetivos(y)), safe(getSeguimientoKpis(y))]);
     if (!seg?.disponible) return null;
-    return buildSeguimiento(seg, (kpis ?? []).map((k) => ({ plan: k.plan, kpi: k.kpi, medida: k.medida, unit: k.unit, tipo: k.tipo, realM: k.realM, metaM: k.metaM, direccion: k.direccion })));
+    return buildSeguimiento(seg, (kpis ?? []).map((k) => ({ plan: k.plan, kpi: k.kpi, medida: k.medida, unit: k.unit, tipo: k.tipo, realM: k.realM, metaM: k.metaM, direccion: k.direccion, histM: k.histM ?? null })));
   });
 }
 

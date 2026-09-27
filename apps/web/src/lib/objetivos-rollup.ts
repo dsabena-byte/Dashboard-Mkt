@@ -21,6 +21,12 @@ import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
 import { CATEGORIAS_CORE, generalPonderado } from "./categorias";
 import type { MapaConfig } from "./mapa-estrategico-config";
+import {
+  pronosticarKpis, pronosticarObjetivos, porQueSeMovio, kpiKey, sanitizarPronostico, contribucionesObjetivo, contribucionGlobal,
+  type ProyeccionAgregada, type PorQue, type ContribucionGlobal, type ConexionKpi,
+} from "./objetivos-pronostico";
+import type { PronosticoMeta } from "./stats/meta";
+import type { ContribucionShapley } from "./stats/shapley";
 
 // Real + meta de un KPI EN UNA CATEGORÍA (mes m). Núcleo compartido del desglose por
 // categoría (lo usan el rollup y la vista por categoría). SUM con mix → meta_cat =
@@ -80,13 +86,79 @@ export interface ObjetivoRollup {
   cumplSerie: (number | null)[]; // cumplimiento por mes (12) — para el chart de evolución
   porCategoria: CatDesglose[]; // Kantar resultado vs meta, por categoría (Lav/Refri/Cocc)
   aportes: ObjAporte[];
+  /** Cumplimiento proyectado al cierre del año (rango p10–p90) y P(llegar al 100%) — lib/stats. */
+  proyeccion?: ProyeccionAgregada;
+  /** Shapley: qué KPI explica la brecha YTD vs 100%. */
+  contribucion?: ContribucionShapley | null;
+  /** Shapley: qué KPI explica el cambio del cumplimiento del mes de referencia vs el anterior. */
+  variacion?: ContribucionShapley | null;
 }
+/** Pace-to-goal de un KPI (cierre proyectado + probabilidad) y "por qué se movió". */
+export interface KpiPronostico { pronostico?: PronosticoMeta; porQue?: PorQue | null }
 export interface SeguimientoObjetivos {
   disponible: boolean; // false = no hay Mapa guardado en la DB
   refMes: string;
   waveKantar: string | null; // ola Kantar del resultado por categoría (ej. "nov-25")
   objetivos: ObjetivoRollup[];
-  saludMarca: { cumplMes: number | null; cumplYtd: number | null; metaNegMes: number | null; cumplSerie: (number | null)[]; porCategoria: CatDesglose[] };
+  saludMarca: {
+    cumplMes: number | null; cumplYtd: number | null; metaNegMes: number | null; cumplSerie: (number | null)[]; porCategoria: CatDesglose[];
+    proyeccion?: ProyeccionAgregada;
+    contribucion?: ContribucionGlobal | null;
+  };
+  /** Pronóstico por KPI (nombre → pace-to-goal). Solo KPIs conectados al Mapa. */
+  pronosticos?: Record<string, KpiPronostico>;
+}
+
+/**
+ * Inteligencia sobre el rollup (portado de BIP, sep-2026; puro, ~ms de CPU): pronóstico por KPI con
+ * 2.000 simulaciones (uniformes compartidas), propagación al objetivo y a la Salud de Marca, y
+ * reparto de Shapley de la brecha YTD y del cambio del mes. Lo usan la vista General y las 3 de
+ * categoría. `kpiCumpl` = cumplimiento YTD + serie mensual (capados en 100) de cada KPI por nombre.
+ */
+export function enriquecerSeguimiento(
+  seg: SeguimientoObjetivos,
+  mapa: MapaConfig,
+  kpis: KpiSeguimiento[],
+  kpiCumpl: Map<string, { ytd: number | null; serie: (number | null)[] }>,
+  refIdx: number,
+  seed: string,
+): SeguimientoObjetivos {
+  if (!seg.disponible) return seg;
+  try {
+    const byName = new Map(kpis.map((k) => [k.kpi, k]));
+    const linkedNames = new Set<string>();
+    for (const p of mapa.planes) for (const k of p.kpis) if (Object.values(k.vinculos ?? {}).some((w) => w > 0) && byName.has(k.nombre)) linkedNames.add(k.nombre);
+    const linked = [...linkedNames].map((n) => byName.get(n)!);
+    const pron = pronosticarKpis(linked, seed);
+    const linksDe = (oid: string) => mapa.planes.flatMap((p) => p.kpis)
+      .filter((k) => (k.vinculos?.[oid] ?? 0) > 0 && byName.has(k.nombre))
+      .map((k) => ({ k: byName.get(k.nombre)!, w: k.vinculos[oid] ?? 0 }));
+    const proy = pronosticarObjetivos(
+      seg.objetivos.map((o) => ({ id: o.id, pesoEstrategico: o.pesoEstrategico, aportes: linksDe(o.id).map((l) => ({ key: kpiKey(l.k), w: l.w })) })),
+      pron,
+    );
+    const objetivos = seg.objetivos.map((o) => {
+      const conex: ConexionKpi[] = linksDe(o.id).map((l) => {
+        const c = kpiCumpl.get(l.k.kpi);
+        return { kpi: l.k.kpi, plan: l.k.plan, peso: l.w, cumplYtd: c?.ytd ?? null, serie: c?.serie ?? [] };
+      });
+      const { contribucion, variacion } = contribucionesObjetivo(`${seed}:${o.id}`, conex, refIdx);
+      return { ...o, proyeccion: proy.objetivos.get(o.id), contribucion, variacion };
+    });
+    const pronosticos: Record<string, KpiPronostico> = {};
+    for (const k of linked) {
+      const r = pron.get(kpiKey(k));
+      pronosticos[k.kpi] = { pronostico: r ? sanitizarPronostico(r.resumen) : undefined, porQue: porQueSeMovio(k, kpis) };
+    }
+    return {
+      ...seg,
+      objetivos,
+      saludMarca: { ...seg.saludMarca, proyeccion: proy.global, contribucion: contribucionGlobal(objetivos) },
+      pronosticos,
+    };
+  } catch {
+    return seg; // la inteligencia es aditiva: si falla, el Seguimiento sigue igual
+  }
 }
 
 const cap = (v: number | null): number | null => (v == null ? null : Math.min(v, CAP));
@@ -243,11 +315,12 @@ export async function getSeguimientoObjetivos(anio: number, skipTrade = false): 
     };
   });
 
-  return {
+  const base: SeguimientoObjetivos = {
     disponible: true,
     refMes,
     waveKantar: null,
     objetivos,
     saludMarca: { cumplMes: smMes.val, cumplYtd: smYtd.val, metaNegMes: smMetaNeg, cumplSerie: smSerie, porCategoria: smPorCat },
   };
+  return enriquecerSeguimiento(base, mapa, kpis, kpiCumpl, refIdx, "drean-general");
 }

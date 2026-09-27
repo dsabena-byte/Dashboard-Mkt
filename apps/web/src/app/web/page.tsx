@@ -41,6 +41,7 @@ import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 import { getPautaInversionTotalMensual } from "@/lib/objetivos-kpis";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { DataHealth } from "@/components/data-health";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -469,6 +470,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
+      <DataHealth dash="web" className="-mt-2" />
       <HowToRead slug="web" />
       <DashTabBar />
 
