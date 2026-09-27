@@ -24,3 +24,6 @@ create table if not exists seo_audit_snapshot (
 );
 alter table seo_audit_snapshot enable row level security;
 -- Sin policies: solo la service key (server) lee/escribe.
+
+revoke all on web_calidad_snapshot from anon, authenticated;
+revoke all on seo_audit_snapshot from anon, authenticated;
