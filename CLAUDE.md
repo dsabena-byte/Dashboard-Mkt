@@ -691,6 +691,16 @@ reporte_existencia/cb_homologos).
   "Recomendado", módulos con badge de plan, FAQ nueva. Se sacó "Consultoría estratégica" (no está en plan.ts), el
   WhatsApp (número placeholder) y `hola@bip.com` (dominio ajeno → `info@roque-in.com`, pedido del user). Se agregó doctype +
   `<meta charset>` (había mojibake). bip-go.com (Netlify) NO se actualiza solo: re-subir `bip.html`.
+  **Capacidades nuevas + confianza (27-sep-2026):** planes/módulos/FULL/FAQ con lo shipeado en bip-platform (gating según
+  `NAV`/`FEATURE_MIN`: Góndola ML + SEO técnico/SC a fondo/visibilidad IA/IndexNow-Bing/ESoS + competencia IG oficial y pauta
+  probable = Optimize; MMM-lite = Accelerate (Simulador); pacing, fatiga, marca vs activación, metas sugeridas, moneda constante,
+  salud de conexiones, copiloto verificado, "Armame el tablero", anotaciones, umbrales y link compartido = todos; envío
+  programado = Optimize+). ML, Tiendanube y TikTok van como **"muy pronto"** (sin credenciales/app aprobada). En `#seguridad` hay
+  una franja de **badges honestos** (`.tbadges`: APIs oficiales de Google/Meta, OAuth 2.0, solo lectura de métricas, revocable,
+  cifrado, Vercel+Supabase, no se venden). **Regla:** sin logos de Google/Meta ni "verificada/partner/certified" mientras la
+  verificación OAuth de Google y el App Review de Meta sigan pendientes; los badges "App verificada por Google" / "App aprobada
+  por Meta" ya están **comentados** con `<!-- ACTIVAR cuando … -->` en ambos archivos: descomentar solo cuando se aprueben.
+  "Solo lectura" se dice de las MÉTRICAS: BIP ya modera comentarios de IG a pedido del usuario (no es 100% read-only).
 
 - **Generador de Contenido — Calendario + publicación IG/FB (dic-2026):** `/contenido` →
   `/contenido/calendario` (tabs: RRSS, UGC, Biblioteca UGC, Adaptación de piezas). Las piezas viven en
