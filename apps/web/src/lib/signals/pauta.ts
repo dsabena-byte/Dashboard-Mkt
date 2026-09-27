@@ -12,6 +12,7 @@
 // Puro y client-safe (lo usa también el tab Insights de /performance sin IA).
 import type { PautaFull, CampaignRow, CreativeRow, PautaMonth } from "./model";
 import { type Signal, sortSignals, median, quantile, sum, avg, deltaPct, fInt, fNum, fPct, fDelta, fMoney, clip, r2 } from "./types";
+import { rangoEsperado, dentroDeLoNormal, datosRango } from "./banda";
 import type { PacingMes } from "../pauta-pacing";
 import type { FatigaResumen } from "../pauta-fatiga";
 
@@ -259,20 +260,26 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     const last = closed[closed.length - 1]!, base = closed.slice(-4, -1);
     const cpm = (m: typeof last) => (m.impr ? (m.inv / m.impr) * 1000 : 0);
     const d = deltaPct(cpm(last), avg(base.map(cpm))) ?? 0;
-    if (d >= 25) S({
+    // Rango esperado del CPM con toda la historia cerrada (lib/stats): dentro de lo normal no alerta.
+    // Con menos de 6 meses no hay banda → decide el umbral fijo de siempre.
+    const ev = rangoEsperado(closed.slice(0, -1).map(cpm), cpm(last));
+    const rango = datosRango(ev);
+    const txtRango = rango ? ` Fuera del rango esperado (${$(rango.min)}–${$(rango.max)}).` : "";
+    if (dentroDeLoNormal(ev)) { /* variación dentro del rango normal de la serie → sin señal */ }
+    else if (d >= 25) S({
       key: "pauta_cpm_inflation", tipo: "alerta", prioridad: d >= 50 ? "alta" : "media",
       titulo: `${last.mes}: el CPM subió ${fDelta(d)} vs el promedio de los 3 meses previos (${$(cpm(last))})`,
-      descripcion: `Promedio previo ${$(avg(base.map(cpm)))}. Con la misma inversión se compran menos impresiones.`,
+      descripcion: `Promedio previo ${$(avg(base.map(cpm)))}.${txtRango} Con la misma inversión se compran menos impresiones.`,
       acciones: ["Revisar si cambió el mix de objetivos/medios del mes", "Ampliar audiencias o renovar creativos (fatiga eleva el CPM)", "Considerar estacionalidad (subasta más cara)"],
-      datos: { mes: last.mes, cpm: r2(cpm(last)), promedio3m: r2(avg(base.map(cpm))), deltaPct: r2(d) },
+      datos: { mes: last.mes, cpm: r2(cpm(last)), promedio3m: r2(avg(base.map(cpm))), deltaPct: r2(d), ...(rango ? { rangoEsperado: rango } : {}) },
       impacto: { metrica: "Impresiones perdidas vs CPM previo", valor: Math.round((last.inv / avg(base.map(cpm))) * 1000 - last.impr), unidad: "impresiones" },
     });
     else if (d <= -20) S({
       key: "pauta_cpm_improved", tipo: "info", prioridad: "baja",
       titulo: `${last.mes}: el CPM bajó ${fDelta(d)} vs los 3 meses previos`,
-      descripcion: `CPM ${$(cpm(last))} vs ${$(avg(base.map(cpm)))}. Momento eficiente para comprar alcance.`,
+      descripcion: `CPM ${$(cpm(last))} vs ${$(avg(base.map(cpm)))}.${txtRango} Momento eficiente para comprar alcance.`,
       acciones: ["Evaluar adelantar inversión mientras el costo está bajo"],
-      datos: { mes: last.mes, cpm: r2(cpm(last)), deltaPct: r2(d) },
+      datos: { mes: last.mes, cpm: r2(cpm(last)), deltaPct: r2(d), ...(rango ? { rangoEsperado: rango } : {}) },
     });
   }
   const curM = mo.find((m) => m.mesIdx === now.getMonth());

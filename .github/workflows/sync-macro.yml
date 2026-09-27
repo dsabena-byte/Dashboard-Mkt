@@ -1,0 +1,41 @@
+name: Sync índices macro (IPC + dólar)
+
+# IPC nivel general (INDEC, vía API de Series de Tiempo de datos.gob.ar) + dólar oficial (API del
+# BCRA, promedio mensual) + MEP (argentinadatos.com) → tabla indices_macro (migración 0110).
+# Alimenta el selector "Pesos corrientes / constantes / USD" de Plan de Medios e Inversión de Mkt.
+# INDEC publica el IPC a mediados de mes → corre el 2 (cierra el promedio del dólar del mes
+# anterior) y el 16 (IPC recién publicado). Manual: backfill con "desde" (ej. 2023-01-01).
+on:
+  schedule:
+    - cron: "17 12 2,16 * *"  # 12:17 UTC ≈ 09:17 ART, días 2 y 16
+  workflow_dispatch:
+    inputs:
+      desde:
+        description: "Backfill desde YYYY-MM-DD (vacío = últimos ~25 meses)"
+        required: false
+        default: ""
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger /api/cron/sync-macro (con reintentos)
+        run: |
+          set -uo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/sync-macro"
+          if [ -n "${DESDE:-}" ]; then URL="$URL?desde=$DESDE"; fi
+          HTTP_CODE=000
+          for attempt in 1 2 3; do
+            HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 130 \
+              -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL" || echo 000)
+            echo "intento $attempt → HTTP $HTTP_CODE"
+            cat response.json || true; echo ""
+            if [ "$HTTP_CODE" = "200" ] && ! grep -q '"ok":false' response.json; then exit 0; fi
+            sleep $((attempt * attempt * 15))
+          done
+          echo "::error::sync-macro falló (HTTP $HTTP_CODE)"
+          exit 1
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DESDE: ${{ inputs.desde }}

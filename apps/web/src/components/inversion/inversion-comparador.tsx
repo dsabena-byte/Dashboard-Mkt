@@ -16,6 +16,7 @@ import {
   CUENTA_NUM, CLASIF_ORDER, clasifDe, MESES_CAP, MESES_UP, mesesDePeriodo,
   type Clasif, type Moneda, type Periodo,
 } from "@/lib/bgt-dashboard";
+import { resolverContexto, factorMes, mesLabel as mesLabelMon, type IndiceMes } from "@/lib/moneda";
 
 const COLOR_A = "#1e40af"; // REAL / A — azul (protagonista)
 const COLOR_B = "#94a3b8"; // comparación / B — gris pizarra
@@ -37,7 +38,20 @@ function fmtShort(v: number): string {
   return `${sign}${a.toFixed(0)}`;
 }
 
-export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[]; facturacion: FacturacionRow[]; year: number }) {
+export function InversionComparador({ rows: rowsRaw, facturacion, year, indices = [] }: { rows: BgtRow[]; facturacion: FacturacionRow[]; year: number; /** indices_macro (IPC) para "$ constantes" (migración 0110); vacío = opción deshabilitada. */ indices?: IndiceMes[] }) {
+  // "$ constantes" (portado de BIP, sep-2026): ARS × IPC(base) ÷ IPC(mes), base = último IPC publicado.
+  // Meses sin IPC publicado (p. ej. el presupuesto de meses futuros) usan el último disponible.
+  const ctxConst = useMemo(() => resolverContexto("constantes", indices).ctx, [indices]);
+  const hayIpc = ctxConst.moneda === "constantes";
+  const [monedaUI, setMonedaUI] = useState<"ars" | "arsConst" | "usd">("ars");
+  const rows = useMemo(() => {
+    if (monedaUI !== "arsConst" || !hayIpc) return rowsRaw;
+    return rowsRaw.map((r) => {
+      const mi = MESES_UP.indexOf(r.mes);
+      if (mi < 0) return r;
+      return { ...r, ars: r.ars * factorMes(ctxConst, `${r.anio}-${String(mi + 1).padStart(2, "0")}`).factor };
+    });
+  }, [rowsRaw, monedaUI, hayIpc, ctxConst]);
   const versiones = useMemo(() => [...new Set(rows.map((r) => r.presupuesto))].sort(), [rows]);
   const cuentasAll = useMemo(() => [...new Set(rows.map((r) => r.cuenta))].sort(), [rows]);
 
@@ -45,7 +59,7 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
   const [pptoA, setPptoA] = useState(() => pick(`REAL ${year}`, 0));
   const [pptoB, setPptoB] = useState(() => pick(`4+8 ${year}`, Math.min(1, versiones.length - 1)));
   const [periodo, setPeriodo] = useState<Periodo>("anual");
-  const [moneda, setMoneda] = useState<Moneda>("ars");
+  const moneda: Moneda = monedaUI === "usd" ? "usd" : "ars";
   const [cuentasSel, setCuentasSel] = useState<Set<string>>(new Set());
   const [cuentaOpen, setCuentaOpen] = useState(false);
   const [colapsadas, setColapsadas] = useState<Set<string>>(new Set());
@@ -185,10 +199,11 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
         <div className="flex flex-col gap-1">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Moneda</span>
           <div className="flex rounded-lg border p-0.5">
-            {(["ars", "usd"] as Moneda[]).map((m) => (
-              <button key={m} type="button" onClick={() => setMoneda(m)}
-                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${moneda === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                {m === "ars" ? "$ ARS" : "USD"}
+            {(["ars", "arsConst", "usd"] as const).map((m) => (
+              <button key={m} type="button" onClick={() => setMonedaUI(m)} disabled={m === "arsConst" && !hayIpc}
+                title={m === "arsConst" ? (hayIpc ? `Pesos ajustados por inflación (IPC INDEC) a pesos de ${mesLabelMon(ctxConst.base)}` : "Todavía no hay IPC cargado (migración 0110 + cron sync-macro)") : undefined}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${monedaUI === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                {m === "ars" ? "$ ARS" : m === "arsConst" ? "$ constantes" : "USD"}
               </button>
             ))}
           </div>

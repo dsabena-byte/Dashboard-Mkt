@@ -42,6 +42,7 @@ import { ShareEngagementSection } from "@/components/social/share-engagement";
 import { getMercadoSeries } from "@/lib/mercado-kpis-server";
 import { lastIdx } from "@/lib/mercado-kpis";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { DataHealth } from "@/components/data-health";
 import { IgStoriesResumen } from "@/components/social/ig-stories-resumen";
 import { RedesContenidoPanel } from "@/components/social/redes-contenido-panel";
 import { CompetenciaDiferenciales } from "@/components/social/competencia-diferenciales";
@@ -251,6 +252,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
+      <DataHealth dash="redes" className="-mt-2" />
       <HowToRead slug="redes" />
 
       <DashTabBar items={[{ key: "analitica", label: "Analítica" }]} diagBadge={insightsOrganico.length || undefined} />

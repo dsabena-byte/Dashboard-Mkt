@@ -1,5 +1,10 @@
 // ============================================================================
 // CATÁLOGO DE MÉTRICAS ÚNICO (capa semántica liviana, D7 de objetivos-inteligencia.md).
+// Drean (sep-2026): los KPIs del Seguimiento llevan su nombre EXACTO de lib/objetivos-kpis.ts
+// ("Tráfico web (usuarios)", "Avg Sesión (segundos)", "% Cumplimiento CB", "Floor Share (exhibición)")
+// y `plan` = plan del Seguimiento (Pauta Mkt / Web / Ecommerce / Instagram / Cuadros Básicos / Floor
+// Share / Mercado y competencia); los nombres genéricos quedan como sinónimos. `kpiKnowFor`
+// (lib/knowledge) usa este catálogo como respaldo de sus alias. Test: scripts/metricas.test.ts.
 // Client-safe (sin server-only). UNA definición por métrica que consumen:
 //   · lib/knowledge.ts  → los alias de `kpiKnowFor` salen de `nombre` + `sinonimos` de acá.
 //   · lib/metas-dash.ts → los specs de metas de Plan de Medios y Redes (label/medida/unidad/dirección).
@@ -53,8 +58,8 @@ export interface Metrica {
   claves?: string[];
 }
 
-const PM = "Plan de Medios";
-const RS = "Redes Sociales";
+const PM = "Pauta Mkt";
+const RS = "Instagram";
 const WE = "Web / Ecommerce";
 const MC = "Mercado y competencia";
 
@@ -67,11 +72,11 @@ export const METRICAS: Metrica[] = [
     descripcion: "Participación de tu marca en las búsquedas de la categoría; anticipa el share de mercado." },
   { id: "indice_posicion", nombre: "Índice de posición SEO", know: "indice", plan: MC,
     sinonimos: ["indice de posicion", "indice de posicion seo", "keywords faltantes", "keywords debiles", "keywords fuertes"],
-    formula: "Σ (posición × volumen) ÷ Σ volumen (100 = no rankea)", unidad: "", direccion: "down", tipo: "rate",
+    formula: "Σ (posición × volumen) ÷ Σ volumen (100 = no rankea)", unidad: "pts", direccion: "down", tipo: "rate",
     fuente: "SERP de Google (DataForSEO)", granularidad: "foto", rol: "ambos", horizonte: "adelantado",
     medida: "posición promedio en Google ponderada por volumen (menor es mejor)",
     descripcion: "Posición promedio en Google ponderada por volumen de búsqueda. Menor es mejor." },
-  { id: "visibilidad_ia", nombre: "Visibilidad en IA", know: "visibilidad_ia", sinonimos: ["visibilidad ia", "share de ia", "menciones en ia", "llmo"], plan: MC,
+  { id: "visibilidad_ia", nombre: "Visibilidad en IA", sinonimos: ["visibilidad ia", "share de ia", "menciones en ia", "llmo"], plan: MC,
     formula: "Menciones de tu marca en respuestas de IA ÷ total de menciones del set", unidad: "%", direccion: "up", tipo: "rate",
     fuente: "Respuestas de asistentes de IA (DataForSEO LLM)", granularidad: "foto", rol: "marca", horizonte: "adelantado",
     medida: "menciones de tu marca en respuestas de IA ÷ total de menciones",
@@ -113,6 +118,19 @@ export const METRICAS: Metrica[] = [
     fuente: "API de Mercado Libre (reseñas por ítem)", granularidad: "foto", rol: "ambos", horizonte: "adelantado",
     descripcion: "Calificación promedio (1 a 5) de tus productos en el top de más vendidos, comparada con la mediana de la categoría." },
 
+  { id: "share_valor", nombre: "Share en valor", know: "share_valor", sinonimos: ["value share", "share valor", "share de mercado valor", "participacion en valor"],
+    formula: "Ventas en $ de Drean ÷ ventas en $ de la categoría (GfK)", unidad: "%", direccion: "up", tipo: "rate",
+    fuente: "GfK (mercado_share)", granularidad: "mensual", rol: "ambos", horizonte: "rezagado",
+    descripcion: "Participación de Drean en la facturación de la categoría (valor)." },
+  { id: "share_unidades", nombre: "Share en unidades", know: "share_unidades", sinonimos: ["unit share", "share unidades", "share de mercado unidades", "participacion en unidades"],
+    formula: "Unidades vendidas de Drean ÷ unidades de la categoría (GfK)", unidad: "%", direccion: "up", tipo: "rate",
+    fuente: "GfK (mercado_share)", granularidad: "mensual", rol: "ambos", horizonte: "rezagado",
+    descripcion: "Participación de Drean en las unidades vendidas de la categoría." },
+  { id: "indice_precio", nombre: "Índice de precio", know: "indice_precio", sinonimos: ["indice precio", "price index", "precio relativo"],
+    formula: "Precio medio de Drean ÷ precio medio de la categoría × 100 (GfK)", unidad: "", direccion: "up", tipo: "rate",
+    fuente: "GfK (mercado_share)", granularidad: "mensual", rol: "ambos", horizonte: "rezagado",
+    descripcion: "100 = precio promedio de la categoría; arriba de 100 Drean vende más caro que el promedio." },
+
   // ── Medios pagos ─────────────────────────────────────────────────────────
   { id: "inversion", nombre: "Inversión", know: "inversion", plan: PM, sinonimos: ["inversion pauta", "inversion en medios", "gasto"],
     formula: "Σ gasto del período (online + offline)", unidad: "$", direccion: "up", tipo: "sum",
@@ -121,7 +139,7 @@ export const METRICAS: Metrica[] = [
     descripcion: "Monto invertido en pauta; se lee siempre contra el resultado que compra." },
   { id: "alcance_unico", nombre: "Alcance único", know: "alcance", plan: PM, sinonimos: ["alcance", "reach"],
     formula: "Personas únicas alcanzadas (dato de la plataforma; no se suma entre medios sin deduplicar)", unidad: "", direccion: "up", tipo: "sum",
-    fuente: "Meta Ads (Google no informa alcance)", granularidad: "mensual", rol: "marca", horizonte: "adelantado",
+    fuente: "Meta Ads + DV360 + OMD (suma por medio, no deduplicada)", granularidad: "mensual", rol: "marca", horizonte: "adelantado",
     medida: "personas alcanzadas", claves: ["alcance perdido", "alcance adicional"],
     descripcion: "Personas distintas expuestas a la pauta: mide cobertura, no repetición." },
   { id: "frecuencia", nombre: "Frecuencia", know: "frecuencia", plan: PM, sinonimos: [],
@@ -249,7 +267,7 @@ export const METRICAS: Metrica[] = [
     descripcion: "Tu presencia (posts, avisos, menciones) sobre la del set competitivo." },
 
   // ── Web / Ecommerce ──────────────────────────────────────────────────────
-  { id: "trafico", nombre: "Tráfico web", know: "trafico", plan: WE, metaKey: "trafico", sinonimos: ["trafico", "usuarios"],
+  { id: "trafico", nombre: "Tráfico web (usuarios)", know: "trafico", plan: WE, sinonimos: ["trafico", "trafico web", "usuarios"],
     claves: ["visitas mensuales", "visitas/mes"],
     formula: "Usuarios activos del mes (GA4)", unidad: "", direccion: "up", tipo: "sum",
     fuente: "Google Analytics 4", granularidad: "diaria", rol: "ambos", horizonte: "adelantado",
@@ -271,29 +289,29 @@ export const METRICAS: Metrica[] = [
     formula: "Vistas de página ÷ Sesiones", unidad: "", direccion: "up", tipo: "rate",
     fuente: "Google Analytics 4", granularidad: "diaria", rol: "activacion", horizonte: "adelantado",
     descripcion: "Profundidad de navegación." },
-  { id: "duracion_sesion", nombre: "Duración media de sesión", know: "frecuencia_sesion", plan: WE, metaKey: "avg_session",
-    sinonimos: ["duracion de sesion", "duracion sesion", "duracion", "tiempo en sitio", "avg session"],
+  { id: "duracion_sesion", nombre: "Avg Sesión (segundos)", know: "frecuencia_sesion", plan: WE,
+    sinonimos: ["duracion media de sesion", "duracion de sesion", "duracion sesion", "duracion", "tiempo en sitio", "avg session"],
     formula: "Tiempo de interacción ÷ Sesiones", unidad: "s", direccion: "up", tipo: "rate",
     fuente: "Google Analytics 4", granularidad: "diaria", rol: "activacion", horizonte: "adelantado",
     medida: "segundos por sesión",
     descripcion: "Tiempo promedio de interacción por visita." },
-  { id: "conversion", nombre: "Tasa de conversión", know: "conversion", plan: WE, metaKey: "conversion",
+  { id: "conversion", nombre: "Tasa de conversión", know: "conversion", plan: WE,
     sinonimos: ["conversion", "tasa de conversion eventos clave", "cr"], claves: ["eventos clave"],
-    formula: "Transacciones (o eventos clave) ÷ Sesiones", unidad: "%", direccion: "up", tipo: "rate",
+    formula: "Conversiones (eventos clave de GA4) ÷ Sesiones", unidad: "%", direccion: "up", tipo: "rate",
     fuente: "Google Analytics 4", granularidad: "diaria", rol: "activacion", horizonte: "rezagado",
     medida: "transacciones ÷ sesiones",
     descripcion: "Qué parte de las visitas termina en compra o evento clave." },
-  { id: "transacciones", nombre: "Transacciones", know: "transacciones", plan: WE, metaKey: "transacciones", sinonimos: ["compras"],
+  { id: "transacciones", nombre: "Transacciones", know: "transacciones", sinonimos: ["compras"],
     formula: "Compras registradas en el sitio", unidad: "", direccion: "up", tipo: "sum",
     fuente: "Google Analytics 4 (ecommerce)", granularidad: "diaria", rol: "activacion", horizonte: "rezagado",
     medida: "compras del mes (GA4)",
     descripcion: "Compras concretadas en el ecommerce." },
-  { id: "ingresos", nombre: "Ingresos", know: "ingresos", plan: WE, metaKey: "ingresos", sinonimos: ["ingresos ecommerce", "revenue"],
+  { id: "ingresos", nombre: "Ingresos", know: "ingresos", sinonimos: ["ingresos ecommerce", "revenue", "total ingresos"],
     formula: "Σ valor de las compras (GA4)", unidad: "$", direccion: "up", tipo: "sum",
     fuente: "Google Analytics 4 (ecommerce)", granularidad: "diaria", rol: "activacion", horizonte: "rezagado",
     medida: "ingresos ecommerce (GA4)",
     descripcion: "Facturación del ecommerce." },
-  { id: "aov", nombre: "Valor medio de compra", know: "aov", plan: WE, metaKey: "aov", sinonimos: ["ticket promedio", "aov"],
+  { id: "aov", nombre: "Valor medio de compra", know: "aov", sinonimos: ["ticket promedio", "aov"],
     formula: "Ingresos ÷ Transacciones", unidad: "$", direccion: "up", tipo: "rate",
     fuente: "Google Analytics 4 (ecommerce)", granularidad: "diaria", rol: "activacion", horizonte: "rezagado",
     medida: "ingresos ÷ transacciones",
@@ -324,11 +342,11 @@ export const METRICAS: Metrica[] = [
     descripcion: "Core Web Vital de estabilidad visual (bueno ≤ 0,1)." },
 
   // ── Trade ────────────────────────────────────────────────────────────────
-  { id: "floor_share", nombre: "Floor Share", know: "floor_share", sinonimos: ["share de exhibicion"],
+  { id: "floor_share", nombre: "Floor Share (exhibición)", know: "floor_share", plan: "Floor Share", sinonimos: ["floor share", "share de exhibicion", "share de gondola"],
     formula: "Espacio de tu marca ÷ espacio total de la categoría", unidad: "%", direccion: "up", tipo: "rate",
     fuente: "Relevamiento de tiendas (planilla)", granularidad: "mensual", rol: "activacion", horizonte: "adelantado",
     descripcion: "Participación de tu marca en la exhibición del punto de venta." },
-  { id: "cb", nombre: "Cuadro Básico", know: "cb", sinonimos: ["cuadro basico", "surtido"],
+  { id: "cb", nombre: "% Cumplimiento CB", know: "cb", plan: "Cuadros Básicos", sinonimos: ["cuadro basico", "cuadros basicos", "cumplimiento cb", "surtido"],
     formula: "SKUs del cuadro básico presentes ÷ SKUs exigidos", unidad: "%", direccion: "up", tipo: "rate",
     fuente: "Relevamiento de tiendas (planilla)", granularidad: "mensual", rol: "activacion", horizonte: "adelantado",
     descripcion: "Cumplimiento del surtido mínimo en tiendas." },

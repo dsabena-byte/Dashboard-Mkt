@@ -43,6 +43,7 @@ export const PROCS: Proc[] = [
   { id: "seo_audit", proceso: "SEO · Auditoría técnica + Core Web Vitals", fuente: "drean.com.ar + CrUX / PageSpeed Insights", conexion: "GitHub Action", detalle: "/api/cron/seo-audit · semanal (lunes)", cadenciaH: 168, tabla: "seo_audit_snapshot", col: "updated_at", workflow: "seo-audit.yml", nota: "Snapshot único (id=1, migración 0117). GOOGLE_PSI_KEY opcional: sin ella PageSpeed usa la cuota compartida y la UI avisa." },
   { id: "web_calidad", proceso: "Web · Calidad del dato (embudo, IA, consent)", fuente: "GA4 Data API + web_traffic", conexion: "GitHub Action", detalle: "/api/cron/web-calidad · 1x/día (con web-cat-agg)", cadenciaH: 24, tabla: "web_calidad_snapshot", col: "updated_at", workflow: "web-cat-agg.yml", nota: "Snapshot único (id=1, migración 0117)." },
   { id: "ad_library", proceso: "Pauta de la competencia (Ad Library)", fuente: "Biblioteca de anuncios de Meta (Apify)", conexion: "GitHub Action", detalle: "/api/cron/ad-library · semanal (lunes, fan-out por marca)", cadenciaH: 168, tabla: "competitor_ads_snapshot", col: "updated_at", workflow: "ad-library.yml", nota: "Requiere APIFY_API_TOKEN en Vercel + migración 0108. Una fila por marca; una marca caída queda 'sin actualizar' con su snapshot anterior." },
+  { id: "macro", proceso: "Índices macro (IPC + dólar)", fuente: "INDEC (datos.gob.ar) + BCRA", conexion: "GitHub Action", detalle: "/api/cron/sync-macro · días 2 y 16", cadenciaH: 384, tabla: "indices_macro", col: "updated_at", workflow: "sync-macro.yml", nota: "Moneda constante / USD de Plan de Medios e Inversión de Mkt. Requiere migración 0110; sin ella los montos quedan en pesos corrientes." },
   { id: "competencia_ig", proceso: "Competencia IG (Business Discovery + fotos por edad)", fuente: "Meta Graph API (Business Discovery) + social_posts", conexion: "GitHub Action", detalle: "/api/cron/competencia-ig · 1x/día", cadenciaH: 24, tabla: "social_post_snapshots", col: "observed_at", workflow: "competencia-ig.yml", nota: "Requiere migraciones 0115 (fotos por edad) y 0116 (temas). Frescura = última foto guardada. Si Business Discovery no tiene permiso o limita, los posts siguen llegando por el scraper n8n + Apify." },
   { id: "alertas", proceso: "Alertas por email + reporte ejecutivo", fuente: "Señales + Seguimiento + Ad Library → Resend", conexion: "GitHub Action", detalle: "/api/cron/alertas + /api/cron/reporte-ejecutivo · 1x/día", cadenciaH: 24, tabla: "alert_log", col: "sent_at", filter: { col: "canal", val: "cron" }, workflow: "alertas.yml", nota: "Frescura = latido de cada corrida (alert_log canal 'cron'), no el envío (el diario solo manda si hay algo nuevo de prioridad alta). Requiere migración 0108 + RESEND_API_KEY." },
 ];
@@ -75,6 +76,7 @@ export function fmtAge(ageH: number | null): string {
 export function fmtCadencia(h: number): string {
   if (h < 24) return `cada ${h}h`;
   if (h < 168) return `1x/día`;
-  if (h < 720) return `semanal`;
+  if (h < 336) return `semanal`;
+  if (h < 720) return `quincenal`;
   return `trimestral`;
 }

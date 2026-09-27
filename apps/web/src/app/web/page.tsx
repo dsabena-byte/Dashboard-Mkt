@@ -46,6 +46,7 @@ import { cierreDeMes } from "@/lib/web-forecast";
 import { chequeoConsent } from "@/lib/web-consent";
 import { ecomFunnel, aiTraffic, landingDrops, trackingQuality } from "@/lib/web-calidad";
 import { CierreMesSection, ConsentCheckSection, CalidadDatoBanner, WebQuickWinsSection, WebCalidadPendiente } from "@/components/web/web-calidad";
+import { DataHealth } from "@/components/data-health";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -499,6 +500,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         </div>
         <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
+      <DataHealth dash="web" className="-mt-2" />
       <HowToRead slug="web" />
       <DashTabBar />
 

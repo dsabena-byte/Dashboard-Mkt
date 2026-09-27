@@ -1,0 +1,7 @@
+{"status":200,"metadata":{"resultset":{"count":5,"offset":0,"limit":1000}},"results":[
+ {"fecha":"2026-01-02","detalle":[{"codigoMoneda":"USD","descripcion":"DOLAR E.E.U.U.","tipoPase":1.0,"tipoCotizacion":1000.0}]},
+ {"fecha":"2026-01-05","detalle":[{"codigoMoneda":"USD","descripcion":"DOLAR E.E.U.U.","tipoPase":1.0,"tipoCotizacion":1010.0}]},
+ {"fecha":"2026-02-02","detalle":[{"codigoMoneda":"EUR","tipoCotizacion":1200.0},{"codigoMoneda":"USD","tipoCotizacion":1050.0}]},
+ {"fecha":"2026-02-03","detalle":[]},
+ {"fecha":"xx","detalle":[{"codigoMoneda":"USD","tipoCotizacion":1}]}
+]}

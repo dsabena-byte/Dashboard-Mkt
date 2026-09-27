@@ -476,6 +476,8 @@ export interface KpiSegLite {
   plan: string; kpi: string; medida?: string; unit?: string; tipo: "sum" | "rate";
   realM: (number | null)[]; metaM: (number | null)[];
   direccion: "up" | "down";
+  /** Año anterior (12) para el pronóstico (lib/stats); opcional. */
+  histM?: (number | null)[] | null;
 }
 export interface ObjAporteLite { kpi: string; peso: number; cumpl: number | null }
 export interface ObjetivoLite { id: string; nombre: string; pesoEstrategico: number; cumplMes: number | null; cumplYtd: number | null; cobertura: number; aportes: ObjAporteLite[] }

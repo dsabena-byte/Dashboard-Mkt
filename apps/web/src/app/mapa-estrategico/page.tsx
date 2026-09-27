@@ -1,6 +1,7 @@
 import { MapaEditor } from "@/components/mapa-estrategico/mapa-editor";
 import { getMapaConfig } from "@/lib/mapa-server";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { ValidacionPesos } from "@/components/mapa-estrategico/validacion-pesos";
 
 export const metadata = { title: "Mapa Estratégico" };
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export default async function MapaEstrategicoPage() {
       <HowToRead slug="mapa-estrategico" />
 
       <MapaEditor initial={initial} />
+      {/* Evidencia de los pesos contra el share de mercado (a demanda, no suma costo al render). */}
+      {initial && <ValidacionPesos />}
     </div>
   );
 }

@@ -5,6 +5,7 @@
 import type { IgOrganicSummary, FbOrganicSummary, CompetitorPost, Red } from "./model";
 import { computeBrandStats, normalizePilar } from "./model";
 import { type Signal, sortSignals, median, sum, avg, deltaPct, fInt, fNum, fPct, fDelta, clip, r2 } from "./types";
+import { rangoEsperado, dentroDeLoNormal, datosRango } from "./banda";
 import { erComparablePorMarca, pautaPorMarca } from "../redes-competencia";
 import { temaGaps } from "../redes-temas";
 import { paidShare } from "../fb-paid";
@@ -210,20 +211,25 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       const dA = deltaPct(last.alcance ?? 0, baseAlc) ?? 0;
       const erM = (m: typeof last) => ((m.alcance ?? 0) > 0 ? ((m.engagement ?? 0) / (m.alcance ?? 1)) * 100 : 0);
       const dE = deltaPct(erM(last), avg(base.map(erM))) ?? 0;
-      if (dA <= -20) S({
+      // Rango esperado con toda la historia cerrada (lib/stats): caídas dentro de lo normal no alertan.
+      const prevs = withReach.slice(0, -1);
+      const evA = rangoEsperado(prevs.map((m) => m.alcance ?? 0), last.alcance ?? 0);
+      const evE = rangoEsperado(prevs.map(erM), erM(last));
+      const rA = datosRango(evA), rE = datosRango(evE);
+      if (dA <= -20 && !dentroDeLoNormal(evA)) S({
         key: "redes_ig_monthly_reach_drop", tipo: "alerta", prioridad: dA <= -35 ? "alta" : "media",
         titulo: `Instagram ${MES[last.mesIdx]}: alcance mensual ${fDelta(dA)} vs el promedio de los 3 meses previos`,
-        descripcion: `${fNum(last.alcance ?? 0)} vs promedio ${fNum(baseAlc)} (${base.map((m) => `${MES[m.mesIdx]} ${fNum(m.alcance ?? 0)}`).join(", ")}).`,
+        descripcion: `${fNum(last.alcance ?? 0)} vs promedio ${fNum(baseAlc)} (${base.map((m) => `${MES[m.mesIdx]} ${fNum(m.alcance ?? 0)}`).join(", ")}).${rA ? ` Fuera del rango esperado (${fNum(rA.min)}–${fNum(rA.max)}).` : ""}`,
         acciones: ["Cruzar con la cadencia y el mix de formatos del mes", "Revisar si hubo menos Reels (el formato de mayor alcance)"],
-        datos: { mes: MES[last.mesIdx], alcance: last.alcance, promedio3m: Math.round(baseAlc), deltaPct: r2(dA) },
+        datos: { mes: MES[last.mesIdx], alcance: last.alcance, promedio3m: Math.round(baseAlc), deltaPct: r2(dA), ...(rA ? { rangoEsperado: rA } : {}) },
         impacto: { metrica: "Alcance mensual perdido vs tendencia", valor: Math.round(baseAlc - (last.alcance ?? 0)), unidad: "personas" },
       });
-      if (dE <= -20) S({
+      if (dE <= -20 && !dentroDeLoNormal(evE)) S({
         key: "redes_ig_monthly_er_drop", tipo: "alerta", prioridad: "media",
         titulo: `Instagram ${MES[last.mesIdx]}: engagement rate mensual ${fDelta(dE)} vs los 3 meses previos`,
-        descripcion: `ER ${fPct(erM(last), 2)} vs promedio ${fPct(avg(base.map(erM)), 2)}.`,
+        descripcion: `ER ${fPct(erM(last), 2)} vs promedio ${fPct(avg(base.map(erM)), 2)}.${rE ? ` Fuera del rango esperado (${fPct(rE.min, 2)}–${fPct(rE.max, 2)}).` : ""}`,
         acciones: ["Revisar pilares y CTAs del mes", "Comparar con la competencia para descartar un efecto de algoritmo"],
-        datos: { mes: MES[last.mesIdx], er: r2(erM(last)), promedio3m: r2(avg(base.map(erM))), deltaPct: r2(dE) },
+        datos: { mes: MES[last.mesIdx], er: r2(erM(last)), promedio3m: r2(avg(base.map(erM))), deltaPct: r2(dE), ...(rE ? { rangoEsperado: rE } : {}) },
       });
     }
   }

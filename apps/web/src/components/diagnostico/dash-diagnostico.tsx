@@ -9,10 +9,12 @@
 // Sistema visual sobrio de Drean: dato #1e40af, tinta #0f172a, pizarra #64748b; rojo/ámbar solo
 // para estado (prioridad), nunca decorativo.
 // ============================================================================
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import type { Signal } from "@/lib/signals/types";
 import type { Insights, InsItem, ReportMeta } from "@/lib/insights/types";
+import { recomendacionesDeSenales, recomendacionesDeDiagnostico, unirRecomendaciones } from "@/lib/recomendacion";
+import { RecomendacionesLista } from "./recomendacion-card";
 import { AnotacionesPanel } from "@/components/anotaciones/anotaciones-panel";
 
 const DATA = "#1e40af";
@@ -217,6 +219,12 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
   };
 
   const n = (t: Signal["tipo"]) => (signals ?? []).filter((s) => s.tipo === t).length;
+  // "Qué hacer ahora": señales accionables + plan/oportunidades/hallazgos del Diagnóstico IA, con un
+  // único formato y ordenadas por prioridad = impacto × confianza ÷ esfuerzo (lib/recomendacion).
+  const recs = useMemo(() => {
+    try { return unirRecomendaciones(recomendacionesDeSenales(signals ?? []), recomendacionesDeDiagnostico(data, dash)); }
+    catch { return []; }
+  }, [signals, data, dash]);
   const latestId = versiones[0]?.id ?? null;
 
   return (
@@ -231,6 +239,11 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
 
       {open && (
         <div className="mt-4 grid gap-4">
+          <Section titulo="Qué hacer ahora" desc="Acciones concretas de las señales y del Diagnóstico IA, en un mismo formato y ordenadas por prioridad (impacto × confianza ÷ esfuerzo). Abrí cada una para ver los pasos, el supuesto del impacto y cómo medirla.">
+            {signals == null ? (
+              <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando las recomendaciones…</div>
+            ) : <RecomendacionesLista recs={recs} cargando={loadingDiag} />}
+          </Section>
           <Section titulo="Señales detectadas" desc={signals ? `Reglas determinísticas sobre los datos actuales — ${n("alerta")} alertas · ${n("oportunidad")} oportunidades · ${n("info")} de contexto. Se recalculan en cada apertura.` : undefined}>
             {signals == null ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Calculando señales…</div>

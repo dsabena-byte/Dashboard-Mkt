@@ -16,6 +16,8 @@ import {
   type MetaValor,
   type Referencia,
 } from "@/lib/metas";
+import { SugerirMetas } from "./sugerir-metas";
+import type { Sugerencia } from "@/lib/stats/sugerir";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -49,6 +51,9 @@ interface Props {
 }
 
 const keyCfg = (kpi: string, cat: string) => `${kpi}|${cat}`;
+// Planes con serie real en el Seguimiento (→ "Sugerir metas" por pronóstico). Floor Share se carga
+// por categoría (catPesos) y Facebook no está en el Seguimiento → sin sugerencia.
+const SUGERIR_PLANES = new Set(["Pauta Mkt", "Web / Ecommerce", "Redes Sociales", "Cuadros Básicos", "Mercado y competencia"]);
 const keyVal = (kpi: string, cat: string, mes: number) => `${kpi}|${cat}|${mes}`;
 
 function fmt(n: number | null | undefined, unidad?: string | null): string {
@@ -142,6 +147,13 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
     return any ? sum : null;
   };
 
+  // "Sugerir metas" → carga los valores sugeridos (meses por venir) en General; el usuario revisa y Guarda.
+  const aplicarSugerencias = (sug: Record<string, Sugerencia>) => {
+    for (const [kpi, sg] of Object.entries(sug)) {
+      for (const i of sg.meses) { const v = sg.valores[i]; if (v != null) setVal(kpi, CAT_GENERAL, i + 1, String(v)); }
+    }
+  };
+
   const dirty = touchedCfg.size > 0 || touchedVal.size > 0;
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(true); // arranca colapsado para no ocupar espacio
@@ -208,6 +220,16 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
         )}
       </div>
 
+      {!collapsed && !loading && !catPesos && SUGERIR_PLANES.has(plan) && (
+        <SugerirMetas
+          plan={plan}
+          anio={year}
+          kpis={kpis.map((k) => k.nombre)}
+          direccionDe={(kpi) => getCfg(kpi, CAT_GENERAL, kpis.find((k) => k.nombre === kpi)?.unidad).direccion}
+          unidadDe={(kpi) => getCfg(kpi, CAT_GENERAL, kpis.find((k) => k.nombre === kpi)?.unidad).unidad}
+          onAplicar={aplicarSugerencias}
+        />
+      )}
       {collapsed ? null : loading ? (
         <div className="py-8 text-center text-xs text-muted-foreground">Cargando metas…</div>
       ) : (
