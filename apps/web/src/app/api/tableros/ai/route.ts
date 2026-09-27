@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/chat/rate-limit";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { canUseTableros } from "@/lib/tableros-server";
+import { canUseTableros, currentAllowed } from "@/lib/tableros-server";
+import { runNl } from "@/lib/tableros-nl";
 import { CHART_TYPES, sanitizeWidget, type AiDataset, type Prepared } from "@/lib/viz";
 
 // IA de Mis tableros (portado de BIP; modelo OPENAI_INSIGHTS_MODEL, default gpt-4o-mini; respuesta JSON):
 //   mode "widgets"   → arma gráficos a partir de un pedido ("¿Qué querés ver?")
 //   mode "tablero"   → arma un tablero profesional completo
 //   mode "narrativa" → resumen ejecutivo del reporte (sobre los datos agregados que manda el cliente)
+//   mode "nl"        → "Armame el tablero": lenguaje natural sobre TODAS las fuentes (planillas + nativas
+//                      del dashboard permitidas); capa semántica, validación estricta + 1 reparación y
+//                      fallback sin IA (lib/tableros-nl.ts + lib/viz/semantic.ts)
 // Recibe SOLO el esquema + una muestra chica de filas (nunca la planilla entera). Los widgets
 // devueltos se sanean contra el esquema (ids de campo válidos, tipos/opciones permitidos).
 export const runtime = "nodejs";
@@ -73,7 +77,11 @@ export async function POST(req: Request) {
   if (!rl.ok) return NextResponse.json({ error: `Muchas consultas seguidas. Probá de nuevo en ${Math.ceil(rl.retryInSec / 60)} min.` }, { status: 429 });
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const mode = body.mode === "narrativa" ? "narrativa" : body.mode === "tablero" ? "tablero" : "widgets";
+  const mode = body.mode === "narrativa" ? "narrativa" : body.mode === "tablero" ? "tablero" : body.mode === "nl" ? "nl" : "widgets";
+  if (mode === "nl") {
+    try { return await runNl(body, { widgetDef: WIDGET_SPEC, model: MODEL(), allowed: await currentAllowed() }); }
+    catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "No pudimos armar el tablero. Probá de nuevo." }, { status: 500 }); }
+  }
 
   try {
     if (mode === "narrativa") {

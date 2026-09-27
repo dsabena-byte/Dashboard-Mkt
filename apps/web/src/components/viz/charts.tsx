@@ -2,10 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, LabelList, Legend, Line, LineChart,
-  Pie, PieChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
+  Pie, PieChart, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from "recharts";
 import type { Result, Widget, NumFormat } from "@/lib/viz";
 import { fmtValue } from "@/lib/viz/format";
+import { marcasEnEje } from "@/lib/anotaciones-core";
+import { useVizNotes } from "./notes";
 import { AXIS, GRID, INK, LABEL, META_FILL, META_LINE, META_STROKE, REAL, Y_W, paletteOf, tooltipLabelStyle, tooltipStyle } from "./theme";
 
 // Gráficos cartesianos (barras, líneas, área, combo), torta/dona, dispersión y cascada.
@@ -88,6 +90,14 @@ function CartesianInner({ r, w, height, selected, onSelect, cw }: ChartProps & {
   const fmtL = series.find((s) => s.axis === "left")?.format ?? "auto";
   const fmtR = series.find((s) => s.axis === "right")?.format ?? "auto";
   const hasRight = series.some((s) => s.axis === "right");
+  // Anotaciones del equipo sobre el eje de fechas (línea punteada + texto corto; el detalle va en el title).
+  const notes = useVizNotes();
+  const d0 = r.dims[0];
+  const marks = notes.length && !horizontal && d0?.type === "date" && d0.grain ? marcasEnEje(notes, r.xKeys, d0.grain) : [];
+  const notesEls = marks.map((m) => (
+    <ReferenceLine key={`n-${m.key}`} yAxisId="l" x={m.label} stroke={META_STROKE} strokeDasharray="2 3" ifOverflow="extendDomain"
+      label={{ value: `${m.textos[0]!.slice(0, 22)}${m.textos[0]!.length > 22 || m.textos.length > 1 ? "…" : ""}`, position: "insideTopLeft", fontSize: 9.5, fill: META_STROKE }} />
+  ));
   const targetFmt = series[0]?.format ?? "auto";
   const dim = (k: string) => (selected && k !== selected ? 0.35 : 1);
   const click = (d: unknown) => { const p = payloadKey(d); if (p && onSelect) onSelect(p.__key, p.__label); };
@@ -136,7 +146,7 @@ function CartesianInner({ r, w, height, selected, onSelect, cw }: ChartProps & {
       <ResponsiveContainer width="100%" height={height}>
         <C data={rows} margin={margin} stackOffset={stack === "percent" ? "expand" : undefined} onClick={(e: unknown) => { const i = (e as { activeTooltipIndex?: number | string })?.activeTooltipIndex; const row = i != null ? rows[Number(i)] : undefined; if (row && onSelect) onSelect(row.__key, row.__label); }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
-          {xAxis}{yLeft}{yRight}{tip}{leg}
+          {xAxis}{yLeft}{yRight}{tip}{leg}{notesEls}
           {r.hasTarget && !r.dims[1] && <Line yAxisId="l" type="monotone" dataKey="__target" name={r.targetLabel ?? "Meta"} stroke={META_LINE} strokeWidth={1.75} strokeDasharray="5 4" dot={false} connectNulls />}
           {series.map((s, i) => w.type === "area" ? (
             <Area key={s.key} yAxisId={s.axis === "right" ? "r" : "l"} type={w.opts.smooth === false ? "linear" : "monotone"} dataKey={s.key} name={s.name} stroke={s.color} fill={s.color} fillOpacity={stacked ? 0.55 : 0.14} strokeWidth={2} stackId={stacked ? "a" : undefined} connectNulls dot={false} />
@@ -156,7 +166,7 @@ function CartesianInner({ r, w, height, selected, onSelect, cw }: ChartProps & {
     <ResponsiveContainer width="100%" height={height}>
       <Chart data={rows} margin={margin} barGap={2} stackOffset={stack === "percent" ? "expand" : undefined}>
         <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
-        {xAxis}{yLeft}{yRight}{tip}{leg}
+        {xAxis}{yLeft}{yRight}{tip}{leg}{notesEls}
         {r.hasTarget && !r.dims[1] && <Bar yAxisId="l" dataKey="__target" name={r.targetLabel ?? "Meta"} fill={META_FILL} stroke={META_STROKE} strokeWidth={1.25} radius={[3, 3, 0, 0]} maxBarSize={44} />}
         {series.map((s, i) => s.mark === "line" && w.type === "combo" ? (
           <Line key={s.key} yAxisId={s.axis === "right" ? "r" : "l"} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} strokeWidth={2} dot={{ r: 2.5, fill: s.color }} connectNulls>

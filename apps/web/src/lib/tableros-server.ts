@@ -3,6 +3,7 @@ import { sbAdmin } from "@/lib/supabase-admin";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
 import { upgradeDashboard, sanitizeDashboard, type DashboardV2, type Dataset } from "@/lib/viz";
+import { getNativeDataset, isNativeId, listNativeDatasets } from "@/lib/native-datasets";
 
 // ============================================================================
 // "Mis tableros" (motor de planillas portado de BIP) — persistencia server-only.
@@ -16,7 +17,7 @@ import { upgradeDashboard, sanitizeDashboard, type DashboardV2, type Dataset } f
 export type { Dataset } from "@/lib/viz";
 
 /** Filas de `tableros` que NO son tableros (config de otros módulos). */
-export const RESERVED_SLUGS = new Set(["cfg-kantar"]);
+export const RESERVED_SLUGS = new Set(["cfg-kantar", "cfg-compartir"]);
 export const MAX_DATASET_ROWS = 20_000;
 
 export class TablerosMissingError extends Error {
@@ -41,6 +42,19 @@ async function get<T>(path: string): Promise<T> {
  * El usuario logueado puede usar Mis tableros si no tiene restricción de dashboards o si
  * `/tableros` está entre sus permitidos (tabla dashboard_access). El middleware ya exige login.
  */
+/** Dashboards permitidos del usuario logueado (null = sin restricción; sin sesión = []). */
+export async function currentAllowed(): Promise<string[] | null> {
+  try {
+    const supabase = getServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await supabase.from("dashboard_access").select("dashboard_path");
+    return allowedFromRows(data as { dashboard_path: string }[] | null);
+  } catch {
+    return [];
+  }
+}
+
 export async function canUseTableros(path = "/tableros"): Promise<boolean> {
   try {
     const supabase = getServerSupabase();
@@ -134,7 +148,12 @@ export async function deleteReservedConfig(slug: string): Promise<void> {
 // ── Planillas (datasets) ────────────────────────────────────────────────────
 export interface DatasetListItem { id: string; name: string; row_count: number; columns?: string[]; source?: unknown; updated_at?: string | null }
 
-export async function getDataset(id: string): Promise<Dataset | null> {
+/**
+ * Planilla por id. Los ids "nat:*" son fuentes nativas del dashboard (solo lectura, lib/native-datasets):
+ * se devuelven solo si `allowed` (dashboard_access del usuario; null = sin restricción) incluye su tablero.
+ */
+export async function getDataset(id: string, allowed: string[] | null = null): Promise<Dataset | null> {
+  if (isNativeId(id)) return getNativeDataset(id, allowed).catch(() => null);
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const rows = await get<{ id: string; name: string; columns: string[] | null; rows: unknown[][] | null }[]>(`tableros_datasets?id=eq.${id}&select=id,name,columns,rows`);
   const d = rows[0];
@@ -142,19 +161,22 @@ export async function getDataset(id: string): Promise<Dataset | null> {
   return { id: d.id, name: d.name, columns: (d.columns ?? []).map(String), rows: (d.rows ?? []) as unknown[][] };
 }
 
-export async function listDatasets(withColumns = false): Promise<DatasetListItem[]> {
+/** Planillas subidas. Con `native` suma al final las fuentes nativas permitidas (row_count -1, solo lectura). */
+export async function listDatasets(withColumns = false, native?: { allowed: string[] | null }): Promise<DatasetListItem[]> {
   const sel = withColumns ? "id,name,row_count,columns,source,updated_at" : "id,name,row_count,source,updated_at";
-  return get<DatasetListItem[]>(`tableros_datasets?select=${sel}&order=updated_at.desc`);
+  const own = await get<DatasetListItem[]>(`tableros_datasets?select=${sel}&order=updated_at.desc`);
+  if (!native) return own;
+  return [...own, ...listNativeDatasets(native.allowed).map((d) => ({ id: d.id, name: d.name, row_count: -1 }))];
 }
 
 /** Todas las planillas que usa un tablero (principal, por widget y cruces). */
-export async function getDatasetsFor(cfg: DashboardV2): Promise<Record<string, Dataset>> {
+export async function getDatasetsFor(cfg: DashboardV2, allowed: string[] | null = null): Promise<Record<string, Dataset>> {
   const ids = new Set<string>();
   if (cfg.datasetId) ids.add(cfg.datasetId);
   for (const w of cfg.widgets) if (w.datasetId) ids.add(w.datasetId);
   for (const s of Object.values(cfg.datasets)) for (const b of s.blends ?? []) ids.add(b.datasetId);
   const out: Record<string, Dataset> = {};
-  const list = await Promise.all([...ids].slice(0, 8).map((id) => getDataset(id).catch(() => null)));
+  const list = await Promise.all([...ids].slice(0, 8).map((id) => getDataset(id, allowed).catch(() => null)));
   for (const d of list) if (d) out[d.id] = d;
   return out;
 }

@@ -10,7 +10,7 @@ const PRIO: Record<string, { bg: string; fg: string; t: string }> = {
   media: { bg: "#fef3c7", fg: "#92400e", t: "Media" },
   baja: { bg: "#f1f5f9", fg: "#475569", t: "Info" },
 };
-const FUENTE: Record<AlertItem["fuente"], string> = { senal: "Señal", objetivo: "KPI vs meta", competencia: "Competencia" };
+const FUENTE: Record<AlertItem["fuente"], string> = { senal: "Señal", objetivo: "KPI vs meta", competencia: "Competencia", umbral: "Tu umbral" };
 
 export function AlertasPreview() {
   const [items, setItems] = useState<AlertItem[] | null>(null);

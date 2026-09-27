@@ -1,11 +1,17 @@
 import Link from "next/link";
 import type { DashboardV2, Dataset } from "@/lib/viz";
+import type { Anotacion } from "@/lib/anotaciones-core";
 import { DashboardRuntime } from "./runtime";
+import { ShareTablero } from "./share-tablero";
+import { AnotacionesPanel } from "@/components/anotaciones/anotaciones-panel";
 
 // Vista de un tablero de planilla (server): encabezado + runtime interactivo (cliente) con
-// filtros, filtros cruzados, modo reporte (PDF) y descarga de datos (Excel).
-export function DashboardView({ title, sub, config, datasets, editSlug }: {
+// filtros, filtros cruzados, modo reporte (PDF) y descarga de datos (Excel). Con `editSlug`:
+// botones Editar y Compartir (link de solo lectura + envío programado) y el panel de anotaciones
+// (marcas punteadas en los gráficos por fecha).
+export function DashboardView({ title, sub, config, datasets, editSlug, notes, notesMissing }: {
   title: string; sub?: string; config: DashboardV2; datasets: Record<string, Dataset>; editSlug?: string;
+  notes?: Anotacion[]; notesMissing?: boolean;
 }) {
   const names = [...new Set([config.datasetId, ...config.widgets.map((w) => w.datasetId)].filter(Boolean) as string[])].map((id) => datasets[id]?.name).filter(Boolean);
   return (
@@ -19,8 +25,13 @@ export function DashboardView({ title, sub, config, datasets, editSlug }: {
         config={config}
         datasets={datasets}
         mode="view"
-        headerExtra={editSlug ? <Link href={`/tableros/${editSlug}/editar`} className="vz-pill" style={{ color: "var(--navy)", fontWeight: 600 }}>Editar tablero</Link> : undefined}
+        notes={notes}
+        headerExtra={editSlug ? <>
+          <Link href={`/tableros/${editSlug}/editar`} className="vz-pill" style={{ color: "var(--navy)", fontWeight: 600 }}>Editar tablero</Link>
+          <ShareTablero slug={editSlug} />
+        </> : undefined}
       />
+      {editSlug && <AnotacionesPanel tablero={editSlug} notas={notes ?? []} missing={notesMissing} />}
     </div>
   );
 }

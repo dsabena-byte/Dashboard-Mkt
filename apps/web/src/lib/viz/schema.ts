@@ -122,9 +122,64 @@ function doPrepare(ds: Dataset, settings: DatasetSettings, lookup?: (id: string)
   return P;
 }
 
+/** "YYYY-MM" de un valor crudo de fecha (texto, ISO, serial de Excel) o null. */
+function monthKeyOf(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v.toISOString().slice(0, 7);
+  const d = parseDate(v, { serial: true });
+  return d ? new Date(d.t).toISOString().slice(0, 7) : null;
+}
+
+/** Cruce por MES: suma el remoto por mes y lo asigna a la 1ª fila local de cada mes. */
+function addBlendMonth(P: Prepared, b: BlendDef, remote: Dataset) {
+  const rk = Number(b.remoteKey);
+  const local = P.byId.get(b.localKey);
+  if (!local || local.type !== "date") { P.warnings.push("El cruce por mes necesita una columna de fecha."); return; }
+  const cols = b.fields.map(Number).filter((c) => Number.isInteger(c) && c >= 0);
+  const locale = inferColumn("x", remote.rows.slice(0, 200).map((r) => r?.[cols[0] ?? 0])).locale;
+  const agg = new Map<string, (number | string | null)[]>();
+  for (const r of remote.rows) {
+    const k = monthKeyOf(r?.[rk]);
+    if (!k) continue;
+    const acc = agg.get(k) ?? cols.map(() => null);
+    cols.forEach((c, j) => {
+      const v = r?.[c];
+      const x = parseNumber(v, locale);
+      if (x != null) acc[j] = (typeof acc[j] === "number" ? (acc[j] as number) : 0) + x;
+      else if (acc[j] == null && v != null && v !== "") acc[j] = String(v);
+    });
+    agg.set(k, acc);
+  }
+  const a = P.num.get(local.id);
+  const firstOf = new Map<string, number>();
+  let hits = 0;
+  const rowMonth: (string | null)[] = new Array(P.n);
+  for (let i = 0; i < P.n; i++) {
+    const t = a ? a[i]! : NaN;
+    const k = Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 7);
+    rowMonth[i] = k;
+    if (k && !firstOf.has(k)) { firstOf.set(k, i); if (agg.has(k)) hits++; }
+  }
+  if (firstOf.size && hits / firstOf.size < 0.5) P.warnings.push(`El cruce por mes con “${remote.name}” encontró datos en ${Math.round((hits / firstOf.size) * 100)}% de los meses.`);
+  cols.forEach((ci, j) => {
+    const label = `${String(remote.columns[ci] ?? `Columna ${ci + 1}`)} · ${remote.name.replace(/\.(xlsx|xls|csv)$/i, "")}`;
+    const vals: unknown[] = new Array(P.n);
+    for (let i = 0; i < P.n; i++) { const k = rowMonth[i]; vals[i] = k && firstOf.get(k) === i ? agg.get(k)?.[j] ?? null : null; }
+    const inf = inferColumn(label, sampleCol(remote.rows, ci));
+    const parsed = parseColumn(P.n, (i) => vals[i], inf.type === "date" ? "text" : inf.type, locale);
+    const id = `bl_${b.id}_${ci}`;
+    const type: FieldType = inf.type === "date" ? "text" : inf.type;
+    const f: Field = { id, label, type, role: type === "number" ? "measure" : inf.role, format: inf.format, source: "blend" };
+    if (parsed.num) P.num.set(id, parsed.num);
+    if (parsed.str) P.str.set(id, parsed.str);
+    P.fields.push(f); P.byId.set(id, f);
+  });
+}
+
 function addBlend(P: Prepared, b: BlendDef, lookup?: (id: string) => Dataset | null | undefined) {
   const remote = lookup?.(b.datasetId);
   if (!remote) { P.warnings.push("Hay un cruce con otra planilla que no está disponible."); return; }
+  if (b.grain === "month") { addBlendMonth(P, b, remote); return; }
   const rk = Number(b.remoteKey);
   const idx = new Map<string, number>();
   remote.rows.forEach((r, i) => { const v = r?.[rk]; if (v != null && v !== "") { const k = norm(String(v)); if (!idx.has(k)) idx.set(k, i); } });
