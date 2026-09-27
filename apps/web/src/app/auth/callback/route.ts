@@ -51,6 +51,10 @@ export async function GET(request: NextRequest) {
 /** "Continuar" de la pantalla de confirmación: acá se consume el token_hash. */
 export async function POST(request: NextRequest) {
   const { origin } = request.nextUrl;
+  // Anti login-CSRF: solo aceptamos el form de nuestra propia pantalla (un sitio ajeno podría postear SU token
+  // y dejar al usuario logueado en la cuenta del atacante).
+  const reqOrigin = request.headers.get("origin");
+  if (reqOrigin && reqOrigin !== origin) return fail(origin);
   let form: FormData;
   try {
     form = await request.formData();
