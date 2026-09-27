@@ -304,6 +304,11 @@ export async function AuditoriaSection() {
         <Card t="Bots de IA (búsqueda)" v={iaBloq.length ? `${iaBloq.length} bloqueados` : "Permitidos"} color={iaBloq.length ? SEMAFORO_COLOR.rojo : SEMAFORO_COLOR.verde} sub={iaBloq.length ? iaBloq.map((b) => b.ua).join(", ") : "OAI-SearchBot, Claude-SearchBot, PerplexityBot"} />
         <Card t="Sitemap" v={d.sitemap ? (d.sitemap.status < 400 && d.sitemap.tipo !== "invalido" ? `${nf(d.sitemap.urls)} URLs` : `Error ${d.sitemap.status}`) : "No encontrado"} color="#0f172a" sub={d.sitemap ? pathOf(d.sitemap.url) : undefined} />
       </div>
+      {d.bloqueado && (
+        <div className="rounded-lg border-l-4 bg-card px-4 py-2 text-xs" style={{ borderLeftColor: SEMAFORO_COLOR.amarillo }}>
+          <b>El sitio rechazó al auditor</b>: {d.paginasBloqueadas ?? 0} de {d.paginas?.length ?? 0} páginas y el robots.txt respondieron con error (403/5xx) aun simulando un navegador. Lo más probable es un firewall o CDN que bloquea robots, no páginas rotas, así que no lo contamos como error ni en la salud técnica. Si querés la auditoría completa, pedile al equipo del sitio que permita el user-agent <code>DreanDashboard-SEO-Audit</code>. Google sí puede leer el sitio: lo confirman Search Console y PageSpeed.
+        </div>
+      )}
       {!d.psiKey && (
         <div className="rounded-lg border-l-4 bg-card px-4 py-2 text-xs" style={{ borderLeftColor: SEMAFORO_COLOR.amarillo }}>
           <b>Falta la clave de Google (GOOGLE_PSI_KEY)</b>: sin ella no hay datos de usuarios reales de Chrome (CrUX) y PageSpeed Insights usa una cuota compartida{d.psiCuota ? " que esta vez se agotó (429)" : ""}. Crear una API key en Google Cloud con “PageSpeed Insights API” y “Chrome UX Report API” habilitadas y cargarla en Vercel como <code>GOOGLE_PSI_KEY</code>.

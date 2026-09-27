@@ -44,20 +44,35 @@ export interface SeoAuditData {
   psiCuota?: boolean;
   issues?: AuditIssue[];
   salud?: number | null;
+  /** true si el sitio rechazó al auditor (403/5xx en la mayoría de las páginas y en robots.txt). */
+  bloqueado?: boolean;
+  paginasBloqueadas?: number;
   updatedAt: string;
 }
 
 const UA = "Mozilla/5.0 (compatible; DreanDashboard-SEO-Audit/1.0)";
+// Algunos firewalls/CDN (el de drean.com.ar incluido) responden 403/5xx a UAs que no son navegador:
+// si pasa, se reintenta UNA vez con un UA de navegador para no reportar como "páginas con error" lo
+// que en realidad es un bloqueo al auditor.
+const UA_NAVEGADOR = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36";
 const HTML_MAX = 1_500_000;
 const mismoSitio = (u: string) => { try { const h = new URL(u).hostname.toLowerCase(); return h === ROOT || h.endsWith(`.${ROOT}`); } catch { return false; } };
 
 /** GET con timeout y tope de bytes. Solo sigue redirects dentro de drean.com.ar. */
-async function fetchText(url: string, max: number, timeoutMs = 12_000): Promise<{ status: number; text: string | null; finalUrl: string; headers: Headers } | null> {
+type FetchRes = { status: number; text: string | null; finalUrl: string; headers: Headers };
+const bloqueoProbable = (st: number) => st === 403 || st === 429 || st >= 500;
+async function fetchText(url: string, max: number, timeoutMs = 12_000): Promise<FetchRes | null> {
+  const r = await fetchTextUA(url, max, timeoutMs, UA);
+  if (r && bloqueoProbable(r.status)) return (await fetchTextUA(url, max, timeoutMs, UA_NAVEGADOR)) ?? r;
+  return r;
+}
+
+async function fetchTextUA(url: string, max: number, timeoutMs: number, ua: string): Promise<FetchRes | null> {
   let cur = url;
   try {
     for (let hop = 0; hop < 5; hop++) {
       if (!mismoSitio(cur)) return null;
-      const res = await fetch(cur, { redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(timeoutMs), headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,application/xml,text/plain;q=0.9,*/*;q=0.5" } });
+      const res = await fetch(cur, { redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(timeoutMs), headers: { "User-Agent": ua, Accept: "text/html,application/xhtml+xml,application/xml,text/plain;q=0.9,*/*;q=0.5" } });
       if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
         await res.body?.cancel().catch(() => {});
         cur = new URL(res.headers.get("location")!, cur).toString();
@@ -189,14 +204,19 @@ export async function runSeoAudit(): Promise<SeoAuditData> {
     ...chequearSitio({ robots: rob ? { status: rob.status, txt: robotsTxt } : null, sitemap, pages }),
     ...cwv.filter((c) => c.url !== AUDIT_SITE || !cwv.some((x) => x.url !== c.url && x.fuente === "url")).flatMap(chequearCwv),
   ];
-  const issues = agruparHallazgos(hallazgos, pages);
+  // Si la mayoría de las páginas (y el robots.txt) responden 403/5xx aun con UA de navegador, lo más
+  // probable es un firewall que bloquea al auditor, no páginas rotas: no se reportan como error ni
+  // cuentan para la salud (la UI muestra el aviso `bloqueado`).
+  const errores = pages.filter((p) => bloqueoProbable(p.status)).length;
+  const bloqueado = pages.length >= 4 && errores / pages.length >= 0.5 && (!rob || bloqueoProbable(rob.status));
+  const issues = agruparHallazgos(bloqueado ? hallazgos.filter((h) => h.check !== "http_error" && h.check !== "sitemap_ausente") : hallazgos, pages);
   return {
     v: 1, ok: true, site: AUDIT_SITE, fuentePaginas: fuentes, caps,
     paginas: pages.map((p) => ({ ...p, h1: p.h1.slice(0, 3).map((x) => x.slice(0, 120)), title: p.title?.slice(0, 200) ?? null, metaDescription: p.metaDescription?.slice(0, 300) ?? null })),
     bots: accesoBots(parsed), robots: rob ? { status: rob.status, sitemaps: parsed?.sitemaps.slice(0, 5) ?? [] } : null, sitemap,
     cwv, cwvFuente: usoCrux && usoPsi ? "mixto" : usoCrux ? "crux" : usoPsi ? "psi" : null,
     psiKey: !!key, psiCuota,
-    issues, salud: saludSitio(issues, pages.length), updatedAt,
+    issues, salud: bloqueado ? null : saludSitio(issues, pages.length), bloqueado, paginasBloqueadas: bloqueado ? errores : 0, updatedAt,
   };
 }
 
