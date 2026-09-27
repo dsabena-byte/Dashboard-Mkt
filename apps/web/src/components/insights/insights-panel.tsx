@@ -1,4 +1,5 @@
 import type { InsightRow } from "@/lib/insights-queries";
+import { GuiameButton } from "@/components/copiloto/guiame-button";
 
 const PRIO_STYLE: Record<string, { bg: string; border: string; text: string; chip: string; label: string }> = {
   alta:  { bg: "bg-rose-50",    border: "border-rose-300",    text: "text-rose-900",    chip: "bg-rose-500 text-white",    label: "ALTA" },
@@ -59,6 +60,11 @@ export function InsightsPanel({ insights, titulo = "📊 Insights del período" 
                     </li>
                   ))}
                 </ul>
+              )}
+              {acciones.length > 0 && (
+                <div className="mt-2">
+                  <GuiameButton item={{ tipo: i.tipo === "alerta" ? "alerta" : i.tipo === "oportunidad" ? "oportunidad" : "señal", titulo: i.titulo, dash: "redes", dato: i.descripcion, queHacer: acciones.map(String) }} />
+                </div>
               )}
               {permalink && (
                 <a

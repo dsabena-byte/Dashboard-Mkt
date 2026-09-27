@@ -111,14 +111,14 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
       key: "web_no_conversions_tracked", tipo: "alerta", prioridad: "alta",
       titulo: "El sitio no registra conversiones (ni compras ni eventos clave)",
       descripcion: `${fInt(c.sessions)} sesiones en el período sin ningún evento clave marcado en GA4: no se puede medir qué canal o contenido genera negocio.`,
-      acciones: ["Marcar como evento clave en GA4 las acciones de negocio (formulario, WhatsApp, click a tienda, compra)", "Si hay tienda online, activar el ecommerce de GA4"],
+      acciones: ["En Google Analytics (GA4), marcar como conversión (evento clave) las acciones de negocio: formulario, WhatsApp, clic a tienda, compra", "Si hay tienda online, activar la medición de ventas de GA4 (ecommerce)"],
       datos: { sesiones: c.sessions },
     });
     else if (productPages.length >= 3) S({
       key: "web_ecommerce_absent", tipo: "oportunidad", prioridad: "media",
       titulo: `Hay ${productPages.length}+ páginas de producto pero GA4 no mide ecommerce`,
       descripcion: "Se mide conversión por eventos clave. Sin transacciones/ingresos no se puede calcular ROAS ni el valor por canal.",
-      acciones: ["Implementar los eventos de ecommerce de GA4 (view_item, add_to_cart, purchase)", "Si la venta es en retailers, medir los clicks a tienda como evento clave"],
+      acciones: ["Pedirle al desarrollador que Analytics registre ver producto, agregar al carrito y comprar (eventos de ecommerce de GA4: view_item, add_to_cart, purchase)", "Si la venta es en retailers, contar los clics al botón de la tienda como conversión (evento clave)"],
       datos: { paginasProducto: productPages.length },
     });
   }

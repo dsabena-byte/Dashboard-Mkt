@@ -313,7 +313,7 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
           key: "cruce_seo_quick_wins_landing", tipo: "oportunidad", prioridad: gain >= 300 ? "alta" : "media",
           titulo: `${rows.length} búsquedas donde estás cerca del top (posición ${Math.min(...rows.map((r) => r.posicion))}-${Math.max(...rows.map((r) => r.posicion))}) ya tienen su página: llevarlas al top-3 suma ≈${fNum(gain)} clicks/mes${conv ? ` (≈${fNum(conv)} conversiones)` : ""}`,
           descripcion: rows.map((r) => `"${r.keyword}" #${r.posicion} → ${pathOf(r.pagina)}${r.convLanding != null ? ` (convierte ${fPct(r.convLanding, 2)})` : ""}`).join(" · ") + ". Páginas según Search Console; conversión de la landing según GA4.",
-          acciones: ["Optimizar esas páginas (no crear nuevas): title/H1 con la búsqueda, contenido más completo, FAQ", "Enlazarlas desde la home y las páginas con más autoridad", "Priorizar las que ya convierten mejor"],
+          acciones: ["Mejorar esas páginas (no crear nuevas): que el título que muestra Google y el de la página digan la búsqueda (title y H1), texto más completo y preguntas frecuentes", "Poner links hacia ellas desde la home y las páginas más visitadas del sitio", "Empezar por las que ya venden mejor"],
           datos: { keywords: rows },
           impacto: { metrica: "Clicks orgánicos adicionales estimados", valor: Math.round(gain), unidad: "clicks/mes" },
         });
@@ -327,7 +327,7 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
         key: "cruce_web_organic_vs_position", tipo: "oportunidad", prioridad: "media",
         titulo: `El orgánico es solo el ${fPct(ga4Org, 0)} de tus sesiones y tu posición promedio en Google (${pi.propio.toFixed(0)}) está detrás de la competencia (${medRiv.toFixed(0)})`,
         descripcion: "Índice de posición = posición promedio ponderada por volumen de búsqueda de las keywords relevadas (100 = no aparecés; menor es mejor). Mejorar posiciones es la palanca de tráfico propio más barata. Conectá Search Console para ver clicks y páginas reales.",
-        acciones: ["Trabajar los quick wins (posición 4-20) del tablero SEO", "Conectar Search Console para medir el efecto en clicks"],
+        acciones: ["Trabajar las búsquedas donde ya aparecés cerca del top (entre el 4° y el 20° lugar) del tablero SEO", "Conectar Search Console (la herramienta gratuita de Google que muestra los clics desde el buscador) para medir el efecto"],
         datos: { organicoPct: r2(ga4Org), indicePropio: r2(pi.propio), medianaCompetencia: r2(medRiv) },
       });
     }

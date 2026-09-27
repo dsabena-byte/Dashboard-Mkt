@@ -4,6 +4,7 @@ import { SELLO_LABEL, type CalidadDato, type EcomFunnel, type AiTraffic, type La
 import type { IaMes } from "@/lib/web-calidad-shared";
 import { SEMAFORO_COLOR } from "@/lib/metas";
 import { LearnButton } from "@/components/knowledge/learn-button";
+import { GuiameButton } from "@/components/copiloto/guiame-button";
 
 // ============================================================================
 // Web (portado de BIP, sep-2026): cierre proyectado del mes, chequeo indirecto de consent,
@@ -104,6 +105,7 @@ export function ConsentCheckSection({ c, criterio, todas }: { c: ChequeoConsent;
       </summary>
       <p className="mt-2 text-xs">{c.detalle}</p>
       {c.acciones.length > 0 && <ul className="mt-1.5 list-disc pl-5 text-xs">{c.acciones.map((a) => <li key={a}>{a}</li>)}</ul>}
+      {c.acciones.length > 0 && <div className="mt-2"><GuiameButton item={{ tipo: "alerta", titulo: c.titulo, dash: "web", dato: c.detalle, queHacer: c.acciones }} /></div>}
       {ult.length > 0 && (
         <div className="mt-2.5 overflow-x-auto">
           <table className="border-collapse">
@@ -115,7 +117,7 @@ export function ConsentCheckSection({ c, criterio, todas }: { c: ChequeoConsent;
         </div>
       )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Chequeo indirecto: GA4 no informa por API si el sitio usa Consent Mode ni cuánta gente rechaza cookies. Se comparan las sesiones que GA4 atribuye a Google Ads con los clicks que informa Google Ads el mismo mes (meses cerrados). {criterio}. Con medición sana GA4 ve ~75-100% de los clicks.
+        Cómo se calcula: Google Analytics (GA4) no dice cuánta gente rechaza las cookies, así que comparamos las visitas que Analytics atribuye a los anuncios de Google con los clics que informa Google Ads el mismo mes (meses cerrados). {criterio}. Si la medición está sana, Analytics ve entre el 75% y el 100% de los clics.
       </p>
     </details>
   );
