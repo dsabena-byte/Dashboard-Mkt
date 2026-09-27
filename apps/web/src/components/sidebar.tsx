@@ -204,6 +204,8 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
         .sn-l3.active{color:#fff;font-weight:600}
         .sn-divider{height:1px;background:#1c2c4a;margin:12px 11px}
         .sn-foot{border-top:1px solid #1c2c4a;padding:10px 12px}
+        .sn-pass{display:block;margin-top:6px;text-align:center;font-size:11px;color:#8ea0bd}
+        .sn-pass:hover{color:#e8edf6;text-decoration:underline}
         .sn-ver{padding:2px 12px 10px;font-size:10px;color:#5f6f8e}
       `}</style>
       <div className="sn-brand">
@@ -211,7 +213,10 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
         <p className="sn-tag">{tenant.branding.tagline}</p>
       </div>
       <nav className="sn-nav">{tree.map(renderTop)}</nav>
-      <div className="sn-foot"><LogoutButton /></div>
+      <div className="sn-foot">
+        <LogoutButton />
+        <Link href={{ pathname: "/login/nueva-clave" }} className="sn-pass">Cambiar contraseña</Link>
+      </div>
       <div className="sn-ver">v0.1.0 · Fase 1</div>
     </>
   );

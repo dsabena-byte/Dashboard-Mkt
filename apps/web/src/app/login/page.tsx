@@ -1,5 +1,6 @@
 import { LoginForm } from "@/components/auth/login-form";
-import { getTenant } from "@/lib/tenant/current";
+import { AuthCard } from "@/components/auth/auth-card";
+import { safeNext } from "@/lib/auth/safe-next";
 
 export const dynamic = "force-dynamic";
 
@@ -7,17 +8,15 @@ interface PageProps {
   searchParams: { redirect?: string; error?: string };
 }
 
+const ERRORS: Record<string, string> = {
+  link: "El link venció o ya se usó. Pedí uno nuevo desde “¿Olvidaste tu contraseña?”.",
+};
+
 export default function LoginPage({ searchParams }: PageProps) {
-  const tenant = getTenant();
+  const error = searchParams.error ? (ERRORS[searchParams.error] ?? searchParams.error) : undefined;
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <div className="w-full max-w-sm rounded-2xl border bg-white p-8 shadow-lg">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-slate-900">{tenant.displayName.toUpperCase()}</h1>
-          <p className="mt-1 text-sm text-slate-500">{tenant.branding.tagline}</p>
-        </div>
-        <LoginForm redirectTo={searchParams.redirect ?? "/"} initialError={searchParams.error} />
-      </div>
-    </div>
+    <AuthCard>
+      <LoginForm redirectTo={safeNext(searchParams.redirect)} initialError={error} />
+    </AuthCard>
   );
 }

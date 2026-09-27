@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { loginAction } from "@/app/login/actions";
 
@@ -40,9 +41,14 @@ export function LoginForm({ redirectTo, initialError }: Props) {
       </div>
 
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-          Contraseña
-        </label>
+        <div className="flex items-baseline justify-between">
+          <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+            Contraseña
+          </label>
+          <Link href="/login/recuperar" className="text-xs text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"
