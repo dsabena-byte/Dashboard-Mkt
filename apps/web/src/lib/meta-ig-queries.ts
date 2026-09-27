@@ -1,5 +1,6 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
+import type { PostSentiment } from "./post-sentiment";
 
 const IG_ACCOUNT_ID = "17841404990509161";
 
@@ -17,6 +18,8 @@ export interface IgPostRow {
   clicks: number;
   categoria: string | null;
   pilar_contenido: string | null;
+  /** Sentimiento de comentarios (social_posts, por shortcode). Lo cuelga `attachIgSentiment` en /redes. */
+  sentiment?: PostSentiment | null;
 }
 
 export interface IgDemoBreakdown {
