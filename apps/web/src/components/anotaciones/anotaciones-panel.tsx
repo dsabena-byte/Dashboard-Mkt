@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Anotacion } from "@/lib/anotaciones-core";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Anotaciones de un tablero ("lanzamiento TV", "corte de stock"): se marcan con una línea punteada en los
 // gráficos por fecha de Mis tableros y el Diagnóstico IA las usa como contexto. Portado de BIP (sep-2026).
@@ -59,7 +60,8 @@ export function AnotacionesPanel({ tablero, notas: initial, missing: missing0, d
     <details className="rounded-lg border bg-white px-4 py-3" open={defaultOpen} data-noprint="1">
       <summary className="cursor-pointer text-[13.5px] font-semibold text-slate-900">
         Anotaciones{list.length ? ` (${list.length})` : ""}{" "}
-        <span className="text-[12.5px] font-normal text-slate-500">· qué pasó y cuándo (se marcan en los gráficos de Mis tableros y las usa el Diagnóstico IA)</span>
+        <span className="text-[12.5px] font-normal text-slate-500">· qué pasó y cuándo (se marcan en los gráficos de Mis tableros y las usa el Diagnóstico IA)</span>{" "}
+        <span className="inline-block align-middle"><LearnButton k="anotaciones" /></span>
       </summary>
       <div className="mt-2.5 flex flex-col gap-2">
         {missing && <p className="text-xs text-amber-700">Las anotaciones se activan cuando se corre la migración <code>0119_anotaciones_umbrales.sql</code> en Supabase.</p>}

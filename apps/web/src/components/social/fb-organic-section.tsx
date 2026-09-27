@@ -8,6 +8,7 @@ import { SocialEngagementChart, ENG_COLORS } from "@/components/social/social-en
 import { ClasifBadge } from "@/components/social/clasif-badge";
 import type { FbOrganicSummary, FbDemoBreakdown } from "@/lib/meta-fb-queries";
 import type { MetaKpiData } from "@/lib/metas-server";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const FB_ENG_COMPONENTS = [
   { key: "reacciones", name: "Reacciones", color: ENG_COLORS[0]! },
@@ -129,8 +130,8 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
       <header className="flex items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ backgroundColor: "#1877F2" }}>FB</div>
         <div>
-          <h3 className="text-base font-semibold tracking-tight">
-            Facebook organico &mdash; Page Drean
+          <h3 className="flex items-center gap-1.5 text-base font-semibold tracking-tight">
+            Facebook organico &mdash; Page Drean <LearnButton k="fb_organico_pago" />
           </h3>
           <p className="text-xs text-muted-foreground">
             KPIs del periodo{" "}

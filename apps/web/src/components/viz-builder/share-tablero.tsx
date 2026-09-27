@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // "Compartir" de un tablero de Mis tableros (portado de BIP): link de SOLO LECTURA con vencimiento
 // (7/30/90 días; crear otro invalida el anterior; se puede revocar) + envío programado por mail del link
@@ -65,7 +66,7 @@ export function ShareTablero({ slug }: { slug: string }) {
           {err0 ? <div className="hint" style={{ margin: 0, color: "var(--err)" }}>{err0}</div> : !st ? <div className="hint" style={{ margin: 0 }}>Cargando…</div> : !st.enabled ? <div className="hint" style={{ margin: 0 }}>Los links compartidos no están habilitados en este entorno.</div> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
-                <b style={{ fontSize: 13.5 }}>Link de solo lectura</b>
+                <b style={{ fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 6 }}>Link de solo lectura <LearnButton k="compartir_tablero" /></b>
                 <p className="hint" style={{ margin: "2px 0 6px", fontSize: 12 }}>Para el directorio o la agencia: quien tenga el link ve este tablero y los datos que lo alimentan, sin iniciar sesión ni poder editar.</p>
                 {url ? (
                   <>
@@ -84,7 +85,7 @@ export function ShareTablero({ slug }: { slug: string }) {
                 </div>
               </div>
               <div style={{ borderTop: "1px solid var(--line-2)", paddingTop: 10 }}>
-                <b style={{ fontSize: 13.5 }}>Envío programado por mail</b>
+                <b style={{ fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 6 }}>Envío programado por mail <LearnButton k="compartir_tablero" /></b>
                 <p className="hint" style={{ margin: "2px 0 6px", fontSize: 12 }}>Llega un mail con el link actualizado (semanal: los lunes · mensual: el día 1). Solo casillas de {st.dominios.length ? st.dominios.map((d) => `@${d}`).join(", ") : "los dominios del equipo"}.</p>
                 {!st.emailReady && <p className="hint" style={{ margin: "0 0 6px", fontSize: 11.5, color: "#92400e" }}>El envío de emails no está configurado (falta RESEND_API_KEY en Vercel): se guarda pero no sale.</p>}
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

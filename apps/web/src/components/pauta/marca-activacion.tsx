@@ -2,6 +2,7 @@
 // real vs la referencia 60:40. Paleta sobria: marca = azul dato, activación = azul claro, mixto =
 // gris pizarra; el semáforo (verde/ámbar) SOLO en la lectura. Sin hooks → server o client.
 import { TOLERANCIA_PTS, type SplitMarcaActivacion } from "@/lib/marca-activacion";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const MARCA = "#1e40af", ACT = "#93c5fd", MIX = "#cbd5e1";
 const r0 = (v: number) => Math.round(v);
@@ -24,7 +25,7 @@ export function MarcaActivacionSection({ s, money }: { s: SplitMarcaActivacion; 
   const pm = (v: number) => (v / s.total) * 100;
   return (
     <div className="mb-3 rounded-lg border bg-card p-4">
-      <div className="text-xs font-semibold">Marca vs activación</div>
+      <div className="flex items-center gap-1.5 text-xs font-semibold">Marca vs activación <LearnButton k="marca_activacion" /></div>
       <p className="mb-3 mt-0.5 text-[11px] text-muted-foreground">
         Cuánto de la inversión construye demanda futura (marca: alcance, video, TV/OOH/DOOH) y cuánto captura la demanda de hoy
         (activación: ecommerce, conversión). Se clasifica por el rol de comunicación; Consideración (tráfico, TrueView, Demand Gen,

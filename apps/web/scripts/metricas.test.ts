@@ -32,7 +32,8 @@ for (const m of METRICAS) {
 }
 // Guías de KPI de Drean que no son métricas del catálogo (UGC cualitativo; Salud de Marca = puntaje Kantar).
 const SIN_METRICA = new Set(["ugc_credibilidad", "ugc_intencion", "ugc_percepcion", "salud_marca"]);
-for (const k of Object.keys(KPI_KNOW)) if (!SIN_METRICA.has(k)) ok(`KPI_KNOW ${k} cubierto por el catálogo`, METRICAS.some((m) => m.know === k));
+// Las guías de FUNCIONALIDADES (tipo "funcion", lib/knowledge-funciones) no son métricas del catálogo.
+for (const k of Object.keys(KPI_KNOW)) if (!SIN_METRICA.has(k) && KPI_KNOW[k]!.tipo !== "funcion") ok(`KPI_KNOW ${k} cubierto por el catálogo`, METRICAS.some((m) => m.know === k));
 
 // ── 2. Sin alias ambiguos ──
 const dueno = new Map<string, string>();

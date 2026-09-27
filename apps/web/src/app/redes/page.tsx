@@ -53,6 +53,7 @@ import { toPostSentiment } from "@/lib/post-sentiment";
 import { formatBenchmarks, bestTimes } from "@/lib/redes-contenido";
 import { comparableEr, erComparablePorMarca, trendMaduro, probablePauta, pautaPorMarca, ER_METODO_TXT, ER_METODO_EDAD_TXT } from "@/lib/redes-competencia";
 import { temasPorMarca, temaGaps } from "@/lib/redes-temas";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -427,7 +428,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Tendencia mensual de engagement <span className="normal-case text-muted-foreground/70">(mediana, posts con 7+ días)</span>
+            Tendencia mensual de engagement <span className="normal-case text-muted-foreground/70">(mediana, posts con 7+ días)</span> <LearnButton k="er_comparable" />
           </h3>
           <SocialTrendChart
             data={trend}
@@ -447,8 +448,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
       {/* Benchmark + Distribución por contenido */}
       <section className="grid gap-4 lg:grid-cols-5">
         <div className="lg:col-span-3 rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Benchmark de marcas · KPIs comparados
+          <h3 className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Benchmark de marcas · KPIs comparados <LearnButton k="er_comparable" />
           </h3>
           <p className="mb-2 text-[10px] text-muted-foreground">
             ER comp. = mediana del engagement por seguidor ((likes + comentarios) ÷ seguidores) de los posts con 7+ días (° = foto a los 7 días de

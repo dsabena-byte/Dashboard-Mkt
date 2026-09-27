@@ -1,5 +1,6 @@
 import type { PautaMarca, PautaProb } from "@/lib/redes-competencia";
 import type { TemaGap, TemaStat } from "@/lib/redes-temas";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Pauta probable + temas por marca de la competencia (server component). Paleta sobria: Drean en azul
 // de datos, competencia en gris pizarra. "Probable" = modelo relativo a la propia marca, nunca un hecho.
@@ -27,7 +28,7 @@ export function CompetenciaDiferenciales({
   return (
     <section className="grid gap-4 lg:grid-cols-2">
       <div className="rounded-lg border bg-card p-4">
-        <h3 className="text-base font-semibold tracking-tight">Pauta probable de la competencia</h3>
+        <h3 className="flex items-center gap-1.5 text-base font-semibold tracking-tight">Pauta probable de la competencia <LearnButton k="pauta_probable" /></h3>
         <p className="text-xs text-muted-foreground">
           Posts con views ≥ 3× la mediana de su marca y red y ≤ 1/3 de su interacción por view (patrón de un posteo impulsado con pauta);
           alta = ≥ 5× y ≤ 1/5, o marcado como patrocinado por el scraper. Mínimo 8 posts con views por marca y red. Es una probabilidad.
@@ -64,7 +65,7 @@ export function CompetenciaDiferenciales({
         )}
       </div>
       <div className="rounded-lg border bg-card p-4">
-        <h3 className="text-base font-semibold tracking-tight">Temas por marca</h3>
+        <h3 className="flex items-center gap-1.5 text-base font-semibold tracking-tight">Temas por marca <LearnButton k="temas_marca" /></h3>
         <p className="text-xs text-muted-foreground">
           Tema corto de cada post (clasificación automática diaria sobre el texto, reusando los temas ya usados). Share = % de los posts de la
           marca con tema; ER = mediana de engagement por seguidor.

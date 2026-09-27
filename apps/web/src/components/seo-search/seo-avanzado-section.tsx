@@ -6,6 +6,7 @@ import { CAUSA_TXT } from "@/lib/sc-deep";
 import { SEVERIDAD_LABEL, CWV_UMBRAL, estadoMetrica, shortUrl, type Severidad } from "@/lib/seo-audit-core";
 import { CTR_FUENTE, TRAMOS } from "@/lib/ctr-curve";
 import { SEMAFORO_COLOR } from "@/lib/metas";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // ============================================================================
 // SEO / GEO avanzado (portado de BIP, sep-2026). Server components que leen UNA vez por request
@@ -36,10 +37,10 @@ function Card({ t, v, sub, color = OWN }: { t: string; v: string; sub?: React.Re
     </div>
   );
 }
-function Head({ t, sub }: { t: string; sub: React.ReactNode }) {
+function Head({ t, sub, learn }: { t: string; sub: React.ReactNode; learn?: string }) {
   return (
     <div>
-      <h2 className="text-lg font-semibold tracking-tight">{t}</h2>
+      <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">{t}{learn && <LearnButton k={learn} />}</h2>
       <p className="text-xs text-muted-foreground">{sub}</p>
     </div>
   );
@@ -53,7 +54,7 @@ export async function MarcaDigitalSection() {
   const fmtVal = (c: ComponenteDigital, v: number | undefined) => (v == null ? "—" : c === "serp" ? f1(v) : `${f1(v)}%`);
   return (
     <section className="space-y-3 border-t pt-6">
-      <Head t="Salud digital de marca y ESoS" sub="Cómo está Drean frente al set en lo que se mide todos los meses sin encuesta (búsquedas, conversación en redes, IA y Google), y si el share of search anticipa suba o baja de share de mercado." />
+      <Head t="Salud digital de marca y ESoS" learn="salud_digital" sub="Cómo está Drean frente al set en lo que se mide todos los meses sin encuesta (búsquedas, conversación en redes, IA y Google), y si el share of search anticipa suba o baja de share de mercado." />
       {d?.ultimo && d.own ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -88,7 +89,7 @@ export async function MarcaDigitalSection() {
 
       {a.esos.length > 0 && (
         <div className="overflow-x-auto rounded-xl border bg-card p-4">
-          <div className="text-sm font-semibold">Share of Search vs share de mercado (ESoS) · por categoría</div>
+          <div className="flex items-center gap-1.5 text-sm font-semibold">Share of Search vs share de mercado (ESoS) · por categoría <LearnButton k="esos" /></div>
           <p className="mb-2 mt-0.5 text-[11px] text-muted-foreground">ESoS = share of search de Drean (promedio móvil 6 meses) − share de mercado GfK (año móvil, unidades, segmento Total). Positivo sostenido (≥ +0,5 pp, 3+ meses) → el share tiende a subir; negativo → a bajar (Binet / IPA). Solo meses cerrados.</p>
           <table className="w-full min-w-[620px] border-collapse">
             <thead><tr><th className={TH}>Categoría</th><th className={THR}>Mes</th><th className={THR}>SoS (prom. 6m)</th><th className={THR}>Share GfK</th><th className={THR}>ESoS</th><th className={THR}>Ratio</th><th className={TH}>Lectura</th></tr></thead>
@@ -126,7 +127,7 @@ export async function LlmoIcSection() {
   const nMax = Math.max(...a.llmo.flatMap((c) => c.marcas.map((m) => m.s.n)));
   return (
     <section className="space-y-3 border-t pt-6">
-      <Head t="Visibilidad en IA · con margen de error" sub={<>Tasa de mención = % de respuestas del asistente (con búsqueda web, Argentina) que nombran a la marca, con su intervalo de confianza de Wilson al 95%. Con pocas respuestas el margen es enorme: mirar si los rangos se solapan antes de leer una diferencia.</>} />
+      <Head t="Visibilidad en IA · con margen de error" learn="llmo_ic" sub={<>Tasa de mención = % de respuestas del asistente (con búsqueda web, Argentina) que nombran a la marca, con su intervalo de confianza de Wilson al 95%. Con pocas respuestas el margen es enorme: mirar si los rangos se solapan antes de leer una diferencia.</>} />
       {nMax < LLMO_MIN_N && (
         <div className="rounded-lg border-l-4 bg-card px-4 py-2 text-xs" style={{ borderLeftColor: SEMAFORO_COLOR.amarillo }}>
           <b>Dato insuficiente:</b> la última medición tiene {nMax} respuestas por categoría (hacen falta ≥{LLMO_MIN_N} y margen ≤ ±20 pp). Desde sep-2026 el sync corre <b>semanal</b> con 12 prompts por categoría y acumula {LLMO_WINDOW_DAYS} días de respuestas (n ≈ 48){a.muestrasDisponibles ? "" : " — falta correr la migración 0118_seo_llmo_muestra.sql para acumular"}.
@@ -196,7 +197,7 @@ export async function KwEvolucionSection() {
   const ult = k.visibilidad[k.visibilidad.length - 1], pri = k.visibilidad[0];
   return (
     <section className="space-y-3 border-t pt-6">
-      <Head t="Evolución por keyword · drean.com.ar" sub={<>Fotos de la SERP (seo_rankings) del {k.desde} al {k.hasta} ({k.semanas} fotos). “—” = no aparece en el top-100. Ganadoras/perdedoras: cambio de ≥3 posiciones o entrada/salida del top-10, ponderado por volumen.</>} />
+      <Head t="Evolución por keyword · drean.com.ar" learn="kw_evolucion" sub={<>Fotos de la SERP (seo_rankings) del {k.desde} al {k.hasta} ({k.semanas} fotos). “—” = no aparece en el top-100. Ganadoras/perdedoras: cambio de ≥3 posiciones o entrada/salida del top-10, ponderado por volumen.</>} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card t="Entraron al top-10" v={nf(k.entraronTop10)} color={SEMAFORO_COLOR.verde} />
         <Card t="Salieron del top-10" v={nf(k.salieronTop10)} color={SEMAFORO_COLOR.rojo} />
@@ -221,7 +222,7 @@ export async function ScAvanzadoSection() {
     : `curva de referencia ${CTR_FUENTE} (rango con/sin Resumen IA); con más impresiones sin marca se calibra la propia`;
   return (
     <section className="space-y-3 border-t pt-6">
-      <Head t="Search Console a fondo" sub={<>Canibalización, contenido que decae y mobile vs desktop sobre los datos propios de Google. CTR esperado: {curva}.</>} />
+      <Head t="Search Console a fondo" learn="sc_fondo" sub={<>Canibalización, contenido que decae y mobile vs desktop sobre los datos propios de Google. CTR esperado: {curva}.</>} />
       {a.scImpresionesMes != null && a.scImpresionesMes < 20000 && (
         <div className="rounded-lg border-l-4 bg-card px-4 py-2 text-xs" style={{ borderLeftColor: SEMAFORO_COLOR.amarillo }}>
           <b>La propiedad {a.scSite} ve muy poco:</b> {nf(a.scImpresionesMes)} impresiones en el último mes cerrado, mientras GA4 registra decenas de miles de sesiones orgánicas por mes. Probablemente el tráfico del sitio vive en otra propiedad (ej. <code>sc-domain:drean.com.ar</code> o la versión sin www): dar acceso a la cuenta del token en esa propiedad y volver a correr <b>Search Console sync</b>.
@@ -256,7 +257,7 @@ export async function ScAvanzadoSection() {
       </div>
       {s.dispositivos.filas.length > 0 && (
         <div className="overflow-x-auto rounded-xl border bg-card p-4">
-          <div className="text-sm font-semibold">Mobile vs desktop <span className="font-normal text-muted-foreground">· 90 días</span></div>
+          <div className="flex items-center gap-1.5 text-sm font-semibold">Mobile vs desktop <span className="font-normal text-muted-foreground">· 90 días · CTR esperado</span> <LearnButton k="ctr_curva" /></div>
           {s.dispositivos.hallazgo && <p className="mt-1 text-xs" style={{ color: SEMAFORO_COLOR.amarillo }}>● {s.dispositivos.hallazgo.texto}</p>}
           <table className="mt-2 w-full border-collapse">
             <thead><tr><th className={TH}>Dispositivo</th><th className={THR}>Clicks</th><th className={THR}>% clicks</th><th className={THR}>CTR</th><th className={THR}>Esperado</th><th className={THR}>Posición</th><th className={THR}>Δ clicks</th></tr></thead>
@@ -277,7 +278,7 @@ const CWV_COLOR = { bueno: SEMAFORO_COLOR.verde, mejorable: SEMAFORO_COLOR.amari
 export async function AuditoriaSection() {
   const a = await loadSeoAvanzado();
   const st = a.audit;
-  const head = <Head t="Auditoría técnica SEO / GEO + Core Web Vitals" sub="drean.com.ar: indexación, bots de IA en robots.txt, sitemap, títulos/descripciones/H1/canonical/schema, contenido que depende de JavaScript y velocidad real (CrUX / PageSpeed Insights). Se repite cada lunes." />;
+  const head = <Head t="Auditoría técnica SEO / GEO + Core Web Vitals" learn="auditoria_seo" sub="drean.com.ar: indexación, bots de IA en robots.txt, sitemap, títulos/descripciones/H1/canonical/schema, contenido que depende de JavaScript y velocidad real (CrUX / PageSpeed Insights). Se repite cada lunes." />;
   if (st.status !== "ok") {
     return (
       <section className="space-y-3 border-t pt-6">
@@ -316,7 +317,7 @@ export async function AuditoriaSection() {
       )}
       {(d.cwv ?? []).length > 0 && (
         <div className="overflow-x-auto rounded-xl border bg-card p-4">
-          <div className="text-sm font-semibold">Core Web Vitals <span className="font-normal text-muted-foreground">· p75 mobile · bueno: LCP ≤ {CWV_UMBRAL.lcp[0] / 1000} s · INP ≤ {CWV_UMBRAL.inp[0]} ms · CLS ≤ {CWV_UMBRAL.cls[0]}</span></div>
+          <div className="flex flex-wrap items-center gap-1.5 text-sm font-semibold">Core Web Vitals <span className="font-normal text-muted-foreground">· p75 mobile · bueno: LCP ≤ {CWV_UMBRAL.lcp[0] / 1000} s · INP ≤ {CWV_UMBRAL.inp[0]} ms · CLS ≤ {CWV_UMBRAL.cls[0]}</span> <LearnButton k="cwv" /></div>
           <table className="mt-2 w-full border-collapse">
             <thead><tr><th className={TH}>URL</th><th className={TH}>Fuente</th><th className={THR}>LCP</th><th className={THR}>INP</th><th className={THR}>CLS</th><th className={THR}>Lighthouse</th></tr></thead>
             <tbody>{(d.cwv ?? []).map((c) => {

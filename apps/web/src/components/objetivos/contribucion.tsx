@@ -3,6 +3,7 @@
 // el semáforo NO se usa acá (no es un estado, es una atribución).
 import type { ContribucionShapley, AporteShapley, AporteGrupo } from "@/lib/stats/shapley";
 import type { ContribucionGlobal } from "@/lib/objetivos-pronostico";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const UP = "#1e40af", DOWN = "#64748b";
 const pts = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)} pts`;
@@ -55,7 +56,7 @@ export function ContribucionObjetivo({ c, v, refMes }: { c?: ContribucionShapley
             <Barras items={mov.map((a) => ({ nombre: a.nombre, puntos: a.puntos }))} max={max} />
           </div>
         )}
-        <div className="text-[10px] text-muted-foreground/70">Reparto de Shapley: cada KPI se lleva su parte justa (los puntos suman exacto el total), incluso cuando un KPI entra o sale del cálculo por falta de dato.</div>
+        <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground/70"><LearnButton k="shapley" /><span>Reparto de Shapley: cada KPI se lleva su parte justa (los puntos suman exacto el total), incluso cuando un KPI entra o sale del cálculo por falta de dato.</span></div>
       </div>
     </details>
   );
@@ -78,7 +79,7 @@ export function ContribucionGlobalView({ c }: { c?: ContribucionGlobal | null })
         {grupos.length > 0 && <div><Titulo>Por plan</Titulo><Barras items={grupos.map((g) => ({ nombre: g.grupo, puntos: g.puntos }))} max={max} /></div>}
         {kpis.length > 0 && <div><Titulo>KPIs que más restan</Titulo><Barras items={kpis.map((a) => ({ nombre: a.nombre, sub: a.grupo, puntos: a.puntos }))} max={max} /></div>}
       </div>
-      <div className="mt-2 text-[10px] text-muted-foreground/70">Valores de Shapley sobre el rollup del Mapa: cuánto del cumplimiento YTD que falta se debe a cada objetivo, plan y KPI (suman exacto la brecha total). Un KPI sobrecumplido no compensa a otro: el rollup topea cada KPI en 100%.</div>
+      <div className="mt-2 flex items-start gap-1.5 text-[10px] text-muted-foreground/70"><LearnButton k="shapley" /><span>Valores de Shapley sobre el rollup del Mapa: cuánto del cumplimiento YTD que falta se debe a cada objetivo, plan y KPI (suman exacto la brecha total). Un KPI sobrecumplido no compensa a otro: el rollup topea cada KPI en 100%.</span></div>
     </details>
   );
 }

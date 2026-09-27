@@ -9,6 +9,7 @@ import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/li
 import type { KpiSeguimiento, KpiUnit } from "@/lib/objetivos-kpis";
 import type { KpiPronostico } from "@/lib/objetivos-rollup";
 import { ProyeccionKpi, PorQueLinea } from "./proyeccion";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const PLAN_ORDER = ["Pauta Mkt", "Web / Ecommerce", "Instagram", "Cuadros Básicos", "Floor Share", "Mercado y competencia"];
@@ -111,7 +112,7 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
               <th className="px-3 py-2.5 text-left font-semibold" rowSpan={2}>Mes</th>
               <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Desvío del mes</th>
               <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Acumulado YTD</th>
-              <th className="border-l px-3 py-2.5 text-right font-semibold" rowSpan={2} title="Cierre del año proyectado (mediana y rango p10–p90 de 2.000 simulaciones) y probabilidad de llegar a la meta anual">Cierre proyectado</th>
+              <th className="border-l px-3 py-2.5 text-right font-semibold" rowSpan={2} title="Cierre del año proyectado (mediana y rango p10–p90 de 2.000 simulaciones) y probabilidad de llegar a la meta anual"><span className="inline-flex items-center gap-1.5">Cierre proyectado <LearnButton k="prob_meta" /></span></th>
               <th className="border-l px-3 py-2.5 text-center font-semibold" rowSpan={2}>Evolución (real vs meta)</th>
             </tr>
             <tr className="text-[9px] uppercase tracking-wide text-muted-foreground/70">

@@ -1,5 +1,6 @@
 "use client";
 import type { PacingMes } from "@/lib/pauta-pacing";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Ritmo de inversión del mes en curso (pacing) — tab Impacto Campaña de /performance.
 // Barra: gastado (azul #1e40af) + rango esperado a cierre (azul claro: piso → techo) vs plan del mes
@@ -31,7 +32,7 @@ export function PacingSection({ p }: { p: PacingMes }) {
   return (
     <section className="rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">Ritmo de inversión · {p.mes} {p.anio}</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">Ritmo de inversión · {p.mes} {p.anio} <LearnButton k="pacing" /></h3>
         <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ color: p.preliminar ? "#475569" : e.color, background: p.preliminar ? "rgba(100,116,139,.10)" : e.bg }}>
           {p.preliminar ? "Preliminar (menos de 5 días)" : p.estado === "sin_plan" || p.base === "plan" ? e.label : `${e.label.replace("del plan", "del promedio")}`}
         </span>

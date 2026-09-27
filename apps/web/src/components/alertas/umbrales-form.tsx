@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { COND_LABEL, MAX_UMBRALES, UMBRAL_METRICAS, describirUmbral, type Umbral, type UmbralCond } from "@/lib/umbrales";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Umbrales propios de alertas (portado de BIP, sep-2026): "avisame si el CPM supera $X o las sesiones caen
 // 20%". Se evalúan todos los días sobre el último mes CERRADO (series de Mis tableros) y, si se cumplen, entran
@@ -45,7 +46,7 @@ export function UmbralesForm({ initial, migrated }: { initial: Umbral[]; migrate
   return (
     <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
       <div>
-        <h3 className="text-sm font-semibold">Tus umbrales</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">Tus umbrales <LearnButton k="umbrales" /></h3>
         <p className="text-xs text-muted-foreground">Avisos propios sobre el último mes cerrado (ej. “avisame si el CPM supera $ 3.000” o “si las sesiones caen más de 20% vs el mes anterior”). Usan las mismas series que Mis tableros y llegan como prioridad alta.</p>
       </div>
       {!migrated && (

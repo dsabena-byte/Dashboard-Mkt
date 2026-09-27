@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Area, Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ajustarMmm, simularMmm, optimizarMmm, CONFIANZA_TEXTO, MIN_PERIODOS, type Rango } from "@/lib/stats/mmm";
 import { inputMmm, type MmmDatos } from "@/lib/mmm-datos";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // "Qué aporta cada medio" (MMM-lite) dentro del Simulador — portado de BIP (#135). El modelo se AJUSTA
 // en el navegador (lib/stats/mmm, puro) sobre las series mensuales que manda el server → cero costo en
@@ -40,7 +41,7 @@ export function MmmPanel({ datos, alloc, onAlloc }: { datos: MmmDatos; alloc: Re
   if (!datos.kpis.length) {
     return (
       <div className="rounded-xl border bg-card p-4 text-sm shadow-sm">
-        <div className="font-semibold">Qué aporta cada medio · MMM-lite</div>
+        <div className="flex items-center gap-1.5 font-semibold">Qué aporta cada medio · MMM-lite <LearnButton k="mmm" /></div>
         <p className="mt-1 text-xs text-muted-foreground">Para estimar cuánto aporta cada medio al negocio hace falta un resultado mensual de GA4 (usuarios, transacciones o ingresos) y no hay series cargadas. Seguí usando las curvas de entrega.</p>
       </div>
     );
@@ -82,7 +83,7 @@ export function MmmPanel({ datos, alloc, onAlloc }: { datos: MmmDatos; alloc: Re
       <div className="rounded-xl border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h3 className="text-sm font-semibold">Qué aporta cada medio · MMM-lite</h3>
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold">Qué aporta cada medio · MMM-lite <LearnButton k="mmm" /></h3>
             <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
               Cuánto de {kpi?.label.toLowerCase()} explica cada medio, con <b>adstock</b> (el efecto sigue unos meses) y <b>saturación</b> (cada peso rinde menos).
               Se estima con los meses cerrados de pauta (mismo modelo por medio que el Tablero) y de GA4, en pesos corrientes.

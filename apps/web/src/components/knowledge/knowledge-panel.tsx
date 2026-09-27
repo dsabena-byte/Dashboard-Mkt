@@ -54,7 +54,7 @@ export function KnowledgePanel() {
         <div className="flex items-start gap-3 border-b px-5 py-4">
           <div className="min-w-0">
             <div className={K11}>
-              🎓 Métrica · Proceso Estratégico{know?.funnel && know.funnel !== "transversal" ? ` · ${FUNNEL_LABEL[know.funnel]}` : ""}
+              🎓 {know?.tipo === "funcion" ? "Qué mide y cómo" : "Métrica"} · Proceso Estratégico{know?.funnel && know.funnel !== "transversal" ? ` · ${FUNNEL_LABEL[know.funnel]}` : ""}
             </div>
             <h3 className="mt-0.5 text-lg font-semibold tracking-tight text-slate-900">{know?.name ?? ""}</h3>
           </div>
