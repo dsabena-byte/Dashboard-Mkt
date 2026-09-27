@@ -6,6 +6,28 @@ causa raíz · qué se hizo.
 
 ---
 
+## 2026-09-27 · Chequeo de rutina — todo OK salvo TikTok sync (token vencido)
+
+- **Chequeo (Routine "System health check"):** sin Issue abierto del watchdog
+  ("🔴 Watchdog: procesos de datos con desvío"). De los 13 workflows de sync del
+  checklist (ga4-sync, bgt-sync, meta-paid-sync, organic-insights, meta-fb-sync,
+  ig-sync-6h, ig-sentiment-sync, ugc-comments-graph, ugc-comments-sync,
+  ugc-comments-analysis, seo-sync, trends-sync, clasificar-contenido), **todos
+  tienen su última corrida en success** (ugc-comments-sync es `workflow_dispatch`
+  manual por diseño — último run de junio, no es una alarma; seo-sync es mensual
+  por diseño desde ago-2026, último run 01/9; trends-sync último run 21/9).
+- **Hallazgo fuera del checklist:** `tiktok-sync.yml` (TikTok Ads, nivel
+  creativo) está en **failure** en sus últimas 2 corridas (26/9 10:18 y 27/9
+  10:48 UTC). Log: `HTTP 500 {"error":"Env var TIKTOK_ACCESS_TOKEN no
+  configurada"}` — no es un bug de código ni algo transitorio, así que
+  re-disparar el workflow no lo arregla.
+- **Acción tomada:** ninguna en código/re-trigger (no serviría). Anotado como
+  **pendiente manual**: configurar/renovar `TIKTOK_ACCESS_TOKEN` en Vercel
+  (proyecto Dashboard-Mkt) + GitHub Actions secrets del repo, después re-correr
+  el workflow "TikTok sync (Ads · nivel creativo)" manualmente.
+
+---
+
 ## 2026-09-07 · BGT Inversión — sigue sin actualizar, ahora 98h (~4 días)
 
 - **Chequeo de rutina:** Issue #632 sigue abierto, ahora en su 10ª actualización
