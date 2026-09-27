@@ -4,6 +4,7 @@ name: Alertas y reporte ejecutivo (1x/día)
 #  · /api/cron/alertas → lunes = resumen semanal; resto de los días = solo si aparece algo NUEVO de
 #    prioridad alta (según la frecuencia elegida en /alerts).
 #  · /api/cron/reporte-ejecutivo → solo el 1er día hábil del mes (mes cerrado anterior); no se repite.
+#  · /api/cron/tableros-envio → envío programado de Mis tableros (link de solo lectura; lunes / día 1).
 # Requiere CRON_SECRET (igual que en Vercel) + RESEND_API_KEY / NOTIFY_FROM / ALERT_RECIPIENTS en
 # Vercel + migración 0108 (sin ella no hay dedupe y el diario no se envía).
 on:
@@ -56,3 +57,17 @@ jobs:
             sleep $((attempt * attempt * 10))
           done
           echo "::error::reporte-ejecutivo falló (HTTP $code)"; exit 1
+
+      - name: Envío programado de Mis tableros (semanal lunes / mensual día 1)
+        if: always()
+        run: |
+          set -uo pipefail
+          q="force=${FORCE:-0}&dry=${DRY:-0}"
+          code=000
+          for attempt in 1 2 3; do
+            code=$(curl -sS -m 300 -o out.json -w "%{http_code}" -H "Authorization: Bearer ${CRON_SECRET:-}" "$BASE/api/cron/tableros-envio?$q" || echo 000)
+            echo "Intento $attempt → HTTP $code"; cat out.json || true; echo
+            [ "$code" = "200" ] && exit 0
+            sleep $((attempt * attempt * 10))
+          done
+          echo "::error::tableros-envio falló (HTTP $code)"; exit 1

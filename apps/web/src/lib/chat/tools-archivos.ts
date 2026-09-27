@@ -49,7 +49,10 @@ export const archivosTools: ChatTool[] = [
       additionalProperties: false,
     },
     run: async (args) => {
-      const ds = await getDataset(String(args.dataset_id ?? ""));
+      const id = String(args.dataset_id ?? "");
+      // Las fuentes nativas (nat:*) tienen sus propias tools por tablero (con su control de acceso).
+      if (id.startsWith("nat:")) return { disponible: false, motivo: "Ese dataset es una fuente nativa del dashboard: usá las tools del tablero correspondiente (Plan de Medios, Web, Redes, Seguimiento)." };
+      const ds = await getDataset(id);
       if (!ds) return { disponible: false, motivo: "Planilla no encontrada (usá list_tableros_datasets)." };
       const cols = ds.columns;
       const ci = (c: unknown) => cols.findIndex((x) => x.toLowerCase() === String(c ?? "").toLowerCase());
