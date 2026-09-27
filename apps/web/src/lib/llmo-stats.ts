@@ -68,10 +68,11 @@ export function llmoCallsPorCat(plan: LlmoPlan | string | null | undefined, env:
   return Number.isFinite(n) && n > 0 ? Math.min(LLMO_CALLS_MAX, n) : LLMO_CALLS_DEFAULT[p];
 }
 
-/** Costo por llamada (US$) de gpt-4o-search-preview con search_context_size "low":
- *  US$30 / 1.000 llamadas + tokens (US$2,50/M in, US$10/M out; ~150 in + ~600 out)
- *  → 0,03 + 0,0004 + 0,006 ≈ US$0,036 (developers.openai.com/api/docs/pricing, sep-2026). */
-export const LLMO_USD_POR_LLAMADA = 0.036;
+/** Costo por llamada (US$), estimado: Responses API con la tool web_search (US$10 / 1.000 llamadas)
+ *  + tokens del modelo (default gpt-4.1-mini, incl. el contenido de búsqueda que entra como input)
+ *  → ≈ US$0,01 + ~US$0,01–0,02 de tokens ≈ US$0,03 (conservador; no verificado contra factura).
+ *  (gpt-4o-search-preview, el modelo anterior, fue dado de baja el 23-jul-2026.) */
+export const LLMO_USD_POR_LLAMADA = 0.03;
 export const RUNS_POR_MES = 4.33; // sync SEO semanal (lunes)
 export function llmoCostoMensualUsd(callsPorCat: number, categorias: number, usdPorLlamada = LLMO_USD_POR_LLAMADA, runsPorMes = RUNS_POR_MES): number {
   return callsPorCat * categorias * runsPorMes * usdPorLlamada;

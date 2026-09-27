@@ -4,7 +4,7 @@
 // (sin IndexNow/Bing ni tarjeta de recomendación, que Drean no tiene) + ESoS/LLMO/propiedad SC de Drean.
 // Correr: cd apps/web && npx tsx scripts/seo-avanzado.test.ts (sin red).
 import { prefiltroCanibal, detectarCanibalizacion, detectarDecaimiento, analizarDispositivos, analyzeScDeep, normUrl } from "../src/lib/sc-deep";
-import { dominioDe, clasificarDominio, extraerCitas, analizarFuentesIa, analizarFuentesAio } from "../src/lib/llmo-fuentes";
+import { dominioDe, clasificarDominio, extraerCitas, textoRespuesta, analizarFuentesIa, analizarFuentesAio } from "../src/lib/llmo-fuentes";
 import { evolucionKeywords, type KwRankRow } from "../src/lib/seo-kw-evolucion";
 import {
   parseRobots, robotsAllows, robotsMatch, accesoBots, parseSitemap, parseHtml, chequearPagina, chequearSitio, chequearCwv, agruparHallazgos,
@@ -80,6 +80,25 @@ const row = (key: string, clicks: number, impressions: number, position: number)
   ok(clasificarDominio("argentina.gob.ar", dm) === "referencia", "gob = referencia");
   const cit = extraerCitas({ content: "Ver https://clarin.com/nota). Y [x](https://infobae.com/a?utm_source=chatgpt.com)", annotations: [{ type: "url_citation", url_citation: { url: "https://rtings.com/r?utm_source=chatgpt.com" } }, { type: "url_citation", url_citation: { url: "https://rtings.com/r" } }] });
   ok(cit.length === 3 && cit[0] === "https://rtings.com/r" && cit.every((u) => !/utm_/.test(u)), `extraerCitas dedup + sin utm (${cit.join(" ")})`);
+  // Responses API (web_search): output[] con web_search_call + message → content[] output_text con annotations url_citation.
+  const resp = {
+    id: "resp_1", object: "response", status: "completed", model: "gpt-4.1-mini",
+    output: [
+      { type: "web_search_call", id: "ws_1", status: "completed", action: { type: "search", query: "mejor lavarropas argentina" } },
+      { type: "message", id: "msg_1", role: "assistant", status: "completed", content: [
+        { type: "output_text", text: "Drean y Whirlpool lideran ([infobae.com](https://infobae.com/x?utm_source=openai)). Ver también https://fravega.com/l.", annotations: [
+          { type: "url_citation", start_index: 28, end_index: 80, url: "https://infobae.com/x?utm_source=openai", title: "Infobae" },
+          { type: "url_citation", start_index: 90, end_index: 120, url: "https://www.drean.com.ar/lavarropas", title: "Drean" },
+          { type: "file_citation", file_id: "f1", url: "https://ignorar.com/no" },
+        ] },
+      ] },
+    ],
+  };
+  const rc = extraerCitas(resp);
+  ok(rc.length === 3 && rc[0] === "https://infobae.com/x" && rc[1] === "https://www.drean.com.ar/lavarropas" && rc[2] === "https://fravega.com/l", `extraerCitas Responses (${rc.join(" ")})`);
+  ok(textoRespuesta(resp).startsWith("Drean y Whirlpool lideran"), "textoRespuesta Responses");
+  ok(textoRespuesta({ content: "hola" }) === "hola" && textoRespuesta({ output_text: "x" }) === "x" && textoRespuesta(null) === "", "textoRespuesta compat chat / output_text / null");
+  ok(extraerCitas({ output: [{ type: "web_search_call" }] }).length === 0, "Responses sin message → sin citas");
   const ms = [
     { categoria: "lav", marcas: ["Rival"], fuentes: ["https://clarin.com/a", "https://rival.com/x"] },
     { categoria: "lav", marcas: ["Rival", "Otra"], fuentes: ["https://clarin.com/b", "https://reddit.com/r"] },

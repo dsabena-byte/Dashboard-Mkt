@@ -642,6 +642,7 @@ reporte_existencia/cb_homologos).
   hace falta). NO volver a traer 24 meses de datos diarios ni pegarle a las vistas `web_landing_daily`
   para agregados históricos.
 - **Modelo:** el proyecto usa OpenAI (no Anthropic) para las features de IA existentes.
+- **LLMO (Visibilidad en IA) — modelo dado de baja:** `gpt-4o-search-preview` murió el 23-jul-2026 (404 en todas las llamadas → sep-2026 en 0). `llmo-sync` ahora usa la **Responses API** (`/v1/responses`) con la tool `web_search` forzada (`tool_choice`) y ubicación AR; modelo env **`OPENAI_LLMO_MODEL`** (default `gpt-4.1-mini`). Parseo en `lib/llmo-fuentes.ts` (`textoRespuesta`/`extraerCitas`, compat con el formato chat). Con 0 respuestas no escribe `seo_llmo` y devuelve `error` con el primer mensaje de OpenAI.
 - **Monitoreo (Routine "System health check") — auto-fix POR GITHUB, no por Vercel/Supabase:**
   la tarea programada corre en un entorno cuya **política de red bloquea el egress a
   `dashboard-mkt-seven.vercel.app` (403 en el proxy/CONNECT)** y es poco confiable hacia Supabase;
