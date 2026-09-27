@@ -1,5 +1,6 @@
 import "server-only";
-import type { SearchConsoleData as ScDataLite, ScMonth, ScRow, ScQueryPage } from "@/lib/signals/model";
+import type { SearchConsoleData as ScDataLite, ScMonth, ScRow, ScQueryPage, ScDeviceRow } from "@/lib/signals/model";
+import { prefiltroCanibal } from "@/lib/sc-deep";
 
 // ============================================================================
 // Google SEARCH CONSOLE de drean.com.ar — SEO PROPIO real (clicks, impresiones, CTR y
@@ -33,6 +34,7 @@ export interface SearchConsoleData extends ScDataLite {
 export type { ScMonth, ScRow, ScQueryPage };
 
 const API = "https://www.googleapis.com/webmasters/v3";
+const PAGES_LIMIT = 500; // páginas por período (90 días actual / previo / año anterior)
 const cleanDomain = (u: string) => u.toLowerCase().replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").trim();
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -105,11 +107,20 @@ export async function fetchSearchConsole(): Promise<SearchConsoleData> {
     const end = new Date(Date.now() - 3 * 864e5);
     const start3m = new Date(end.getTime() - 90 * 864e5);
     const start13 = new Date(Date.UTC(end.getUTCFullYear() - 1, end.getUTCMonth(), 1)); // mismo mes del año anterior → 13 meses
-    const [daily, qs, pgs, qp] = await Promise.all([
+    // Search Console a fondo (lib/sc-deep.ts, portado de BIP): 90 días previos y los mismos 90 días
+    // del año anterior (SC guarda 16 meses) + dispositivos. Opcionales: si fallan, el resto sigue.
+    const endPrev = new Date(start3m.getTime() - 864e5), startPrev = new Date(endPrev.getTime() - 90 * 864e5);
+    const endYoY = new Date(end.getTime() - 365 * 864e5), startYoY = new Date(start3m.getTime() - 365 * 864e5);
+    const opt = <T,>(p: Promise<T>) => p.catch((e) => { if (e instanceof ScError && e.code !== "error") throw e; return null; });
+    const [daily, qs, pgs, qp, pgsPrev, pgsYoY, dev, devPrev] = await Promise.all([
       query(token, site, { startDate: ymd(start13), endDate: ymd(end), dimensions: ["date"], rowLimit: 500 }),
-      query(token, site, { startDate: ymd(start3m), endDate: ymd(end), dimensions: ["query"], rowLimit: 250 }),
-      query(token, site, { startDate: ymd(start3m), endDate: ymd(end), dimensions: ["page"], rowLimit: 100 }),
-      query(token, site, { startDate: ymd(start3m), endDate: ymd(end), dimensions: ["query", "page"], rowLimit: 500 }),
+      query(token, site, { startDate: ymd(start3m), endDate: ymd(end), dimensions: ["query"], rowLimit: 1000 }),
+      query(token, site, { startDate: ymd(start3m), endDate: ymd(end), dimensions: ["page"], rowLimit: PAGES_LIMIT }),
+      query(token, site, { startDate: ymd(start3m), endDate: ymd(end), dimensions: ["query", "page"], rowLimit: 5000 }),
+      opt(query(token, site, { startDate: ymd(startPrev), endDate: ymd(endPrev), dimensions: ["page"], rowLimit: PAGES_LIMIT })),
+      opt(query(token, site, { startDate: ymd(startYoY), endDate: ymd(endYoY), dimensions: ["page"], rowLimit: PAGES_LIMIT })),
+      opt(query(token, site, { startDate: ymd(start3m), endDate: ymd(end), dimensions: ["device"], rowLimit: 10 })),
+      opt(query(token, site, { startDate: ymd(startPrev), endDate: ymd(endPrev), dimensions: ["device"], rowLimit: 10 })),
     ]);
     // Mensual: clicks/impresiones suman; posición ponderada por impresiones.
     const mm = new Map<string, { c: number; i: number; pw: number; d: number }>();
@@ -122,11 +133,20 @@ export async function fetchSearchConsole(): Promise<SearchConsoleData> {
     const monthly: ScMonth[] = [...mm.entries()].sort(([a], [b]) => a.localeCompare(b))
       .map(([mes, e]) => ({ mes, clicks: e.c, impressions: e.i, ctr: e.i ? (e.c / e.i) * 100 : 0, position: e.i ? e.pw / e.i : 0, dias: e.d }));
     const row = (r: ApiRow): ScRow => ({ key: r.keys[0] ?? "", clicks: r.clicks, impressions: r.impressions, ctr: r.ctr * 100, position: r.position });
+    const qpAll: ScQueryPage[] = qp.map((r) => ({ query: r.keys[0] ?? "", page: r.keys[1] ?? "", clicks: r.clicks, impressions: r.impressions, ctr: r.ctr * 100, position: r.position }));
+    const devRow = (r: ApiRow): ScDeviceRow => ({ device: r.keys[0] ?? "", clicks: r.clicks, impressions: r.impressions, ctr: r.ctr * 100, position: r.position });
     return {
       v: 1, ok: true, site, sites, range: { start: ymd(start3m), end: ymd(end) }, monthly,
       queries: qs.map(row).sort((a, b) => b.impressions - a.impressions),
       pages: pgs.map(row).sort((a, b) => b.clicks - a.clicks),
-      queryPage: qp.map((r) => ({ query: r.keys[0] ?? "", page: r.keys[1] ?? "", clicks: r.clicks, impressions: r.impressions, ctr: r.ctr * 100, position: r.position })),
+      // keyword → landing: top 500 (lo de siempre); la canibalización guarda aparte solo las búsquedas con ≥2 URLs.
+      queryPage: qpAll.slice(0, 500),
+      queryPageMulti: prefiltroCanibal(qpAll),
+      pagesLimit: PAGES_LIMIT,
+      ...(pgsPrev ? { pagesPrev: pgsPrev.map(row), rangePrev: { start: ymd(startPrev), end: ymd(endPrev) } } : {}),
+      ...(pgsYoY ? { pagesYoY: pgsYoY.map(row), rangeYoY: { start: ymd(startYoY), end: ymd(endYoY) } } : {}),
+      ...(dev ? { devices: dev.map(devRow) } : {}),
+      ...(devPrev ? { devicesPrev: devPrev.map(devRow) } : {}),
       updatedAt: now,
     };
   } catch (e) {

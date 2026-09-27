@@ -32,7 +32,7 @@ const F = {
   gfk: { label: "GfK", tabla: "mercado_share", col: "updated_at", cadenciaH: 2160 },
   demanda: { label: "Demanda (DataForSEO)", tabla: "search_volume", col: "fetched_at", cadenciaH: 168 },
   serp: { label: "Posición SEO", tabla: "seo_rankings", col: "fetched_at", cadenciaH: 720 },
-  llmo: { label: "Visibilidad en IA", tabla: "seo_llmo", col: "updated_at", cadenciaH: 720 },
+  llmo: { label: "Visibilidad en IA", tabla: "seo_llmo", col: "updated_at", cadenciaH: 168 },
   sc: { label: "Search Console", tabla: "search_console_snapshot", col: "updated_at", cadenciaH: 168 },
   ugc: { label: "UGC (Meta Ads)", tabla: "meta_paid_creatives", col: "fetched_at", cadenciaH: 24, filter: { col: "categoria", val: "UGC" } },
   ugcCom: { label: "Comentarios UGC", tabla: "ugc_comments", col: "fetched_at", cadenciaH: 24 },

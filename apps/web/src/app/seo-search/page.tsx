@@ -8,6 +8,8 @@ import { MercadoMetasSection } from "@/components/seo-search/mercado-metas-secti
 import { SearchConsoleSection } from "@/components/seo-search/search-console-section";
 import { getMercadoSeries, getMercadoMetas } from "@/lib/mercado-kpis-server";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { MarcaDigitalSection, LlmoIcSection, KwEvolucionSection, ScAvanzadoSection, AuditoriaSection } from "@/components/seo-search/seo-avanzado-section";
+import { loadSeoAvanzado } from "@/lib/seo-avanzado-server";
 import { DataHealth } from "@/components/data-health";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,8 @@ export default async function SeoSearchPage() {
   const anio = new Date().getFullYear();
   void getMercadoSeries(anio).catch(() => null);
   void getMercadoMetas(anio).catch(() => null);
+  // Capa SEO/GEO avanzada (snapshots + tablas chicas): arranca en paralelo; las secciones reusan la promesa (cache()).
+  void loadSeoAvanzado().catch(() => null);
   const [share, trends, demanda, seoCompetitivo, region, indexHist, llmo, fresh] = await Promise.all([
     getShareOfSearch().catch(() => []),
     getTrendsInterest().catch(() => []),
@@ -79,6 +83,9 @@ export default async function SeoSearchPage() {
         <SeoSearchClient share={share} trends={trends} demanda={demanda} />
       )}
 
+      {/* Salud digital de marca (índice vs el set) + ESoS (share of search vs share GfK) */}
+      <MarcaDigitalSection />
+
       {region.length > 0 && (
         <div className="border-t pt-6">
           <RegionSection rows={region} />
@@ -90,16 +97,20 @@ export default async function SeoSearchPage() {
           <SeoCompetitivoSection rows={seoCompetitivo} historia={indexHist} />
         </div>
       )}
+      <KwEvolucionSection />
 
       {llmo.length > 0 && (
         <div className="border-t pt-6">
           <LlmoSection rows={llmo} />
         </div>
       )}
+      <LlmoIcSection />
       {/* SEO propio real (Google Search Console de drean.com.ar) */}
       <div className="border-t pt-6">
         <SearchConsoleSection />
       </div>
+      <ScAvanzadoSection />
+      <AuditoriaSection />
     </DashTabs>
   );
 }

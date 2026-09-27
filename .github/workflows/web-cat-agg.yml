@@ -32,3 +32,18 @@ jobs:
           fi
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      # Calidad del dato web (embudo GA4, tráfico desde IA, consent) → web_calidad_snapshot (migración 0117).
+      # Corre aunque falle el paso anterior (son independientes).
+      - name: Trigger /api/cron/web-calidad
+        if: always()
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/web-calidad"
+          HTTP_CODE=$(curl -s -o calidad.json -w "%{http_code}" --max-time 320 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" \
+            "$URL")
+          echo "HTTP $HTTP_CODE"; cat calidad.json; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then echo "::error::web-calidad HTTP $HTTP_CODE"; exit 1; fi
+          if grep -q '"ok":false' calidad.json; then echo "::error::web-calidad ok=false (¿migración 0117?)"; exit 1; fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

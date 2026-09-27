@@ -107,7 +107,7 @@ function Contenido({ d }: { d: SearchConsoleData }) {
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="overflow-x-auto rounded-xl border bg-card p-4">
           <div className="text-sm font-semibold">CTR bajo con buena posición</div>
-          <p className="mb-2 mt-0.5 text-[11px] text-muted-foreground">Top-5 en Google pero pocos hacen click: reescribir título y descripción de la página. CTR esperado = curva de industria para esa posición.</p>
+          <p className="mb-2 mt-0.5 text-[11px] text-muted-foreground">Top-5 en Google pero pocos hacen click: reescribir título y descripción de la página. CTR esperado = curva AWR 2026 (punto medio con/sin Resumen IA) o la curva propia si Search Console tiene datos suficientes.</p>
           {a.ctrBajo.length ? (
             <table className="w-full border-collapse">
               <thead><tr><th className={TH}>Búsqueda</th><th className={THR}>Pos.</th><th className={THR}>CTR</th><th className={THR}>Esperado</th><th className={THR}>+Clicks</th></tr></thead>

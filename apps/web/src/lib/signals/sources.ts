@@ -37,6 +37,12 @@ import { getEcommerceInversionMensual } from "@/lib/ecommerce-queries";
 import { buildPautaFull, buildRedesInput, buildWebReports, buildCompetitorWeb, buildSeoData, buildSeguimiento, type RedesAdapted, type CompetitorWebRowLite } from "./adapters";
 import type { PautaFull, WebReports, CompetitorWebData, SeoData, SeguimientoObjetivos } from "./model";
 import type { CrucesInput } from "./cruces";
+import { getWebCalidadSnapshot } from "@/lib/web-calidad-server";
+import { getEcommerceMensual } from "@/lib/ecommerce-queries";
+import { loadSeoAvanzado } from "@/lib/seo-avanzado-server";
+import type { WebCalidadSnapshot } from "@/lib/web-calidad-shared";
+import type { DiaWeb } from "@/lib/web-forecast";
+import type { SeoAvanzadoInput } from "./seo-avanzado";
 import type { CbSignalInput, FsSignalInput, UgcSignalInput, MercadoRowLite, SaludSignalInput, MktCanalRowLite, ConvSignalInput, CuatriLite } from "./drean";
 
 const safe = async <T>(p: Promise<T>): Promise<T | null> => { try { return await p; } catch { return null; } };
@@ -169,6 +175,36 @@ export function loadSeo(ctx: LoadCtx): Promise<SeoData | null> {
       safe(getShareOfSearch()), safe(getSeoCompetitivo()), safe(getSearchRegion()), safe(getLlmo()), safe(getDemandaGenerica()),
     ]);
     return buildSeoData({ ownBrand: "Drean", share: share ?? [], trends: [], serp: serp ?? [], regions: regions ?? [], llmo: llmo ?? [], demanda: demanda ?? [] });
+  });
+}
+
+// ── Web: calidad del dato / cierre proyectado / consent (snapshot 1 fila + la serie diaria de compras del año) ──
+export interface WebCalidadLoaded { snapshot: WebCalidadSnapshot | null; diario: DiaWeb[]; metaTx: (number | null)[]; metaIngresos: (number | null)[] }
+export function loadWebCalidad(ctx: LoadCtx): Promise<WebCalidadLoaded | null> {
+  return ctx.once("webcalidad", async () => {
+    const y = year();
+    const [snap, ecom, mTx, mIng] = await Promise.all([
+      safe(getWebCalidadSnapshot()), safe(getEcommerceMensual(y)),
+      safe(getMetaKpi("Web / Ecommerce", "Transacciones", y)), safe(getMetaKpi("Web / Ecommerce", "Total Ingresos", y)),
+    ]);
+    const snapshot = snap?.status === "ok" ? snap.data : null;
+    if (!snapshot && !ecom?.diario.length) return null;
+    return { snapshot, diario: ecom?.diario ?? [], metaTx: mTx?.valores ?? [], metaIngresos: mIng?.valores ?? [] };
+  });
+}
+
+// ── SEO/GEO avanzado (snapshots SC + auditoría, seo_llmo, seo_rankings, ESoS) ──
+export function loadSeoAvanzadoInput(ctx: LoadCtx): Promise<SeoAvanzadoInput | null> {
+  return ctx.once("seoavanzado", async () => {
+    const a = await safe(loadSeoAvanzado());
+    if (!a) return null;
+    const au = a.audit.status === "ok" && a.audit.data.ok ? a.audit.data : null;
+    return {
+      scDeep: a.scDeep, scSite: a.scSite, scImpresionesMes: a.scImpresionesMes,
+      audit: au ? { issues: au.issues, bots: au.bots, paginas: au.paginas?.length ?? 0 } : null,
+      fuentes: a.fuentes, kwEvol: a.kwEvol, esos: a.esos,
+      llmoN: a.llmo.map((c) => ({ categoria: c.categoria, label: c.label, n: c.marcas[0]?.s.n ?? 0 })),
+    };
   });
 }
 
