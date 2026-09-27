@@ -97,6 +97,16 @@ reporte_existencia/cb_homologos).
     Cómo leer → RRSS · UGC · Biblioteca UGC · Adaptación (mismo estilo). Monitoreo = una sola vista, sin pestañas.
     NO volver a poner barras de tabs arriba del título ni un segundo nivel de pestañas.
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
+  - **Señales rápidas y sin cuelgues (27-sep-2026, /seo-search quedaba "pensando"):** `LoadCtx` corta cada fuente a
+    **12 s** (`SourceTimeoutError`; cruces 15 s; pack IA 25 s) y anota `skipped` → una fuente lenta solo se lleva sus
+    señales. `computeSignalsDetailed` = caché en memoria por tablero **15 min** (parcial 2 min, pedidos simultáneos
+    comparten cálculo; `?fresh=1` la saltea). La ruta devuelve `{signals, skipped, ms, cached, timings}`; el cliente
+    aborta a los **30 s** con aviso + "Reintentar" y "Qué hacer ahora" muestra lo que llegó. Cuello medido: la vista
+    **`vw_drean_web_monthly_by_channel` (4,7–5,9 s aislada, agrega `web_traffic` entera; el filtro por mes no baja)** →
+    precalculada en **`web_monthly_by_channel` (migración 0121, correr en SQL Editor)** por `web-cat-agg` (historia
+    completa); lectores vía `lib/web-monthly-channel.ts` (fallback a la vista). SERP de señales = última foto por
+    categoría de `seo_rankings` (`getSeoCompetitivo({soloUltimaFecha})`; antes mezclaba 3 fotos → "keywords top-3" inflados).
+    Medir loaders: harness con shims de `server-only`/`react.cache`/`getServerSupabase` (no commiteado).
 - **Simulador, Pauta de la competencia, Alertas (portado de BIP, sep-2026):**
   - **Plan de Medios con sub-rutas** (`components/pauta/plan-medios-subnav.tsx`): `/performance` (Tablero, sin
     cambios) · `/performance/simulador` · `/performance/competencia`. El sidebar y `isPathAllowed` ya matchean

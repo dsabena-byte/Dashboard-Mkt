@@ -40,6 +40,7 @@ import type { CrucesInput } from "./cruces";
 import { getWebCalidadSnapshot } from "@/lib/web-calidad-server";
 import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 import { loadSeoAvanzado } from "@/lib/seo-avanzado-server";
+import { getWebMonthlyByChannelRows } from "@/lib/web-monthly-channel";
 import type { WebCalidadSnapshot } from "@/lib/web-calidad-shared";
 import type { DiaWeb } from "@/lib/web-forecast";
 import type { SeoAvanzadoInput } from "./seo-avanzado";
@@ -53,18 +54,57 @@ async function rest<T>(query: string): Promise<T[]> {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return [];
   try {
-    const res = await fetch(`${url}/rest/v1/${query}`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" });
+    // Tope por query: una lectura colgada no puede retener el cálculo entero (el LoadCtx corta antes igual).
+    const res = await fetch(`${url}/rest/v1/${query}`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store", signal: AbortSignal.timeout(20_000) });
     if (!res.ok) return [];
     return (await res.json()) as T[];
   } catch { return []; }
 }
 
-/** Memo por invocación: computeSignals / el diagnóstico comparten lecturas (overview y cruces reusan pauta/SEO/redes/web). */
+/** Una fuente que no respondió a tiempo: sus señales se omiten (el resto sale igual). */
+export class SourceTimeoutError extends Error {
+  constructor(public source: string, ms: number) { super(`${source}: sin respuesta en ${ms} ms`); }
+}
+
+/** Nombre legible de cada fuente (lo que ve el usuario cuando una se omite por tiempo). */
+export const SOURCE_LABEL: Record<string, string> = {
+  pautaRaw: "Plan de Medios", pauta: "Plan de Medios", pautaExtras: "Ritmo de inversión y fatiga", redes: "Redes",
+  web: "Web (GA4)", compweb: "Web de la competencia", seo: "SEO y Share of Search", webcalidad: "Calidad del dato web",
+  seoavanzado: "SEO avanzado (Search Console, auditoría, IA)", overview: "Seguimiento de objetivos", cruces: "Cruces propios × mercado",
+  searchconsole: "Search Console", cb: "Cuadros Básicos", fs: "Floor Share", ugc: "UGC", mercado: "Mercado (GfK)",
+  salud: "Salud de Marca", mktcanal: "Mkt Canal", conv: "Pauta Ecommerce", inversion: "Inversión de Marketing",
+};
+
+/**
+ * Memo por invocación: computeSignals / el diagnóstico comparten lecturas (overview y cruces reusan
+ * pauta/SEO/redes/web). Cada fuente tiene un TOPE de tiempo (`timeoutMs`): si no responde, esa lectura
+ * rechaza con SourceTimeoutError (los consumidores la tratan como "sin dato") y queda anotada en
+ * `skipped` → una fuente lenta solo se lleva sus propias señales, no el tablero entero.
+ */
 export class LoadCtx {
   private m = new Map<string, Promise<unknown>>();
-  once<T>(k: string, f: () => Promise<T>): Promise<T> {
-    if (!this.m.has(k)) this.m.set(k, f());
+  readonly timeoutMs: number;
+  readonly skipped = new Set<string>();
+  /** Tiempo (ms) de cada fuente resuelta — diagnóstico de performance. */
+  readonly timings: Record<string, number> = {};
+  constructor(opts: { timeoutMs?: number } = {}) { this.timeoutMs = opts.timeoutMs ?? 12_000; }
+  once<T>(k: string, f: () => Promise<T>, timeoutMs = this.timeoutMs): Promise<T> {
+    if (!this.m.has(k)) {
+      const t0 = Date.now();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const work = f().then((v) => { this.timings[k] = Date.now() - t0; return v; });
+      const limit = new Promise<never>((_, rej) => {
+        timer = setTimeout(() => { this.skipped.add(k); rej(new SourceTimeoutError(k, timeoutMs)); }, timeoutMs);
+      });
+      const p = Promise.race([work, limit]).finally(() => clearTimeout(timer));
+      p.catch(() => { /* los consumidores manejan el rechazo; evita unhandled rejection */ });
+      this.m.set(k, p);
+    }
     return this.m.get(k) as Promise<T>;
+  }
+  /** Fuentes omitidas por tiempo, sin duplicar sinónimos (pautaRaw/pauta) y con nombre legible. */
+  skippedLabels(): string[] {
+    return [...new Set([...this.skipped].map((k) => SOURCE_LABEL[k] ?? k))];
   }
 }
 
@@ -148,9 +188,9 @@ export function loadWeb(ctx: LoadCtx): Promise<WebLoaded | null> {
     const [monthly, users, chan, cats, comp] = await Promise.all([
       rest<{ mes: string; sesiones: number | null; pageviews: number | null; bounce_rate: number | null; avg_session_duration: number | null }>(`vw_drean_web_monthly?mes=gte.${y - 1}-01-01&select=mes,sesiones,pageviews,bounce_rate,avg_session_duration&order=mes`),
       rest<{ mes: string; total_users: number | null; new_users: number | null }>(`ga4_monthly_users?mes=gte.${y - 1}-01-01&select=mes,total_users,new_users&order=mes`),
-      rest<{ mes: string; canal: string; sesiones: number | null; conversiones: number | null; pageviews: number | null }>(`vw_drean_web_monthly_by_channel?mes=gte.${y}-01-01&select=mes,canal,sesiones,conversiones,pageviews`),
+      getWebMonthlyByChannelRows(`${y}-01-01`), // tabla precalculada (0121); la vista tardaba ~5 s
       rest<{ fecha: string; categoria: string | null; usuarios: number | null; sesiones: number | null; conversiones: number | null; pageviews: number | null }>(`web_daily_by_category?fecha=gte.${prevStart}&select=fecha,categoria,usuarios,sesiones,conversiones,pageviews&limit=5000`),
-      loadCompetitorWeb(ctx),
+      safe(loadCompetitorWeb(ctx)), // la competencia no debe tumbar la web propia si tarda
     ]);
     const w = buildWebReports({ year: y, now, monthly, users, chan, cats });
     if (!w) return comp ? { reports: emptyReports(), periodo: { start: "", end: "", label: "" }, competitor: comp } : null;
@@ -172,7 +212,9 @@ function loadCompetitorWeb(ctx: LoadCtx): Promise<CompetitorWebData | null> {
 export function loadSeo(ctx: LoadCtx): Promise<SeoData | null> {
   return ctx.once("seo", async () => {
     const [share, serp, regions, llmo, demanda] = await Promise.all([
-      safe(getShareOfSearch()), safe(getSeoCompetitivo()), safe(getSearchRegion()), safe(getLlmo()), safe(getDemandaGenerica()),
+      // SERP: solo la ÚLTIMA foto de seo_rankings (la tabla acumula ~4,3k filas por relevamiento y las
+      // reglas de posición no deben mezclar fotos; traerla entera eran ~1,5 MB y crecía sin tope).
+      safe(getShareOfSearch()), safe(getSeoCompetitivo({ soloUltimaFecha: true })), safe(getSearchRegion()), safe(getLlmo()), safe(getDemandaGenerica()),
     ]);
     return buildSeoData({ ownBrand: "Drean", share: share ?? [], trends: [], serp: serp ?? [], regions: regions ?? [], llmo: llmo ?? [], demanda: demanda ?? [] });
   });
@@ -222,7 +264,11 @@ export function loadOverview(ctx: LoadCtx): Promise<SeguimientoObjetivos | null>
 export function loadCruces(ctx: LoadCtx): Promise<CrucesInput | null> {
   return ctx.once("cruces", async () => {
     // Search Console: snapshot de search_console_snapshot (null si no hay dato OK → cruce_sc_* no dispara).
-    const [pauta, seo, redes, web, sc] = await Promise.all([loadPauta(ctx), loadSeo(ctx), loadRedes(ctx), loadWeb(ctx), safe(getSearchConsoleData())]);
+    // Cada fuente por separado: si una no llega a tiempo (LoadCtx), el resto de los cruces sale igual.
+    const [pauta, seo, redes, web, sc] = await Promise.all([
+      safe(loadPauta(ctx)), safe(loadSeo(ctx)), safe(loadRedes(ctx)), safe(loadWeb(ctx)),
+      safe(ctx.once("searchconsole", () => getSearchConsoleData())),
+    ]);
     const inp: CrucesInput = {
       ownBrand: "Drean",
       pauta: pauta ? { monthly: pauta.monthly, currency: pauta.currency, year: year() } : null,
@@ -230,7 +276,7 @@ export function loadCruces(ctx: LoadCtx): Promise<CrucesInput | null> {
       web: web?.reports ?? null, competitorWeb: web?.competitor ?? null, searchConsole: sc ?? null,
     };
     return inp.seo || inp.social || inp.competitorWeb || inp.searchConsole ? inp : null;
-  });
+  }, ctx.timeoutMs + 3_000); // compuesto: margen sobre el tope de sus fuentes (que ya cortan solas)
 }
 
 // ── Trade ──

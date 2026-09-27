@@ -9,7 +9,7 @@
 // Sistema visual sobrio de Drean: dato #1e40af, tinta #0f172a, pizarra #64748b; rojo/ámbar solo
 // para estado (prioridad), nunca decorativo.
 // ============================================================================
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import type { Signal } from "@/lib/signals/types";
 import type { Insights, InsItem, ReportMeta } from "@/lib/insights/types";
@@ -22,6 +22,9 @@ import { GuiameButton } from "@/components/copiloto/guiame-button";
 const DATA = "#1e40af";
 const INK = "#0f172a";
 const SLATE = "#64748b";
+
+/** Tope de espera de las señales en el navegador (el servidor corta cada fuente a los 12 s). */
+const SIGNALS_TIMEOUT_MS = 30_000;
 
 const TIPO_LBL: Record<Signal["tipo"], string> = { alerta: "Alerta", oportunidad: "Oportunidad", info: "Contexto" };
 const TIPO_COLOR: Record<Signal["tipo"], string> = { alerta: "#b91c1c", oportunidad: DATA, info: SLATE };
@@ -177,7 +180,9 @@ function InsightsView({ data, dash }: { data: Insights; dash: string }) {
 export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", embedded = false }: { dash: string; titulo?: string; /** Dentro del tab "Diagnóstico e inteligencia" (DashTabs): abierto y sin colapsar. */ embedded?: boolean }) {
   const [open, setOpen] = useState(embedded);
   const [signals, setSignals] = useState<Signal[] | null>(null);
-  const [sigErr, setSigErr] = useState(false);
+  const [sigErr, setSigErr] = useState<string | null>(null);
+  const [skipped, setSkipped] = useState<string[]>([]);
+  const sigAbort = useRef<AbortController | null>(null);
   const [data, setData] = useState<Insights | null>(null);
   const [meta, setMeta] = useState<{ id: number | null; createdAt: string | null; model?: string | null } | null>(null);
   const [versiones, setVersiones] = useState<ReportMeta[]>([]);
@@ -202,14 +207,43 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
     finally { setLoadingDiag(false); }
   }, [q]);
 
+  // Señales con tope de espera: si el servidor no responde en SIGNALS_TIMEOUT_MS se corta el pedido y se
+  // muestra un aviso con "Reintentar" (nunca queda el spinner girando). El servidor ya omite por su cuenta
+  // las fuentes lentas (`skipped`) y guarda 15 min el resultado, así que el reintento suele ser inmediato.
+  const loadSignals = useCallback((fresh = false) => {
+    sigAbort.current?.abort();
+    const ac = new AbortController();
+    sigAbort.current = ac;
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; ac.abort(); }, SIGNALS_TIMEOUT_MS);
+    setSignals(null); setSigErr(null); setSkipped([]);
+    fetch(`/api/insights/signals?dash=${q}${fresh ? "&fresh=1" : ""}`, { signal: ac.signal })
+      .then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok || !j) throw new Error("http");
+        setSignals(Array.isArray(j.signals) ? j.signals : []);
+        setSkipped(Array.isArray(j.skipped) ? j.skipped : []);
+        if (j.error) setSigErr(String(j.error));
+      })
+      .catch(() => {
+        if (sigAbort.current !== ac) return; // un reintento posterior ya tomó el control
+        setSignals([]);
+        setSigErr(timedOut
+          ? "Las señales están tardando más de lo normal (los datos de origen responden lento). Probá de nuevo en un momento."
+          : "No se pudieron calcular las señales.");
+      })
+      .finally(() => clearTimeout(timer));
+  }, [q]);
+  useEffect(() => () => sigAbort.current?.abort(), []);
+
   // Carga perezosa: recién al abrir la sección.
   useEffect(() => {
     if (!open || loaded) return;
     setLoaded(true);
-    fetch(`/api/insights/signals?dash=${q}`).then((r) => r.json()).then((j) => setSignals(Array.isArray(j?.signals) ? j.signals : [])).catch(() => { setSignals([]); setSigErr(true); });
+    loadSignals();
     loadSaved();
     loadList();
-  }, [open, loaded, q, loadSaved, loadList]);
+  }, [open, loaded, loadSignals, loadSaved, loadList]);
 
   const generate = async () => {
     setGenerating(true); setErr(null); setWarn(null);
@@ -246,15 +280,35 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
       {open && (
         <div className="mt-4 grid gap-4">
           <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, ordenadas de lo más urgente a lo menos (según cuánto mueven el resultado, qué tan seguro es el dato y cuánto trabajo llevan). Abrí cada una para ver los pasos, o tocá «Guiame paso a paso» y el copiloto te explica cómo hacerlo, en palabras simples.">
-            {signals == null ? (
+            {signals == null && !recs.length ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando las recomendaciones…</div>
-            ) : <RecomendacionesLista recs={recs} cargando={loadingDiag} />}
+            ) : (
+              <>
+                {/* Con lo que haya llegado: si el Diagnóstico IA guardado llega antes que las señales, se muestra ya. */}
+                <RecomendacionesLista recs={recs} cargando={loadingDiag} />
+                {signals == null && <div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-3.5 w-3.5 animate-spin" />Sumando las acciones de las señales…</div>}
+              </>
+            )}
           </Section>
           <Section titulo="Señales detectadas" desc={signals ? `Reglas determinísticas sobre los datos actuales — ${n("alerta")} alertas · ${n("oportunidad")} oportunidades · ${n("info")} de contexto. Se recalculan en cada apertura.` : undefined}>
             {signals == null ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Calculando señales…</div>
-            ) : signals.length ? <SignalList signals={signals} /> : (
-              <div className="py-2 text-xs text-slate-500">{sigErr ? "No se pudieron calcular las señales." : "Sin señales relevantes con los datos actuales."}</div>
+            ) : (
+              <>
+                {sigErr ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <span>{sigErr}</span>
+                    <button type="button" onClick={() => loadSignals(true)} className="inline-flex items-center gap-1 rounded border border-amber-300 bg-white px-2 py-0.5 font-semibold text-amber-800 hover:bg-amber-100"><RefreshCw className="h-3 w-3" />Reintentar</button>
+                  </div>
+                ) : !signals.length ? <div className="py-2 text-xs text-slate-500">Sin señales relevantes con los datos actuales.</div> : null}
+                {signals.length > 0 && <SignalList signals={signals} />}
+                {skipped.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                    <span>No respondieron a tiempo y se omitieron sus señales: {skipped.join(", ")}.</span>
+                    <button type="button" onClick={() => loadSignals(true)} className="font-semibold" style={{ color: DATA }}>Reintentar</button>
+                  </div>
+                )}
+              </>
             )}
           </Section>
 

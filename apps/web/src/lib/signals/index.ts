@@ -43,25 +43,25 @@ export async function baseSignals(ctx: LoadCtx, dash: SignalDash): Promise<Signa
       case "redes": { const r = await loadRedes(ctx); return r ? computeRedesSignals(r) : []; }
       case "performance": {
         // + pacing del mes en curso vs la meta de Inversión y fatiga creativa (lib/pauta-pacing, lib/pauta-fatiga).
-        const [p, x] = await Promise.all([loadPauta(ctx), loadPautaExtras(ctx).catch(() => null)]);
+        const [p, x] = await Promise.all([loadPauta(ctx).catch(() => null), loadPautaExtras(ctx).catch(() => null)]);
         const extra = x ? [...pacingSignals(x.pacing), ...fatigaSignals(x.fatiga)] : [];
         return p ? [...computePautaSignals(p), ...computePautaDataSignals(p.warnings), ...extra] : extra;
       }
       case "web": {
         // + calidad del dato / cierre proyectado / consent (lib/signals/web-calidad.ts, snapshot del cron web-calidad).
-        const [w, wc] = await Promise.all([loadWeb(ctx), loadWebCalidad(ctx).catch(() => null)]);
+        const [w, wc] = await Promise.all([loadWeb(ctx).catch(() => null), loadWebCalidad(ctx).catch(() => null)]);
         return [...(w ? computeWebSignals(w.reports, { periodo: w.periodo.label, competitor: w.competitor }) : []), ...(wc ? computeWebCalidadSignals(wc) : [])];
       }
       case "seo-search": {
         // + SEO/GEO avanzado: SC a fondo, auditoría, fuentes de IA, keywords, ESoS (lib/signals/seo-avanzado.ts).
-        const [s, sa] = await Promise.all([loadSeo(ctx), loadSeoAvanzadoInput(ctx).catch(() => null)]);
+        const [s, sa] = await Promise.all([loadSeo(ctx).catch(() => null), loadSeoAvanzadoInput(ctx).catch(() => null)]);
         return [...(s ? computeSeoSignals(s) : []), ...(sa ? computeSeoAvanzadoSignals(sa) : [])];
       }
       case "overview": {
-        const o = await loadOverview(ctx);
+        // En paralelo: el Seguimiento y el SEO (visibilidad en IA) no dependen uno del otro.
+        const [o, s] = await Promise.all([loadOverview(ctx).catch(() => null), loadSeo(ctx).catch(() => null)]);
         let base = o ? computeOverviewSignals(o) : [];
         // Visibilidad en IA vs share of search (regla de seo.ts): se referencia en la visión general.
-        const s = await loadSeo(ctx).catch(() => null);
         if (s) base = [...base, ...computeSeoSignals(s).filter((x) => x.key.includes("_llm_")).slice(0, 1)];
         return base;
       }
@@ -79,18 +79,18 @@ export async function baseSignals(ctx: LoadCtx, dash: SignalDash): Promise<Signa
 }
 
 async function forDash(ctx: LoadCtx, dash: SignalDash, cruces: Promise<Signal[]>): Promise<Signal[]> {
-  const base = await baseSignals(ctx, dash);
-  let extra: Signal[] = [];
-  if (CRUCE_DASHES.includes(dash)) {
-    const cr = await cruces.catch(() => [] as Signal[]);
-    extra = dash === "overview" ? cr.slice(0, OVERVIEW_CRUCES) : cr.filter((c) => c.dash === dash);
-  }
-  if (dash === "overview") {
-    // La visión general cruza planes: las 2 principales de cada tablero propio de Drean.
-    const tops = await Promise.all((["cuadros-basicos", "floor-share", "mercado", "salud-marca"] as SignalDash[]).map((d) => baseSignals(ctx, d).then((s) => s.filter((x) => x.tipo !== "info").slice(0, OVERVIEW_PER_DASH)).catch(() => [])));
-    extra = [...extra, ...tops.flat()];
-  }
-  return sortSignals([...base, ...extra]);
+  // Todo en paralelo (propias, cruces y — en overview — los tableros de trade/mercado/salud): cada fuente
+  // tiene su tope en el LoadCtx, así que el total queda acotado por la fuente más lenta, no por la suma.
+  const [base, cr, tops] = await Promise.all([
+    baseSignals(ctx, dash),
+    CRUCE_DASHES.includes(dash) ? cruces.catch(() => [] as Signal[]) : Promise.resolve([] as Signal[]),
+    dash === "overview"
+      // La visión general cruza planes: las 2 principales de cada tablero propio de Drean.
+      ? Promise.all((["cuadros-basicos", "floor-share", "mercado", "salud-marca"] as SignalDash[]).map((d) => baseSignals(ctx, d).then((s) => s.filter((x) => x.tipo !== "info").slice(0, OVERVIEW_PER_DASH)).catch(() => [] as Signal[])))
+      : Promise.resolve([] as Signal[][]),
+  ]);
+  const extra = dash === "overview" ? cr.slice(0, OVERVIEW_CRUCES) : cr.filter((c) => c.dash === dash);
+  return sortSignals([...base, ...extra, ...tops.flat()]);
 }
 
 /** Señales de un tablero (o de todos si no se indica), ordenadas por prioridad / tipo / impacto. */
@@ -106,9 +106,40 @@ export async function computeSignals(dash?: SignalScope, ctx: LoadCtx = new Load
   return sortSignals(all.flat().filter((s) => (seen.has(s.key) ? false : (seen.add(s.key), true))));
 }
 
+// ── Caché en memoria por tablero (15 min) ──
+// Las señales se recalculan sobre fuentes que cambian cada horas (crons de 6-12 h), así que reabrir el
+// Diagnóstico dentro de los 15 min sirve la misma respuesta al instante. Un resultado PARCIAL (alguna
+// fuente se omitió por tiempo) se guarda solo 2 min, para reintentar pronto. Pedidos simultáneos del
+// mismo tablero comparten el cálculo en curso. Vive por instancia del servidor (no se comparte entre
+// instancias ni sobrevive a un deploy): es una aceleración, nunca la fuente de verdad.
+export interface SignalsResult { signals: Signal[]; skipped: string[]; computedAt: string; ms: number; cached: boolean; timings: Record<string, number> }
+const CACHE_TTL = 15 * 60_000;
+const CACHE_TTL_PARCIAL = 2 * 60_000;
+const cache = new Map<string, { at: number; ttl: number; res: SignalsResult }>();
+const inflight = new Map<string, Promise<SignalsResult>>();
+
+/** Señales + fuentes omitidas por tiempo, con caché de 15 min por tablero (`fresh` la saltea). */
+export async function computeSignalsDetailed(dash?: SignalScope, opts: { fresh?: boolean; timeoutMs?: number } = {}): Promise<SignalsResult> {
+  const k = dash ?? "*";
+  const hit = cache.get(k);
+  if (!opts.fresh && hit && Date.now() - hit.at < hit.ttl) return { ...hit.res, cached: true };
+  const running = inflight.get(k);
+  if (running) return running;
+  const job = (async () => {
+    const t0 = Date.now();
+    const ctx = new LoadCtx({ timeoutMs: opts.timeoutMs });
+    const signals = await computeSignals(dash, ctx).catch(() => [] as Signal[]);
+    const res: SignalsResult = { signals, skipped: ctx.skippedLabels(), computedAt: new Date().toISOString(), ms: Date.now() - t0, cached: false, timings: { ...ctx.timings } };
+    cache.set(k, { at: Date.now(), ttl: res.skipped.length ? CACHE_TTL_PARCIAL : CACHE_TTL, res });
+    return res;
+  })().finally(() => inflight.delete(k));
+  inflight.set(k, job);
+  return job;
+}
+
 /** Lista compacta para el chat: una línea por señal (sin `datos`), acotada. */
 export async function signalsSummaryForChat(dash?: SignalScope, limit = 15): Promise<{ dash: SignalDash; tipo: Signal["tipo"]; prioridad: Signal["prioridad"]; cruce: boolean; titulo: string; detalle: string; accion: string | null; impacto: string | null }[]> {
-  const s = await computeSignals(dash).catch(() => [] as Signal[]);
+  const s = await computeSignalsDetailed(dash).then((r) => r.signals).catch(() => [] as Signal[]);
   return s.slice(0, limit).map((x) => ({
     dash: x.dash, tipo: x.tipo, prioridad: x.prioridad, cruce: !!x.cruce, titulo: x.titulo,
     detalle: x.descripcion.slice(0, 280),

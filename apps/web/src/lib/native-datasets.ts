@@ -4,7 +4,7 @@ import "server-only";
 // alertas. Leen SOLO fuentes baratas o precalculadas (regla de PERF de CLAUDE.md):
 //  · Plan de Medios: las mismas queries que /performance (tablas chicas) + buildPautaMediosMensual
 //    (año actual + anterior), igual que el Simulador.
-//  · Web: vw_drean_web_monthly + ga4_monthly_users + vw_drean_web_monthly_by_channel (mensuales).
+//  · Web: vw_drean_web_monthly + ga4_monthly_users + web_monthly_by_channel (precalculada; fallback a la vista).
 //  · Redes: meta_posts de Instagram (año actual + anterior, solo columnas numéricas).
 //  · Seguimiento: getSeguimientoKpis (React cache por request).
 // Acceso: cada dataset se ofrece solo si el usuario puede ver el dashboard de origen (dashboard_access).
@@ -18,9 +18,10 @@ import { buildPautaMediosMensual } from "@/lib/pauta-medios-model";
 import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
 import { isPathAllowed } from "@/lib/dashboard-access";
 import type { Dataset } from "@/lib/viz";
+import { getWebMonthlyByChannelRows } from "@/lib/web-monthly-channel";
 import {
   NATIVE_DEFS, isNativeId, nativeDef, pautaMensual, pautaPorMedio, redesIgMensual, seguimientoTabla, webMensual,
-  type IgPostLike, type NativeDef, type PautaYear, type WebChanLike, type WebMonthLike, type WebUsersLike,
+  type IgPostLike, type NativeDef, type PautaYear, type WebMonthLike, type WebUsersLike,
 } from "@/lib/native-datasets-core";
 
 export { isNativeId } from "@/lib/native-datasets-core";
@@ -81,7 +82,7 @@ export async function getNativeDataset(id: string, allowed: string[] | null = nu
         const [monthly, users, chan] = await Promise.all([
           rest<WebMonthLike>(`vw_drean_web_monthly?mes=gte.${y - 1}-01-01&select=mes,sesiones,pageviews,avg_session_duration&order=mes`),
           rest<WebUsersLike>(`ga4_monthly_users?mes=gte.${y - 1}-01-01&select=mes,total_users&order=mes`),
-          rest<WebChanLike>(`vw_drean_web_monthly_by_channel?mes=gte.${y - 1}-01-01&select=mes,conversiones`),
+          getWebMonthlyByChannelRows(`${y - 1}-01-01`),
         ]);
         return webMensual(monthly, users, chan);
       }

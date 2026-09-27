@@ -43,6 +43,26 @@ async function supabaseUpsert(url: string, key: string, table: string, rows: unk
   return `${rows.length} filas OK`;
 }
 
+interface MesCanalRow { mes: string; canal: string; sesiones: number | null; conversiones: number | null; pageviews: number | null }
+async function syncMonthlyByChannel(url: string, key: string, now: string): Promise<string> {
+  const res = await fetch(`${url}/rest/v1/vw_drean_web_monthly_by_channel?select=mes,canal,sesiones,conversiones,pageviews&order=mes`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store",
+  });
+  if (!res.ok) return `vista ${res.status}: ${(await res.text()).slice(0, 200)}`;
+  const rows = ((await res.json()) as MesCanalRow[])
+    .filter((r) => r.mes && r.canal)
+    .map((r) => ({ mes: r.mes, canal: r.canal, sesiones: r.sesiones ?? 0, conversiones: r.conversiones ?? 0, pageviews: r.pageviews ?? 0, updated_at: now }));
+  if (!rows.length) return "sin data";
+  for (let i = 0; i < rows.length; i += 500) {
+    const r = await supabaseUpsert(url, key, "web_monthly_by_channel", rows.slice(i, i + 500), "mes,canal");
+    if (r.includes("error")) return r;
+  }
+  await fetch(`${url}/rest/v1/web_monthly_by_channel?updated_at=lt.${encodeURIComponent(now)}`, {
+    method: "DELETE", headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" },
+  }).catch(() => null);
+  return `${rows.length} filas OK`;
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -89,7 +109,13 @@ export async function GET(request: Request) {
     }
     const monthlyRes = await supabaseUpsert(url, key, "web_monthly_by_category", monthly, "mes,categoria");
 
-    return NextResponse.json({ ok: true, dias_leidos: rows.length, daily_upsert: dailyOk, monthly_upsert: monthly.length, monthlyRes });
+    // (3) MENSUAL por canal → web_monthly_by_channel (migración 0121; lo leen señales, Seguimiento, /web y
+    // el copiloto vía lib/web-monthly-channel.ts). La vista agrega web_traffic entera (~5 s): se paga acá.
+    // Historia completa (son ~15 canales × mes); las filas que esta corrida no tocó se borran (canal que
+    // dejó de existir). No fatal: sin la migración, los lectores caen a la vista.
+    const channelRes = await syncMonthlyByChannel(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`);
+
+    return NextResponse.json({ ok: true, dias_leidos: rows.length, daily_upsert: dailyOk, monthly_upsert: monthly.length, monthlyRes, channelRes });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
