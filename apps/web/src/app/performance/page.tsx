@@ -9,6 +9,7 @@ import { getGoogleAdsCreatives } from "@/lib/google-ads-creatives-queries";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { PerformanceClient } from "@/components/pauta/performance-client";
+import { getBgtPautaMensual } from "@/lib/pauta-pacing-server";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -93,9 +94,13 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     safe(getEcommerceInversionMensual(new Date().getFullYear()), Array.from({ length: 12 }, () => null) as (number | null)[]),
   ]);
   // Metas mensuales de los 6 KPIs de Impacto Campaña (plan "Pauta Mkt"), en paralelo.
-  const metasArr = await Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK)));
+  // + presupuesto vigente de la cuenta de pauta (BGT, ~40 filas) para el Ritmo de inversión.
+  const [metasArr, bgtPauta] = await Promise.all([
+    Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK))),
+    safe(getBgtPautaMensual(currentYear), null),
+  ]);
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
   return (
-    <PerformanceClient initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} />
+    <PerformanceClient initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} bgtPauta={bgtPauta} />
   );
 }

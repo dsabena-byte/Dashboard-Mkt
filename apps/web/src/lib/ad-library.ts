@@ -14,12 +14,12 @@ import "server-only";
 // ============================================================================
 import { apifyEnabled, runActor } from "@/lib/apify";
 import { mirrorMetaImage } from "@/lib/meta-image-mirror";
-import { matchAdsToPosts, type AdEngagement, type OrganicPost } from "@/lib/ad-intensity";
+import { matchAdsToPosts, AD_LIBRARY_CAP, type AdEngagement, type OrganicPost } from "@/lib/ad-intensity";
 import { getTenant } from "@/lib/tenant/current";
-import { adLibraryBrands, adSearchUrl, matchesBrand, norm, parseAdItem, type AdBrand, type AdLibraryData, type BrandAds, type CompetitorAd } from "@/lib/ad-library-shared";
+import { adLibraryBrands, adSearchUrl, adBelongsToBrand, norm, parseAdItem, type AdBrand, type AdLibraryData, type BrandAds, type CompetitorAd } from "@/lib/ad-library-shared";
 
 export const AD_LIBRARY_ACTOR = process.env.APIFY_ACTOR_AD_LIBRARY || "apify~facebook-ads-scraper";
-const PER_BRAND = 40;        // anuncios máximos por marca y corrida
+const PER_BRAND = AD_LIBRARY_CAP; // anuncios máximos por marca y corrida (40; la marca que llega queda "topeada")
 const RUN_TIMEOUT = 200;     // seg por corrida de Apify (el cron tiene 300 s por marca)
 const MIRROR_PER_BRAND = 12; // miniaturas rehosteadas por marca
 
@@ -108,7 +108,7 @@ async function fetchBrand(b: AdBrand, nowIso: string): Promise<CompetitorAd[]> {
   const out: CompetitorAd[] = [];
   for (const it of items) {
     const ad = parseAdItem(it, nowIso);
-    if (!ad || seen.has(ad.id) || !matchesBrand(ad.pageName, b.marca, b.ctx)) continue;
+    if (!ad || seen.has(ad.id) || !adBelongsToBrand(ad, b)) continue;
     seen.add(ad.id);
     out.push(ad);
     if (out.length >= PER_BRAND) break;
