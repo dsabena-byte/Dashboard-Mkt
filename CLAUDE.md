@@ -301,6 +301,44 @@ reporte_existencia/cb_homologos).
     GitHub secrets, actualizarlo). (4) Actions → "Search Console sync" → Run workflow. Validar: `ga4-sync` y
     `google-ads-sync` siguen OK.
 
+## Mejoras portadas de BIP (27-sep-2026, 5 frentes, PRs #739–#743)
+> Migraciones **0110, 0115–0120** (bundle único idempotente; el user las corre en el SQL Editor). Todo es fail-safe sin ellas
+> (aviso en la UI). Workflows nuevos: `sync-macro.yml` (días 2/16; backfill `desde=2023-01-01`), `competencia-ig.yml` (diario),
+> `seo-audit.yml` (lunes); `llmo-sync` pasa a semanal; `web-cat-agg` suma el paso web-calidad; `alertas.yml` suma tableros-envio.
+- **Estadística + confianza (#742):** `lib/stats/*` (pronóstico, P(meta) 2.000 sims, Shapley, sugerir, validación; mmm/prng) +
+  `lib/objetivos-pronostico.ts` → /overview: cierre proyectado + probabilidad por KPI/objetivo/Salud de Marca y "qué explica
+  el resultado" (Shapley). `histM` solo pronostica con ≥10 meses (`histParaPronostico`; GA4 2025 tiene hueco jun–oct).
+  "Sugerir metas" en MetaPanel (`/api/metas/historia`), "Validar con mis datos" en el Mapa (vs share GfK), marca vs activación
+  60:40 en Eficiencia Medios. Moneda $ corrientes/constantes (IPC INDEC)/USD (BCRA): `indices_macro` (0110) + cron `sync-macro`;
+  /performance convierte server-side (`?moneda=`), /funnel suma "$ constantes". "Qué hacer ahora" (`lib/recomendacion.ts`) arriba
+  del Diagnóstico. `metricas.ts` = catálogo con nombres EXACTOS del Seguimiento. Salud de los datos (`components/data-health.tsx`)
+  bajo el título de 6 tableros, misma regla que /monitoreo (cadencias deben coincidir: test `data-health`); NO usar `web_traffic`.
+  Data real 27-sep: Salud de Marca YTD 92,5%, brecha −7,5 pts (VTR −2,7, Frecuencia −1,5, CB −0,9); Pauta con 5 meses → objetivos
+  sin proyección hasta cerrar sep.
+- **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, Impacto Campaña; OMD sin cargar = rango;
+  sep-26 $148M, cierre $163–385M vs meta $474M), fatiga creativa MENSUAL (`lib/pauta-fatiga.ts`, Eficiencia Medios; 2 banners DV360),
+  MMM-lite en el Simulador ("dato insuficiente" hasta 12 meses), `adBelongsToBrand`. Sin conversiones de Google Ads en las tablas.
+  LG: 8/16 avisos son de revendedores (sin exclusión todavía).
+- **Redes (#739):** cron `/api/cron/competencia-ig` (`bd|snaps|temas`) = Business Discovery ANTES del scraper n8n+Apify (fallback),
+  por SHORTCODE. Fotos por edad → `social_post_snapshots` (0115) → ER comparable (mediana madura; el promedio viejo lo inflaban
+  sorteos: Gafa 4,9% vs 0,03%). FB orgánico vs pago = `is_from_ads` **O** `isPaidOutlier` (la heurística nunca se apaga). Stories IG
+  acumuladas por máximo. Formatos/horarios propios (mar 12–18 h mejor), pauta probable, temas (`social_posts.tema`, 0116).
+  No verificado contra la API real de Meta. Revisar: señal de sentimiento dice "74% negativo" para Drean (parece alto).
+- **Web / SEO (#743):** /web = cierre proyectado del mes (sep: ingresos $428M = 71% de meta), consent indirecto (GA4 ve 59–73% de
+  clicks Search+PMax), calidad GA4/embudo/tráfico IA (ago 2.265 ses, 95% ChatGPT) desde `web_calidad_snapshot` (0117, cron
+  web-calidad). /seo-search = salud digital (53, #3/13) + ESoS (Lav +16,6/Refri −9,4 pp), LLMO con IC de Wilson + fuentes
+  (`seo_llmo_muestra`, 0118; semanal, ya no escribe ceros), evolución por keyword, SC a fondo, auditoría técnica + CWV
+  (`seo_audit_snapshot`, `GOOGLE_PSI_KEY` en Vercel Drean). Curva de CTR única `lib/ctr-curve.ts`. seo-sync con cola Standard de
+  DataForSEO (`DATAFORSEO_MODE=live` revierte; depth 100). **OJO: la propiedad SC `https://www.drean.com.ar/` ve ~835 impr/mes vs
+  ~39k sesiones orgánicas GA4 → dar acceso a `sc-domain:drean.com.ar` y re-sync.** Paginación REST siempre con `order=id`.
+- **Mis tableros v2 + copiloto (#741):** "Armame el tablero" NL (`lib/tableros-nl.ts`) + fuentes nativas `nat:*` (pauta/web/IG/
+  seguimiento, por `dashboard_access`); anotaciones (0119, entran al Diagnóstico IA) y umbrales propios en /alerts (CPM/CPC sobre
+  medios con impresiones); compartir por link firmado (`/compartido/[token]`) + envío programado (solo dominios del equipo +
+  `SHARE_ALLOWED_DOMAINS`); copiloto 👍/👎 + respuestas verificadas (0120) + `/copiloto` "Calidad del copiloto"; eval-set
+  (sumar casos al agregar tools). Pendiente menor: la receta CPM de "Armame el tablero" usa inversión total.
+- **Worktrees de agentes:** usar symlinks a los `node_modules` del checkout principal (con `cp -al` tsc da errores falsos); NO
+  commitear el symlink `apps/web/node_modules` (se coló una vez).
+
 ## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026
 - **Marca: en Drean NO aparece "BIP"** (BIP es un proyecto aparte). La capa se llama **"Proceso Estratégico"** (sidebar, `/guia`, 🎓, copiloto). Ids de módulo sin `bip-`: `proceso-estrategico`, `conectar-fuentes`, `mapa-estrategico`, `insights-chat`, `tableros-planilla`. El test `guia-integridad` falla si un módulo dice "BIP". Solo quedan comentarios de código e identificadores internos (`.bip-viz`, evento `bip:learn`) y la landing `public/bip.html` (es de BIP, no del dash).
 - `/guia` ("Proceso Estratégico", último ítem del sidebar) + `/guia/[id]`: 45 módulos estáticos en `lib/guia/*`

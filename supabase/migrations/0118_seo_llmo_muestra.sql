@@ -18,3 +18,5 @@ create table if not exists seo_llmo_muestra (
 create index if not exists seo_llmo_muestra_cat_fecha on seo_llmo_muestra (categoria, fecha desc);
 alter table seo_llmo_muestra enable row level security;
 -- Sin policies: solo la service key (server) lee/escribe.
+
+revoke all on seo_llmo_muestra from anon, authenticated;
