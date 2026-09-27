@@ -1,19 +1,26 @@
 // ============================================================================
-// CATÁLOGO DE MÉTRICAS ÚNICO (capa semántica liviana; portado de BIP sep-2026 y adaptado a Drean).
+// CATÁLOGO DE MÉTRICAS ÚNICO (capa semántica liviana, D7 de objetivos-inteligencia.md).
+// Drean (sep-2026): los KPIs del Seguimiento llevan su nombre EXACTO de lib/objetivos-kpis.ts
+// ("Tráfico web (usuarios)", "Avg Sesión (segundos)", "% Cumplimiento CB", "Floor Share (exhibición)")
+// y `plan` = plan del Seguimiento (Pauta Mkt / Web / Ecommerce / Instagram / Cuadros Básicos / Floor
+// Share / Mercado y competencia); los nombres genéricos quedan como sinónimos. `kpiKnowFor`
+// (lib/knowledge) usa este catálogo como respaldo de sus alias. Test: scripts/metricas.test.ts.
 // Client-safe (sin server-only). UNA definición por métrica que consumen:
-//   · lib/knowledge.ts   → `kpiKnowFor` usa los alias de acá como respaldo (nombre + sinónimos → KPI_KNOW).
-//   · lib/recomendacion  → qué KPI mueve cada recomendación y cómo se mide el antes/después.
-// Nombres = los EXACTOS del Seguimiento/Mapa de Drean (lib/objetivos-kpis.ts): "Tráfico web
-// (usuarios)", "Avg Sesión (segundos)", "% Cumplimiento CB", "Floor Share (exhibición)"…; los nombres
-// genéricos quedan como sinónimos. `plan` = plan del Seguimiento (Pauta Mkt / Web / Ecommerce /
-// Instagram / Cuadros Básicos / Floor Share / Mercado y competencia).
-// Test de integridad: scripts/metricas.test.ts
+//   · lib/knowledge.ts  → los alias de `kpiKnowFor` salen de `nombre` + `sinonimos` de acá.
+//   · lib/metas-dash.ts → los specs de metas de Plan de Medios y Redes (label/medida/unidad/dirección).
+//   · copiloto          → tool `get_metrica` (definición, fórmula, dirección, fuente).
+//   · lib/recomendacion → qué KPI mueve cada recomendación y cómo se mide el antes/después.
+// Test de integridad: scripts/metricas.test.ts (todo KPI de metas/Mapa existe acá, sin alias
+// ambiguos, y los alias viejos de knowledge siguen resolviendo igual).
 //
 // Campos:
 //  · id: clave estable (snake_case). `know` = clave de KPI_KNOW (guía de lectura) si existe.
+//  · plan: plan del Mapa Estratégico / Seguimiento donde vive el KPI (nombre = KpiSeguimiento.kpi).
+//  · metaKey: clave en la tabla de metas cuando difiere del nombre (Web usa claves cortas).
 //  · tipo: "sum" = volumen (YTD suma) | "rate" = tasa (YTD promedio).
 //  · rol: "marca" (construye demanda futura) | "activacion" (captura demanda hoy) | "ambos".
 //  · horizonte: "adelantado" (anticipa el resultado) | "rezagado" (es el resultado).
+//  · granularidad: la mínima con la que el dashboard la tiene.
 // ============================================================================
 
 export type MetricaUnidad = "" | "%" | "$" | "x" | "s" | "pts" | "pp";
@@ -86,9 +93,30 @@ export const METRICAS: Metrica[] = [
     descripcion: "Tamaño total de la intención de compra de la categoría (contexto de mercado)." },
   { id: "share_mercado", nombre: "Share de mercado", know: "share_mercado", sinonimos: ["share", "market share"],
     formula: "Tus ventas ÷ ventas de la categoría", unidad: "%", direccion: "up", tipo: "rate",
-    fuente: "GfK (carga mensual en mercado_share)", granularidad: "mensual", rol: "ambos", horizonte: "rezagado",
+    fuente: "Resultados Comerciales (planilla / panel de mercado)", granularidad: "mensual", rol: "ambos", horizonte: "rezagado",
     descripcion: "Tu participación en las ventas de la categoría (valor o unidades)." },
+  { id: "esos", nombre: "ESoS (share of search excedente)", know: "esos", sinonimos: ["esos", "excess share of search", "share of search excedente"],
+    formula: "Share of Search (promedio móvil 6 meses) − share de mercado", unidad: "pp", direccion: "up", tipo: "rate",
+    fuente: "Volumen de búsqueda (DataForSEO) + share de mercado (Resultados Comerciales)", granularidad: "mensual", rol: "marca", horizonte: "adelantado",
+    descripcion: "Cuánto te buscan por encima (o por debajo) de lo que te compran: anticipa la dirección del share." },
+  { id: "salud_digital", nombre: "Salud digital de marca", know: "salud_digital", sinonimos: ["salud digital", "indice de salud digital"],
+    formula: "50 + 10 × promedio de z-scores vs el set (SoS, SoE, visibilidad en IA, posición SEO invertida)", unidad: "pts", direccion: "up", tipo: "rate",
+    fuente: "Snapshot SEO + redes de la competencia (precomputados)", granularidad: "mensual", rol: "marca", horizonte: "adelantado",
+    descripcion: "Índice 0–100 de atención digital frente al set competitivo (50 = promedio del set)." },
 
+  // ── Góndola digital Mercado Libre (lib/meli-core.ts, cron semanal sync-meli) ───
+  { id: "share_of_shelf_meli", nombre: "Share of shelf Mercado Libre", know: "share_shelf_meli", sinonimos: ["posiciones en el top de mercado libre", "share de mas vendidos", "share of shelf", "gondola digital"],
+    formula: "Posiciones de tu marca en el top 20 de más vendidos de la categoría ÷ 20 (también ponderado por posición: Σ(21 − pos) ÷ Σ(21 − pos))", unidad: "%", direccion: "up", tipo: "rate",
+    fuente: "API de Mercado Libre (ranking de más vendidos por categoría)", granularidad: "foto", rol: "activacion", horizonte: "adelantado",
+    descripcion: "Qué parte del ranking de más vendidos de Mercado Libre ocupa tu marca. Proxy de share de ventas online, no es share de mercado." },
+  { id: "indice_precio_meli", nombre: "Índice de precio Mercado Libre", know: "precio_meli", sinonimos: ["indice de precio relativo", "precio relativo mercado libre", "rpi mercado libre"],
+    formula: "Mediana de (precio de tu producto ÷ precio promedio del top 20 de la categoría) × 100", unidad: "", direccion: "down", tipo: "rate",
+    fuente: "API de Mercado Libre (precio de los más vendidos)", granularidad: "foto", rol: "activacion", horizonte: "adelantado",
+    descripcion: "100 = precio promedio de los más vendidos de la categoría; arriba de 100 estás más caro. Se lee junto con posiciones y reseñas." },
+  { id: "rating_meli", nombre: "Rating Mercado Libre", know: "rating_meli", sinonimos: ["resenas mercado libre", "estrellas mercado libre", "opiniones mercado libre"],
+    formula: "Promedio de estrellas de tus productos del top, ponderado por cantidad de reseñas", unidad: "", direccion: "up", tipo: "rate",
+    fuente: "API de Mercado Libre (reseñas por ítem)", granularidad: "foto", rol: "ambos", horizonte: "adelantado",
+    descripcion: "Calificación promedio (1 a 5) de tus productos en el top de más vendidos, comparada con la mediana de la categoría." },
 
   { id: "share_valor", nombre: "Share en valor", know: "share_valor", sinonimos: ["value share", "share valor", "share de mercado valor", "participacion en valor"],
     formula: "Ventas en $ de Drean ÷ ventas en $ de la categoría (GfK)", unidad: "%", direccion: "up", tipo: "rate",
@@ -106,7 +134,7 @@ export const METRICAS: Metrica[] = [
   // ── Medios pagos ─────────────────────────────────────────────────────────
   { id: "inversion", nombre: "Inversión", know: "inversion", plan: PM, sinonimos: ["inversion pauta", "inversion en medios", "gasto"],
     formula: "Σ gasto del período (online + offline)", unidad: "$", direccion: "up", tipo: "sum",
-    fuente: "Meta Ads + DV360 + Google Ads (API) + OMD (medios sin API y offline)", granularidad: "diaria", rol: "ambos", horizonte: "adelantado",
+    fuente: "Meta Ads + Google Ads (+ planilla de medios offline)", granularidad: "diaria", rol: "ambos", horizonte: "adelantado",
     medida: "gasto del mes (online + offline)",
     descripcion: "Monto invertido en pauta; se lee siempre contra el resultado que compra." },
   { id: "alcance_unico", nombre: "Alcance único", know: "alcance", plan: PM, sinonimos: ["alcance", "reach"],
@@ -121,7 +149,7 @@ export const METRICAS: Metrica[] = [
     descripcion: "Veces promedio que cada persona vio la pauta (2-4/mes sano en awareness)." },
   { id: "impresiones", nombre: "Impresiones", know: "impresiones", plan: PM, sinonimos: [],
     formula: "Veces que se mostró la pieza (con repetición)", unidad: "", direccion: "up", tipo: "sum",
-    fuente: "Meta Ads + DV360 + Google Ads (API) + OMD (medios sin API)", granularidad: "diaria", rol: "marca", horizonte: "adelantado",
+    fuente: "Meta Ads + Google Ads (+ contactos offline si se marcan comparables)", granularidad: "diaria", rol: "marca", horizonte: "adelantado",
     medida: "impresiones digitales del mes",
     descripcion: "Volumen de exposición comprado; para cobertura mirá el alcance." },
   { id: "grps", nombre: "GRPs", know: "grps", sinonimos: ["grp", "trps", "trp", "puntos de rating"],
@@ -183,6 +211,18 @@ export const METRICAS: Metrica[] = [
     formula: "Ingresos atribuidos ÷ Inversión", unidad: "x", direccion: "up", tipo: "rate",
     fuente: "Meta Ads + Google Ads + GA4 ecommerce", granularidad: "diaria", rol: "activacion", horizonte: "rezagado",
     descripcion: "Ingresos atribuidos por cada peso invertido." },
+  { id: "ritmo_inversion", nombre: "Ritmo de inversión", know: "pacing", sinonimos: ["pacing", "ritmo de inversion del mes", "proyeccion de gasto"],
+    formula: "(Proyección lineal del gasto a cierre − meta de Inversión) ÷ meta", unidad: "%", direccion: "down", tipo: "rate",
+    fuente: "Plan de Medios (Meta Ads + Google Ads + offline) vs metas", granularidad: "diaria", rol: "ambos", horizonte: "adelantado",
+    descripcion: "Desvío proyectado del gasto del mes contra la meta (±10% = en línea; más cerca de 0 es mejor)." },
+  { id: "fatiga_creativa", nombre: "Fatiga creativa", know: "fatiga", sinonimos: ["fatiga", "piezas fatigadas"],
+    formula: "CTR de la última semana vs promedio de las 2 previas, con frecuencia semanal en alza", unidad: "%", direccion: "down", tipo: "rate",
+    fuente: "Meta Ads (insights semanales de las piezas top)", granularidad: "diaria", rol: "ambos", horizonte: "adelantado",
+    descripcion: "Caída de respuesta de una pieza por sobreexposición (≥25% con frecuencia en alza = fatigada)." },
+  { id: "roi_marginal", nombre: "ROI marginal", know: "roi_marginal", sinonimos: ["retorno marginal"],
+    formula: "Δ resultado ÷ Δ inversión en la curva de respuesta del medio (MMM-lite)", unidad: "x", direccion: "up", tipo: "rate",
+    fuente: "MMM-lite del Simulador (pauta + GA4, en moneda constante)", granularidad: "mensual", rol: "ambos", horizonte: "adelantado",
+    descripcion: "Cuánto resultado traería el próximo peso invertido en un medio; refleja la saturación." },
 
   // ── Redes ────────────────────────────────────────────────────────────────
   { id: "alcance_organico", nombre: "Alcance orgánico", know: "alcance", plan: RS, sinonimos: [],
@@ -276,19 +316,39 @@ export const METRICAS: Metrica[] = [
     fuente: "Google Analytics 4 (ecommerce)", granularidad: "diaria", rol: "activacion", horizonte: "rezagado",
     medida: "ingresos ÷ transacciones",
     descripcion: "Ticket promedio de cada compra." },
-  { id: "clicks_organicos", nombre: "Clicks orgánicos", sinonimos: ["clicks de search console", "clics organicos"],
+  { id: "clicks_organicos", nombre: "Clicks orgánicos", know: "clicks_organicos", sinonimos: ["clicks de search console", "clics organicos"],
     formula: "Clics desde la búsqueda orgánica de Google", unidad: "", direccion: "up", tipo: "sum",
     fuente: "Google Search Console", granularidad: "mensual", rol: "ambos", horizonte: "adelantado",
     descripcion: "Visitas que te trae Google sin pagar." },
+  { id: "mer", nombre: "MER (ventas ÷ inversión)", know: "mer", sinonimos: ["mer", "marketing efficiency ratio"],
+    formula: "Ventas reales (Tiendanube / VTEX) ÷ inversión en medios", unidad: "x", direccion: "up", tipo: "rate",
+    fuente: "Tiendanube o VTEX + Plan de Medios", granularidad: "mensual", rol: "activacion", horizonte: "rezagado",
+    descripcion: "Eficiencia total del marketing sin depender de la atribución." },
+  { id: "friccion_clarity", nombre: "Fricción en el sitio (Clarity)", know: "friccion_clarity", sinonimos: ["friccion", "rage clicks", "clicks de bronca", "clicks muertos", "dead clicks"],
+    formula: "Sesiones con rage / dead clicks, vueltas rápidas o errores ÷ sesiones de la página (28 días)", unidad: "%", direccion: "down", tipo: "rate",
+    fuente: "Microsoft Clarity", granularidad: "diaria", rol: "activacion", horizonte: "adelantado",
+    descripcion: "Qué parte de las visitas a una página tuvo señales de frustración." },
+  { id: "lcp", nombre: "LCP (carga principal)", know: "lcp", sinonimos: ["lcp", "largest contentful paint"],
+    formula: "p75 del Largest Contentful Paint", unidad: "s", direccion: "down", tipo: "rate",
+    fuente: "Chrome UX Report / PageSpeed Insights", granularidad: "foto", rol: "activacion", horizonte: "adelantado",
+    descripcion: "Core Web Vital de carga (bueno ≤ 2,5 s)." },
+  { id: "inp", nombre: "INP (respuesta a la interacción)", know: "inp", sinonimos: ["inp", "interaction to next paint"],
+    formula: "p75 del Interaction to Next Paint (ms)", unidad: "", direccion: "down", tipo: "rate",
+    fuente: "Chrome UX Report / PageSpeed Insights", granularidad: "foto", rol: "activacion", horizonte: "adelantado",
+    descripcion: "Core Web Vital de interactividad (bueno ≤ 200 ms)." },
+  { id: "cls", nombre: "CLS (estabilidad visual)", know: "cls", sinonimos: ["cls", "cumulative layout shift"],
+    formula: "p75 del Cumulative Layout Shift", unidad: "", direccion: "down", tipo: "rate",
+    fuente: "Chrome UX Report / PageSpeed Insights", granularidad: "foto", rol: "activacion", horizonte: "adelantado",
+    descripcion: "Core Web Vital de estabilidad visual (bueno ≤ 0,1)." },
 
   // ── Trade ────────────────────────────────────────────────────────────────
   { id: "floor_share", nombre: "Floor Share (exhibición)", know: "floor_share", plan: "Floor Share", sinonimos: ["floor share", "share de exhibicion", "share de gondola"],
     formula: "Espacio de tu marca ÷ espacio total de la categoría", unidad: "%", direccion: "up", tipo: "rate",
-    fuente: "Relevamiento de góndola (Drive → Supabase CB, precalculado en trade_monthly)", granularidad: "mensual", rol: "activacion", horizonte: "adelantado",
-    descripcion: "Participación de Drean en la exhibición del punto de venta (Σ categoría × peso)." },
+    fuente: "Relevamiento de tiendas (planilla)", granularidad: "mensual", rol: "activacion", horizonte: "adelantado",
+    descripcion: "Participación de tu marca en la exhibición del punto de venta." },
   { id: "cb", nombre: "% Cumplimiento CB", know: "cb", plan: "Cuadros Básicos", sinonimos: ["cuadro basico", "cuadros basicos", "cumplimiento cb", "surtido"],
     formula: "SKUs del cuadro básico presentes ÷ SKUs exigidos", unidad: "%", direccion: "up", tipo: "rate",
-    fuente: "Cuadro Básico semanal (Drive → Supabase CB, precalculado en trade_monthly)", granularidad: "mensual", rol: "activacion", horizonte: "adelantado",
+    fuente: "Relevamiento de tiendas (planilla)", granularidad: "mensual", rol: "activacion", horizonte: "adelantado",
     descripcion: "Cumplimiento del surtido mínimo en tiendas." },
 
   // ── Marca (research) ─────────────────────────────────────────────────────
@@ -327,11 +387,11 @@ export const METRICAS: Metrica[] = [
     formula: "(Real − Presupuesto) ÷ Presupuesto", unidad: "%", direccion: "down", tipo: "rate",
     fuente: "Inversión de Marketing (planilla)", granularidad: "mensual", rol: "ambos", horizonte: "rezagado",
     descripcion: "Desvío entre lo invertido y lo presupuestado (más cerca de 0 es mejor)." },
-  { id: "prob_meta", nombre: "Probabilidad de llegar a la meta", sinonimos: ["probabilidad de meta", "probabilidad de cumplir la meta"],
+  { id: "prob_meta", nombre: "Probabilidad de llegar a la meta", know: "prob_meta", sinonimos: ["probabilidad de meta", "probabilidad de cumplir la meta"],
     formula: "Escenarios simulados (2.000, con los errores de tu historia) que alcanzan la meta ÷ escenarios", unidad: "%", direccion: "up", tipo: "rate",
-    fuente: "Seguimiento Objetivos (pronóstico sobre la historia de cada KPI)", granularidad: "mensual", rol: "ambos", horizonte: "adelantado",
+    fuente: "Seguimiento Objetivos (pronóstico sobre la historia)", granularidad: "mensual", rol: "ambos", horizonte: "adelantado",
     descripcion: "Chance de cerrar el año en meta al ritmo actual, con su rango." },
-  { id: "pesos_constantes", nombre: "Pesos constantes", sinonimos: ["moneda constante", "monto en pesos constantes"],
+  { id: "pesos_constantes", nombre: "Pesos constantes", know: "moneda_constante", sinonimos: ["moneda constante", "monto en pesos constantes"],
     formula: "Monto × IPC(mes base) ÷ IPC(mes)", unidad: "$", direccion: "up", tipo: "sum",
     fuente: "IPC INDEC + dólar oficial BCRA (se actualizan solos)", granularidad: "mensual", rol: "ambos", horizonte: "rezagado",
     descripcion: "Montos llevados al poder de compra de un mes base, para comparar meses sin inflación." },

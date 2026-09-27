@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDashboardConfig, getDatasetsFor } from "@/lib/tableros-server";
+import { currentAllowed, getDashboardConfig, getDatasetsFor } from "@/lib/tableros-server";
 import { DashboardView } from "@/components/viz-builder/dashboard-view";
+import { listAnotaciones } from "@/lib/anotaciones";
 import { TablerosNotice } from "@/components/viz-builder/missing-tables";
 
 // Vista de un tablero de planilla (config-driven, motor v2). Sin planilla o sin gráficos → al editor.
@@ -12,7 +13,7 @@ export default async function TableroPage({ params }: { params: { slug: string }
   let cfg;
   try { cfg = await getDashboardConfig(params.slug); } catch (e) { return <div className="bip-viz"><TablerosNotice error={e} /></div>; }
   if (!cfg) notFound();
-  const datasets = await getDatasetsFor(cfg);
+  const [datasets, notas] = await Promise.all([getDatasetsFor(cfg, await currentAllowed()), listAnotaciones({ tablero: params.slug })]);
   const primary = cfg.datasetId ? datasets[cfg.datasetId] : null;
   if (!primary || cfg.widgets.length === 0) {
     return (
@@ -35,6 +36,8 @@ export default async function TableroPage({ params }: { params: { slug: string }
       config={cfg}
       datasets={datasets}
       editSlug={params.slug}
+      notes={notas.notas}
+      notesMissing={notas.missing}
     />
   );
 }

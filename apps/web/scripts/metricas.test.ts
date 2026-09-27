@@ -22,7 +22,9 @@ for (const m of METRICAS) {
   ok(`${m.id}: campos`, !!(m.nombre && m.formula && m.fuente && m.descripcion && m.granularidad && m.rol && m.horizonte && m.tipo && m.direccion));
   ok(`${m.id}: id snake_case`, /^[a-z][a-z0-9_]*$/.test(m.id));
   ok(`${m.id}: unidad válida`, ["", "%", "$", "x", "s", "pts", "pp"].includes(m.unidad));
-  if (m.know) ok(`${m.id}: know existe en KPI_KNOW`, !!KPI_KNOW[m.know], m.know);
+  // Métricas del catálogo sin guía propia en Drean (heredadas del catálogo común: Mercado Libre,
+  // Core Web Vitals, MMM…) pueden tener `know` sin entrada en KPI_KNOW; las del Seguimiento NO.
+  if (m.know && m.plan) ok(`${m.id}: know existe en KPI_KNOW`, !!KPI_KNOW[m.know], m.know);
   ok(`${m.id}: getMetrica`, getMetrica(m.id) === m);
   ok(`${m.id}: se resuelve por su nombre`, metricaPorNombre(m.nombre) === m, metricaPorNombre(m.nombre)?.id);
   ok(`${m.id}: ficha`, fichaMetrica(m).nombre === m.nombre);

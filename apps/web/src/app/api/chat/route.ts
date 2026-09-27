@@ -6,6 +6,9 @@ import { RENDER_TOOLS, systemPrompt, chatModel } from "@/lib/chat/copiloto";
 import { contextoDe, toolLabel, GENERAL } from "@/lib/chat/contexto";
 import { checkRateLimit } from "@/lib/chat/rate-limit";
 import type { ChartSpec, TableSpec, PostCard, ChatStep, ToolCtx } from "@/lib/chat/types";
+import { validateArgs, errorDeArgs, toOpenAiStrict, type JsonSchema } from "@/lib/chat/schema";
+import { elegirVerificadas, bloqueVerificadas } from "@/lib/chat/verified";
+import { verificadasActivas } from "@/lib/chat/feedback-server";
 
 // ============================================================================
 // Motor del copiloto "Preguntale a tus datos" (v2, portado de BIP). Loop de
@@ -63,10 +66,20 @@ export async function POST(req: Request) {
   const ctx: ToolCtx = { posts: new Map() };
   const { tools } = buildChatTools(dash.key, allowed, ctx);
   const toolMap = new Map(tools.map((t) => [t.name, t]));
-  const openaiTools = [...tools.map((t) => ({ type: "function" as const, function: { name: t.name, description: t.description, parameters: t.parameters } })), ...RENDER_TOOLS];
+  // Schemas estrictos: los argumentos se validan SIEMPRE en el server (validateArgs); además, con
+  // CHAT_STRICT_TOOLS=1 se manda `strict: true` a OpenAI en las tools convertibles (lib/chat/schema.ts).
+  const strictOn = process.env.CHAT_STRICT_TOOLS === "1";
+  const openaiTools = [...tools.map((t) => {
+    const strict = strictOn ? toOpenAiStrict(t.parameters as JsonSchema) : null;
+    return { type: "function" as const, function: { name: t.name, description: t.description, parameters: strict ?? t.parameters, ...(strict ? { strict: true } : {}) } };
+  }), ...RENDER_TOOLS];
   const model = chatModel();
 
-  const messages: Array<Record<string, unknown>> = [{ role: "system", content: systemPrompt({ dash, pathname, restringido: allowed !== null }) }, ...history];
+  // Respuestas verificadas por el equipo (/copiloto) parecidas a la pregunta → ejemplos de método (few-shot).
+  const pregunta = history[history.length - 1]!.content;
+  const ejemplos = elegirVerificadas(pregunta, await verificadasActivas(), { pathname });
+
+  const messages: Array<Record<string, unknown>> = [{ role: "system", content: systemPrompt({ dash, pathname, restringido: allowed !== null }) + bloqueVerificadas(ejemplos) }, ...history];
   const charts: ChartSpec[] = [];
   const tables: TableSpec[] = [];
   const posts: PostCard[] = [];
@@ -130,7 +143,9 @@ export async function POST(req: Request) {
                 posts.push(...found);
                 out = { ok: true, mostrados: found.length, ...(found.length < refs.length ? { aviso: "Algunos ref no existen: usá los ref que devolvió la última consulta de posts/creativos." } : {}) };
               } else if (toolMap.has(name)) {
-                out = await toolMap.get(name)!.run(args);
+                const tool = toolMap.get(name)!;
+                const v = validateArgs(tool.parameters as JsonSchema, args);
+                out = v.ok ? await tool.run(v.args) : errorDeArgs(name, v);
               } else out = { error: "tool desconocida o no disponible para este usuario" };
             } catch (e) {
               out = { error: (e as Error).message };
@@ -146,7 +161,7 @@ export async function POST(req: Request) {
         final(`Hubo un error al consultar tus datos (${(e as Error).message?.slice(0, 120) ?? "error"}). Probá de nuevo.`);
       } finally {
         try { controller.close(); } catch { /* ya cerrado */ }
-        console.log(JSON.stringify({ evt: "chat_query", path: pathname, tools: steps.map((s) => s.tool), ms: Date.now() - t0, tokens, ok, model }));
+        console.log(JSON.stringify({ evt: "chat_query", path: pathname, tools: steps.map((s) => s.tool), ms: Date.now() - t0, tokens, ok, model, verificadas: ejemplos.map((e) => e.id) }));
       }
     },
   });

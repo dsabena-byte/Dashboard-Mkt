@@ -15,6 +15,7 @@ import type { Signal } from "@/lib/signals/types";
 import type { Insights, InsItem, ReportMeta } from "@/lib/insights/types";
 import { recomendacionesDeSenales, recomendacionesDeDiagnostico, unirRecomendaciones } from "@/lib/recomendacion";
 import { RecomendacionesLista } from "./recomendacion-card";
+import { AnotacionesPanel } from "@/components/anotaciones/anotaciones-panel";
 
 const DATA = "#1e40af";
 const INK = "#0f172a";
@@ -250,6 +251,8 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
               <div className="py-2 text-xs text-slate-500">{sigErr ? "No se pudieron calcular las señales." : "Sin señales relevantes con los datos actuales."}</div>
             )}
           </Section>
+
+          <AnotacionesPanel tablero={dash} />
 
           <div className="grid gap-3">
             <div className="flex flex-wrap items-center gap-2">

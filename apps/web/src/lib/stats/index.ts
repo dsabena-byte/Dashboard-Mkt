@@ -8,3 +8,4 @@ export * from "./descomposicion";
 export * from "./sugerir";
 export * from "./shapley";
 export * from "./validacion";
+export * from "./mmm";

@@ -1,4 +1,6 @@
 "use client";
+import { VizNotesContext } from "@/components/viz/notes";
+import type { Anotacion } from "@/lib/anotaciones-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
@@ -56,6 +58,8 @@ export interface RuntimeProps {
   onEditWidget?: (id: string) => void;
   editingId?: string | null;
   headerExtra?: React.ReactNode;
+  /** Anotaciones (del tablero + de todo el dashboard) → marcas en los gráficos por fecha. */
+  notes?: Anotacion[];
 }
 
 /** Datasets preparados (memo) según los ajustes del tablero. */
@@ -70,7 +74,7 @@ export function usePrepared(config: DashboardV2, datasets: Record<string, Datase
 
 const dsOf = (w: Widget, c: DashboardV2) => w.datasetId || c.datasetId || "";
 
-export function DashboardRuntime({ config, datasets, mode, onChange, onEditWidget, editingId, headerExtra }: RuntimeProps) {
+export function DashboardRuntime({ config, datasets, mode, onChange, onEditWidget, editingId, headerExtra, notes }: RuntimeProps) {
   const preps = usePrepared(config, datasets);
   const [fstate, setFstate] = useState<DashFilterState>({});
   const [cross, setCross] = useState<CrossFilter[]>([]);
@@ -150,7 +154,7 @@ export function DashboardRuntime({ config, datasets, mode, onChange, onEditWidge
   ];
 
   return (
-    <>
+    <VizNotesContext.Provider value={notes ?? EMPTY_NOTES}>
       <style>{VZ_CSS}</style>
       {bar}
       {config.widgets.length === 0 && mode === "edit" && (
@@ -187,9 +191,10 @@ export function DashboardRuntime({ config, datasets, mode, onChange, onEditWidge
         })}
       </div>
       {report && <ReportMode config={config} results={results} period={periodLabel} filters={filtersLabel} onClose={() => setReport(false)} />}
-    </>
+    </VizNotesContext.Provider>
   );
 }
+const EMPTY_NOTES: Anotacion[] = [];
 
 // ── Filtros de tablero ──
 function useOutside(ref: React.RefObject<HTMLElement | null>, onOut: () => void) {

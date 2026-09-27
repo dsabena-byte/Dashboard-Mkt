@@ -14,8 +14,11 @@ export interface Dataset { id: string; name: string; columns: string[]; rows: un
 // ── Ajustes por dataset (dentro del tablero) ──
 export interface FieldOverride { label?: string; type?: FieldType; role?: FieldRole; format?: NumFormat; hidden?: boolean }
 export interface CalcDef { id: string; name: string; expr: string; format?: NumFormat }
-/** Lookup a un 2º dataset por clave común (tipo BUSCARV): trae columnas del remoto a este dataset. */
-export interface BlendDef { id: string; datasetId: string; localKey: string; remoteKey: string; fields: string[] }
+/** Lookup a un 2º dataset por clave común (tipo BUSCARV): trae columnas del remoto a este dataset.
+ *  grain "month": la clave es una FECHA y se cruza por mes (ej. inversión por mes × ventas de la
+ *  planilla): el remoto se SUMA por mes y el valor se asigna a la PRIMERA fila local de cada mes (así la
+ *  suma por mes no se duplica aunque el local tenga varias filas en el mismo mes). */
+export interface BlendDef { id: string; datasetId: string; localKey: string; remoteKey: string; fields: string[]; grain?: "month" }
 export interface DatasetSettings { fields?: Record<string, FieldOverride>; calcs?: CalcDef[]; blends?: BlendDef[] }
 
 /** Campo resuelto (columna, calculado o traído por blend). */

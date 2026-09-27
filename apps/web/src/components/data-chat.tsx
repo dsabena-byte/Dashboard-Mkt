@@ -6,6 +6,7 @@ import { MiniMarkdown } from "@/components/chat/mini-markdown";
 import { PostCards } from "@/components/chat/post-cards";
 import type { DashContexto } from "@/lib/chat/contexto";
 import type { ChartSpec, TableSpec, PostCard, ChatStep } from "@/lib/chat/types";
+import { MOTIVOS_FEEDBACK, MOTIVO_LABEL, type MotivoFeedback } from "@/lib/chat/verified";
 
 // Copiloto "Preguntale a tus datos" (v2, motor de BIP): botón flotante + panel. Manda el
 // pathname para que el motor sepa qué dashboard mira el usuario; lee la respuesta NDJSON
@@ -20,6 +21,8 @@ type Msg = {
   posts?: PostCard[];
   steps?: ChatStep[];
   error?: boolean;
+  /** Pregunta que originó la respuesta (para el feedback 👍/👎). */
+  q?: string;
 };
 
 const AZUL = "#1e40af";
@@ -48,6 +51,50 @@ function Table({ t }: { t: TableSpec }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// 👍/👎 bajo cada respuesta + "¿qué estaba mal?" (motivo + texto). Va a /api/chat/feedback con la pregunta,
+// la respuesta y las fuentes consultadas; el equipo lo revisa y verifica respuestas en /copiloto.
+function Feedback({ m, pathname }: { m: Msg; pathname: string }) {
+  const [estado, setEstado] = useState<"idle" | "form" | "enviando" | "listo">("idle");
+  const [rating, setRating] = useState<1 | -1 | null>(null);
+  const [motivo, setMotivo] = useState<MotivoFeedback | null>(null);
+  const [comentario, setComentario] = useState("");
+  async function enviar(r: 1 | -1, mot: MotivoFeedback | null, com: string) {
+    setEstado("enviando");
+    try {
+      await fetch("/api/chat/feedback", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: r, motivo: mot, comentario: com || null, pregunta: m.q ?? "", respuesta: m.content, tools: (m.steps ?? []).map((s) => s.tool), pathname }),
+      });
+    } catch { /* best-effort */ }
+    setEstado("listo");
+  }
+  const btn = (on: boolean) => `rounded-md border px-2 py-0.5 text-[12px] leading-snug ${on ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"}`;
+  if (!m.q) return null;
+  if (estado === "listo") return <div className="mt-2 text-[11px] text-slate-500">¡Gracias! {rating === -1 ? "Lo revisamos para que el copiloto mejore." : "Nos ayuda a saber qué funciona."}</div>;
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+        <span>¿Te sirvió?</span>
+        <button type="button" aria-label="Me sirvió" className={btn(rating === 1)} disabled={estado === "enviando"} onClick={() => { setRating(1); void enviar(1, null, ""); }}>👍</button>
+        <button type="button" aria-label="No me sirvió" className={btn(rating === -1)} disabled={estado === "enviando"} onClick={() => { setRating(-1); setEstado("form"); }}>👎</button>
+      </div>
+      {estado === "form" && (
+        <div className="mt-2 flex flex-col gap-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+          <div className="text-[12px] font-semibold text-slate-900">¿Qué estaba mal?</div>
+          <div className="flex flex-wrap gap-1">
+            {MOTIVOS_FEEDBACK.map((k) => <button key={k} type="button" onClick={() => setMotivo(k)} className={`${btn(motivo === k)} text-[11px]`}>{MOTIVO_LABEL[k]}</button>)}
+          </div>
+          <textarea value={comentario} onChange={(e) => setComentario(e.target.value.slice(0, 1000))} rows={2} placeholder="Contanos qué esperabas (opcional). Ej: la inversión de agosto no es esa." className="resize-y rounded-md border border-slate-200 px-2 py-1.5 text-[12px]" />
+          <div className="flex justify-end gap-1.5">
+            <button type="button" onClick={() => { setRating(null); setEstado("idle"); }} className={btn(false)}>Cancelar</button>
+            <button type="button" onClick={() => void enviar(-1, motivo, comentario.trim())} className="rounded-md px-3 py-1 text-[12px] font-semibold text-white" style={{ background: AZUL }}>Enviar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -128,7 +175,7 @@ export function DataChat({ pathname, ctx }: { pathname: string; ctx: DashContext
             steps.push({ tool: ev.tool ?? "", label: ev.label ?? "" });
             setLiveSteps([...steps]);
           } else if (ev.type === "final") {
-            push({ role: "assistant", content: ev.text || "Sin respuesta.", charts: ev.charts, tables: ev.tables, posts: ev.posts, steps: ev.steps ?? steps });
+            push({ role: "assistant", content: ev.text || "Sin respuesta.", charts: ev.charts, tables: ev.tables, posts: ev.posts, steps: ev.steps ?? steps, q, error: !ev.text });
             done = true;
           }
         }
@@ -217,6 +264,7 @@ export function DataChat({ pathname, ctx }: { pathname: string; ctx: DashContext
                     {m.tables?.map((t, ti) => <Table key={ti} t={t} />)}
                     {m.posts && <PostCards posts={m.posts} />}
                     {m.steps && <Steps steps={m.steps} />}
+                    {!m.error && <Feedback m={m} pathname={pathname} />}
                   </div>
                 )}
               </div>

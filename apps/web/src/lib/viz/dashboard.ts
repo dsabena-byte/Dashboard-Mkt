@@ -154,7 +154,7 @@ export function sanitizeDashboard(raw: unknown): DashboardV2 {
     const calcs = (Array.isArray(s.calcs) ? s.calcs : []).slice(0, 60).map((c) => c as Record<string, unknown>).filter((c) => str(c?.id) && str(c?.name) && typeof c?.expr === "string")
       .map((c) => ({ id: String(c.id).slice(0, 60), name: String(c.name).slice(0, 80), expr: String(c.expr).slice(0, 2000), format: c.format ? oneOf(c.format, FORMATS, "auto") : undefined }));
     const blends = (Array.isArray(s.blends) ? s.blends : []).slice(0, 5).map((b) => b as Record<string, unknown>).filter((b) => str(b?.id) && str(b?.datasetId) && str(b?.localKey) && b?.remoteKey != null)
-      .map((b) => ({ id: String(b.id), datasetId: String(b.datasetId), localKey: String(b.localKey), remoteKey: String(b.remoteKey), fields: Array.isArray(b.fields) ? b.fields.map(String).slice(0, 30) : [] }));
+      .map((b) => ({ id: String(b.id), datasetId: String(b.datasetId), localKey: String(b.localKey), remoteKey: String(b.remoteKey), fields: Array.isArray(b.fields) ? b.fields.map(String).slice(0, 30) : [], ...(b.grain === "month" ? { grain: "month" as const } : {}) }));
     datasets[id] = { fields, calcs, blends };
   }
   const widgets = (Array.isArray(o.widgets) ? o.widgets : []).slice(0, 60).map((w) => sanitizeWidget(w)).filter((w): w is Widget => !!w);

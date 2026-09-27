@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import type { BrandAds, BrandSummary, CompetitorAd } from "@/lib/ad-library-shared";
-import type { AdEngagement, BrandIntensity, SustainedAd } from "@/lib/ad-intensity";
+import { AD_LIBRARY_CAP, type AdEngagement, type BrandIntensity, type SustainedAd } from "@/lib/ad-intensity";
 
 // Pauta de la competencia (cliente) — portado de BIP (sep-2026): resumen por marca + grilla de
 // creativos filtrable. Sistema visual de Drean: marca propia en azul #1e40af; ámbar solo para estado.
@@ -59,10 +59,10 @@ export function CompetenciaPauta({ brands, summaries, updatedAt, intensity = [],
             <p className="mb-3 text-[11px] text-muted-foreground">Estimado con lo público (avisos, mensajes, lanzamientos, días al aire, plataformas). 100 = la marca que más pauta.</p>
             <div className="space-y-2">
               {intensity.map((b) => (
-                <div key={b.marca} className="grid grid-cols-[110px_1fr_36px] items-center gap-2 text-xs" title={`${b.activos} avisos · ${b.creatividades} mensajes · ${b.versionesPorCreatividad} versiones por mensaje · ${b.diasPromedio} días al aire prom. · ${b.sostenidos} sostenidos 30+ días · ${b.lanzamientos30} lanzados en 30 días`}>
+                <div key={b.marca} className="grid grid-cols-[110px_1fr_36px] items-center gap-2 text-xs" title={`${b.topeado && !b.estimadoPorCollation ? "≥ " : ""}${b.activos} avisos${b.estimadoPorCollation ? ` (estimados con las versiones que informa Meta; ${b.muestra} leídos)` : ""}${b.topeado ? ` · llegó al tope de ${AD_LIBRARY_CAP} avisos leídos por marca` : ""} · ${b.creatividades} mensajes · ${b.versionesPorCreatividad} versiones por mensaje · ${b.diasPromedio} días al aire prom. · ${b.sostenidos} sostenidos 30+ días · ${b.lanzamientos30} lanzados en 30 días`}>
                   <span className={`truncate ${b.own ? "font-semibold" : ""}`} style={b.own ? { color: "#1e40af" } : undefined}>{b.marca}</span>
                   <span className="h-2.5 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full" style={{ width: `${b.indice}%`, background: b.own ? "#1e40af" : "#64748b" }} /></span>
-                  <span className="text-right font-semibold tabular-nums">{b.indice}</span>
+                  <span className="text-right font-semibold tabular-nums">{b.topeado && !b.estimadoPorCollation ? "≥" : ""}{b.indice}</span>
                 </div>
               ))}
             </div>
@@ -74,6 +74,11 @@ export function CompetenciaPauta({ brands, summaries, updatedAt, intensity = [],
                 ))}</tbody>
               </table>
             </div>
+            {intensity.some((b) => b.topeado) && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Se leen hasta {AD_LIBRARY_CAP} avisos activos por marca. {intensity.filter((b) => b.topeado).map((b) => b.marca).join(", ")} {intensity.filter((b) => b.topeado).length > 1 ? "llegaron" : "llegó"} a ese tope: {intensity.some((b) => b.topeado && b.estimadoPorCollation) ? "sus avisos se estiman con las versiones por creativo que informa Meta" : "su índice es un mínimo (≥), pautan al menos eso"}.
+              </p>
+            )}
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-sm">
             <h3 className="text-sm font-semibold">Avisos que más sostienen</h3>
