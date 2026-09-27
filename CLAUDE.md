@@ -583,6 +583,12 @@ reporte_existencia/cb_homologos).
      Actions → "Meta FB sync" → Run workflow → days=90/200. **Diagnóstico de "mes bajo":** mirar
      `updated_at` de los posts del mes; si están frozen a los ~3 días de `fecha_post`, es la
      ventana (no el contenido).
+- **Sentimiento POR POST en /redes (sep-2026):** fuente = `social_posts` (positivo/neutro/negativo % +
+  `resumen_sentimiento`; "Error…"/"Sin comentarios…" = sin resumen), cron `ig-sentiment-analysis`. Top posts propios
+  (vienen de `meta_posts`) se cruzan por **shortcode** (`postKey`, /p/ = /reel/) en `lib/post-sentiment-server.ts`
+  (`attachIgSentiment`, solo en `app/redes/page.tsx`; sin Stories). Competencia ya trae las columnas. UI compartida
+  `components/social/post-sentiment.tsx` (barra + resumen 2 líneas, click expande). FB propio: sin análisis en
+  `social_posts` → no se muestra. Match YTD 27-sep: 97/106 posts IG propios (9 no están en `social_posts`), 82 con dato.
 - **Redes FB vs IG (histórico):** por post rinden parecido; IG usa `reach` (vivo), FB usa Media
   Views. Los gráficos de "total" engañan por volumen de posts (IG suma Stories que FB no expone).
 - **CB — sugerencias de tiendas:** `reporte_existencia` (proyecto CB) alimenta `vw_cb_suggestions`.

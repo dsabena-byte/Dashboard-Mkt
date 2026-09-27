@@ -12,6 +12,7 @@ const IG_ENG_COMPONENTS = [
   { key: "guardados", name: "Guardados", color: ENG_COLORS[2]! },
 ];
 import { ClasifBadge } from "@/components/social/clasif-badge";
+import { PostSentimentBlock } from "@/components/social/post-sentiment";
 import type { IgOrganicSummary, IgDemoBreakdown } from "@/lib/meta-ig-queries";
 import type { MetaKpiData } from "@/lib/metas-server";
 
@@ -318,7 +319,7 @@ export function IgOrganicSection({
                 href={p.permalink ?? "#"}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="group block rounded-md border bg-card p-2 transition-colors hover:bg-muted/50"
+                className="group flex flex-col rounded-md border bg-card p-2 transition-colors hover:bg-muted/50"
               >
                 {p.thumbnail_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -344,7 +345,7 @@ export function IgOrganicSection({
                 </div>
                 {/* Badge de tipo (Story / Reel / Feed) */}
                 {p.media_type && (
-                  <span className="mb-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="mb-1 inline-block self-start rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {(p.media_type ?? "").toUpperCase() === "STORY" ? "Story" :
                       (p.media_type ?? "").toUpperCase().includes("REEL") || (p.media_type ?? "").toUpperCase() === "VIDEO" ? "Reel" :
                       "Feed"}
@@ -378,6 +379,7 @@ export function IgOrganicSection({
                     </>
                   )}
                 </div>
+                <PostSentimentBlock sentiment={p.sentiment} />
               </a>
             ))}
           </div>
