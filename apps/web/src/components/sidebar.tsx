@@ -16,6 +16,7 @@ import {
   GraduationCap,
   LayoutGrid,
   Bell,
+  BadgeCheck,
   ChevronRight,
   Menu,
   X,
@@ -68,6 +69,7 @@ const TREE: NavNode[] = [
   { type: "link", href: "/contenido", label: "Generador de Contenido", icon: Sparkles },
   { type: "link", href: "/monitoreo", label: "Monitoreo conexiones", icon: Activity },
   { type: "link", href: "/alerts", label: "Alertas y reportes", icon: Bell },
+  { type: "link", href: "/copiloto", label: "Calidad del copiloto", icon: BadgeCheck },
   { type: "divider" },
   { type: "link", href: "/guia", label: "Proceso Estratégico", icon: GraduationCap },
 ];
@@ -213,6 +215,9 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
       <div className="sn-ver">v0.1.0 · Fase 1</div>
     </>
   );
+
+  // Vista pública de un tablero compartido (link de solo lectura): sin menú.
+  if (pathname.startsWith("/compartido")) return null;
 
   return (
     <>

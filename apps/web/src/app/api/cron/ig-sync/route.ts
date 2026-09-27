@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { mirrorMetaImage } from "@/lib/meta-image-mirror";
+import { parseNavigation, mergeStoryMax, type StoryMetricRow, type StoryNav } from "@/lib/ig-stories";
+import { snapshotRows, type SnapInputPost } from "@/lib/post-snapshots-core";
+import { recordPostSnapshots } from "@/lib/post-snapshots";
 
 export const maxDuration = 300;
 
@@ -111,8 +114,11 @@ export async function GET(request: Request) {
     const igInfoRaw = await graphGetRaw(
       `${GRAPH_API}/${igId}?fields=username,name,followers_count,media_count,profile_picture_url&access_token=${pt}`,
     );
+    let igFollowers: number | null = null;
     if (igInfoRaw.status === 200) {
       results.ig_info = igInfoRaw.body;
+      const fc = (igInfoRaw.body as { followers_count?: number }).followers_count;
+      igFollowers = typeof fc === "number" ? fc : null;
     } else {
       results.ig_info_error = igInfoRaw.body;
     }
@@ -169,6 +175,8 @@ export async function GET(request: Request) {
     const MEDIA_INSIGHT_METRICS_REEL = "reach,saved,shares,total_interactions,views";
 
     const postRows: Array<Record<string, unknown>> = [];
+    // Fotos por edad (1/3/7 días) de los posts PROPIOS → social_post_snapshots (migración 0115, fail-safe).
+    const ownSnaps: SnapInputPost[] = [];
     let insightsOk = 0;
     let insightsFailed = 0;
     let reelCount = 0;
@@ -214,6 +222,12 @@ export async function GET(request: Request) {
       const rawThumb = m.thumbnail_url ?? m.media_url ?? null;
       const mirroredThumb = await mirrorMetaImage(rawThumb, `instagram/${m.id}.jpg`);
 
+      if (m.permalink) ownSnaps.push({
+        marca: "dreanargentina", red: "INSTAGRAM", url: m.permalink, ts: m.timestamp ?? null,
+        likes: m.like_count ?? 0, comentarios: m.comments_count ?? 0, views: views || null,
+        followers: igFollowers, alcance: reach || null,
+      });
+
       postRows.push({
         platform: "instagram",
         post_id: m.id,
@@ -249,6 +263,7 @@ export async function GET(request: Request) {
     if (storiesRaw.status === 200) {
       const storiesData = (storiesRaw.body as { data?: IgMedia[] }).data ?? [];
       storyCount = storiesData.length;
+      const storyRows: Array<StoryMetricRow & Record<string, unknown>> = [];
       // Métricas válidas para IG Stories en v22.0.
       const STORY_INSIGHT_METRICS = "reach,views,replies,total_interactions,profile_visits";
       for (const s of storiesData) {
@@ -277,9 +292,16 @@ export async function GET(request: Request) {
             results[`story_insight_error_sample_${s.id}`] = insRaw.body;
           }
         }
+        // Navegación (toques adelante/atrás, salidas, deslizar) — llamada aparte, best-effort.
+        let nav: StoryNav | null = null;
+        const navRaw = await graphGetRaw(
+          `${GRAPH_API}/${s.id}/insights?metric=navigation&breakdown=story_navigation_action_type&access_token=${pt}`,
+        );
+        if (navRaw.status === 200) nav = parseNavigation(navRaw.body);
+        else if (!results.story_nav_error_sample) results.story_nav_error_sample = navRaw.body;
         const storyRawThumb = s.thumbnail_url ?? s.media_url ?? null;
         const storyMirrored = await mirrorMetaImage(storyRawThumb, `instagram/${s.id}.jpg`);
-        postRows.push({
+        storyRows.push({
           platform: "instagram",
           post_id: s.id,
           cuenta_id: igId,
@@ -296,7 +318,23 @@ export async function GET(request: Request) {
           reactions: 0,
           video_views: views,
           clicks: replies + profileVisits,  // re-uso clicks: replies + visitas al perfil generadas
+          // Detalle (sep-2026): respuestas / visitas por separado + navegación, en el jsonb `raw`.
+          raw: { story: { replies, profile_visits: profileVisits, nav } },
         });
+      }
+      // Acumular por MÁXIMO contra lo ya guardado: el alcance de una Story solo crece hasta que caduca;
+      // una lectura con menos (error, -1 de Meta) nunca pisa lo visto antes.
+      if (storyRows.length) {
+        const prevMap = new Map<string, StoryMetricRow>();
+        try {
+          const inList = `(${storyRows.map((r) => `"${r.post_id}"`).join(",")})`;
+          const exRes = await fetch(
+            `${env("NEXT_PUBLIC_SUPABASE_URL")}/rest/v1/meta_posts?platform=eq.instagram&post_id=in.${encodeURIComponent(inList)}&select=post_id,reach,video_views,engagement,clicks,raw`,
+            { headers: { apikey: env("SUPABASE_SERVICE_ROLE_KEY"), Authorization: `Bearer ${env("SUPABASE_SERVICE_ROLE_KEY")}` } },
+          );
+          if (exRes.ok) for (const r of (await exRes.json()) as StoryMetricRow[]) prevMap.set(r.post_id, r);
+        } catch { /* sin previo → se guarda la lectura actual */ }
+        for (const r of storyRows) postRows.push(mergeStoryMax(prevMap.get(r.post_id), r) as unknown as Record<string, unknown>);
       }
     } else {
       results.stories_error = storiesRaw.body;
@@ -305,7 +343,13 @@ export async function GET(request: Request) {
     results.story_insights_ok = storyInsightsOk;
     results.story_insights_failed = storyInsightsFailed;
 
-    results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
+    // Stories y posts van en upserts SEPARADOS: PostgREST toma las columnas del 1er objeto y las
+    // Stories llevan `raw` (los posts no → no se pisa su raw con null).
+    const storyUpserts = postRows.filter((r) => r.media_type === "STORY");
+    const feedUpserts = postRows.filter((r) => r.media_type !== "STORY");
+    results.posts = await supabaseUpsert("meta_posts", feedUpserts, "platform,post_id");
+    results.stories_upsert = await supabaseUpsert("meta_posts", storyUpserts, "platform,post_id");
+    results.own_snapshots = await recordPostSnapshots(snapshotRows(ownSnaps, new Date()), "graph");
 
     // 6. IG account insights (followers demographics with breakdown) → store in Supabase
     const demoBreakdowns: Array<{ breakdown: string; dimension: string }> = [

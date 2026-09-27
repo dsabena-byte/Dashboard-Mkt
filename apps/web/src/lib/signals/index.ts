@@ -10,7 +10,7 @@ import "server-only";
 // ============================================================================
 import { type Signal, type SignalDash, sortSignals } from "./types";
 import { computeRedesSignals } from "./redes";
-import { computePautaSignals } from "./pauta";
+import { computePautaSignals, pacingSignals, fatigaSignals } from "./pauta";
 import { computeWebSignals } from "./web";
 import { computeSeoSignals } from "./seo";
 import { computeOverviewSignals } from "./overview";
@@ -18,7 +18,7 @@ import { computeCrucesSignals } from "./cruces";
 import { computeWebCalidadSignals } from "./web-calidad";
 import { computeSeoAvanzadoSignals } from "./seo-avanzado";
 import { computePautaDataSignals, computeCbSignals, computeFsSignals, computeUgcSignals, computeMercadoSignals, computeSaludSignals, computeMktCanalSignals, computeConversionSignals, computeInversionSignals } from "./drean";
-import { LoadCtx, loadRedes, loadPauta, loadWeb, loadWebCalidad, loadSeoAvanzadoInput, loadSeo, loadOverview, loadCruces, loadCb, loadFs, loadUgc, loadMercado, loadSalud, loadMktCanal, loadConversion, loadInversion } from "./sources";
+import { LoadCtx, loadRedes, loadPauta, loadPautaExtras, loadWeb, loadWebCalidad, loadSeoAvanzadoInput, loadSeo, loadOverview, loadCruces, loadCb, loadFs, loadUgc, loadMercado, loadSalud, loadMktCanal, loadConversion, loadInversion } from "./sources";
 
 export type { Signal, SignalDash } from "./types";
 export type SignalScope = SignalDash | "cruces";
@@ -41,12 +41,19 @@ export async function baseSignals(ctx: LoadCtx, dash: SignalDash): Promise<Signa
   try {
     switch (dash) {
       case "redes": { const r = await loadRedes(ctx); return r ? computeRedesSignals(r) : []; }
-      case "performance": { const p = await loadPauta(ctx); return p ? [...computePautaSignals(p), ...computePautaDataSignals(p.warnings)] : []; }
+      case "performance": {
+        // + pacing del mes en curso vs la meta de Inversión y fatiga creativa (lib/pauta-pacing, lib/pauta-fatiga).
+        const [p, x] = await Promise.all([loadPauta(ctx), loadPautaExtras(ctx).catch(() => null)]);
+        const extra = x ? [...pacingSignals(x.pacing), ...fatigaSignals(x.fatiga)] : [];
+        return p ? [...computePautaSignals(p), ...computePautaDataSignals(p.warnings), ...extra] : extra;
+      }
       case "web": {
+        // + calidad del dato / cierre proyectado / consent (lib/signals/web-calidad.ts, snapshot del cron web-calidad).
         const [w, wc] = await Promise.all([loadWeb(ctx), loadWebCalidad(ctx).catch(() => null)]);
         return [...(w ? computeWebSignals(w.reports, { periodo: w.periodo.label, competitor: w.competitor }) : []), ...(wc ? computeWebCalidadSignals(wc) : [])];
       }
       case "seo-search": {
+        // + SEO/GEO avanzado: SC a fondo, auditoría, fuentes de IA, keywords, ESoS (lib/signals/seo-avanzado.ts).
         const [s, sa] = await Promise.all([loadSeo(ctx), loadSeoAvanzadoInput(ctx).catch(() => null)]);
         return [...(s ? computeSeoSignals(s) : []), ...(sa ? computeSeoAvanzadoSignals(sa) : [])];
       }

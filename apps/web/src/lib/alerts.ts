@@ -23,6 +23,8 @@ import { getAdLibrarySnapshot } from "@/lib/ad-library";
 import { isNewSince } from "@/lib/ad-library-shared";
 import { getTenant } from "@/lib/tenant/current";
 import { appUrl, sendEmail } from "@/lib/notify";
+import { cleanUmbrales, evaluarUmbrales, seriesDesdeNativos, UMBRAL_METRICAS, type Umbral } from "@/lib/umbrales";
+import { getNativeDataset } from "@/lib/native-datasets";
 import { cleanRecipients, modoDelDia, isFirstBusinessDay, selectDigest, sortItems, FRECUENCIAS, type AlertItem, type AlertPrefs, type Frecuencia } from "@/lib/alerts-shared";
 
 export type { AlertItem, AlertPrefs, Frecuencia } from "@/lib/alerts-shared";
@@ -85,6 +87,46 @@ export async function saveAlertPrefs(p: Omit<AlertPrefs, "migrated">, updatedBy?
 /** Destinatarios de env (fallback): ALERT_RECIPIENTS = "a@x.com,b@y.com". */
 export function envRecipients(): string[] { return cleanRecipients(process.env.ALERT_RECIPIENTS ?? ""); }
 export function resolveRecipients(prefs: AlertPrefs): string[] { return prefs.destinatarios.length ? prefs.destinatarios : envRecipients(); }
+
+// ── Umbrales propios (columna alert_prefs.umbrales, migración 0119; sin ella: lista vacía) ──
+export async function getUmbrales(): Promise<{ umbrales: Umbral[]; migrated: boolean }> {
+  const res = await rest("alert_prefs?id=eq.1&select=umbrales");
+  if (!res?.ok) return { umbrales: [], migrated: false };
+  const rows = (await res.json().catch(() => [])) as { umbrales?: unknown }[];
+  return { umbrales: cleanUmbrales(rows[0]?.umbrales ?? []), migrated: true };
+}
+
+export async function saveUmbrales(list: unknown, updatedBy?: string | null): Promise<Umbral[]> {
+  const umbrales = cleanUmbrales(list);
+  const res = await rest("alert_prefs?on_conflict=id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ id: 1, umbrales, updated_at: new Date().toISOString(), updated_by: updatedBy ?? null }),
+  });
+  if (!res) throw new Error("Supabase no configurado");
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(/umbrales|column|relation|does not exist|schema cache|42P01|42703|PGRST204|PGRST205/i.test(t) ? "Falta correr la migración 0119_anotaciones_umbrales.sql en Supabase." : `No se pudo guardar: ${t.slice(0, 200)}`);
+  }
+  return umbrales;
+}
+
+/** Umbrales que se cumplen en el último mes cerrado (series de los datasets nativos, mismas definiciones que Mis tableros). */
+async function umbralItems(now: Date): Promise<AlertItem[]> {
+  const { umbrales } = await getUmbrales();
+  if (!umbrales.length) return [];
+  const fuentes = new Set(umbrales.map((u) => UMBRAL_METRICAS.find((m) => m.id === u.metrica)?.fuente));
+  const [pauta, web, redes] = await Promise.all([
+    fuentes.has("pauta") ? getNativeDataset("nat:pauta", null, now).catch(() => null) : null,
+    fuentes.has("web") ? getNativeDataset("nat:web", null, now).catch(() => null) : null,
+    fuentes.has("redes") ? getNativeDataset("nat:redes", null, now).catch(() => null) : null,
+  ]);
+  return evaluarUmbrales(umbrales, seriesDesdeNativos({ pauta, web, redes }), now).map((d) => ({
+    key: `umb:${d.umbral.id}|${d.umbral.metrica}|${d.umbral.cond}|${d.umbral.valor}|${d.mes}`,
+    fuente: "umbral" as const, dash: d.metrica.dash, tipo: "alerta" as const, prioridad: "alta" as const,
+    titulo: d.titulo, descripcion: d.descripcion, accion: "Abrí el tablero y revisá qué cambió ese mes.", href: dashHref(d.metrica.dash),
+  }));
+}
 
 // ── Log / dedupe ────────────────────────────────────────────────────────────
 /** Claves enviadas por `canal` en los últimos `days` días. null = tabla sin migrar. */
@@ -164,12 +206,13 @@ async function adItems(): Promise<AlertItem[]> {
 
 /** Todas las alertas candidatas, ordenadas (alta → baja). Pesado (todas las señales): solo cron/API. */
 export async function buildAlertItems(now = new Date()): Promise<AlertItem[]> {
-  const [sigs, goals, ads] = await Promise.all([
+  const [sigs, goals, ads, umbs] = await Promise.all([
     computeSignals().catch(() => [] as Signal[]),
     goalItems(now).catch(() => [] as AlertItem[]),
     adItems().catch(() => [] as AlertItem[]),
+    umbralItems(now).catch(() => [] as AlertItem[]),
   ]);
-  const items = [...goals, ...ads, ...sigs.filter((s) => s.tipo !== "info" || s.prioridad === "alta").map(fromSignal)];
+  const items = [...umbs, ...goals, ...ads, ...sigs.filter((s) => s.tipo !== "info" || s.prioridad === "alta").map(fromSignal)];
   const seen = new Set<string>();
   return sortItems(items.filter((x) => (seen.has(x.key) ? false : (seen.add(x.key), true))));
 }

@@ -12,7 +12,7 @@
 ---
 
 ## 1. Responsable del tratamiento
-BIP (Business Impact Platform) es un servicio operado por **ROQUÉ Marketing Insights** ("BIP",
+BIP (Business Impact Platform) es un servicio operado por **ROQUÉ Research Solutions** ("BIP",
 "nosotros"). Contacto de privacidad y ejercicio de derechos: **bip.explore@gmail.com**.
 
 ## 2. Qué es BIP y principio rector

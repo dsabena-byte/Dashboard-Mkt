@@ -1,4 +1,5 @@
-import { getAlertPrefs, lastSent, envRecipients } from "@/lib/alerts";
+import { getAlertPrefs, getUmbrales, lastSent, envRecipients } from "@/lib/alerts";
+import { UmbralesForm } from "@/components/alertas/umbrales-form";
 import { emailEnabled } from "@/lib/notify";
 import { AlertasForm } from "@/components/alertas/alertas-form";
 import { AlertasPreview } from "@/components/alertas/alertas-preview";
@@ -17,7 +18,7 @@ const CARDS = [
 ];
 
 export default async function AlertsPage() {
-  const [prefs, lastEmail, lastReport] = await Promise.all([getAlertPrefs(), lastSent("email"), lastSent("reporte")]);
+  const [prefs, lastEmail, lastReport, umb] = await Promise.all([getAlertPrefs(), lastSent("email"), lastSent("reporte"), getUmbrales()]);
   const fdate = (s: string | null) => (s ? new Date(s).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "todavía no");
   return (
     <div className="space-y-4">
@@ -43,8 +44,9 @@ export default async function AlertsPage() {
         lastEmail={fdate(lastEmail)}
         lastReport={fdate(lastReport)}
       />
+      <UmbralesForm initial={umb.umbrales} migrated={umb.migrated} />
       <AlertasPreview />
-      <p className="text-[11px] text-muted-foreground">Las alertas llegan por email (Resend). Fuentes: motor de señales de cada tablero, desvíos de KPIs del Seguimiento Objetivos (meses cerrados) y la Biblioteca de anuncios de Meta.</p>
+      <p className="text-[11px] text-muted-foreground">Las alertas llegan por email (Resend). Fuentes: motor de señales de cada tablero, desvíos de KPIs del Seguimiento Objetivos (meses cerrados), tus umbrales y la Biblioteca de anuncios de Meta.</p>
     </div>
   );
 }

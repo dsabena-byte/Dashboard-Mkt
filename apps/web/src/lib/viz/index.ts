@@ -10,3 +10,4 @@ export * from "./dashboard";
 export * from "./suggest";
 export * from "./ai-schema";
 export * from "./export";
+export * from "./semantic";

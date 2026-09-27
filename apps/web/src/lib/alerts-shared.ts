@@ -15,7 +15,7 @@ export interface AlertPrefs { emailOn: boolean; frecuencia: Frecuencia; destinat
 
 export interface AlertItem {
   key: string;
-  fuente: "senal" | "objetivo" | "competencia";
+  fuente: "senal" | "objetivo" | "competencia" | "umbral";
   dash: string;
   tipo: "alerta" | "oportunidad" | "info";
   prioridad: "alta" | "media" | "baja";

@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export default async function SimuladorPage() {
-  const { model, demanda } = await getSimuladorData();
+  const { model, demanda, mmm } = await getSimuladorData();
   return (
     <div className="space-y-4">
       <header>
@@ -30,6 +30,7 @@ export default async function SimuladorPage() {
           { titulo: "Rendimientos decrecientes", texto: <>Cada peso extra en un medio rinde un poco menos que el anterior (la curva se aplana). Por eso subir mucho un solo medio no multiplica los resultados en la misma proporción. En el gráfico &ldquo;Curva&rdquo; ves dónde estás hoy y dónde queda lo simulado.</> },
           { titulo: "Cómo usarlo", texto: <>1) Mové la inversión de cada medio con el control o escribí mín./máx. 2) Mirá el cambio vs hoy en las cards de arriba. 3) Elegí &ldquo;Optimizar para&rdquo; (impresiones, alcance o clicks) y tocá <b>Optimizar automáticamente</b>: reparte el mismo total hacia donde el próximo peso rinde más, dentro del mín./máx. de cada medio (por defecto 50% y 200% de lo de hoy; los podés cambiar). <b>Volver a hoy</b> deshace todo.</> },
           { titulo: "Qué tener en cuenta", texto: <>Es una estimación, no una promesa: los medios con pocos meses de datos usan una eficiencia promedio. TV, OOH, DOOH y radio solo proyectan contactos. El alcance es la suma por medio (no descuenta a la gente que ve varios medios).</> },
+          { titulo: "Qué aporta cada medio (MMM-lite)", texto: <>Arriba podés cambiar el modelo a <b>Qué aporta cada medio</b>: un modelo de mix de medios liviano que estima cuánto de los usuarios web, las transacciones o los ingresos ecommerce (GA4) explica cada medio, con arrastre entre meses y saturación, y muestra el <b>rango</b> de cada número y un semáforo de confianza. Necesita 12+ meses cerrados con pauta y GA4, con inversión que varíe: mientras no los haya, dice &ldquo;dato insuficiente&rdquo; (y cuántos meses hay) y seguís con las curvas de entrega. Es una asociación estadística, no un experimento.</> },
           { titulo: "Demanda de la categoría", texto: <>Al final, la proyección de búsquedas genéricas de cada categoría (Google) para anticipar los meses de mayor demanda y concentrar la pauta ahí.</> },
         ]}
       />
@@ -42,7 +43,7 @@ export default async function SimuladorPage() {
           </p>
         </div>
       ) : (
-        <Simulador model={model} demanda={demanda} />
+        <Simulador model={model} demanda={demanda} mmm={mmm} />
       )}
     </div>
   );

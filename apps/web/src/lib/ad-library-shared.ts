@@ -20,13 +20,17 @@ export interface CompetitorAd {
   thumb: string | null;
   firstSeen: string;        // ISO: primera vez que el dashboard lo vio
   url: string;              // link a la Biblioteca de anuncios
+  pageId?: string | null;   // id de la Página anunciante (si el actor lo trae)
+  pageUrl?: string | null;  // URL de la Página anunciante (si el actor lo trae)
+  collationId?: string | null;    // Meta agrupa las versiones de un mismo creativo
+  collationCount?: number | null; // "N anuncios usan este creativo" (incluye los que no vinieron)
 }
 export interface BrandAds { marca: string; own: boolean; ads: CompetitorAd[]; fetchedAt: string | null; error?: string | null; stale?: boolean }
 export interface AdLibraryData { brands: BrandAds[]; updatedAt: string | null }
 
 /** Marca a monitorear: `q` = búsqueda por palabra en la Biblioteca; `ctx` = si el nombre de la marca es
  *  ambiguo (ej. "Florencia" es también un nombre propio) exige además una de estas palabras en la página. */
-export interface AdBrand { marca: string; own: boolean; q: string; ctx?: string[] }
+export interface AdBrand { marca: string; own: boolean; q: string; ctx?: string[]; facebook?: string | null }
 
 const CTX_ELECTRO = ["cocina", "cocinas", "electrodomesticos", "electro", "hogar", "argentina", "oficial", "ar"];
 // Marcas con nombre ambiguo → búsqueda con contexto + filtro estricto por nombre de página.
@@ -103,6 +107,10 @@ export function parseAdItem(it: any, nowIso: string): CompetitorAd | null {
     thumb,
     firstSeen: nowIso,
     url: `https://www.facebook.com/ads/library/?id=${encodeURIComponent(id)}`,
+    pageId: str(it?.pageId ?? it?.page_id ?? snap.pageId ?? snap.page_id) || null,
+    pageUrl: str(snap.pageProfileUri ?? snap.page_profile_uri ?? it?.pageProfileUri ?? it?.pageUrl ?? it?.page_url ?? it?.pageInfo?.page?.url) || null,
+    collationId: str(it?.collationId ?? it?.collation_id ?? snap.collationId) || null,
+    collationCount: (() => { const n = Number(it?.collationCount ?? it?.collation_count ?? snap.collationCount); return Number.isFinite(n) && n > 0 ? Math.round(n) : null; })(),
   };
 }
 
@@ -117,7 +125,28 @@ export function matchesBrand(pageName: string, marca: string, ctx?: string[]): b
   const hasAll = mt.every((t) => pt.includes(t)) || p.replace(/ /g, "") === m.replace(/ /g, "");
   if (!hasAll) return false;
   if (!ctx?.length) return true;
-  return pt.some((t) => !mt.includes(t) && ctx.includes(t));
+  const c = ctx.map(norm);
+  return pt.some((t) => !mt.includes(t) && c.includes(t));
+}
+
+/** Handle de una Página de FB a partir de URL/handle ("https://www.facebook.com/LGArgentina/" → "lgargentina"). */
+export function fbPageHandle(v: string | null | undefined): string | null {
+  const s = (v ?? "").trim().toLowerCase();
+  if (!s) return null;
+  const m = s.replace(/^@/, "").replace(/^https?:\/\//, "").replace(/^(www\.|m\.|web\.)?facebook\.com\//, "").replace(/^pages\/[^/]+\//, "").replace(/^profile\.php\?id=/, "");
+  const h = m.split(/[/?#]/)[0] ?? "";
+  return h || null;
+}
+
+/** Decisión final para un aviso (portado de BIP lib/ad-library-match): por Página de FB (handle o id,
+ *  si la marca la tiene cargada y el aviso trae la URL/id de la página anunciante) o por nombre. */
+export function adBelongsToBrand(ad: { pageName: string; pageUrl?: string | null; pageId?: string | null }, brand: { marca: string; facebook?: string | null; ctx?: string[] }): boolean {
+  const own = fbPageHandle(brand.facebook);
+  if (own) {
+    const page = fbPageHandle(ad.pageUrl);
+    if ((page && page === own) || (ad.pageId && String(ad.pageId) === own)) return true;
+  }
+  return matchesBrand(ad.pageName, brand.marca, brand.ctx);
 }
 
 export function adSearchUrl(q: string): string {

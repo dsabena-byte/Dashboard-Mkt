@@ -7,7 +7,9 @@ const PUBLIC_PATHS = ["/login"];
 
 // Rutas que tienen su propia auth (no aplicar middleware)
 // "/bip" = landing comercial pública (public/bip.html + public/bip/*), sin login.
-const BYPASS_PATHS = ["/api/cron", "/bip"];
+// "/compartido" = vista pública de solo lectura de un tablero (link firmado con vencimiento; la página
+// valida firma + vencimiento + revocación y responde 404 si no vale).
+const BYPASS_PATHS = ["/api/cron", "/bip", "/compartido/"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

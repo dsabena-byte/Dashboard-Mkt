@@ -12,6 +12,8 @@
 // Puro y client-safe (lo usa también el tab Insights de /performance sin IA).
 import type { PautaFull, CampaignRow, CreativeRow, PautaMonth } from "./model";
 import { type Signal, sortSignals, median, quantile, sum, avg, deltaPct, fInt, fNum, fPct, fDelta, fMoney, clip, r2 } from "./types";
+import type { PacingMes } from "../pauta-pacing";
+import type { FatigaResumen } from "../pauta-fatiga";
 
 export type Rol = "Awareness" | "Consideración" | "Conversión";
 // Mismo criterio que el tablero (performance-tabs rolDe): objetivo de Meta o tipo de campaña de Google.
@@ -441,4 +443,64 @@ function groupBy<T>(xs: T[], k: (x: T) => string): Map<string, T[]> {
   const m = new Map<string, T[]>();
   for (const x of xs) { const key = k(x); m.set(key, [...(m.get(key) ?? []), x]); }
   return m;
+}
+
+// ============================================================================
+// PACING y FATIGA (portado de BIP #130, adaptado a Drean). Entradas ya calculadas por las funciones
+// puras lib/pauta-pacing (computePacing) y lib/pauta-fatiga (fatigaPiezas) — las mismas que muestra
+// el Tablero (Impacto Campaña → Ritmo de inversión; Eficiencia Medios → Fatiga creativa).
+// ============================================================================
+
+/** Pacing vs la meta de Inversión del mes: alerta si la proyección a cierre sale de ±10% del plan
+ *  (con rango: "sub" = hasta el techo queda debajo; "sobre" = hasta el piso queda arriba). */
+export function pacingSignals(p: PacingMes | null | undefined): Signal[] {
+  if (!p || p.preliminar || p.base !== "plan" || p.plan == null || (p.estado !== "sobre" && p.estado !== "sub")) return [];
+  const $ = (v: number) => fMoney(v, "ARS");
+  const sobre = p.estado === "sobre";
+  const dias = Math.round(p.diasTranscurridos);
+  const diasRest = Math.max(1, p.diasMes - p.diasTranscurridos);
+  const restante = Math.max(0, p.plan - p.gastado - (p.rango.central - p.rango.piso));
+  const dCentral = p.desvioPct ?? 0;
+  const pend = p.pendientes.length ? ` Faltan cargar de OMD: ${p.pendientes.join(", ")} (estimados por su promedio de 3 meses en el valor central y por su máximo en el techo).` : "";
+  return [{
+    key: sobre ? "pauta_pacing_plan_over" : "pauta_pacing_plan_under",
+    dash: "performance",
+    tipo: "alerta",
+    prioridad: Math.abs(dCentral) >= 25 ? "alta" : "media",
+    titulo: sobre
+      ? `${p.mes}: a este ritmo la inversión cierra entre ${$(p.rango.piso)} y ${$(p.rango.techo)}, por encima del plan (${$(p.plan)})`
+      : `${p.mes}: a este ritmo la inversión cierra entre ${$(p.rango.piso)} y ${$(p.rango.techo)}, debajo del plan (${$(p.plan)})`,
+    descripcion: `Día ${dias} de ${p.diasMes}: van ${$(p.gastado)} (${fPct(p.avancePct ?? 0, 0)} del plan; lo esperado a hoy era ${$(p.planALaFecha ?? 0)}). Valor central ${$(p.rango.central)} (${fDelta(dCentral)} vs plan). Medios con API se proyectan lineal; lo cargado por OMD se toma como está.${pend}${p.bgt ? ` Presupuesto vigente de la cuenta de pauta (${p.bgt.version}): ${$(p.bgt.valor)}.` : ""}`,
+    acciones: sobre
+      ? ["Bajar presupuestos diarios de las campañas que más gastan", "Confirmar si el sobregasto responde a una acción planificada (lanzamiento, fecha especial)", "Actualizar la meta de Inversión si el plan cambió"]
+      : ["Pedir a OMD el avance de los medios sin API del mes (TikTok, Mercado Ads, Geo, TV/Streaming)", `Revisar campañas pausadas o con presupuesto agotado (para llegar al plan harían falta ≈${$(restante / diasRest)} por día en lo que queda del mes)`, "Si la sub-ejecución es intencional, actualizar la meta de Inversión"],
+    datos: { mes: p.mes, dia: r2(p.diasTranscurridos), diasMes: p.diasMes, gastado: Math.round(p.gastado), plan: Math.round(p.plan), planALaFecha: Math.round(p.planALaFecha ?? 0), piso: Math.round(p.rango.piso), central: Math.round(p.rango.central), techo: Math.round(p.rango.techo), desvioPct: r2(dCentral), pendientesOmd: p.pendientes },
+    impacto: { metrica: sobre ? "Sobregasto proyectado a cierre (piso)" : "Inversión sin ejecutar proyectada a cierre (techo)", valor: Math.round(Math.abs(sobre ? p.rango.piso - p.plan : p.plan - p.rango.techo)), unidad: "ARS" },
+  }];
+}
+
+/** Fatiga creativa: piezas cuya tasa (CTR o VTR ≥50%) cae ≥25% con la frecuencia subiendo. Hasta 5. */
+export function fatigaSignals(f: FatigaResumen | null | undefined): Signal[] {
+  if (!f) return [];
+  const out: Signal[] = [];
+  for (const x of f.piezas.filter((p) => p.estado === "fatiga").slice(0, 5)) {
+    const ult = x.meses[x.meses.length - 1]!;
+    out.push({
+      key: `pauta_creative_fatigue_${x.key.replace(/[^a-z0-9]+/gi, "_").slice(0, 60)}`,
+      dash: "performance", tipo: "alerta", prioridad: (x.caidaPct ?? 0) <= -50 && !x.parcial ? "alta" : "media",
+      titulo: `Fatiga creativa: "${clip(x.nombre, 50)}" (${x.fuente === "DV360" ? `DV360 ${x.canal}` : "Meta"}) — ${x.metrica} ${fDelta(x.caidaPct ?? 0)} con más frecuencia`,
+      descripcion: `${x.motivo} ${fInt(ult.impr)} impresiones en el último mes.${x.frecFuente === "línea" ? " DV360 no informa alcance por pieza: la frecuencia es la de su línea (canal × categoría)." : ""}${x.parcial ? " El último mes está en curso (frecuencia todavía acumulando)." : ""}`,
+      acciones: ["Rotar la pieza o sumar variantes nuevas del mismo mensaje", "Bajar el tope de frecuencia o ampliar la audiencia de la línea", "Mover presupuesto a las piezas que mantienen su tasa"],
+      datos: { pieza: x.nombre, fuente: x.fuente, canal: x.canal, categoria: x.categoria, metrica: x.metrica, tasaUltimo: r2(x.tasaUlt), tasaPrevios: r2(x.tasaPrev), caidaPct: r2(x.caidaPct ?? 0), frecuenciaUltimo: x.frecUlt != null ? r2(x.frecUlt) : null, frecuenciaPrevios: x.frecPrev != null ? r2(x.frecPrev) : null, mes: x.mesUlt, parcial: x.parcial },
+    });
+  }
+  const altas = f.piezas.filter((p) => p.estado === "frecuencia_alta");
+  if (altas.length) out.push({
+    key: "pauta_frecuencia_mensual_alta", dash: "performance", tipo: "info", prioridad: "baja",
+    titulo: `${altas.length} pieza${altas.length === 1 ? "" : "s"} con frecuencia mensual alta (>5) sin caída de respuesta todavía`,
+    descripcion: altas.slice(0, 4).map((p) => `"${clip(p.nombre, 40)}": ${p.motivo}`).join(" "),
+    acciones: ["Preparar el relevo creativo antes de que caiga la tasa", "Revisar tope de frecuencia"],
+    datos: { piezas: altas.map((p) => p.nombre).slice(0, 10) },
+  });
+  return out;
 }

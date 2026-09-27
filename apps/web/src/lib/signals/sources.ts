@@ -18,6 +18,7 @@ import { getFxRates } from "@/lib/fx-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getSocialPosts, getSocialFollowers, OWN_BRAND, BRAND_LABELS } from "@/lib/social-posts-queries";
+import { getPostSnapshots } from "@/lib/post-snapshots";
 import { getCompetitorMonthlyHistory } from "@/lib/competitor-web-queries";
 import { getShareOfSearch, getSeoCompetitivo, getSearchRegion, getLlmo, getDemandaGenerica } from "@/lib/competitive-queries";
 import { getSeguimientoObjetivos } from "@/lib/objetivos-rollup";
@@ -29,6 +30,10 @@ import { getBgtData, hasVersion } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
 import { computeCuatris, MAX_DESVIO, MAX_INV_FACT } from "@/lib/bgt-dashboard";
 import { KANTAR_LAVADO, KANTAR_REFRI, KANTAR_COCCION, SM_WAVES } from "@/lib/salud-marca-model";
+import { computePacing, type PacingMes } from "@/lib/pauta-pacing";
+import { fatigaPiezas, type FatigaResumen } from "@/lib/pauta-fatiga";
+import { getBgtPautaMensual, getPautaAsOf } from "@/lib/pauta-pacing-server";
+import { getEcommerceInversionMensual } from "@/lib/ecommerce-queries";
 import { buildPautaFull, buildRedesInput, buildWebReports, buildCompetitorWeb, buildSeoData, buildSeguimiento, type RedesAdapted, type CompetitorWebRowLite } from "./adapters";
 import type { PautaFull, WebReports, CompetitorWebData, SeoData, SeguimientoObjetivos } from "./model";
 import type { CrucesInput } from "./cruces";
@@ -64,14 +69,40 @@ export class LoadCtx {
 }
 
 // ── Plan de medios ──
-export function loadPauta(ctx: LoadCtx): Promise<PautaFull | null> {
-  return ctx.once("pauta", async () => {
+function loadPautaRaw(ctx: LoadCtx) {
+  return ctx.once("pautaRaw", async () => {
     const [pauta, metaPaid, dv360, dv360Reach, gads, fx] = await Promise.all([
       safe(getPautaPerformance(true)), safe(getMetaPaidCreatives(true)), safe(getDv360Creatives()),
       safe(getDv360Reach()), safe(getGoogleAdsOmd()), safe(getFxRates()),
     ]);
-    const p = buildPautaFull({ pauta: pauta ?? [], metaPaid: metaPaid ?? [], dv360: dv360 ?? [], dv360Reach: dv360Reach ?? [], googleAdsOmd: gads ?? [], fxRates: fx ?? {}, anio: year(), now: new Date() });
+    return { pauta: pauta ?? [], metaPaid: metaPaid ?? [], dv360: dv360 ?? [], dv360Reach: dv360Reach ?? [], googleAdsOmd: gads ?? [], fxRates: fx ?? {} };
+  });
+}
+export function loadPauta(ctx: LoadCtx): Promise<PautaFull | null> {
+  return ctx.once("pauta", async () => {
+    const raw = await loadPautaRaw(ctx);
+    const p = buildPautaFull({ ...raw, anio: year(), now: new Date() });
     return p.ok ? p : null;
+  });
+}
+/** Pacing del mes en curso (vs meta de Inversión "Pauta Mkt") + fatiga creativa por pieza. Mismas funciones
+ *  puras que el Tablero; lecturas extra chicas (meta del año, BGT de la cuenta de pauta, ecommerce, asOf). */
+export function loadPautaExtras(ctx: LoadCtx): Promise<{ pacing: PacingMes | null; fatiga: FatigaResumen | null }> {
+  return ctx.once("pautaExtras", async () => {
+    const anio = year();
+    const now = new Date();
+    const [raw, meta, bgt, ecom, asOf] = await Promise.all([
+      loadPautaRaw(ctx), safe(getMetaKpi("Pauta Mkt", "Inversión", anio)), safe(getBgtPautaMensual(anio)),
+      safe(getEcommerceInversionMensual(anio)), safe(getPautaAsOf()),
+    ]);
+    let pacing: PacingMes | null = null, fatiga: FatigaResumen | null = null;
+    try {
+      pacing = computePacing({ ...raw, anio, asOf: asOf ? new Date(asOf) : now, now, plan: meta?.valores ?? null, bgt, extra: ecom ? [{ medio: "Ecommerce", valores: ecom }] : [] });
+    } catch { /* best-effort */ }
+    try {
+      fatiga = fatigaPiezas({ metaPaid: raw.metaPaid, dv360: raw.dv360, dv360Reach: raw.dv360Reach, fxRates: raw.fxRates, mesEnCurso: now.toISOString().slice(0, 7) });
+    } catch { /* best-effort */ }
+    return { pacing, fatiga };
   });
 }
 
@@ -82,13 +113,14 @@ export function loadRedes(ctx: LoadCtx): Promise<RedesAdapted | null> {
     const now = new Date();
     const range = { from: `${y}-01-01`, to: now.toISOString().slice(0, 10) };
     const since = new Date(now.getTime() - 120 * 864e5).toISOString().slice(0, 10);
-    const [igPosts, ig, fb, social, followers] = await Promise.all([
+    const [igPosts, ig, fb, social, followers, snaps] = await Promise.all([
       rest<{ post_id: string; fecha_post: string; permalink: string | null; message: string | null; media_type: string | null; thumbnail_url: string | null; reach: number | null; engagement: number | null }>(
         `meta_posts?platform=eq.instagram&fecha_post=gte.${since}T00:00:00Z&select=post_id,fecha_post,permalink,message,media_type,thumbnail_url,reach,engagement&order=fecha_post.desc&limit=1000`),
       safe(getIgOrganicSummary(range)),
       safe(getFbOrganicSummary(range)),
       safe(getSocialPosts({})),
       safe(getSocialFollowers()),
+      safe(getPostSnapshots({ edad: 7 })),
     ]);
     if (!igPosts.length && !ig && !fb) return null;
     return buildRedesInput({
@@ -100,6 +132,8 @@ export function loadRedes(ctx: LoadCtx): Promise<RedesAdapted | null> {
       social: social ?? [], followers: followers ?? [],
       ownKey: OWN_BRAND, labels: BRAND_LABELS,
       igDemo: ig ? { age: ig.demoAge, gender: ig.demoGender, province: ig.demoProvince } : undefined,
+      fbViewsSplit: fb ? { organic: fb.totals.viewsOrganic ?? null, paid: fb.totals.viewsPaid ?? null, posts: fb.totals.viewsSplitPosts ?? 0, paidByApi: fb.totals.paidByApi ?? 0, paidByHeuristic: fb.totals.paidByHeuristic ?? 0 } : null,
+      snaps: snaps ?? [],
     });
   });
 }

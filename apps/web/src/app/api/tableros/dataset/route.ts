@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canUseTableros, getDataset, TablerosMissingError } from "@/lib/tableros-server";
+import { canUseTableros, currentAllowed, getDataset, TablerosMissingError } from "@/lib/tableros-server";
 
 // Columnas + filas de una planilla (el motor agrega en el cliente). Tope defensivo 100k filas.
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "falta id" }, { status: 400 });
   try {
-    const ds = await getDataset(id);
+    const ds = await getDataset(id, await currentAllowed());
     if (!ds) return NextResponse.json({ error: "planilla no encontrada" }, { status: 404 });
     return NextResponse.json({ id: ds.id, name: ds.name, columns: ds.columns, rows: ds.rows.slice(0, 100_000) });
   } catch (e) {

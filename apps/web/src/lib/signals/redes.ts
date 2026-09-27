@@ -5,13 +5,17 @@
 import type { IgOrganicSummary, FbOrganicSummary, CompetitorPost, Red } from "./model";
 import { computeBrandStats, normalizePilar } from "./model";
 import { type Signal, sortSignals, median, sum, avg, deltaPct, fInt, fNum, fPct, fDelta, clip, r2 } from "./types";
+import { erComparablePorMarca, pautaPorMarca } from "../redes-competencia";
+import { temaGaps } from "../redes-temas";
+import { paidShare } from "../fb-paid";
+import type { AgeSnap } from "../post-snapshots-core";
 
 export interface SentimentLite { network: "IG" | "FB"; postId: string; ts?: number; sentiment: { positivo: number; negativo: number; neutro: number; temas?: string[]; resumen?: string } | null }
 export interface RedesSignalInput {
   ig?: IgOrganicSummary | null;
   fb?: FbOrganicSummary | null;
   sentiment?: SentimentLite[];
-  competitor?: { posts: CompetitorPost[]; followers: { marca: string; red_social: Red; followers: number }[]; ownBrand: string } | null;
+  competitor?: { posts: CompetitorPost[]; followers: { marca: string; red_social: Red; followers: number }[]; ownBrand: string; snaps?: AgeSnap[] } | null;
   refDate?: Date; // "hoy" del análisis (default: ahora)
 }
 
@@ -287,21 +291,29 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
     const own = stats.find((b) => b.marca === comp.ownBrand);
     const rivals = stats.filter((b) => b.marca !== comp.ownBrand && b.posts >= 3);
     if (own && own.posts >= 3 && rivals.length) {
-      const leader = [...rivals].sort((a, b) => b.engagement_promedio - a.engagement_promedio)[0]!;
-      const medRivalEr = median(rivals.map((b) => b.engagement_promedio));
-      if (leader.engagement_promedio > 0 && own.engagement_promedio < leader.engagement_promedio * 0.7) S({
-        key: "redes_comp_er_gap", tipo: "alerta", prioridad: own.engagement_promedio < medRivalEr ? "alta" : "media",
-        titulo: `Engagement por seguidor: ${fPct(own.engagement_promedio, 2)} vs ${fPct(leader.engagement_promedio, 2)} de ${leader.marca} (líder)`,
-        descripcion: `Mediana de la competencia ${fPct(medRivalEr, 2)}. ${own.engagement_promedio < medRivalEr ? "Estás por debajo de la mediana del set competitivo." : "Estás sobre la mediana pero lejos del líder."}`,
+      // ER COMPARABLE (sep-2026, corrige el sesgo de maduración): mediana de posts con 7+ días, o foto a
+      // los 7 días de publicado (social_post_snapshots) si la marca tiene ≥ 3. Sin base madura → sin señal.
+      const erc = erComparablePorMarca(comp.posts, comp.snaps ?? null);
+      const erOf = (m: string) => erc.get(m);
+      const ownEr = erOf(own.marca);
+      const erRivals = rivals.map((b) => ({ marca: b.marca, er: erOf(b.marca) })).filter((x) => x.er && x.er.disponible && x.er.metodo !== "preliminar") as { marca: string; er: NonNullable<ReturnType<typeof erOf>> }[];
+      const metodoEr = ownEr?.metodo === "edad_fija" && erRivals.every((x) => x.er.metodo === "edad_fija") ? "a 7 días de publicado (misma edad para todas las marcas)" : "mediana de posts con 7+ días";
+      const leader = [...erRivals].sort((a, b) => b.er.value - a.er.value)[0];
+      const medRivalEr = median(erRivals.map((x) => x.er.value));
+      if (!leader || !ownEr || ownEr.metodo === "preliminar" || !ownEr.disponible) { /* sin base madura comparable → sin señal de ER */ }
+      else if (leader.er.value > 0 && ownEr.value < leader.er.value * 0.7) S({
+        key: "redes_comp_er_gap", tipo: "alerta", prioridad: ownEr.value < medRivalEr ? "alta" : "media",
+        titulo: `Engagement por seguidor: ${fPct(ownEr.value, 3)} vs ${fPct(leader.er.value, 3)} de ${leader.marca} (líder)`,
+        descripcion: `Mediana de la competencia ${fPct(medRivalEr, 3)} (ER ${metodoEr}). ${ownEr.value < medRivalEr ? "Estás por debajo de la mediana del set competitivo." : "Estás sobre la mediana pero lejos del líder."}`,
         acciones: [`Analizar las piezas top de ${leader.marca} (pilar, formato, tono)`, "Testear los pilares donde el líder obtiene más engagement"],
-        datos: { propio: r2(own.engagement_promedio), lider: { marca: leader.marca, er: r2(leader.engagement_promedio) }, medianaCompetencia: r2(medRivalEr) },
+        datos: { propio: r2(ownEr.value * 1000) / 1000, lider: { marca: leader.marca, er: r2(leader.er.value * 1000) / 1000 }, medianaCompetencia: r2(medRivalEr * 1000) / 1000, metodo: metodoEr },
       });
-      else if (own.engagement_promedio >= leader.engagement_promedio) S({
+      else if (ownEr.value >= leader.er.value) S({
         key: "redes_comp_er_leader", tipo: "info", prioridad: "baja",
-        titulo: `Liderás el engagement por seguidor del set competitivo (${fPct(own.engagement_promedio, 2)})`,
-        descripcion: `Siguiente: ${leader.marca} con ${fPct(leader.engagement_promedio, 2)}.`,
+        titulo: `Liderás el engagement por seguidor del set competitivo (${fPct(ownEr.value, 3)})`,
+        descripcion: `Siguiente: ${leader.marca} con ${fPct(leader.er.value, 3)} (ER ${metodoEr}).`,
         acciones: ["Sostener los pilares que explican el liderazgo", "Aprovecharlo con más volumen si la cadencia es menor que la competencia"],
-        datos: { propio: r2(own.engagement_promedio), segundo: { marca: leader.marca, er: r2(leader.engagement_promedio) } },
+        datos: { propio: r2(ownEr.value * 1000) / 1000, segundo: { marca: leader.marca, er: r2(leader.er.value * 1000) / 1000 }, metodo: metodoEr },
       });
       const medPpw = median(rivals.map((b) => b.posts_per_week));
       if (medPpw > 0 && own.posts_per_week < medPpw * 0.6) S({
@@ -337,6 +349,45 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
         datos: { pilaresCompetencia: catRows.slice(0, 5).map((r) => ({ ...r, er: r2(r.er) })), sharePropio: r2(ownShare) },
       });
     }
+  }
+
+  // ── 8. Competencia que probablemente pauta sus posts (modelo de outliers, no dato cierto) ──
+  if (comp && comp.posts.length) {
+    const pauta = pautaPorMarca(comp.posts).filter((x) => x.marca !== comp.ownBrand && x.probables >= 2 && x.share >= 15);
+    const top = pauta[0];
+    if (top) S({
+      key: "redes_comp_pauta_probable", tipo: "info", prioridad: top.alta >= 2 ? "media" : "baja",
+      titulo: `${top.marca} probablemente pauta ${top.probables} de sus ${top.posts} posts (${fPct(top.share, 0)})`,
+      descripcion: `Posts con muchas más views que su mediana y muy pocas interacciones por view: el patrón de un boost. Es una estimación (no hay dato público de pauta), útil para leer su alcance: parte no es orgánico.${pauta.length > 1 ? ` También: ${pauta.slice(1, 4).map((x) => `${x.marca} (${x.probables})`).join(", ")}.` : ""}`,
+      acciones: ["No comparar tu alcance orgánico con el de esos posts", "Cruzar con Pauta de la competencia (Biblioteca de anuncios) para confirmarlo"],
+      datos: { marcas: pauta.slice(0, 5) },
+    });
+  }
+
+  // ── 9. Temas que rinden en la competencia y no usás (tema corto por post, gpt-4o-mini en el cron) ──
+  if (comp && comp.posts.length) {
+    const gaps = temaGaps(comp.posts, comp.ownBrand);
+    const g = gaps[0];
+    if (g) S({
+      key: "redes_comp_tema_gap", tipo: "oportunidad", prioridad: g.vsMediana >= 1.5 ? "media" : "baja",
+      titulo: `El tema "${g.tema}" rinde ${g.vsMediana.toFixed(1)}× la mediana de la competencia y casi no lo usás`,
+      descripcion: `${g.posts} posts de ${g.marcas.slice(0, 4).join(", ")} con ER mediano ${fPct(g.er_mediana, 3)} por seguidor.${gaps.length > 1 ? ` Otros temas en la misma situación: ${gaps.slice(1, 4).map((x) => `"${x.tema}"`).join(", ")}.` : ""} Evidencia observacional: el tema puede ir de la mano de otro formato o de pauta.`,
+      acciones: [`Testear 3-4 piezas sobre "${g.tema}" con el tono de Drean`, "Medir el ER a los 7 días contra la mediana propia"],
+      datos: { gaps: gaps.slice(0, 5).map((x) => ({ ...x, er_mediana: r2(x.er_mediana * 1000) / 1000 })) },
+    });
+  }
+
+  // ── 10. Facebook: qué parte de las vistas de los posts viene de pauta (API is_from_ads) ──
+  {
+    const t = inp.fb?.ok ? inp.fb.totals : null;
+    const sh = t && t.viewsSplitPosts ? paidShare({ organic: t.viewsOrganic ?? 0, paid: t.viewsPaid ?? 0 }) : null;
+    if (t && sh != null && sh >= 0.4 && (t.viewsSplitPosts ?? 0) >= 5) S({
+      key: "redes_fb_paid_share", tipo: "info", prioridad: "baja",
+      titulo: `Facebook: el ${fPct(sh * 100, 0)} de las vistas de los posts vino de pauta`,
+      descripcion: `Sobre ${t.viewsSplitPosts} posts recientes con el dato de Meta (vistas con breakdown is_from_ads). ${t.paidByApi ? `${t.paidByApi} posts quedaron fuera del orgánico por ser mayormente pagos (además de ${t.paidByHeuristic ?? 0} por la heurística de alcance fuera de escala).` : ""} El alcance orgánico del tablero ya los excluye.`,
+      acciones: ["Leer el alcance orgánico de FB sin esos posts", "Si la meta de alcance orgánico se apoya en posts pautados, separarla"],
+      datos: { vistasOrganicas: t.viewsOrganic ?? 0, vistasPagas: t.viewsPaid ?? 0, sharePago: r2(sh * 100), postsConDato: t.viewsSplitPosts },
+    });
   }
 
   return sortSignals(out);

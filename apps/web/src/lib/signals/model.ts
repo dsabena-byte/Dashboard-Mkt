@@ -132,7 +132,9 @@ export interface FbPost { id: string; permalink: string | null; message: string 
 export interface FbMonthlyDatum { mes: string; anio?: number; mesIdx: number; alcance: number | null; engagement: number | null; clicks?: number | null }
 export interface FbOrganicSummary {
   ok: boolean; error?: string; name: string; followers: number;
-  totals: { reach: number; engagement: number; postCount: number; paidCount?: number; clicks?: number };
+  totals: { reach: number; engagement: number; postCount: number; paidCount?: number; clicks?: number;
+    /** Split de VISTAS orgánicas/pagas de la API (post_media_view × is_from_ads), posts con dato. */
+    viewsOrganic?: number | null; viewsPaid?: number | null; viewsSplitPosts?: number; paidByApi?: number; paidByHeuristic?: number };
   monthly: FbMonthlyDatum[];
   topPosts: FbPost[];
   rangeLabel?: string;
@@ -151,6 +153,8 @@ export interface CompetitorPost {
   content_type: string | null;
   followers: number | null;
   thumbnail_url: string | null; copy: string | null;
+  /** Tema corto (cron competencia-ig, migración 0116). */
+  tema?: string | null;
 }
 const avgA = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
 const engOf = (ps: CompetitorPost[]) => ps.map((p) => p.engagement).filter((e): e is number => e !== null && e !== undefined);

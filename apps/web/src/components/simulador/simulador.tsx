@@ -1,6 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { MmmDatos } from "@/lib/mmm-datos";
+import { MmmPanel } from "@/components/simulador/mmm-panel";
 import { SIM_METRICS, simulate, optimize, defaultBounds, rescaleTo, predict, costPer, type SimModel, type SimMetric, type Bounds, type DemandPoint } from "@/lib/simulador";
 
 // Simulador de presupuesto (cliente) — portado de BIP (sep-2026). Sistema visual de Drean: dato real /
@@ -25,7 +27,10 @@ const NUM = "rounded-md border bg-background px-2 py-1 text-right text-xs tabula
 
 export interface DemandaCat { categoria: string; serie: DemandPoint[]; puntos: DemandPoint[]; metodo: string }
 
-export function Simulador({ model, demanda }: { model: SimModel; demanda: DemandaCat[] }) {
+export function Simulador({ model, demanda, mmm }: { model: SimModel; demanda: DemandaCat[]; mmm?: MmmDatos | null }) {
+  // Modelo: curvas de ENTREGA (a·x^b → impresiones/alcance/clicks) o "Qué aporta cada medio" (MMM-lite
+  // sobre un resultado de GA4). Selector segmentado (no es otro renglón de pestañas: menú estándar).
+  const [modo, setModo] = useState<"entrega" | "mmm">("entrega");
   const baseAlloc = useMemo(() => Object.fromEntries(model.channels.map((c) => [c.canal, c.currentSpend])), [model]);
   const baseTotal = useMemo(() => model.channels.reduce((s, c) => s + c.currentSpend, 0), [model]);
 
@@ -70,8 +75,29 @@ export function Simulador({ model, demanda }: { model: SimModel; demanda: Demand
   const barData = model.channels.map((c) => ({ canal: c.canal, hoy: c.currentSpend, sim: alloc[c.canal] ?? 0 }));
   const metricLabel = SIM_METRICS.find((m) => m.key === metric)!.label;
 
+  const selector = mmm ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={LBL}>Modelo</span>
+      <div className="flex rounded-lg border p-0.5 text-sm font-medium">
+        {([["entrega", "Resultados de medios (impresiones, alcance, clicks)"], ["mmm", "Qué aporta cada medio · MMM-lite"]] as const).map(([id, label]) => (
+          <button key={id} onClick={() => setModo(id)} aria-pressed={modo === id}
+            className={`rounded-md px-3 py-1 transition-colors ${modo === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>
+        ))}
+      </div>
+    </div>
+  ) : null;
+  if (modo === "mmm" && mmm) {
+    return (
+      <div className="space-y-4">
+        {selector}
+        <MmmPanel datos={mmm} alloc={alloc} onAlloc={(a) => { setOptMsg(null); setAlloc(a); }} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {selector}
       {/* Controles */}
       <div className="flex flex-wrap items-end gap-4 rounded-xl border bg-card p-4 shadow-sm">
         <label className="flex flex-col gap-1">

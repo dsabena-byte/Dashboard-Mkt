@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { listAnotaciones } from "@/lib/anotaciones";
+import { anotacionesParaPrompt } from "@/lib/anotaciones-core";
 import { LoadCtx } from "@/lib/signals";
 import { loadOverview } from "@/lib/signals/sources";
 import type { SeguimientoObjetivos, KpiSegLite } from "@/lib/signals/model";
@@ -102,6 +104,10 @@ export async function POST(req: Request) {
   const { pack, signals } = await buildDataPack(ctx, dash, loaded).catch(() => ({ pack: "", signals: [] }));
   const packCtx = pack ? `\n\n=== DATOS DEL TABLERO "${f.label}" (JSON, datos reales — fuente principal del análisis) ===\n${pack}\n=== FIN DATOS DEL TABLERO ===` : "";
   const sigCtx = signals.length ? `\n\n=== HALLAZGOS PRE-CALCULADOS (motor de reglas determinístico sobre los mismos datos; ordenados por prioridad e impacto) ===\n${signalsForPrompt(signals, 12)}\nInstrucción: son el punto de partida, no el análisis. Validalos contra los datos, explicá su CAUSA cruzando indicadores, descartá los que no sean relevantes y sumá lo que las reglas no ven.\n=== FIN HALLAZGOS ===` : "";
+  // Anotaciones del equipo (qué pasó y cuándo) de este tablero + de todo el dashboard, últimos 18 meses.
+  const desdeNotas = new Date(Date.now() - 548 * 86_400_000).toISOString().slice(0, 10);
+  const notas = (await listAnotaciones({ tablero: dash, desde: desdeNotas }).catch(() => ({ notas: [] }))).notas;
+  const notasCtx = notas.length ? `\n\n=== ANOTACIONES DEL EQUIPO (contexto humano: qué pasó y cuándo) ===\n${anotacionesParaPrompt(notas, 30)}\nInstrucción: usalas para EXPLICAR movimientos de los datos que coincidan en fecha (ej. un pico después de un lanzamiento); no son datos ni metas, y no inventes efectos que los números no muestren.\n=== FIN ANOTACIONES ===` : "";
   if (!pack && !signals.length && !segCtx) return NextResponse.json({ error: "No hay datos suficientes en este tablero para un diagnóstico." }, { status: 422 });
 
   // Diagnóstico anterior (continuidad).
@@ -143,7 +149,7 @@ Hasta 5 ítems en evolucion, hallazgos, planAccion y oportunidades; hasta 4 en m
         model, temperature: 0.25, response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },
-          { role: "user", content: `Analizá "${f.label}" y devolvé el diagnóstico en JSON.${segCtx}${packCtx}${sigCtx}${prevCtx}` },
+          { role: "user", content: `Analizá "${f.label}" y devolvé el diagnóstico en JSON.${segCtx}${packCtx}${notasCtx}${sigCtx}${prevCtx}` },
         ],
       }),
       cache: "no-store",
