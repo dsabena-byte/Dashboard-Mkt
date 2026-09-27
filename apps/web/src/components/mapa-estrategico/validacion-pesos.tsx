@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Loader2, FlaskConical } from "lucide-react";
 import type { ValidacionMapaData } from "@/lib/mapa-validacion-server";
 import type { NivelEvidencia } from "@/lib/stats/validacion";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const PILL: Record<NivelEvidencia, { cls: string; t: string }> = {
   fuerte: { cls: "bg-emerald-50 text-emerald-700", t: "Evidencia fuerte" },
@@ -42,7 +43,7 @@ export function ValidacionPesos() {
     <section className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-3xl">
-          <h3 className="text-sm font-semibold tracking-tight">¿Tus pesos se sostienen en tus datos?</h3>
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">¿Tus pesos se sostienen en tus datos? <LearnButton k="validar_mapa" /></h3>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
             El Mapa es una hipótesis: &ldquo;estos KPIs explican estos objetivos&rdquo;. Acá se contrasta con el resultado de negocio (share de mercado de Drean, GfK):
             si las variaciones de cada KPI acompañan a las del share, en el mismo mes o con hasta 3 meses de adelanto.

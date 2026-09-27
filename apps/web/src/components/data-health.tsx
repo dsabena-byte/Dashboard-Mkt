@@ -4,6 +4,7 @@ import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { DASH_FUENTES, buildSaludDash, fmtEdad } from "@/lib/data-health";
 import { fmtDate } from "@/lib/monitoreo-config";
 import type { Estado } from "@/lib/monitoreo-config";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // "Confianza en el dato" (portado de BIP, sep-2026): una línea chica bajo el título de cada tablero
 //   ● Datos al día · Meta Ads hace 3 h · DV360 hace 9 h · OMD hace 5 d
@@ -40,6 +41,7 @@ async function DataHealthLine({ dash, className }: { dash: string; className: st
           {it.label} {fmtEdad(it.ageH)}
         </span>
       ))}
+      <LearnButton k="salud_datos" />
     </div>
   );
 }

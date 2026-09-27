@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { Loader2, Wand2 } from "lucide-react";
 import { sugerirTodas, AMBICIONES, type Ambicion, type Sugerencia } from "@/lib/stats/sugerir";
 import { SEMAFORO_COLOR } from "@/lib/metas";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -75,7 +76,7 @@ export function SugerirMetas({ plan, anio, kpis, direccionDe, unidadDe, onAplica
   return (
     <div className="mb-3 rounded-md border bg-muted/30 px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[11.5px] text-muted-foreground"><b className="text-foreground">¿Qué meta poner?</b> Te sugerimos una a partir del pronóstico de cada KPI, con la probabilidad de llegar.</div>
+        <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground"><LearnButton k="sugerir_metas" /><span><b className="text-foreground">¿Qué meta poner?</b> Te sugerimos una a partir del pronóstico de cada KPI, con la probabilidad de llegar.</span></div>
         <button type="button" onClick={abrir} className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1 text-[11.5px] font-medium hover:bg-muted">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
           {open ? "Cerrar" : "Sugerir metas"}

@@ -12,6 +12,7 @@
 // ============================================================================
 import type { Etapa, Funnel } from "@/lib/guia/types";
 import { metricaPorNombre } from "@/lib/metricas";
+import { FUNC_KNOW, FUNC_ALIASES } from "@/lib/knowledge-funciones";
 
 export interface KpiPalanca { accion: string; modulo?: string }
 export interface KpiKnow {
@@ -25,6 +26,8 @@ export interface KpiKnow {
   benchmark?: string;
   funnel?: Funnel;
   palancas?: KpiPalanca[];
+  /** "funcion" = lectura/herramienta del dashboard (no una métrica del catálogo). Default: métrica. */
+  tipo?: "metrica" | "funcion";
 }
 export interface DashKnow {
   title: string;
@@ -315,7 +318,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
 };
 
 // ── Guía por KPI. Clave interna estable; el matcheo por título es por alias exacto. ──
-export const KPI_KNOW: Record<string, KpiKnow> = {
+const KPI_BASE: Record<string, KpiKnow> = {
   // ── Demanda y búsqueda ──
   sos: {
     name: "Share of Search",
@@ -1008,6 +1011,9 @@ export const KPI_KNOW: Record<string, KpiKnow> = {
   },
 };
 
+// Base de KPIs + guías de las funcionalidades nuevas (lib/knowledge-funciones.ts).
+export const KPI_KNOW: Record<string, KpiKnow> = { ...KPI_BASE, ...FUNC_KNOW };
+
 // ── Resolución título → clave (exacta por alias normalizado) ────────────────
 // canon: minúsculas, sin tildes, "≥" → ">=", todo lo que no sea [a-z0-9%>=] → espacio.
 function canon(s: string): string {
@@ -1073,7 +1079,7 @@ const ALIASES: Record<string, string[]> = {
 
 const ALIAS_INDEX: Map<string, string> = (() => {
   const m = new Map<string, string>();
-  for (const [key, list] of Object.entries(ALIASES)) for (const a of list) m.set(canon(a), key);
+  for (const [key, list] of [...Object.entries(ALIASES), ...Object.entries(FUNC_ALIASES)]) for (const a of list) m.set(canon(a), key);
   return m;
 })();
 

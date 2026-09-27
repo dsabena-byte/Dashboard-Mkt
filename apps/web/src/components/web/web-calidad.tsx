@@ -3,6 +3,7 @@ import type { ChequeoConsent } from "@/lib/web-consent";
 import { SELLO_LABEL, type CalidadDato, type EcomFunnel, type AiTraffic, type LandingDrop } from "@/lib/web-calidad";
 import type { IaMes } from "@/lib/web-calidad-shared";
 import { SEMAFORO_COLOR } from "@/lib/metas";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // ============================================================================
 // Web (portado de BIP, sep-2026): cierre proyectado del mes, chequeo indirecto de consent,
@@ -74,7 +75,7 @@ export function CierreMesSection({ c }: { c: CierreMes }) {
   const mesTxt = MES[Number(c.mes.slice(5, 7)) - 1] ?? c.mes;
   return (
     <section className="rounded-lg border bg-card p-6">
-      <h3 className="text-sm font-medium text-muted-foreground">Cierre proyectado de {mesTxt}</h3>
+      <h3 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">Cierre proyectado de {mesTxt} <LearnButton k="cierre_mes_web" /></h3>
       <p className="text-xs text-muted-foreground">
         Con {c.diasConDato} de {c.diasMes} días (dato GA4 hasta {c.hasta.slice(8, 10)}/{c.hasta.slice(5, 7)}) y {c.diasRestantes} por delante. Método: {c.metodo}.
         {c.preliminar ? " Preliminar: pocos días del mes o poca historia, sin rango." : " El rango (p10–p90) sale de cómo se equivocó este mismo método en las semanas previas (bootstrap por bloques de 7 días)."}
@@ -98,6 +99,7 @@ export function ConsentCheckSection({ c, criterio, todas }: { c: ChequeoConsent;
     <details className="rounded-lg border bg-card px-4 py-3" style={{ borderLeft: `4px solid ${color}` }} open={c.estado !== "ok"}>
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Medición y consentimiento</span>
+        <LearnButton k="consent" />
         <span className="text-sm font-semibold" style={{ color }}>● {c.titulo}</span>
       </summary>
       <p className="mt-2 text-xs">{c.detalle}</p>
@@ -132,6 +134,7 @@ export function CalidadDatoBanner({ q, periodo }: { q: CalidadDato; periodo: str
     <details className="rounded-lg border bg-card px-4 py-3" style={{ borderLeft: `4px solid ${color}` }}>
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Calidad del dato (GA4)</span>
+        <LearnButton k="calidad_ga4" />
         <span className="text-sm font-semibold" style={{ color }}>● {SELLO_LABEL[q.sello]}</span>
         <span className="text-xs text-muted-foreground">
           {q.fallas ? `${q.fallas} punto${q.fallas > 1 ? "s" : ""} a corregir` : ""}{q.fallas && q.avisos ? " · " : ""}{q.avisos ? `${q.avisos} a revisar` : ""}{!q.fallas && !q.avisos ? "tracking completo y sin muestreo" : ""} · {periodo} · ver detalle
@@ -197,7 +200,7 @@ export function WebQuickWinsSection({ funnel, ai, iaMensual, drops, sitioDelta, 
     <>
       {funnel && (
         <section className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Embudo de ecommerce</h3>
+          <h3 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">Embudo de ecommerce <LearnButton k="embudo_ecommerce" /></h3>
           <p className="text-xs text-muted-foreground">Usuarios que llegan a cada paso en {periodo} (azul) vs los 28 días previos (gris). La tasa es el % que pasa desde el paso anterior.</p>
           <FunnelBars f={funnel} />
           <div className="mt-3 flex flex-wrap gap-5 text-xs">
@@ -221,7 +224,7 @@ export function WebQuickWinsSection({ funnel, ai, iaMensual, drops, sitioDelta, 
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Tráfico desde asistentes de IA</h3>
+          <h3 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">Tráfico desde asistentes de IA <LearnButton k="trafico_ia" /></h3>
           <p className="text-xs text-muted-foreground">Sesiones que llegan desde ChatGPT, Gemini, Perplexity, Copilot, Claude y otros (fuente de la sesión en GA4).</p>
           {ai ? (
             <>
@@ -246,7 +249,7 @@ export function WebQuickWinsSection({ funnel, ai, iaMensual, drops, sitioDelta, 
         </div>
 
         <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-sm font-medium text-muted-foreground">Páginas de entrada en caída</h3>
+          <h3 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">Páginas de entrada en caída <LearnButton k="landings_caida" /></h3>
           <p className="text-xs text-muted-foreground">Landings que perdieron ≥30% de sesiones vs los 28 días previos y cayeron bastante más que el sitio ({fD(sitioDelta)}).</p>
           {!drops.length ? (
             <p className="mt-3 text-xs text-muted-foreground">{sitioDelta == null ? "Sin datos del período anterior todavía." : "Ninguna página de entrada relevante cayó más que el sitio."}</p>

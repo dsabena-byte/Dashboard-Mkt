@@ -16,6 +16,7 @@ import type { Insights, InsItem, ReportMeta } from "@/lib/insights/types";
 import { recomendacionesDeSenales, recomendacionesDeDiagnostico, unirRecomendaciones } from "@/lib/recomendacion";
 import { RecomendacionesLista } from "./recomendacion-card";
 import { AnotacionesPanel } from "@/components/anotaciones/anotaciones-panel";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const DATA = "#1e40af";
 const INK = "#0f172a";
@@ -67,11 +68,11 @@ function SignalList({ signals, initial = 6 }: { signals: Signal[]; initial?: num
   );
 }
 
-function Section({ n, titulo, desc, children }: { n?: string; titulo: string; desc?: string; children: React.ReactNode }) {
+function Section({ n, titulo, desc, learn, children }: { n?: string; titulo: string; desc?: string; learn?: string; children: React.ReactNode }) {
   return (
     <section className="rounded-lg border bg-white p-4">
       <div className="mb-3">
-        <div className="text-sm font-semibold" style={{ color: INK }}>{n && <span className="text-slate-400">{n} · </span>}{titulo}</div>
+        <div className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: INK }}><span>{n && <span className="text-slate-400">{n} · </span>}{titulo}</span>{learn && <LearnButton k={learn} />}</div>
         {desc && <div className="mt-0.5 text-xs text-slate-500">{desc}</div>}
       </div>
       {children}
@@ -239,7 +240,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
 
       {open && (
         <div className="mt-4 grid gap-4">
-          <Section titulo="Qué hacer ahora" desc="Acciones concretas de las señales y del Diagnóstico IA, en un mismo formato y ordenadas por prioridad (impacto × confianza ÷ esfuerzo). Abrí cada una para ver los pasos, el supuesto del impacto y cómo medirla.">
+          <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, en un mismo formato y ordenadas por prioridad (impacto × confianza ÷ esfuerzo). Abrí cada una para ver los pasos, el supuesto del impacto y cómo medirla.">
             {signals == null ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando las recomendaciones…</div>
             ) : <RecomendacionesLista recs={recs} cargando={loadingDiag} />}

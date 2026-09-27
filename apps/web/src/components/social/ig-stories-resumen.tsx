@@ -1,4 +1,5 @@
 import type { StoriesResumen } from "@/lib/ig-stories";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Resumen de Stories de Instagram (server component, sin estado). Las Stories se capturan cada 6 h
 // mientras están vivas (ig-sync) y se acumulan por máximo → el alcance es un PISO. Barras = mediana de
@@ -15,7 +16,7 @@ export function IgStoriesResumen({ data }: { data: StoriesResumen | null }) {
     <section className="rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold tracking-tight">Stories de Instagram</h3>
+          <h3 className="flex items-center gap-1.5 text-base font-semibold tracking-tight">Stories de Instagram <LearnButton k="stories_ig" /></h3>
           <p className="text-xs text-muted-foreground">
             {nf(data.total)} Stories capturadas desde {data.desde ? `${data.desde.slice(8, 10)}/${data.desde.slice(5, 7)}` : "—"}. Se leen cada 6 h mientras están
             vivas (24 h) y se guarda el máximo visto: el alcance es un piso. No entran en el ER por pieza ni en los formatos.

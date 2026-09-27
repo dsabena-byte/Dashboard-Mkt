@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { FATIGA_CAIDA, FRECUENCIA_MES_ALTA, FATIGA_MIN_IMPR, mesCorto, type FatigaResumen, type FatigaPieza } from "@/lib/pauta-fatiga";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Fatiga creativa por pieza — tab Eficiencia Medios de /performance. Serie MENSUAL por pieza (Meta por
 // permalink, DV360 por creativo) de la tasa (VTR ≥50% en video, CTR en el resto) y la frecuencia.
@@ -34,7 +35,7 @@ export function FatigaSection({ f }: { f: FatigaResumen }) {
   return (
     <section className="mb-6 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">Fatiga creativa por pieza</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">Fatiga creativa por pieza <LearnButton k="fatiga" /></h3>
         <span className="text-[11px] text-muted-foreground">
           {f.evaluadas} piezas al aire en el último mes · {f.sinSerie} con un solo mes (rotan antes de poder medir desgaste) ·{" "}
           <b className="text-foreground">{f.piezas.filter((p) => p.estado === "fatiga").length} con fatiga</b>

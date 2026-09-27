@@ -3,6 +3,7 @@
 import { MODULOS, DASH_HREF, dashLinks } from "../src/lib/guia";
 import { MODULO_TITULO } from "../src/lib/guia/titulos";
 import { DASH_KNOW, KPI_KNOW, kpiKnowFor } from "../src/lib/knowledge";
+import { FUNC_KNOW, FUNC_ALIASES } from "../src/lib/knowledge-funciones";
 
 let fails = 0;
 const check = (ok: boolean, msg: string) => {
@@ -35,6 +36,20 @@ for (const [s, d] of Object.entries(DASH_HREF)) check(validRoutes.has(d.href), `
 
 // Títulos reales de las cards de Drean → guía
 for (const [t, k] of [["Alcance único", "alcance"], ["VTR (≥50%)", "vtr"], ["Inversión", "inversion"], ["Frecuencia", "frecuencia"], ["Clicks", "clicks"], ["Impresiones", "impresiones"], ["Floor Share Lavado", "floor_share"], ["Value share", "share_valor"], ["ROAS", "roas"], ["Cumplimiento CB", "cb"]] as const)
+  check(kpiKnowFor(t)?.key === k, `kpiKnowFor("${t}") → ${kpiKnowFor(t)?.key} (esperado ${k})`);
+
+// Guías de funcionalidades (lib/knowledge-funciones): campos completos, sin "BIP", alias que resuelven
+// a su propia clave (y no pisan alias de KPIs existentes) y títulos reales de las secciones → guía.
+for (const [k, v] of Object.entries(FUNC_KNOW)) {
+  check(KPI_KNOW[k] === v, `FUNC_KNOW.${k}: no quedó fusionada en KPI_KNOW (clave repetida)`);
+  check(Boolean(v.name && v.comoLeer && v.mejorPractica && v.oportunidad && v.marco && v.formula && v.palancas?.length), `FUNC_KNOW.${k}: faltan campos`);
+  check(!/\bBIP\b/.test(JSON.stringify(v)), `FUNC_KNOW.${k}: dice "BIP"`);
+}
+for (const [k, list] of Object.entries(FUNC_ALIASES)) {
+  check(Boolean(FUNC_KNOW[k]), `FUNC_ALIASES.${k}: clave sin guía`);
+  for (const a of list) check(kpiKnowFor(a)?.key === k, `FUNC_ALIASES "${a}" → ${kpiKnowFor(a)?.key} (esperado ${k})`);
+}
+for (const [t, k] of [["Ritmo de inversión", "pacing"], ["Fatiga creativa", "fatiga"], ["Marca vs activación", "marca_activacion"], ["Qué aporta cada medio · MMM-lite", "mmm"], ["Stories de Instagram", "stories_ig"], ["Formatos y horarios propios", "formatos_horarios"], ["Pauta probable de la competencia", "pauta_probable"], ["Core Web Vitals", "cwv"], ["Search Console a fondo", "sc_fondo"], ["Qué hacer ahora", "que_hacer"], ["Armame el tablero", "armame_tablero"], ["Tus umbrales", "umbrales"], ["Calidad del copiloto", "copiloto_calidad"], ["Salud digital de marca", "salud_digital"], ["Cierre proyectado", "prob_meta"]] as const)
   check(kpiKnowFor(t)?.key === k, `kpiKnowFor("${t}") → ${kpiKnowFor(t)?.key} (esperado ${k})`);
 
 console.log(`${MODULOS.length} módulos · ${Object.keys(KPI_KNOW).length} KPIs · ${Object.keys(DASH_KNOW).length} tableros`);

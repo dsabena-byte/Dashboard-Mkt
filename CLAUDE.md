@@ -356,6 +356,14 @@ reporte_existencia/cb_homologos).
   "use client", sirve en server y client), `LearnButton` (🎓; prop opcional **`learnKey`** en `MetaKpiCard`,
   cableado en Redes IG/FB, Plan de Medios y Web), `KnowledgePanel` (drawer, montado una vez en el layout,
   evento `bip:learn`). Todos los tableros tienen HowToRead (Mkt Canal y Contenido desde sep-2026).
+- **🎓 en las funcionalidades nuevas (27-sep-2026):** `lib/knowledge-funciones.ts` (`FUNC_KNOW` + `FUNC_ALIASES`, 38 guías
+  con fórmula/umbrales tal cual el código) se fusiona en `KPI_KNOW`; `tipo: "funcion"` = lectura/herramienta (el panel dice
+  "Qué mide y cómo"; `metricas.test` no exige que esté en el catálogo). LearnButton hace preventDefault → sirve dentro de
+  `<summary>`. Cableado en pronóstico/Shapley/salud de datos, Sugerir metas, Validar Mapa, pacing/fatiga/60:40/moneda/MMM/
+  intensidad, Redes (Stories, formatos, ER comp., pauta probable, temas, FB org vs pago), Web (cierre, consent, calidad GA4,
+  embudo, IA, landings), SEO (salud digital, ESoS, LLMO, keywords, SC a fondo, CTR, auditoría, CWV), "Qué hacer ahora",
+  Mis tableros (Armame, anotaciones, compartir/envío), umbrales y /copiloto. Al sumar una sección nueva: entrada en
+  FUNC_KNOW + alias + `<LearnButton k=…/>` junto al título (guia-integridad lo valida).
 - Acceso: `/guia` está en `ALWAYS_ALLOWED_PATHS` (`lib/dashboard-access.ts`) → visible aunque el usuario
   tenga `dashboard_access` restringido (no expone datos).
 - Copiloto: tool `get_guia` (`lib/chat/tools-guia.ts`, buscar por texto/KPI/tablero o traer por id) en

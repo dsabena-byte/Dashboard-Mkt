@@ -3,6 +3,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import type { Route } from "next";
 import type { Moneda } from "@/lib/moneda";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Selector "Pesos corrientes / Pesos constantes (de <mes>) / USD" para montos (portado de BIP,
 // sep-2026). Persiste en la URL (?moneda=) → el server component convierte y el link se comparte
@@ -33,6 +34,8 @@ export function MonedaSelector({ actual, baseLabel, disponible, notas = [] }: {
   const avisos = notas.filter((n): n is string => !!n);
   return (
     <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1.5">
+      <LearnButton k="moneda_constante" />
       <div role="radiogroup" aria-label="Moneda de los montos" className={`inline-flex flex-wrap rounded-lg border p-0.5 text-xs font-medium ${pending ? "opacity-60" : ""}`}>
         {opts.map((o) => {
           const on = o.v === actual;
@@ -44,6 +47,7 @@ export function MonedaSelector({ actual, baseLabel, disponible, notas = [] }: {
             </button>
           );
         })}
+      </div>
       </div>
       {avisos.map((a, i) => <p key={i} className="max-w-md text-right text-[10.5px] text-amber-700">{a}</p>)}
     </div>

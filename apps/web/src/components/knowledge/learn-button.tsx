@@ -20,7 +20,14 @@ export function LearnButton({
 }) {
   const resolved = k && KPI_KNOW[k] ? { key: k } : kpiKnowFor(title ?? k);
   if (!resolved) return null;
-  const open = () => window.dispatchEvent(new CustomEvent("bip:learn", { detail: { key: resolved.key } }));
+  const funcion = KPI_KNOW[resolved.key]?.tipo === "funcion";
+  // preventDefault + stopPropagation: el botón puede vivir dentro de un <summary> (no pliega/despliega)
+  // o de una card clickeable.
+  const open = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    window.dispatchEvent(new CustomEvent("bip:learn", { detail: { key: resolved.key } }));
+  };
 
   if (variant === "chip") {
     return (
@@ -39,8 +46,8 @@ export function LearnButton({
     <button
       type="button"
       onClick={open}
-      title="Aprendé a leer esta métrica (Proceso Estratégico)"
-      aria-label="Aprendé a leer esta métrica"
+      title={funcion ? "Qué mide, cómo se calcula y cómo leerlo (Proceso Estratégico)" : "Aprendé a leer esta métrica (Proceso Estratégico)"}
+      aria-label={funcion ? "Qué mide y cómo se calcula" : "Aprendé a leer esta métrica"}
       className={`${corner ? "absolute right-2 top-2 " : ""}inline-grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border bg-card p-0 text-[11px] leading-none text-slate-500 shadow-sm transition-colors hover:border-[#1e40af] hover:text-[#1e40af]`}
     >
       🎓

@@ -1,4 +1,5 @@
 import { DIAS, FRANJAS, type BestTimes, type FormatoRow } from "@/lib/redes-contenido";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Formatos y horarios del contenido PROPIO (server component). Solo posts maduros (IG 7+ días, FB 60+
 // días), orgánicos (FB pautado afuera) y sin Stories. Índice 100 = mediana de la cuenta; el horario se
@@ -17,7 +18,7 @@ export function RedesContenidoPanel({ formatos, horarios }: { formatos: FormatoR
   const mejor = horarios.mejor;
   return (
     <section className="rounded-lg border bg-card p-4">
-      <h3 className="text-base font-semibold tracking-tight">Formatos y horarios propios</h3>
+      <h3 className="flex items-center gap-1.5 text-base font-semibold tracking-tight">Formatos y horarios propios <LearnButton k="formatos_horarios" /></h3>
       <p className="text-xs text-muted-foreground">
         Medianas de posts orgánicos MADUROS (Instagram 7+ días, Facebook 60+ días: el alcance es lifetime y madura), sin Stories y sin
         posts pautados. Índice 100 = mediana de la cuenta en esa red.

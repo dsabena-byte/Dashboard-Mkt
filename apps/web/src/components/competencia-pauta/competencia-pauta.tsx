@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import type { BrandAds, BrandSummary, CompetitorAd } from "@/lib/ad-library-shared";
 import { AD_LIBRARY_CAP, type AdEngagement, type BrandIntensity, type SustainedAd } from "@/lib/ad-intensity";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Pauta de la competencia (cliente) — portado de BIP (sep-2026): resumen por marca + grilla de
 // creativos filtrable. Sistema visual de Drean: marca propia en azul #1e40af; ámbar solo para estado.
@@ -55,7 +56,7 @@ export function CompetenciaPauta({ brands, summaries, updatedAt, intensity = [],
       {intensity.length > 0 && (
         <div className="grid gap-3 lg:grid-cols-2">
           <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <h3 className="text-sm font-semibold">Índice de intensidad de pauta</h3>
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold">Índice de intensidad de pauta <LearnButton k="intensidad_pauta" /></h3>
             <p className="mb-3 text-[11px] text-muted-foreground">Estimado con lo público (avisos, mensajes, lanzamientos, días al aire, plataformas). 100 = la marca que más pauta.</p>
             <div className="space-y-2">
               {intensity.map((b) => (

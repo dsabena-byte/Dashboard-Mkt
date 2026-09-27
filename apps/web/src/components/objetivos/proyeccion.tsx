@@ -5,6 +5,7 @@ import { SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
 import type { PronosticoMeta } from "@/lib/stats/meta";
 import type { ProyeccionAgregada, PorQue } from "@/lib/objetivos-pronostico";
 import type { KpiUnit } from "@/lib/objetivos-kpis";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const SEM_BG: Record<Semaforo, string> = {
   verde: "rgba(22,163,74,.12)",
@@ -67,6 +68,7 @@ export function ProyeccionObjetivo({ pr }: { pr?: ProyeccionAgregada }) {
       ) : (
         <span title={pr.motivo ?? undefined} className="text-muted-foreground/70">Cierre proyectado: dato insuficiente</span>
       )}
+      <LearnButton k="prob_meta" />
     </div>
   );
 }

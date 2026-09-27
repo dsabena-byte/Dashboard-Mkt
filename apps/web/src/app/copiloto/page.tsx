@@ -1,6 +1,7 @@
 import { cargarRevision } from "@/lib/chat/feedback-server";
 import { peoresRespuestas, resumenFeedback } from "@/lib/chat/verified";
 import { CopilotoCalidad } from "@/components/copiloto/copiloto-calidad";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Calidad del copiloto (portado de BIP, sep-2026; en Drean no hay staff: la revisa quien tiene acceso a
 // /copiloto por dashboard_access — el middleware ya redirige a los restringidos). Muestra los 👍/👎 de
@@ -20,7 +21,7 @@ export default async function CopilotoPage() {
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Calidad del copiloto</h2>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">Calidad del copiloto <LearnButton k="copiloto_calidad" /></h2>
         <p className="text-sm text-muted-foreground">
           Lo que el equipo calificó en “Preguntale a tus datos”. Revisá las peores respuestas y verificá las buenas (o corregidas): el copiloto las usa como ejemplo de método en preguntas parecidas, y siempre vuelve a consultar los números.
         </p>

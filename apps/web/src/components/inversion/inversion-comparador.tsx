@@ -17,6 +17,7 @@ import {
   type Clasif, type Moneda, type Periodo,
 } from "@/lib/bgt-dashboard";
 import { resolverContexto, factorMes, mesLabel as mesLabelMon, type IndiceMes } from "@/lib/moneda";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 const COLOR_A = "#1e40af"; // REAL / A — azul (protagonista)
 const COLOR_B = "#94a3b8"; // comparación / B — gris pizarra
@@ -197,7 +198,7 @@ export function InversionComparador({ rows: rowsRaw, facturacion, year, indices 
           )}
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Moneda</span>
+          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Moneda <LearnButton k="moneda_constante" /></span>
           <div className="flex rounded-lg border p-0.5">
             {(["ars", "arsConst", "usd"] as const).map((m) => (
               <button key={m} type="button" onClick={() => setMonedaUI(m)} disabled={m === "arsConst" && !hayIpc}

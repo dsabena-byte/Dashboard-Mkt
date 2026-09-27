@@ -9,6 +9,7 @@ import { SheetAdder } from "./sheet-adder";
 import { DashboardRuntime, usePrepared } from "./runtime";
 import { WidgetEditor } from "./editor";
 import { Modal, box, lbl } from "./fields";
+import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Builder de un tablero de planilla (motor v2): planillas del tablero, tablero automático,
 // plantillas nativas, "Armalo con IA", lienzo de 4 columnas con drag & drop y el editor de cada
@@ -407,7 +408,7 @@ function NlCard({ replace: replace0, canReplace, onRun }: { replace: boolean; ca
   }
   return (
     <div className="card" style={{ margin: 0, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ fontSize: 15 }}>Armame el tablero</b>
+      <b style={{ fontSize: 15, display: "inline-flex", alignItems: "center", gap: 6 }}>Armame el tablero <LearnButton k="armame_tablero" /></b>
       <p className="hint" style={{ margin: 0 }}>Contame qué querés ver y lo armo con tus planillas y los datos del dashboard (Plan de Medios, Web, Redes y Seguimiento, según tus permisos). Después lo editás como quieras.</p>
       <form style={{ display: "flex", gap: 8, flexWrap: "wrap" }} onSubmit={go}>
         <input aria-label="¿Qué querés ver?" style={{ ...box, flex: "1 1 320px", fontSize: 14, padding: "10px 12px" }} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Ej.: “inversión por medio y por mes, con el CPM”" disabled={busy} />
