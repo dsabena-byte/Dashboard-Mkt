@@ -1,0 +1,4 @@
+[{"moneda":"USD","casa":"bolsa","compra":1090,"venta":1100,"fechaActualizacion":"2026-01-02T15:00:00.000Z","fecha":"2026-01-02"},
+ {"moneda":"USD","casa":"bolsa","compra":1100,"venta":1120,"fecha":"2026-01-05"},
+ {"moneda":"USD","casa":"bolsa","compra":null,"venta":null,"fecha":"2026-01-06"},
+ {"moneda":"USD","casa":"bolsa","compra":1150,"venta":1160,"fecha":"2026-02-02"}]

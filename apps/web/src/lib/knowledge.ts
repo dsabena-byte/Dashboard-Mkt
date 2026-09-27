@@ -11,6 +11,7 @@
 // con unos pocos patrones anclados para títulos con marca ("Búsquedas <marca> / mes").
 // ============================================================================
 import type { Etapa, Funnel } from "@/lib/guia/types";
+import { metricaPorNombre } from "@/lib/metricas";
 
 export interface KpiPalanca { accion: string; modulo?: string }
 export interface KpiKnow {
@@ -1103,6 +1104,9 @@ export function kpiKnowFor(title: string | undefined | null): { key: string; kno
   for (const c of cands) {
     for (const [re, key] of PATTERNS) if (re.test(c) && KPI_KNOW[key]) return { key, know: KPI_KNOW[key] };
   }
+  // Respaldo: catálogo de métricas único (lib/metricas, nombres exactos del Seguimiento + sinónimos).
+  const m = metricaPorNombre(title);
+  if (m?.know && KPI_KNOW[m.know]) return { key: m.know, know: KPI_KNOW[m.know]! };
   return null;
 }
 

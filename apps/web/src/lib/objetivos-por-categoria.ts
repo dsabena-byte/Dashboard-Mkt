@@ -9,7 +9,7 @@ import { getSeguimientoKpis, type KpiSeguimiento } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
 import { cumplimientoPct } from "./metas";
 import { CATEGORIAS_CORE } from "./categorias";
-import { getObjetivoMetas, getSeguimientoObjetivos, makeCatRealMeta, ponderado, type ObjetivoRollup, type SeguimientoObjetivos } from "./objetivos-rollup";
+import { enriquecerSeguimiento, getObjetivoMetas, getSeguimientoObjetivos, makeCatRealMeta, ponderado, type ObjetivoRollup, type SeguimientoObjetivos } from "./objetivos-rollup";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const cap = (v: number | null): number | null => (v == null ? null : Math.min(v, 100));
@@ -51,6 +51,8 @@ export async function getSeguimientoPorCategoria(anio: number, skipTrade = false
       return {
         plan: k.plan, kpi: k.kpi, medida: k.medida, unit: k.unit, tipo: k.tipo, realM, metaM,
         direccion: k.direccion, umbralVerde: k.umbralVerde, umbralAmarillo: k.umbralAmarillo,
+        // Historia por categoría no existe; para tasas "generales" (mismo valor a las 3) sí aplica.
+        histM: k.realCatM || k.metaCatM ? null : k.tipo === "rate" ? k.histM ?? null : null,
       };
     });
 
@@ -99,10 +101,10 @@ export async function getSeguimientoPorCategoria(anio: number, skipTrade = false
     const smYtd = ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.cumplYtd })));
     const smMetaNeg = ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.metaNegMes }))).val;
     const smSerie = Array.from({ length: 12 }, (_, m) => ponderado(objetivos.map((o) => ({ w: o.pesoEstrategico, c: o.cumplSerie[m] ?? null }))).val);
-    const seg: SeguimientoObjetivos = {
+    const seg: SeguimientoObjetivos = enriquecerSeguimiento({
       disponible: true, refMes, waveKantar: null, objetivos,
       saludMarca: { cumplMes: smMes.val, cumplYtd: smYtd.val, metaNegMes: smMetaNeg, cumplSerie: smSerie, porCategoria: [] },
-    };
+    }, mapa, kpisCat, kpiCumpl, refIdx, `drean-${cat}`);
     return { categoria: cat, seg, kpis: kpisCat.filter((k) => mapeados.has(k.kpi)) };
   });
 

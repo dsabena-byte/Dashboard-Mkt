@@ -11,6 +11,8 @@ import Link from "next/link";
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
 import { generalPonderado } from "@/lib/categorias";
 import type { SeguimientoObjetivos, ObjetivoRollup, ObjAporte, CatDesglose } from "@/lib/objetivos-rollup";
+import { ProyeccionObjetivo } from "./proyeccion";
+import { ContribucionObjetivo, ContribucionGlobalView } from "./contribucion";
 
 const UMBRAL = { umbralVerde: 100, umbralAmarillo: 90 };
 const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(0)}%`);
@@ -85,7 +87,7 @@ function AporteRow({ a }: { a: ObjAporte }) {
 }
 
 const TOP_APORTES = 3;
-function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
+function ObjetivoCard({ o, refMes }: { o: ObjetivoRollup; refMes: string }) {
   const semMes = semOf(o.cumplMes);
   const colorMes = SEMAFORO_COLOR[semMes];
   const res = resultadoAcum(o.metaNegMes, o.cumplYtd);
@@ -123,6 +125,7 @@ function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
       {o.cobertura < 99.5 && (
         <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>
       )}
+      {o.proyeccion && <div className="mt-1.5"><ProyeccionObjetivo pr={o.proyeccion} /></div>}
       <PorCategoria items={o.porCategoria} />
       <div className="mt-2.5 border-t pt-2">
         <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70">Aporte de KPIs · peso × cumpl</div>
@@ -141,6 +144,7 @@ function ObjetivoCard({ o }: { o: ObjetivoRollup }) {
           )}
         </div>
       </div>
+      <ContribucionObjetivo c={o.contribucion} v={o.variacion} refMes={refMes} />
     </div>
   );
 }
@@ -187,12 +191,14 @@ export function ObjetivosHero({ data }: { data: SeguimientoObjetivos }) {
           </div>
         </div>
         <div className="mt-3"><Barra v={sm.cumplYtd} /></div>
+        {sm.proyeccion && <div className="mt-2"><ProyeccionObjetivo pr={sm.proyeccion} /></div>}
         <div className="max-w-md"><PorCategoria items={sm.porCategoria} /></div>
+        <ContribucionGlobalView c={sm.contribucion} />
       </div>
 
       {/* Objetivos que la componen */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {data.objetivos.map((o) => <ObjetivoCard key={o.id} o={o} />)}
+        {data.objetivos.map((o) => <ObjetivoCard key={o.id} o={o} refMes={data.refMes} />)}
       </div>
     </div>
   );

@@ -7,6 +7,8 @@
 
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
 import type { KpiSeguimiento, KpiUnit } from "@/lib/objetivos-kpis";
+import type { KpiPronostico } from "@/lib/objetivos-rollup";
+import { ProyeccionKpi, PorQueLinea } from "./proyeccion";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const PLAN_ORDER = ["Pauta Mkt", "Web / Ecommerce", "Instagram", "Cuadros Básicos", "Floor Share", "Mercado y competencia"];
@@ -81,7 +83,7 @@ function Chip({ actual, meta, direccion, umbralVerde, umbralAmarillo }: {
   );
 }
 
-function Group({ plan, kpis }: { plan: string; kpis: KpiSeguimiento[] }) {
+function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento[]; pronosticos?: Record<string, KpiPronostico> }) {
   const counts = kpis.reduce(
     (o, k) => {
       const ri = lastIdx(k.realM);
@@ -102,13 +104,14 @@ function Group({ plan, kpis }: { plan: string; kpis: KpiSeguimiento[] }) {
         </span>
       </div>
       <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-        <table className="w-full min-w-[860px] border-collapse text-[13px]">
+        <table className="w-full min-w-[980px] border-collapse text-[13px]">
           <thead>
             <tr className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-2.5 text-left font-semibold" rowSpan={2}>KPI</th>
               <th className="px-3 py-2.5 text-left font-semibold" rowSpan={2}>Mes</th>
               <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Desvío del mes</th>
               <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Acumulado YTD</th>
+              <th className="border-l px-3 py-2.5 text-right font-semibold" rowSpan={2} title="Cierre del año proyectado (mediana y rango p10–p90 de 2.000 simulaciones) y probabilidad de llegar a la meta anual">Cierre proyectado</th>
               <th className="border-l px-3 py-2.5 text-center font-semibold" rowSpan={2}>Evolución (real vs meta)</th>
             </tr>
             <tr className="text-[9px] uppercase tracking-wide text-muted-foreground/70">
@@ -133,6 +136,7 @@ function Group({ plan, kpis }: { plan: string; kpis: KpiSeguimiento[] }) {
                   <td className="px-3 py-2.5 text-left">
                     <span className="font-semibold">{k.kpi}</span>
                     <span className="block text-[11px] font-normal text-muted-foreground/80">{k.medida}</span>
+                    <PorQueLinea pq={pronosticos?.[k.kpi]?.porQue} />
                   </td>
                   <td className="px-3 py-2.5 text-left tabular-nums text-muted-foreground">{ri >= 0 ? MES[ri] : "—"}</td>
                   <td className="border-l px-3 py-2.5 text-right font-semibold tabular-nums">{fmt(realMes, k.unit)}</td>
@@ -141,6 +145,7 @@ function Group({ plan, kpis }: { plan: string; kpis: KpiSeguimiento[] }) {
                   <td className="border-l px-3 py-2.5 text-right font-semibold tabular-nums">{fmt(realYtd, k.unit)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{fmt(metaYtd, k.unit)}</td>
                   <td className="px-3 py-2.5 text-right"><Chip actual={realYtd} meta={metaYtd} direccion={k.direccion} umbralVerde={k.umbralVerde} umbralAmarillo={k.umbralAmarillo} /></td>
+                  <td className="border-l px-3 py-2 text-right text-xs">{pronosticos ? <ProyeccionKpi pr={pronosticos[k.kpi]?.pronostico} unit={k.unit} /> : <span className="text-muted-foreground/60">—</span>}</td>
                   <td className="border-l px-3 py-2"><div className="flex justify-center"><Spark realM={k.realM} metaM={k.metaM} /></div></td>
                 </tr>
               );
@@ -152,12 +157,12 @@ function Group({ plan, kpis }: { plan: string; kpis: KpiSeguimiento[] }) {
   );
 }
 
-export function KpiScorecard({ kpis }: { kpis: KpiSeguimiento[] }) {
+export function KpiScorecard({ kpis, pronosticos }: { kpis: KpiSeguimiento[]; pronosticos?: Record<string, KpiPronostico> }) {
   const planes = PLAN_ORDER.filter((p) => kpis.some((k) => k.plan === p));
   return (
     <div>
       {planes.map((plan) => (
-        <Group key={plan} plan={plan} kpis={kpis.filter((k) => k.plan === plan)} />
+        <Group key={plan} plan={plan} kpis={kpis.filter((k) => k.plan === plan)} pronosticos={pronosticos} />
       ))}
       <div className="mt-5 flex flex-wrap items-center gap-4 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="inline-block h-0 w-4 border-t-2" style={{ borderColor: "#1e40af" }} /> Real</span>
@@ -167,6 +172,11 @@ export function KpiScorecard({ kpis }: { kpis: KpiSeguimiento[] }) {
         <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: SEMAFORO_COLOR.amarillo }} /> En riesgo (90–99%)</span>
         <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: SEMAFORO_COLOR.rojo }} /> Fuera de meta (&lt;90%)</span>
       </div>
+      {pronosticos && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          <b className="text-foreground">Cierre proyectado:</b> pronóstico del resto del año con la historia de cada KPI (estacionalidad del año anterior si hay 13+ meses; si no, suavizado exponencial) y 2.000 simulaciones con sus errores históricos → rango p10–p90 y probabilidad de llegar a la meta anual (≥70% probable · 30–70% en riesgo · &lt;30% improbable). Con menos de 6 meses de dato o una serie muy variable se muestra &ldquo;dato insuficiente&rdquo;.
+        </p>
+      )}
     </div>
   );
 }

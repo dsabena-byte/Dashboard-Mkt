@@ -2,6 +2,7 @@ import { getSeguimientoCompleto } from "@/lib/objetivos-por-categoria";
 import { SeguimientoView } from "@/components/objetivos/seguimiento-view";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { DataHealth } from "@/components/data-health";
 
 // Seguimiento Objetivos = Estado de KPIs (Mapa Estratégico → cumplimiento por
 // categoría). El viejo tab "OKR Mkt" se removió: Obj.1 (presupuesto) vive en
@@ -26,6 +27,7 @@ export default async function OverviewPage() {
           Cumplimiento de Objetivos y KPIs vs sus metas mensuales — General o por categoría (selector), desvío del mes y acumulado del año.
         </p>
       </header>
+      <DataHealth dash="overview" className="-mt-2" />
       <HowToRead slug="overview" />
       <DashTabBar />
       <SeguimientoView data={seg} />

@@ -40,6 +40,8 @@ import type { MetaKpiData } from "@/lib/metas-server";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { esMedioApi } from "@/lib/pauta-medios";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { MarcaActivacionSection } from "@/components/pauta/marca-activacion";
+import { splitMarcaActivacion } from "@/lib/marca-activacion";
 import { computePacing } from "@/lib/pauta-pacing";
 import { fatigaPiezas } from "@/lib/pauta-fatiga";
 import { PacingSection } from "@/components/pauta/pacing-section";
@@ -332,7 +334,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], bgtPauta = null, initialTab }: { bgtPauta?: { versiones: (string | null)[]; valores: (number | null)[] } | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], bgtPauta = null, initialTab, headerExtra }: { /** Server: selector de moneda + salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; bgtPauta?: { versiones: (string | null)[]; valores: (number | null)[] } | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
   // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
   // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
   // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
@@ -651,6 +653,8 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
   }, [byMedio, dv360Conv, metaPaidF, gadsOmdF]);
   const catModel = useMemo(() => buildDimModel(rows, dv360Conv, metaPaidF, gadsOmdF, "categoria", dvGapMedios), [rows, dv360Conv, metaPaidF, gadsOmdF, dvGapMedios]);
   const rolModel = useMemo(() => buildDimModel(rows, dv360Conv, metaPaidF, gadsOmdF, "rol", dvGapMedios), [rows, dv360Conv, metaPaidF, gadsOmdF, dvGapMedios]);
+  // Marca vs activación (IPA 60:40) sobre la inversión por rol (mismo modelo y filtros que la tabla).
+  const marcaAct = useMemo(() => splitMarcaActivacion(rolModel.items.map((i) => ({ nombre: i.nombre, inversion: i.inversion }))), [rolModel]);
   // Mejores valores por columna (para semáforos best-in-class en las tablas de detalle).
   const minPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.min(...f) : 0; };
   const maxPos = (xs: number[]) => { const f = xs.filter((x) => x > 0); return f.length ? Math.max(...f) : 0; };
@@ -1220,6 +1224,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
             </div>
           )}
         </div>
+        {headerExtra}
       </header>
       <HowToRead slug="performance" />
 
@@ -1609,6 +1614,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
                 <DimTable titulo="Por categoría" col1="Categoría" model={catModel} money={dvMoney} />
                 <DimTable titulo="Por rol de comunicación" col1="Rol" model={rolModel} money={dvMoney} />
               </div>
+              {marcaAct && <div className="mt-3"><MarcaActivacionSection s={marcaAct} money={dvMoney} /></div>}
               <p className="mb-3 mt-1 text-[10px] text-muted-foreground/70">
                 Misma estructura que la tabla maestra (general + efectivo). Fuente: DV360 + Meta automáticos. Categoría/rol se derivan del
                 Line Item (DV360) y del tipo de compra (Meta/TikTok). Alcance es aproximado (solapamiento + reach por canal no disponible por
