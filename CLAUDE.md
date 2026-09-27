@@ -752,8 +752,8 @@ reporte_existencia/cb_homologos).
   programado = Optimize+). ML, Tiendanube y TikTok van como **"muy pronto"** (sin credenciales/app aprobada). En `#seguridad` hay
   una franja de **badges honestos** (`.tbadges`: APIs oficiales de Google/Meta, OAuth 2.0, solo lectura de métricas, revocable,
   cifrado, Vercel+Supabase, no se venden). **Regla:** sin logos de Google/Meta ni "verificada/partner/certified" mientras la
-  verificación OAuth de Google y el App Review de Meta sigan pendientes; los badges "App verificada por Google" / "App aprobada
-  por Meta" ya están **comentados** con `<!-- ACTIVAR cuando … -->` en ambos archivos: descomentar solo cuando se aprueben.
+  verificación OAuth de Google y el App Review de Meta sigan pendientes; **"App verificada por Google" ACTIVO desde 27-sep-2026** (Verification Center:
+  marca + acceso a datos verificados); "App aprobada por Meta" sigue **comentado** (`<!-- ACTIVAR cuando … -->`) hasta el App Review.
   "Solo lectura" se dice de las MÉTRICAS: BIP ya modera comentarios de IG a pedido del usuario (no es 100% read-only).
 
 - **Generador de Contenido — Calendario + publicación IG/FB (dic-2026):** `/contenido` →
