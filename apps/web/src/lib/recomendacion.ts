@@ -72,6 +72,28 @@ export function calcPrioridad(impactoNivel: number, confianza: NivelConfianza, e
   return { score, nivel: nivelPrioridad(score) };
 }
 
+// ── Textos de ayuda (lenguaje simple; la fórmula va al final, entre paréntesis) ──
+export const PRIORIDAD_TEXTO: Record<NivelPrioridad, string> = {
+  critica: "Hacela primero",
+  alta: "Conviene hacerla pronto",
+  media: "Planificala",
+  baja: "Cuando haya tiempo",
+};
+export const CONFIANZA_AYUDA: Record<NivelConfianza, string> = {
+  alta: "Confianza alta: sale de un dato medido en tus fuentes, comparado con tu propia historia.",
+  media: "Confianza media: el dato es tuyo, pero el impacto es una estimación con supuestos.",
+  baja: "Confianza baja: es una hipótesis (de la IA o de cruzar fuentes distintas); validala antes de invertir.",
+};
+export const ESFUERZO_AYUDA: Record<NivelEsfuerzo, string> = {
+  1: "Esfuerzo bajo: se resuelve en horas (un ajuste en una plataforma o en un texto).",
+  2: "Esfuerzo medio: lleva días (coordinar con la agencia, producir o editar contenido).",
+  3: "Esfuerzo alto: lleva semanas (desarrollo, producción grande o un proyecto nuevo).",
+};
+/** Tooltip de la prioridad: qué significa en palabras y, al final, cómo se calcula. */
+export function explicarPrioridad(r: Pick<Recomendacion, "prioridad" | "impactoNivel" | "confianza" | "esfuerzo">): string {
+  return `${PRIORIDAD_TEXTO[r.prioridad.nivel]}. Combina cuánto mueve el resultado (impacto ${r.impactoNivel} de 5), qué tan seguro es el dato (confianza ${r.confianza.nivel}) y cuánto trabajo lleva (esfuerzo ${r.esfuerzo.label.toLowerCase()}). Cálculo: impacto × confianza ÷ esfuerzo = ${r.prioridad.score.toLocaleString("es-AR", { maximumFractionDigits: 2 })}.`;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const canon = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9%]+/g, " ").trim();
 /** Hash corto y estable (djb2) para ids de recomendación. */

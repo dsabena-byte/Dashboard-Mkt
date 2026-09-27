@@ -27,6 +27,9 @@ type Msg = {
 
 const AZUL = "#1e40af";
 
+/** Pregunta pedida desde afuera ("Guiame paso a paso", evento `copiloto:ask`): abre el chat y la envía. */
+export type AskRequest = { id: number; prompt: string };
+
 function Table({ t }: { t: TableSpec }) {
   return (
     <div className="my-2 overflow-x-auto">
@@ -120,7 +123,7 @@ function Steps({ steps, live }: { steps: ChatStep[]; live?: boolean }) {
   );
 }
 
-export function DataChat({ pathname, ctx }: { pathname: string; ctx: DashContexto }) {
+export function DataChat({ pathname, ctx, ask }: { pathname: string; ctx: DashContexto; ask?: AskRequest | null }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -131,10 +134,21 @@ export function DataChat({ pathname, ctx }: { pathname: string; ctx: DashContext
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, busy, liveSteps]);
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  async function send(text: string) {
+  // "Guiame paso a paso": conversación nueva con la pregunta armada (corta lo que estuviera en curso).
+  const lastAsk = useRef<number | null>(null);
+  useEffect(() => {
+    if (!ask || lastAsk.current === ask.id) return;
+    lastAsk.current = ask.id;
+    setOpen(true);
+    void send(ask.prompt, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ask?.id]);
+
+  async function send(text: string, fresh = false) {
     const q = text.trim();
-    if (!q || busy) return;
-    const next: Msg[] = [...msgs, { role: "user", content: q }];
+    if (!q || (busy && !fresh)) return;
+    if (fresh) abortRef.current?.abort();
+    const next: Msg[] = [...(fresh ? [] : msgs), { role: "user", content: q }];
     setMsgs(next);
     setInput("");
     setBusy(true);

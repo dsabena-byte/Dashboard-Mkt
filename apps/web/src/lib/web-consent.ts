@@ -31,9 +31,9 @@ const mediana = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); if 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 const ACCIONES_BASE = [
-  "Revisá que el etiquetado automático (gclid) esté activo en Google Ads y que GA4 esté vinculado.",
-  "Si usás un banner de cookies, pasá Consent Mode a AVANZADO (manda pings sin cookies y GA4 modela lo que falta).",
-  "Probá las landings de tus campañas con Tag Assistant: el tag de GA4 tiene que dispararse antes del banner.",
+  "Pedile a la agencia que confirme en Google Ads que cada clic lleva su \"marca\" de seguimiento (etiquetado automático o gclid) y que Google Ads está conectado con Analytics (GA4).",
+  "Si el sitio tiene el cartel de cookies, pedile al desarrollador que lo configure para que Analytics igual pueda estimar las visitas de quien no acepta (Consent Mode \"avanzado\").",
+  "Pedile al desarrollador que pruebe las páginas a las que llegan los anuncios con la herramienta gratuita de Google (Tag Assistant): el código de Analytics tiene que cargar aunque la persona todavía no haya respondido el cartel de cookies.",
 ];
 
 /**
@@ -55,12 +55,12 @@ export function chequeoConsent(clicksPorMes: Record<string, number>, sesionesPor
   const r = ultimo.ratio!;
   if (ratioPrevio != null && ratioPrevio >= 0.6 && r < ratioPrevio * 0.7) {
     return { estado: "caida", meses, ultimo, ratioPrevio, titulo: "Cayó la parte de tus clicks que GA4 registra",
-      detalle: `En ${ultimo.mes} GA4 registró ${pct(r)} de los clicks de Google Ads (antes ~${pct(ratioPrevio)}). Con la pauta estable, eso suele ser un cambio en el sitio: banner de cookies nuevo, Consent Mode básico o el tag roto en alguna landing.`,
+      detalle: `En ${ultimo.mes} GA4 registró ${pct(r)} de los clicks de Google Ads (antes ~${pct(ratioPrevio)}). Con la pauta estable, eso suele ser un cambio en el sitio: un cartel de cookies nuevo, uno configurado para no medir a quien no acepta (Consent Mode básico) o el código de medición roto en alguna página de llegada.`,
       acciones: ACCIONES_BASE };
   }
   if (r < 0.5) {
     return { estado: "perdida_alta", meses, ultimo, ratioPrevio, titulo: "GA4 ve menos de la mitad de tus clicks",
-      detalle: `En ${ultimo.mes} GA4 registró ${pct(r)} de los clicks de Google Ads. Parte de tu tráfico no se está midiendo (Consent Mode básico, banner que bloquea GA4, gclid apagado o landings sin tag) → conversión e ingresos por canal quedan subestimados.`,
+      detalle: `En ${ultimo.mes} GA4 registró ${pct(r)} de los clicks de Google Ads. Parte de tu tráfico no se está midiendo (el cartel de cookies bloquea la medición, los clics no llevan su marca de seguimiento —gclid— o alguna página de llegada no tiene el código de Analytics) → las ventas y conversiones que ves por canal quedan por debajo de las reales.`,
       acciones: ACCIONES_BASE };
   }
   if (r < 0.75) {
