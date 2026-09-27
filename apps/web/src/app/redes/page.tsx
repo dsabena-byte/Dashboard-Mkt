@@ -48,6 +48,8 @@ import { RedesContenidoPanel } from "@/components/social/redes-contenido-panel";
 import { CompetenciaDiferenciales } from "@/components/social/competencia-diferenciales";
 import { getIgStoriesResumen, getOwnContentPosts } from "@/lib/redes-extra-queries";
 import { getPostSnapshots } from "@/lib/post-snapshots";
+import { attachIgSentiment } from "@/lib/post-sentiment-server";
+import { toPostSentiment } from "@/lib/post-sentiment";
 import { formatBenchmarks, bestTimes } from "@/lib/redes-contenido";
 import { comparableEr, erComparablePorMarca, trendMaduro, probablePauta, pautaPorMarca, ER_METODO_TXT, ER_METODO_EDAD_TXT } from "@/lib/redes-competencia";
 import { temasPorMarca, temaGaps } from "@/lib/redes-temas";
@@ -117,10 +119,12 @@ export default async function RedesPage({ searchParams }: PageProps) {
   ]);
 
   // Secciones nuevas (sep-2026): lecturas livianas e independientes → en paralelo y fail-safe.
-  const [storiesResumen, ownContent, snaps7] = await Promise.all([
+  const [storiesResumen, ownContent, snaps7, igTopPosts] = await Promise.all([
     safe(getIgStoriesResumen(range), null, "getIgStoriesResumen"),
     safe(getOwnContentPosts(range), [], "getOwnContentPosts"),
     safe(getPostSnapshots({ edad: 7 }), [], "getPostSnapshots"),
+    // Sentimiento de comentarios por post (social_posts, join por shortcode).
+    safe(attachIgSentiment(igOrganic.topPosts, range), igOrganic.topPosts, "attachIgSentiment"),
   ]);
   const mercado = await mercadoP;
   const sosSerie = mercado?.series["Share of Search"]?.realM ?? [];
@@ -180,6 +184,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       pilar: p.pilar,
       thumbnail_url: p.thumbnail_url,
       copy: p.copy,
+      sentiment: toPostSentiment(p),
     }));
 
   const hasData = posts.length > 0;
@@ -262,7 +267,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         <>
 
       {/* ===== Instagram orgánico (Drean mide SOLO IG) ===== */}
-      <IgOrganicSection data={igOrganic} metaAlc={metaAlc} metaEng={metaEng} />
+      <IgOrganicSection data={{ ...igOrganic, topPosts: igTopPosts }} metaAlc={metaAlc} metaEng={metaEng} />
 
       {/* Stories de IG acumuladas (alcance = piso; tasas de salida/respuesta desde sep-2026) */}
       <IgStoriesResumen data={storiesResumen} />

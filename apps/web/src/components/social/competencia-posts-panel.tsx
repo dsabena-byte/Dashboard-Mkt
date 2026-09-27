@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PostSentimentBlock } from "@/components/social/post-sentiment";
+import type { PostSentiment } from "@/lib/post-sentiment";
 
 // Cuántos posteos se muestran por tanda (botón "Ver más" para seguir).
 const PAGE_SIZE = 18;
@@ -24,6 +26,7 @@ export interface CompetenciaPost {
   pilar: string | null;
   thumbnail_url?: string | null;
   copy?: string | null;
+  sentiment?: PostSentiment | null; // comentarios analizados (social_posts)
 }
 
 // Etiquetas/colores locales (no importamos del lib server-only).
@@ -170,7 +173,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
                 href={p.url}
                 target="_blank"
                 rel="noopener"
-                className="group block rounded-md border bg-card p-2 transition-colors hover:bg-muted/50"
+                className="group flex flex-col rounded-md border bg-card p-2 transition-colors hover:bg-muted/50"
                 style={{ borderLeft: `3px solid ${marcaColor(p.marca)}` }}
               >
                 {p.thumbnail_url ? (
@@ -183,7 +186,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
                   <span className="rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">{TIPO_LABEL[tipoBucket(p.content_type)]}</span>
                   <span className="text-[9px] text-muted-foreground">{fmtFecha(p.fecha)}</span>
                 </div>
-                {p.pilar && <span className="mb-1 inline-block rounded-full bg-secondary px-1.5 py-0.5 text-[9px]">{p.pilar}</span>}
+                {p.pilar && <span className="mb-1 inline-block self-start rounded-full bg-secondary px-1.5 py-0.5 text-[9px]">{p.pilar}</span>}
                 <p className="line-clamp-2 text-[10px] text-foreground" title={p.copy ?? ""}>
                   {p.copy || <span className="italic text-muted-foreground">Sin texto</span>}
                 </p>
@@ -193,6 +196,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
                   <span>❤ {p.likes != null && p.likes >= 0 ? fmtK(p.likes) : "—"}</span>
                   <span>💬 {fmtK(p.comentarios ?? 0)}</span>
                 </div>
+                <PostSentimentBlock sentiment={p.sentiment} comentarios={p.comentarios} />
               </a>
             );
           })}

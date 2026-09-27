@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
+import { AUTH_CALLBACK_PATH, PASSWORD_PATH, PUBLIC_AUTH_PATHS } from "@/lib/auth/safe-next";
 
-// Rutas públicas (no requieren login)
-const PUBLIC_PATHS = ["/login"];
+// Rutas públicas (no requieren login): /login y /login/recuperar. OJO: /login/nueva-clave NO es
+// pública (requiere sesión) pero tampoco pasa por dashboard_access.
+const PUBLIC_PATHS = PUBLIC_AUTH_PATHS;
 
 // Rutas que tienen su propia auth (no aplicar middleware)
 // "/bip" = landing comercial pública (public/bip.html + public/bip/*), sin login.
@@ -12,7 +14,7 @@ const PUBLIC_PATHS = ["/login"];
 const BYPASS_PATHS = ["/api/cron", "/bip", "/compartido/"];
 
 function isPublic(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname === `${p}/`);
 }
 
 function isBypass(pathname: string): boolean {
@@ -23,6 +25,12 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isBypass(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Callback de los links de email (recuperación / invitación): accesible con o sin sesión; el route
+  // handler crea la sesión y redirige.
+  if (pathname === AUTH_CALLBACK_PATH) {
     return NextResponse.next();
   }
 
@@ -63,7 +71,8 @@ export async function middleware(request: NextRequest) {
 
   // Control de acceso por dashboard (tabla dashboard_access). Si el usuario tiene
   // filas, queda restringido a esos paths; si no, ve todo. No aplica a /api.
-  if (user && !pathname.startsWith("/api")) {
+  // /login/nueva-clave (cambiar contraseña) queda afuera: cualquier usuario logueado debe poder usarla.
+  if (user && !pathname.startsWith("/api") && pathname !== PASSWORD_PATH) {
     try {
       const { data } = await supabase.from("dashboard_access").select("dashboard_path");
       const allowed = allowedFromRows(data as { dashboard_path: string }[] | null);
