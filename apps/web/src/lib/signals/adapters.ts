@@ -14,6 +14,7 @@
 // ============================================================================
 import { buildPautaMediosMensual, DV360_MEDIO, PAUTA_MES_FULL, type PautaOmdLite, type GoogleAdsLite, type Dv360ReachLite } from "../pauta-medios-model";
 import { esMedioApi } from "../pauta-medios";
+import type { AgeSnap } from "../post-snapshots-core";
 import type { MetaPaidCreativeRow } from "../meta-paid-queries";
 import type { Dv360CreativeRow } from "../dv360-data";
 import type {
@@ -238,7 +239,7 @@ export function buildPautaFull(inp: PautaAdapterInput): PautaFull {
 // ─────────────────────────── REDES ───────────────────────────
 export interface MetaPostRowLite { post_id: string; fecha_post: string; permalink: string | null; message: string | null; media_type: string | null; thumbnail_url: string | null; reach: number | null; engagement: number | null; reactions?: number | null; clicks?: number | null }
 export interface DreanMonthly { mes: string; alcance: number | null; engagement: number | null; guardados?: number | null; comentarios?: number | null; clicks?: number | null }
-export interface SocialPostRowLite { red_social: string; url: string; marca: string; fecha: string | null; pilar: string | null; positivo: number | null; negativo: number | null; neutro: number | null; resumen_sentimiento: string | null; likes: number | null; comentarios: number | null; views: number | null; engagement: number | null; tipo: string | null; content_type: string | null; followers: number | null; thumbnail_url: string | null; copy: string | null }
+export interface SocialPostRowLite { red_social: string; url: string; marca: string; fecha: string | null; pilar: string | null; positivo: number | null; negativo: number | null; neutro: number | null; resumen_sentimiento: string | null; likes: number | null; comentarios: number | null; views: number | null; engagement: number | null; tipo: string | null; content_type: string | null; followers: number | null; thumbnail_url: string | null; copy: string | null; tema?: string | null }
 export interface FollowerRowLite { marca: string; red_social: string; fecha: string; followers: number }
 
 export interface RedesAdapterInput {
@@ -254,8 +255,12 @@ export interface RedesAdapterInput {
   ownKey: string;                       // "dreanargentina"
   labels: Record<string, string>;       // handle → marca visible
   igDemo?: { age: { category: string; value: number; pct: number }[]; gender: { category: string; value: number; pct: number }[]; province: { category: string; value: number; pct: number }[] };
+  /** Split orgánico/pago de vistas de FB (getFbOrganicSummary.totals) para redes_fb_paid_share. */
+  fbViewsSplit?: { organic: number | null; paid: number | null; posts: number; paidByApi: number; paidByHeuristic: number } | null;
+  /** Fotos por edad (social_post_snapshots, marca = handle) para el ER comparable a edad fija. */
+  snaps?: AgeSnap[] | null;
 }
-export interface RedesAdapted { ig: IgOrganicSummary | null; fb: FbOrganicSummary | null; sentiment: SentimentLite[]; competitor: { posts: CompetitorPost[]; followers: { marca: string; red_social: Red; followers: number }[]; ownBrand: string } | null; refDate: Date }
+export interface RedesAdapted { ig: IgOrganicSummary | null; fb: FbOrganicSummary | null; sentiment: SentimentLite[]; competitor: { posts: CompetitorPost[]; followers: { marca: string; red_social: Red; followers: number }[]; ownBrand: string; snaps?: AgeSnap[] } | null; refDate: Date }
 
 const monthlyOf = (xs: DreanMonthly[], year: number) => xs.map((m, i) => ({ mes: m.mes, anio: year, mesIdx: i, alcance: m.alcance, engagement: m.engagement, guardados: m.guardados ?? null, comentarios: m.comentarios ?? null, clicks: m.clicks ?? null }));
 
@@ -285,7 +290,12 @@ export function buildRedesInput(inp: RedesAdapterInput): RedesAdapted {
   const fbM = monthlyOf(inp.fbMonthly, inp.year);
   const fb: FbOrganicSummary | null = fbPosts.length || fbM.some((m) => m.alcance != null) ? {
     ok: true, name: "Drean", followers: fbFollowers,
-    totals: { reach: fbM.reduce((s, m) => s + n0(m.alcance), 0), engagement: fbM.reduce((s, m) => s + n0(m.engagement), 0), postCount: fbPosts.length, paidCount: 0 },
+    totals: {
+      reach: fbM.reduce((s, m) => s + n0(m.alcance), 0), engagement: fbM.reduce((s, m) => s + n0(m.engagement), 0), postCount: fbPosts.length,
+      paidCount: inp.fbViewsSplit ? inp.fbViewsSplit.paidByApi + inp.fbViewsSplit.paidByHeuristic : 0,
+      viewsOrganic: inp.fbViewsSplit?.organic ?? null, viewsPaid: inp.fbViewsSplit?.paid ?? null, viewsSplitPosts: inp.fbViewsSplit?.posts ?? 0,
+      paidByApi: inp.fbViewsSplit?.paidByApi ?? 0, paidByHeuristic: inp.fbViewsSplit?.paidByHeuristic ?? 0,
+    },
     monthly: fbM, topPosts: fbPosts,
   } : null;
 
@@ -314,10 +324,11 @@ export function buildRedesInput(inp: RedesAdapterInput): RedesAdapted {
       positivo: p.positivo, negativo: p.negativo, neutro: p.neutro, resumen_sentimiento: p.resumen_sentimiento,
       likes: p.likes, comentarios: p.comentarios, views: p.views, engagement: eng ?? null, interacciones: n0(p.likes) + n0(p.comentarios),
       tipo: p.tipo === "PAUTA" ? "PAUTA" : p.tipo ? "ORGÁNICO" : null, content_type: p.content_type, followers: f ?? p.followers,
-      thumbnail_url: p.thumbnail_url, copy: p.copy,
+      thumbnail_url: p.thumbnail_url, copy: p.copy, tema: p.tema ?? null,
     };
   });
-  const competitor = posts.length ? { posts, followers: fol.map((f) => ({ marca: lbl(f.marca), red_social: f.red_social as Red, followers: f.followers })), ownBrand: lbl(inp.ownKey) } : null;
+  const snaps = (inp.snaps ?? []).map((s) => ({ ...s, marca: lbl(s.marca) }));
+  const competitor = posts.length ? { posts, followers: fol.map((f) => ({ marca: lbl(f.marca), red_social: f.red_social as Red, followers: f.followers })), ownBrand: lbl(inp.ownKey), ...(snaps.length ? { snaps } : {}) } : null;
   return { ig, fb, sentiment, competitor, refDate: inp.refDate };
 }
 

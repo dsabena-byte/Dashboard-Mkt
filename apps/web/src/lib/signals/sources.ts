@@ -18,6 +18,7 @@ import { getFxRates } from "@/lib/fx-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getSocialPosts, getSocialFollowers, OWN_BRAND, BRAND_LABELS } from "@/lib/social-posts-queries";
+import { getPostSnapshots } from "@/lib/post-snapshots";
 import { getCompetitorMonthlyHistory } from "@/lib/competitor-web-queries";
 import { getShareOfSearch, getSeoCompetitivo, getSearchRegion, getLlmo, getDemandaGenerica } from "@/lib/competitive-queries";
 import { getSeguimientoObjetivos } from "@/lib/objetivos-rollup";
@@ -76,13 +77,14 @@ export function loadRedes(ctx: LoadCtx): Promise<RedesAdapted | null> {
     const now = new Date();
     const range = { from: `${y}-01-01`, to: now.toISOString().slice(0, 10) };
     const since = new Date(now.getTime() - 120 * 864e5).toISOString().slice(0, 10);
-    const [igPosts, ig, fb, social, followers] = await Promise.all([
+    const [igPosts, ig, fb, social, followers, snaps] = await Promise.all([
       rest<{ post_id: string; fecha_post: string; permalink: string | null; message: string | null; media_type: string | null; thumbnail_url: string | null; reach: number | null; engagement: number | null }>(
         `meta_posts?platform=eq.instagram&fecha_post=gte.${since}T00:00:00Z&select=post_id,fecha_post,permalink,message,media_type,thumbnail_url,reach,engagement&order=fecha_post.desc&limit=1000`),
       safe(getIgOrganicSummary(range)),
       safe(getFbOrganicSummary(range)),
       safe(getSocialPosts({})),
       safe(getSocialFollowers()),
+      safe(getPostSnapshots({ edad: 7 })),
     ]);
     if (!igPosts.length && !ig && !fb) return null;
     return buildRedesInput({
@@ -94,6 +96,8 @@ export function loadRedes(ctx: LoadCtx): Promise<RedesAdapted | null> {
       social: social ?? [], followers: followers ?? [],
       ownKey: OWN_BRAND, labels: BRAND_LABELS,
       igDemo: ig ? { age: ig.demoAge, gender: ig.demoGender, province: ig.demoProvince } : undefined,
+      fbViewsSplit: fb ? { organic: fb.totals.viewsOrganic ?? null, paid: fb.totals.viewsPaid ?? null, posts: fb.totals.viewsSplitPosts ?? 0, paidByApi: fb.totals.paidByApi ?? 0, paidByHeuristic: fb.totals.paidByHeuristic ?? 0 } : null,
+      snaps: snaps ?? [],
     });
   });
 }
