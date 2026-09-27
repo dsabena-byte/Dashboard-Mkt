@@ -2,7 +2,7 @@
 
 > **Nombre de la empresa (24-sep-2026):** la empresa detrás de BIP hoy es **ROQUÉ Research Solutions**.
 > "ROQUÉ Marketing Insights" era el nombre de fantasía / razón social **anterior** (así figuraba en los textos legales hasta el 27-sep-2026, ya corregidos; sigue en el
-> portfolio de Meta que hospeda la app y en textos legales viejos). Al actualizar docs legales / Meta Business,
+> portfolio de Meta que hospeda la app). Al actualizar docs legales / Meta Business,
 > usar el nombre nuevo y cuidar que coincida con la documentación de la verificación del negocio.
 
 
