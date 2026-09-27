@@ -1,5 +1,6 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
+import { fbPaidDecision, readViewsSplit, viewsSplitTotals, type ViewsSplit } from "./fb-paid";
 
 export interface FbDailyRow {
   fecha: string;
@@ -37,6 +38,8 @@ export interface FbPostRow {
   clicks: number;
   categoria: string | null;
   pilar_contenido: string | null;
+  /** Vistas orgánicas/pagas de la API (post_media_view × is_from_ads), guardadas por el sync en raw. */
+  views_split?: ViewsSplit | null;
 }
 
 export interface FbDemographicRow {
@@ -75,6 +78,13 @@ export interface FbKpiTotals {
   reactions_anger: number;
   clicks: number;
   diasConData: number;
+  /** Split orgánico/pago de VISTAS (API, posts con dato). null = el sync todavía no lo trajo. */
+  viewsOrganic?: number | null;
+  viewsPaid?: number | null;
+  viewsSplitPosts?: number;
+  /** Posts excluidos del orgánico: por la API (≥50% vistas pagas) y por la heurística isPaidOutlier. */
+  paidByApi?: number;
+  paidByHeuristic?: number;
 }
 
 export interface FbMonthlyDatum {
@@ -170,7 +180,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
     supabase
       .from("meta_posts")
       .select(
-        "post_id, fecha_post, permalink, message, media_type, thumbnail_url, impressions, reach, engagement, reactions, video_views, clicks, categoria, pilar_contenido",
+        "post_id, fecha_post, permalink, message, media_type, thumbnail_url, impressions, reach, engagement, reactions, video_views, clicks, categoria, pilar_contenido, views_split:raw->views_split",
       )
       .eq("platform", "facebook")
       .gte("fecha_post", `${fromIso}T00:00:00Z`)
@@ -204,7 +214,7 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   if (demoRes.error) throw new Error(`meta_fb_audience_demographics: ${demoRes.error.message}`);
 
   const daily = dailyRes.data ?? [];
-  const posts = postsRes.data ?? [];
+  const posts: FbPostRow[] = (postsRes.data ?? []) as FbPostRow[];
   const demo = demoRes.data ?? [];
 
   // Alcance MENSUAL de la Página (period=month) para el gráfico de evolución.
@@ -310,9 +320,19 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
   // (0,01%). Se excluye del orgánico para que un boosteo no infle alcance/engagement/views
   // ni aparezca como "top post" orgánico. `organicPosts` es la ÚNICA lista que se expone
   // (topPosts) y con la que se agregan totales: el filtro vale para todo consumidor.
-  const isPaidOutlier = (p: FbPostRow) =>
-    (p.reach ?? 0) > 20000 && (p.reactions ?? 0) / (p.reach || 1) < 0.01;
+  // Sep-2026: además, si el sync trajo el split de la API (post_media_view × is_from_ads) y ≥50% de las
+  // vistas del post vinieron de anuncios, también se excluye. Es una señal ADICIONAL: la heurística
+  // isPaidOutlier sigue SIEMPRE (fbPaidDecision = API || heurística) → nunca se destapa un boosteo.
+  for (const p of posts) p.views_split = readViewsSplit(p.views_split);
+  const decisions = new Map<string, ReturnType<typeof fbPaidDecision>>(posts.map((p: FbPostRow) => [p.post_id, fbPaidDecision(p)]));
+  const isPaidOutlier = (p: FbPostRow) => decisions.get(p.post_id)?.paid ?? false;
   const organicPosts = posts.filter((p: FbPostRow) => !isPaidOutlier(p));
+  const split = viewsSplitTotals(posts);
+  totals.viewsOrganic = split?.organic ?? null;
+  totals.viewsPaid = split?.paid ?? null;
+  totals.viewsSplitPosts = split?.posts ?? 0;
+  totals.paidByApi = [...decisions.values()].filter((d) => d.source === "api").length;
+  totals.paidByHeuristic = [...decisions.values()].filter((d) => d.source === "heuristica").length;
 
   // Sumar alcance, video views y clicks desde posts (solo orgánicos)
   for (const p of organicPosts) {

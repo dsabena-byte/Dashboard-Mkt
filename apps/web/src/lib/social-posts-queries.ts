@@ -22,6 +22,8 @@ export interface SocialPost {
   resumen_sentimiento: string | null;
   thumbnail_url: string | null;
   copy: string | null;
+  /** Tema corto (gpt-4o-mini, cron competencia-ig; migración 0116). Ausente sin la columna. */
+  tema?: string | null;
 }
 
 export interface SocialFilters {

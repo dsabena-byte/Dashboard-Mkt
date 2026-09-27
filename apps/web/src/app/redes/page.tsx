@@ -30,7 +30,6 @@ import {
   computeNetStats,
   computePilarStats,
   computeSentimentByBrand,
-  computeTrend,
   computeWeeklyPostCount,
   enrichEngagement,
   getAllMarcas,
@@ -43,6 +42,14 @@ import { ShareEngagementSection } from "@/components/social/share-engagement";
 import { getMercadoSeries } from "@/lib/mercado-kpis-server";
 import { lastIdx } from "@/lib/mercado-kpis";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { IgStoriesResumen } from "@/components/social/ig-stories-resumen";
+import { RedesContenidoPanel } from "@/components/social/redes-contenido-panel";
+import { CompetenciaDiferenciales } from "@/components/social/competencia-diferenciales";
+import { getIgStoriesResumen, getOwnContentPosts } from "@/lib/redes-extra-queries";
+import { getPostSnapshots } from "@/lib/post-snapshots";
+import { formatBenchmarks, bestTimes } from "@/lib/redes-contenido";
+import { comparableEr, erComparablePorMarca, trendMaduro, probablePauta, pautaPorMarca, ER_METODO_TXT, ER_METODO_EDAD_TXT } from "@/lib/redes-competencia";
+import { temasPorMarca, temaGaps } from "@/lib/redes-temas";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -107,6 +114,12 @@ export default async function RedesPage({ searchParams }: PageProps) {
     safe(getMetaKpi("Facebook", "Engagement rate", currentYear), metaFallback, "getMetaKpi(fb-eng)"),
   ]);
 
+  // Secciones nuevas (sep-2026): lecturas livianas e independientes → en paralelo y fail-safe.
+  const [storiesResumen, ownContent, snaps7] = await Promise.all([
+    safe(getIgStoriesResumen(range), null, "getIgStoriesResumen"),
+    safe(getOwnContentPosts(range), [], "getOwnContentPosts"),
+    safe(getPostSnapshots({ edad: 7 }), [], "getPostSnapshots"),
+  ]);
   const mercado = await mercadoP;
   const sosSerie = mercado?.series["Share of Search"]?.realM ?? [];
   const sosRef = lastIdx(sosSerie);
@@ -124,9 +137,16 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const kpis = computeKpis(posts);
   const netStats = computeNetStats(posts);
   const brandStats = computeBrandStats(posts, followers, red);
+  // ER COMPARABLE por marca (corrige el sesgo de maduración): foto a 7 días si la marca tiene ≥3
+  // (social_post_snapshots), si no mediana de posts con 7+ días, si no "preliminar". Reemplaza el
+  // promedio simple (un sorteo viral de una marca inflaba su promedio ~100×, validado sep-2026).
+  const erMarca = erComparablePorMarca(posts, snaps7, red);
+  const erGlobal = comparableEr(posts);
+  const hayEdadFija = [...erMarca.values()].some((e) => e.metodo === "edad_fija");
   // Tendencia mensual: padea a 12 meses del año actual para mostrar el año completo.
   // Los meses sin posts quedan con `values: {}` => recharts no dibuja punto (gap en la línea).
-  const trendRaw = computeTrend(posts);
+  // Tendencia: mediana mensual con posts maduros (7+ días) → el mes en curso no se subestima.
+  const trendRaw = trendMaduro(posts);
   const trendYear = trendRaw.length > 0 ? Number(trendRaw[trendRaw.length - 1]!.mes.slice(0, 4)) : new Date().getFullYear();
   const trendMap = new Map(trendRaw.map((t) => [t.mes, t]));
   const trend = Array.from({ length: 12 }, (_, i) => {
@@ -185,6 +205,24 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const fbAlcMes = fbMes?.alcance ?? null;
   const fbEngMes = fbMes && fbMes.alcance && fbMes.engagement != null && fbMes.alcance > 0 ? (fbMes.engagement / fbMes.alcance) * 100 : null;
 
+  // Formatos y horarios propios (posts maduros, orgánicos, sin Stories).
+  const refNow = new Date();
+  const formatos = formatBenchmarks(ownContent, refNow);
+  const horarios = bestTimes(ownContent, refNow);
+
+  // Pauta probable + temas de la competencia (sobre los posts filtrados del competitivo).
+  const prob = probablePauta(posts);
+  const pautaMarcas = pautaPorMarca(posts, prob);
+  const pautaPosts = posts
+    .filter((p) => prob.has(p.url) && p.marca !== OWN_BRAND)
+    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+    .slice(0, 6)
+    .map((p) => ({ url: p.url, marca: p.marca, fecha: p.fecha, views: p.views, likes: p.likes, comentarios: p.comentarios, prob: prob.get(p.url)!, copy: p.copy }));
+  const temasActivos = posts.some((p) => p.tema);
+  const temaPosts = posts.map((p) => ({ marca: p.marca, tema: p.tema ?? null, engagement: p.engagement }));
+  const temasMarca = temasActivos ? temasPorMarca(temaPosts, 4) : [];
+  const temasGap = temasActivos ? temaGaps(temaPosts, OWN_BRAND) : [];
+
   // Construcción orgánica (alcance/views/interacción por pilar y categoría).
   const organicBuildup = computeOrganicBuildup([...igOrganic.topPosts, ...fbOrganic.topPosts]);
 
@@ -223,6 +261,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
       {/* ===== Instagram orgánico (Drean mide SOLO IG) ===== */}
       <IgOrganicSection data={igOrganic} metaAlc={metaAlc} metaEng={metaEng} />
 
+      {/* Stories de IG acumuladas (alcance = piso; tasas de salida/respuesta desde sep-2026) */}
+      <IgStoriesResumen data={storiesResumen} />
+
       {/* ===== Configuración de metas del plan (debajo de Instagram) ===== */}
       <MetaPanel
         plan="Redes Sociales"
@@ -238,6 +279,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
       />
 
       <OrganicBuildupPanel byPilar={organicBuildup.byPilar} byCategoria={organicBuildup.byCategoria} />
+
+      {/* Formatos y mejor día/franja del contenido propio (posts maduros) */}
+      <RedesContenidoPanel formatos={formatos} horarios={horarios} />
 
       <FbOrganicSection data={fbOrganic} metaAlc={fbMetaAlc} metaEng={fbMetaEng} />
 
@@ -340,7 +384,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
       {/* KPI cards */}
       <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-        <KpiCard title="Engagement prom" value={`${kpis.engagement_promedio.toFixed(2)}%`} hint={`Máx ${kpis.max_engagement.toFixed(2)}%`} />
+        <KpiCard title="Engagement (mediana)" value={`${erGlobal.value.toFixed(3)}%`} hint={`${erGlobal.metodo === "maduro" ? "Posts con 7+ días" : "Preliminar"} · prom. ${kpis.engagement_promedio.toFixed(2)}%`} />
         <KpiCard title="Total likes" value={fmtK(kpis.total_likes)} hint={`${kpis.posts} posts`} />
         <KpiCard title="Total views" value={fmtK(kpis.total_views)} hint="Videos e IG" />
         <KpiCard
@@ -376,7 +420,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Tendencia mensual de engagement
+            Tendencia mensual de engagement <span className="normal-case text-muted-foreground/70">(mediana, posts con 7+ días)</span>
           </h3>
           <SocialTrendChart
             data={trend}
@@ -399,6 +443,10 @@ export default async function RedesPage({ searchParams }: PageProps) {
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Benchmark de marcas · KPIs comparados
           </h3>
+          <p className="mb-2 text-[10px] text-muted-foreground">
+            ER comp. = mediana del engagement por seguidor ((likes + comentarios) ÷ seguidores) de los posts con 7+ días (° = foto a los 7 días de
+            publicado, misma edad para todas las marcas; * = preliminar, pocos posts maduros). Reemplaza el promedio, que un sorteo viral distorsiona.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full table-fixed text-[11px]">
               <colgroup>
@@ -420,7 +468,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
                   <th className="px-1 py-1.5 text-right">Follow.</th>
                   <th className="px-1 py-1.5 text-right">Posts</th>
                   <th className="px-1 py-1.5 text-right">P/sem</th>
-                  <th className="px-1 py-1.5 text-right">Eng.</th>
+                  <th className="px-1 py-1.5 text-right" title={hayEdadFija ? ER_METODO_EDAD_TXT : ER_METODO_TXT}>ER comp.</th>
                   <th className="px-1 py-1.5 text-right">Pos</th>
                   <th className="px-1 py-1.5 text-right">Neg</th>
                   <th className="px-1 py-1.5 text-right">Neu</th>
@@ -452,7 +500,9 @@ export default async function RedesPage({ searchParams }: PageProps) {
                           </td>
                           <td className="px-1 py-1.5 text-right tabular-nums">{b.posts}</td>
                           <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground">{b.posts_per_week.toFixed(1)}</td>
-                          <td className="px-1 py-1.5 text-right tabular-nums">{b.engagement_promedio.toFixed(2)}%</td>
+                          <td className="px-1 py-1.5 text-right tabular-nums" title={erMarca.get(b.marca)?.metodo === "edad_fija" ? "Foto a los 7 días de publicado" : erMarca.get(b.marca)?.metodo === "maduro" ? "Mediana de posts con 7+ días" : "Preliminar: pocos posts maduros"}>
+                            {(erMarca.get(b.marca)?.value ?? 0).toFixed(3)}%{erMarca.get(b.marca)?.metodo === "edad_fija" ? "°" : erMarca.get(b.marca)?.metodo === "preliminar" ? "*" : ""}
+                          </td>
                           <td className="px-1 py-1.5 text-right tabular-nums text-emerald-600">{Math.round(b.positivo)}%</td>
                           <td className="px-1 py-1.5 text-right tabular-nums text-rose-600">{Math.round(b.negativo)}%</td>
                           <td className="px-1 py-1.5 text-right tabular-nums text-slate-500">{Math.round(b.neutro)}%</td>
@@ -477,6 +527,17 @@ export default async function RedesPage({ searchParams }: PageProps) {
           <SocialContentTypeChart data={contentSlices} />
         </div>
       </section>
+
+      {/* Pauta probable + temas por marca de la competencia */}
+      <CompetenciaDiferenciales
+        pauta={pautaMarcas}
+        pautaPosts={pautaPosts}
+        temas={temasMarca}
+        gaps={temasGap}
+        labels={BRAND_LABELS}
+        ownKey={OWN_BRAND}
+        temasActivos={temasActivos}
+      />
 
       {/* Sentiment + Resumen cualitativo */}
       {showSentiment && (

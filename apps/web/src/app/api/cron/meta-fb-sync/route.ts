@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { mirrorMetaImage } from "@/lib/meta-image-mirror";
+import { parseIsFromAds, PAID_SPLIT_DAYS, type ViewsSplit } from "@/lib/fb-paid";
 
 export const maxDuration = 300;
 
@@ -454,6 +455,29 @@ export async function GET(request: Request) {
       }
     }
 
+    // Orgánico vs pago POR POST (sep-2026): post_media_view × breakdown=is_from_ads (lifetime). Señal
+    // ADICIONAL a isPaidOutlier (que sigue siempre activa en lib/meta-fb-queries.ts). Solo posts de los
+    // últimos PAID_SPLIT_DAYS días; best-effort (si Meta rechaza la métrica/breakdown, no se guarda nada y
+    // queda la heurística). Se guarda en meta_posts.raw.views_split (jsonb existente, sin migración).
+    const splitMap = new Map<string, ViewsSplit>();
+    const splitCut = Date.now() - PAID_SPLIT_DAYS * 86_400_000;
+    let splitErr = 0;
+    for (const p of postsData) {
+      if (!p.created_time || Date.parse(p.created_time) < splitCut) continue;
+      if (splitErr >= 3 && splitMap.size === 0) break; // la métrica no está disponible para esta Página
+      const raw = await graphGetRaw(
+        `${GRAPH_API}/${p.id}/insights?metric=post_media_view&breakdown=is_from_ads&period=lifetime&access_token=${pt}`,
+      );
+      if (raw.status === 200) {
+        const sp = parseIsFromAds(raw.body);
+        if (sp) splitMap.set(p.id, sp);
+      } else {
+        splitErr++;
+        if (!results.paid_split_error_sample) results.paid_split_error_sample = raw.body;
+      }
+    }
+    results.paid_split_posts = splitMap.size;
+
     const postRows: Array<Record<string, unknown>> = [];
     for (const p of postsData) {
       const ins = postInsightsMap.get(p.id) ?? {};
@@ -479,6 +503,7 @@ export async function GET(request: Request) {
         reactions: p.reactions?.summary?.total_count ?? 0,
         video_views: (ins.post_video_views ?? 0) || (ex?.video_views ?? 0),
         clicks: (ins.post_clicks ?? 0) || (ex?.clicks ?? 0),
+        ...(splitMap.has(p.id) ? { raw: { views_split: { ...splitMap.get(p.id)!, at: new Date().toISOString() } } } : {}),
       });
     }
 
@@ -500,7 +525,10 @@ export async function GET(request: Request) {
     //   2) O migrar a un workflow alternativo (scraper / n8n)
     results.stories = "deshabilitado (Graph API no devuelve id para FB Page Stories)";
 
-    results.posts = await supabaseUpsert("meta_posts", postRows, "platform,post_id");
+    // Upserts separados: PostgREST toma las columnas del 1er objeto → los posts sin split no pisan su
+    // `raw` guardado (el merge conserva el split de los posts que salieron de la ventana).
+    results.posts = await supabaseUpsert("meta_posts", postRows.filter((r) => !("raw" in r)), "platform,post_id");
+    results.posts_with_split = await supabaseUpsert("meta_posts", postRows.filter((r) => "raw" in r), "platform,post_id");
 
     return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), results });
   } catch (err) {
