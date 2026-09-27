@@ -1,7 +1,8 @@
 // ============================================================================
 // FUENTES de las respuestas de IA (gap G6 de docs/estado-del-arte/seo-geo.md §4.9 / roadmap #10).
 // PURO, client-safe, sin imports. Costo 0: sale de las MISMAS llamadas del LLMO (las URLs citadas
-// que devuelve gpt-4o-search-preview en `annotations`/links) y de las referencias del AI Overview
+// que devuelve la IA con búsqueda web — Responses API + tool web_search — en `annotations`/links) y
+// de las referencias del AI Overview
 // de la SERP que ya se paga.
 //   · Citation share del dominio propio = citas a tu dominio ÷ citas totales (def. Bing/Peec).
 //   · Fuentes por tipo: propio / competidor / retail / medio / UGC / referencia / otro.
@@ -42,11 +43,38 @@ export function clasificarDominio(dom: string, m: DominiosMarca = {}): TipoFuent
   return "otro";
 }
 
+/** Partes `output_text` de una respuesta de la Responses API (`output[]` → message → content[]). */
+function outputTexts(resp: unknown): Array<{ text?: unknown; annotations?: unknown }> {
+  const out = (resp as { output?: unknown })?.output;
+  if (!Array.isArray(out)) return [];
+  const parts: Array<{ text?: unknown; annotations?: unknown }> = [];
+  for (const item of out) {
+    const it = item as { type?: string; content?: unknown };
+    if (it?.type !== "message" || !Array.isArray(it.content)) continue;
+    for (const c of it.content) if ((c as { type?: string })?.type === "output_text") parts.push(c as { text?: unknown; annotations?: unknown });
+  }
+  return parts;
+}
+
 /**
- * URLs citadas en una respuesta de chat completions (gpt-4o-search-preview): `annotations`
- * (`url_citation`) + links markdown/sueltos del texto como respaldo. Sin utm y deduplicadas (máx `cap`).
+ * Texto de la respuesta. Responses API (`output[].content[].text` de tipo output_text, o el atajo
+ * `output_text` si viene) o, por compatibilidad, un message de chat completions (`content`).
  */
-export function extraerCitas(message: unknown, cap = 10): string[] {
+export function textoRespuesta(resp: unknown): string {
+  const parts = outputTexts(resp);
+  if (parts.length) return parts.map((p) => (typeof p.text === "string" ? p.text : "")).join("\n").trim();
+  const r = (resp ?? {}) as { output_text?: unknown; content?: unknown };
+  if (typeof r.output_text === "string") return r.output_text;
+  return typeof r.content === "string" ? r.content : "";
+}
+
+/**
+ * URLs citadas en una respuesta de IA con búsqueda web: `annotations` de tipo `url_citation`
+ * (Responses API: `{type:"url_citation", url, title}` dentro de cada output_text; chat completions
+ * viejo: `{type:"url_citation", url_citation:{url}}` en el message) + links markdown/sueltos del
+ * texto como respaldo. Sin utm y deduplicadas (máx `cap`).
+ */
+export function extraerCitas(resp: unknown, cap = 10): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   const push = (raw: unknown) => {
@@ -63,12 +91,24 @@ export function extraerCitas(message: unknown, cap = 10): string[] {
     if (seen.has(k) || out.length >= cap) return;
     seen.add(k); out.push(u.slice(0, 300));
   };
-  const msg = (message ?? {}) as { annotations?: unknown; content?: unknown };
-  if (Array.isArray(msg.annotations)) for (const a of msg.annotations) {
-    const aa = a as { type?: string; url_citation?: { url?: unknown }; url?: unknown };
-    push(aa?.url_citation?.url ?? aa?.url);
+  const annots = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    for (const a of list) {
+      const aa = a as { type?: string; url_citation?: { url?: unknown }; url?: unknown };
+      if (aa?.type && aa.type !== "url_citation") continue;
+      push(aa?.url_citation?.url ?? aa?.url);
+    }
+  };
+  const texts = (t: unknown) => { if (typeof t === "string") for (const m of t.matchAll(/https?:\/\/[^\s)<>"\]]+/g)) push(m[0]); };
+  const parts = outputTexts(resp);
+  if (parts.length) {
+    for (const p of parts) annots(p.annotations);
+    for (const p of parts) texts(p.text);
+    return out;
   }
-  if (typeof msg.content === "string") for (const m of msg.content.matchAll(/https?:\/\/[^\s)<>"\]]+/g)) push(m[0]);
+  const msg = (resp ?? {}) as { annotations?: unknown; content?: unknown };
+  annots(msg.annotations);
+  texts(msg.content);
   return out;
 }
 

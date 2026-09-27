@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { CATEGORIAS, marcasDeCategoria } from "@/lib/competitive-config";
 import { llmoPromptSet, pickPromptsForRun, weekIndex, aggregateLlmo, LLMO_WINDOW_DAYS, LLMO_CALLS_MAX } from "@/lib/llmo-stats";
-import { extraerCitas } from "@/lib/llmo-fuentes";
+import { extraerCitas, textoRespuesta } from "@/lib/llmo-fuentes";
 
 // LLMO (LLM Optimization / GEO) — visibilidad de marca en respuestas de IA, con DISEÑO ESTADÍSTICO
 // (portado de BIP, sep-2026; lib/llmo-stats.ts):
@@ -14,10 +14,14 @@ import { extraerCitas } from "@/lib/llmo-fuentes";
 //    calcula la tasa de mención con intervalo de Wilson 95% (llmoStats).
 //  · Si una categoría no obtuvo NINGUNA respuesta, NO se escribe (antes quedaban filas en 0 —
 //    sep-2026 — que parecían "0% de visibilidad").
-// Costo: gpt-4o-search-preview ≈ US$0,036/llamada → 12 × 3 categorías × ~4,3 corridas/mes ≈ US$5,6/mes.
+// Modelo: OpenAI Responses API + tool hosteada `web_search` (forzada con tool_choice), geolocalizada en
+// AR. Env OPENAI_LLMO_MODEL (default gpt-4.1-mini). OJO: gpt-4o-search-preview (chat completions) fue
+// dado de baja el 23-jul-2026 → desde entonces todas las llamadas daban 404 y sep-2026 quedó en 0.
+// Costo aprox. (ver LLMO_USD_POR_LLAMADA en lib/llmo-stats.ts): tool call web_search + tokens ≈ US$0,03/llamada
+// → 12 × 3 categorías × ~4,3 corridas/mes ≈ US$4,6/mes.
 
 export const maxDuration = 300;
-const MODEL = "gpt-4o-search-preview";
+const MODEL = process.env.OPENAI_LLMO_MODEL?.trim() || "gpt-4.1-mini";
 const CONC = 4;
 
 function env(key: string): string {
@@ -36,26 +40,33 @@ async function sb(path: string, init?: RequestInit): Promise<Response> {
   });
 }
 
-async function askLLM(apiKey: string, prompt: string): Promise<{ content: string; message: unknown }> {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+/** Body de la llamada a la Responses API (web_search forzada, ubicación AR). */
+function llmoRequestBody(prompt: string) {
+  return {
+    model: MODEL,
+    input: prompt,
+    max_output_tokens: 800,
+    // Búsqueda web obligatoria y geolocalizada en Argentina (no resultados globales).
+    tools: [{
+      type: "web_search",
+      search_context_size: "low",
+      user_location: { type: "approximate", country: "AR", city: "Buenos Aires", region: "Buenos Aires", timezone: "America/Argentina/Buenos_Aires" },
+    }],
+    tool_choice: { type: "web_search" },
+  };
+}
+
+async function askLLM(apiKey: string, prompt: string): Promise<{ content: string; resp: unknown }> {
+  const res = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 800,
-      // Búsqueda geolocalizada en Argentina (no resultados globales).
-      web_search_options: {
-        search_context_size: "low",
-        user_location: { type: "approximate", approximate: { country: "AR", city: "Buenos Aires", region: "Buenos Aires" } },
-      },
-    }),
-    signal: AbortSignal.timeout(60_000),
+    body: JSON.stringify(llmoRequestBody(prompt)),
+    signal: AbortSignal.timeout(90_000),
   });
-  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 150)}`);
-  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  const message = data.choices?.[0]?.message ?? {};
-  return { content: message.content ?? "", message };
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const resp = (await res.json()) as { error?: { message?: string } | null; status?: string };
+  if (resp.error?.message) throw new Error(`OpenAI: ${resp.error.message.slice(0, 300)}`);
+  return { content: textoRespuesta(resp), resp };
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -83,14 +94,14 @@ export async function GET(req: Request) {
       while (i < jobs.length) {
         const { cat, p } = jobs[i++]!;
         try {
-          const { content, message } = await askLLM(apiKey, p.texto);
-          if (!content) continue;
+          const { content, resp } = await askLLM(apiKey, p.texto);
+          if (!content) { if (errores.length < 5) errores.push(`Respuesta vacía (${p.id})`); continue; }
           const low = content.toLowerCase();
           const apar = marcasDeCategoria(cat)
             .map((b) => ({ b, idx: low.search(new RegExp(`\\b${escape(b.toLowerCase())}\\b`)) }))
             .filter((x) => x.idx >= 0)
             .sort((a, z) => a.idx - z.idx);
-          nuevas.push({ categoria: cat, fecha: new Date().toISOString(), prompt_id: p.id, intencion: p.intencion, modelo: MODEL, marcas: apar.map((x) => x.b), fuentes: extraerCitas(message), rank: new Map(apar.map((x, o) => [x.b, o + 1])) });
+          nuevas.push({ categoria: cat, fecha: new Date().toISOString(), prompt_id: p.id, intencion: p.intencion, modelo: MODEL, marcas: apar.map((x) => x.b), fuentes: extraerCitas(resp), rank: new Map(apar.map((x, o) => [x.b, o + 1])) });
         } catch (e) { if (errores.length < 5) errores.push((e as Error).message); }
       }
     }));
@@ -137,8 +148,10 @@ export async function GET(req: Request) {
       if (!r.ok) throw new Error(`seo_llmo ${r.status}: ${(await r.text()).slice(0, 200)}`);
     }
     const ok = out.length > 0;
+    // Si TODAS las llamadas fallaron no se escribió nada (ver `continue` arriba): devolver el primer error claro.
+    const error = nuevas.length === 0 ? `0 respuestas de ${jobs.length} llamadas (modelo ${MODEL}). Primer error: ${errores[0] ?? "sin detalle"}` : undefined;
     return NextResponse.json({
-      ok, mes, llamadas: jobs.length, respuestas: nuevas.length, porCategoria: resumen, filas: out.length,
+      ok, error, modelo: MODEL, mes, llamadas: jobs.length, respuestas: nuevas.length, porCategoria: resumen, filas: out.length,
       muestrasGuardadas: muestrasOk, hint: muestrasOk ? undefined : "Sin la migración 0118 (seo_llmo_muestra) no se acumulan muestras ni fuentes: n = solo esta corrida.",
       errores,
     }, { status: ok ? 200 : 502 });

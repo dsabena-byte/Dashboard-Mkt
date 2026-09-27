@@ -3,7 +3,7 @@ name: LLMO sync (visibilidad en IA)
 # Le pregunta a un LLM con búsqueda (12 prompts × 3 categorías) y mide la tasa de mención de cada
 # marca + las URLs que cita. SEMANAL (sep-2026): las muestras se acumulan 28 días (seo_llmo_muestra,
 # migración 0118) → n ≈ 48 respuestas por categoría e intervalo de Wilson usable. Antes: 5 prompts
-# 1x/mes (n=5, IC ±40 pp). Costo ≈ US$1,3/corrida (≈ US$5,6/mes). Usa OPENAI_API_KEY (Vercel);
+# 1x/mes (n=5, IC ±40 pp). Costo ≈ US$1,1/corrida (≈ US$4,6/mes; Responses API + web_search, env OPENAI_LLMO_MODEL). Usa OPENAI_API_KEY (Vercel);
 # LLMO_CALLS_POR_CAT (opcional) baja/sube las llamadas por categoría.
 on:
   schedule:
