@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { TRACKED_DOMAINS, LOCATION_CODE_AR, LANGUAGE_CODE_ES } from "@/lib/competitive-config";
 import { KEYWORD_UNIVERSE } from "@/lib/seo-keyword-universe";
+import { dfsSerpStandard, isFatalDfsError } from "@/lib/dataforseo";
 
 // Módulo B · SEO Competitivo (SERP-matrix). Para cada keyword del universo
 // consulta la SERP de Google Argentina y guarda la POSICIÓN de cada dominio
@@ -10,6 +11,11 @@ import { KEYWORD_UNIVERSE } from "@/lib/seo-keyword-universe";
 // Vercel corta a 300s, así que se procesa por CHUNKS: ?offset=N&limit=M. El
 // workflow seo-sync.yml llama en loop hasta cubrir todo el universo.
 // Trigger: .github/workflows/seo-sync.yml (Authorization: Bearer CRON_SECRET).
+//
+// COLA STANDARD (sep-2026, portado de BIP COST-10): cada chunk ENCOLA sus keywords con task_post
+// (≈3,3× más barato que /live; task_get no se cobra), junta lo que esté listo hasta un deadline y
+// completa por /live lo que no llegó o falló. DATAFORSEO_MODE=live vuelve a todo-/live sin deploy.
+// Mismo depth (100) y mismas filas → el índice de posición no cambia de definición.
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -27,11 +33,16 @@ interface SerpTask {
   status_message?: string;
   result?: Array<{ items?: Array<{ type?: string; domain?: string; url?: string; rank_group?: number }> }>;
 }
+type SerpItems = NonNullable<NonNullable<SerpTask["result"]>[number]["items"]>;
+const DEPTH = 100;
+const serpTask = (keyword: string) => ({ keyword, location_code: LOCATION_CODE_AR, language_code: LANGUAGE_CODE_ES, depth: DEPTH });
+const usarColaStandard = () => (process.env.DATAFORSEO_MODE ?? "standard").toLowerCase() !== "live";
+
 async function serp(keyword: string): Promise<SerpTask | undefined> {
   const res = await fetch(`${DFS_API}/serp/google/organic/live/advanced`, {
     method: "POST",
     headers: { Authorization: `Basic ${env("DATAFORSEO_AUTH")}`, "Content-Type": "application/json" },
-    body: JSON.stringify([{ keyword, location_code: LOCATION_CODE_AR, language_code: LANGUAGE_CODE_ES, depth: 100 }]),
+    body: JSON.stringify([serpTask(keyword)]),
     signal: AbortSignal.timeout(45000), // que una keyword colgada no trabe el batch
   });
   const json = (await res.json()) as { status_code?: number; tasks?: SerpTask[] };
@@ -74,13 +85,37 @@ export async function GET(request: Request) {
   const out: Record<string, unknown> = { total: universo.length, offset, limit, procesadas: slice.length };
   try {
     const rows: Record<string, unknown>[] = [];
-    // Las llamadas SERP live (depth 100) tardan ~6s c/u; en secuencial 40 keywords
-    // rozan los 300s de Vercel. Se procesan en batches CONCURRENTES para bajar el
-    // tiempo a ~1/8 (DataForSEO soporta esta concurrencia holgadamente).
+    const pushRows = (kw: (typeof slice)[number], items: SerpItems) => {
+      const seen = new Set<string>();
+      for (const it of items) {
+        if (it.type !== "organic") continue;
+        const dom = (it.domain ?? "").toLowerCase();
+        for (const td of TRACKED_DOMAINS) {
+          if (dom.includes(td.dominio) && !seen.has(td.display)) {
+            seen.add(td.display);
+            rows.push({ dominio: td.dominio, marca: td.display, keyword: kw.keyword, categoria: kw.categoria, posicion: it.rank_group ?? null, search_volume: kw.volume, url: it.url ?? null, fecha, fetched_at: now });
+          }
+        }
+      }
+    };
+    // 1) Cola Standard (deadline ~180s para dejar margen al /live de lo que falte dentro de los 300s de Vercel).
+    let viaStandard = 0;
+    let pendientes = slice;
+    if (usarColaStandard() && slice.length) {
+      try {
+        const got = await dfsSerpStandard<SerpItems[number]>(slice.map((k) => serpTask(k.keyword)), Date.now() + 180_000);
+        for (const kw of slice) { const items = got.get(kw.keyword); if (items) { pushRows(kw, items); viaStandard++; } }
+        pendientes = slice.filter((kw) => !got.has(kw.keyword));
+      } catch (e) {
+        if (isFatalDfsError(e)) throw new Error("DataForSEO sin saldo o credenciales inválidas (cola Standard) — revisá la cuenta");
+      }
+    }
+    // 2) /live para lo que no llegó por la cola (o todo, con DATAFORSEO_MODE=live).
+    // Las llamadas SERP live (depth 100) tardan ~6s c/u → batches CONCURRENTES.
     const CONCURRENCY = 8;
     let sinSaldo = false;
-    for (let i = 0; i < slice.length && !sinSaldo; i += CONCURRENCY) {
-      const batch = slice.slice(i, i + CONCURRENCY);
+    for (let i = 0; i < pendientes.length && !sinSaldo; i += CONCURRENCY) {
+      const batch = pendientes.slice(i, i + CONCURRENCY);
       const tasks = await Promise.all(
         batch.map(async (kw) => {
           try {
@@ -91,21 +126,10 @@ export async function GET(request: Request) {
           }
         }),
       );
-      for (const { kw, task } of tasks) {
-        const items = task?.result?.[0]?.items ?? [];
-        const seen = new Set<string>();
-        for (const it of items) {
-          if (it.type !== "organic") continue;
-          const dom = (it.domain ?? "").toLowerCase();
-          for (const td of TRACKED_DOMAINS) {
-            if (dom.includes(td.dominio) && !seen.has(td.display)) {
-              seen.add(td.display);
-              rows.push({ dominio: td.dominio, marca: td.display, keyword: kw.keyword, categoria: kw.categoria, posicion: it.rank_group ?? null, search_volume: kw.volume, url: it.url ?? null, fecha, fetched_at: now });
-            }
-          }
-        }
-      }
+      for (const { kw, task } of tasks) pushRows(kw, task?.result?.[0]?.items ?? []);
     }
+    out.viaStandard = viaStandard;
+    out.viaLive = pendientes.length;
     if (sinSaldo) throw new Error("DataForSEO sin saldo (Payment Required) — cargá fondos");
     await sbUpsert(rows);
     out.filas = rows.length;

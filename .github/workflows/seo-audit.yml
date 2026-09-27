@@ -1,0 +1,30 @@
+name: SEO auditoría técnica + Core Web Vitals (semanal)
+
+# Auditoría técnica SEO/GEO de drean.com.ar (robots.txt con bots de IA, sitemap, title/description/
+# h1/canonical/noindex/schema, contenido solo-JS) + Core Web Vitals (CrUX / PageSpeed Insights)
+# → seo_audit_snapshot (migración 0117). Lo lee /seo-search. GOOGLE_PSI_KEY (Vercel) es opcional:
+# sin ella PageSpeed usa la cuota compartida (suele dar 429) y la UI avisa "falta la clave".
+on:
+  schedule:
+    - cron: "10 7 * * 1" # lunes 07:10 UTC
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger /api/cron/seo-audit
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/seo-audit"
+          ok=0
+          for attempt in 1 2; do
+            HTTP=$(curl -s -o resp.json -w '%{http_code}' --max-time 320 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL" || echo 000)
+            echo "intento $attempt → HTTP $HTTP"; cat resp.json || true; echo ""
+            if [ "$HTTP" = "200" ] && python3 -c "import json,sys; sys.exit(0 if json.load(open('resp.json')).get('ok') else 1)"; then ok=1; break; fi
+            sleep 20
+          done
+          [ $ok = 1 ] || { echo "::error::seo-audit falló (ver respuesta: hint/error)"; exit 1; }
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

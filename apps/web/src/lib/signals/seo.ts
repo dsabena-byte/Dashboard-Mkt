@@ -4,14 +4,14 @@
 // Mismos buckets que el tablero (SerpSection): faltante = no rankea; débil = 4-20; fuerte = top-3.
 // Puro: recibe SeoData ya leído.
 import type { SeoData, SerpRow } from "./model";
+import { ctrAt } from "../ctr-curve";
 import { type Signal, sortSignals, sum, avg, deltaPct, fNum, fPct, fDelta, r2 } from "./types";
 import { keywordBucketsCore as coreBuckets } from "./model";
 
-// CTR orgánico aproximado por posición (curva de industria; solo para ESTIMAR clicks).
+// CTR orgánico por posición (solo para ESTIMAR clicks): curva única de lib/ctr-curve.ts (AWR 2026,
+// punto medio con/sin Resumen IA). Reemplazó la curva vieja 28/15/10… que sobreestimaba el top-3.
 export function ctrPos(p: number | null): number {
-  if (p == null) return 0;
-  const t = [0, 28, 15, 10, 7, 5, 4, 3, 2.5, 2, 1.8];
-  return p <= 10 ? t[Math.max(1, Math.round(p))]! : p <= 20 ? 1 : 0.3;
+  return p == null ? 0 : ctrAt(p);
 }
 
 export interface KwBuckets { faltantes: { keyword: string; vol: number; lider: string; posLider: number | null }[]; quickWins: { keyword: string; vol: number; pos: number }[]; fuertes: { keyword: string; vol: number; pos: number }[]; volTotal: number }

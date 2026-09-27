@@ -41,6 +41,11 @@ import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 import { getPautaInversionTotalMensual } from "@/lib/objetivos-kpis";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { getWebCalidadSnapshot, type WebCalidadEstado } from "@/lib/web-calidad-server";
+import { cierreDeMes } from "@/lib/web-forecast";
+import { chequeoConsent } from "@/lib/web-consent";
+import { ecomFunnel, aiTraffic, landingDrops, trackingQuality } from "@/lib/web-calidad";
+import { CierreMesSection, ConsentCheckSection, CalidadDatoBanner, WebQuickWinsSection, WebCalidadPendiente } from "@/components/web/web-calidad";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -126,6 +131,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     webMetaRoas,
     ecom,
     pautaTotalInv,
+    calidadSnap,
   ] = await Promise.all([
     safe(getWebDailyKpis(range), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebDailyKpis"),
     safe(getWebMonthlyKpis(yoyRange), [] as Awaited<ReturnType<typeof getWebDailyKpis>>, "getWebMonthlyKpis(yoy)"),
@@ -160,8 +166,10 @@ export default async function WebPage({ searchParams }: PageProps) {
     safe(getMetaKpi("Web / Ecommerce", "Transacciones", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-trans)"),
     safe(getMetaKpi("Web / Ecommerce", "Total Ingresos", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-ing)"),
     safe(getMetaKpi("Web / Ecommerce", "ROAS", new Date().getFullYear()), META_FALLBACK, "getMetaKpi(web-roas)"),
-    safe(getEcommerceMensual(new Date().getFullYear()), { transacciones: [], ingresos: [], invConversion: [] } as Awaited<ReturnType<typeof getEcommerceMensual>>, "getEcommerceMensual"),
+    safe(getEcommerceMensual(new Date().getFullYear()), { transacciones: [], ingresos: [], invConversion: [], diario: [] } as Awaited<ReturnType<typeof getEcommerceMensual>>, "getEcommerceMensual"),
     safe(getPautaInversionTotalMensual(new Date().getFullYear()), Array.from({ length: 12 }, () => null) as (number | null)[], "getPautaInversionTotalMensual"),
+    // Calidad del dato / embudo / IA / consent: UNA fila precalculada por el cron web-calidad.
+    safe<WebCalidadEstado>(getWebCalidadSnapshot(), { status: "no_table" }, "getWebCalidadSnapshot"),
   ]);
 
   // Solo comparamos meses CERRADOS (mes en curso es parcial).
@@ -342,6 +350,28 @@ export default async function WebPage({ searchParams }: PageProps) {
   const roasYtd = totalInvYtd > 0 ? ingYtd / totalInvYtd : null;
   const roasMetasYtd = webMetaRoas.valores.slice(0, webUpto + 1).filter((v): v is number => v != null);
   const roasMetaYtd = roasMetasYtd.length ? roasMetasYtd.reduce((a, b) => a + b, 0) / roasMetasYtd.length : null;
+
+  // ---- Cierre proyectado del mes (transacciones / ingresos vs meta): misma serie diaria de
+  // ga4_purchases_daily que ya trae getEcommerceMensual (sin query extra). Puro (lib/web-forecast).
+  const cierre = (() => {
+    const c0 = cierreDeMes(ecom.diario);
+    if (!c0 || c0.mes.slice(0, 4) !== String(currentYear)) return null;
+    const mi = Number(c0.mes.slice(5, 7)) - 1;
+    return cierreDeMes(ecom.diario, { metaTx: webMetaTrans.valores[mi] ?? null, metaIngresos: webMetaIng.valores[mi] ?? null });
+  })();
+  // ---- Calidad del dato / embudo / IA / consent (snapshot del cron web-calidad) ----
+  const calidad = calidadSnap.status === "ok" ? calidadSnap.data : null;
+  const cg = calidad?.ga4?.ok ? calidad.ga4 : null;
+  const cgPeriodo = cg ? `${cg.periodo.start.slice(8, 10)}/${cg.periodo.start.slice(5, 7)} al ${cg.periodo.end.slice(8, 10)}/${cg.periodo.end.slice(5, 7)}` : "";
+  const cgReports = cg ? cg.reports : null;
+  const calidadDato = cg && cgReports ? trackingQuality(cgReports, { tx: cg.totals.tx, revenue: cg.totals.revenue, ke: cg.totals.ke, sessions: cg.totals.sessions, currency: cg.totals.currency, failedReports: cg.failed }) : null;
+  const funnelWeb = cgReports ? ecomFunnel(cgReports) : null;
+  const aiWeb = cg && cgReports ? aiTraffic(cgReports, { sessions: cg.totals.sessions, ke: cg.totals.ke, tx: cg.totals.tx }) : null;
+  const dropsWeb = cgReports ? landingDrops(cgReports) : { sitioDelta: null, drops: [] };
+  const mesActualYm = new Date().toISOString().slice(0, 7);
+  const consent = calidad?.consent
+    ? chequeoConsent(Object.fromEntries(Object.entries(calidad.consent.clicks).filter(([m]) => m < mesActualYm)), calidad.consent.sesiones)
+    : null;
 
   // Series de los 6 gráficos de evolución (real vs meta), 2 por línea.
   const traficoEvol: MetaEvolDatum[] = monthlyData.map((d) => ({ mes: d.mes, real: d.usuarios_curr, meta: d.usuarios_meta }));
@@ -575,6 +605,10 @@ export default async function WebPage({ searchParams }: PageProps) {
         />
       </section>
 
+      {/* Cierre proyectado del mes en curso (transacciones / ingresos vs meta) + chequeo de medición */}
+      {cierre && <CierreMesSection c={cierre} />}
+      {consent && calidad?.consent && <ConsentCheckSection c={consent} criterio={calidad.consent.criterio} todas={calidad.consent.sesionesTodas} />}
+
       {/* Cards secundarios (chicos, sin meta) */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
@@ -626,6 +660,17 @@ export default async function WebPage({ searchParams }: PageProps) {
           { nombre: "Pageviews", actual: totals.pageviews },
         ]}
       />
+
+      {/* Calidad del dato (GA4) + embudo + tráfico desde IA + landings en caída (snapshot del cron web-calidad) */}
+      {calidadSnap.status !== "ok" ? (
+        <WebCalidadPendiente status={calidadSnap.status} />
+      ) : (
+        <>
+          {calidadDato && <CalidadDatoBanner q={calidadDato} periodo={`últimos 28 días (${cgPeriodo})`} />}
+          {calidad?.ga4?.error && <p className="text-xs text-muted-foreground">GA4: {calidad.ga4.error}</p>}
+          <WebQuickWinsSection funnel={funnelWeb} ai={aiWeb} iaMensual={calidad?.iaMensual ?? []} drops={dropsWeb.drops} sitioDelta={dropsWeb.sitioDelta} periodo={cg ? `los últimos 28 días (${cgPeriodo})` : "los últimos 28 días"} />
+        </>
+      )}
 
       {/* Categoría: tabla + tendencia side-by-side */}
       <section className="grid gap-4 lg:grid-cols-2">

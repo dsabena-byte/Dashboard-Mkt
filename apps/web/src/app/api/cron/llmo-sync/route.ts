@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
-import { CATEGORIAS, CATEGORIA_TERMINO, marcasDeCategoria } from "@/lib/competitive-config";
+import { CATEGORIAS, marcasDeCategoria } from "@/lib/competitive-config";
+import { llmoPromptSet, pickPromptsForRun, weekIndex, aggregateLlmo, LLMO_WINDOW_DAYS, LLMO_CALLS_MAX } from "@/lib/llmo-stats";
+import { extraerCitas } from "@/lib/llmo-fuentes";
 
-// LLMO (LLM Optimization / GEO) — visibilidad de marca en respuestas de IA.
-// Para cada categoría le pregunta a un LLM (varias formas, varias corridas) "¿qué
-// <categoria> conviene en Argentina?", cuenta cuántas veces menciona cada marca
-// del set y en qué orden, y calcula el SHARE de menciones. Es el Share of Search
-// del canal de IA generativa. Guarda en seo_llmo (mes actual).
+// LLMO (LLM Optimization / GEO) — visibilidad de marca en respuestas de IA, con DISEÑO ESTADÍSTICO
+// (portado de BIP, sep-2026; lib/llmo-stats.ts):
+//  · 12 prompts por categoría en 4 intenciones (descubrimiento / comparación / evaluación / compra).
+//  · Cada corrida (semanal, workflow llmo-sync.yml) hace K llamadas por categoría (env
+//    LLMO_CALLS_POR_CAT, default 12 = el set completo) al modelo CON búsqueda web geolocalizada en AR.
+//  · Cada respuesta = una MUESTRA (marcas nombradas + URLs citadas) en seo_llmo_muestra (0118).
+//  · seo_llmo (mes actual) = agregado de las muestras de los últimos 28 días: prompts = respuestas (n),
+//    menciones = respuestas que nombran la marca (k), share_pct = share of model. Con n y k la UI
+//    calcula la tasa de mención con intervalo de Wilson 95% (llmoStats).
+//  · Si una categoría no obtuvo NINGUNA respuesta, NO se escribe (antes quedaban filas en 0 —
+//    sep-2026 — que parecían "0% de visibilidad").
+// Costo: gpt-4o-search-preview ≈ US$0,036/llamada → 12 × 3 categorías × ~4,3 corridas/mes ≈ US$5,6/mes.
 
 export const maxDuration = 300;
-// Modelo CON búsqueda web en vivo: mide la visibilidad real en IA (lo que la IA
-// responde hoy leyendo la web), no la memoria de entrenamiento. No acepta
-// temperature. Las llamadas son más lentas, por eso 1 corrida por prompt.
 const MODEL = "gpt-4o-search-preview";
-const REPEATS = 1;
+const CONC = 4;
 
 function env(key: string): string {
   const v = process.env[key];
@@ -20,29 +26,17 @@ function env(key: string): string {
   return v;
 }
 
-async function sb<T>(path: string, init?: RequestInit): Promise<T> {
+async function sb(path: string, init?: RequestInit): Promise<Response> {
   const url = env("NEXT_PUBLIC_SUPABASE_URL");
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
-  const res = await fetch(`${url}/rest/v1/${path}`, {
+  return fetch(`${url}/rest/v1/${path}`, {
     ...init,
+    cache: "no-store",
     headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
-  if (!res.ok) throw new Error(`Supabase ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  if (init?.method && init.method !== "GET") return {} as T;
-  return res.json() as Promise<T>;
 }
 
-function buildPrompts(term: string): string[] {
-  return [
-    `¿Cuáles son las mejores marcas de ${term} en Argentina? Nombralas.`,
-    `Voy a comprar un ${term} en Argentina. ¿Qué marcas me recomendás?`,
-    `¿Qué marca de ${term} conviene comprar en Argentina? Dame opciones.`,
-    `Hacé un ranking de las marcas de ${term} más recomendadas en Argentina.`,
-    `Si tuvieras que elegir un ${term} en Argentina, ¿qué marcas considerarías?`,
-  ];
-}
-
-async function askLLM(apiKey: string, prompt: string): Promise<string> {
+async function askLLM(apiKey: string, prompt: string): Promise<{ content: string; message: unknown }> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -52,16 +46,21 @@ async function askLLM(apiKey: string, prompt: string): Promise<string> {
       max_tokens: 800,
       // Búsqueda geolocalizada en Argentina (no resultados globales).
       web_search_options: {
+        search_context_size: "low",
         user_location: { type: "approximate", approximate: { country: "AR", city: "Buenos Aires", region: "Buenos Aires" } },
       },
     }),
+    signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 150)}`);
   const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content ?? "";
+  const message = data.choices?.[0]?.message ?? {};
+  return { content: message.content ?? "", message };
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+interface Muestra { categoria: string; fecha: string; prompt_id: string; intencion: string; modelo: string; marcas: string[]; fuentes: string[]; rank: Map<string, number> }
 
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization");
@@ -72,59 +71,78 @@ export async function GET(req: Request) {
     const apiKey = env("OPENAI_API_KEY");
     const now = new Date();
     const mes = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+    const k = Math.min(LLMO_CALLS_MAX, Math.max(1, Math.round(Number(process.env.LLMO_CALLS_POR_CAT ?? 12)) || 12));
+    const week = weekIndex(now);
 
-    const out: Array<Record<string, unknown>> = [];
-    for (const cat of CATEGORIAS) {
-      const term = CATEGORIA_TERMINO[cat];
-      const brands = marcasDeCategoria(cat);
-      const stat = new Map<string, { menciones: number; rankSum: number }>();
-      let evaluated = 0;
-
-      for (let rep = 0; rep < REPEATS; rep++) {
-        for (const p of buildPrompts(term)) {
-          let text = "";
-          try { text = await askLLM(apiKey, p); } catch { continue; }
-          if (!text) continue;
-          evaluated++;
-          const low = text.toLowerCase();
-          const appearances = brands
+    // 1) Llamadas (K por categoría, en paralelo acotado).
+    const jobs = CATEGORIAS.flatMap((cat) => pickPromptsForRun(llmoPromptSet(cat, now.getUTCFullYear()), k, week).map((p) => ({ cat, p })));
+    const nuevas: Muestra[] = [];
+    const errores: string[] = [];
+    let i = 0;
+    await Promise.all(Array.from({ length: CONC }, async () => {
+      while (i < jobs.length) {
+        const { cat, p } = jobs[i++]!;
+        try {
+          const { content, message } = await askLLM(apiKey, p.texto);
+          if (!content) continue;
+          const low = content.toLowerCase();
+          const apar = marcasDeCategoria(cat)
             .map((b) => ({ b, idx: low.search(new RegExp(`\\b${escape(b.toLowerCase())}\\b`)) }))
             .filter((x) => x.idx >= 0)
             .sort((a, z) => a.idx - z.idx);
-          appearances.forEach((x, order) => {
-            const s = stat.get(x.b) ?? { menciones: 0, rankSum: 0 };
-            s.menciones++;
-            s.rankSum += order + 1;
-            stat.set(x.b, s);
-          });
-        }
+          nuevas.push({ categoria: cat, fecha: new Date().toISOString(), prompt_id: p.id, intencion: p.intencion, modelo: MODEL, marcas: apar.map((x) => x.b), fuentes: extraerCitas(message), rank: new Map(apar.map((x, o) => [x.b, o + 1])) });
+        } catch (e) { if (errores.length < 5) errores.push((e as Error).message); }
       }
+    }));
 
-      const totalMenciones = [...stat.values()].reduce((s, v) => s + v.menciones, 0) || 1;
-      for (const b of brands) {
-        const s = stat.get(b) ?? { menciones: 0, rankSum: 0 };
+    // 2) Persistir las muestras nuevas (fail-safe: sin la migración 0118 se sigue sin acumular).
+    let muestrasOk = false;
+    if (nuevas.length) {
+      const r = await sb("seo_llmo_muestra", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(nuevas.map(({ rank: _r, ...m }) => m)) }).catch(() => null);
+      muestrasOk = !!r?.ok;
+    }
+
+    // 3) Pool de la ventana (28 días) por categoría: las guardadas (incluye las nuevas si se guardaron) o solo las nuevas.
+    const desde = new Date(now.getTime() - LLMO_WINDOW_DAYS * 864e5).toISOString();
+    let pool: { categoria: string; marcas: string[] }[] = nuevas;
+    if (muestrasOk) {
+      const r = await sb(`seo_llmo_muestra?fecha=gte.${desde}&select=categoria,marcas&order=id&limit=5000`).catch(() => null);
+      if (r?.ok) pool = (await r.json()) as { categoria: string; marcas: string[] }[];
+    }
+
+    const out: Array<Record<string, unknown>> = [];
+    const resumen: Record<string, { respuestas: number; nuevas: number }> = {};
+    for (const cat of CATEGORIAS) {
+      const ms = pool.filter((m) => m.categoria === cat);
+      const nuevasCat = nuevas.filter((m) => m.categoria === cat);
+      resumen[cat] = { respuestas: ms.length, nuevas: nuevasCat.length };
+      if (!ms.length || !nuevasCat.length) continue; // sin respuestas en esta corrida → no pisar el mes con ceros
+      const brands = marcasDeCategoria(cat).map((b) => ({ marca: b, own: b === "Drean" }));
+      const agg = aggregateLlmo(ms.map((m) => ({ categoria: cat, fecha: "", prompt: "", modelo: MODEL, marcas: m.marcas })), brands);
+      for (const a of agg) {
+        const ranks = nuevasCat.map((m) => m.rank.get(a.marca)).filter((x): x is number => x != null);
         out.push({
-          categoria: cat,
-          marca: b,
-          mes,
-          menciones: s.menciones,
-          prompts: evaluated,
-          share_pct: Math.round((s.menciones / totalMenciones) * 1000) / 10,
-          rank_prom: s.menciones > 0 ? Math.round((s.rankSum / s.menciones) * 100) / 100 : null,
+          categoria: cat, marca: a.marca, mes,
+          menciones: a.menciones, prompts: a.respuestas,
+          share_pct: Math.round(a.share_pct * 10) / 10,
+          rank_prom: ranks.length ? Math.round((ranks.reduce((s, x) => s + x, 0) / ranks.length) * 100) / 100 : null,
           modelo: MODEL,
+          updated_at: now.toISOString(),
         });
       }
     }
 
     if (out.length) {
-      await sb("seo_llmo?on_conflict=categoria,marca,mes", {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates" },
-        body: JSON.stringify(out),
-      });
+      const r = await sb("seo_llmo?on_conflict=categoria,marca,mes", { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: JSON.stringify(out) });
+      if (!r.ok) throw new Error(`seo_llmo ${r.status}: ${(await r.text()).slice(0, 200)}`);
     }
-    return NextResponse.json({ ok: true, mes, filas: out.length });
+    const ok = out.length > 0;
+    return NextResponse.json({
+      ok, mes, llamadas: jobs.length, respuestas: nuevas.length, porCategoria: resumen, filas: out.length,
+      muestrasGuardadas: muestrasOk, hint: muestrasOk ? undefined : "Sin la migración 0118 (seo_llmo_muestra) no se acumulan muestras ni fuentes: n = solo esta corrida.",
+      errores,
+    }, { status: ok ? 200 : 502 });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }

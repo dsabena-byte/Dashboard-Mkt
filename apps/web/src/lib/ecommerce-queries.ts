@@ -33,6 +33,9 @@ export interface EcommerceMensual {
   transacciones: (number | null)[]; // 12 (índice 0 = enero)
   ingresos: (number | null)[];
   invConversion: (number | null)[]; // ecommerce inhouse (ga4_ads_cost_daily) — rol Conversión
+  /** Serie DIARIA del año (fecha, transacciones, ingresos) — sale de la MISMA lectura, sin query extra.
+   *  La usa el cierre proyectado del mes (lib/web-forecast.ts) en /web. */
+  diario: { fecha: string; tx: number; ingresos: number }[];
 }
 
 // Inversión mensual de Ecommerce (Google Ads inhouse, rol Conversión) en ARS.
@@ -52,10 +55,10 @@ export async function getEcommerceInversionMensual(anio: number): Promise<(numbe
 export async function getEcommerceMensual(anio: number): Promise<EcommerceMensual> {
   const [purch, cost] = await Promise.all([
     fetchAll<{ fecha: string; purchases: number | null; revenue: number | null }>(
-      `ga4_purchases_daily?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,purchases,revenue`,
+      `ga4_purchases_daily?fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,purchases,revenue&order=id`,
     ),
     fetchAll<{ fecha: string; cost: number | null }>(
-      `ga4_ads_cost_daily?utm_campaign=ilike.inhouse*&fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,cost`,
+      `ga4_ads_cost_daily?utm_campaign=ilike.inhouse*&fecha=gte.${anio}-01-01&fecha=lte.${anio}-12-31&select=fecha,cost&order=id`,
     ),
   ]);
 
@@ -64,14 +67,20 @@ export async function getEcommerceMensual(anio: number): Promise<EcommerceMensua
   const conv: (number | null)[] = Array.from({ length: 12 }, () => null);
   const add = (arr: (number | null)[], i: number, v: number) => { arr[i] = (arr[i] ?? 0) + v; };
 
+  const dia = new Map<string, { fecha: string; tx: number; ingresos: number }>();
   for (const r of purch) {
     const i = Number(r.fecha?.slice(5, 7)) - 1;
     if (i >= 0 && i < 12) { add(trans, i, r.purchases ?? 0); add(ing, i, Number(r.revenue) || 0); }
+    if (r.fecha) {
+      const d = dia.get(r.fecha) ?? { fecha: r.fecha, tx: 0, ingresos: 0 };
+      d.tx += r.purchases ?? 0; d.ingresos += Number(r.revenue) || 0;
+      dia.set(r.fecha, d);
+    }
   }
   for (const r of cost) {
     const i = Number(r.fecha?.slice(5, 7)) - 1;
     if (i >= 0 && i < 12) add(conv, i, Number(r.cost) || 0);
   }
 
-  return { transacciones: trans, ingresos: ing, invConversion: conv };
+  return { transacciones: trans, ingresos: ing, invConversion: conv, diario: [...dia.values()].sort((a, b) => a.fecha.localeCompare(b.fecha)) };
 }

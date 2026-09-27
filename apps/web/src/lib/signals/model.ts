@@ -9,6 +9,8 @@
 // KPIs de mercado, Search Console (snapshot search_console_snapshot, lib/search-console.ts) y el Seguimiento.
 // ============================================================================
 
+import { ctrAt, calibrateCtrCurve, type CtrCurve } from "../ctr-curve";
+
 // ─────────────────────────── PLAN DE MEDIOS ───────────────────────────
 export interface PautaMonth {
   mes: string;
@@ -398,12 +400,19 @@ export function shareOfEngagement(posts: CompetitorPost[] | null | undefined, ow
 export interface ScRow { key: string; clicks: number; impressions: number; ctr: number; position: number }
 export interface ScQueryPage { query: string; page: string; clicks: number; impressions: number; ctr: number; position: number }
 export interface ScMonth { mes: string; clicks: number; impressions: number; ctr: number; position: number; dias: number }
-export interface SearchConsoleData { v: 1; ok: boolean; code?: string; monthly?: ScMonth[]; queries?: ScRow[]; pages?: ScRow[]; queryPage?: ScQueryPage[]; updatedAt: string }
-export function ctrEsperado(pos: number): number {
-  const t = [0, 28, 15, 10, 7, 5, 4, 3, 2.5, 2, 1.8];
-  if (!Number.isFinite(pos) || pos <= 1) return t[1]!;
-  if (pos <= 10) { const lo = Math.floor(pos), hi = Math.ceil(pos); return t[lo]! + (t[hi]! - t[lo]!) * (pos - lo); }
-  return pos <= 20 ? 1 : 0.3;
+export interface ScDeviceRow { device: string; clicks: number; impressions: number; ctr: number; position: number }
+export interface SearchConsoleData {
+  v: 1; ok: boolean; code?: string; monthly?: ScMonth[]; queries?: ScRow[]; pages?: ScRow[]; queryPage?: ScQueryPage[]; updatedAt: string;
+  // Search Console a fondo (lib/sc-deep.ts) — opcionales: snapshots viejos no los traen.
+  queryPageMulti?: ScQueryPage[]; pagesPrev?: ScRow[]; pagesYoY?: ScRow[]; pagesLimit?: number;
+  rangePrev?: { start: string; end: string }; rangeYoY?: { start: string; end: string };
+  devices?: ScDeviceRow[]; devicesPrev?: ScDeviceRow[];
+}
+/** CTR (%) esperado por posición. Curva ÚNICA (lib/ctr-curve.ts: AWR jul-2026, punto medio del rango
+ *  con/sin Resumen IA; o la curva propia calibrada con Search Console si se pasa). Reemplazó la curva
+ *  vieja 28/15/10/7/5… (pre-AI Overviews) que sobreestimaba 1,4-2,5x los clics del top-3. */
+export function ctrEsperado(pos: number, curve?: CtrCurve | null): number {
+  return ctrAt(Number.isFinite(pos) ? pos : 1, { curve: curve ?? null });
 }
 const medianA = (xs: number[]) => { const a = [...xs].sort((x, y) => x - y); if (!a.length) return 0; const m = Math.floor(a.length / 2); return a.length % 2 ? a[m]! : (a[m - 1]! + a[m]!) / 2; };
 export interface ScCtrOpp extends ScRow { ctrEsperado: number; clicksExtra: number; pagina: string | null }
@@ -423,16 +432,19 @@ export function analyzeSearchConsole(d: SearchConsoleData | null | undefined, ow
   const empty: ScAnalysis = { totales: null, ultimoMes: null, ctrBajo: [], quickWins: [], marca: null };
   if (!d?.ok) return empty;
   const qs = d.queries ?? [];
+  // Curva propia (búsquedas NO de marca con ≥100 impresiones por tramo); sin datos suficientes → referencia.
+  const curve = calibrateCtrCurve(qs, { ownBrand });
+  const ctrE = (p: number) => ctrEsperado(p, curve);
   const cerrados = (d.monthly ?? []).filter((m) => m.dias >= 20);
   const ultimoMes = cerrados[cerrados.length - 1] ?? null;
   const tc = qs.reduce((s, r) => s + r.clicks, 0), ti = qs.reduce((s, r) => s + r.impressions, 0);
   const totales = ti > 0 ? { clicks: tc, impressions: ti, ctr: (tc / ti) * 100, position: qs.reduce((s, r) => s + r.position * r.impressions, 0) / ti } : null;
   const minImpr = Math.max(50, medianA(qs.map((r) => r.impressions)));
-  const ctrBajo = qs.filter((r) => r.position <= 5 && r.impressions >= minImpr && r.ctr < ctrEsperado(r.position) * 0.6)
-    .map((r) => ({ ...r, ctrEsperado: ctrEsperado(r.position), clicksExtra: Math.round(r.impressions * (ctrEsperado(r.position) - r.ctr) / 100), pagina: paginaDe(d, r.key) }))
+  const ctrBajo = qs.filter((r) => r.position <= 5 && r.impressions >= minImpr && r.ctr < ctrE(r.position) * 0.6)
+    .map((r) => ({ ...r, ctrEsperado: ctrE(r.position), clicksExtra: Math.round(r.impressions * (ctrE(r.position) - r.ctr) / 100), pagina: paginaDe(d, r.key) }))
     .sort((a, b) => b.clicksExtra - a.clicksExtra).slice(0, 10);
   const quickWins = qs.filter((r) => r.position >= 8 && r.position <= 20 && r.impressions >= minImpr)
-    .map((r) => ({ ...r, clicksExtra: Math.max(0, Math.round(r.impressions * (ctrEsperado(3) - r.ctr) / 100)), pagina: paginaDe(d, r.key) }))
+    .map((r) => ({ ...r, clicksExtra: Math.max(0, Math.round(r.impressions * (ctrE(3) - r.ctr) / 100)), pagina: paginaDe(d, r.key) }))
     .sort((a, b) => b.clicksExtra - a.clicksExtra).slice(0, 10);
   let marca: ScAnalysis["marca"] = null;
   const b = (ownBrand ?? "").trim().toLowerCase();
