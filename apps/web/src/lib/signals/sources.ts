@@ -30,6 +30,10 @@ import { getBgtData, hasVersion } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
 import { computeCuatris, MAX_DESVIO, MAX_INV_FACT } from "@/lib/bgt-dashboard";
 import { KANTAR_LAVADO, KANTAR_REFRI, KANTAR_COCCION, SM_WAVES } from "@/lib/salud-marca-model";
+import { computePacing, type PacingMes } from "@/lib/pauta-pacing";
+import { fatigaPiezas, type FatigaResumen } from "@/lib/pauta-fatiga";
+import { getBgtPautaMensual, getPautaAsOf } from "@/lib/pauta-pacing-server";
+import { getEcommerceInversionMensual } from "@/lib/ecommerce-queries";
 import { buildPautaFull, buildRedesInput, buildWebReports, buildCompetitorWeb, buildSeoData, buildSeguimiento, type RedesAdapted, type CompetitorWebRowLite } from "./adapters";
 import type { PautaFull, WebReports, CompetitorWebData, SeoData, SeguimientoObjetivos } from "./model";
 import type { CrucesInput } from "./cruces";
@@ -59,14 +63,40 @@ export class LoadCtx {
 }
 
 // ── Plan de medios ──
-export function loadPauta(ctx: LoadCtx): Promise<PautaFull | null> {
-  return ctx.once("pauta", async () => {
+function loadPautaRaw(ctx: LoadCtx) {
+  return ctx.once("pautaRaw", async () => {
     const [pauta, metaPaid, dv360, dv360Reach, gads, fx] = await Promise.all([
       safe(getPautaPerformance(true)), safe(getMetaPaidCreatives(true)), safe(getDv360Creatives()),
       safe(getDv360Reach()), safe(getGoogleAdsOmd()), safe(getFxRates()),
     ]);
-    const p = buildPautaFull({ pauta: pauta ?? [], metaPaid: metaPaid ?? [], dv360: dv360 ?? [], dv360Reach: dv360Reach ?? [], googleAdsOmd: gads ?? [], fxRates: fx ?? {}, anio: year(), now: new Date() });
+    return { pauta: pauta ?? [], metaPaid: metaPaid ?? [], dv360: dv360 ?? [], dv360Reach: dv360Reach ?? [], googleAdsOmd: gads ?? [], fxRates: fx ?? {} };
+  });
+}
+export function loadPauta(ctx: LoadCtx): Promise<PautaFull | null> {
+  return ctx.once("pauta", async () => {
+    const raw = await loadPautaRaw(ctx);
+    const p = buildPautaFull({ ...raw, anio: year(), now: new Date() });
     return p.ok ? p : null;
+  });
+}
+/** Pacing del mes en curso (vs meta de Inversión "Pauta Mkt") + fatiga creativa por pieza. Mismas funciones
+ *  puras que el Tablero; lecturas extra chicas (meta del año, BGT de la cuenta de pauta, ecommerce, asOf). */
+export function loadPautaExtras(ctx: LoadCtx): Promise<{ pacing: PacingMes | null; fatiga: FatigaResumen | null }> {
+  return ctx.once("pautaExtras", async () => {
+    const anio = year();
+    const now = new Date();
+    const [raw, meta, bgt, ecom, asOf] = await Promise.all([
+      loadPautaRaw(ctx), safe(getMetaKpi("Pauta Mkt", "Inversión", anio)), safe(getBgtPautaMensual(anio)),
+      safe(getEcommerceInversionMensual(anio)), safe(getPautaAsOf()),
+    ]);
+    let pacing: PacingMes | null = null, fatiga: FatigaResumen | null = null;
+    try {
+      pacing = computePacing({ ...raw, anio, asOf: asOf ? new Date(asOf) : now, now, plan: meta?.valores ?? null, bgt, extra: ecom ? [{ medio: "Ecommerce", valores: ecom }] : [] });
+    } catch { /* best-effort */ }
+    try {
+      fatiga = fatigaPiezas({ metaPaid: raw.metaPaid, dv360: raw.dv360, dv360Reach: raw.dv360Reach, fxRates: raw.fxRates, mesEnCurso: now.toISOString().slice(0, 7) });
+    } catch { /* best-effort */ }
+    return { pacing, fatiga };
   });
 }
 

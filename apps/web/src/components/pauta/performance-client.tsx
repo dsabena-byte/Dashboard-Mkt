@@ -40,6 +40,10 @@ import type { MetaKpiData } from "@/lib/metas-server";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { esMedioApi } from "@/lib/pauta-medios";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { computePacing } from "@/lib/pauta-pacing";
+import { fatigaPiezas } from "@/lib/pauta-fatiga";
+import { PacingSection } from "@/components/pauta/pacing-section";
+import { FatigaSection } from "@/components/pauta/fatiga-section";
 
 const fmtUSD = (n: number): string =>
   `US$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -328,7 +332,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], initialTab }: { initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], bgtPauta = null, initialTab }: { bgtPauta?: { versiones: (string | null)[]; valores: (number | null)[] } | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
   // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
   // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
   // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
@@ -896,6 +900,19 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
     });
   }, [data, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, arsMode, fxFallback, currentMonth, catImp]);
 
+  // Ritmo de inversión del mes EN CURSO (pacing) vs la meta de Inversión — mismo modelo por medio
+  // (buildPautaMediosMensual, vía lib/pauta-pacing). Momento del dato = última sync de Meta.
+  const pacing = useMemo(() => {
+    try {
+      const asOf = freshness?.meta ? new Date(freshness.meta) : new Date();
+      return computePacing({ pauta: rawData, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, anio: 2026, asOf, now: new Date(), plan: metas["Inversión"]?.valores ?? null, bgt: bgtPauta, extra: [{ medio: "Ecommerce", valores: ecommerceInv }] });
+    } catch { return null; }
+  }, [rawData, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, freshness?.meta, metas, bgtPauta, ecommerceInv]);
+  // Fatiga creativa por pieza (serie mensual Meta + DV360). Año completo, sin filtros.
+  const fatiga = useMemo(() => {
+    try { return fatigaPiezas({ metaPaid, dv360, dv360Reach, fxRates, mesEnCurso: new Date().toISOString().slice(0, 7) }); } catch { return null; }
+  }, [metaPaid, dv360, dv360Reach, fxRates]);
+
   // Mes de REFERENCIA para las cards = último mes cerrado con ejecución real.
   const refIdxImp = useMemo(() => {
     for (let i = impactoMensual.length - 1; i >= 0; i--) { if (impactoMensual[i]?.impr != null) return i; }
@@ -1273,6 +1290,12 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
               />
             ))}
           </section>
+
+          {pacing && (
+            <div className="mt-4">
+              <PacingSection p={pacing} />
+            </div>
+          )}
 
           <SectionTitle>Evolución mensual · real vs meta</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
@@ -1906,6 +1929,14 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ===== FATIGA CREATIVA (serie mensual por pieza) ===== */}
+      {tab === "Eficiencia Medios" && fatiga && (
+        <div>
+          <SectionTitle>Fatiga creativa · piezas que se desgastan</SectionTitle>
+          <FatigaSection f={fatiga} />
         </div>
       )}
 
