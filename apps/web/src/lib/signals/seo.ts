@@ -44,7 +44,7 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
           key: k("keywords_missing"), tipo: "alerta", prioridad: fvPct >= 40 ? "alta" : "media",
           titulo: `${pre}no rankeás en ${b.faltantes.length} keywords que suman ${fNum(fv)} búsquedas/mes (${fPct(fvPct, 0)} de la demanda relevada)`,
           descripcion: `Las de mayor volumen: ${top.map((f) => `"${f.keyword}" (${fNum(f.vol)}, lidera ${f.lider}${f.posLider ? ` #${f.posLider}` : ""})`).join(" · ")}.`,
-          acciones: ["Crear/optimizar una página por intención (categoría, comparativa, guía) para las de mayor volumen", "Analizar la página que rankea del líder (formato, extensión, schema)", "Enlazarlas desde la home y las páginas con autoridad"],
+          acciones: ["Para las búsquedas más grandes, tener una página del sitio que responda justo eso (la categoría, una comparativa o una guía de compra); si ya existe, mejorarla", "Mirar la página del competidor que sale primero en Google: qué formato usa, qué tan completa es y qué preguntas responde", "Poner links hacia esas páginas desde la home y las páginas más visitadas del sitio"],
           datos: { volumenFaltante: fv, pctDemanda: r2(fvPct), top: top },
           impacto: { metrica: "Clicks/mes estimados si llegaras al top-5 en las 5 mayores", valor: Math.round(sum(top.map((f) => f.vol * (ctrPos(5) / 100)))), unidad: "clicks/mes" },
         });
@@ -54,9 +54,9 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
         const gain = sum(qw.map((q) => q.vol * ((ctrPos(3) - ctrPos(q.pos)) / 100)));
         S({
           key: k("keywords_quick_wins"), tipo: "oportunidad", prioridad: gain >= 500 ? "alta" : "media",
-          titulo: `${pre}${b.quickWins.length} keywords en posición 4-20: llevarlas al top-3 suma ≈${fNum(gain)} clicks/mes`,
-          descripcion: `${qw.map((q) => `"${q.keyword}" #${q.pos} (${fNum(q.vol)}/mes)`).join(" · ")}. Estimación con curva de CTR orgánico de industria.`,
-          acciones: ["Mejorar title/H1 y contenido de la página que ya rankea (no crear otra)", "Sumar enlaces internos con el anchor de la keyword", "Agregar FAQ/schema y reforzar la experiencia (velocidad, mobile)"],
+          titulo: `${pre}${b.quickWins.length} búsquedas donde aparecés entre el 4° y el 20° lugar de Google: subirlas al top-3 suma ≈${fNum(gain)} clicks/mes`,
+          descripcion: `${qw.map((q) => `"${q.keyword}" #${q.pos} (${fNum(q.vol)}/mes)`).join(" · ")}. Estimación: en Google, los 3 primeros resultados se llevan la mayoría de los clics; se usa el % de clics típico de cada posición (curva de CTR de la industria).`,
+          acciones: ["Mejorar la página que ya aparece (no crear otra): que el título que muestra Google y el título principal de la página digan la búsqueda (title y H1), y que el texto responda mejor lo que la gente busca", "Desde otras páginas del sitio, poner links hacia esa página usando las mismas palabras de la búsqueda como texto del link (enlaces internos con anchor)", "Sumar preguntas frecuentes a la página, marcadas para que Google las entienda (FAQ con datos estructurados o schema), y revisar que cargue rápido en el celular"],
           datos: { quickWins: qw },
           impacto: { metrica: "Clicks orgánicos adicionales estimados", valor: Math.round(gain), unidad: "clicks/mes" },
         });
@@ -128,7 +128,7 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
         key: k("llm_absent"), tipo: "alerta", prioridad: "alta",
         titulo: `${pre}tu marca no aparece en las respuestas de los asistentes de IA${leader ? ` (lidera ${leader.marca} con ${fPct(leader.share_pct, 0)})` : ""}`,
         descripcion: `Sobre ${ll[0]?.prompts ?? 0} prompts de compra de la categoría. Cada vez más búsquedas se resuelven en ChatGPT/Gemini sin pasar por Google.`,
-        acciones: ["Publicar contenido comparativo y guías de compra citables (datos, specs, FAQs)", "Conseguir presencia en reviews/medios que los LLMs usan como fuente", "Datos estructurados (schema Product/FAQ) en las fichas"],
+        acciones: ["Publicar comparativas y guías de compra con datos concretos (medidas, consumo, preguntas frecuentes) que un asistente de IA pueda citar", "Aparecer en las reseñas y medios que los asistentes de IA (ChatGPT, Gemini) usan como fuente", "Pedirle al desarrollador que marque las fichas de producto para que Google y la IA las lean bien (datos estructurados o schema de Producto y Preguntas frecuentes)"],
         datos: { ranking: ll.slice(0, 5).map((l) => ({ marca: l.marca, share: r2(l.share_pct), menciones: l.menciones })) },
       });
       else if (leader && leader.share_pct - own.share_pct >= 15) S({
@@ -142,7 +142,7 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
         key: k("llm_vs_search"), tipo: "oportunidad", prioridad: "media",
         titulo: `${pre}tu visibilidad en IA (${fPct(own.share_pct, 0)}) está muy por debajo de tu share of search (${fPct(ownSos, 0)})`,
         descripcion: "La marca tiene demanda pero los asistentes no la recomiendan en proporción: brecha de GEO (Generative Engine Optimization).",
-        acciones: ["Auditar qué fuentes citan los LLMs para la categoría y ganar presencia ahí", "Publicar FAQs y comparativas con datos verificables"],
+        acciones: ["Ver qué sitios citan los asistentes de IA (ChatGPT, Gemini) cuando alguien pregunta por la categoría, y buscar aparecer en esos sitios", "Publicar preguntas frecuentes y comparativas con datos verificables"],
         datos: { shareIa: r2(own.share_pct), shareSearch: r2(ownSos) },
       });
     }

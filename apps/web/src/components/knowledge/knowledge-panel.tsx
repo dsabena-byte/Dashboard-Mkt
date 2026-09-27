@@ -4,15 +4,18 @@ import Link from "next/link";
 import { KPI_KNOW, type KpiKnow } from "@/lib/knowledge";
 import { MODULO_TITULO } from "@/lib/guia/titulos";
 import { FUNNEL_LABEL } from "@/lib/guia/types";
+import { GuiameButton } from "@/components/copiloto/guiame-button";
+import { usePathname } from "next/navigation";
 
 // Panel lateral de la guía por KPI (Proceso Estratégico) — se monta UNA vez en el layout. Escucha el
 // evento `bip:learn` (que dispara cada LearnButton) y muestra fórmula, referencia, las 4 capas
 // (cómo leer · mejor práctica · oportunidad · marco) y las palancas con link al módulo.
 // Importa solo el índice liviano de títulos (no todo el contenido de la guía).
-const LAYERS: { field: "comoLeer" | "mejorPractica" | "oportunidad" | "marco"; label: string }[] = [
+// `guia`: la capa lleva "Guiame paso a paso" (abre el copiloto con el texto y pide la guía no técnica).
+const LAYERS: { field: "comoLeer" | "mejorPractica" | "oportunidad" | "marco"; label: string; guia?: boolean }[] = [
   { field: "comoLeer", label: "Cómo leer" },
-  { field: "mejorPractica", label: "Mejor práctica" },
-  { field: "oportunidad", label: "Oportunidad" },
+  { field: "mejorPractica", label: "Mejor práctica", guia: true },
+  { field: "oportunidad", label: "Oportunidad", guia: true },
   { field: "marco", label: "Marco" },
 ];
 
@@ -20,6 +23,7 @@ const K11 = "text-[11px] font-semibold uppercase tracking-wider text-slate-400";
 
 export function KnowledgePanel() {
   const [know, setKnow] = useState<KpiKnow | null>(null);
+  const pathname = usePathname() || "/";
   const open = Boolean(know);
 
   useEffect(() => {
@@ -87,6 +91,20 @@ export function KnowledgePanel() {
                   className="m-0 text-[13px] leading-relaxed text-slate-600 [&_b]:font-semibold [&_b]:text-slate-900"
                   dangerouslySetInnerHTML={{ __html: know[l.field] }}
                 />
+                {l.guia && know[l.field] && (
+                  <div className="mt-2">
+                    <GuiameButton
+                      onBefore={close}
+                      item={{
+                        tipo: l.field === "oportunidad" ? "oportunidad" : "buena práctica",
+                        titulo: `${know.name} — ${l.label}`,
+                        dash: pathname,
+                        dato: [know.comoLeer, know.formula ? `Fórmula: ${know.formula}` : ""].filter(Boolean).join(" "),
+                        queHacer: [know[l.field]],
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           {palancas.length > 0 && (

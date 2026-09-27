@@ -21,9 +21,26 @@ export async function maxUpdatedAt(
   let q = client.from(table).select(col);
   if (filter) q = q.eq(filter.col, filter.val);
   const { data, error } = await q.order(col, { ascending: false }).limit(1);
-  if (error || !data || data.length === 0) return null;
-  const v = (data[0] as Record<string, unknown>)?.[col];
-  return typeof v === "string" ? v : null;
+  const v = !error && data?.length ? (data[0] as Record<string, unknown>)?.[col] : null;
+  if (typeof v === "string") return v;
+  // Tablas con RLS sin policy (solo service key: search_console_snapshot, seo_audit_snapshot, …): el
+  // cliente con la sesión del usuario no ve filas → "sin fecha". Solo se lee la fecha máxima.
+  return db === "principal" ? maxUpdatedAtService(table, col, filter) : null;
+}
+
+async function maxUpdatedAtService(table: string, col: string, filter?: { col: string; val: string }): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  const f = filter ? `&${encodeURIComponent(filter.col)}=eq.${encodeURIComponent(filter.val)}` : "";
+  try {
+    const r = await fetch(`${url}/rest/v1/${encodeURIComponent(table)}?select=${encodeURIComponent(col)}${f}&order=${encodeURIComponent(col)}.desc.nullslast&limit=1`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store",
+    });
+    if (!r.ok) return null;
+    const rows = (await r.json()) as Record<string, unknown>[];
+    const v = rows[0]?.[col];
+    return typeof v === "string" ? v : null;
+  } catch { return null; }
 }
 
 // Para dashboards que combinan varias fuentes: devuelve la fecha más reciente.

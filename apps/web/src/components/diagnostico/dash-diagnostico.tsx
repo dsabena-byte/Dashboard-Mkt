@@ -17,6 +17,7 @@ import { recomendacionesDeSenales, recomendacionesDeDiagnostico, unirRecomendaci
 import { RecomendacionesLista } from "./recomendacion-card";
 import { AnotacionesPanel } from "@/components/anotaciones/anotaciones-panel";
 import { LearnButton } from "@/components/knowledge/learn-button";
+import { GuiameButton } from "@/components/copiloto/guiame-button";
 
 const DATA = "#1e40af";
 const INK = "#0f172a";
@@ -56,6 +57,7 @@ function SignalList({ signals, initial = 6 }: { signals: Signal[]; initial?: num
             {s.acciones.length > 0 && (isOpen
               ? <ul className="mt-1.5 list-disc pl-4 text-[12.5px] leading-relaxed" style={{ color: INK }}>{s.acciones.map((a, i) => <li key={i}>{a}</li>)}</ul>
               : <button type="button" onClick={() => setOpen(s.key)} className="mt-1 text-xs font-semibold" style={{ color: DATA }}>Qué hacer ({s.acciones.length}) ›</button>)}
+            {s.acciones.length > 0 && <div className="mt-1.5"><GuiameButton item={{ tipo: s.tipo === "alerta" ? "alerta" : s.tipo === "oportunidad" ? "oportunidad" : "señal", titulo: s.titulo, dash: s.dash, dato: s.descripcion, impacto: s.impacto ? `${s.impacto.metrica}: ${fImpacto(s.impacto)}` : null, queHacer: s.acciones }} /></div>}
           </div>
         );
       })}
@@ -94,7 +96,7 @@ function ItemRows({ items }: { items: InsItem[] }) {
   );
 }
 
-function InsightsView({ data }: { data: Insights }) {
+function InsightsView({ data, dash }: { data: Insights; dash: string }) {
   const pos = data.hallazgos.filter((h) => h.tipo === "positivo");
   const neg = data.hallazgos.filter((h) => h.tipo === "negativo");
   return (
@@ -131,6 +133,7 @@ function InsightsView({ data }: { data: Insights }) {
                       <div className="text-[13px] font-semibold" style={{ color: INK }}>{h.titulo}</div>
                       {h.evidencia && <div className="text-[12.5px] leading-relaxed text-slate-600">{h.evidencia}</div>}
                       {h.porque && <div className="text-[12.5px] leading-relaxed text-slate-600"><span className="font-semibold" style={{ color: INK }}>Causa:</span> {h.porque}</div>}
+                      {h.tipo === "negativo" && <div className="mt-1"><GuiameButton item={{ tipo: "alerta", titulo: `Corregir: ${h.titulo}`, dash, dato: [h.evidencia, h.porque ? `Causa probable: ${h.porque}` : ""].filter(Boolean).join(" ") }} /></div>}
                     </div>
                   ))}
                 </div>
@@ -147,6 +150,7 @@ function InsightsView({ data }: { data: Insights }) {
                 <div className="flex flex-wrap items-center gap-2"><PrioChip p={o.prioridad} /><span className="text-[13px] font-semibold" style={{ color: INK }}>{o.palanca}</span></div>
                 {o.impacto && <div className="mt-0.5 text-[12.5px] font-semibold" style={{ color: DATA }}>{o.impacto}</div>}
                 {o.calculo && <div className="text-[12px] leading-relaxed text-slate-500">{o.calculo}</div>}
+                <div className="mt-1"><GuiameButton item={{ tipo: "oportunidad", titulo: o.palanca, dash, dato: o.calculo, impacto: o.impacto }} /></div>
               </div>
             ))}
           </div>
@@ -160,6 +164,7 @@ function InsightsView({ data }: { data: Insights }) {
                 <div className="flex flex-wrap items-center gap-2"><PrioChip p={a.prioridad} /><span className="text-[13px] font-semibold" style={{ color: INK }}>{a.accion}</span></div>
                 {a.porque && <div className="mt-0.5 text-[12.5px] leading-relaxed text-slate-600"><span className="font-semibold" style={{ color: INK }}>Por qué:</span> {a.porque}</div>}
                 {a.impactoEsperado && <div className="text-[12.5px] leading-relaxed text-slate-600"><span className="font-semibold" style={{ color: INK }}>Impacto esperado:</span> {a.impactoEsperado}</div>}
+                <div className="mt-1"><GuiameButton item={{ tipo: "recomendación", titulo: a.accion, dash, dato: a.porque, impacto: a.impactoEsperado }} /></div>
               </div>
             ))}
           </div>
@@ -240,7 +245,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
 
       {open && (
         <div className="mt-4 grid gap-4">
-          <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, en un mismo formato y ordenadas por prioridad (impacto × confianza ÷ esfuerzo). Abrí cada una para ver los pasos, el supuesto del impacto y cómo medirla.">
+          <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, ordenadas de lo más urgente a lo menos (según cuánto mueven el resultado, qué tan seguro es el dato y cuánto trabajo llevan). Abrí cada una para ver los pasos, o tocá «Guiame paso a paso» y el copiloto te explica cómo hacerlo, en palabras simples.">
             {signals == null ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando las recomendaciones…</div>
             ) : <RecomendacionesLista recs={recs} cargando={loadingDiag} />}
@@ -275,7 +280,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
               <div className="flex items-center gap-2 rounded-lg border bg-white p-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Analizando la evolución de los KPIs, el cumplimiento de metas y las correlaciones… (puede tardar unos segundos)</div>
             ) : loadingDiag ? (
               <div className="flex items-center gap-2 py-3 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Cargando el último diagnóstico…</div>
-            ) : data ? <InsightsView data={data} /> : (
+            ) : data ? <InsightsView data={data} dash={dash} /> : (
               <div className="rounded-lg border border-dashed bg-white p-4 text-xs text-slate-500">Todavía no hay un diagnóstico guardado para este tablero. Generalo con el botón (usa los datos del tablero, las metas del Seguimiento y las señales detectadas).</div>
             )}
           </div>
