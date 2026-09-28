@@ -7,7 +7,7 @@
 //
 // Qué medios tienen dato DIARIO (validado por REST, sep-2026):
 //  · Google Search y Demand Gen → google_ads_creatives (una fila por anuncio y día, desde 2026-04-08).
-//  · Meta → meta_paid_daily (migración 0123, lo llena el cron meta-paid-sync). Hasta que haya filas,
+//  · Meta → meta_paid_daily (migración 0124, lo llena el cron meta-paid-sync). Hasta que haya filas,
 //    Meta se evalúa con su dato MENSUAL (meta_paid_creatives: gasto del mes a la fecha + días activos
 //    por campaña).
 //  · DV360 (YouTube / Programmatic) → dv360_creatives es SOLO mensual (columna `mes`): no hay diario.

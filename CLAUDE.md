@@ -351,7 +351,7 @@ reporte_existencia/cb_homologos).
   solo para las señales `pauta_pacing_*`. En **Eficiencia Medios** arriba: `components/pauta/inversion-diaria-section.tsx` +
   `lib/pauta-diaria.ts` (puro, test `scripts/pauta-diaria.test.ts`) + `lib/pauta-diaria-server.ts` (REST). **Granularidad
   validada:** Google Search/Demand Gen DIARIO (`google_ads_creatives`, desde 2026-04-08; PMax no está); **Meta era solo
-  MENSUAL** → migración **`0123_meta_paid_daily.sql`** + `meta-paid-sync` ahora guarda gasto por día×campaña (misma llamada
+  MENSUAL** → migración **`0124_meta_paid_daily.sql`** + `meta-paid-sync` ahora guarda gasto por día×campaña (misma llamada
   `time_increment=1` de días activos, + `spend`); sin la tabla Meta se evalúa por mes + concentración por campaña
   (`dias_activos`); **DV360 solo mensual** (se dice en la UI). Reglas: pico = día >3× mediana 14 d previos con gasto (≥5 días,
   >$150K); "mes normal" = MEDIANA de 3 meses cerrados escalada al plan de Inversión (meta Pauta Mkt) del mes; urgente = ≥50%

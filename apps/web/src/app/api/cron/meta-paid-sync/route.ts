@@ -90,7 +90,7 @@ async function listAllAdAccounts(token: string): Promise<AdAccount[]> {
 // insights a nivel cuenta con time_increment=1 (una fila por ad × día) pidiendo
 // solo `impressions` + `spend`. Contamos, por ad_id, los días con impresiones > 0
 // y además sumamos el gasto por (día, campaña) → tabla meta_paid_daily (migración
-// 0123; alimenta "Inversión diaria por medio" en Eficiencia Medios). Es una
+// 0124; alimenta "Inversión diaria por medio" en Eficiencia Medios). Es una
 // llamada barata (campos mínimos) y NO toca la llamada pesada de /ads con creative.
 // Nunca rompe el sync: ante error devuelve mapas vacíos (dias_activos queda null).
 interface DailyCampaign { fecha: string; campaign_id: string; campaign_name: string | null; spend: number; impresiones: number }
@@ -142,7 +142,7 @@ async function fetchActiveDaysMap(
 }
 
 // Guarda el gasto diario por campaña del mes (clean-replace del rango del mes, así una campaña que dejó de
-// gastar no queda con un dato viejo). Sin la migración 0123 devuelve el aviso y no rompe el sync.
+// gastar no queda con un dato viejo). Sin la migración 0124 devuelve el aviso y no rompe el sync.
 async function upsertMetaDaily(rows: DailyCampaign[], since: string, until: string): Promise<string> {
   const url = env("NEXT_PUBLIC_SUPABASE_URL");
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
@@ -152,7 +152,7 @@ async function upsertMetaDaily(rows: DailyCampaign[], since: string, until: stri
     const del = await fetch(`${url}/rest/v1/meta_paid_daily?fecha=gte.${since}&fecha=lte.${until}`, { method: "DELETE", headers: { ...h, Prefer: "return=minimal" } });
     if (!del.ok) {
       const t = await del.text();
-      return /PGRST205|42P01|does not exist|schema cache/i.test(t) ? "falta migración 0123_meta_paid_daily" : `daily delete ${del.status}: ${t.slice(0, 160)}`;
+      return /PGRST205|42P01|does not exist|schema cache/i.test(t) ? "falta migración 0124_meta_paid_daily" : `daily delete ${del.status}: ${t.slice(0, 160)}`;
     }
     const now = new Date().toISOString();
     const res = await fetch(`${url}/rest/v1/meta_paid_daily?on_conflict=fecha,campaign_id`, {

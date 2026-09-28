@@ -4,7 +4,7 @@ import "server-only";
 // señal `gasto_diario_anomalo`. Tablas chicas, lecturas en paralelo, nunca tira (sin dato → serie vacía).
 //  · Google Search / Demand Gen: google_ads_creatives (diaria por anuncio; PMax no está en la tabla y se
 //    excluye igual por las dudas, como en Pauta Mkt).
-//  · Meta: meta_paid_daily (0123, diaria por campaña) si ya tiene filas; si no, dato MENSUAL de
+//  · Meta: meta_paid_daily (0124, diaria por campaña) si ya tiene filas; si no, dato MENSUAL de
 //    meta_paid_creatives (gasto del mes a la fecha de la última sync). Los totales por mes de Meta salen
 //    SIEMPRE de meta_paid_creatives (fuente de verdad de Pauta Mkt) y alimentan la referencia mensual y la
 //    concentración por campaña (días activos por campaña).
@@ -99,7 +99,7 @@ export async function getPautaDiaria(now = new Date()): Promise<PautaDiariaData>
     if (r.dias_activos != null) c.dias = Math.max(c.dias ?? 0, r.dias_activos);
     camp.set(k, c);
   }
-  // Meta diario (0123) — si hay filas.
+  // Meta diario (0124) — si hay filas.
   const metaDias: Record<string, number> = {};
   const metaDesde: string | null = mMin.rows[0]?.fecha ?? null;
   for (const r of mDaily.rows) {
@@ -112,7 +112,7 @@ export async function getPautaDiaria(now = new Date()): Promise<PautaDiariaData>
     : {
       medio: "Meta", fuente: "mensual", dias: {}, meses: metaMeses, asOf: metaAsOf,
       nota: mDaily.missing
-        ? "Meta todavía informa por mes: falta correr la migración 0123_meta_paid_daily.sql (después, la próxima sync diaria completa los últimos 3 meses día por día)."
+        ? "Meta todavía informa por mes: falta correr la migración 0124_meta_paid_daily.sql (después, la próxima sync diaria completa los últimos 3 meses día por día)."
         : "Meta todavía informa por mes: el detalle diario se completa con la próxima sincronización de Meta (corre todos los días a las 07:30).",
     };
 

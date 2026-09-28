@@ -1,4 +1,4 @@
--- 0123 · Gasto DIARIO de Meta por campaña (Plan de Medios → Eficiencia Medios → "Inversión diaria por medio").
+-- 0124 · Gasto DIARIO de Meta por campaña (Plan de Medios → Eficiencia Medios → "Inversión diaria por medio").
 -- meta_paid_creatives guarda el gasto por MES (insights con time_range del mes): no deja ver si una campaña se
 -- gastó todo el presupuesto en pocos días. El cron meta-paid-sync ya pide a Meta una serie con
 -- time_increment=1 (un dato por anuncio y por día) para contar los días activos; ahora esa misma llamada trae
