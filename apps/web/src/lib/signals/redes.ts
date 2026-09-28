@@ -88,17 +88,17 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       const d = deltaPct(c.rpp, pv.rpp) ?? 0;
       if (d < -15) S({
         key: `redes_${rd}_${fmt}_reach_per_post_drop`, tipo: "alerta", prioridad: d < -30 ? "alta" : "media",
-        titulo: `${lbl}: el alcance por pieza cayó ${fDelta(d)} vs los 30 días previos`,
-        descripcion: `Últimos 30 días: ${c.posts} piezas con ${fInt(c.rpp)} de alcance promedio, vs ${pv.posts} con ${fInt(pv.rpp)} en los 30 días anteriores.`,
-        acciones: [`Revisar el hook y el tema de los mejores ${fmt.toLowerCase()} del período anterior y replicarlos`, "Validar si cambió la cadencia o el horario de publicación", "Chequear si cambió el mix de pilares (producto / branding / promo)"],
+        titulo: `${lbl}: cada publicación llega a ${fDelta(d)} gente que en los 30 días anteriores (alcance por pieza)`,
+        descripcion: `Últimos 30 días: ${c.posts} publicaciones que vio, en promedio, ${fInt(c.rpp)} personas cada una (alcance); en los 30 días anteriores fueron ${pv.posts} publicaciones con ${fInt(pv.rpp)} personas cada una.`,
+        acciones: [`Mirá los mejores ${fmt.toLowerCase()} del período anterior: cómo arrancaban (el gancho) y de qué hablaban, y pedile al equipo de contenido que repita esa idea`, "Fijate si cambió cuántas veces por semana o en qué horario se publica", "Revisá si cambió la mezcla de temas (producto / marca / promociones)"],
         datos: { ...datos, deltaPct: r2(d) },
         impacto: { metrica: "Alcance perdido en el período", valor: Math.round((pv.rpp - c.rpp) * c.posts), unidad: "personas" },
       });
       if (d >= 25) S({
         key: `redes_${rd}_${fmt}_reach_opportunity`, tipo: "oportunidad", prioridad: d > 50 ? "alta" : "media",
-        titulo: `${lbl}: el alcance por pieza mejoró ${fDelta(d)} — doblar la apuesta`,
-        descripcion: `${c.posts} piezas en los últimos 30 días promediaron ${fInt(c.rpp)} de alcance (vs ${fInt(pv.rpp)} antes).`,
-        acciones: [`Subir la frecuencia de ${fmt.toLowerCase()} en ${red(rd)}`, "Identificar qué comparten las mejores piezas (tema, duración, hook) y sistematizarlo", "Amplificar con pauta las 1-2 mejores piezas"],
+        titulo: `${lbl}: cada publicación llega a ${fDelta(d)} gente que antes (alcance por pieza) — conviene hacer más`,
+        descripcion: `${c.posts} publicaciones en los últimos 30 días llegaron, en promedio, a ${fInt(c.rpp)} personas cada una (antes, ${fInt(pv.rpp)}).`,
+        acciones: [`Publicá más ${fmt.toLowerCase()} en ${red(rd)}`, "Anotá qué tienen en común las mejores (tema, duración, cómo arrancan) y convertilo en una receta para el equipo", "Poné plata de pauta detrás de las 1 o 2 mejores publicaciones"],
         datos: { ...datos, deltaPct: r2(d) },
         impacto: { metrica: "Alcance adicional en el período", valor: Math.round((c.rpp - pv.rpp) * c.posts), unidad: "personas" },
       });
@@ -107,9 +107,9 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       const d = deltaPct(c.er, pv.er) ?? 0;
       if (d < -15) S({
         key: `redes_${rd}_${fmt}_eng_rate_drop`, tipo: "alerta", prioridad: d < -30 ? "alta" : "media",
-        titulo: `${lbl}: el engagement rate cayó ${fDelta(d)} vs los 30 días previos`,
-        descripcion: `ER ${fPct(c.er, 2)} (vs ${fPct(pv.er, 2)}): el alcance se traduce en menos interacciones por persona alcanzada.`,
-        acciones: ["Sumar CTAs conversacionales (preguntas, encuestas, guardá/compartí)", "Revisar los primeros 3 segundos / la primera línea del copy", "Leer los comentarios: ¿se entiende el mensaje?"],
+        titulo: `${lbl}: la gente interactúa ${fDelta(d)} que en los 30 días anteriores (tasa de interacción o engagement rate)`,
+        descripcion: `De cada 100 personas que ven una publicación, ahora ${fPct(c.er, 2)} le da me gusta, comenta, guarda o comparte (antes, ${fPct(pv.er, 2)}). Llegás a gente, pero responde menos.`,
+        acciones: ["Invitá a responder: preguntas, encuestas, \"guardalo\" o \"compartilo con alguien\" (llamados a la acción)", "Revisá los primeros 3 segundos del video o la primera línea del texto: ahí se decide si la gente se queda", "Leé los comentarios: ¿se entiende el mensaje?"],
         datos: { ...datos, deltaPct: r2(d) },
         impacto: { metrica: "Interacciones perdidas en el período", valor: Math.round(((pv.er - c.er) / 100) * c.reach), unidad: "interacciones" },
       });
@@ -118,9 +118,9 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       const d = deltaPct(c.posts, pv.posts);
       if (d != null && Math.abs(d) >= 50) S({
         key: `redes_${rd}_${fmt}_volume_change`, tipo: "info", prioridad: "baja",
-        titulo: `${lbl}: el volumen ${d > 0 ? "subió" : "bajó"} ${fDelta(d)} (${pv.posts} → ${c.posts} piezas)`,
-        descripcion: d > 0 ? "Si el alcance por pieza no acompaña, puede estar saturando a la audiencia." : "Confirmar si la baja de cadencia es una decisión o una pérdida de ritmo.",
-        acciones: d > 0 ? ["Comparar alcance por pieza antes y después del aumento"] : ["Confirmar si fue intencional", "Ver si el alcance por pieza compensa el menor volumen"],
+        titulo: `${lbl}: se publicó ${fDelta(d)} ${d > 0 ? "más" : "menos"} (${pv.posts} → ${c.posts} publicaciones)`,
+        descripcion: d > 0 ? "Si cada publicación no llega a más gente, puede que la audiencia se esté cansando de ver tanto." : "Confirmá si publicar menos fue una decisión o se perdió el ritmo.",
+        acciones: d > 0 ? ["Compará a cuánta gente llega cada publicación antes y después de publicar más"] : ["Confirmá con el equipo si fue a propósito", "Fijate si cada publicación llega a más gente y compensa que haya menos"],
         datos,
       });
     }
@@ -139,18 +139,18 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       const extra = worst && worst.formato !== best.formato ? Math.round(worst.posts * 0.3) * worst.alcancePorPost * ((best.er - worst.er) / 100) : 0;
       S({
         key: `redes_${rd}_format_underused`, tipo: "oportunidad", prioridad: best.er >= med * 1.6 ? "alta" : "media",
-        titulo: `${red(rd)}: ${best.formato} rinde ${(best.er / med).toFixed(1)}× la mediana de ER y es solo el ${fPct((best.posts / ps.length) * 100, 0)} de lo publicado`,
-        descripcion: `ER de ${best.formato} ${fPct(best.er, 2)} vs mediana propia por pieza ${fPct(med, 2)} (${best.posts} piezas en el año).${worst && worst.formato !== best.formato ? ` El formato más flojo es ${worst.formato} (ER ${fPct(worst.er, 2)}, ${worst.posts} piezas).` : ""}`,
-        acciones: [`Mover parte del calendario hacia ${best.formato}`, worst && worst.formato !== best.formato ? `Reemplazar ~30% de las piezas de ${worst.formato} por ${best.formato}` : "Sostener la cadencia del formato ganador", "Medir el efecto en 30 días (alcance por pieza y ER)"],
+        titulo: `${red(rd)}: en ${best.formato} la gente interactúa ${(best.er / med).toFixed(1)} veces más que en tu publicación típica, pero es solo el ${fPct((best.posts / ps.length) * 100, 0)} de lo que publicás`,
+        descripcion: `En ${best.formato}, ${fPct(best.er, 2)} de los que lo ven interactúa (tasa de interacción o ER); en tu publicación típica, ${fPct(med, 2)} (${best.posts} publicaciones en el año).${worst && worst.formato !== best.formato ? ` El formato más flojo es ${worst.formato} (${fPct(worst.er, 2)}, ${worst.posts} publicaciones).` : ""}`,
+        acciones: [`Pasá parte del calendario de publicaciones a ${best.formato}`, worst && worst.formato !== best.formato ? `Cambiá ~30% de las publicaciones de ${worst.formato} por ${best.formato}` : "Mantené cuántas veces publicás el formato que mejor funciona", "En 30 días, mirá si subieron el alcance por publicación y la interacción"],
         datos: { red: rd, medianaEr: r2(med), formatos: fmts },
         ...(extra > 0 ? { impacto: { metrica: "Interacciones adicionales estimadas (mix de formatos)", valor: Math.round(extra), unidad: "interacciones" } } : {}),
       });
     }
     if (worst && worst !== best && worst.er <= med * 0.7 && worst.posts / ps.length >= 0.2) S({
       key: `redes_${rd}_format_lagging`, tipo: "alerta", prioridad: "media",
-      titulo: `${red(rd)}: ${worst.formato} rinde ${fPct((worst.er / med) * 100, 0)} de la mediana de ER y pesa ${fPct((worst.posts / ps.length) * 100, 0)} del calendario`,
-      descripcion: `ER ${fPct(worst.er, 2)} vs mediana propia ${fPct(med, 2)} en ${worst.posts} piezas.`,
-      acciones: [`Revisar el enfoque creativo de ${worst.formato}`, "Reasignar parte de esas piezas al formato de mejor ER"],
+      titulo: `${red(rd)}: ${worst.formato} genera apenas el ${fPct((worst.er / med) * 100, 0)} de la interacción de tu publicación típica y ocupa el ${fPct((worst.posts / ps.length) * 100, 0)} del calendario`,
+      descripcion: `Interactúa el ${fPct(worst.er, 2)} de los que lo ven (tasa de interacción o ER), contra ${fPct(med, 2)} en tu publicación típica, en ${worst.posts} publicaciones.`,
+      acciones: [`Revisá con el equipo de contenido cómo se están haciendo los ${worst.formato}`, "Reasigná parte de esas publicaciones al formato donde la gente más interactúa"],
       datos: { red: rd, medianaEr: r2(med), formato: worst },
     });
   }
@@ -164,10 +164,10 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       for (const p of ps) { const d = new Date(p.ts - 3 * 3600_000).getUTCDay(); byDay.set(d, [...(byDay.get(d) ?? []), p]); } // hora AR
       const rows = [...byDay.entries()].filter(([, v]) => v.length >= 3).map(([d, v]) => ({ dia: DIAS[d], posts: v.length, er: r2(bucketOf(v).er) })).sort((a, b) => b.er - a.er);
       if (rows[0] && med > 0 && rows[0].er >= med * 1.3) S({
-        key: "redes_best_weekday", tipo: "info", prioridad: "baja",
-        titulo: `Los ${rows[0].dia} rinden mejor: ER ${fPct(rows[0].er, 2)} vs mediana ${fPct(med, 2)}`,
-        descripcion: `Sobre ${ps.length} piezas orgánicas del año. Ranking por día: ${rows.slice(0, 4).map((r) => `${r.dia} ${fPct(r.er, 2)} (${r.posts})`).join(" · ")}.`,
-        acciones: [`Programar las piezas clave los ${rows[0].dia}`, "Validar con un test de 4 semanas"],
+        key: "redes_best_weekday", metrica: null, tipo: "info", prioridad: "baja",
+        titulo: `Lo que se publica los ${rows[0].dia} genera más interacción: ${fPct(rows[0].er, 2)} contra ${fPct(med, 2)} de tu publicación típica (tasa de interacción o ER)`,
+        descripcion: `Sobre ${ps.length} publicaciones sin pauta del año. Ranking por día: ${rows.slice(0, 4).map((r) => `${r.dia} ${fPct(r.er, 2)} (${r.posts})`).join(" · ")}.`,
+        acciones: [`Programá las publicaciones más importantes para los ${rows[0].dia}`, "Probalo durante 4 semanas y compará"],
         datos: { medianaEr: r2(med), porDia: rows },
       });
     }
@@ -183,17 +183,17 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       const top = win.filter((p) => p.reach >= Math.max(300, medR * 0.5)).sort((a, b) => erOf(b) - erOf(a))[0];
       if (top && medEr > 0 && erOf(top) >= medEr * 1.5) S({
         key: "redes_top_post", tipo: "oportunidad", prioridad: "media",
-        titulo: `Pieza destacada en ${red(top.red)}: ER ${fPct(erOf(top), 2)} (${(erOf(top) / medEr).toFixed(1)}× la mediana)`,
-        descripcion: `"${clip(top.caption, 110)}" — ${top.formato}, ${fInt(top.reach)} de alcance, ${fInt(top.eng)} interacciones.`,
-        acciones: ["Replicar el tema/formato en las próximas piezas", "Amplificarla con pauta si encaja con la campaña vigente"],
+        titulo: `Publicación destacada en ${red(top.red)}: la gente interactuó ${(erOf(top) / medEr).toFixed(1)} veces más que con tu publicación típica (${fPct(erOf(top), 2)} — ER)`,
+        descripcion: `"${clip(top.caption, 110)}" — ${top.formato}, la vieron ${fInt(top.reach)} personas y tuvo ${fInt(top.eng)} interacciones.`,
+        acciones: ["Repetí el tema y el formato en las próximas publicaciones", "Si encaja con la campaña del momento, ponele plata de pauta"],
         datos: { permalink: top.permalink, red: top.red, formato: top.formato, alcance: top.reach, interacciones: top.eng, er: r2(erOf(top)), medianaEr: r2(medEr) },
       });
       const bottom = win.filter((p) => p.reach >= medR).sort((a, b) => erOf(a) - erOf(b))[0];
       if (bottom && bottom !== top && medEr > 0 && erOf(bottom) <= medEr * 0.5) S({
-        key: "redes_bottom_post", tipo: "info", prioridad: "baja",
-        titulo: `Pieza con buen alcance pero baja interacción en ${red(bottom.red)}: ER ${fPct(erOf(bottom), 2)}`,
-        descripcion: `"${clip(bottom.caption, 110)}" — ${fInt(bottom.reach)} de alcance pero solo ${fInt(bottom.eng)} interacciones (mediana ER ${fPct(medEr, 2)}).`,
-        acciones: ["Identificar por qué no enganchó (tema, formato o CTA)", "No repetir el patrón"],
+        key: "redes_bottom_post", metrica: "alcance_organico", tipo: "info", prioridad: "baja",
+        titulo: `Publicación que vio mucha gente pero casi nadie respondió en ${red(bottom.red)}: ${fPct(erOf(bottom), 2)} de interacción (ER)`,
+        descripcion: `"${clip(bottom.caption, 110)}" — la vieron ${fInt(bottom.reach)} personas pero solo tuvo ${fInt(bottom.eng)} interacciones (tu publicación típica: ${fPct(medEr, 2)}).`,
+        acciones: ["Pensá por qué no enganchó: el tema, el formato o que no invitaba a hacer nada (llamado a la acción)", "No repetir esa fórmula"],
         datos: { permalink: bottom.permalink, red: bottom.red, formato: bottom.formato, alcance: bottom.reach, interacciones: bottom.eng, er: r2(erOf(bottom)) },
       });
     }
@@ -218,17 +218,17 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       const rA = datosRango(evA), rE = datosRango(evE);
       if (dA <= -20 && !dentroDeLoNormal(evA)) S({
         key: "redes_ig_monthly_reach_drop", tipo: "alerta", prioridad: dA <= -35 ? "alta" : "media",
-        titulo: `Instagram ${MES[last.mesIdx]}: alcance mensual ${fDelta(dA)} vs el promedio de los 3 meses previos`,
-        descripcion: `${fNum(last.alcance ?? 0)} vs promedio ${fNum(baseAlc)} (${base.map((m) => `${MES[m.mesIdx]} ${fNum(m.alcance ?? 0)}`).join(", ")}).${rA ? ` Fuera del rango esperado (${fNum(rA.min)}–${fNum(rA.max)}).` : ""}`,
-        acciones: ["Cruzar con la cadencia y el mix de formatos del mes", "Revisar si hubo menos Reels (el formato de mayor alcance)"],
+        titulo: `Instagram ${MES[last.mesIdx]}: llegaste a ${fDelta(dA)} gente que en el promedio de los 3 meses anteriores (alcance)`,
+        descripcion: `${fNum(last.alcance ?? 0)} personas contra ${fNum(baseAlc)} en promedio (${base.map((m) => `${MES[m.mesIdx]} ${fNum(m.alcance ?? 0)}`).join(", ")}).${rA ? ` Fuera del rango esperado (${fNum(rA.min)}–${fNum(rA.max)}).` : ""}`,
+        acciones: ["Fijate cuántas veces se publicó ese mes y en qué formatos", "Revisá si hubo menos Reels: es el formato que llega a más gente"],
         datos: { mes: MES[last.mesIdx], alcance: last.alcance, promedio3m: Math.round(baseAlc), deltaPct: r2(dA), ...(rA ? { rangoEsperado: rA } : {}) },
         impacto: { metrica: "Alcance mensual perdido vs tendencia", valor: Math.round(baseAlc - (last.alcance ?? 0)), unidad: "personas" },
       });
       if (dE <= -20 && !dentroDeLoNormal(evE)) S({
-        key: "redes_ig_monthly_er_drop", tipo: "alerta", prioridad: "media",
-        titulo: `Instagram ${MES[last.mesIdx]}: engagement rate mensual ${fDelta(dE)} vs los 3 meses previos`,
-        descripcion: `ER ${fPct(erM(last), 2)} vs promedio ${fPct(avg(base.map(erM)), 2)}.${rE ? ` Fuera del rango esperado (${fPct(rE.min, 2)}–${fPct(rE.max, 2)}).` : ""}`,
-        acciones: ["Revisar pilares y CTAs del mes", "Comparar con la competencia para descartar un efecto de algoritmo"],
+        key: "redes_ig_monthly_er_drop", metrica: "engagement", tipo: "alerta", prioridad: "media",
+        titulo: `Instagram ${MES[last.mesIdx]}: la gente interactuó ${fDelta(dE)} que en los 3 meses anteriores (tasa de interacción o engagement rate)`,
+        descripcion: `Interactuó el ${fPct(erM(last), 2)} de los que vieron las publicaciones, contra ${fPct(avg(base.map(erM)), 2)} en promedio.${rE ? ` Fuera del rango esperado (${fPct(rE.min, 2)}–${fPct(rE.max, 2)}).` : ""}`,
+        acciones: ["Revisá los temas del mes y si las publicaciones invitaban a responder (llamados a la acción)", "Mirá si a la competencia también le bajó: si le pasó a todos, es un cambio de Instagram (el algoritmo), no tuyo"],
         datos: { mes: MES[last.mesIdx], er: r2(erM(last)), promedio3m: r2(avg(base.map(erM))), deltaPct: r2(dE), ...(rE ? { rangoEsperado: rE } : {}) },
       });
     }
@@ -245,16 +245,16 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
     const temas = [...temasNeg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
     if (T.t >= 20 && T.negPct >= 20) S({
       key: "redes_sentiment_negative_high", tipo: "alerta", prioridad: T.negPct >= 30 ? "alta" : "media",
-      titulo: `${fPct(T.negPct, 0)} de los comentarios analizados son negativos`,
-      descripcion: `${fInt(T.neg)} negativos, ${fInt(T.pos)} positivos y ${fInt(T.neu)} neutros en ${sent.length} piezas.${temas.length ? ` Temas recurrentes en las piezas con más críticas: ${temas.join(", ")}.` : ""}`,
-      acciones: ["Responder y derivar los reclamos a atención al cliente", temas.length ? `Preparar contenido que responda a: ${temas.slice(0, 3).join(", ")}` : "Clasificar los reclamos por tema", "Revisar si el problema es de producto/servicio (no de comunicación)"],
+      titulo: `El ${fPct(T.negPct, 0)} de los comentarios analizados son negativos`,
+      descripcion: `${fInt(T.neg)} negativos, ${fInt(T.pos)} positivos y ${fInt(T.neu)} neutros en ${sent.length} publicaciones.${temas.length ? ` Temas que más se repiten en las publicaciones con más críticas: ${temas.join(", ")}.` : ""}`,
+      acciones: ["Respondé los comentarios y pasale los reclamos a atención al cliente", temas.length ? `Prepará publicaciones que respondan a: ${temas.slice(0, 3).join(", ")}` : "Agrupá los reclamos por tema", "Revisá si el problema es del producto o del servicio (no de cómo se comunica)"],
       datos: { positivos: T.pos, negativos: T.neg, neutros: T.neu, negPct: r2(T.negPct), temasNegativos: temas },
     });
     else if (T.t >= 20 && T.posPct >= 60) S({
       key: "redes_sentiment_positive", tipo: "info", prioridad: "baja",
-      titulo: `Conversación favorable: ${fPct(T.posPct, 0)} de los comentarios son positivos`,
-      descripcion: `${fInt(T.pos)} positivos vs ${fInt(T.neg)} negativos en ${sent.length} piezas.`,
-      acciones: ["Usar las reseñas/comentarios positivos como prueba social en pauta y web"],
+      titulo: `La conversación es buena: el ${fPct(T.posPct, 0)} de los comentarios son positivos`,
+      descripcion: `${fInt(T.pos)} positivos contra ${fInt(T.neg)} negativos en ${sent.length} publicaciones.`,
+      acciones: ["Usá esos comentarios positivos como testimonio en avisos y en la web (prueba social)"],
       datos: { positivos: T.pos, negativos: T.neg, neutros: T.neu, posPct: r2(T.posPct) },
     });
     // Giro: últimos 30 días vs previos (se ubica cada pieza por su fecha de publicación).
@@ -265,17 +265,17 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
     if (C.t >= 20 && P.t >= 20) {
       const dpp = C.negPct - P.negPct;
       if (dpp >= 10) S({
-        key: "redes_sentiment_shift_negative", tipo: "alerta", prioridad: dpp >= 20 ? "alta" : "media",
-        titulo: `El sentimiento empeoró: negativos ${fPct(P.negPct, 0)} → ${fPct(C.negPct, 0)} (+${dpp.toFixed(0)} pp) en los últimos 30 días`,
-        descripcion: `Base: ${fInt(C.t)} comentarios recientes vs ${fInt(P.t)} de los 60 días previos.`,
-        acciones: ["Revisar qué piezas concentran las críticas y por qué", "Definir un protocolo de respuesta si es un tema de producto"],
+        key: "redes_sentiment_shift_negative", metrica: "sentimiento", tipo: "alerta", prioridad: dpp >= 20 ? "alta" : "media",
+        titulo: `Los comentarios se pusieron más negativos: de ${fPct(P.negPct, 0)} a ${fPct(C.negPct, 0)} negativos (+${dpp.toFixed(0)} puntos) en los últimos 30 días`,
+        descripcion: `Se compararon ${fInt(C.t)} comentarios recientes con ${fInt(P.t)} de los 60 días anteriores.`,
+        acciones: ["Mirá qué publicaciones juntan las críticas y por qué", "Si es un tema del producto, armá con atención al cliente una respuesta estándar"],
         datos: { negPctActual: r2(C.negPct), negPctPrevio: r2(P.negPct) },
       });
       else if (dpp <= -10) S({
-        key: "redes_sentiment_shift_positive", tipo: "info", prioridad: "baja",
-        titulo: `El sentimiento mejoró: negativos ${fPct(P.negPct, 0)} → ${fPct(C.negPct, 0)}`,
-        descripcion: `Base: ${fInt(C.t)} comentarios recientes vs ${fInt(P.t)} previos.`,
-        acciones: ["Identificar qué contenido explica la mejora y sostenerlo"],
+        key: "redes_sentiment_shift_positive", metrica: "sentimiento", tipo: "info", prioridad: "baja",
+        titulo: `Los comentarios mejoraron: los negativos bajaron de ${fPct(P.negPct, 0)} a ${fPct(C.negPct, 0)}`,
+        descripcion: `Se compararon ${fInt(C.t)} comentarios recientes con ${fInt(P.t)} anteriores.`,
+        acciones: ["Identificá qué publicaciones explican la mejora y seguí por ahí"],
         datos: { negPctActual: r2(C.negPct), negPctPrevio: r2(P.negPct) },
       });
     }
@@ -283,9 +283,9 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
     const crisis = sent.map((s) => ({ s, t: s.sentiment!.positivo + s.sentiment!.negativo + s.sentiment!.neutro })).filter(({ s, t }) => t >= 10 && s.sentiment!.negativo / t >= 0.5).sort((a, b) => b.s.sentiment!.negativo - a.s.sentiment!.negativo)[0];
     if (crisis) S({
       key: "redes_sentiment_post_crisis", tipo: "alerta", prioridad: "alta",
-      titulo: `Una pieza concentra críticas: ${fPct((crisis.s.sentiment!.negativo / crisis.t) * 100, 0)} de ${crisis.t} comentarios son negativos`,
+      titulo: `Una publicación junta críticas: el ${fPct((crisis.s.sentiment!.negativo / crisis.t) * 100, 0)} de ${crisis.t} comentarios son negativos`,
       descripcion: `${crisis.s.sentiment!.resumen ? clip(crisis.s.sentiment!.resumen, 200) : "Sin resumen."}${crisis.s.sentiment!.temas?.length ? ` Temas: ${crisis.s.sentiment!.temas.join(", ")}.` : ""}`,
-      acciones: ["Responder públicamente y derivar los casos", "Evaluar si conviene pausar la amplificación de esa pieza"],
+      acciones: ["Respondé en público y pasale cada caso a atención al cliente", "Evaluá si conviene pausar la pauta de esa publicación"],
       datos: { postId: crisis.s.postId, red: crisis.s.network, negativos: crisis.s.sentiment!.negativo, total: crisis.t },
     });
   }
@@ -309,32 +309,32 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
       if (!leader || !ownEr || ownEr.metodo === "preliminar" || !ownEr.disponible) { /* sin base madura comparable → sin señal de ER */ }
       else if (leader.er.value > 0 && ownEr.value < leader.er.value * 0.7) S({
         key: "redes_comp_er_gap", tipo: "alerta", prioridad: ownEr.value < medRivalEr ? "alta" : "media",
-        titulo: `Engagement por seguidor: ${fPct(ownEr.value, 3)} vs ${fPct(leader.er.value, 3)} de ${leader.marca} (líder)`,
-        descripcion: `Mediana de la competencia ${fPct(medRivalEr, 3)} (ER ${metodoEr}). ${ownEr.value < medRivalEr ? "Estás por debajo de la mediana del set competitivo." : "Estás sobre la mediana pero lejos del líder."}`,
-        acciones: [`Analizar las piezas top de ${leader.marca} (pilar, formato, tono)`, "Testear los pilares donde el líder obtiene más engagement"],
+        titulo: `Interacción por seguidor: ${fPct(ownEr.value, 3)} contra ${fPct(leader.er.value, 3)} de ${leader.marca}, la marca que más logra (engagement por seguidor o ER)`,
+        descripcion: `La competencia típica logra ${fPct(medRivalEr, 3)} (medido ${metodoEr}). ${ownEr.value < medRivalEr ? "Estás por debajo de la competencia típica." : "Estás mejor que la competencia típica, pero lejos de la que más logra."}`,
+        acciones: [`Mirá las mejores publicaciones de ${leader.marca}: de qué hablan, en qué formato y con qué tono`, "Probá publicaciones sobre los temas donde esa marca logra más interacción"],
         datos: { propio: r2(ownEr.value * 1000) / 1000, lider: { marca: leader.marca, er: r2(leader.er.value * 1000) / 1000 }, medianaCompetencia: r2(medRivalEr * 1000) / 1000, metodo: metodoEr },
       });
       else if (ownEr.value >= leader.er.value) S({
         key: "redes_comp_er_leader", tipo: "info", prioridad: "baja",
-        titulo: `Liderás el engagement por seguidor del set competitivo (${fPct(ownEr.value, 3)})`,
-        descripcion: `Siguiente: ${leader.marca} con ${fPct(leader.er.value, 3)} (ER ${metodoEr}).`,
-        acciones: ["Sostener los pilares que explican el liderazgo", "Aprovecharlo con más volumen si la cadencia es menor que la competencia"],
+        titulo: `Sos la marca con más interacción por seguidor entre tus competidores (${fPct(ownEr.value, 3)} — engagement por seguidor)`,
+        descripcion: `La sigue ${leader.marca} con ${fPct(leader.er.value, 3)} (medido ${metodoEr}).`,
+        acciones: ["Seguí con los temas que te dan ese resultado", "Si publicás menos seguido que la competencia, aprovechalo publicando más"],
         datos: { propio: r2(ownEr.value * 1000) / 1000, segundo: { marca: leader.marca, er: r2(leader.er.value * 1000) / 1000 }, metodo: metodoEr },
       });
       const medPpw = median(rivals.map((b) => b.posts_per_week));
       if (medPpw > 0 && own.posts_per_week < medPpw * 0.6) S({
         key: "redes_comp_cadence_gap", tipo: "oportunidad", prioridad: "media",
-        titulo: `Publicás ${own.posts_per_week.toFixed(1)} piezas/semana vs ${medPpw.toFixed(1)} de la mediana competitiva`,
-        descripcion: "Menor presencia que el set competitivo: menos oportunidades de alcance orgánico.",
-        acciones: ["Subir la cadencia gradualmente con los formatos de mejor ER", "Reutilizar piezas de pauta/UGC para sostener volumen"],
+        titulo: `Publicás ${own.posts_per_week.toFixed(1)} veces por semana; la competencia típica, ${medPpw.toFixed(1)}`,
+        descripcion: "Aparecés menos que tus competidores: menos oportunidades de llegar a gente sin pagar (alcance orgánico).",
+        acciones: ["Publicá más seguido, de a poco, con los formatos donde la gente más interactúa", "Reusá piezas de pauta o de creadores de contenido (UGC) para sostener el ritmo"],
         datos: { propio: r2(own.posts_per_week), medianaCompetencia: r2(medPpw) },
       });
       const medNeg = median(rivals.filter((b) => b.negativo > 0 || b.positivo > 0).map((b) => b.negativo));
       if (own.negativo > 0 && medNeg >= 0 && own.negativo >= medNeg + 10) S({
-        key: "redes_comp_sentiment_gap", tipo: "alerta", prioridad: "media",
-        titulo: `Sentimiento negativo ${fPct(own.negativo, 0)} vs ${fPct(medNeg, 0)} de la mediana competitiva`,
-        descripcion: "La conversación de tu marca es más crítica que la de la competencia.",
-        acciones: ["Identificar el tema que diferencia tu conversación (producto, servicio, precio)"],
+        key: "redes_comp_sentiment_gap", metrica: "sentimiento", tipo: "alerta", prioridad: "media",
+        titulo: `Tus comentarios negativos son el ${fPct(own.negativo, 0)}; en la competencia típica, ${fPct(medNeg, 0)}`,
+        descripcion: "La gente es más crítica con tu marca que con la competencia.",
+        acciones: ["Identificá de qué se queja la gente con vos y no con los demás (producto, servicio, precio)"],
         datos: { propio: r2(own.negativo), medianaCompetencia: r2(medNeg) },
       });
     }
@@ -348,10 +348,10 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
     if (top && ownPosts.length >= 5) {
       const ownShare = ((ownP.get(top.pilar)?.length ?? 0) / ownPosts.length) * 100;
       if (ownShare < 10) S({
-        key: "redes_comp_pillar_gap", tipo: "oportunidad", prioridad: "media",
-        titulo: `El pilar "${top.pilar}" es el de mayor engagement en la competencia (${fPct(top.er, 2)}) y es solo el ${fPct(ownShare, 0)} de tus piezas`,
-        descripcion: `Engagement promedio por pilar en la competencia: ${catRows.slice(0, 4).map((r) => `${r.pilar} ${fPct(r.er, 2)}`).join(" · ")}.`,
-        acciones: [`Testear 4-6 piezas del pilar ${top.pilar} en el próximo mes`, "Medir ER vs tu mediana"],
+        key: "redes_comp_pillar_gap", metrica: "engagement", tipo: "oportunidad", prioridad: "media",
+        titulo: `El tema "${top.pilar}" es el que más interacción le da a la competencia (${fPct(top.er, 2)}) y es solo el ${fPct(ownShare, 0)} de lo que publicás`,
+        descripcion: `Interacción promedio por tema (pilar) en la competencia: ${catRows.slice(0, 4).map((r) => `${r.pilar} ${fPct(r.er, 2)}`).join(" · ")}.`,
+        acciones: [`Probá 4 a 6 publicaciones sobre "${top.pilar}" el mes que viene`, "Compará su interacción contra tu publicación típica"],
         datos: { pilaresCompetencia: catRows.slice(0, 5).map((r) => ({ ...r, er: r2(r.er) })), sharePropio: r2(ownShare) },
       });
     }
@@ -363,9 +363,9 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
     const top = pauta[0];
     if (top) S({
       key: "redes_comp_pauta_probable", tipo: "info", prioridad: top.alta >= 2 ? "media" : "baja",
-      titulo: `${top.marca} probablemente pauta ${top.probables} de sus ${top.posts} posts (${fPct(top.share, 0)})`,
-      descripcion: `Posts con muchas más views que su mediana y muy pocas interacciones por view: el patrón de un boost. Es una estimación (no hay dato público de pauta), útil para leer su alcance: parte no es orgánico.${pauta.length > 1 ? ` También: ${pauta.slice(1, 4).map((x) => `${x.marca} (${x.probables})`).join(", ")}.` : ""}`,
-      acciones: ["No comparar tu alcance orgánico con el de esos posts", "Cruzar con Pauta de la competencia (Biblioteca de anuncios) para confirmarlo"],
+      titulo: `${top.marca} probablemente le pone plata a ${top.probables} de sus ${top.posts} publicaciones (${fPct(top.share, 0)})`,
+      descripcion: `Son publicaciones con muchísimas más reproducciones que lo normal para esa marca y muy pocas interacciones: el patrón de una publicación promocionada con pauta. Es una estimación (no hay dato público de pauta), sirve para no confundirse: parte de su alcance es pago.${pauta.length > 1 ? ` También: ${pauta.slice(1, 4).map((x) => `${x.marca} (${x.probables})`).join(", ")}.` : ""}`,
+      acciones: ["No compares tu alcance sin pauta con el de esas publicaciones", "Confirmalo en Pauta de la competencia (Biblioteca de anuncios de Meta)"],
       datos: { marcas: pauta.slice(0, 5) },
     });
   }
@@ -376,9 +376,9 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
     const g = gaps[0];
     if (g) S({
       key: "redes_comp_tema_gap", tipo: "oportunidad", prioridad: g.vsMediana >= 1.5 ? "media" : "baja",
-      titulo: `El tema "${g.tema}" rinde ${g.vsMediana.toFixed(1)}× la mediana de la competencia y casi no lo usás`,
-      descripcion: `${g.posts} posts de ${g.marcas.slice(0, 4).join(", ")} con ER mediano ${fPct(g.er_mediana, 3)} por seguidor.${gaps.length > 1 ? ` Otros temas en la misma situación: ${gaps.slice(1, 4).map((x) => `"${x.tema}"`).join(", ")}.` : ""} Evidencia observacional: el tema puede ir de la mano de otro formato o de pauta.`,
-      acciones: [`Testear 3-4 piezas sobre "${g.tema}" con el tono de Drean`, "Medir el ER a los 7 días contra la mediana propia"],
+      titulo: `El tema "${g.tema}" le da a la competencia ${g.vsMediana.toFixed(1)} veces más interacción que lo normal, y vos casi no lo usás`,
+      descripcion: `${g.posts} publicaciones de ${g.marcas.slice(0, 4).join(", ")}, con ${fPct(g.er_mediana, 3)} de interacción por seguidor (valor típico).${gaps.length > 1 ? ` Otros temas en la misma situación: ${gaps.slice(1, 4).map((x) => `"${x.tema}"`).join(", ")}.` : ""} Ojo: es lo que se observa, no prueba que el tema sea la causa (puede venir con otro formato o con pauta).`,
+      acciones: [`Probá 3 o 4 publicaciones sobre "${g.tema}" con el tono de Drean`, "A los 7 días, compará su interacción con tu publicación típica"],
       datos: { gaps: gaps.slice(0, 5).map((x) => ({ ...x, er_mediana: r2(x.er_mediana * 1000) / 1000 })) },
     });
   }
@@ -389,9 +389,9 @@ export function computeRedesSignals(inp: RedesSignalInput): Signal[] {
     const sh = t && t.viewsSplitPosts ? paidShare({ organic: t.viewsOrganic ?? 0, paid: t.viewsPaid ?? 0 }) : null;
     if (t && sh != null && sh >= 0.4 && (t.viewsSplitPosts ?? 0) >= 5) S({
       key: "redes_fb_paid_share", tipo: "info", prioridad: "baja",
-      titulo: `Facebook: el ${fPct(sh * 100, 0)} de las vistas de los posts vino de pauta`,
-      descripcion: `Sobre ${t.viewsSplitPosts} posts recientes con el dato de Meta (vistas con breakdown is_from_ads). ${t.paidByApi ? `${t.paidByApi} posts quedaron fuera del orgánico por ser mayormente pagos (además de ${t.paidByHeuristic ?? 0} por la heurística de alcance fuera de escala).` : ""} El alcance orgánico del tablero ya los excluye.`,
-      acciones: ["Leer el alcance orgánico de FB sin esos posts", "Si la meta de alcance orgánico se apoya en posts pautados, separarla"],
+      titulo: `Facebook: el ${fPct(sh * 100, 0)} de las vistas de las publicaciones vino de pauta (pagas)`,
+      descripcion: `Sobre ${t.viewsSplitPosts} publicaciones recientes donde Meta dice qué vistas fueron pagas (dato is_from_ads). ${t.paidByApi ? `${t.paidByApi} publicaciones quedaron fuera de lo "sin pauta" (orgánico) por ser mayormente pagas (y ${t.paidByHeuristic ?? 0} más porque llegaron a muchísima más gente que lo normal).` : ""} El alcance sin pauta del tablero ya las deja afuera.`,
+      acciones: ["Mirá el alcance sin pauta de Facebook sin esas publicaciones", "Si la meta de alcance sin pauta se está cumpliendo gracias a publicaciones pagas, separalas"],
       datos: { vistasOrganicas: t.viewsOrganic ?? 0, vistasPagas: t.viewsPaid ?? 0, sharePago: r2(sh * 100), postsConDato: t.viewsSplitPosts },
     });
   }

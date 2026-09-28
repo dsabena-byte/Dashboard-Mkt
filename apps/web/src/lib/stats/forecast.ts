@@ -15,9 +15,9 @@
 export type MetodoPronostico = "estacional" | "estacional_tendencia" | "suavizado" | "ritmo";
 
 export const METODO_TEXTO: Record<MetodoPronostico, string> = {
-  estacional: "estacionalidad del año anterior",
-  estacional_tendencia: "estacionalidad del año anterior × tendencia interanual",
-  suavizado: "suavizado exponencial (ritmo reciente ponderado)",
+  estacional: "repite cómo se movió el año anterior mes a mes (estacionalidad)",
+  estacional_tendencia: "repite cómo se movió el año anterior mes a mes, ajustado por cuánto creció o cayó este año (estacionalidad × tendencia)",
+  suavizado: "sigue el ritmo reciente, con más peso en los últimos meses (suavizado exponencial)",
   ritmo: "promedio de los últimos meses",
 };
 

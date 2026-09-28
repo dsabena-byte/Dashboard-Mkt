@@ -91,18 +91,20 @@ function evaluar(base: Omit<FatigaPieza, "meses" | "tasaUlt" | "tasaPrev" | "cai
   const parcial = ult.mes === mesEnCurso;
   const tU = metrica === "VTR" ? `${f1(tasaUlt)}%` : `${f2(tasaUlt)}%`, tP = metrica === "VTR" ? `${f1(tasaPrev)}%` : `${f2(tasaPrev)}%`;
   const cuando = `${mesCorto(ult.mes)}${parcial ? " (mes en curso)" : ""}`;
-  const fTxt = base.frecFuente === "línea" ? "frecuencia de la línea" : "frecuencia";
+  const fTxt = base.frecFuente === "línea" ? "veces por persona de la línea (frecuencia)" : "veces por persona (frecuencia)";
+  // Texto simple: primero qué es, la sigla entre paréntesis.
+  const mTxt = metrica === "VTR" ? "% que ve el video (VTR)" : "% que hace clic (CTR)";
   let estado: FatigaEstado = "ok", motivo: string;
   if (caidaPct != null && caidaPct <= -FATIGA_CAIDA && frecUlt != null && frecPrev != null && frecUlt > frecPrev) {
     estado = "fatiga";
-    motivo = `${metrica} ${tU} en ${cuando} vs ${tP} los meses previos (${Math.round(caidaPct)}%) con la ${fTxt} subiendo de ${f1(frecPrev)} a ${f1(frecUlt)}.`;
+    motivo = `El ${mTxt} fue ${tU} en ${cuando} contra ${tP} los meses previos (${Math.round(caidaPct)}%), mientras las ${fTxt} subieron de ${f1(frecPrev)} a ${f1(frecUlt)}.`;
   } else if (frecUlt != null && frecUlt > FRECUENCIA_MES_ALTA) {
     estado = "frecuencia_alta";
-    motivo = `${fTxt[0]!.toUpperCase()}${fTxt.slice(1)} ${f1(frecUlt)} en ${cuando} (alta para un mes). ${caidaPct != null && caidaPct < 0 ? `El ${metrica} bajó ${Math.round(-caidaPct)}%.` : `El ${metrica} todavía no cae.`}`;
+    motivo = `${fTxt[0]!.toUpperCase()}${fTxt.slice(1)}: ${f1(frecUlt)} en ${cuando} (alta para un mes). ${caidaPct != null && caidaPct < 0 ? `El ${mTxt} bajó ${Math.round(-caidaPct)}%.` : `El ${mTxt} todavía no cae.`}`;
   } else if (caidaPct == null) {
-    motivo = `Un solo mes con volumen (${cuando}): sin tendencia.`;
+    motivo = `Un solo mes con datos suficientes (${cuando}): todavía no se puede ver tendencia.`;
   } else {
-    motivo = `${metrica} ${tU} (${caidaPct >= 0 ? "+" : ""}${Math.round(caidaPct)}% vs meses previos)${frecUlt != null ? ` · ${fTxt} ${f1(frecUlt)}${frecPrev != null ? ` (antes ${f1(frecPrev)})` : ""}` : ""}${caidaPct <= -FATIGA_CAIDA ? " · la caída no viene con más frecuencia: no es desgaste por repetición (revisar segmentación/puja)" : ""}.`;
+    motivo = `${mTxt} ${tU} (${caidaPct >= 0 ? "+" : ""}${Math.round(caidaPct)}% contra los meses previos)${frecUlt != null ? ` · ${fTxt} ${f1(frecUlt)}${frecPrev != null ? ` (antes ${f1(frecPrev)})` : ""}` : ""}${caidaPct <= -FATIGA_CAIDA ? " · la caída no viene de mostrarla más veces: no es desgaste por repetición (pedile a la agencia que revise el público y cómo se paga — segmentación y puja)" : ""}.`;
   }
   return { ...base, metrica, meses, tasaUlt, tasaPrev, caidaPct, frecUlt, frecPrev, mesUlt: ult.mes, parcial, estado, motivo };
 }

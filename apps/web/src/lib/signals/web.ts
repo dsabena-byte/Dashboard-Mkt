@@ -53,41 +53,41 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
   const { arr, hasEcom } = webMonthlyArr(reports.monthly.rows, year);
   const ecom = hasEcom || c.tx > 0;
   const convOf = (t: typeof c) => (t.sessions ? ((ecom ? t.tx : t.ke) / t.sessions) * 100 : 0);
-  const convLbl = ecom ? "tasa de conversión (transacciones/sesiones)" : "tasa de conversión (eventos clave/sesiones)";
+  const convLbl = ecom ? "% de visitas que terminan en compra (tasa de conversión: compras ÷ visitas)" : "% de visitas que terminan en una acción de negocio (tasa de conversión: eventos clave ÷ visitas)";
 
   // ── 1. Tráfico y conversión vs período anterior ──
   if (c.sessions > 0 && p.sessions > 0) {
     const d = deltaPct(c.sessions, p.sessions) ?? 0;
     if (d <= -15) S({
       key: "web_traffic_drop", tipo: "alerta", prioridad: d <= -30 ? "alta" : "media",
-      titulo: `Las sesiones cayeron ${fDelta(d)} vs el período anterior${per}`,
-      descripcion: `${fInt(c.sessions)} sesiones vs ${fInt(p.sessions)} (usuarios ${fInt(c.users)} vs ${fInt(p.users)}). Ver en qué canal se concentra la caída.`,
-      acciones: ["Revisar la tendencia por canal (orgánico, pago, social)", "Cruzar con cambios de inversión en pauta y posiciones SEO"],
+      titulo: `Las visitas a la web cayeron ${fDelta(d)} contra el período anterior${per} (sesiones)`,
+      descripcion: `${fInt(c.sessions)} visitas contra ${fInt(p.sessions)} (personas distintas: ${fInt(c.users)} contra ${fInt(p.users)}). Hay que ver por dónde llegan menos.`,
+      acciones: ["Mirá en el gráfico por canal por dónde llegan menos: Google sin pagar, avisos o redes", "Preguntale a la agencia si bajó la inversión en avisos, y fijate en el tablero SEO si bajaste en Google"],
       datos: { sesiones: c.sessions, sesionesPrevias: p.sessions, deltaPct: r2(d) },
       impacto: { metrica: "Sesiones perdidas", valor: Math.round(p.sessions - c.sessions), unidad: "sesiones" },
     });
     else if (d >= 20) S({
       key: "web_traffic_up", tipo: "info", prioridad: "baja",
-      titulo: `Las sesiones crecieron ${fDelta(d)} vs el período anterior${per}`,
-      descripcion: `${fInt(c.sessions)} vs ${fInt(p.sessions)}. Validar que la conversión acompañe (tráfico de calidad).`,
-      acciones: ["Confirmar qué canal explica el crecimiento", "Revisar que la tasa de conversión no caiga"],
+      titulo: `Las visitas a la web crecieron ${fDelta(d)} contra el período anterior${per} (sesiones)`,
+      descripcion: `${fInt(c.sessions)} contra ${fInt(p.sessions)}. Fijate que esas visitas también compren o consulten (que sean visitas de calidad).`,
+      acciones: ["Confirmá por qué canal llegan las visitas nuevas", "Revisá que no caiga el % de visitas que terminan en compra o consulta (tasa de conversión)"],
       datos: { sesiones: c.sessions, sesionesPrevias: p.sessions, deltaPct: r2(d) },
     });
     const cc = convOf(c), cp = convOf(p);
     const dc = deltaPct(cc, cp);
     if (dc != null && cp > 0 && dc <= -15) S({
       key: "web_conversion_drop", tipo: "alerta", prioridad: dc <= -30 ? "alta" : "media",
-      titulo: `La ${convLbl.split(" (")[0]} bajó ${fDelta(dc)}: ${fPct(cc, 2)} vs ${fPct(cp, 2)}`,
-      descripcion: `${convLbl}. Con la tasa anterior se habrían logrado ≈${fInt(((cp - cc) / 100) * c.sessions)} conversiones más en el período.`,
-      acciones: ["Revisar el embudo (producto → carrito → checkout) y errores del sitio", "Revisar si entró tráfico de baja intención (canales con conversión baja)", "Chequear precio/stock de los productos más vistos"],
+      titulo: `Bajó ${fDelta(dc)} el ${convLbl.split(" (")[0]}: ${fPct(cc, 2)} contra ${fPct(cp, 2)}`,
+      descripcion: `${convLbl}. Con el % anterior se habrían logrado ≈${fInt(((cp - cc) / 100) * c.sessions)} ${ecom ? "compras" : "consultas o acciones"} más en el período.`,
+      acciones: ["Pedile al equipo web que revise el recorrido de compra (producto → carrito → pago) y si hay errores en el sitio", "Fijate si llegaron visitas de canales que casi no compran (gente con poco interés)", "Revisá precio y stock de los productos más vistos"],
       datos: { conv: r2(cc), convPrevia: r2(cp), deltaPct: r2(dc), ecommerce: ecom },
       impacto: { metrica: "Conversiones perdidas vs la tasa anterior", valor: Math.round(((cp - cc) / 100) * c.sessions), unidad: ecom ? "transacciones" : "eventos clave" },
     });
     else if (dc != null && cp > 0 && dc >= 15) S({
       key: "web_conversion_up", tipo: "info", prioridad: "baja",
-      titulo: `La conversión mejoró ${fDelta(dc)}: ${fPct(cc, 2)} vs ${fPct(cp, 2)}`,
+      titulo: `Mejoró ${fDelta(dc)} el % de visitas que ${ecom ? "compran" : "consultan o compran"}: ${fPct(cc, 2)} contra ${fPct(cp, 2)} (tasa de conversión)`,
       descripcion: convLbl,
-      acciones: ["Identificar qué cambio lo explica (canal, landing, oferta) y sostenerlo"],
+      acciones: ["Identificá qué lo explica (el canal, la página de entrada o la oferta) y seguí por ahí"],
       datos: { conv: r2(cc), convPrevia: r2(cp), deltaPct: r2(dc) },
     });
     if (ecom && c.tx > 0 && p.tx > 0) {
@@ -95,9 +95,9 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
       const da = deltaPct(aov, aovP) ?? 0;
       if (da <= -15) S({
         key: "web_aov_drop", tipo: "alerta", prioridad: "media",
-        titulo: `El ticket promedio bajó ${fDelta(da)}: ${fMoney(aov)} vs ${fMoney(aovP)}`,
-        descripcion: `Ingresos ${fMoney(c.revenue)} con ${fInt(c.tx)} transacciones.`,
-        acciones: ["Revisar mix de productos vendidos y promociones", "Probar bundles / envío gratis desde un umbral"],
+        titulo: `Cada compra online es ${fDelta(da)} más chica: ${fMoney(aov)} contra ${fMoney(aovP)} (ticket promedio)`,
+        descripcion: `Ventas por ${fMoney(c.revenue)} en ${fInt(c.tx)} compras.`,
+        acciones: ["Revisá qué productos se están vendiendo y qué promociones hay", "Probá combos de productos o envío gratis a partir de cierto monto"],
         datos: { aov: r2(aov), aovPrevio: r2(aovP), deltaPct: r2(da) },
         impacto: { metrica: "Ingresos perdidos por ticket", valor: Math.round((aovP - aov) * c.tx), unidad: "$" },
       });
@@ -134,17 +134,17 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
       if (sh < 3) continue;
       if (x.conv >= siteConv * 1.5 && sh < 15) S({
         key: `web_channel_convert_${x.canal}`, tipo: "oportunidad", prioridad: "media",
-        titulo: `${x.canal} convierte ${(x.conv / siteConv).toFixed(1)}× el promedio (${fPct(x.conv, 2)}) y es solo el ${fPct(sh, 0)} del tráfico`,
-        descripcion: `${fInt(x.sesiones)} sesiones y ${fInt(x.eventosClave)} eventos clave. Promedio del sitio ${fPct(siteConv, 2)}.`,
-        acciones: [`Escalar ${x.canal} (más inversión / contenido / frecuencia según el canal)`, "Replicar el mensaje de ese canal en los de menor conversión"],
+        titulo: `Las visitas que llegan por ${x.canal} terminan en acción ${(x.conv / siteConv).toFixed(1)} veces más que el promedio (${fPct(x.conv, 2)}), pero son solo el ${fPct(sh, 0)} de las visitas`,
+        descripcion: `${fInt(x.sesiones)} visitas y ${fInt(x.eventosClave)} acciones de negocio (eventos clave). Promedio del sitio: ${fPct(siteConv, 2)} (tasa de conversión).`,
+        acciones: [`Escalá ${x.canal} (traé más visitas por ahí): más inversión, más contenido o publicar más seguido, según el canal`, "Usá el mismo mensaje de ese canal en los que menos convierten"],
         datos: { canal: x.canal, conv: r2(x.conv), convSitio: r2(siteConv), share: r2(sh) },
         impacto: { metrica: "Eventos clave adicionales con +20% de sesiones del canal", valor: Math.round(x.sesiones * 0.2 * (x.conv / 100)), unidad: "eventos clave" },
       });
       if (x.conv <= siteConv * 0.5 && sh >= 15) S({
         key: `web_channel_lowq_${x.canal}`, tipo: "alerta", prioridad: "media",
-        titulo: `${x.canal} trae ${fPct(sh, 0)} del tráfico pero convierte ${fPct(x.conv, 2)} (${fPct((x.conv / siteConv) * 100, 0)} del promedio)`,
-        descripcion: `Tráfico de baja intención o landing desalineada. Promedio del sitio ${fPct(siteConv, 2)}.`,
-        acciones: ["Revisar la landing y el mensaje de ese canal (coherencia anuncio → página)", "Si es pago: ajustar segmentación/keywords hacia intención de compra"],
+        titulo: `${x.canal} trae el ${fPct(sh, 0)} de las visitas pero solo el ${fPct(x.conv, 2)} termina en acción (${fPct((x.conv / siteConv) * 100, 0)} del promedio)`,
+        descripcion: `Llega gente con poco interés, o la página donde aterrizan no tiene que ver con lo que prometía el aviso. Promedio del sitio: ${fPct(siteConv, 2)} (tasa de conversión).`,
+        acciones: ["Revisá que la página de llegada (landing) diga lo mismo que el aviso o la publicación que trae a la gente", "Si son avisos pagos: pedile a la agencia que apunte a gente con ganas de comprar (segmentación y palabras de búsqueda)"],
         datos: { canal: x.canal, conv: r2(x.conv), convSitio: r2(siteConv), share: r2(sh) },
         impacto: { metrica: "Eventos clave si convirtiera al promedio", valor: Math.round(((siteConv - x.conv) / 100) * x.sesiones), unidad: "eventos clave" },
       });
@@ -152,9 +152,9 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
     const topCh = [...ch].sort((a, b) => b.sesiones - a.sesiones)[0];
     if (topCh && topCh.sesiones / chTot > 0.6) S({
       key: "web_channel_dependency", tipo: "alerta", prioridad: "baja",
-      titulo: `Dependencia de un canal: ${topCh.canal} es el ${fPct((topCh.sesiones / chTot) * 100, 0)} del tráfico`,
-      descripcion: "Un cambio de algoritmo o de inversión en ese canal mueve todo el sitio.",
-      acciones: ["Diversificar con SEO / email / social orgánico"],
+      titulo: `La web depende de un solo canal: ${topCh.canal} trae el ${fPct((topCh.sesiones / chTot) * 100, 0)} de las visitas (tráfico)`,
+      descripcion: "Si ese canal cambia sus reglas (algoritmo) o se corta la inversión, se mueve toda la web.",
+      acciones: ["Sumá otras fuentes de visitas: posicionamiento en Google (SEO), mails y redes sin pauta"],
       datos: { canal: topCh.canal, share: r2((topCh.sesiones / chTot) * 100) },
     });
   }
@@ -164,17 +164,17 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
     const sh = chTot ? ((ch.find((x) => x.canal === t.canal)?.sesiones ?? 0) / chTot) * 100 : 0;
     if (t.delta == null || sh < 5 || t.prev7 < 50) continue;
     if (t.delta <= -30) S({
-      key: `web_channel_drop_${t.canal}`, tipo: "alerta", prioridad: t.delta <= -50 ? "alta" : "media",
-      titulo: `${t.canal}: sesiones ${fDelta(t.delta)} en los últimos 7 días vs los 7 previos`,
-      descripcion: `${fInt(t.ult7)} vs ${fInt(t.prev7)} sesiones.`,
-      acciones: ["Revisar si se pausó una campaña o cambió una posición/enlace", "Chequear el etiquetado (UTM) del canal"],
+      key: `web_channel_drop_${t.canal}`, metrica: "sesiones", tipo: "alerta", prioridad: t.delta <= -50 ? "alta" : "media",
+      titulo: `${t.canal}: las visitas cambiaron ${fDelta(t.delta)} en los últimos 7 días contra los 7 anteriores`,
+      descripcion: `${fInt(t.ult7)} contra ${fInt(t.prev7)} visitas (sesiones).`,
+      acciones: ["Preguntale a la agencia si se pausó una campaña, o fijate si bajaste en Google o se cayó un link", "Pedile al equipo web que revise que los links de ese canal estén bien marcados (etiquetas UTM)"],
       datos: t,
     });
     else if (t.delta >= 40) S({
       key: `web_channel_peak_${t.canal}`, tipo: "info", prioridad: "baja",
-      titulo: `${t.canal}: pico de ${fDelta(t.delta)} en los últimos 7 días`,
-      descripcion: `${fInt(t.ult7)} vs ${fInt(t.prev7)} sesiones. Confirmar el origen y si convierte.`,
-      acciones: ["Identificar la campaña/contenido que lo generó"],
+      titulo: `${t.canal}: las visitas subieron ${fDelta(t.delta)} en los últimos 7 días`,
+      descripcion: `${fInt(t.ult7)} contra ${fInt(t.prev7)} visitas (sesiones). Confirmá de dónde vienen y si compran o consultan.`,
+      acciones: ["Identificá qué campaña o publicación lo generó"],
       datos: t,
     });
   }
@@ -188,9 +188,9 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
       .map((l) => ({ ...l, perdidas: ((lConv - l.conv) / 100) * l.sesiones })).sort((a, b) => b.perdidas - a.perdidas).slice(0, 3);
     if (leaks.length) S({
       key: "web_landing_leak", tipo: "alerta", prioridad: sum(leaks.map((l) => l.sesiones)) / lTot >= 0.1 ? "alta" : "media",
-      titulo: `${leaks.length} landing${leaks.length > 1 ? "s" : ""} con mucho tráfico y conversión ≤ 40% del promedio`,
-      descripcion: leaks.map((l) => `${clip(l.path, 50)}: ${fInt(l.sesiones)} sesiones, conv ${fPct(l.conv, 2)}`).join(" · ") + `. Promedio ${fPct(lConv, 2)}.`,
-      acciones: ["Revisar CTA visible, velocidad y coherencia con el anuncio/búsqueda que trae el tráfico", "Agregar un camino claro al producto / contacto"],
+      titulo: `${leaks.length} página${leaks.length > 1 ? "s" : ""} de entrada con muchas visitas donde casi nadie avanza: 40% o menos del promedio (landings)`,
+      descripcion: leaks.map((l) => `${clip(l.path, 50)}: ${fInt(l.sesiones)} visitas, ${fPct(l.conv, 2)} termina en acción`).join(" · ") + `. Promedio: ${fPct(lConv, 2)}.`,
+      acciones: ["Pedile al equipo web que revise que el botón principal se vea (llamado a la acción), que la página cargue rápido y que diga lo mismo que el aviso o la búsqueda que trae a la gente", "Sumar un camino claro al producto o al contacto"],
       datos: { convPromedio: r2(lConv), landings: leaks.map((l) => ({ path: l.path, sesiones: l.sesiones, conv: r2(l.conv) })) },
       impacto: { metrica: "Eventos clave si convirtieran al promedio", valor: Math.round(sum(leaks.map((l) => l.perdidas))), unidad: "eventos clave" },
     });
@@ -200,9 +200,9 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
       const best = [...secs].sort((a, b) => b.conv - a.conv)[0]!;
       if (best.conv >= lConv * 1.5) S({
         key: "web_section_best", tipo: "oportunidad", prioridad: "baja",
-        titulo: `La sección "${best.seccion}" convierte ${fPct(best.conv, 2)} (${(best.conv / lConv).toFixed(1)}× el promedio)`,
-        descripcion: `${fInt(best.sesiones)} sesiones de entrada. Es el destino más eficiente para la pauta y los links de redes.`,
-        acciones: [`Dirigir más tráfico pago/social a "${best.seccion}"`],
+        titulo: `En la sección "${best.seccion}", el ${fPct(best.conv, 2)} de las visitas termina en acción: ${(best.conv / lConv).toFixed(1)} veces el promedio`,
+        descripcion: `${fInt(best.sesiones)} visitas entraron por ahí. Es el mejor lugar para mandar a la gente desde los avisos y los links de redes.`,
+        acciones: [`Pedile a la agencia y al equipo de redes que manden más gente a "${best.seccion}"`],
         datos: { secciones: secs.slice(0, 6).map((s) => ({ ...s, conv: r2(s.conv) })) },
       });
     }
@@ -216,28 +216,28 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
     const weak = items.filter((i) => i.vistos >= Math.max(100, median(items.map((x) => x.vistos))) && rate(i) <= medRate * 0.3).slice(0, 3);
     if (weak.length) S({
       key: "web_products_no_purchase", tipo: "alerta", prioridad: "media",
-      titulo: `${weak.length} producto${weak.length > 1 ? "s" : ""} muy visto${weak.length > 1 ? "s" : ""} con conversión a compra ≤ 30% de la mediana`,
-      descripcion: weak.map((i) => `${clip(i.nombre, 40)}: ${fInt(i.vistos)} vistas, ${fInt(i.comprados)} compras`).join(" · ") + `. Mediana vista→compra ${fPct(medRate, 2)}.`,
-      acciones: ["Revisar precio vs competencia, stock y costo de envío", "Mejorar fotos, ficha técnica y reseñas", "Sumar financiación / cuotas visibles"],
+      titulo: `${weak.length} producto${weak.length > 1 ? "s" : ""} que mucha gente mira pero casi nadie compra (30% o menos de lo normal)`,
+      descripcion: weak.map((i) => `${clip(i.nombre, 40)}: ${fInt(i.vistos)} vistas, ${fInt(i.comprados)} compras`).join(" · ") + `. Lo normal: ${fPct(medRate, 2)} de las vistas terminan en compra.`,
+      acciones: ["Revisá precio contra la competencia, stock y costo de envío", "Mejorá fotos, ficha técnica y opiniones de clientes", "Mostrá bien las cuotas y la financiación"],
       datos: { medianaVistaCompra: r2(medRate), productos: weak.map((i) => ({ ...i, tasa: r2(rate(i)) })) },
       impacto: { metrica: "Compras si convirtieran a la mediana", valor: Math.round(sum(weak.map((i) => i.vistos * (medRate / 100) - i.comprados))), unidad: "compras" },
     });
     const star = [...items].filter((i) => i.comprados >= 3).sort((a, b) => rate(b) - rate(a))[0];
     if (star && medRate > 0 && rate(star) >= medRate * 2) S({
       key: "web_product_star", tipo: "oportunidad", prioridad: "baja",
-      titulo: `"${clip(star.nombre, 50)}" convierte ${fPct(rate(star), 2)} de sus vistas (${(rate(star) / medRate).toFixed(1)}× la mediana)`,
-      descripcion: `${fInt(star.vistos)} vistas, ${fInt(star.comprados)} compras, ${fMoney(star.ingresos)} de ingresos.`,
-      acciones: ["Darle más visibilidad (home, pauta de catálogo, redes)", "Usarlo como producto gancho en campañas"],
+      titulo: `"${clip(star.nombre, 50)}": el ${fPct(rate(star), 2)} de los que lo miran lo compra (${(rate(star) / medRate).toFixed(1)} veces lo normal)`,
+      descripcion: `${fInt(star.vistos)} vistas, ${fInt(star.comprados)} compras, ${fMoney(star.ingresos)} vendidos.`,
+      acciones: ["Dale más lugar: en la home, en avisos de catálogo y en redes", "Usalo como producto gancho en las campañas"],
       datos: { ...star, tasa: r2(rate(star)) },
       impacto: { metrica: "Compras adicionales con +50% de vistas", valor: Math.round(star.comprados * 0.5), unidad: "compras" },
     });
   } else if (items.length >= 3 && ecom) {
     const top = items.slice(0, 3);
     S({
-      key: "web_products_views_only", tipo: "alerta", prioridad: "media",
-      titulo: "Los productos más vistos no registran compras en el período",
-      descripcion: top.map((i) => `${clip(i.nombre, 40)}: ${fInt(i.vistos)} vistas`).join(" · ") + ".",
-      acciones: ["Validar que el evento purchase envíe los ítems", "Revisar el checkout"],
+      key: "web_products_views_only", metrica: "transacciones", tipo: "alerta", prioridad: "media",
+      titulo: "Los productos más vistos no tienen ninguna compra registrada en el período",
+      descripcion: top.map((i) => `${clip(i.nombre, 40)}: ${fInt(i.vistos)} vistas`).join(" · ") + ". Puede ser un problema de medición más que de ventas.",
+      acciones: ["Pedile al equipo web que verifique que, al comprar, Analytics registre qué productos se compraron (evento purchase con ítems)", "Que revise que el paso de pago (checkout) funcione"],
       datos: { productos: top },
     });
   }
@@ -250,17 +250,17 @@ export function computeWebSignals(reports: WebReports | null | undefined, opts?:
     const dT = deltaPct(arr.trafico[li] ?? 0, mean("trafico")) ?? 0;
     if (dT <= -20) S({
       key: "web_monthly_traffic_drop", tipo: "alerta", prioridad: "media",
-      titulo: `${MES[li]}: usuarios ${fDelta(dT)} vs el promedio de los 3 meses previos`,
-      descripcion: `${fNum(arr.trafico[li] ?? 0)} vs ${fNum(mean("trafico"))}.`,
-      acciones: ["Cruzar con inversión en pauta y posiciones SEO del mes"],
+      titulo: `${MES[li]}: ${fDelta(dT)} personas visitaron la web contra el promedio de los 3 meses anteriores (usuarios)`,
+      descripcion: `${fNum(arr.trafico[li] ?? 0)} contra ${fNum(mean("trafico"))}.`,
+      acciones: ["Compará con la inversión en avisos de ese mes y con tu lugar en Google (tablero SEO)"],
       datos: { mes: MES[li], usuarios: arr.trafico[li], promedio3m: Math.round(mean("trafico")), deltaPct: r2(dT) },
     });
     const dC = deltaPct(arr.conversion[li] ?? 0, mean("conversion"));
     if (dC != null && dC <= -20) S({
       key: "web_monthly_conv_drop", tipo: "alerta", prioridad: "media",
-      titulo: `${MES[li]}: conversión ${fDelta(dC)} vs los 3 meses previos (${fPct(arr.conversion[li] ?? 0, 2)})`,
-      descripcion: `Promedio previo ${fPct(mean("conversion"), 2)}.`,
-      acciones: ["Revisar cambios en el sitio, precios o mix de tráfico del mes"],
+      titulo: `${MES[li]}: el % de visitas que termina en compra o consulta cambió ${fDelta(dC)} contra los 3 meses anteriores (${fPct(arr.conversion[li] ?? 0, 2)} — tasa de conversión)`,
+      descripcion: `Promedio anterior: ${fPct(mean("conversion"), 2)}.`,
+      acciones: ["Preguntá si ese mes hubo cambios en la web o en los precios, y mirá si cambió de dónde llegan las visitas"],
       datos: { mes: MES[li], conv: r2(arr.conversion[li] ?? 0), promedio3m: r2(mean("conversion")), deltaPct: r2(dC) },
     });
   }
@@ -280,7 +280,7 @@ export function competitorWebSignals(cw: CompetitorWebData | null | undefined): 
   const S = (s: Omit<Signal, "dash">) => out.push({ ...s, dash: "web" });
   const own = doms.find((d) => d.own);
   const rivals = doms.filter((d) => !d.own);
-  const nota = "Visitas estimadas por SimilarWeb (misma medición para todas las marcas; no se comparan con las sesiones de tu GA4).";
+  const nota = "Visitas estimadas por SimilarWeb (la misma medición para todas las marcas; no se comparan con las visitas que mide tu Google Analytics).";
   const mon = (d: (typeof doms)[number]) => [...(d.monthly ?? [])].filter((m) => m.visitas > 0).sort((a, b) => a.mes.localeCompare(b.mes));
   const growth3 = (d: (typeof doms)[number]): number | null => { const m = mon(d); if (m.length < 4) return null; const a = m[m.length - 4]!.visitas, b = m[m.length - 1]!.visitas; return a > 0 ? ((b - a) / a) * 100 : null; };
 
@@ -292,16 +292,16 @@ export function competitorWebSignals(cw: CompetitorWebData | null | undefined): 
       const medG = median(gRiv);
       if (gOwn <= medG - 15) S({
         key: "web_comp_trend_behind", tipo: "alerta", prioridad: gOwn < 0 && medG > 0 ? "alta" : "media",
-        titulo: `Tus visitas ${fDelta(gOwn)} en 3 meses vs ${fDelta(medG)} de la mediana de la competencia`,
-        descripcion: `${nota} La competencia está ganando tráfico más rápido que vos.`,
-        acciones: ["Ver en el tablero SEO si perdiste posiciones o share of search", "Revisar las fuentes de tráfico de quien más crece (búsqueda, social, display)"],
+        titulo: `Tus visitas cambiaron ${fDelta(gOwn)} en 3 meses; las de la competencia típica, ${fDelta(medG)}`,
+        descripcion: `${nota} La competencia está sumando visitas más rápido que vos.`,
+        acciones: ["Mirá en el tablero SEO si bajaste en Google o te buscan menos (share of search)", "Fijate de dónde le llegan las visitas a quien más crece (Google, redes, avisos)"],
         datos: { propio: r2(gOwn), medianaCompetencia: r2(medG), competidores: rivals.map((d) => ({ marca: d.marca, crecimiento3m: growth3(d) == null ? null : r2(growth3(d)!) })) },
       });
       else if (gOwn >= medG + 15 && gOwn > 0) S({
         key: "web_comp_trend_ahead", tipo: "info", prioridad: "baja",
         titulo: `Tus visitas crecen ${fDelta(gOwn)} en 3 meses, más que la competencia (${fDelta(medG)})`,
         descripcion: nota,
-        acciones: ["Identificar qué canal explica el crecimiento y sostenerlo"],
+        acciones: ["Identificá qué canal explica el crecimiento y seguí por ahí"],
         datos: { propio: r2(gOwn), medianaCompetencia: r2(medG) },
       });
     }
@@ -318,9 +318,9 @@ export function competitorWebSignals(cw: CompetitorWebData | null | undefined): 
     const sNow = shareAt(0), sPrev = shareAt(3);
     if (sNow && sPrev && Math.abs(sNow.share - sPrev.share) >= 3) S({
       key: sNow.share < sPrev.share ? "web_comp_share_down" : "web_comp_share_up", tipo: sNow.share < sPrev.share ? "alerta" : "info", prioridad: sNow.share < sPrev.share ? "media" : "baja",
-      titulo: `Tu share de visitas del set ${sNow.share < sPrev.share ? "cayó" : "subió"} ${Math.abs(sNow.share - sPrev.share).toFixed(1)} pp (${fPct(sPrev.share, 1)} → ${fPct(sNow.share, 1)})`,
-      descripcion: `${sPrev.mes} → ${sNow.mes}. Share = tus visitas ÷ visitas de todas las marcas del set. ${nota}`,
-      acciones: sNow.share < sPrev.share ? ["Cruzar con tu share of search y tu inversión del período"] : ["Sostener lo que explica la suba"],
+      titulo: `Tu parte de las visitas entre las webs de la competencia ${sNow.share < sPrev.share ? "cayó" : "subió"} ${Math.abs(sNow.share - sPrev.share).toFixed(1)} puntos (${fPct(sPrev.share, 1)} → ${fPct(sNow.share, 1)})`,
+      descripcion: `${sPrev.mes} → ${sNow.mes}. Tu parte = tus visitas ÷ las visitas de todas las marcas comparadas. ${nota}`,
+      acciones: sNow.share < sPrev.share ? ["Compará con cuánto te buscan en Google (share of search) y con tu inversión de ese período"] : ["Mantené lo que explica la suba"],
       datos: { desde: sPrev, hasta: sNow },
     });
   }
@@ -333,16 +333,16 @@ export function competitorWebSignals(cw: CompetitorWebData | null | undefined): 
     const rank = [...withQ].sort((x, y) => b(x) - b(y)).findIndex((d) => d.own) + 1;
     if (b(own) >= medB + 8) S({
       key: "web_comp_bounce_high", tipo: "alerta", prioridad: "media",
-      titulo: `Tu rebote (${fPct(b(own), 0)}) es el ${rank}° de ${withQ.length} del set; la mediana de la competencia es ${fPct(medB, 0)}`,
-      descripcion: `Páginas por visita: vos ${own.pages_per_visit.toFixed(1)} vs mediana ${median(withQ.filter((d) => !d.own).map((d) => d.pages_per_visit)).toFixed(1)}. ${nota}`,
-      acciones: ["Revisar velocidad y la primera pantalla de las landings con más entradas", "Alinear el mensaje de la pauta con la página de destino"],
+      titulo: `El ${fPct(b(own), 0)} de las visitas se va de tu web sin mirar nada más (rebote): puesto ${rank} de ${withQ.length}; en la competencia típica, ${fPct(medB, 0)}`,
+      descripcion: `Páginas que mira cada visita: vos ${own.pages_per_visit.toFixed(1)}, la competencia típica ${median(withQ.filter((d) => !d.own).map((d) => d.pages_per_visit)).toFixed(1)}. ${nota}`,
+      acciones: ["Pedile al equipo web que revise la velocidad y lo primero que se ve en las páginas por donde más gente entra", "Que la página de llegada diga lo mismo que el aviso que trae a la gente"],
       datos: { rebotePropio: r2(b(own)), medianaCompetencia: r2(medB), ranking: withQ.map((d) => ({ marca: d.marca, rebote: r2(b(d)), paginasPorVisita: r2(d.pages_per_visit), duracion: r2(d.avg_visit_duration) })) },
     });
     else if (rank === 1) S({
       key: "web_comp_quality_leader", tipo: "info", prioridad: "baja",
-      titulo: `Tu sitio tiene el menor rebote del set (${fPct(b(own), 0)})`,
-      descripcion: `Mediana de la competencia ${fPct(medB, 0)}. ${nota}`,
-      acciones: ["Aprovechar la calidad: más tráfico pago/social a las landings actuales"],
+      titulo: `Tu web es la que menos gente pierde apenas entra, entre la competencia (${fPct(b(own), 0)} de rebote)`,
+      descripcion: `La competencia típica: ${fPct(medB, 0)}. ${nota}`,
+      acciones: ["Aprovechalo: mandá más gente desde avisos y redes a las páginas de llegada actuales"],
       datos: { rebotePropio: r2(b(own)), medianaCompetencia: r2(medB) },
     });
   }
@@ -353,9 +353,9 @@ export function competitorWebSignals(cw: CompetitorWebData | null | undefined): 
     const mom = d.delta_mom;
     if ((mom != null && mom >= 30) || (g != null && g >= 40)) S({
       key: `web_comp_growing_${d.marca}`.replace(/\s+/g, "_"), tipo: "alerta", prioridad: (mom ?? 0) >= 50 || (g ?? 0) >= 80 ? "media" : "baja",
-      titulo: `${d.marca} crece rápido en visitas${mom != null && mom >= 30 ? ` (${fDelta(mom)} el último mes)` : ""}${g != null && g >= 40 ? ` (${fDelta(g)} en 3 meses)` : ""}`,
-      descripcion: `${fNum(d.visitas)} visitas estimadas. Fuentes: ${d.fuentes ? Object.entries(d.fuentes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v <= 1 ? fPct(v * 100, 0) : fPct(v, 0)}`).join(", ") : "s/d"}. ${nota}`,
-      acciones: [`Ver en Redes/SEO qué está haciendo ${d.marca} (campaña, lanzamiento, promo)`, "Vigilar tu share of search las próximas semanas"],
+      titulo: `A la web de ${d.marca} le crecen rápido las visitas${mom != null && mom >= 30 ? ` (${fDelta(mom)} el último mes)` : ""}${g != null && g >= 40 ? ` (${fDelta(g)} en 3 meses)` : ""}`,
+      descripcion: `${fNum(d.visitas)} visitas estimadas. De dónde llegan: ${d.fuentes ? Object.entries(d.fuentes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v <= 1 ? fPct(v * 100, 0) : fPct(v, 0)}`).join(", ") : "sin dato"}. ${nota}`,
+      acciones: [`Mirá en Redes y en SEO qué está haciendo ${d.marca} (campaña, lanzamiento, promoción)`, "Seguí cuánto te buscan en Google (share of search) las próximas semanas"],
       datos: { marca: d.marca, visitas: d.visitas, deltaMensualPct: mom == null ? null : r2(mom), crecimiento3mPct: g == null ? null : r2(g) },
     });
   }

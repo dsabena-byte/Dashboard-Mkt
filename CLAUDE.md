@@ -152,6 +152,19 @@ reporte_existencia/cb_homologos).
     **`APIFY_ACTOR_AD_LIBRARY`** (opcional) + `APIFY_API_TOKEN` (ya existe) + `NEXT_PUBLIC_APP_URL` (opcional, links).
     Test puro: `npx tsx scripts/alertas-adlib.test.ts`.
 - **"Guiame paso a paso" (sep-2026, pedido del user: las recomendaciones eran "chino básico"):** todo ítem accionable (Qué hacer ahora, señales, Diagnóstico IA oportunidades/plan/hallazgos a corregir, Insights de Redes, consent de /web, 🎓 Oportunidad/Mejor práctica) lleva `<GuiameButton item=…>` (`components/copiloto/guiame-button.tsx`) → `pedirGuia(promptGuia(item))` (`lib/copiloto-guia.ts`, puro) dispara **`window` event `copiloto:ask` {prompt}** → `GlobalDataChat` abre el chat y envía la pregunta en una conversación nueva (en rutas sin copiloto lo monta con `GENERAL`). El prompt arranca con "Guiame paso a paso" → **"Modo guía"** del system prompt (`copiloto.ts`: pasos numerados sin jerga, término técnico entre paréntesis, quién lo hace, dónde hacer clic, mensaje listo para la agencia/dev, tiempo, cómo verificarlo en el tablero). Prioridad/Confianza/Esfuerzo = palabras + tooltip (`explicarPrioridad`, `CONFIANZA_AYUDA`, `ESFUERZO_AYUDA` en `lib/recomendacion.ts`); la fórmula solo en el tooltip. Copy nuevo: primero lenguaje simple, técnico entre paréntesis. Test: `npx tsx scripts/copiloto-guia.test.ts`.
+- **Lenguaje simple en TODAS las señales + "Mis acciones" (28-sep-2026):** títulos/detalle/pasos de `lib/signals/*` (pauta, redes,
+  overview, cruces, drean, web, web-calidad, seo, seo-avanzado), `pauta-fatiga` (motivo), `sc-deep` (CAUSA_TXT), `stats/forecast`
+  (METODO_TEXTO) y el 🎓 (KPI_KNOW + FUNC_KNOW) reescritos: primero en palabras, sigla entre paréntesis, acción concreta ("Pedile a la
+  agencia…", "Pasá plata de X a Y"). Keys, números y umbrales intactos. **OJO — la copy alimenta lógica:** `estimarEsfuerzo` (regex de
+  verbos; se sumaron "pasá plata/bajale/baje/subí/suba/escalá/pausala") y `metricaDeTextos` (términos del catálogo) leen el texto →
+  al reescribir, verificar que no cambien (se validó regla por regla: 0 cambios de esfuerzo; donde el texto ya no nombra la métrica,
+  la regla fija `Signal.metrica` = id del catálogo, `null` = ninguna). Prompt del Diagnóstico IA también pide lenguaje simple.
+  **"Mis acciones":** cada tarjeta de "Qué hacer ahora" tiene La voy a hacer / Hecha / Descartar (id estable `senal:<dash>:<slugKey(key)>` |
+  `ia:<dash>:<hash título>`), tabla `recomendacion_seguimiento` (**migración 0122**, RLS sin policies) vía `/api/recomendaciones/seguimiento`
+  (sesión + `dashboard_access`, guarda email del autor); bloque arriba del tab con foto (`snapshot`) aunque la señal ya no salga ("ya no
+  aparece en los datos"). Sin 0122: aviso, no rompe. **Guarda del Diagnóstico IA** (`lib/insights/guard.ts`): <12 h y sin `force` → devuelve
+  el guardado sin llamar a OpenAI; el botón confirma en la página y reenvía `force`. `saveReport` ya no se traga el error (console.error
+  status+body + aviso visible). Test: `npx tsx scripts/recomendacion-seguimiento.test.ts`. (27-sep: `insights_report` estaba VACÍA en prod.)
 - **Copiloto v2 (motor de BIP) — sep-2026 ("Preguntale a tus datos"):** `app/api/chat/route.ts`
   responde **NDJSON** (`{"type":"step"}` en vivo "Consultando X…" + `{"type":"final",text,charts,
   tables,posts,steps}`), hasta **10 pasos**, tools **en paralelo**, rate limit 30/10min por usuario

@@ -6,6 +6,7 @@ import { loadOverview } from "@/lib/signals/sources";
 import type { SeguimientoObjetivos, KpiSegLite } from "@/lib/signals/model";
 import { loadDash, buildDataPack, signalsForPrompt } from "@/lib/insights/datapack";
 import { getLatestReport, saveReport, listReports, getReport } from "@/lib/insights/store";
+import { debeReusarDiagnostico, GUARD_HORAS } from "@/lib/insights/guard";
 import { isDiagDash, EMPTY_INSIGHTS, type Insights, type InsItem, type InsHallazgo, type InsCorr, type InsPlanAccion, type InsOportunidad } from "@/lib/insights/types";
 
 // ============================================================================
@@ -89,8 +90,17 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return NextResponse.json({ error: "OPENAI_API_KEY no configurada" }, { status: 500 });
-  const dash = String(((await req.json().catch(() => ({}))) as { dash?: string }).dash ?? "");
+  const body = (await req.json().catch(() => ({}))) as { dash?: string; force?: unknown };
+  const dash = String(body.dash ?? "");
   if (!isDiagDash(dash)) return NextResponse.json({ error: "tablero desconocido" }, { status: 400 });
+  const force = body.force === true;
+  // Guarda: si hay un diagnóstico de hace menos de GUARD_HORAS y no viene force, se devuelve el
+  // guardado sin llamar a OpenAI (el cliente pregunta "¿Generar otro?" y reenvía con force).
+  const ultimo = await getLatestReport(dash).catch(() => null);
+  const guard = debeReusarDiagnostico(ultimo?.createdAt ?? null, new Date(), force);
+  if (guard.reusar && ultimo?.insights) {
+    return NextResponse.json({ dash, insights: ultimo.insights, model: ultimo.model, id: ultimo.id, createdAt: ultimo.createdAt, reused: true, edadMs: guard.edadMs, guardHoras: GUARD_HORAS });
+  }
   const f = FOCO[dash]!;
   const model = process.env.OPENAI_INSIGHTS_MODEL || "gpt-4o-mini";
   const year = new Date().getFullYear();
@@ -112,7 +122,7 @@ export async function POST(req: Request) {
 
   // Diagnóstico anterior (continuidad).
   let prevCtx = "";
-  const prev = await getLatestReport(dash).catch(() => null);
+  const prev = ultimo;
   if (prev?.insights) {
     const acc = (prev.insights.planAccion ?? []).map((a) => `• ${a.accion}`).join("\n");
     prevCtx = `\n\n=== DIAGNÓSTICO ANTERIOR (${new Date(prev.createdAt).toLocaleDateString("es-AR")}) — línea de base ===\nDiagnóstico previo: ${String(prev.insights.diagnostico ?? "").slice(0, 800)}\nPlan de acción recomendado:\n${acc.slice(0, 1200)}\nInstrucción: indicá qué mejoró y qué empeoró desde entonces y si las acciones parecen haberse aplicado (según los datos). No repitas literal lo que no funcionó.\n=== FIN DIAGNÓSTICO ANTERIOR ===`;
@@ -127,7 +137,7 @@ Analizás "${f.label}". ${f.foco}
 Tu fuente principal es el PACK DE DATOS y los HALLAZGOS PRE-CALCULADOS del mensaje. Si falta una parte, decilo (no la inventes).
 
 MÉTODO (de lo general a lo particular): 1) EVOLUCIÓN en el tiempo con valores y variación %; 2) CUMPLIMIENTO DE METAS (mes y YTD, brecha %); 3) CORRELACIONES multi-causales entre KPIs y con los objetivos; 4) DETALLE (medio/campaña/pieza/formato/canal/keyword/categoría/cadena según el tablero); 5) OPORTUNIDADES cuantificadas; 6) SÍNTESIS.
-REGLAS: cada afirmación lleva su número (valor, variación %, brecha vs meta, share); analizá lo que funcionó y lo que no con causas; registro profesional, sobrio, en español rioplatense; plan de acción = instrucciones concretas con impacto esperado; cada oportunidad con el cálculo explícito usando solo números del pack (explicitá supuestos). Si hay bloque MERCADO o hallazgos de cruce, al menos una oportunidad debe cruzar lo propio con el mercado.
+REGLAS: cada afirmación lleva su número (valor, variación %, brecha vs meta, share); analizá lo que funcionó y lo que no con causas; español rioplatense, sobrio y en LENGUAJE SIMPLE para alguien no técnico (el equipo de marketing lo lee sin ser especialista en medios ni en analítica): primero qué significa en palabras comunes y el término técnico entre paréntesis la primera vez (ej. "cuánto cuesta mostrar el aviso mil veces (CPM)", "de cada 100 que ven el aviso, cuántos hacen clic (CTR)"); acciones concretas con quién las hace ("Pedile a la agencia que…", "Pasá plata de X a Y"); plan de acción = instrucciones concretas con impacto esperado; cada oportunidad con el cálculo explícito usando solo números del pack (explicitá supuestos). Si hay bloque MERCADO o hallazgos de cruce, al menos una oportunidad debe cruzar lo propio con el mercado.
 
 Respondé EXCLUSIVAMENTE con un objeto JSON válido:
 {
@@ -158,11 +168,16 @@ Hasta 5 ítems en evolucion, hallazgos, planAccion y oportunidades; hasta 4 en m
     const content = json?.choices?.[0]?.message?.content;
     if (!res.ok || !content) return NextResponse.json({ error: json?.error?.message || "sin respuesta de IA" }, { status: 502 });
     const insights = parseInsights(content);
-    const saved = await saveReport(dash, insights, { model, signalsCount: signals.length });
+    const { saved, error: saveError } = await saveReport(dash, insights, { model, signalsCount: signals.length });
+    if (!saved) console.error(`[api/insights] no se guardó el diagnóstico de "${dash}": ${saveError}`);
     return NextResponse.json({
       dash, insights, model,
       id: saved?.id ?? null, createdAt: saved?.createdAt ?? new Date().toISOString(),
-      ...(saved ? {} : { warning: "No se guardó la versión (¿migración 0106_insights_report sin correr?)." }),
+      ...(saved ? {} : {
+        warning: /PGRST205|404|does not exist|schema cache/i.test(saveError ?? "")
+          ? "El diagnóstico se generó pero NO se guardó: falta correr la migración 0106_insights_report.sql en el SQL Editor de Supabase."
+          : `El diagnóstico se generó pero NO se guardó en el historial (${(saveError ?? "error desconocido").slice(0, 160)}). Si vuelve a pasar, avisale a quien mantiene el tablero.`,
+      }),
     });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

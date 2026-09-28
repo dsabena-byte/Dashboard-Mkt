@@ -12,6 +12,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { fmtImpacto, explicarPrioridad, PRIORIDAD_TEXTO, CONFIANZA_AYUDA, ESFUERZO_AYUDA, type Recomendacion, type NivelPrioridad, type NivelConfianza } from "@/lib/recomendacion";
 import { GuiameButton } from "@/components/copiloto/guiame-button";
+import { ESTADO_BOTON, ESTADO_LABEL, ESTADOS_ACCION, type EstadoAccion } from "@/lib/recomendacion-seguimiento";
 
 const DATA = "#1e40af";
 const INK = "#0f172a";
@@ -38,7 +39,25 @@ function Fila({ k, children }: { k: string; children: React.ReactNode }) {
   );
 }
 
-export function RecomendacionCard({ rec, rank }: { rec: Recomendacion; rank?: number }) {
+/** Botones "La voy a hacer" · "Hecha" · "Descartar" (el activo queda marcado). */
+export function EstadoBotones({ estado, onEstado, ocupado }: { estado: EstadoAccion | null | undefined; onEstado: (e: EstadoAccion) => void; ocupado?: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Seguimiento de la acción">
+      {ESTADOS_ACCION.map((e) => {
+        const activo = estado === e;
+        return (
+          <button key={e} type="button" disabled={ocupado} onClick={() => onEstado(e)} aria-pressed={activo}
+            className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold transition disabled:opacity-50 ${activo ? "border-transparent text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+            style={activo ? { background: e === "descartada" ? "#64748b" : DATA } : undefined}>
+            {activo && e !== "descartada" ? "✓ " : ""}{ESTADO_BOTON[e]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function RecomendacionCard({ rec, rank, estado, onEstado, ocupado }: { rec: Recomendacion; rank?: number; /** Estado en "Mis acciones" (null = sin marcar). */ estado?: EstadoAccion | null; onEstado?: (e: EstadoAccion) => void; ocupado?: boolean }) {
   const [open, setOpen] = useState(false);
   const p = PRIO[rec.prioridad.nivel];
   const t = TIPO[rec.tipo];
@@ -52,6 +71,7 @@ export function RecomendacionCard({ rec, rank }: { rec: Recomendacion; rank?: nu
         <span className="text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: t.color }}>{t.label}</span>
         <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[10.5px] font-semibold ${p.cls}`} title={explicarPrioridad(rec)}>Prioridad {p.label.toLowerCase()}</span>
         {rec.cruce && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">cruce con mercado</span>}
+        {estado && <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800">{ESTADO_LABEL[estado]}</span>}
         {imp && <span className="ml-auto max-w-full truncate text-[12.5px] font-bold tabular-nums" style={{ color: cuant ? DATA : "#64748b" }} title={rec.impacto?.texto}>{imp}</span>}
       </div>
       <div className="text-[13.5px] font-semibold leading-snug" style={{ color: INK }}>{rec.titulo}</div>
@@ -68,6 +88,7 @@ export function RecomendacionCard({ rec, rank }: { rec: Recomendacion; rank?: nu
         </button>
         </span>
       </div>
+      {onEstado && <EstadoBotones estado={estado} onEstado={onEstado} ocupado={ocupado} />}
       {open && (
         <div className="mt-1 grid gap-1.5 border-t pt-2.5">
           {rec.pasos.length > 0 && <Fila k="Qué hacer"><ol className="list-decimal pl-4">{rec.pasos.map((x, i) => <li key={i}>{x}</li>)}</ol></Fila>}
@@ -80,7 +101,7 @@ export function RecomendacionCard({ rec, rank }: { rec: Recomendacion; rank?: nu
           <Fila k="Confianza"><span title={CONFIANZA_AYUDA[rec.confianza.nivel]} className="cursor-help underline decoration-dotted decoration-slate-300 underline-offset-2">{rec.confianza.nivel[0]!.toUpperCase() + rec.confianza.nivel.slice(1)}</span> — <span className="text-slate-500">{rec.confianza.motivo}</span></Fila>
           <Fila k="Esfuerzo"><span title={ESFUERZO_AYUDA[rec.esfuerzo.nivel]} className="cursor-help underline decoration-dotted decoration-slate-300 underline-offset-2">{rec.esfuerzo.label}</span> · {rec.esfuerzo.quien}</Fila>
           <Fila k="Prioridad"><span title={explicarPrioridad(rec)} className="cursor-help underline decoration-dotted decoration-slate-300 underline-offset-2">{p.label}</span> <span className="text-slate-500">— {PRIORIDAD_TEXTO[rec.prioridad.nivel].toLowerCase()}</span></Fila>
-          <Fila k="Cómo medirlo">{rec.medicion.criterio} <span className="text-slate-500">Ventana: {rec.medicion.ventanaDias} días (antes/después, no prueba causa).</span></Fila>
+          <Fila k="Cómo medirlo">{rec.medicion.criterio} <span className="text-slate-500">Mirá el resultado a los {rec.medicion.ventanaDias} días. Es una comparación de antes y después: orienta, pero no prueba que la acción haya sido la causa.</span></Fila>
           {rec.recurso && <Fila k="Para profundizar"><Link href={rec.recurso.href as Route} className="font-semibold hover:underline" style={{ color: DATA }}>{rec.recurso.titulo} ›</Link></Fila>}
           <Fila k="Origen"><span className="text-slate-500">{ORIGEN[rec.origen]}</span></Fila>
         </div>
@@ -90,13 +111,13 @@ export function RecomendacionCard({ rec, rank }: { rec: Recomendacion; rank?: nu
 }
 
 /** Lista ordenada por prioridad (las primeras `initial`, con "ver todas"). */
-export function RecomendacionesLista({ recs, initial = 5, cargando = false }: { recs: Recomendacion[]; initial?: number; cargando?: boolean }) {
+export function RecomendacionesLista({ recs, initial = 5, cargando = false, estados, onEstado, ocupado }: { recs: Recomendacion[]; initial?: number; cargando?: boolean; /** id → estado en "Mis acciones". */ estados?: Map<string, EstadoAccion>; onEstado?: (rec: Recomendacion, e: EstadoAccion) => void; ocupado?: string | null }) {
   const [all, setAll] = useState(false);
   const shown = all ? recs : recs.slice(0, initial);
   if (!recs.length && !cargando) return <div className="py-2 text-xs text-slate-500">Sin acciones sugeridas con los datos actuales.</div>;
   return (
     <div className="grid gap-2">
-      {shown.map((r, i) => <RecomendacionCard key={r.id} rec={r} rank={i + 1} />)}
+      {shown.map((r, i) => <RecomendacionCard key={r.id} rec={r} rank={i + 1} estado={estados?.get(r.id) ?? null} onEstado={onEstado ? (e) => onEstado(r, e) : undefined} ocupado={ocupado === r.id} />)}
       {cargando && <div className="text-xs text-slate-400">Sumando las recomendaciones del Diagnóstico IA…</div>}
       {recs.length > initial && (
         <button type="button" onClick={() => setAll((x) => !x)} className="justify-self-start rounded-md border px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
