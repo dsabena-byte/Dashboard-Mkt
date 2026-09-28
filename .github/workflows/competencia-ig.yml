@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       part:
-        description: "Parte: all | bd | snaps | temas"
+        description: "Parte: all | bd | snaps | temas | pilar"
         required: false
         default: "all"
       mode:
