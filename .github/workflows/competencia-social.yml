@@ -5,13 +5,16 @@ name: Competencia social + web (scraper en código, reemplaza n8n)
 # (responde estado "desactivado"), así que este workflow puede quedar activo mientras n8n siga prendido.
 #  · diario 07:05 UTC  → fb (Facebook de las 5 marcas; el endpoint solo lo corre los días de COMPETENCIA_FB_DIAS,
 #                        default lun y jue) + ig (comentarios/sentimiento por Apify; COMPETENCIA_IG_APIFY_DIAS, default lunes)
-#  · domingo 00:05 UTC → web (SimilarWeb → competitor_web) + fbfol (seguidores de las Páginas de FB)
+#  · domingo 00:05 UTC → fbfol (seguidores de las Páginas de FB)
+#  · día 15, 00:20 UTC → web (SimilarWeb → competitor_web). SimilarWeb es MENSUAL y publica el mes cerrado
+#                        ~2ª semana (ago-26 apareció entre el 6 y el 13-sep) → una corrida por mes alcanza.
 # Manual: part = fb | ig | web | fbfol (o varias separadas por coma), dry = 1 para comparar sin escribir.
 
 on:
   schedule:
     - cron: "5 7 * * *"
     - cron: "5 0 * * 0"
+    - cron: "20 0 15 * *"
   workflow_dispatch:
     inputs:
       part:
@@ -36,7 +39,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "${PART_INPUT:-}" ]; then PART="$PART_INPUT";
-          elif [ "${SCHEDULE:-}" = "5 0 * * 0" ]; then PART="web,fbfol";
+          elif [ "${SCHEDULE:-}" = "5 0 * * 0" ]; then PART="fbfol";
+          elif [ "${SCHEDULE:-}" = "20 0 15 * *" ]; then PART="web";
           else PART="fb,ig"; fi
           BASE="${APP_URL:-https://dashboard-mkt-seven.vercel.app}"
           FAIL=0

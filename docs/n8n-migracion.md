@@ -71,7 +71,9 @@ Electrolux `tienda.electrolux.com.ar`, Gafa `tienda.gafa.com.ar`, Philco `philco
     para posts nuevos o sin pilar.
   - `part=ig` (Apify, solo comentarios/sentimiento/pin): `COMPETENCIA_IG_COMMENT_POSTS` (default 10) posts por marca
     de los últimos `COMPETENCIA_IG_DIAS` (14), los días `COMPETENCIA_IG_APIFY_DIAS` (default `1` = lunes; `*` diario).
-  - `part=web` domingo 00:05 UTC: SimilarWeb → `competitor_web` (mapeo de la sección 3). Solo dominios con visitas.
+  - `part=web` **mensual, día 15 00:20 UTC**: SimilarWeb → `competitor_web` (mapeo de la sección 3). Solo dominios con visitas.
+    SimilarWeb da un dato POR MES (n8n lo re-bajaba cada domingo y repetía el mismo número 4 semanas: validado en la base,
+    Drean 278.376 del 16-ago al 6-sep, 403.920 del 13 al 27-sep); el mes cerrado aparece ~2ª semana del mes siguiente.
   - `part=fbfol` domingo: seguidores de las Páginas de FB (`facebook-pages-scraper`) → `social_followers` (nuevo).
   - `?dry=1` devuelve las filas mapeadas sin escribir (funciona con el flag apagado); `?analizar=todos` clasifica
     también los posts de FB ya clasificados (para comparar pilar); `?limit=`, `?posts=`, `?dias=`, `?force=1`.
@@ -84,7 +86,7 @@ Electrolux `tienda.electrolux.com.ar`, Gafa `tienda.gafa.com.ar`, Philco `philco
   siguientes, devuelve `apifySinCupo` y el workflow deja un warning. `APIFY_MAX_CHARGE_USD` (default 2) +
   `maxItems` por corrida acotan el gasto.
 - **Guarda:** sin `COMPETENCIA_SCRAPER_CODE=1` no escribe nada (responde `desactivado`).
-- Monitoreo: `competencia_fb` (social_posts FB, 96 h) y `competencia_web` (competitor_web, 168 h) en `PROCS`.
+- Monitoreo: `competencia_fb` (social_posts FB, 96 h) y `competencia_web` (competitor_web, 768 h) en `PROCS`.
 - Env opcionales: `APIFY_ACTOR_IG`, `APIFY_ACTOR_FB`, `APIFY_ACTOR_FB_PAGE`, `APIFY_ACTOR_SIMILARWEB`,
   `COMPETENCIA_SCRAPER_MODEL` (default gpt-4o, el de n8n), `COMPETENCIA_FROM_DATE` (default 1-ene del año).
 
