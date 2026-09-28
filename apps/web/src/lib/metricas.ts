@@ -221,7 +221,7 @@ export const METRICAS: Metrica[] = [
     descripcion: "Caída de respuesta de una pieza por sobreexposición (≥25% con frecuencia en alza = fatigada)." },
   { id: "roi_marginal", nombre: "ROI marginal", know: "roi_marginal", sinonimos: ["retorno marginal"],
     formula: "Δ resultado ÷ Δ inversión en la curva de respuesta del medio (MMM-lite)", unidad: "x", direccion: "up", tipo: "rate",
-    fuente: "MMM-lite del Simulador (pauta + GA4, en moneda constante)", granularidad: "mensual", rol: "ambos", horizonte: "adelantado",
+    fuente: "MMM-lite del Simulador (pauta + GA4)", granularidad: "mensual", rol: "ambos", horizonte: "adelantado",
     descripcion: "Cuánto resultado traería el próximo peso invertido en un medio; refleja la saturación." },
 
   // ── Redes ────────────────────────────────────────────────────────────────
@@ -391,10 +391,6 @@ export const METRICAS: Metrica[] = [
     formula: "Escenarios simulados (2.000, con los errores de tu historia) que alcanzan la meta ÷ escenarios", unidad: "%", direccion: "up", tipo: "rate",
     fuente: "Seguimiento Objetivos (pronóstico sobre la historia)", granularidad: "mensual", rol: "ambos", horizonte: "adelantado",
     descripcion: "Chance de cerrar el año en meta al ritmo actual, con su rango." },
-  { id: "pesos_constantes", nombre: "Pesos constantes", know: "moneda_constante", sinonimos: ["moneda constante", "monto en pesos constantes"],
-    formula: "Monto × IPC(mes base) ÷ IPC(mes)", unidad: "$", direccion: "up", tipo: "sum",
-    fuente: "IPC INDEC + dólar oficial BCRA (se actualizan solos)", granularidad: "mensual", rol: "ambos", horizonte: "rezagado",
-    descripcion: "Montos llevados al poder de compra de un mes base, para comparar meses sin inflación." },
 ];
 
 // ── Normalización (misma que usa lib/knowledge para títulos) ──────────────────

@@ -12,7 +12,7 @@ import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
 import { PerformanceClient } from "@/components/pauta/performance-client";
 import { Suspense } from "react";
 import { monedaContext } from "@/lib/moneda-server";
-import { avisoFaltantes, mesLabel } from "@/lib/moneda";
+import { avisoFaltantes } from "@/lib/moneda";
 import { convertirFilas, convertir12, convertirPorMes, type ConvCollector } from "@/lib/moneda-pauta";
 import { MonedaSelector } from "@/components/moneda-selector";
 import { DataHealth } from "@/components/data-health";
@@ -99,7 +99,7 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     safe(maxUpdatedAt("ga4_google_ads_daily", "principal", "updated_at"), null),
     // Inversión ecommerce (Google Ads inhouse, rol Conversión) — componente del funnel.
     safe(getEcommerceInversionMensual(new Date().getFullYear()), Array.from({ length: 12 }, () => null) as (number | null)[]),
-    // Moneda (?moneda=corrientes|constantes|usd): índices de indices_macro (0110), fail-safe.
+    // Moneda (?moneda=usd; sin param = "$"; "constantes" de links viejos cae a "$"): índices de indices_macro (0110), fail-safe.
     monedaContext(searchParams?.moneda),
   ]);
   // Conversión server-side ANTES del cliente (portado de BIP): corrientes = mismos objetos.
@@ -114,7 +114,7 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
   const planningMonthly = convertirPorMes(ctx, rawPlanning, col);
   const ecomInv = convertir12(ctx, currentYear, rawEcomInv, col);
   // Metas mensuales de los 6 KPIs de Impacto Campaña (plan "Pauta Mkt"), en paralelo.
-  // + inversión diaria por medio con API (Eficiencia Medios; REST, tablas chicas, $ corrientes).
+  // + inversión diaria por medio con API (Eficiencia Medios; REST, tablas chicas, en $).
   // + miniaturas DV360 (manifiesto del cron dv360-thumbs; solo nombre → url, fail-safe {}).
   const [metasArr, pautaDiaria, dv360Thumbs] = await Promise.all([
     Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK))),
@@ -128,9 +128,8 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     <div className="flex flex-col items-end gap-1.5">
       <Suspense fallback={null}>
         <MonedaSelector
-          actual={ctx.moneda}
-          baseLabel={ctx.idx.ultimoIpc ? mesLabel(ctx.idx.ultimoIpc) : null}
-          disponible={{ ipc: ctx.idx.ipc.size > 0, usd: ctx.idx.usd.size > 0 }}
+          actual={ctx.moneda === "usd" ? "usd" : "corrientes"}
+          disponible={{ usd: ctx.idx.usd.size > 0 }}
           notas={[aviso, avisoFaltantes(ctx, [...col.faltantes])]}
         />
       </Suspense>

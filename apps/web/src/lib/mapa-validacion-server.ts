@@ -71,7 +71,7 @@ export async function getValidacionMapa(): Promise<ValidacionMapaData | null> {
     anio,
     objetivos: mapa.objetivos.map((o) => ({ id: o.id, nombre: o.nombre, color: o.color })),
     resultados,
-    nota: ctx.moneda === "constantes" ? null : "Sin IPC cargado (tabla indices_macro): la Inversión se compara en pesos corrientes.",
+    nota: ctx.moneda === "constantes" ? null : "Sin serie de inflación cargada (tabla indices_macro): la Inversión se compara sin ajustar por inflación.",
   };
 }
 

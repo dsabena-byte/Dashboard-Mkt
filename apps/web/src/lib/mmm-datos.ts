@@ -45,7 +45,7 @@ export function construirDatosMmm(args: {
   kpis: MmmKpiSerie[];
   mesEnCurso: string;                                 // YYYY-MM (se excluye: parcial)
 }): MmmDatos {
-  const avisos: string[] = ["Drean no tiene serie de inflación (IPC) cargada: la inversión va en pesos corrientes y el modelo puede confundir inflación con más inversión."];
+  const avisos: string[] = ["Drean no tiene serie de inflación (IPC) cargada: la inversión va en $ sin ajustar y el modelo puede confundir inflación con más inversión."];
   const spend = new Map<string, Map<string, number>>();
   const add = (medio: string, mes: string, v: number) => {
     if (!(v > 0) || mes >= args.mesEnCurso) return;

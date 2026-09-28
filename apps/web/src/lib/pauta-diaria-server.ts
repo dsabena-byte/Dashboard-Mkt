@@ -9,7 +9,7 @@ import "server-only";
 //    SIEMPRE de meta_paid_creatives (fuente de verdad de Pauta Mkt) y alimentan la referencia mensual y la
 //    concentración por campaña (días activos por campaña).
 //  · DV360 (YouTube / Programmatic): SOLO mensual (dv360_creatives.mes); USD→ARS con el fx del mes.
-// Todo en $ corrientes (la detección compara al medio consigo mismo, no depende de la moneda).
+// Todo en $ (la detección compara al medio consigo mismo, no depende de la moneda).
 // ============================================================================
 import { addDias, mesMas, type SerieMedio, type CampaniaMes, type PautaDiariaData } from "@/lib/pauta-diaria";
 export type { PautaDiariaData } from "@/lib/pauta-diaria";

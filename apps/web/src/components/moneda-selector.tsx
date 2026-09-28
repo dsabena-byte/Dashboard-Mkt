@@ -5,24 +5,22 @@ import type { Route } from "next";
 import type { Moneda } from "@/lib/moneda";
 import { LearnButton } from "@/components/knowledge/learn-button";
 
-// Selector "Pesos corrientes / Pesos constantes (de <mes>) / USD" para montos (portado de BIP,
-// sep-2026). Persiste en la URL (?moneda=) → el server component convierte y el link se comparte
-// tal cual. Default (sin param) = corrientes: lo que se ve hoy no cambia. Sin índices cargados
-// (migración 0110 + cron sync-macro) las opciones quedan deshabilitadas con el motivo.
-export function MonedaSelector({ actual, baseLabel, disponible, notas = [] }: {
+// Selector "$ / USD" para montos (portado de BIP, sep-2026; "$ constantes" se sacó a pedido del
+// user). Persiste en la URL (?moneda=) → el server component convierte y el link se comparte tal
+// cual. Default (sin param) = "$". Sin dólar cargado (migración 0110 + cron sync-macro) USD queda
+// deshabilitado con el motivo.
+export function MonedaSelector({ actual, disponible, notas = [] }: {
   actual: Moneda;
-  baseLabel?: string | null;
-  disponible: { ipc: boolean; usd: boolean };
+  disponible: { usd: boolean };
   notas?: (string | null | undefined)[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
   const [pending, start] = useTransition();
-  const sinIdx = "Todavía no hay índices cargados (migración 0110 + cron sync-macro)";
+  const sinIdx = "Todavía no hay cotizaciones del dólar cargadas (migración 0110 + cron sync-macro)";
   const opts: { v: Moneda; label: string; title: string; ok: boolean }[] = [
-    { v: "corrientes", label: "$ corrientes", title: "Montos tal como los informó cada fuente", ok: true },
-    { v: "constantes", label: baseLabel ? `$ constantes (${baseLabel})` : "$ constantes", title: disponible.ipc ? "Montos ajustados por inflación (IPC INDEC) a pesos del último mes publicado" : sinIdx, ok: disponible.ipc },
+    { v: "corrientes", label: "$", title: "Montos en pesos, tal como los informó cada fuente", ok: true },
     { v: "usd", label: "USD", title: disponible.usd ? "Montos en dólares al tipo de cambio oficial promedio de cada mes (BCRA)" : sinIdx, ok: disponible.usd },
   ];
   const go = (v: Moneda) => {
@@ -35,7 +33,7 @@ export function MonedaSelector({ actual, baseLabel, disponible, notas = [] }: {
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-1.5">
-      <LearnButton k="moneda_constante" />
+      <LearnButton k="moneda_montos" />
       <div role="radiogroup" aria-label="Moneda de los montos" className={`inline-flex flex-wrap rounded-lg border p-0.5 text-xs font-medium ${pending ? "opacity-60" : ""}`}>
         {opts.map((o) => {
           const on = o.v === actual;
