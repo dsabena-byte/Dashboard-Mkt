@@ -47,4 +47,15 @@ export const MODULO_TITULO: Record<string, string> = {
   "mapa-estrategico": "Armar el Mapa Estratégico paso a paso",
   "insights-chat": "Usar el Diagnóstico IA y el copiloto para decidir",
   "tableros-planilla": "Inversión, Resultados y Trade: de dónde sale cada dato",
+  // Mercado Libre para marcas (sep-2026)
+  "mercado-libre-para-marcas": "Mercado Libre para marcas: el mapa completo",
+  "meli-como-funciona": "Cómo funciona Mercado Libre para una marca: tienda oficial, catálogo y revendedores",
+  "meli-publicaciones": "Mercado Libre: publicaciones que se encuentran y convencen",
+  "meli-reputacion": "Mercado Libre: reputación del vendedor y MercadoLíder",
+  "meli-logistica": "Mercado Libre: logística (Full, Flex, Colecta y envío gratis)",
+  "meli-precio-promociones": "Mercado Libre: precio, cuotas, costos y promociones",
+  "meli-mercado-ads": "Mercado Ads: Product Ads, Brand Ads y Display",
+  "meli-preguntas-opiniones": "Mercado Libre: preguntas y opiniones que venden",
+  "meli-medicion": "Mercado Libre: qué medir y dónde verlo en el dash de Drean",
+  "meli-errores-checklist": "Mercado Libre: errores comunes y checklist mensual",
 };

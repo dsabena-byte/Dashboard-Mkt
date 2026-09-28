@@ -427,6 +427,14 @@ reporte_existencia/cb_homologos).
 - Copiloto: tool `get_guia` (`lib/chat/tools-guia.ts`, buscar por texto/KPI/tablero o traer por id) en
   TODOS los dashboards y usuarios (`buildChatTools`); el prompt la usa para citar `[Título](/guia/<id>)` y
   `mini-markdown` renderiza links internos `/guia/...`.
+- **Mercado Libre para marcas (28-sep-2026, portado de la base original):** `lib/guia/mercado-libre.ts` = 10 módulos
+  (`mercado-libre-para-marcas` índice + `meli-*`), plataforma `mercadolibre`, con **`fuentes`/`fuentesConsultadas`**
+  (tipo `Fuente` en `types.ts`; caja "Fuentes" al pie de `/guia/[id]`; `get_guia` las devuelve). Drean NO tiene Góndola
+  ML ni datos propios de ML: los "En la plataforma" dicen que en el dash solo está la inversión de **Mercado Ads** (Plan
+  de Medios, carga OMD), share/índice de precio GfK (todos los canales) y la góndola física (Floor Share/CB); posición,
+  catálogo, reputación, ROAS/ACOS → panel de vendedor ML / Mercado Ads. Enlazado en "Cómo leer" de `/performance` (+
+  práctica Mercado Ads) y `/mercado`, palancas de `roas`/`indice_precio`/`share_unidades`, relacionados de
+  `plan-de-medios`/`trade-marketing`. guia-integridad valida fuentes oficiales y que no se cuele "Góndola"/"Lo más buscado".
 - Test: `cd apps/web && npx tsx scripts/guia-integridad.test.ts` (ids, títulos espejo, KPIs, rutas, términos
   BIP-only). Pendiente (igual que BIP): pasar el contenido a tabla para editar sin deploy.
 

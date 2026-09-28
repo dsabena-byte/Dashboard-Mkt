@@ -75,6 +75,7 @@ export const EVAL_SET: EvalCase[] = [
   { id: "sen-1", q: "¿Qué alertas y oportunidades hay en el Plan de Medios?", dash: "/performance", tools: ["get_senales"], args: { dash: "performance" } },
   { id: "sen-2", q: "¿Qué debería mejorar primero, qué está mal?", dash: "/overview", tools: ["get_senales", "get_seguimiento"] },
   { id: "guia-1", q: "¿Cómo se lee la frecuencia y el alcance en el proceso estratégico?", dash: "/performance", tools: ["get_guia"], args: { buscar: "frecuencia" } },
+  { id: "guia-2", q: "¿Cómo ganamos la publicación de catálogo en Mercado Libre y qué pesa en la reputación?", dash: "/performance", tools: ["get_guia"], args: { buscar: "mercado libre catálogo reputación" } },
   { id: "calc-1", q: "Calculá la variación porcentual entre julio y agosto", dash: "/overview", tools: ["calc"], args: { operacion: "variacion", actual: 120, anterior: 100 } },
   { id: "calc-2", q: "¿Llego a la meta anual al ritmo actual? proyección al cierre de diciembre", dash: "/web", tools: ["calc", "get_seguimiento"], args: { operacion: "proyeccion_cierre", serie: [10, 12, 11, 13], meta: 160 } },
 ];

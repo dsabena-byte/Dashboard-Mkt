@@ -64,7 +64,7 @@ Los picos se anticipan a la demanda: la presión de awareness arranca 2 a 4 sema
       "Hay una reserva de prueba (10-15%).",
     ],
     enBip: "Se ejecuta y se sigue en **Plan de Medios**: cards de Inversión, Alcance único, Frecuencia, Impresiones, VTR y Clicks contra meta, más la vista por medio y las piezas con sus métricas. El presupuesto total se controla en **Inversión de Marketing**.",
-    relacionados: ["alcance-frecuencia", "benchmarks-medios", "medios-offline", "presupuesto-marketing", "meta-ads-estructura", "google-search"],
+    relacionados: ["alcance-frecuencia", "benchmarks-medios", "medios-offline", "presupuesto-marketing", "meta-ads-estructura", "google-search", "meli-mercado-ads"],
   },
   {
     id: "medios-offline",
