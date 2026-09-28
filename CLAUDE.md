@@ -213,7 +213,9 @@ reporte_existencia/cb_homologos).
      **último mes con dato** (no el calendario) + dos filas de comparación **Mes** y **Acum. YTD**,
      cada una con semáforo + barra de avance. Alcance YTD = suma de meses; rate YTD =
      acumulado/acumulado vs promedio de metas.
-  3. **Gráfico con meta**: barras reales + **barra de meta gris pizarra** (`IgAlcanceChart`) y/o
+  3. **Gráfico con meta — APARTE de las cards (estándar de TODOS los dash, pedido del user 28-sep-2026):** fila de
+     MetaKpiCards SIN gráfico adentro y después "Evolución mensual · real vs meta" = grilla de 2 columnas con un gráfico
+     por KPI, año completo (`MetaEvolChart`, como Plan de Medios; /seo-search ya lo sigue). Gráfico: barras reales + **barra de meta gris pizarra** (`IgAlcanceChart`) y/o
      líneas real+meta (`SocialEngagementChart`, componentes por prop). Etiquetas numéricas en las
      series reales. Ejes de ancho fijo (56px) para que los meses queden **alineados** entre
      gráficos apilados.
