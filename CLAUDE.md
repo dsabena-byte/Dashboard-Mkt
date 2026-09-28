@@ -346,7 +346,19 @@ reporte_existencia/cb_homologos).
   bajo el título de 6 tableros, misma regla que /monitoreo (cadencias deben coincidir: test `data-health`); NO usar `web_traffic`.
   Data real 27-sep: Salud de Marca YTD 92,5%, brecha −7,5 pts (VTR −2,7, Frecuencia −1,5, CB −0,9); Pauta con 5 meses → objetivos
   sin proyección hasta cerrar sep.
-- **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, Impacto Campaña; OMD sin cargar = rango;
+- **Inversión diaria por medio (28-sep, rama `claude/drean-inversion-diaria`, pedido del user "se gastaron el mes en 3 días"):**
+  la tabla "Ritmo de inversión" (pacing) se SACÓ de Impacto Campaña (el user: "no tiene sentido"); `lib/pauta-pacing*` queda
+  solo para las señales `pauta_pacing_*`. En **Eficiencia Medios** arriba: `components/pauta/inversion-diaria-section.tsx` +
+  `lib/pauta-diaria.ts` (puro, test `scripts/pauta-diaria.test.ts`) + `lib/pauta-diaria-server.ts` (REST). **Granularidad
+  validada:** Google Search/Demand Gen DIARIO (`google_ads_creatives`, desde 2026-04-08; PMax no está); **Meta era solo
+  MENSUAL** → migración **`0124_meta_paid_daily.sql`** + `meta-paid-sync` ahora guarda gasto por día×campaña (misma llamada
+  `time_increment=1` de días activos, + `spend`); sin la tabla Meta se evalúa por mes + concentración por campaña
+  (`dias_activos`); **DV360 solo mensual** (se dice en la UI). Reglas: pico = día >3× mediana 14 d previos con gasto (≥5 días,
+  >$150K); "mes normal" = MEDIANA de 3 meses cerrados escalada al plan de Inversión (meta Pauta Mkt) del mes; urgente = ≥50%
+  de un mes normal en ≤5 días (inicio de mes o ráfaga >2× el nivel previo), ritmo >1,5× en los primeros 10 días, o un día
+  ≥20% del mes. Señal **`gasto_diario_anomalo_*`** (`lib/signals/pauta-diaria.ts`, urgente→alta → aviso diario de /alerts;
+  keys por medio+mes). Data real: Meta ago-26 = 4 campañas `_Diario` de 3 días se llevaron $41,6M (66% del mes) → urgente.
+- **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, ~~Impacto Campaña~~ sacado de la UI 28-sep; OMD sin cargar = rango;
   sep-26 $148M, cierre $163–385M vs meta $474M), fatiga creativa MENSUAL (`lib/pauta-fatiga.ts`, Eficiencia Medios; 2 banners DV360),
   MMM-lite en el Simulador ("dato insuficiente" hasta 12 meses), `adBelongsToBrand`. Sin conversiones de Google Ads en las tablas.
   LG: 8/16 avisos son de revendedores (sin exclusión todavía).
