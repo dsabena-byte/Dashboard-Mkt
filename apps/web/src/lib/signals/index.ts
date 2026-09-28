@@ -11,6 +11,7 @@ import "server-only";
 import { type Signal, type SignalDash, sortSignals } from "./types";
 import { computeRedesSignals } from "./redes";
 import { computePautaSignals, pacingSignals, fatigaSignals } from "./pauta";
+import { gastoDiarioSignals } from "./pauta-diaria";
 import { computeWebSignals } from "./web";
 import { computeSeoSignals } from "./seo";
 import { computeOverviewSignals } from "./overview";
@@ -18,7 +19,7 @@ import { computeCrucesSignals } from "./cruces";
 import { computeWebCalidadSignals } from "./web-calidad";
 import { computeSeoAvanzadoSignals } from "./seo-avanzado";
 import { computePautaDataSignals, computeCbSignals, computeFsSignals, computeUgcSignals, computeMercadoSignals, computeSaludSignals, computeMktCanalSignals, computeConversionSignals, computeInversionSignals } from "./drean";
-import { LoadCtx, loadRedes, loadPauta, loadPautaExtras, loadWeb, loadWebCalidad, loadSeoAvanzadoInput, loadSeo, loadOverview, loadCruces, loadCb, loadFs, loadUgc, loadMercado, loadSalud, loadMktCanal, loadConversion, loadInversion } from "./sources";
+import { LoadCtx, loadRedes, loadPauta, loadPautaExtras, loadPautaDiaria, loadWeb, loadWebCalidad, loadSeoAvanzadoInput, loadSeo, loadOverview, loadCruces, loadCb, loadFs, loadUgc, loadMercado, loadSalud, loadMktCanal, loadConversion, loadInversion } from "./sources";
 
 export type { Signal, SignalDash } from "./types";
 export type SignalScope = SignalDash | "cruces";
@@ -43,8 +44,9 @@ export async function baseSignals(ctx: LoadCtx, dash: SignalDash): Promise<Signa
       case "redes": { const r = await loadRedes(ctx); return r ? computeRedesSignals(r) : []; }
       case "performance": {
         // + pacing del mes en curso vs la meta de Inversión y fatiga creativa (lib/pauta-pacing, lib/pauta-fatiga).
-        const [p, x] = await Promise.all([loadPauta(ctx).catch(() => null), loadPautaExtras(ctx).catch(() => null)]);
-        const extra = x ? [...pacingSignals(x.pacing), ...fatigaSignals(x.fatiga)] : [];
+        // + gasto diario anómalo por medio con API (lib/pauta-diaria → señal gasto_diario_anomalo).
+        const [p, x, gd] = await Promise.all([loadPauta(ctx).catch(() => null), loadPautaExtras(ctx).catch(() => null), loadPautaDiaria(ctx).catch(() => null)]);
+        const extra = [...(x ? [...pacingSignals(x.pacing), ...fatigaSignals(x.fatiga)] : []), ...gastoDiarioSignals(gd)];
         return p ? [...computePautaSignals(p), ...computePautaDataSignals(p.warnings), ...extra] : extra;
       }
       case "web": {

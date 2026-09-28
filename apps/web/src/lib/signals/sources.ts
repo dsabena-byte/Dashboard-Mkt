@@ -34,6 +34,8 @@ import { computePacing, type PacingMes } from "@/lib/pauta-pacing";
 import { fatigaPiezas, type FatigaResumen } from "@/lib/pauta-fatiga";
 import { getBgtPautaMensual, getPautaAsOf } from "@/lib/pauta-pacing-server";
 import { getEcommerceInversionMensual } from "@/lib/ecommerce-queries";
+import { getPautaDiaria } from "@/lib/pauta-diaria-server";
+import { evaluarPautaDiaria, type PautaDiariaResultado } from "@/lib/pauta-diaria";
 import { buildPautaFull, buildRedesInput, buildWebReports, buildCompetitorWeb, buildSeoData, buildSeguimiento, type RedesAdapted, type CompetitorWebRowLite } from "./adapters";
 import type { PautaFull, WebReports, CompetitorWebData, SeoData, SeguimientoObjetivos } from "./model";
 import type { CrucesInput } from "./cruces";
@@ -68,7 +70,7 @@ export class SourceTimeoutError extends Error {
 
 /** Nombre legible de cada fuente (lo que ve el usuario cuando una se omite por tiempo). */
 export const SOURCE_LABEL: Record<string, string> = {
-  pautaRaw: "Plan de Medios", pauta: "Plan de Medios", pautaExtras: "Ritmo de inversión y fatiga", redes: "Redes",
+  pautaRaw: "Plan de Medios", pauta: "Plan de Medios", pautaExtras: "Ritmo de inversión y fatiga", pautaDiaria: "Inversión diaria por medio", redes: "Redes",
   web: "Web (GA4)", compweb: "Web de la competencia", seo: "SEO y Share of Search", webcalidad: "Calidad del dato web",
   seoavanzado: "SEO avanzado (Search Console, auditoría, IA)", overview: "Seguimiento de objetivos", cruces: "Cruces propios × mercado",
   searchconsole: "Search Console", cb: "Cuadros Básicos", fs: "Floor Share", ugc: "UGC", mercado: "Mercado (GfK)",
@@ -143,6 +145,14 @@ export function loadPautaExtras(ctx: LoadCtx): Promise<{ pacing: PacingMes | nul
       fatiga = fatigaPiezas({ metaPaid: raw.metaPaid, dv360: raw.dv360, dv360Reach: raw.dv360Reach, fxRates: raw.fxRates, mesEnCurso: now.toISOString().slice(0, 7) });
     } catch { /* best-effort */ }
     return { pacing, fatiga };
+  });
+}
+
+/** Inversión diaria por medio (medios con API) → estado por medio + picos + concentración por campaña. */
+export function loadPautaDiaria(ctx: LoadCtx): Promise<PautaDiariaResultado | null> {
+  return ctx.once("pautaDiaria", async () => {
+    const d = await safe(getPautaDiaria());
+    return d ? evaluarPautaDiaria({ series: d.series, campanias: d.campanias, hoy: d.hoy, plan: d.plan }) : null;
   });
 }
 

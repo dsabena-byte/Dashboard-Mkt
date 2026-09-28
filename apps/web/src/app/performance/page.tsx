@@ -15,7 +15,7 @@ import { avisoFaltantes, mesLabel } from "@/lib/moneda";
 import { convertirFilas, convertir12, convertirPorMes, type ConvCollector } from "@/lib/moneda-pauta";
 import { MonedaSelector } from "@/components/moneda-selector";
 import { DataHealth } from "@/components/data-health";
-import { getBgtPautaMensual } from "@/lib/pauta-pacing-server";
+import { getPautaDiaria } from "@/lib/pauta-diaria-server";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -113,13 +113,11 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
   const planningMonthly = convertirPorMes(ctx, rawPlanning, col);
   const ecomInv = convertir12(ctx, currentYear, rawEcomInv, col);
   // Metas mensuales de los 6 KPIs de Impacto Campaña (plan "Pauta Mkt"), en paralelo.
-  // + presupuesto vigente de la cuenta de pauta (BGT, ~40 filas) para el Ritmo de inversión.
-  const [metasArr, bgtPautaRaw] = await Promise.all([
+  // + inversión diaria por medio con API (Eficiencia Medios; REST, tablas chicas, $ corrientes).
+  const [metasArr, pautaDiaria] = await Promise.all([
     Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK))),
-    safe(getBgtPautaMensual(currentYear), null),
+    safe(getPautaDiaria(), null),
   ]);
-  // El presupuesto (ARS) del Ritmo de inversión va en la misma moneda que el real.
-  const bgtPauta = bgtPautaRaw && ctx.moneda !== "corrientes" ? { ...bgtPautaRaw, valores: convertir12(ctx, currentYear, bgtPautaRaw.valores) } : bgtPautaRaw;
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
   // La meta de Inversión ($) se lleva a la misma moneda que el real.
   if (ctx.moneda !== "corrientes") metas["Inversión"] = { ...metas["Inversión"], valores: convertir12(ctx, currentYear, metas["Inversión"].valores) };
@@ -137,6 +135,6 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     </div>
   );
   return (
-    <PerformanceClient headerExtra={headerExtra} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} bgtPauta={bgtPauta} />
+    <PerformanceClient headerExtra={headerExtra} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} />
   );
 }
