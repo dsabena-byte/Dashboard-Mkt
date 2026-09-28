@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { partFacebook, partInstagram, partWeb, partFbFollowers, newCtx } from "@/lib/competencia-scraper";
-import { igApifyToca } from "@/lib/competencia-scraper-core";
+import { igApifyToca, fbToca, FB_DIAS_DEFAULT, IG_APIFY_DIAS_DEFAULT } from "@/lib/competencia-scraper-core";
 
 // Scraper de competencia en CÓDIGO — reemplaza a n8n (ver docs/n8n-migracion.md). Workflow competencia-social.yml.
-//   ?part=fb      Facebook de las 5 marcas (diario, como n8n 07:00 UTC)
+//   ?part=fb      Facebook de las 5 marcas (días COMPETENCIA_FB_DIAS, default lun y jue; ?force=1 lo corre igual)
 //   ?part=ig      Instagram por Apify SOLO para comentarios/sentimiento/pin (días COMPETENCIA_IG_APIFY_DIAS, default lunes;
 //                 ?force=1 lo corre igual). Las métricas diarias de IG vienen de Business Discovery (competencia-ig).
 //   ?part=web     SimilarWeb → competitor_web (semanal, como n8n domingo 00:00 UTC)
@@ -33,11 +33,15 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
   for (const p of parts) {
     try {
-      if (p === "fb") results.fb = await partFacebook(ctx, { limit: num("limit"), analizarTodos: u.searchParams.get("analizar") === "todos" });
+      if (p === "fb") {
+        results.fb = force || dry || fbToca(process.env.COMPETENCIA_FB_DIAS, new Date())
+          ? await partFacebook(ctx, { limit: num("limit"), analizarTodos: u.searchParams.get("analizar") === "todos" })
+          : { estado: "no_toca_hoy", dias: process.env.COMPETENCIA_FB_DIAS ?? `${FB_DIAS_DEFAULT} (lun y jue)` };
+      }
       else if (p === "ig") {
         results.ig = force || dry || igApifyToca(process.env.COMPETENCIA_IG_APIFY_DIAS, new Date())
           ? await partInstagram(ctx, { posts: num("posts"), dias: num("dias") })
-          : { estado: "no_toca_hoy", dias: process.env.COMPETENCIA_IG_APIFY_DIAS ?? "1 (lunes)" };
+          : { estado: "no_toca_hoy", dias: process.env.COMPETENCIA_IG_APIFY_DIAS ?? `${IG_APIFY_DIAS_DEFAULT} (lunes)` };
       } else if (p === "web") results.web = await partWeb(ctx);
       else if (p === "fbfol") results.fbfol = await partFbFollowers(ctx);
       else results[p] = { estado: "parte_desconocida" };

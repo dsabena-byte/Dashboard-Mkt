@@ -66,8 +66,9 @@ Electrolux `tienda.electrolux.com.ar`, Gafa `tienda.gafa.com.ar`, Philco `philco
   views, seguidores (→ `social_followers`), copy y miniatura; pilar con gpt-4o-mini para los posts nuevos; con
   `COMPETENCIA_SCRAPER_CODE=1` también trae la **cuenta propia** (n8n la scrapeaba).
 - **`/api/cron/competencia-social`** (`lib/competencia-scraper{,-core}.ts`, workflow `competencia-social.yml`):
-  - `part=fb` diario 07:05 UTC: posts-scraper de las 5 páginas (`COMPETENCIA_FB_LIMIT`, default 15 por página) +
-    gpt-4o con el **prompt literal de n8n** solo para posts nuevos o sin pilar.
+  - `part=fb` **lunes y jueves** 07:05 UTC (`COMPETENCIA_FB_DIAS`, CSV 0=dom…6=sáb o `*`): posts-scraper de las 5
+    páginas (`COMPETENCIA_FB_LIMIT`, default **10** por página) + gpt-4o-mini con el **prompt literal de n8n** solo
+    para posts nuevos o sin pilar.
   - `part=ig` (Apify, solo comentarios/sentimiento/pin): `COMPETENCIA_IG_COMMENT_POSTS` (default 10) posts por marca
     de los últimos `COMPETENCIA_IG_DIAS` (14), los días `COMPETENCIA_IG_APIFY_DIAS` (default `1` = lunes; `*` diario).
   - `part=web` domingo 00:05 UTC: SimilarWeb → `competitor_web` (mapeo de la sección 3). Solo dominios con visitas.
@@ -83,7 +84,7 @@ Electrolux `tienda.electrolux.com.ar`, Gafa `tienda.gafa.com.ar`, Philco `philco
   siguientes, devuelve `apifySinCupo` y el workflow deja un warning. `APIFY_MAX_CHARGE_USD` (default 2) +
   `maxItems` por corrida acotan el gasto.
 - **Guarda:** sin `COMPETENCIA_SCRAPER_CODE=1` no escribe nada (responde `desactivado`).
-- Monitoreo: `competencia_fb` (social_posts FB, 24 h) y `competencia_web` (competitor_web, 168 h) en `PROCS`.
+- Monitoreo: `competencia_fb` (social_posts FB, 96 h) y `competencia_web` (competitor_web, 168 h) en `PROCS`.
 - Env opcionales: `APIFY_ACTOR_IG`, `APIFY_ACTOR_FB`, `APIFY_ACTOR_FB_PAGE`, `APIFY_ACTOR_SIMILARWEB`,
   `COMPETENCIA_SCRAPER_MODEL` (default gpt-4o, el de n8n), `COMPETENCIA_FROM_DATE` (default 1-ene del año).
 
@@ -95,8 +96,10 @@ Electrolux `tienda.electrolux.com.ar`, Gafa `tienda.gafa.com.ar`, Philco `philco
 2. **Sentimiento IG** se calcula 1x/semana (lunes) sobre los posts de las últimas 2 semanas, en vez de a las ~24 h
    del post: los comentarios están más maduros; hasta ese lunes el post nuevo queda sin sentimiento (como n8n
    cuando el post no tenía comentarios).
-3. **FB:** 15 posts por página por día (n8n pedía 500) → los likes de posts de FB de más de ~2 semanas dejan de
-   actualizarse. Subir `COMPETENCIA_FB_LIMIT` si hace falta.
+3. **FB (decisión del user 28-sep: "algo razonable", no lo de n8n):** 10 posts por página, lun y jue (n8n pedía 500
+   por día). Las marcas publican 8–18 posts/mes en FB (medido 29-ago→28-sep) → 10 posts cubren ~3 semanas y cada
+   post se actualiza ~6 veces; los más viejos quedan con su último valor. Pilar con gpt-4o-mini (n8n: gpt-4o).
+   Posts FB ≈ 100/mes vs ~75.000 de n8n. Subir `COMPETENCIA_FB_LIMIT`/`COMPETENCIA_FB_DIAS` si hiciera falta.
 4. **Ganancias** (n8n no las tenía): copy y miniatura de FB, marca de FB por Página pedida si el nombre no matchea,
    seguidores de FB semanales, fila propia de IG por BD, `updated_at` real.
 5. **No replicado (no corre en vivo):** TikTok, `competitor_categoria_web` (SimilarWeb/DataForSEO por URL de

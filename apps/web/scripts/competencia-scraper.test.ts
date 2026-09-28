@@ -2,7 +2,7 @@
 // Correr: cd apps/web && npx tsx scripts/competencia-scraper.test.ts
 import {
   tagInstagram, tagFacebook, mapToSocialRows, mergeSocialRow, normalizeWeb, webHasData, n8nAnalysisPrompt, parseAnalysisContent,
-  pickPilarN8n, matchMarcaN8n, marcaPorPaginaFb, isApifyQuotaText, igApifyToca, SCRAPER_BRANDS, type Analysis,
+  pickPilarN8n, matchMarcaN8n, marcaPorPaginaFb, isApifyQuotaText, igApifyToca, fbToca, SCRAPER_BRANDS, type Analysis,
 } from "../src/lib/competencia-scraper-core";
 import { getTenant } from "../src/lib/tenant/current";
 
@@ -111,6 +111,7 @@ ok("cupo: 403 de otra cosa no", !isApifyQuotaText(403, "actor is private"));
 ok("cupo: 500 no", !isApifyQuotaText(500, "limit"));
 const lunes = new Date("2026-09-28T07:05:00Z"), martes = new Date("2026-09-29T07:05:00Z");
 ok("cadencia IG default lunes", igApifyToca(undefined, lunes) && !igApifyToca(undefined, martes));
+ok("cadencia FB default lun y jue", fbToca(undefined, lunes) && !fbToca(undefined, martes) && fbToca(undefined, new Date(lunes.getTime() + 3 * 86400000)));
 ok("cadencia IG '*' diaria y CSV", igApifyToca("*", martes) && igApifyToca("2,5", martes));
 
 console.log(`competencia-scraper: ${p} OK, ${f} fallas`);

@@ -69,7 +69,7 @@ async function analyze(posts: TaggedPost[]): Promise<{ map: Map<string, Analysis
   const errores: string[] = [];
   const key = process.env.OPENAI_API_KEY;
   if (!key) return { map, errores: ["OPENAI_API_KEY no configurado"] };
-  const model = process.env.COMPETENCIA_SCRAPER_MODEL || "gpt-4o";
+  const model = process.env.COMPETENCIA_SCRAPER_MODEL || "gpt-4o-mini";
   for (let i = 0; i < posts.length; i += LLM_BATCH) {
     const lote = posts.slice(i, i + LLM_BATCH);
     try {
@@ -124,10 +124,10 @@ function countBy(rows: { marca: string }[]): Record<string, number> {
 }
 const fromDateDefault = () => process.env.COMPETENCIA_FROM_DATE || `${new Date().getUTCFullYear()}-01-01`;
 
-// ── Parte FB (diaria, lo que hacía n8n ~07:03 UTC) ─────────────────────────────────────────────
+// ── Parte FB (lun y jue; n8n la corría diaria con 500 posts) ─────────────────────────────────────────────
 export async function partFacebook(ctx: RunCtx, opts: { limit?: number; analizarTodos?: boolean } = {}) {
   if (!apifyEnabled()) return { estado: "sin_apify" };
-  const limit = opts.limit ?? envInt("COMPETENCIA_FB_LIMIT", 15);
+  const limit = opts.limit ?? envInt("COMPETENCIA_FB_LIMIT", 10);
   const pages = SCRAPER_BRANDS.map((m) => FB_PAGES[m]).filter(Boolean) as string[];
   const r = await actor(ctx, ACTORS.fb, { startUrls: pages.map((url) => ({ url })), resultsLimit: limit, maxPosts: limit }, limit * pages.length * 2);
   if (r.error && !r.items.length) return { estado: ctx.quota.stopped ? "sin_cupo_apify" : "error_apify", error: r.error };
