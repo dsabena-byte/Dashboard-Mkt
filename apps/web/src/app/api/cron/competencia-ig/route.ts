@@ -5,6 +5,7 @@ import { canonIgUrl, socialContentType } from "@/lib/ig-discovery-core";
 import { snapshotRows, postKey, type RedSnap, type SnapInputPost } from "@/lib/post-snapshots-core";
 import { recordPostSnapshots } from "@/lib/post-snapshots";
 import { temasExistentes, temasPrompt, parseTemas, TEMAS_LOTE } from "@/lib/redes-temas";
+import { bdMetricPatch, pilarPrompt, parsePilares, PILAR_LOTE, type MetricRow } from "@/lib/bd-paridad";
 
 // Competencia de redes — refresco DIARIO (workflow competencia-ig.yml). Tres partes (`?part=`):
 //  · bd     : cuentas de Instagram de la competencia por Business Discovery (Graph OFICIAL, token de la
@@ -14,6 +15,7 @@ import { temasExistentes, temasPrompt, parseTemas, TEMAS_LOTE } from "@/lib/rede
 //             limit) queda con el dato del scraper n8n + Apify (fallback, sin cambios).
 //  · snaps  : fotos por edad (1/3/7 días) → social_post_snapshots (migración 0115): las de Business
 //             Discovery (se toman en la parte bd) + las filas del scraper con su updated_at como momento.
+//  · pilar  : pilar (5 del scraper) de los posts de IG que solo trajo Business Discovery (sin pilar).
 //  · temas  : tema corto por post (gpt-4o-mini, lotes de 60, reusa temas ya usados) → social_posts.tema
 //             (migración 0116). Sin la columna, se saltea.
 // Sin `part` corre las tres. Nunca tira: cada parte informa su estado en el JSON.
@@ -66,21 +68,22 @@ async function partBd(mode: "daily" | "full") {
     const r = await fetchBusinessDiscovery(asset, a.handle, a.key, fromDate, mode, s);
     if (!r.ok) { marcas.push({ marca: a.key, estado: r.error ?? "error", motivo: r.message, fallback: "scraper" }); continue; }
     // Posts ya cargados por el scraper (match por shortcode → se actualiza SU fila, sin duplicar).
-    const ex = await rest<{ url: string }>(`social_posts?select=url&red_social=eq.INSTAGRAM&marca=eq.${encodeURIComponent(a.key)}&fecha=gte.${arDate(Date.parse(`${fromDate}T12:00:00Z`) - 5 * DAY)}&limit=2000`);
-    const byKey = new Map(ex.data.map((x) => [postKey(x.url), x.url]));
-    let upd = 0, ins = 0, fail = 0;
+    const ex = await rest<{ url: string } & MetricRow>(`social_posts?select=url,likes,comentarios,views,followers&red_social=eq.INSTAGRAM&marca=eq.${encodeURIComponent(a.key)}&fecha=gte.${arDate(Date.parse(`${fromDate}T12:00:00Z`) - 5 * DAY)}&limit=2000`);
+    const byKey = new Map(ex.data.map((x) => [postKey(x.url), x]));
+    let upd = 0, ins = 0, fail = 0, sinCambio = 0;
     const nuevos: Record<string, unknown>[] = [];
     const stamp = new Date().toISOString();
     for (const p of r.posts) {
-      const url = byKey.get(postKey(p.url));
-      if (url) {
-        // Solo métricas (no pisa pilar/sentimiento/miniatura espejada del scraper). Likes ocultos → no se tocan.
-        const patch: Record<string, unknown> = { comentarios: p.comentarios, updated_at: stamp };
-        if (p.likes != null) patch.likes = p.likes;
-        if (p.views > 0) patch.views = p.views;
-        if (r.followers) patch.followers = r.followers;
-        const w = await write("PATCH", `social_posts?url=eq.${encodeURIComponent(url)}`, patch);
-        if (w.ok) upd++; else fail++;
+      const row = byKey.get(postKey(p.url));
+      if (row) {
+        // Solo métricas y SIN perder información del scraper (bd-paridad): los contadores solo suben,
+        // followers del post no se reemplaza por el de hoy, nunca null. No toca pilar/sentimiento/miniatura/copy.
+        const m = bdMetricPatch(row, { likes: p.likes, comentarios: p.comentarios, views: p.views }, r.followers);
+        if (!Object.keys(m).length) { sinCambio++; }
+        else {
+          const w = await write("PATCH", `social_posts?url=eq.${encodeURIComponent(row.url)}`, { ...m, updated_at: stamp });
+          if (w.ok) upd++; else fail++;
+        }
       } else {
         nuevos.push({
           red_social: "INSTAGRAM", url: canonIgUrl(p.url), marca: a.key, fecha: p.fecha, tipo: "ORGÁNICO",
@@ -95,7 +98,7 @@ async function partBd(mode: "daily" | "full") {
       if (w.ok) ins = nuevos.length; else fail += nuevos.length;
     }
     if (r.followers) await write("POST", "social_followers?on_conflict=marca,red_social,fecha", [{ marca: a.key, red_social: "INSTAGRAM", fecha: hoy, followers: r.followers }], "resolution=merge-duplicates,return=minimal");
-    marcas.push({ marca: a.key, estado: "ok", posts: r.posts.length, actualizados: upd, nuevos: ins, fallidos: fail, seguidores: r.followers, likesOcultos: r.likesOcultos, llamadas: r.calls });
+    marcas.push({ marca: a.key, estado: "ok", posts: r.posts.length, actualizados: upd, sinCambio, nuevos: ins, fallidos: fail, seguidores: r.followers, likesOcultos: r.likesOcultos, llamadas: r.calls });
   }
   return { estado: "ok", usoRateLimitPct: s.usage, cortadoPorRateLimit: s.stopped, llamadas: s.calls, marcas, snaps };
 }
@@ -113,7 +116,10 @@ async function partSnaps(bdSnaps: SnapInputPost[]) {
       `social_posts?select=red_social,url,marca,fecha,likes,comentarios,views,updated_at&fecha=gte.${since}&red_social=in.(INSTAGRAM,FACEBOOK,TIKTOK)&limit=3000`),
     rest<FolRow>("social_followers?select=marca,red_social,fecha,followers&limit=5000"),
   ]);
-  const rows = sp.data.flatMap((p) => snapshotRows([{
+  // Lo que BD acaba de fotografiar no se vuelve a registrar como "apify" (sus filas ya tienen el
+  // updated_at de BD y quedarían con la fuente equivocada).
+  const bdKeys = new Set(bdSnaps.map((x) => postKey(x.url)));
+  const rows = sp.data.filter((p) => !bdKeys.has(postKey(p.url))).flatMap((p) => snapshotRows([{
     marca: p.marca, red: p.red_social as RedSnap, url: p.url, fecha: p.fecha,
     likes: p.likes != null && p.likes >= 0 ? p.likes : 0, comentarios: p.comentarios, views: p.views,
     followers: folAt(fol.data, p.marca, p.red_social, p.fecha),
@@ -160,6 +166,43 @@ async function partTemas(maxLotes: number) {
   return { estado: errores.length ? "parcial" : "ok", pendientes: pend.data.length, clasificados, lotes, errores };
 }
 
+// ── Parte pilar ───────────────────────────────────────────────────────────────
+// Posts de IG que solo trajo Business Discovery (el scraper no los vio) llegan sin pilar → quedaban
+// fuera del gráfico de pilares de la competencia. Mismo vocabulario de 5 pilares que el scraper.
+async function partPilar(maxLotes: number) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return { estado: "sin_openai" };
+  const since = arDate(Date.now() - 150 * DAY);
+  const pend = await rest<{ id: string; marca: string; copy: string | null }>(`social_posts?select=id,marca,copy&red_social=eq.INSTAGRAM&pilar=is.null&fecha=gte.${since}&order=fecha.desc&limit=${PILAR_LOTE * maxLotes}`);
+  if (!pend.ok) return { estado: "error", error: pend.error };
+  if (!pend.data.length) return { estado: "ok", clasificados: 0 };
+  let clasificados = 0;
+  const errores: string[] = [];
+  for (let i = 0; i < pend.data.length; i += PILAR_LOTE) {
+    const lote = pend.data.slice(i, i + PILAR_LOTE);
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini", temperature: 0, response_format: { type: "json_object" }, max_tokens: 2500,
+          messages: [{ role: "user", content: pilarPrompt(lote.map((p, j) => ({ i: j + 1, marca: p.marca, copy: p.copy ?? "" }))) }],
+        }),
+      });
+      if (!res.ok) { errores.push(`OpenAI ${res.status}`); break; }
+      const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const pilares = parsePilares(j.choices?.[0]?.message?.content ?? "{}");
+      for (let k = 0; k < lote.length; k++) {
+        const pilar = pilares.get(k + 1);
+        if (!pilar) continue;
+        const w = await write("PATCH", `social_posts?id=eq.${lote[k]!.id}&pilar=is.null`, { pilar });
+        if (w.ok) clasificados++;
+      }
+    } catch (e) { errores.push((e as Error).message.slice(0, 120)); break; }
+  }
+  return { estado: errores.length ? "parcial" : "ok", pendientes: pend.data.length, clasificados, errores };
+}
+
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
@@ -179,6 +222,9 @@ export async function GET(request: Request) {
   }
   if (part === "all" || part === "temas") {
     try { results.temas = await partTemas(maxLotes); } catch (e) { results.temas = { estado: "error", error: (e as Error).message }; }
+  }
+  if (part === "all" || part === "temas" || part === "pilar") {
+    try { results.pilar = await partPilar(maxLotes); } catch (e) { results.pilar = { estado: "error", error: (e as Error).message }; }
   }
   // ok:true salvo error inesperado: la falta de token/permiso/migración es un estado, no una caída.
   return NextResponse.json({ ok: true, timestamp: new Date().toISOString(), part, mode, results });

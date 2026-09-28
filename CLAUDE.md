@@ -355,6 +355,11 @@ reporte_existencia/cb_homologos).
   sorteos: Gafa 4,9% vs 0,03%). FB orgánico vs pago = `is_from_ads` **O** `isPaidOutlier` (la heurística nunca se apaga). Stories IG
   acumuladas por máximo. Formatos/horarios propios (mar 12–18 h mejor), pauta probable, temas (`social_posts.tema`, 0116).
   No verificado contra la API real de Meta. Revisar: señal de sentimiento dice "74% negativo" para Drean (parece alto).
+  **Paridad BD ↔ scraper (28-sep, rama `claude/drean-bd-paridad`):** en Drean BD es ADITIVO (el scraper n8n+Apify sigue
+  corriendo 07:00 UTC y hace upsert merge por url). `bdMetricPatch` (`lib/bd-paridad.ts`): BD solo SUBE contadores
+  (likes/coment./views), no reemplaza followers del post, nunca null; posts que solo trae BD reciben pilar (parte `pilar`,
+  gpt-4o-mini, 5 pilares del scraper); las fotos "apify" no re-registran lo que BD ya fotografió. Lo que BD NO trae: texto
+  de comentarios (sentimiento), alcance, FB, TikTok, Stories. Test `npx tsx scripts/bd-paridad.test.ts`.
 - **Web / SEO (#743):** /web = cierre proyectado del mes (sep: ingresos $428M = 71% de meta), consent indirecto (GA4 ve 59–73% de
   clicks Search+PMax), calidad GA4/embudo/tráfico IA (ago 2.265 ses, 95% ChatGPT) desde `web_calidad_snapshot` (0117, cron
   web-calidad). /seo-search = salud digital (53, #3/13) + ESoS (Lav +16,6/Refri −9,4 pp), LLMO con IC de Wilson + fuentes
