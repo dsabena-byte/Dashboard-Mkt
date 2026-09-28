@@ -156,7 +156,7 @@ export async function GET(request: Request) {
     const { map, unmatched } = resolveThumbs(nombres, items);
     const porVia = Object.values(map).reduce<Record<string, number>>((a, t) => ((a[t.via] = (a[t.via] ?? 0) + 1), a), {});
 
-    let manifest: { ok: boolean; url?: string; error?: string } = { ok: false, error: "dry-run: no se escribe" };
+    let manifest: { ok: boolean; url?: string; error?: string; skipped?: boolean } = { ok: true, skipped: true, error: "dry-run: no se escribe" };
     if (!dry) {
       const m: Dv360ThumbManifest = { generatedAt: new Date().toISOString(), advertiserId: adv, items };
       // Un error transitorio que dejó 0 imágenes NO pisa un manifiesto bueno.
@@ -181,7 +181,9 @@ export async function GET(request: Request) {
       manifest,
       reporte: {
         nombres: nombres.filter((n) => n !== "Unknown").length,
+        // En dry-run solo se cruza contra la muestra de DRY_SAMPLE imágenes → el match real sale en la corrida completa.
         matcheados: Object.keys(map).length,
+        ...(dry ? { nota: `dry-run: match solo contra ${trabajo.length} imágenes de muestra` } : {}),
         porVia,
         sinMatch: unmatched,
       },
