@@ -3,8 +3,8 @@ name: Competencia social + web (scraper en código, reemplaza n8n)
 # Reemplaza los workflows de n8n "Social Scraper — Apify + GPT → Supabase" y "Competitor Web Traffic Sync"
 # (docs/n8n-migracion.md). El endpoint NO escribe nada hasta que COMPETENCIA_SCRAPER_CODE=1 en Vercel
 # (responde estado "desactivado"), así que este workflow puede quedar activo mientras n8n siga prendido.
-#  · diario 07:05 UTC  → fb (Facebook de las 5 marcas) + ig (comentarios/sentimiento por Apify; el endpoint solo
-#                        lo corre los días de COMPETENCIA_IG_APIFY_DIAS, default lunes)
+#  · diario 07:05 UTC  → fb (Facebook de las 5 marcas; el endpoint solo lo corre los días de COMPETENCIA_FB_DIAS,
+#                        default lun y jue) + ig (comentarios/sentimiento por Apify; COMPETENCIA_IG_APIFY_DIAS, default lunes)
 #  · domingo 00:05 UTC → web (SimilarWeb → competitor_web) + fbfol (seguidores de las Páginas de FB)
 # Manual: part = fb | ig | web | fbfol (o varias separadas por coma), dry = 1 para comparar sin escribir.
 
@@ -23,7 +23,7 @@ on:
         required: false
         default: ""
       force:
-        description: "1 = correr ig aunque hoy no toque"
+        description: "1 = correr fb/ig aunque hoy no toque"
         required: false
         default: ""
 

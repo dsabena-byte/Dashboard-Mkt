@@ -378,7 +378,8 @@ reporte_existencia/cb_homologos).
   pérdida; NO escribe hasta `COMPETENCIA_SCRAPER_CODE=1` (con el flag, BD suma la cuenta propia). Mapa n8n reconstruido
   desde la data (el vivo ≠ export: FB = posts-scraper sin copy/miniatura, web = radeance + Samsung, sin TikTok) y plan
   de corte en **`docs/n8n-migracion.md`**. Paridad: `npx tsx scripts/n8n-paridad.ts fb.json ig.json web.json`.
-  Test `scripts/competencia-scraper.test.ts`.
+  Test `scripts/competencia-scraper.test.ts`. **Volumen "razonable" (decisión del user, NO paridad con n8n):** FB 10 posts
+  por Página lun y jue (`COMPETENCIA_FB_DIAS`/`_LIMIT`), pilar con gpt-4o-mini; las marcas publican 8–18 posts/mes en FB.
 - **Web / SEO (#743):** /web = cierre proyectado del mes (sep: ingresos $428M = 71% de meta), consent indirecto (GA4 ve 59–73% de
   clicks Search+PMax), calidad GA4/embudo/tráfico IA (ago 2.265 ses, 95% ChatGPT) desde `web_calidad_snapshot` (0117, cron
   web-calidad). /seo-search = salud digital (53, #3/13) + ESoS (Lav +16,6/Refri −9,4 pp), LLMO con IC de Wilson + fuentes

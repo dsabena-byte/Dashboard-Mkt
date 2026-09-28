@@ -358,10 +358,16 @@ export function isApifyQuotaText(status: number, text: string): boolean {
   return (status === 403 || status === 429) && /usage|limit|quota|credit|exceed|insufficient|payment/i.test(text || "");
 }
 
-// ── Cadencia del IG por Apify (comentarios) ───────────────────────────────────────────────────
-/** `COMPETENCIA_IG_APIFY_DIAS` = días de la semana UTC (0=dom … 6=sáb, CSV) o "*" (todos). Default lunes. */
-export function igApifyToca(env: string | undefined, now: Date): boolean {
-  const v = (env ?? "1").trim();
+// ── Cadencia de las partes por Apify ──────────────────────────────────────────────────────────
+/** `env` = días de la semana UTC (0=dom … 6=sáb, CSV) o "*" (todos); sin env → `def`. */
+export function diaToca(env: string | undefined, def: string, now: Date): boolean {
+  const v = (env ?? def).trim();
   if (v === "*" || v === "") return true;
   return v.split(",").map((x) => Number(x.trim())).includes(now.getUTCDay());
 }
+/** IG por Apify (comentarios): `COMPETENCIA_IG_APIFY_DIAS`, default lunes. */
+export const igApifyToca = (env: string | undefined, now: Date) => diaToca(env, IG_APIFY_DIAS_DEFAULT, now);
+/** FB: `COMPETENCIA_FB_DIAS`, default lunes y jueves (las marcas publican ~10–18 posts/mes en FB). */
+export const fbToca = (env: string | undefined, now: Date) => diaToca(env, FB_DIAS_DEFAULT, now);
+export const IG_APIFY_DIAS_DEFAULT = "1";
+export const FB_DIAS_DEFAULT = "1,4";
