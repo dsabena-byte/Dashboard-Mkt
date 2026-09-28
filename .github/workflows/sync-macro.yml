@@ -1,10 +1,9 @@
-name: Sync índices macro (IPC + dólar)
+name: Sync índices macro (dólar)
 
-# IPC nivel general (INDEC, vía API de Series de Tiempo de datos.gob.ar) + dólar oficial (API del
-# BCRA, promedio mensual) + MEP (argentinadatos.com) → tabla indices_macro (migración 0110).
-# Alimenta el selector "Pesos corrientes / constantes / USD" de Plan de Medios e Inversión de Mkt.
-# INDEC publica el IPC a mediados de mes → corre el 2 (cierra el promedio del dólar del mes
-# anterior) y el 16 (IPC recién publicado). Manual: backfill con "desde" (ej. 2023-01-01).
+# Dólar oficial (API del BCRA, promedio mensual) + MEP (argentinadatos.com) → tabla indices_macro
+# (migración 0110). Alimenta la opción USD del selector "$ / USD" de Plan de Medios. Ya NO baja IPC
+# (28-sep-2026: sin ajuste por inflación en ningún cálculo). Corre el 2 (cierra el promedio del dólar
+# del mes anterior) y el 16. Manual: backfill con "desde" (ej. 2023-01-01).
 on:
   schedule:
     - cron: "17 12 2,16 * *"  # 12:17 UTC ≈ 09:17 ART, días 2 y 16

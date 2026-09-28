@@ -86,7 +86,7 @@ export function MmmPanel({ datos, alloc, onAlloc }: { datos: MmmDatos; alloc: Re
             <h3 className="flex items-center gap-1.5 text-sm font-semibold">Qué aporta cada medio · MMM-lite <LearnButton k="mmm" /></h3>
             <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
               Cuánto de {kpi?.label.toLowerCase()} explica cada medio, con <b>adstock</b> (el efecto sigue unos meses) y <b>saturación</b> (cada peso rinde menos).
-              Se estima con los meses cerrados de pauta (mismo modelo por medio que el Tablero) y de GA4, en $ (sin ajustar por inflación).
+              Se estima con los meses cerrados de pauta (mismo modelo por medio que el Tablero) y de GA4, en $.
             </p>
           </div>
           <label className="flex flex-col gap-1">

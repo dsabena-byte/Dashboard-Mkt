@@ -7,7 +7,6 @@ import { shapley, contribucionBrecha, contribucionVariacion, rollupPonderado, SH
 import { correlacionRezagada, evidenciaVinculo, validarMapa, pValorR, icFisher, betaInc, transformar } from "../src/lib/stats/validacion";
 import { clasificarRol, splitMarcaActivacion } from "../src/lib/marca-activacion";
 import { mulberry32 } from "../src/lib/stats/prng";
-import { resolverContexto } from "../src/lib/moneda";
 import { validarMapaConDatos, serie24, porMesA24 } from "../src/lib/mapa-validacion";
 import { contribucionesObjetivo, contribucionGlobal } from "../src/lib/objetivos-pronostico";
 
@@ -223,14 +222,14 @@ function normal(r: () => number) { const u = Math.max(1e-12, r()), v = r(); retu
     { plan: "Redes Sociales", kpi: "Engagement rate", unit: "%", direccion: "up" as const, realM: N(12, () => 3 + normal(r) * 0.3), histM: N(12, () => 3 + normal(r) * 0.3) },
   ];
   const mapa = { objetivos: [{ id: "tom", nombre: "TOM" }], planes: [{ nombre: "Mercado", kpis: [{ nombre: "Share of Search", vinculos: { tom: 10 } }] }, { nombre: "Redes Sociales", kpis: [{ nombre: "Engagement rate", vinculos: { tom: 60 } }, { nombre: "KPI sin dato", vinculos: { tom: 5 } }] }] };
-  const res = validarMapaConDatos(mapa, kh, 2026, [{ id: "ingresos", nombre: "Ingresos", serie24: ventas24 }, { id: "corto", nombre: "Corto", serie24: N(24, (i) => (i > 20 ? 1 : null)) }]);
+  const res = validarMapaConDatos(mapa, kh, [{ id: "ingresos", nombre: "Ingresos", serie24: ventas24 }, { id: "corto", nombre: "Corto", serie24: N(24, (i) => (i > 20 ? 1 : null)) }]);
   ok(res.length === 1 && res[0].id === "ingresos", "validación: descarta resultados con < 13 meses");
   const v = res[0].vinculos;
   ok(v.find((x) => x.kpi === "Share of Search")!.nivel === "fuerte" && v.find((x) => x.kpi === "Share of Search")!.corr!.lag === 1, "validación: SoS adelanta 1 mes → fuerte");
   ok(v.find((x) => x.kpi === "KPI sin dato")!.nivel === "sin datos", "validación: KPI sin serie → sin datos");
   ok(/revisá/.test(v.find((x) => x.kpi === "Engagement rate")!.sugerencia ?? ""), "validación: peso alto sin evidencia → revisar");
-  const s24 = serie24({ realM: N(12, () => 100), histM: N(12, () => 100), unit: "$" }, 2026, resolverContexto("constantes", N(24, (i) => ({ mes: `${2025 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`, ipc: 100 + i, usd_oficial: null }))).ctx);
-  ok(s24[0]! > s24[23]!, "validación: montos $ deflactados (ene-25 vale más en constantes)");
+  const s24 = serie24({ realM: N(12, (i) => 200 + i), histM: N(12, (i) => 100 + i) });
+  ok(s24.length === 24 && s24[0] === 100 && s24[11] === 111 && s24[12] === 200 && s24[23] === 211, "validación: montos $ nominales tal cual (sin ajuste por inflación), historia + año");
   const pm = porMesA24([{ mes: "2025-03", valor: 5 }, { mes: "2026-12", valor: 7 }, { mes: "2024-01", valor: 1 }], 2026);
   ok(pm[2] === 5 && pm[23] === 7 && pm.filter((x) => x != null).length === 2, "validación: share YYYY-MM → eje de 24 meses");
 }

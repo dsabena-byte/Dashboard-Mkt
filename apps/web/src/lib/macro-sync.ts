@@ -1,11 +1,10 @@
 import "server-only";
-import { mergeIndices, parseArgentinaDatos, parseBcraCotizaciones, parseSeriesApi, promedioMensual, type IndiceMes } from "./moneda";
+import { mergeIndices, parseArgentinaDatos, parseBcraCotizaciones, promedioMensual, type IndiceMes } from "./moneda";
 
 // ============================================================================
-// Sync de índices macro → tabla `indices_macro` (mes, ipc, usd_oficial, usd_mep). Portado de BIP
-// (sep-2026). Fuentes públicas y gratuitas (sin API key):
-//  · IPC nivel general nacional, INDEC, base dic-2016=100 — API de Series de Tiempo de datos.gob.ar,
-//    serie 148.3_INIVELNAL_DICI_M_26 (mensual). Env override: MACRO_IPC_SERIE.
+// Sync del dólar → tabla `indices_macro` (mes, usd_oficial, usd_mep). Portado de BIP (sep-2026).
+// Ya NO baja IPC (28-sep-2026: sin ajuste por inflación en ningún cálculo; la columna `ipc` de la
+// tabla queda sin uso y no se toca). Fuentes públicas y gratuitas (sin API key):
 //  · Dólar oficial: API del BCRA "Estadísticas Cambiarias v1.0" (/Cotizaciones/USD, referencia
 //    diaria) → PROMEDIO del mes. Fallback: argentinadatos.com (oficial, venta).
 //  · Dólar MEP (opcional): argentinadatos.com /cotizaciones/dolares/bolsa (promedio del mes).
@@ -13,10 +12,8 @@ import { mergeIndices, parseArgentinaDatos, parseBcraCotizaciones, parseSeriesAp
 // Escribe por REST con la service key (patrón del repo). Nunca tira: devuelve el detalle por fuente.
 // ============================================================================
 
-const SERIES_API = "https://apis.datos.gob.ar/series/api/series/";
 const BCRA_API = "https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones/USD";
 const ADATOS = "https://api.argentinadatos.com/v1/cotizaciones/dolares";
-export const IPC_SERIE = process.env.MACRO_IPC_SERIE || "148.3_INIVELNAL_DICI_M_26";
 
 async function getJson(url: string, ms = 30_000): Promise<unknown> {
   const r = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(ms), cache: "no-store" });
@@ -24,10 +21,6 @@ async function getJson(url: string, ms = 30_000): Promise<unknown> {
   return r.json();
 }
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
-
-export async function fetchIpc(desde = "2016-12-01"): Promise<{ mes: string; valor: number }[]> {
-  return parseSeriesApi(await getJson(`${SERIES_API}?ids=${encodeURIComponent(IPC_SERIE)}&format=json&limit=1000&start_date=${desde}`));
-}
 
 /** Dólar oficial diario del BCRA en tramos de ~1 año (el endpoint pagina por rango de fechas). */
 export async function fetchUsdOficialBcra(desde: string, hasta: string): Promise<{ fecha: string; valor: number }[]> {
@@ -42,16 +35,13 @@ export async function fetchUsdOficialBcra(desde: string, hasta: string): Promise
   return out;
 }
 
-export interface MacroSyncResult { ok: boolean; filas: number; ipc: { meses: number; error?: string }; oficial: { meses: number; fuente?: string; error?: string }; mep: { meses: number; error?: string }; ultimo: { ipc: string | null; usd: string | null }; error?: string }
+export interface MacroSyncResult { ok: boolean; filas: number; oficial: { meses: number; fuente?: string; error?: string }; mep: { meses: number; error?: string }; ultimo: { usd: string | null }; error?: string }
 
 export async function runMacroSync(opts: { desde?: string } = {}): Promise<MacroSyncResult> {
   const hoy = new Date();
-  // Por defecto: últimos ~25 meses (re-publicaciones de INDEC + promedio del mes en curso). Backfill: ?desde=2023-01-01.
+  // Por defecto: últimos ~25 meses (promedio del mes en curso incluido). Backfill: ?desde=2023-01-01.
   const desde = opts.desde ?? ymd(new Date(Date.UTC(hoy.getUTCFullYear() - 2, hoy.getUTCMonth() - 1, 1)));
-  const res: MacroSyncResult = { ok: false, filas: 0, ipc: { meses: 0 }, oficial: { meses: 0 }, mep: { meses: 0 }, ultimo: { ipc: null, usd: null } };
-
-  let ipc: { mes: string; valor: number }[] = [];
-  try { ipc = await fetchIpc(desde); res.ipc.meses = ipc.length; } catch (e) { res.ipc.error = (e as Error).message; }
+  const res: MacroSyncResult = { ok: false, filas: 0, oficial: { meses: 0 }, mep: { meses: 0 }, ultimo: { usd: null } };
 
   let oficial: { mes: string; valor: number }[] = [];
   try { oficial = promedioMensual(await fetchUsdOficialBcra(desde, ymd(hoy))); if (oficial.length) res.oficial.fuente = "BCRA"; }
@@ -68,16 +58,15 @@ export async function runMacroSync(opts: { desde?: string } = {}): Promise<Macro
   try { mep = promedioMensual(parseArgentinaDatos(await getJson(`${ADATOS}/bolsa`)).filter((d) => d.fecha >= desde)); res.mep.meses = mep.length; }
   catch (e) { res.mep.error = (e as Error).message; }
 
-  res.ultimo = { ipc: ipc.at(-1)?.mes ?? null, usd: oficial.at(-1)?.mes ?? null };
+  res.ultimo = { usd: oficial.at(-1)?.mes ?? null };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) { res.error = "Faltan NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY"; return res; }
   const now = new Date().toISOString();
   // Un lote por columna → una fuente vacía nunca pisa con null lo que otra cargó.
   const lotes: [keyof IndiceMes, IndiceMes[]][] = [
-    ["ipc", mergeIndices(ipc, [], [])],
-    ["usd_oficial", mergeIndices([], oficial, [])],
-    ["usd_mep", mergeIndices([], [], mep)],
+    ["usd_oficial", mergeIndices(oficial, [])],
+    ["usd_mep", mergeIndices([], mep)],
   ];
   try {
     for (const [col, rows] of lotes) {

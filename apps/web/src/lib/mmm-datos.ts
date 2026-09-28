@@ -9,7 +9,7 @@
 //    `ga4_purchases_daily`).
 //  · Solo meses CERRADOS; el tramo va del primer mes con pauta al último mes con KPI, y el MMM usa el
 //    tramo CONTINUO final con KPI (sin huecos en el adstock).
-//  · Drean no tiene serie de IPC cargada → la inversión va en pesos corrientes (se avisa).
+//  · Montos en $ nominales, tal cual (sin ajuste por inflación: decisión del user 28-sep-2026).
 // ============================================================================
 import { isOfflineCanal, type SimMesInput } from "./simulador";
 import type { MmmInput } from "./stats/mmm";
@@ -20,8 +20,6 @@ export interface MmmDatos {
   medios: { nombre: string; offline: boolean; porMes: Record<string, number> }[];
   kpis: MmmKpiSerie[];
   moneda: string | null;
-  deflactado: boolean;
-  baseMoneda: string | null;
   avisos: string[];
 }
 
@@ -45,7 +43,7 @@ export function construirDatosMmm(args: {
   kpis: MmmKpiSerie[];
   mesEnCurso: string;                                 // YYYY-MM (se excluye: parcial)
 }): MmmDatos {
-  const avisos: string[] = ["Drean no tiene serie de inflación (IPC) cargada: la inversión va en $ sin ajustar y el modelo puede confundir inflación con más inversión."];
+  const avisos: string[] = [];
   const spend = new Map<string, Map<string, number>>();
   const add = (medio: string, mes: string, v: number) => {
     if (!(v > 0) || mes >= args.mesEnCurso) return;
@@ -56,7 +54,7 @@ export function construirDatosMmm(args: {
   for (const m of args.meses) for (const [medio, e] of Object.entries(m.medios)) add(medio, m.mes, e.inv);
   for (const e of args.extra ?? []) for (const [mes, v] of Object.entries(e.porMes)) add(e.medio, mes, v);
   const todos = [...spend.values()].flatMap((m) => [...m.keys()]).sort();
-  if (!todos.length) return { meses: [], medios: [], kpis: args.kpis, moneda: "ARS", deflactado: false, baseMoneda: null, avisos };
+  if (!todos.length) return { meses: [], medios: [], kpis: args.kpis, moneda: "ARS", avisos };
   const ultimoKpi = args.kpis.flatMap((k) => Object.entries(k.porMes).filter(([mes, v]) => v != null && mes < args.mesEnCurso).map(([mes]) => mes)).sort().pop();
   const ultimo = todos[todos.length - 1]!;
   const hasta = ultimoKpi && ultimoKpi > ultimo ? ultimoKpi : ultimo;
@@ -66,7 +64,7 @@ export function construirDatosMmm(args: {
     for (const mes of meses) porMes[mes] = mm.get(mes) ?? 0;
     return { nombre, offline: isOfflineCanal(nombre), porMes };
   }).sort((a, b) => Object.values(b.porMes).reduce((s, v) => s + v, 0) - Object.values(a.porMes).reduce((s, v) => s + v, 0));
-  return { meses, medios, kpis: args.kpis, moneda: "ARS", deflactado: false, baseMoneda: null, avisos };
+  return { meses, medios, kpis: args.kpis, moneda: "ARS", avisos };
 }
 
 /** Input del MMM para un KPI: el tramo CONTINUO final de meses con KPI (sin huecos en el adstock). */

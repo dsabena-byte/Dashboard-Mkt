@@ -1,8 +1,6 @@
 import "server-only";
 import { getSeguimientoKpis } from "./objetivos-kpis";
 import { getMapaConfig } from "./mapa-server";
-import { getIndicesMacro } from "./moneda-server";
-import { resolverContexto } from "./moneda";
 import { CATEGORIA_PESOS } from "./categorias";
 import { validarMapaConDatos, serie24, porMesA24, type ResultadoCandidato, type ValidacionPorResultado } from "./mapa-validacion";
 
@@ -14,7 +12,7 @@ import { validarMapaConDatos, serie24, porMesA24, type ResultadoCandidato, type 
 //   · "Lavado" (la serie más larga).
 // La facturación (facturacion_mensual) todavía tiene < 13 meses → no alcanza para validar.
 
-export interface ValidacionMapaData { anio: number; resultados: ValidacionPorResultado[]; objetivos: { id: string; nombre: string; color: string }[]; nota: string | null }
+export interface ValidacionMapaData { anio: number; resultados: ValidacionPorResultado[]; objetivos: { id: string; nombre: string; color: string }[] }
 
 type ShareRow = { mes: string; categoria: string; value_share: number | null };
 
@@ -33,14 +31,12 @@ async function shareDrean(): Promise<ShareRow[]> {
 export async function getValidacionMapa(): Promise<ValidacionMapaData | null> {
   const anio = new Date().getUTCFullYear();
   const hoy = new Date().toISOString().slice(0, 7);
-  const [mapa, kpis, indices, share] = await Promise.all([
+  const [mapa, kpis, share] = await Promise.all([
     getMapaConfig(),
     getSeguimientoKpis(anio).catch(() => []),
-    getIndicesMacro().catch(() => []),
     shareDrean(),
   ]);
   if (!mapa || !mapa.objetivos.length) return null;
-  const { ctx } = resolverContexto("constantes", indices);
   const kh = kpis.map((k) => ({ plan: k.plan, kpi: k.kpi, unit: k.unit, direccion: k.direccion, realM: k.realM, histM: k.histM }));
 
   // Share Drean por mes y categoría (ignora meses futuros: mercado_share trae filas con mes > hoy).
@@ -66,12 +62,11 @@ export async function getValidacionMapa(): Promise<ValidacionMapaData | null> {
     { id: "share-general", nombre: "Share de mercado Drean (valor, general)", serie24: porMesA24(general, anio), nota: "GfK mensual, segmento Total; general = Σ categoría × peso (Lav 62 · Refri 35 · Cocc 3)" },
     { id: "share-lavado", nombre: "Share de mercado Drean · Lavado (valor)", serie24: porMesA24(lav, anio), nota: "GfK mensual, segmento Total" },
   ];
-  const resultados = validarMapaConDatos(mapa, kh, anio, cands, ctx);
+  const resultados = validarMapaConDatos(mapa, kh, cands);
   return {
     anio,
     objetivos: mapa.objetivos.map((o) => ({ id: o.id, nombre: o.nombre, color: o.color })),
     resultados,
-    nota: ctx.moneda === "constantes" ? null : "Sin serie de inflación cargada (tabla indices_macro): la Inversión se compara sin ajustar por inflación.",
   };
 }
 

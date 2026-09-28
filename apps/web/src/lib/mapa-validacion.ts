@@ -1,24 +1,20 @@
 // ============================================================================
 // Validación empírica del Mapa (portado de BIP, sep-2026; D4): arma las series de 24 meses (año anterior + actual) de cada
 // KPI vinculado y del RESULTADO de negocio, y corre lib/stats/validacion. PURO (imports relativos).
-// Montos en $ se deflactan (IPC) antes de comparar: con inflación, dos series en pesos corrientes
-// "crecen juntas" aunque no tengan nada que ver.
+// Montos en $ nominales, tal cual (28-sep-2026: sin ajuste por inflación en ningún cálculo).
 // ============================================================================
 import { validarMapa, type ValidacionMapa } from "./stats/validacion";
-import { convertir, mesKey, type ConvContext } from "./moneda";
 
 export interface KpiHist { plan: string; kpi: string; unit: string; direccion: "up" | "down"; realM: (number | null)[]; histM?: (number | null)[] | null }
 export interface MapaMin { objetivos: { id: string; nombre: string }[]; planes: { nombre: string; kpis: { nombre: string; vinculos: Record<string, number> }[] }[] }
 export interface ResultadoCandidato { id: string; nombre: string; plan?: string; kpi?: string; serie24: (number | null)[]; nota?: string }
 export interface ValidacionPorResultado extends ValidacionMapa { id: string; nota?: string }
 
-/** 24 meses (Ene año−1 … Dic año), montos deflactados si hay IPC. */
-export function serie24(k: Pick<KpiHist, "realM" | "histM" | "unit">, anio: number, ctx?: ConvContext | null): (number | null)[] {
+/** 24 meses (Ene año−1 … Dic año), valores tal cual (montos en $ nominales). */
+export function serie24(k: Pick<KpiHist, "realM" | "histM">): (number | null)[] {
   const h = Array.from({ length: 12 }, (_, i) => k.histM?.[i] ?? null);
   const r = Array.from({ length: 12 }, (_, i) => k.realM[i] ?? null);
-  const all = [...h, ...r];
-  if (k.unit !== "$" || !ctx || ctx.moneda !== "constantes") return all;
-  return all.map((v, i) => (v == null ? null : convertir(ctx, v, mesKey(i < 12 ? anio - 1 : anio, i % 12)).valor));
+  return [...h, ...r];
 }
 
 /** Serie mensual "YYYY-MM" → 24 posiciones del eje. */
@@ -32,7 +28,7 @@ export function porMesA24(puntos: { mes: string; valor: number }[], anio: number
   return out;
 }
 
-export function validarMapaConDatos(mapa: MapaMin, kpis: KpiHist[], anio: number, resultados: ResultadoCandidato[], ctx?: ConvContext | null): ValidacionPorResultado[] {
+export function validarMapaConDatos(mapa: MapaMin, kpis: KpiHist[], resultados: ResultadoCandidato[]): ValidacionPorResultado[] {
   // Drean: el Mapa y el Seguimiento cruzan los KPIs por NOMBRE (el plan del Mapa puede llamarse
   // distinto que el plan del Seguimiento, ej. Redes Sociales ↔ Instagram).
   const byKey = new Map(kpis.map((k) => [k.kpi, k]));
@@ -40,7 +36,7 @@ export function validarMapaConDatos(mapa: MapaMin, kpis: KpiHist[], anio: number
     const ks = byKey.get(k.nombre);
     return Object.entries(k.vinculos ?? {}).filter(([, w]) => w > 0).map(([objetivoId, peso]) => ({
       plan: p.nombre, kpi: k.nombre, objetivoId, peso, direccion: ks?.direccion ?? "up" as const,
-      serie: ks ? serie24(ks, anio, ctx) : Array(24).fill(null),
+      serie: ks ? serie24(ks) : Array(24).fill(null),
     }));
   }));
   return resultados
