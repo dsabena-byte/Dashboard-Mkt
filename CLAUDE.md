@@ -551,7 +551,7 @@ reporte_existencia/cb_homologos).
   `display-video`, anunciante 8003891470). Cron `/api/cron/dv360-thumbs` + `dv360-thumbs.yml` (diario, `dry`) espeja
   `/simgad/<n>` (tpc.googlesyndication.com, respaldo s0.2mdn.net) / YouTube a `meta-thumbs/dv360/<id>.jpg` + manifiesto
   `dv360/index.json` (sin migración). Match por nombre normalizado (fallback cat+WxH solo si único) en
-  `lib/dv360-thumbs-shared.ts` (test `scripts/dv360-thumbs.test.ts`). YouTube del reporte = "Unknown" → sin miniatura.
+  `lib/dv360-thumbs-shared.ts` (test `scripts/dv360-thumbs.test.ts`). YouTube del reporte = "Unknown" → sin miniatura. **Primera corrida real (28-sep): 133 creatives, 80 imágenes espejadas (0 fallas, todas de s0.2mdn.net), 65/102 nombres del reporte con miniatura (57 exactos + 8 por cat+tamaño); los 37 sin match son VIDEOS alojados en DV360 (la API no da miniatura).** En dry-run el cruce es solo contra 8 de muestra (0 matches es normal).
   Detalle en `docs/dv360-sync.md` "Thumbnails".
 - **DV360 subcuenta meses viejos — CONFIRMADO con el CSV real (sep-2026).** DV360 NO se carga
     manual: el Apps Script "Sync Drive Tablero CB" (`syncDv360`) lee el CSV del reporte "DV360 Video
