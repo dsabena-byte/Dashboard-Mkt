@@ -346,10 +346,11 @@ reporte_existencia/cb_homologos).
   `lib/objetivos-pronostico.ts` → /overview: cierre proyectado + probabilidad por KPI/objetivo/Salud de Marca y "qué explica
   el resultado" (Shapley). `histM` solo pronostica con ≥10 meses (`histParaPronostico`; GA4 2025 tiene hueco jun–oct).
   "Sugerir metas" en MetaPanel (`/api/metas/historia`), "Validar con mis datos" en el Mapa (vs share GfK), marca vs activación
-  60:40 en Eficiencia Medios. **Moneda = solo "$" y "USD" (BCRA)** (28-sep-2026 se SACÓ "$ constantes"/IPC de la UI: "es muy
-  confuso, no se utiliza en Argentina"; no volver a ofrecerlo). `indices_macro` (0110) + cron `sync-macro` siguen (dólar para USD;
-  IPC solo como deflactor interno de "Validar con mis datos"). /performance convierte server-side (`?moneda=usd`; `constantes` de
-  links viejos cae a "$"); /funnel tiene su propio $/USD (columnas de `bgt_marketing`). Guía 🎓 `moneda_montos`. "Qué hacer ahora" (`lib/recomendacion.ts`) arriba
+  60:40 en Eficiencia Medios. **Moneda = solo "$" y "USD" (BCRA). REGLA: SIN inflación/IPC en NINGÚN lado** (28-sep-2026, user: "solo
+  valores reales en $ y luego USD, nada más, inflación no suma") → no hay pesos constantes ni deflactor: "Validar con mis datos" y
+  el MMM-lite usan $ nominales tal cual. `indices_macro` (0110; columna `ipc` sin uso, NO borrar) + cron `sync-macro` solo bajan el
+  dólar. /performance convierte server-side (`?moneda=usd`; `constantes` de links viejos cae a "$"); /funnel tiene su propio $/USD
+  (columnas de `bgt_marketing`). Guía 🎓 `moneda_montos`. "Qué hacer ahora" (`lib/recomendacion.ts`) arriba
   del Diagnóstico. `metricas.ts` = catálogo con nombres EXACTOS del Seguimiento. Salud de los datos (`components/data-health.tsx`)
   bajo el título de 6 tableros, misma regla que /monitoreo (cadencias deben coincidir: test `data-health`); NO usar `web_traffic`.
   Data real 27-sep: Salud de Marca YTD 92,5%, brecha −7,5 pts (VTR −2,7, Frecuencia −1,5, CB −0,9); Pauta con 5 meses → objetivos

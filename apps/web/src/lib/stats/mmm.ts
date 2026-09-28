@@ -18,8 +18,7 @@
 //  · Honestidad: con pocos puntos por parámetro la incertidumbre es grande y se MUESTRA (semáforo
 //    de confianza, backtest fuera de muestra, "sin evidencia" por medio). Correlación ≠ causa: sin
 //    experimentos (geo / lift) es una asociación condicionada al modelo.
-// La inversión debe venir DEFLACTADA (pesos constantes, lib/moneda.ts): con inflación alta, pesos
-// corrientes hacen que el modelo confunda inflación con "más inversión".
+// La inversión entra en $ nominales, tal cual (sin ajuste por inflación: decisión del user 28-sep-2026).
 // ============================================================================
 import { mulberry32, seedDe } from "./prng";
 

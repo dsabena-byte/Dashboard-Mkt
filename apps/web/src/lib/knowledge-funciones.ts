@@ -144,9 +144,9 @@ export const FUNC_KNOW: Record<string, KpiKnow> = {
   moneda_montos: {
     name: "Moneda: $ o USD",
     comoLeer: "<b>$</b> = los montos tal como los informó cada fuente; <b>USD</b> = cada monto dividido por el dólar oficial promedio de su mes (BCRA). Las metas en pesos se convierten igual, así real y meta quedan en la misma moneda.",
-    mejorPractica: "Con inflación, comparar pesos de meses lejanos engaña: para ver si la inversión creció de verdad o comparar con costos y benchmarks en dólares, usá USD. Si falta el dólar de un mes se usa el último disponible y se avisa (nunca un cero silencioso). La elección queda en el link (?moneda=).",
-    oportunidad: "Una inversión que 'sube' en pesos y baja en dólares es un recorte real: los avisos tienen menos peso aunque el número crezca.",
-    marco: "Leer series largas de montos en una moneda estable (USD) para que la inflación no parezca crecimiento.",
+    mejorPractica: "Usá $ para leer los montos reales tal cual y USD para compararlos con costos, benchmarks o presupuestos en dólares. Si falta el dólar de un mes se usa el último disponible y se avisa (nunca un cero silencioso). La elección queda en el link (?moneda=).",
+    oportunidad: "Mirar la misma serie en $ y en USD ayuda a separar un cambio de inversión de un cambio del tipo de cambio.",
+    marco: "Montos en valores reales ($, tal como se informaron) y, cuando hace falta, en dólares. Sin ajustes por inflación.",
     formula: "USD = monto ÷ dólar oficial promedio del mes",
     funnel: "transversal",
     palancas: [{ accion: "Gobernar el presupuesto", modulo: "presupuesto-marketing" }],

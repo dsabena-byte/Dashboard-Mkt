@@ -73,7 +73,6 @@ export function ValidacionPesos() {
           )}
           <div className="mb-3 text-[11.5px] text-muted-foreground">
             Resultado: <b className="text-foreground">{r.resultado}</b>{r.nota ? ` (${r.nota})` : ""} · {r.resumen.fuerte} con evidencia fuerte · {r.resumen.moderada} moderada · {r.resumen.sinEvidencia} sin evidencia{r.resumen.contraria ? ` · ${r.resumen.contraria} al revés` : ""}{r.resumen.sinDatos ? ` · ${r.resumen.sinDatos} sin datos suficientes` : ""}
-            {data.nota && <span className="block text-amber-700">{data.nota}</span>}
           </div>
           <div className="flex flex-col gap-4">
             {data.objetivos.map((o) => {

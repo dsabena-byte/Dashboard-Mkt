@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { runMacroSync } from "@/lib/macro-sync";
 
-// Cron de índices macro (IPC INDEC + dólar oficial BCRA + MEP) → tabla indices_macro (migración 0110).
-// Alimenta el selector "$ / USD" de Plan de Medios (dólar oficial) y el deflactor IPC interno de "Validar con mis datos" del Mapa.
+// Cron del dólar (oficial BCRA + MEP) → tabla indices_macro (migración 0110). Alimenta la opción USD
+// del selector "$ / USD" de Plan de Medios. Ya no baja IPC (sin ajuste por inflación, 28-sep-2026).
 // Gateado por CRON_SECRET (si existe). ?desde=YYYY-MM-DD = backfill (default: últimos ~25 meses).
 // Workflow: .github/workflows/sync-macro.yml (días 2 y 16).
 export const dynamic = "force-dynamic";
