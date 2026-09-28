@@ -179,11 +179,15 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
   const navContent = (
     <>
       <style>{`
-        .sn{background:linear-gradient(180deg,#0c1a33,#0a1730);color:#aeb9cc}
-        .sn-brand{padding:20px 20px 16px;border-bottom:1px solid #1c2c4a}
+        .sn{background:linear-gradient(180deg,#0c1a33,#0a1730);color:#aeb9cc;overflow-y:auto}
+        .sn::-webkit-scrollbar{width:6px}
+        .sn::-webkit-scrollbar-thumb{background:#1c2c4a;border-radius:3px}
+        .sn-brand{flex:0 0 auto;padding:20px 20px 16px;border-bottom:1px solid #1c2c4a}
         .sn-tag{margin-top:8px;font-size:11.5px;font-weight:500;color:#8ea0bd;letter-spacing:.02em}
-        .sn-nav{flex:1;overflow-y:auto;padding:12px 12px 8px;display:flex;flex-direction:column;gap:2px}
-        .sn-nav::-webkit-scrollbar{width:0}
+        /* Pantallas bajas (notebook, zoom): antes la lista scrolleaba sola, con la barra oculta (width:0), y los
+           tableros de abajo "no aparecían". Ahora la navegación crece pero no se achica: si no entra, scrollea
+           el menú ENTERO con barra visible (el pie con Salir queda al final, alcanzable). */
+        .sn-nav{flex:1 0 auto;padding:12px 12px 8px;display:flex;flex-direction:column;gap:2px}
         .sn-item{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;color:#aeb9cc;font-size:13.5px;font-weight:500;cursor:pointer;position:relative;width:100%;background:none;border:0;text-align:left}
         .sn-item:hover{background:#ffffff0f;color:#e8edf6}
         .sn-item.active{background:#1d3a6e;color:#fff;font-weight:600}
