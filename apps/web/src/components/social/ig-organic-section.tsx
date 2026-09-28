@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
 import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { IgAlcanceChart } from "@/components/social/ig-alcance-chart";
@@ -70,6 +70,14 @@ export function IgOrganicSection({
   metaEng?: MetaKpiData; // valores + config de la meta de Engagement rate (%)
 }) {
   const [showAllPosts, setShowAllPosts] = useState(false);
+  // "Mostrar menos" también arriba (pedido del user: había que bajar hasta el final para colapsar); al colapsar
+  // se vuelve al encabezado de la lista para no quedar perdido más abajo.
+  const postsTopRef = useRef<HTMLDivElement>(null);
+  const togglePosts = () => {
+    const colapsar = showAllPosts;
+    setShowAllPosts(!showAllPosts);
+    if (colapsar) postsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const [sortBy, setSortBy] = useState<"engagement" | "fecha">("fecha");
   const [filterType, setFilterType] = useState<"all" | "feed" | "reels" | "stories">("all");
 
@@ -275,7 +283,7 @@ export function IgOrganicSection({
 
       {/* Top posts */}
       {data.topPosts.length > 0 && (
-        <div className="rounded-lg border bg-background p-4">
+        <div ref={postsTopRef} className="scroll-mt-4 rounded-lg border bg-background p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Top posts del per&iacute;odo
@@ -307,6 +315,14 @@ export function IgOrganicSection({
                   {s === "engagement" ? "Por engagement" : "Por fecha"}
                 </button>
               ))}
+              {sortedPosts.length > 12 && (
+                <>
+                  <span className="mx-1 h-3 w-px bg-border" aria-hidden />
+                  <button onClick={togglePosts} className="rounded-full border px-2 py-0.5 font-medium text-muted-foreground hover:bg-muted">
+                    {showAllPosts ? "Mostrar menos" : `Ver todos (${sortedPosts.length})`}
+                  </button>
+                </>
+              )}
             </div>
           </div>
           {sortedPosts.length === 0 ? (
@@ -387,7 +403,7 @@ export function IgOrganicSection({
           {sortedPosts.length > 12 && (
             <div className="mt-3 text-center">
               <button
-                onClick={() => setShowAllPosts(!showAllPosts)}
+                onClick={togglePosts}
                 className="rounded border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
               >
                 {showAllPosts ? "Mostrar menos" : `Ver todos (${sortedPosts.length} posts)`}
