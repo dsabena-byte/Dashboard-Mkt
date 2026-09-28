@@ -1,0 +1,27 @@
+name: DV360 diag (acceso API, solo lectura)
+
+# Llama /api/cron/dv360-diag: verifica que GOOGLE_REFRESH_TOKEN tenga el scope display-video, lista los
+# anunciantes visibles y muestra qué trae cada creative (para las miniaturas). No escribe nada.
+on:
+  workflow_dispatch:
+    inputs:
+      adv:
+        description: "advertiserId (opcional; por defecto el que se llama 'Drean')"
+        required: false
+        default: ""
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GET /api/cron/dv360-diag
+        run: |
+          set -euo pipefail
+          BASE="${APP_URL:-https://dashboard-mkt-seven.vercel.app}"
+          curl -sS --max-time 90 "$BASE/api/cron/dv360-diag?adv=${ADV_INPUT:-}" -H "Authorization: Bearer ${CRON_SECRET:-}"
+          echo
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+          ADV_INPUT: ${{ inputs.adv }}
