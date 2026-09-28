@@ -7,6 +7,8 @@ name: Alertas y reporte ejecutivo (1x/día)
 #  · /api/cron/tableros-envio → envío programado de Mis tableros (link de solo lectura; lunes / día 1).
 # Requiere CRON_SECRET (igual que en Vercel) + RESEND_API_KEY / NOTIFY_FROM / ALERT_RECIPIENTS en
 # Vercel + migración 0108 (sin ella no hay dedupe y el diario no se envía).
+# WhatsApp (opcional, mismos endpoints): EVO_URL / EVO_API_KEY / EVO_INSTANCE en Vercel + migración 0123 +
+# prendido en /alerts. Si el número no está vinculado, se saltea WhatsApp (latido 'desconectado') y el cron sigue OK.
 on:
   schedule:
     - cron: "0 11 * * *"   # 11:00 UTC = 08:00 ART

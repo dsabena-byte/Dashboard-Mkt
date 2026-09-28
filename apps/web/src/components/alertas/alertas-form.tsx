@@ -2,30 +2,36 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FREC_LABEL, type Frecuencia } from "@/lib/alerts-shared";
+import { cleanPhones, formatPhone } from "@/lib/whatsapp-shared";
+import { WhatsappSection } from "./whatsapp-section";
 
-// Preferencias de alertas por email (portado de BIP, sep-2026). Guarda en alert_prefs vía /api/alertas.
+// Preferencias de alertas por email y WhatsApp (portado de BIP, sep-2026). Guarda en alert_prefs vía /api/alertas.
 const REAL = "#1e40af";
 const LBL = "mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground";
 
-export function AlertasForm({ initial, migrated, emailReady, envRecipients, lastEmail, lastReport }: {
-  initial: { emailOn: boolean; frecuencia: Frecuencia; destinatarios: string[]; reporteOn: boolean };
-  migrated: boolean; emailReady: boolean; envRecipients: string[]; lastEmail: string; lastReport: string;
+export function AlertasForm({ initial, migrated, whatsappMigrated, emailReady, envRecipients, lastEmail, lastReport }: {
+  initial: { emailOn: boolean; frecuencia: Frecuencia; destinatarios: string[]; reporteOn: boolean; whatsappOn: boolean; whatsappDestinatarios: string[] };
+  migrated: boolean; whatsappMigrated: boolean; emailReady: boolean; envRecipients: string[]; lastEmail: string; lastReport: string;
 }) {
   const router = useRouter();
   const [emailOn, setEmailOn] = useState(initial.emailOn);
   const [frec, setFrec] = useState<Frecuencia>(initial.frecuencia === "off" ? "auto" : initial.frecuencia);
   const [dest, setDest] = useState(initial.destinatarios.join(", "));
   const [reporteOn, setReporteOn] = useState(initial.reporteOn);
+  const [waOn, setWaOn] = useState(initial.whatsappOn);
+  const [waNums, setWaNums] = useState(initial.whatsappDestinatarios.map(formatPhone).join(", "));
   const [busy, setBusy] = useState<"" | "save" | "alertas" | "reporte">("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function save() {
     setBusy("save"); setMsg(null);
     try {
-      const r = await fetch("/api/alertas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emailOn, frecuencia: frec, destinatarios: dest, reporteOn }) });
+      const r = await fetch("/api/alertas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emailOn, frecuencia: frec, destinatarios: dest, reporteOn, whatsappOn: waOn, whatsappDestinatarios: cleanPhones(waNums) }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "No se pudo guardar");
-      setMsg({ ok: true, text: "Listo, guardado." });
+      setMsg(d.whatsappSaved === false && (waOn || waNums.trim())
+        ? { ok: false, text: "Se guardó lo del email, pero WhatsApp no: falta correr la migración 0123_alertas_whatsapp.sql." }
+        : { ok: true, text: "Listo, guardado." });
       router.refresh();
     } catch (e) { setMsg({ ok: false, text: e instanceof Error ? e.message : "Error" }); } finally { setBusy(""); }
   }
@@ -42,7 +48,7 @@ export function AlertasForm({ initial, migrated, emailReady, envRecipients, last
   return (
     <div className="space-y-4 rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">Emails de alertas y reporte</h3>
+        <h3 className="text-sm font-semibold">Alertas y reporte por email y WhatsApp</h3>
         <span className="text-[11px] text-muted-foreground">Último envío de alertas: {lastEmail} · último reporte: {lastReport}</span>
       </div>
       {!migrated && (
@@ -62,13 +68,13 @@ export function AlertasForm({ initial, migrated, emailReady, envRecipients, last
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <span className={LBL}>Frecuencia</span>
-          <select className="w-full rounded-md border bg-background px-2 py-1.5 text-sm" value={frec} disabled={!emailOn} onChange={(e) => setFrec(e.target.value as Frecuencia)}>
+          <span className={LBL}>Frecuencia (email y WhatsApp)</span>
+          <select className="w-full rounded-md border bg-background px-2 py-1.5 text-sm" value={frec} disabled={!emailOn && !waOn} onChange={(e) => setFrec(e.target.value as Frecuencia)}>
             {(["auto", "semanal", "diaria"] as Frecuencia[]).map((f) => <option key={f} value={f}>{FREC_LABEL[f]}</option>)}
           </select>
         </div>
         <div>
-          <span className={LBL}>Destinatarios</span>
+          <span className={LBL}>Destinatarios de email</span>
           <input className="w-full rounded-md border bg-background px-2 py-1.5 text-sm" value={dest} onChange={(e) => setDest(e.target.value)}
             placeholder={envRecipients.length ? `Vacío = ${envRecipients.join(", ")}` : "emails separados por coma"} />
           <span className="mt-1 block text-[11px] text-muted-foreground">
@@ -80,6 +86,8 @@ export function AlertasForm({ initial, migrated, emailReady, envRecipients, last
       <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input type="checkbox" checked={reporteOn} onChange={(e) => setReporteOn(e.target.checked)} /> Recibir el reporte ejecutivo el primer día hábil de cada mes
       </label>
+
+      <WhatsappSection on={waOn} setOn={setWaOn} numeros={waNums} setNumeros={setWaNums} migrated={whatsappMigrated && migrated} />
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={save} disabled={!!busy || !migrated} className="rounded-md px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50" style={{ background: REAL }}>{busy === "save" ? "Guardando…" : "Guardar"}</button>
