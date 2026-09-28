@@ -64,7 +64,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
   performance: {
     etapa: "optimizar",
     funnel: ["awareness", "consideracion", "conversion"],
-    modulos: ["plan-de-medios", "benchmarks-medios", "alcance-frecuencia", "reasignacion-inversion", "medios-offline", "meta-ads-estructura"],
+    modulos: ["plan-de-medios", "benchmarks-medios", "alcance-frecuencia", "reasignacion-inversion", "medios-offline", "meta-ads-estructura", "meli-mercado-ads", "mercado-libre-para-marcas"],
     title: "Cómo diseñar y desplegar tu estrategia de medios",
     intro: "La inversión en medios es la principal palanca de ejecución de la estrategia: convierte presupuesto en atención, y atención en resultado. Este tablero permite decidir con evidencia cómo se distribuye esa inversión entre medios y objetivos del embudo (notoriedad → consideración → conversión), para <b>maximizar el impacto de negocio por unidad invertida</b> y no solo el volumen comprado.",
     bullets: [
@@ -79,6 +79,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
       { nombre: "Reasigná por eficiencia, medio por medio", detalle: "la tabla por medio muestra el costo por resultado (CPM/CPC). Mové presupuesto del medio y creativo más caro por resultado al más eficiente, en vez de repartir parejo." },
       { nombre: "Medio con API manda", detalle: "Meta, YouTube/Programmatic (DV360) y Google Search/Demand Gen salen de la <b>API</b>; el reporte de OMD solo aporta los medios sin API (TikTok, Mercado Ads, Geo Mobile) y los tradicionales (TV Cable, OOH, DOOH). Performance Max no está acá: va en <b>Performance Conversión</b>." },
       { nombre: "Alcance = suma por medio", detalle: "el <b>Alcance único</b> suma el alcance de cada medio (no está deduplicado entre medios): leelo como presión y comparalo mes contra mes, no como personas únicas." },
+      { nombre: "Mercado Ads: acá ves la inversión, no las ventas", detalle: "<b>Mercado Ads</b> entra por el reporte de OMD (inversión, impresiones y clics). Las ventas atribuidas, el ROAS y el ACOS se miran en el panel de Mercado Ads. Antes de subirle presupuesto, revisá que las publicaciones estén bien armadas: la publicidad no arregla una mala publicación (ver <b>Mercado Ads: Product Ads, Brand Ads y Display</b> en Profundizá)." },
     ],
   },
   redes: {
@@ -207,7 +208,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
   mercado: {
     etapa: "acelerar",
     funnel: ["transversal"],
-    modulos: ["ciclo-acelerar", "investigacion-competencia", "salud-de-marca"],
+    modulos: ["ciclo-acelerar", "investigacion-competencia", "salud-de-marca", "mercado-libre-para-marcas"],
     title: "Cómo leer el mercado (GfK) y recalibrar la estrategia",
     intro: "Es el destino de toda la estrategia: el <b>share de mercado</b> que el resto de las acciones busca movilizar, medido con ventas reales (GfK). Este tablero muestra el share en valor y en unidades y el índice de precio de Drean frente a la competencia, por categoría y segmento, para verificar si el plan se traduce en negocio y a qué ritmo respecto del mercado.",
     bullets: [
@@ -597,6 +598,7 @@ const KPI_BASE: Record<string, KpiKnow> = {
     palancas: [
       { accion: "Escalar campañas ganadoras por tramos", modulo: "ciclo-acelerar" },
       { accion: "Separar incremental de capturado", modulo: "medicion-atribucion" },
+      { accion: "ROAS y ACOS en Mercado Ads", modulo: "meli-mercado-ads" },
     ],
   },
 
@@ -945,6 +947,7 @@ const KPI_BASE: Record<string, KpiKnow> = {
     funnel: "transversal",
     palancas: [
       { accion: "Disponibilidad y exhibición en el punto de venta", modulo: "trade-marketing" },
+      { accion: "Ganar la góndola digital de Mercado Libre", modulo: "mercado-libre-para-marcas" },
       { accion: "Cerrar el trimestre contra el negocio", modulo: "ciclo-acelerar" },
     ],
   },
@@ -959,6 +962,7 @@ const KPI_BASE: Record<string, KpiKnow> = {
     palancas: [
       { accion: "Posicionamiento y diferenciación", modulo: "salud-de-marca" },
       { accion: "Balance marca / activación", modulo: "presupuesto-marketing" },
+      { accion: "Precio, cuotas y promociones en Mercado Libre", modulo: "meli-precio-promociones" },
     ],
   },
   salud_marca: {

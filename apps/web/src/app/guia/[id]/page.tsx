@@ -14,6 +14,14 @@ export function generateMetadata({ params }: { params: { id: string } }) {
   return { title: m ? `${m.titulo} · Proceso Estratégico` : "Proceso Estratégico" };
 }
 
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+/** "2026-09-28" → "28-sep-2026" (sin Date: evita corrimientos por zona horaria). */
+function fechaCorta(iso: string): string {
+  const [y, mo, d] = iso.split("-");
+  const mes = MESES[Number(mo) - 1];
+  return y && mes && d ? `${Number(d)}-${mes}-${y}` : iso;
+}
+
 const K = "mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400";
 const CHIP = "rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500 hover:text-slate-800";
 const BOX = "mb-5 rounded-2xl border bg-card px-5 py-4";
@@ -125,6 +133,28 @@ export default function ModuloPage({ params }: { params: { id: string } }) {
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {m.fuentes && m.fuentes.length > 0 && (
+            <section className={BOX}>
+              <h3 className="mb-3 text-[15px] font-semibold text-slate-900">Fuentes</h3>
+              <ul className="m-0 flex list-disc flex-col gap-1.5 pl-[18px] text-[13.2px] leading-snug text-slate-500">
+                {m.fuentes.map((f, i) => (
+                  <li key={i}>
+                    <a href={f.url} target="_blank" rel="noopener noreferrer" className="font-medium text-[#1e40af] [overflow-wrap:anywhere] hover:underline">
+                      {f.titulo}
+                    </a>
+                    {f.fecha && <small className="text-[11.5px] text-slate-400"> · {fechaCorta(f.fecha)}</small>}
+                  </li>
+                ))}
+              </ul>
+              {m.fuentesConsultadas && (
+                <p className="mt-2.5 text-xs text-slate-400">
+                  Revisadas el {fechaCorta(m.fuentesConsultadas)}. Los costos, montos y reglas de las plataformas cambian: ante la duda, vale
+                  lo que diga la fuente oficial hoy.
+                </p>
+              )}
             </section>
           )}
         </article>

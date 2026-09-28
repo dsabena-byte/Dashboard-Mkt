@@ -12,7 +12,7 @@ export const guiaTools: ChatTool[] = [
   {
     name: "get_guia",
     description:
-      "Proceso Estratégico (base de conocimiento): módulos de estrategia, táctica y paso a paso operativo (plan de medios, alcance/frecuencia, creatividades, Meta Ads, Google Search/PMax/Demand Gen/YouTube, TikTok, GA4, UTM, SEO/Share of Search, redes, UGC/influencers, trade marketing (CB y Floor Share), salud de marca, presupuesto, medición) conectados al ciclo Construir/Aprender/Optimizar/Acelerar. Buscá por tema, KPI o tablero para recomendar CÓMO ejecutar una acción y citá el módulo con su link [Título](/guia/<id>). Con `id` devuelve el contenido completo. También devuelve la guía del KPI (cómo leerlo, fórmula, referencia) si pasás `kpi`.",
+      "Proceso Estratégico (base de conocimiento): módulos de estrategia, táctica y paso a paso operativo (plan de medios, alcance/frecuencia, creatividades, Meta Ads, Google Search/PMax/Demand Gen/YouTube, TikTok, GA4, UTM, SEO/Share of Search, redes, UGC/influencers, trade marketing (CB y Floor Share), Mercado Libre para marcas (catálogo y tienda oficial, publicaciones, reputación, Full y envíos, precio/cuotas/promociones, Mercado Ads, preguntas y opiniones, qué medir), salud de marca, presupuesto, medición) conectados al ciclo Construir/Aprender/Optimizar/Acelerar. Buscá por tema, KPI o tablero para recomendar CÓMO ejecutar una acción y citá el módulo con su link [Título](/guia/<id>). Con `id` devuelve el contenido completo. También devuelve la guía del KPI (cómo leerlo, fórmula, referencia) si pasás `kpi`.",
     parameters: {
       type: "object",
       properties: {
@@ -38,6 +38,7 @@ export const guiaTools: ChatTool[] = [
           checklist: m.checklist,
           benchmarks: m.benchmarks,
           en_la_plataforma: m.enBip,
+          fuentes: m.fuentes?.map((f) => ({ titulo: f.titulo, url: f.url })),
         };
       }
       const q = norm(String(args.buscar ?? "")).split(/\s+/).filter((w) => w.length > 2);

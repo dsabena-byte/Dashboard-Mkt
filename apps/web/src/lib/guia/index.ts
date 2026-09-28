@@ -10,6 +10,7 @@ import { TACTICO_MEDIOS } from "./tactico-medios";
 import { TACTICO_CANALES } from "./tactico-canales";
 import { OPERATIVO_META_GOOGLE } from "./operativo-meta-google";
 import { OPERATIVO_OTROS } from "./operativo-otros";
+import { MERCADO_LIBRE } from "./mercado-libre";
 
 export * from "./types";
 
@@ -20,6 +21,7 @@ export const MODULOS: Modulo[] = [
   ...TACTICO_CANALES,
   ...OPERATIVO_META_GOOGLE,
   ...OPERATIVO_OTROS,
+  ...MERCADO_LIBRE,
 ];
 
 const BY_ID = new Map(MODULOS.map((m) => [m.id, m]));

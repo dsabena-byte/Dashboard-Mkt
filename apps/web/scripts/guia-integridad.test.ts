@@ -52,6 +52,34 @@ for (const [k, list] of Object.entries(FUNC_ALIASES)) {
 for (const [t, k] of [["Ritmo de inversión", "pacing"], ["Fatiga creativa", "fatiga"], ["Inversión diaria por medio", "gasto_diario"], ["Marca vs activación", "marca_activacion"], ["Qué aporta cada medio · MMM-lite", "mmm"], ["Stories de Instagram", "stories_ig"], ["Formatos y horarios propios", "formatos_horarios"], ["Pauta probable de la competencia", "pauta_probable"], ["Core Web Vitals", "cwv"], ["Search Console a fondo", "sc_fondo"], ["Qué hacer ahora", "que_hacer"], ["Armame el tablero", "armame_tablero"], ["Tus umbrales", "umbrales"], ["Calidad del copiloto", "copiloto_calidad"], ["Salud digital de marca", "salud_digital"], ["Cierre proyectado", "prob_meta"]] as const)
   check(kpiKnowFor(t)?.key === k, `kpiKnowFor("${t}") → ${kpiKnowFor(t)?.key} (esperado ${k})`);
 
+// Mercado Libre para marcas (portado de la base original, sep-2026): módulos, fuentes oficiales y enlaces.
+// Drean no tiene Góndola Mercado Libre: ningún módulo puede mandar a un tablero o dato que no existe.
+const MELI = ["mercado-libre-para-marcas", "meli-como-funciona", "meli-publicaciones", "meli-reputacion", "meli-logistica", "meli-precio-promociones", "meli-mercado-ads", "meli-preguntas-opiniones", "meli-medicion", "meli-errores-checklist"];
+const DOMINIOS_OK = /^https:\/\/([a-z0-9-]+\.)*(mercadolibre\.com\.ar|mercadoads\.com|tn\.com\.ar|c5n\.com)\//;
+const indiceMeli = MODULOS.find((m) => m.id === "mercado-libre-para-marcas");
+for (const id of MELI) {
+  const m = MODULOS.find((x) => x.id === id);
+  check(Boolean(m), `ML: ${id} no existe`);
+  if (!m) continue;
+  check(m.plataforma === "mercadolibre", `ML: ${id} sin plataforma mercadolibre`);
+  check((m.fuentes ?? []).length > 0, `ML: ${id} sin fuentes`);
+  check(/^\d{4}-\d{2}-\d{2}$/.test(m.fuentesConsultadas ?? ""), `ML: ${id} sin fuentesConsultadas`);
+  for (const f of m.fuentes ?? []) check(DOMINIOS_OK.test(f.url), `ML: ${id} fuente no oficial ${f.url}`);
+  const txt = JSON.stringify(m);
+  for (const bad of ["Góndola Mercado Libre", "gondola", "Lo más buscado", "share of shelf", "Share of shelf", "add-on"])
+    check(!txt.includes(bad), `ML: ${id} menciona algo que Drean no tiene: "${bad}"`);
+  if (id !== "mercado-libre-para-marcas") check((indiceMeli?.relacionados ?? []).includes(id), `ML: el índice no enlaza ${id}`);
+}
+for (const m of MODULOS) {
+  for (const f of m.fuentes ?? []) {
+    check(/^https:\/\/\S+$/.test(f.url), `${m.id}: fuente sin https ${f.url}`);
+    check(f.titulo.trim().length > 3, `${m.id}: fuente sin título`);
+    if (f.fecha) check(/^\d{4}-\d{2}-\d{2}$/.test(f.fecha), `${m.id}: fecha de fuente inválida ${f.fecha}`);
+  }
+}
+check((DASH_KNOW.performance?.modulos ?? []).includes("meli-mercado-ads"), "DASH_KNOW.performance no enlaza Mercado Ads");
+check((DASH_KNOW.performance?.modulos ?? []).includes("mercado-libre-para-marcas"), "DASH_KNOW.performance no enlaza el índice de ML");
+
 console.log(`${MODULOS.length} módulos · ${Object.keys(KPI_KNOW).length} KPIs · ${Object.keys(DASH_KNOW).length} tableros`);
 if (fails) {
   console.error(`${fails} fallas`);

@@ -321,7 +321,7 @@ Al revés, si tu exhibición supera ampliamente tu venta, revisá si ese espacio
       "Las campañas grandes se coordinan con stock y exhibición.",
     ],
     enBip: "En **Cuadros Básicos** (cumplimiento del surtido por tienda, objetivo 80%, con sugerencias de tiendas a sumar) y **Floor Share** (share de góndola por categoría y ranking de marcas; objetivos Lavado 32% · Refrigeración 25% · Cocción 23%), a partir del relevamiento semanal. El contraste con la venta se hace en **Resultados Comerciales** (GfK) y con las acciones en retailers en **Mkt Canal Comercial**.",
-    relacionados: ["tableros-planilla", "salud-de-marca", "funnel-360", "campanas-estacionales"],
+    relacionados: ["tableros-planilla", "salud-de-marca", "funnel-360", "campanas-estacionales", "mercado-libre-para-marcas"],
   },
   {
     id: "plan-de-accion",

@@ -10,7 +10,7 @@
 export type Nivel = "estrategico" | "tactico" | "operativo";
 export type Etapa = "construir" | "aprender" | "optimizar" | "acelerar";
 export type Funnel = "awareness" | "consideracion" | "conversion" | "fidelizacion" | "transversal";
-export type Plataforma = "meta" | "google" | "tiktok" | "ga4" | "search-console" | "bip";
+export type Plataforma = "meta" | "google" | "tiktok" | "ga4" | "search-console" | "mercadolibre" | "bip";
 export type PlanMin = "insight" | "optimize" | "accelerate";
 
 export interface Seccion {
@@ -28,6 +28,13 @@ export interface Benchmark {
   metrica: string;
   valor: string;
   nota: string;
+}
+
+/** Fuente de un dato duro (oficial o seria). `fecha` = fecha de la página, si se conoce. */
+export interface Fuente {
+  titulo: string;
+  url: string;
+  fecha?: string;
 }
 
 export interface Modulo {
@@ -52,6 +59,10 @@ export interface Modulo {
   /** Cómo se hace / se ve esto dentro de BIP: qué tablero y en qué paso del ciclo. */
   enBip: string;
   relacionados?: string[];
+  /** Fuentes de los datos duros del módulo (se muestran al pie, con link). */
+  fuentes?: Fuente[];
+  /** Fecha (YYYY-MM-DD) en que se revisaron las fuentes. */
+  fuentesConsultadas?: string;
 }
 
 export const NIVEL_LABEL: Record<Nivel, string> = {
@@ -90,10 +101,11 @@ export const PLATAFORMA_LABEL: Record<Plataforma, string> = {
   tiktok: "TikTok Ads",
   ga4: "Google Analytics 4",
   "search-console": "Search Console",
+  mercadolibre: "Mercado Libre",
   bip: "Uso de la plataforma",
 };
 
 export const ETAPAS: Etapa[] = ["construir", "aprender", "optimizar", "acelerar"];
 export const NIVELES: Nivel[] = ["estrategico", "tactico", "operativo"];
 export const FUNNELS: Funnel[] = ["awareness", "consideracion", "conversion", "fidelizacion", "transversal"];
-export const PLATAFORMAS: Plataforma[] = ["meta", "google", "tiktok", "ga4", "search-console", "bip"];
+export const PLATAFORMAS: Plataforma[] = ["meta", "google", "tiktok", "ga4", "search-console", "mercadolibre", "bip"];
