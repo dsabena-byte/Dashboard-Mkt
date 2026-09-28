@@ -1118,6 +1118,7 @@ Todo en el repo **bip-platform** (deploy = push a `main`, Vercel). Commits clave
   "company name no coincide con email domain/website". Fix: consistencia empresa↔web↔email +
   Description con prueba de relevancia a BIP (bip-go.com), completar Additional Information, y
   reenviar. Company actual = "Roque Research Solutions" / roque-in.com.
+  **28-sep-2026 (confirmado por el user, NO volver a pedirlo):** el perfil de empresa en TikTok API for Business YA se corrigió (empresa↔web↔email consistentes) y las apps se REENVIARON. El perfil lleva mucho tiempo "en revisión" → lo único pendiente es que TikTok lo apruebe; el paso siguiente es insistir por soporte (ticket en business-api.tiktok.com/portal).
 
 ### Los 3 usuarios de validación (los crea el user, con su plan)
 `insight@bip.com` (Basico), `optimize@bip.com` (Intermedio), `accelerate@bip.com` (Full) +
