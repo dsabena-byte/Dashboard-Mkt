@@ -54,7 +54,10 @@ const folAt = (fol: FolRow[], marca: string, red: string, fecha: string | null):
 // ── Parte bd ──────────────────────────────────────────────────────────────────
 async function partBd(mode: "daily" | "full") {
   const t = getTenant();
-  const cuentas = t.socialAccounts.filter((a) => a.key !== t.ownBrand.key);
+  // Con el scraper en código (COMPETENCIA_SCRAPER_CODE=1, n8n apagado) BD también trae la cuenta PROPIA: n8n la
+  // scrapeaba a diario (dreanargentina en social_posts) y sin esto sus posts nuevos dejarían de entrar.
+  const incluirPropia = process.env.COMPETENCIA_SCRAPER_CODE === "1";
+  const cuentas = t.socialAccounts.filter((a) => incluirPropia || a.key !== t.ownBrand.key);
   const { asset, motivo } = await getDreanIgAsset();
   if (!asset) return { estado: "sin_token", motivo, marcas: [], snaps: [] as SnapInputPost[] };
   const s = newBdSession();
