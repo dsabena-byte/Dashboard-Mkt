@@ -934,5 +934,5 @@ pendientes en **`docs/bip-platform-handoff.md`**. El código se entregó al user
 **TikTok (BIP) — NO volver a pedirlo:** el user YA corrigió el perfil de empresa y REENVIÓ las apps (lo dijo 2 veces, 28-sep-2026);
 el perfil está "en revisión" hace mucho → solo queda insistir con TikTok por soporte, no repetir los pasos de corrección.
 **28-sep-2026:** en My Apps las dos apps (BIP Connector / BIP Organic) figuran **"Rejected"** sin App ID; el user abrió ticket en el
-Developer Ticket Platform (categoría App Management & Approvals) pidiendo el motivo y cómo re-revisar. Esperar respuesta.
+Developer Ticket Platform (categoría App Management & Approvals) pidiendo el motivo y cómo re-revisar: **ticket #4469780** (14:32, bip@roque-in.com). Esperar respuesta (ver "All tickets").
 </content>
