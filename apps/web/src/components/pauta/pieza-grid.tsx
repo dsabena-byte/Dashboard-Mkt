@@ -16,7 +16,7 @@ function truncate(s: string | null | undefined, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
 
-// DV360 no expone el archivo del creative. Pero el nombre suele encodear el
+// Sin miniatura (creative que no está en la API de DV360): el nombre suele encodear el
 // formato: banners con el tamaño ("Lavado-300x600") y videos con la duración
 // ("... - 15 SEG (1920x1080)"). Con eso dibujamos un placeholder informativo
 // en vez de un "Sin imagen" muerto: para display, un rectángulo a escala del
@@ -60,6 +60,17 @@ function FormatoPlaceholder({ titulo, esVideo }: { titulo: string; esVideo: bool
   );
 }
 
+// Tamaño del banner sobre la miniatura real (misma etiqueta que el placeholder).
+function FormatoBadge({ titulo, esVideo }: { titulo: string; esVideo: boolean }) {
+  const f = parseFormato(titulo, esVideo);
+  if (!f) return null;
+  return (
+    <span className="absolute bottom-1.5 right-1.5 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-white">
+      {f.video ? `▶ ${f.label}` : f.label}
+    </span>
+  );
+}
+
 const CAT_COLORS: Record<string, string> = {
   Brand: "#0a1849",
   Lavado: "#2b4dff",
@@ -76,6 +87,8 @@ export interface PiezaCard {
   categoria?: string | null;
   badges?: string[]; // etiquetas extra (canal, tipo de compra, etc.)
   img?: string | null;
+  /** "contain" para banners (DV360): se ve la pieza entera, sin recortar. Default "cover". */
+  imgFit?: "cover" | "contain";
   link?: string | null;
   inv: number;
   impr: number;
@@ -157,13 +170,16 @@ export function PiezaGrid({ pieces, money }: { pieces: PiezaCard[]; money: (n: n
                   </div>
                 )}
                 {c.img ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={c.img}
-                    alt={c.titulo}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-                    loading="lazy"
-                  />
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={c.img}
+                      alt={c.titulo}
+                      className={`h-full w-full ${c.imgFit === "contain" ? "object-contain p-1.5" : "object-cover"} transition-transform group-hover:scale-[1.02]`}
+                      loading="lazy"
+                    />
+                    {c.imgFit === "contain" && <FormatoBadge titulo={c.titulo} esVideo={hasVideo} />}
+                  </>
                 ) : (
                   <FormatoPlaceholder titulo={c.titulo} esVideo={hasVideo} />
                 )}

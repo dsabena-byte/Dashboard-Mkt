@@ -396,13 +396,27 @@ sumar Impressions/Clicks/Revenue/Starts/quartiles, `Math.round`, `source='dv360_
 
 ## Thumbnails de los creatives de DV360
 
-DV360 **no expone la imagen del creative en sus reportes** (las dimensiones de
-creative son sólo metadata: ID, type, size, source, status, width — ninguna es
-una URL de imagen). Por eso las piezas de Programmatic/YouTube/Marketplace/Demand
-Gen salen "Sin imagen" en el grid. **No se puede traer la imagen por el reporte
-de email.** El plan de acción (YouTube gratis por `video_id`, mirror de carpeta
-de Drive, o API de DV360) está documentado en el README, sección
-**"Thumbnails de las piezas — diagnóstico y plan de acción"**.
+DV360 **no expone la imagen del creative en sus reportes** (el CSV de OMD solo trae el nombre). Desde
+28-sep-2026 las miniaturas salen de la **Display & Video 360 API (solo lectura)**, sin tocar el pipeline de
+números (Apps Script → `dv360_creatives` sigue igual):
+
+- **Acceso:** `GOOGLE_REFRESH_TOKEN` con scope `display-video` (validado con `dv360-diag`). Partner 7996192225
+  "Mabe Argentina", anunciante **8003891470 "Drean Argentina"**.
+- **Cron** `/api/cron/dv360-thumbs` (workflow `dv360-thumbs.yml`, diario 09:30 UTC + manual con `dry`): lista
+  todos los creatives (`GET /v4/advertisers/8003891470/creatives`, paginado), arma la URL de la imagen
+  (asset `content = /simgad/<n>` → `https://tpc.googlesyndication.com/simgad/<n>`, respaldo
+  `https://s0.2mdn.net/simgad/<n>`; YouTube → `https://i.ytimg.com/vi/<id>/hqdefault.jpg`; video alojado mp4 =
+  sin miniatura), la espeja al bucket `meta-thumbs` como `dv360/<creativeId>.jpg` (si ya está no se re-baja) y
+  escribe el manifiesto **`dv360/index.json`** (sin migración). Si quedan 0 imágenes no pisa el manifiesto.
+  La respuesta informa `hostOk` (qué host sirvió), `failures`, y `reporte.sinMatch` (nombres de
+  `dv360_creatives` sin miniatura).
+- **Matcheo** (`lib/dv360-thumbs-shared.ts`, test `scripts/dv360-thumbs.test.ts`): nombre normalizado exacto
+  (sin acentos/mayúsculas/puntuación, sin sufijo " - Banner"); si no, fallback conservador = misma categoría
+  (lavado/refri/cocción por palabra clave) + mismo WxH y **un único** candidato. Si no, placeholder del tamaño.
+- **Lectura:** `lib/dv360-thumbs.ts` (server) → `app/performance/page.tsx` pasa `dv360Thumbs` (nombre → url) al
+  cliente; `PiezaGrid` muestra la imagen con `object-contain` + badge del tamaño.
+- **YouTube:** en el reporte de creatives el YouTube viene como "Unknown" → no hay nombre para cruzar; queda sin
+  miniatura (el nombre está solo en la tabla de line items).
 
 ## Referencias
 

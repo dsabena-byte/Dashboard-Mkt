@@ -18,6 +18,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
 import { PiezaGrid, type PiezaCard } from "@/components/pauta/pieza-grid";
+import type { Dv360Thumb } from "@/lib/dv360-thumbs-shared";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import {
   type Dv360CreativeRow,
@@ -334,7 +335,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], pautaDiaria = null, initialTab, headerExtra }: { /** Server: selector de moneda + salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], pautaDiaria = null, dv360Thumbs = {}, initialTab, headerExtra }: { /** Miniaturas DV360 por nombre de creative (API DV360, cron dv360-thumbs). */ dv360Thumbs?: Record<string, Dv360Thumb>; /** Server: selector de moneda + salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
   // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
   // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
   // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
@@ -466,8 +467,9 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
   );
   const dv360Funnels = useMemo(() => aggregateDv360Funnels(dv360Conv), [dv360Conv]);
   const dv360Pieces = useMemo(() => aggregateDv360Pieces(dv360Conv), [dv360Conv]);
-  // Piezas DV360 como tarjetas (mismo formato que Meta, sin thumbnail: DV360 no
-  // expone el creative). Alcance/frecuencia/engagement no vienen por pieza.
+  // Piezas DV360 como tarjetas (mismo formato que Meta). La miniatura sale de la API de
+  // DV360 (manifiesto del cron dv360-thumbs, matcheo por nombre); sin match → placeholder
+  // con el tamaño. Alcance/frecuencia/engagement no vienen por pieza.
   const dv360PieceCards = useMemo<PiezaCard[]>(
     () =>
       dv360Pieces.map((p) => ({
@@ -475,7 +477,8 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
         titulo: p.creative,
         categoria: p.categoria,
         badges: [p.canal, p.rol].filter(Boolean),
-        img: null,
+        img: dv360Thumbs[p.creative]?.url ?? null,
+        imgFit: "contain",
         inv: p.revenueUsd,
         impr: p.impresiones,
         clicks: p.clicks,
@@ -484,7 +487,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
         vtr: p.vtr > 0 ? p.vtr : null,
         activa: p.activa,
       })),
-    [dv360Pieces],
+    [dv360Pieces, dv360Thumbs],
   );
   // Reach de DV360 filtrado por mes (dv360_reach es a nivel line_item/canal, no
   // trae categoría/rol → solo se puede filtrar por mes). Alimenta el resumen por
@@ -1768,10 +1771,11 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
                 <>
                   <SectionTitle>Piezas pautadas · Programmatic + Marketplace</SectionTitle>
                   <p className="mb-3 text-[10px] text-muted-foreground">
-                    Top piezas por inversión. <strong>El YouTube por nombre está en la tabla de line items del final</strong> (acá el
-                    reporte de creatives lo colapsa a &quot;Unknown&quot;). <strong>Sin thumbnail</strong>: el reporte de métricas de DV360
-                    no trae el archivo del creative; se muestra el <strong>formato del banner</strong> (tamaño) o un indicador de video.
-                    Alcance/frecuencia por canal está en el resumen de arriba.
+                    Top piezas por inversión. <strong>Números</strong> = reporte de DV360 que manda OMD (sin cambios);{" "}
+                    <strong>miniaturas</strong> = API de DV360 (solo lectura, se actualizan 1 vez por día y se cruzan por el nombre
+                    del creative). Si un creative no aparece en la API se muestra el <strong>formato del banner</strong> (tamaño) o un
+                    indicador de video. <strong>El YouTube por nombre está en la tabla de line items del final</strong> (acá el reporte
+                    de creatives lo colapsa a &quot;Unknown&quot;). Alcance/frecuencia por canal está en el resumen de arriba.
                   </p>
                   <PiezaGrid pieces={dv360PieceCards} money={dvMoney} />
                 </>
