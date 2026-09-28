@@ -14,7 +14,7 @@ cuenta de gateway, sin paywall.
 Un **número de WhatsApp DEDICADO** (chip/SIM extra o número de empresa), NO el personal — se
 empareja escaneando un QR una vez, y hay riesgo de ban por uso automatizado.
 
-## Estado (sep-2026) — DEPLOYADO, falta emparejar número
+## Estado (28-sep-2026) — gateway DEPLOYADO + código de Drean listo; falta emparejar número
 - **Evolution v2.3.7 corriendo** en Railway (proyecto `reasonable-perception`, cuenta de BIP):
   URL pública **`https://evolution-api-production-6d60.up.railway.app`** (responde el JSON de
   bienvenida). Postgres conectado, variables cargadas.
@@ -24,9 +24,31 @@ empareja escaneando un QR una vez, y hay riesgo de ban por uso automatizado.
 - **PENDIENTE:** conseguir el **número dedicado** (chip aparte, NO el personal) → en el Manager
   (`/manager`, login con Server URL + API key global) abrir `drean-cron` → **Connect** → escanear
   el QR con WhatsApp → Dispositivos vinculados. Queda en "open" y ya envía.
-- **Después:** construir el cron de reporte en Drean (`app/api/cron/report-whatsapp` + workflow),
-  con env vars `EVO_URL` + `EVO_API_KEY` (la global de Railway) + `EVO_INSTANCE=drean-cron` +
-  `WA_RECIPIENTS`.
+- **CÓDIGO EN DREAN LISTO (28-sep-2026, rama `claude/drean-alertas-whatsapp`) — fail-safe hasta
+  vincular el número.** No hay cron nuevo: los crons existentes `/api/cron/alertas` y
+  `/api/cron/reporte-ejecutivo` (workflow `alertas.yml`) mandan también por WhatsApp si está prendido
+  en `/alerts` y la instancia está `open`. Si no está `open` → no envía, deja latido en `alert_log`
+  (canal `whatsapp`, estado `desconectado` / `sin_config`) y el cron sigue OK (email intacto).
+  - `lib/whatsapp.ts` (server): `sendWhatsAppText`, `sendWhatsAppMany`, `whatsappStatus` (timeouts
+    15 s, nunca tira), latido `logWhatsappHeartbeat` / `lastWhatsappHeartbeat`.
+  - `lib/whatsapp-shared.ts` (puro, test `scripts/whatsapp.test.ts`): normalización de celulares AR
+    (`11 1234-5678` / `011 15 …` / `+54 11 …` → `5491112345678`) y mensajes (≤1500 caracteres,
+    `*negrita*`, 3–5 alertas con "Qué hacer" + link; reporte = Salud de Marca, objetivos, KPIs con
+    brecha, share of search, 3 alertas).
+  - `/alerts`: toggle WhatsApp + celulares (se guardan en `alert_prefs`), estado Conectado /
+    Desconectado, "Enviar prueba por WhatsApp" (`/api/alertas/whatsapp-test`, GET = estado, POST =
+    prueba; mismo permiso que editar las preferencias). `/monitoreo`: franja con el último latido.
+  - Migración **`0123_alertas_whatsapp.sql`** (`alert_prefs.whatsapp_on`, `whatsapp_destinatarios`,
+    `alert_log.estado`). Sin ella: email igual, WhatsApp apagado y la UI avisa.
+  - Frecuencia = la misma del email (semanal lunes / diaria solo si hay algo nuevo de prioridad
+    alta); dedupe propio (canal `whatsapp` en `alert_log`); reporte 1 vez por mes por canal. `?dry=1`
+    no envía ni escribe (devuelve el texto en `whatsapp.preview`).
+  - **Env vars en Vercel (proyecto Dashboard-Mkt):** `EVO_URL`
+    (`https://evolution-api-production-6d60.up.railway.app`), `EVO_API_KEY` (= `AUTHENTICATION_API_KEY`
+    de Railway), `EVO_INSTANCE` (opcional, default `drean-cron`). Los destinatarios NO van por env:
+    se cargan en `/alerts` (reemplaza la idea vieja de `WA_RECIPIENTS`).
+- **Para activarlo:** (1) número dedicado + QR (arriba); (2) env vars en Vercel + redeploy; (3) correr
+  0123 en el SQL Editor; (4) `/alerts` → prender WhatsApp, cargar celulares, Guardar → "Enviar prueba".
 - **OJO tag de imagen:** es **`evoapicloud/evolution-api:v2.3.7`** (con la `v`; `2.3.7` sin v no
   existe en el registry).
 
@@ -86,11 +108,11 @@ Body JSON: { "number": "54911XXXXXXXX", "text": "..." }
 - Éxito = **HTTP 201**.
 - Opcionales: `delay` (throttle), `linkPreview`.
 
-## Cron de Drean (a construir)
-`.github/workflows/report-whatsapp.yml` (schedule) → `app/api/cron/report-whatsapp/route.ts`
-(gateado por `CRON_SECRET`): arma el resumen de KPIs (reusa las query functions existentes) y hace
-`fetch` a `.../message/sendText/{instance}`. Env vars en Vercel + Actions:
-`EVO_URL`, `EVO_API_KEY`, `EVO_INSTANCE`, `WA_RECIPIENTS` (coma-separado).
+## Cron de Drean (construido, sep-2026)
+Reusa `alertas.yml` → `/api/cron/alertas` + `/api/cron/reporte-ejecutivo` (ver "Estado"). El body que
+manda `sendWhatsAppText` es `{ number, text, delay: 1200, linkPreview: false }`. Env vars SOLO en
+Vercel: `EVO_URL`, `EVO_API_KEY`, `EVO_INSTANCE`. Probar sin enviar: Actions → "Alertas y reporte
+ejecutivo" → Run workflow con `dry=1` (la respuesta trae `whatsapp.estado` y el texto en `preview`).
 
 ## Gotchas (verificados)
 - **NO existe `DATABASE_ENABLED` en v2** (eso era v1); la DB se configura solo con

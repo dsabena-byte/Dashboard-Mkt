@@ -151,6 +151,13 @@ reporte_existencia/cb_homologos).
     casilla de la cuenta Resend), **`ALERT_RECIPIENTS`** (CSV, fallback si /alerts no tiene destinatarios),
     **`APIFY_ACTOR_AD_LIBRARY`** (opcional) + `APIFY_API_TOKEN` (ya existe) + `NEXT_PUBLIC_APP_URL` (opcional, links).
     Test puro: `npx tsx scripts/alertas-adlib.test.ts`.
+  - **WhatsApp (28-sep-2026, fail-safe hasta vincular el número):** los mismos crons mandan también por WhatsApp
+    (Evolution API en Railway, runbook `docs/whatsapp-evolution-railway.md`) si está prendido en `/alerts` y la
+    instancia `drean-cron` está `open`; si no → saltea, latido `alert_log` canal `whatsapp` (estado `desconectado`/
+    `sin_config`, visible en /alerts y /monitoreo) y el email sigue igual. `lib/whatsapp.ts` (server, nunca tira) +
+    `lib/whatsapp-shared.ts` (puro: celulares AR → `549…`, mensajes ≤1500 con `*negrita*`; test `scripts/whatsapp.test.ts`)
+    + `/api/alertas/whatsapp-test` (GET estado / POST prueba). Frecuencia = la del email; dedupe por canal. **Pendiente:**
+    migración **0123** + env Vercel **`EVO_URL`, `EVO_API_KEY`, `EVO_INSTANCE`** + número dedicado con QR.
 - **"Guiame paso a paso" (sep-2026, pedido del user: las recomendaciones eran "chino básico"):** todo ítem accionable (Qué hacer ahora, señales, Diagnóstico IA oportunidades/plan/hallazgos a corregir, Insights de Redes, consent de /web, 🎓 Oportunidad/Mejor práctica) lleva `<GuiameButton item=…>` (`components/copiloto/guiame-button.tsx`) → `pedirGuia(promptGuia(item))` (`lib/copiloto-guia.ts`, puro) dispara **`window` event `copiloto:ask` {prompt}** → `GlobalDataChat` abre el chat y envía la pregunta en una conversación nueva (en rutas sin copiloto lo monta con `GENERAL`). El prompt arranca con "Guiame paso a paso" → **"Modo guía"** del system prompt (`copiloto.ts`: pasos numerados sin jerga, término técnico entre paréntesis, quién lo hace, dónde hacer clic, mensaje listo para la agencia/dev, tiempo, cómo verificarlo en el tablero). Prioridad/Confianza/Esfuerzo = palabras + tooltip (`explicarPrioridad`, `CONFIANZA_AYUDA`, `ESFUERZO_AYUDA` en `lib/recomendacion.ts`); la fórmula solo en el tooltip. Copy nuevo: primero lenguaje simple, técnico entre paréntesis. Test: `npx tsx scripts/copiloto-guia.test.ts`.
 - **Lenguaje simple en TODAS las señales + "Mis acciones" (28-sep-2026):** títulos/detalle/pasos de `lib/signals/*` (pauta, redes,
   overview, cruces, drean, web, web-calidad, seo, seo-avanzado), `pauta-fatiga` (motivo), `sc-deep` (CAUSA_TXT), `stats/forecast`

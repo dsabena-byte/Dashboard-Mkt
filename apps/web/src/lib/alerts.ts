@@ -25,6 +25,8 @@ import { getTenant } from "@/lib/tenant/current";
 import { appUrl, sendEmail } from "@/lib/notify";
 import { cleanUmbrales, evaluarUmbrales, seriesDesdeNativos, UMBRAL_METRICAS, type Umbral } from "@/lib/umbrales";
 import { getNativeDataset } from "@/lib/native-datasets";
+import { whatsappStatus, sendWhatsAppMany, logWhatsappHeartbeat } from "@/lib/whatsapp";
+import { cleanPhones, buildAlertsWhatsApp, formatReporteWhatsApp, type ReporteWaData } from "@/lib/whatsapp-shared";
 import { cleanRecipients, modoDelDia, isFirstBusinessDay, selectDigest, sortItems, FRECUENCIAS, type AlertItem, type AlertPrefs, type Frecuencia } from "@/lib/alerts-shared";
 
 export type { AlertItem, AlertPrefs, Frecuencia } from "@/lib/alerts-shared";
@@ -53,14 +55,19 @@ async function rest(path: string, init?: RequestInit): Promise<Response | null> 
 }
 
 // ── Preferencias ────────────────────────────────────────────────────────────
-const DEFAULT_PREFS: AlertPrefs = { emailOn: true, frecuencia: "auto", destinatarios: [], reporteOn: true, migrated: false };
+const DEFAULT_PREFS: AlertPrefs = { emailOn: true, frecuencia: "auto", destinatarios: [], reporteOn: true, migrated: false, whatsappOn: false, whatsappDestinatarios: [], whatsappMigrated: false };
+const MISSING_COL_RE = /whatsapp|column|42703|PGRST204/i;
 
 export async function getAlertPrefs(): Promise<AlertPrefs> {
-  const res = await rest("alert_prefs?id=eq.1&select=email_on,frecuencia,destinatarios,reporte_on");
+  const base = "email_on,frecuencia,destinatarios,reporte_on";
+  // Primero con las columnas de WhatsApp (0123); si no existen, sin ellas (email sigue igual).
+  let res = await rest(`alert_prefs?id=eq.1&select=${base},whatsapp_on,whatsapp_destinatarios`);
+  let waMigrated = Boolean(res?.ok);
+  if (res && !res.ok) { res = await rest(`alert_prefs?id=eq.1&select=${base}`); waMigrated = false; }
   if (!res?.ok) return DEFAULT_PREFS;
-  const rows = (await res.json().catch(() => [])) as { email_on: boolean; frecuencia: string; destinatarios: string[] | null; reporte_on: boolean }[];
+  const rows = (await res.json().catch(() => [])) as { email_on: boolean; frecuencia: string; destinatarios: string[] | null; reporte_on: boolean; whatsapp_on?: boolean | null; whatsapp_destinatarios?: string[] | null }[];
   const d = rows[0];
-  if (!d) return { ...DEFAULT_PREFS, migrated: true };
+  if (!d) return { ...DEFAULT_PREFS, migrated: true, whatsappMigrated: waMigrated };
   const f = String(d.frecuencia ?? "auto") as Frecuencia;
   return {
     emailOn: d.email_on !== false,
@@ -68,20 +75,33 @@ export async function getAlertPrefs(): Promise<AlertPrefs> {
     destinatarios: Array.isArray(d.destinatarios) ? d.destinatarios : [],
     reporteOn: d.reporte_on !== false,
     migrated: true,
+    whatsappOn: waMigrated && d.whatsapp_on === true,
+    whatsappDestinatarios: waMigrated ? cleanPhones(d.whatsapp_destinatarios ?? []) : [],
+    whatsappMigrated: waMigrated,
   };
 }
 
-export async function saveAlertPrefs(p: Omit<AlertPrefs, "migrated">, updatedBy?: string | null): Promise<void> {
-  const res = await rest("alert_prefs?on_conflict=id", {
+/** Guarda las preferencias. Si faltan las columnas de WhatsApp (0123) guarda lo de email igual y
+ *  devuelve whatsappSaved=false (la UI avisa que falta la migración). */
+export async function saveAlertPrefs(p: Omit<AlertPrefs, "migrated" | "whatsappMigrated">, updatedBy?: string | null): Promise<{ whatsappSaved: boolean }> {
+  const row = { id: 1, email_on: p.emailOn, frecuencia: p.frecuencia, destinatarios: cleanRecipients(p.destinatarios), reporte_on: p.reporteOn, updated_at: new Date().toISOString(), updated_by: updatedBy ?? null };
+  const post = (body: Record<string, unknown>) => rest("alert_prefs?on_conflict=id", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({ id: 1, email_on: p.emailOn, frecuencia: p.frecuencia, destinatarios: cleanRecipients(p.destinatarios), reporte_on: p.reporteOn, updated_at: new Date().toISOString(), updated_by: updatedBy ?? null }),
+    body: JSON.stringify(body),
   });
+  let res = await post({ ...row, whatsapp_on: p.whatsappOn, whatsapp_destinatarios: cleanPhones(p.whatsappDestinatarios) });
+  let whatsappSaved = true;
+  if (res && !res.ok) {
+    const t = await res.clone().text().catch(() => "");
+    if (MISSING_COL_RE.test(t) && !/relation|42P01|PGRST205/i.test(t)) { res = await post(row); whatsappSaved = false; }
+  }
   if (!res) throw new Error("Supabase no configurado");
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     throw new Error(/relation|does not exist|schema cache|42P01|PGRST205/i.test(t) ? "Falta correr la migración 0108_alertas.sql en Supabase." : `No se pudo guardar: ${t.slice(0, 200)}`);
   }
+  return { whatsappSaved };
 }
 
 /** Destinatarios de env (fallback): ALERT_RECIPIENTS = "a@x.com,b@y.com". */
@@ -263,17 +283,65 @@ export function renderDigestEmail(items: AlertItem[], modo: "semanal" | "diaria"
 }
 
 // ── Envío (cron / prueba) ──────────────────────────────────────────────────
-export interface DigestResult { modo: string; enviado: boolean; items: number; destinatarios: number; motivo?: string; preview?: AlertItem[] }
+export interface WhatsappResult { enviado: boolean; destinatarios: number; enviados?: number; estado?: string; motivo?: string; preview?: string }
+export interface DigestResult { modo: string; enviado: boolean; items: number; destinatarios: number; motivo?: string; preview?: AlertItem[]; whatsapp?: WhatsappResult }
+
+const waCtx = () => ({ marca: getTenant().displayName, appUrl: appUrl() });
+
+/**
+ * Canal WhatsApp de un envío (alertas o reporte). Fail-safe: si la instancia de Evolution no está
+ * "open" (número sin vincular, Railway caído, faltan env vars) NO envía, deja un latido en alert_log
+ * (canal 'whatsapp', estado 'desconectado' / 'sin_config') y sigue. dry = no envía ni escribe.
+ */
+async function sendWhatsappChannel(prefs: AlertPrefs, tipo: "alertas" | "reporte", dry: boolean, build: () => Promise<{ text: string; keys: string[] } | { skip: string }>): Promise<WhatsappResult> {
+  const to = prefs.whatsappDestinatarios;
+  if (!to.length) {
+    if (!dry) await logWhatsappHeartbeat("sin_destinatarios", tipo);
+    return { enviado: false, destinatarios: 0, motivo: "WhatsApp prendido pero sin números cargados en /alerts" };
+  }
+  const st = await whatsappStatus();
+  if (!st.ok) {
+    const estado = st.state === "sin_config" ? "sin_config" : "desconectado";
+    if (!dry) await logWhatsappHeartbeat(estado, tipo);
+    return { enviado: false, destinatarios: to.length, estado: st.state, motivo: st.state === "sin_config" ? "WhatsApp sin configurar (faltan EVO_URL / EVO_API_KEY)" : `WhatsApp desconectado (${st.state}${st.error ? `: ${st.error}` : ""}): falta vincular el número` };
+  }
+  const b = await build().catch((e) => ({ skip: (e as Error).message }));
+  if ("skip" in b) return { enviado: false, destinatarios: to.length, estado: "open", motivo: b.skip };
+  if (dry) return { enviado: false, destinatarios: to.length, estado: "open", motivo: "dry-run", preview: b.text };
+  const r = await sendWhatsAppMany(to, b.text);
+  await logWhatsappHeartbeat(r.enviados ? "enviado" : "error", tipo);
+  if (r.enviados) await logSent(b.keys, "whatsapp");
+  return { enviado: r.enviados > 0, destinatarios: to.length, enviados: r.enviados, estado: "open", motivo: r.errores.length ? r.errores.map((e) => e.error).join(" · ").slice(0, 300) : undefined };
+}
 
 export async function runDigest(opts: { force?: boolean; dry?: boolean; test?: boolean; modo?: "semanal" | "diaria"; to?: string[] } = {}): Promise<DigestResult> {
   const prefs = await getAlertPrefs();
+  let itemsP: Promise<AlertItem[]> | null = null;
+  const items = () => (itemsP ??= buildAlertItems());
+  const email = await runDigestEmail(prefs, opts, items);
+  // WhatsApp: solo en los envíos automáticos (la prueba de email no lo toca; tiene su propio botón).
+  if (opts.test || opts.to?.length || !prefs.whatsappOn) return email;
+  const modo = opts.modo ?? (opts.force ? "semanal" : modoDelDia(prefs.frecuencia));
+  if (!modo) return { ...email, whatsapp: { enviado: false, destinatarios: prefs.whatsappDestinatarios.length, motivo: "hoy no toca" } };
+  const whatsapp = await sendWhatsappChannel(prefs, "alertas", Boolean(opts.dry), async () => {
+    const sent = await sentKeys(modo === "diaria" ? 7 : 6, "whatsapp");
+    if (modo === "diaria" && !sent && !opts.force) return { skip: "sin migración 0108 no se envían alertas diarias (no hay dedupe)" };
+    const picked = selectDigest(await items(), sent, modo);
+    if (!picked.length) return { skip: modo === "diaria" ? "nada nuevo de prioridad alta" : "sin alertas relevantes" };
+    const msg = buildAlertsWhatsApp(picked, modo, waCtx());
+    return { text: msg.text, keys: msg.shown.map((x) => x.key) }; // dedupe solo de lo que entró en el mensaje
+  });
+  return { ...email, whatsapp };
+}
+
+async function runDigestEmail(prefs: AlertPrefs, opts: { force?: boolean; dry?: boolean; test?: boolean; modo?: "semanal" | "diaria"; to?: string[] }, items: () => Promise<AlertItem[]>): Promise<DigestResult> {
   const frec: Frecuencia = prefs.emailOn ? prefs.frecuencia : "off";
   const modo = opts.test ? "prueba" : (opts.modo ?? (opts.force ? "semanal" : modoDelDia(frec)));
   const base = { modo: modo ?? "off", enviado: false, items: 0, destinatarios: 0 };
   if (!modo) return { ...base, motivo: frec === "off" ? "alertas por email apagadas" : "hoy no toca" };
   if (!opts.test && !opts.force && frec === "off") return { ...base, motivo: "alertas por email apagadas" };
 
-  const all = await buildAlertItems();
+  const all = await items();
   const sent = await sentKeys(modo === "diaria" ? 7 : 6);
   if (modo === "diaria" && !sent && !opts.test && !opts.force) return { ...base, motivo: "sin migración 0108 no se envían alertas diarias (no hay dedupe)" };
   const picked = selectDigest(all, sent, modo);
@@ -293,7 +361,7 @@ const pct = (v: number | null | undefined) => (v == null ? "—" : `${Math.round
 // = SEMAFORO_COLOR (verde ≥100, amarillo ≥90, rojo) — solo estado.
 const semaforo = (v: number | null | undefined) => (v == null ? "#94a3b8" : v >= 100 ? "#16a34a" : v >= 90 ? "#d97706" : "#dc2626");
 
-export async function buildExecutiveReport(now = new Date()): Promise<{ subject: string; html: string; resumen: Record<string, unknown> }> {
+export async function buildExecutiveReport(now = new Date()): Promise<{ subject: string; html: string; resumen: Record<string, unknown>; wa: ReporteWaData }> {
   const t = getTenant();
   const ar = new Date(now.getTime() - 3 * 3_600_000);
   const ref = new Date(Date.UTC(ar.getUTCFullYear(), ar.getUTCMonth() - 1, 1)); // mes cerrado anterior
@@ -363,21 +431,39 @@ export async function buildExecutiveReport(now = new Date()): Promise<{ subject:
     subject: `${t.displayName} · Reporte ejecutivo de marketing · ${mesLbl}`,
     html: shell(`Reporte ejecutivo · ${mesLbl}`, intro, body, { href: appUrl("/overview"), label: "Ver el Seguimiento completo" }),
     resumen: { mes: mesLbl, objetivos: seg?.objetivos.length ?? 0, kpis: kpiRows.length, alertas: top.length, shareOfSearch: sosCur, diagnostico: Boolean(diagHtml) },
+    wa: {
+      mesLbl,
+      saludMarca: seg?.disponible ? { mes: seg.saludMarca.cumplSerie[mi] ?? null, ytd: seg.saludMarca.cumplYtd ?? null } : null,
+      objetivos: seg?.disponible ? seg.objetivos.map((o) => ({ nombre: o.nombre, mes: o.cumplSerie[mi] ?? null, ytd: o.cumplYtd ?? null })) : [],
+      kpisBrecha: kpiRows,
+      shareOfSearch: sosCur,
+      alertas: top,
+    },
   };
 }
 
-export async function runExecutiveReport(opts: { force?: boolean; dry?: boolean; test?: boolean; to?: string[] } = {}): Promise<{ enviado: boolean; motivo?: string; resumen?: Record<string, unknown> }> {
+export async function runExecutiveReport(opts: { force?: boolean; dry?: boolean; test?: boolean; to?: string[] } = {}): Promise<{ enviado: boolean; motivo?: string; resumen?: Record<string, unknown>; whatsapp?: WhatsappResult }> {
   const prefs = await getAlertPrefs();
   if (!prefs.reporteOn && !opts.force && !opts.test) return { enviado: false, motivo: "apagado en preferencias" };
   if (!opts.force && !opts.test && !isFirstBusinessDay()) return { enviado: false, motivo: "no es el primer día hábil del mes" };
-  // Dedupe mensual (una vez por mes aunque el cron reintente).
+  // Dedupe mensual POR CANAL (una vez por mes aunque el cron reintente).
   const monthKey = `reporte:${new Date().toISOString().slice(0, 7)}`;
-  if (!opts.force && !opts.test && !opts.dry) { const s = await sentKeys(20, "reporte"); if (s?.has(monthKey)) return { enviado: false, motivo: "ya enviado este mes" }; }
+  const checkDedupe = !opts.force && !opts.test && !opts.dry;
+  const emailDone = checkDedupe ? Boolean((await sentKeys(20, "reporte"))?.has(monthKey)) : false;
+  const waWanted = !opts.test && !opts.to?.length && prefs.whatsappOn;
+  const waDone = waWanted && checkDedupe ? Boolean((await sentKeys(20, "whatsapp"))?.has(monthKey)) : false;
+  if (emailDone && (!waWanted || waDone)) return { enviado: false, motivo: "ya enviado este mes" };
+
   const rep = await buildExecutiveReport();
+  const whatsapp = !waWanted ? undefined
+    : waDone ? { enviado: false, destinatarios: prefs.whatsappDestinatarios.length, motivo: "ya enviado este mes" }
+    : await sendWhatsappChannel(prefs, "reporte", Boolean(opts.dry), async () => ({ text: formatReporteWhatsApp(rep.wa, waCtx()), keys: [monthKey] }));
+
+  if (emailDone) return { enviado: false, motivo: "ya enviado este mes", resumen: rep.resumen, whatsapp };
   const to = opts.to?.length ? opts.to : resolveRecipients(prefs);
-  if (opts.dry) return { enviado: false, motivo: "dry-run", resumen: { ...rep.resumen, destinatarios: to.length } };
-  if (!to.length) return { enviado: false, motivo: "sin destinatarios (configurá la lista en /alerts o ALERT_RECIPIENTS)", resumen: rep.resumen };
+  if (opts.dry) return { enviado: false, motivo: "dry-run", resumen: { ...rep.resumen, destinatarios: to.length }, whatsapp };
+  if (!to.length) return { enviado: false, motivo: "sin destinatarios (configurá la lista en /alerts o ALERT_RECIPIENTS)", resumen: rep.resumen, whatsapp };
   const r = await sendEmail(to, rep.subject, rep.html);
   if (r.ok && !opts.test) await logSent([monthKey], "reporte"); // la prueba no cuenta como el envío del mes
-  return { enviado: r.ok, motivo: r.ok ? undefined : r.error, resumen: rep.resumen };
+  return { enviado: r.ok, motivo: r.ok ? undefined : r.error, resumen: rep.resumen, whatsapp };
 }

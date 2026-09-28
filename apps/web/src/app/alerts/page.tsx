@@ -12,8 +12,8 @@ export const fetchCache = "force-no-store";
 
 const CARDS = [
   { t: "En el dashboard", d: "Señales en cada tablero y en el Diagnóstico IA." },
-  { t: "Resumen semanal por email", d: "Los lunes: lo nuevo y lo que sigue abierto." },
-  { t: "Alertas diarias por email", d: "Solo si aparece algo nuevo de prioridad alta." },
+  { t: "Resumen semanal", d: "Los lunes, por email y/o WhatsApp: lo nuevo y lo que sigue abierto." },
+  { t: "Alertas diarias", d: "Solo si aparece algo nuevo de prioridad alta (email y/o WhatsApp)." },
   { t: "Reporte ejecutivo mensual", d: "El primer día hábil: objetivos, KPIs vs meta, share of search, alertas y diagnóstico." },
 ];
 
@@ -37,8 +37,9 @@ export default async function AlertsPage() {
         ))}
       </div>
       <AlertasForm
-        initial={{ emailOn: prefs.emailOn, frecuencia: prefs.frecuencia, destinatarios: prefs.destinatarios, reporteOn: prefs.reporteOn }}
+        initial={{ emailOn: prefs.emailOn, frecuencia: prefs.frecuencia, destinatarios: prefs.destinatarios, reporteOn: prefs.reporteOn, whatsappOn: prefs.whatsappOn, whatsappDestinatarios: prefs.whatsappDestinatarios }}
         migrated={prefs.migrated}
+        whatsappMigrated={prefs.whatsappMigrated}
         emailReady={emailEnabled()}
         envRecipients={envRecipients()}
         lastEmail={fdate(lastEmail)}
@@ -46,7 +47,7 @@ export default async function AlertsPage() {
       />
       <UmbralesForm initial={umb.umbrales} migrated={umb.migrated} />
       <AlertasPreview />
-      <p className="text-[11px] text-muted-foreground">Las alertas llegan por email (Resend). Fuentes: motor de señales de cada tablero, desvíos de KPIs del Seguimiento Objetivos (meses cerrados), tus umbrales y la Biblioteca de anuncios de Meta.</p>
+      <p className="text-[11px] text-muted-foreground">Las alertas llegan por email (Resend) y, si está prendido, por WhatsApp (número propio vía Evolution API). Fuentes: motor de señales de cada tablero, desvíos de KPIs del Seguimiento Objetivos (meses cerrados), tus umbrales y la Biblioteca de anuncios de Meta.</p>
     </div>
   );
 }
