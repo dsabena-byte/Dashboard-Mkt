@@ -19,6 +19,11 @@
 - **Deploy:** commit + `git push origin HEAD:main` (Vercel deploya solo; rebasar si main avanzó).
 - **Mergeá siempre sin preguntar:** cuando termina un cambio validado (tsc OK), abrí el PR y
   **mergealo directo** (squash a `main`) — no preguntes "¿lo mergeo?". Preferencia explícita del user.
+- **Registrá lo que el usuario YA intentó (pedido explícito 28-sep-2026):** cada vez que el usuario hace pasos manuales
+  (configurar una plataforma, re-autorizar, hablar con soporte, cargar datos), anotalo en el md del tema (este CLAUDE.md,
+  `docs/`, el de bip-platform o el vault `bip-knowledge`) con qué hizo, cuándo y qué resultó. **Antes de pedirle un paso,
+  revisá ese registro** — no le pidas de nuevo algo que ya probó (le molesta mucho). Ej: Mercado Libre →
+  `bip-platform/docs/mercado-libre-app-estado.md`; TikTok → nota de abajo.
 - **Mantené esta memoria al día:** después de cualquier decisión/fix importante, actualizá este
   `CLAUDE.md` y/o `docs/` **proactivamente**, sin que te lo pidan.
 - **Seguridad:** hay credenciales de producción en el entorno (service-role key, API keys). No
