@@ -828,6 +828,12 @@ reporte_existencia/cb_homologos).
   verificación OAuth de Google y el App Review de Meta sigan pendientes; **"App verificada por Google" ACTIVO desde 27-sep-2026** (Verification Center:
   marca + acceso a datos verificados); "App aprobada por Meta" sigue **comentado** (`<!-- ACTIVAR cuando … -->`) hasta el App Review.
   "Solo lectura" se dice de las MÉTRICAS: BIP ya modera comentarios de IG a pedido del usuario (no es 100% read-only).
+  **Novedades + franja de integraciones (28-sep-2026, rama `claude/bip-web-novedades`):** sección `#integraciones` (16 logos SVG
+  inline de `simple-icons` CC0, gris → color de marca al hover; Clarity/Excel-SharePoint/Bing/Mercado Libre/Tiendanube = badge
+  tipográfico porque no están en simple-icons); estados según bip-platform: ML disponible en modo catálogo (Optimize, sin prometer
+  "más vendidos"), DV360 "lo armamos con vos" (conector coordinado), TikTok/Tiendanube/WhatsApp "muy pronto". Sumados: inversión
+  diaria por medio (reemplaza "ritmo de inversión", #148), Guiame paso a paso + Mis acciones, ayuda/videos, Salud de Marca
+  (Accelerate). Las dos copias (bip.html y Roque) se parchean con el MISMO script → mantenerlas idénticas salvo WhatsApp/rutas.
 
 - **Generador de Contenido — Calendario + publicación IG/FB (dic-2026):** `/contenido` →
   `/contenido/calendario` (tabs: RRSS, UGC, Biblioteca UGC, Adaptación de piezas). Las piezas viven en
