@@ -346,8 +346,10 @@ reporte_existencia/cb_homologos).
   `lib/objetivos-pronostico.ts` → /overview: cierre proyectado + probabilidad por KPI/objetivo/Salud de Marca y "qué explica
   el resultado" (Shapley). `histM` solo pronostica con ≥10 meses (`histParaPronostico`; GA4 2025 tiene hueco jun–oct).
   "Sugerir metas" en MetaPanel (`/api/metas/historia`), "Validar con mis datos" en el Mapa (vs share GfK), marca vs activación
-  60:40 en Eficiencia Medios. Moneda $ corrientes/constantes (IPC INDEC)/USD (BCRA): `indices_macro` (0110) + cron `sync-macro`;
-  /performance convierte server-side (`?moneda=`), /funnel suma "$ constantes". "Qué hacer ahora" (`lib/recomendacion.ts`) arriba
+  60:40 en Eficiencia Medios. **Moneda = solo "$" y "USD" (BCRA)** (28-sep-2026 se SACÓ "$ constantes"/IPC de la UI: "es muy
+  confuso, no se utiliza en Argentina"; no volver a ofrecerlo). `indices_macro` (0110) + cron `sync-macro` siguen (dólar para USD;
+  IPC solo como deflactor interno de "Validar con mis datos"). /performance convierte server-side (`?moneda=usd`; `constantes` de
+  links viejos cae a "$"); /funnel tiene su propio $/USD (columnas de `bgt_marketing`). Guía 🎓 `moneda_montos`. "Qué hacer ahora" (`lib/recomendacion.ts`) arriba
   del Diagnóstico. `metricas.ts` = catálogo con nombres EXACTOS del Seguimiento. Salud de los datos (`components/data-health.tsx`)
   bajo el título de 6 tableros, misma regla que /monitoreo (cadencias deben coincidir: test `data-health`); NO usar `web_traffic`.
   Data real 27-sep: Salud de Marca YTD 92,5%, brecha −7,5 pts (VTR −2,7, Frecuencia −1,5, CB −0,9); Pauta con 5 meses → objetivos
@@ -833,7 +835,7 @@ reporte_existencia/cb_homologos).
   `<meta charset>` (había mojibake). bip-go.com (Netlify) NO se actualiza solo: re-subir `bip.html`.
   **Capacidades nuevas + confianza (27-sep-2026):** planes/módulos/FULL/FAQ con lo shipeado en bip-platform (gating según
   `NAV`/`FEATURE_MIN`: Góndola ML + SEO técnico/SC a fondo/visibilidad IA/IndexNow-Bing/ESoS + competencia IG oficial y pauta
-  probable = Optimize; MMM-lite = Accelerate (Simulador); pacing, fatiga, marca vs activación, metas sugeridas, moneda constante,
+  probable = Optimize; MMM-lite = Accelerate (Simulador); pacing, fatiga, marca vs activación, metas sugeridas, moneda $/USD,
   salud de conexiones, copiloto verificado, "Armame el tablero", anotaciones, umbrales y link compartido = todos; envío
   programado = Optimize+). ML, Tiendanube y TikTok van como **"muy pronto"** (sin credenciales/app aprobada). En `#seguridad` hay
   una franja de **badges honestos** (`.tbadges`: APIs oficiales de Google/Meta, OAuth 2.0, solo lectura de métricas, revocable,

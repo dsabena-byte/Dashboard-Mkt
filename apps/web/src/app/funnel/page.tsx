@@ -2,7 +2,6 @@ import { getBgtData, hasVersion } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
 import { computeCuatris, MAX_DESVIO, MAX_INV_FACT } from "@/lib/bgt-dashboard";
 import { InversionComparador } from "@/components/inversion/inversion-comparador";
-import { getIndicesMacro } from "@/lib/moneda-server";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { DataHealth } from "@/components/data-health";
@@ -127,11 +126,9 @@ export default async function InversionMarketingPage() {
   const curYear = now.getUTCFullYear();
   const curMonth = now.getUTCMonth() + 1;
 
-  const [bgt, factRows, indices] = await Promise.all([
+  const [bgt, factRows] = await Promise.all([
     safe(getBgtData(), { rows: [], syncedAt: null }),
     safe(getFacturacionMensual(), [] as Awaited<ReturnType<typeof getFacturacionMensual>>),
-    // IPC para "$ constantes" del comparador (indices_macro, migración 0110; vacío = opción deshabilitada).
-    safe(getIndicesMacro(), []),
   ]);
 
   const cuatris = computeCuatris(
@@ -190,7 +187,7 @@ export default async function InversionMarketingPage() {
       </section>
 
       {/* ===== Comparador libre A vs B ===== */}
-      <InversionComparador rows={bgt.rows} facturacion={factRows} year={YEAR} indices={indices} />
+      <InversionComparador rows={bgt.rows} facturacion={factRows} year={YEAR} />
     </DashTabs>
   );
 }

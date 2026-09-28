@@ -17,7 +17,7 @@ const fx = (f: string) => JSON.parse(readFileSync(join(__dirname, "fixtures", f)
 
 // ── parseMoneda / helpers ──
 ok(parseMoneda(undefined) === "corrientes", "default corrientes");
-ok(parseMoneda("USD") === "usd" && parseMoneda(["constantes"]) === "constantes" && parseMoneda("xx") === "corrientes", "parseMoneda");
+ok(parseMoneda("USD") === "usd" && parseMoneda(["constantes"]) === "corrientes" && parseMoneda("xx") === "corrientes", "parseMoneda (constantes ya no es opción del selector → \"$\")");
 ok(normMes("2026-08-01") === "2026-08" && normMes("2026-13") === null && normMes("") === null, "normMes");
 ok(mesLabel("2026-08") === "ago-2026", "mesLabel");
 ok(mesesEntre("2025-11-15", "2026-02-03").join() === "2025-11,2025-12,2026-01,2026-02", "mesesEntre cruza año");
@@ -64,7 +64,7 @@ ok(convertir(cor, 123, "2026-01").valor === 123 && !convertir(cor, 1, "2026-09")
 const sinIdx = resolverContexto("constantes", []);
 ok(sinIdx.ctx.moneda === "corrientes" && !!sinIdx.aviso, "sin IPC → corrientes con aviso");
 ok(resolverContexto("usd", [{ mes: "2026-01", ipc: 1, usd_oficial: null }]).ctx.moneda === "corrientes", "sin dólar → corrientes");
-ok(monedaLabel(cte) === "Pesos constantes (de mar-2026)" && monedaLabel(usd).startsWith("USD"), "labels");
+ok(monedaLabel(cte) === "Pesos constantes (de mar-2026)" && monedaLabel(usd).startsWith("USD") && monedaLabel(cor) === "$", "labels");
 
 const s12 = convertirSerie12(cte, 2026, [100, 110, null, 50, ...Array(8).fill(null)]);
 ok(near(s12.valores[0], 121) && near(s12.valores[1], 121) && s12.valores[2] === null && s12.faltantes.join() === "2026-04", "serie 12 meses + faltantes");

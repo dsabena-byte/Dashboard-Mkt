@@ -1,10 +1,12 @@
 // ============================================================================
-// MONEDA CONSTANTE (portado de BIP, sep-2026) — módulo PURO y client-safe (sin server-only, sin fetch).
+// MONEDA DE LOS MONTOS (portado de BIP, sep-2026) — módulo PURO y client-safe (sin server-only, sin fetch).
 //
-// Tres formas de leer un monto en pesos:
-//   · "corrientes"  → tal cual lo informó la plataforma (default: lo que el cliente ve hoy).
-//   · "constantes"  → pesos del MES BASE: monto × IPC(base) ÷ IPC(mes del monto).
+// El selector de los tableros ofrece DOS formas de leer un monto (sep-2026: se sacó "$ constantes"
+// de la UI a pedido del user — "es muy confuso, no se utiliza en Argentina"):
+//   · "corrientes"  → "$": tal cual lo informó la plataforma (default).
 //   · "usd"         → monto ÷ dólar oficial del mes (promedio de los días hábiles del mes).
+// "constantes" (monto × IPC(base) ÷ IPC(mes)) queda SOLO como cálculo interno (deflactar montos en
+// "Validar con mis datos" del Mapa); no es una opción del selector y `?moneda=constantes` cae a "$".
 // Fuente de índices: tabla `indices_macro` (mes, ipc, usd_oficial, usd_mep) que llena el cron
 // `sync-macro` (IPC INDEC vía API de Series de Tiempo de datos.gob.ar; dólar vía API del BCRA).
 // Si falta el índice de un mes se usa el ÚLTIMO disponible anterior (o el primero posterior si no
@@ -13,8 +15,11 @@
 // Test: cd apps/web && npx tsx scripts/moneda.test.ts
 // ============================================================================
 
-export type Moneda = "corrientes" | "constantes" | "usd";
-export const MONEDAS: Moneda[] = ["corrientes", "constantes", "usd"];
+/** Monedas del selector de los tableros ("$" y "USD"). */
+export type Moneda = "corrientes" | "usd";
+export const MONEDAS: Moneda[] = ["corrientes", "usd"];
+/** Monedas de cálculo: las del selector + "constantes" (deflactor IPC, uso interno de análisis). */
+export type MonedaCalc = Moneda | "constantes";
 
 /** Fila de `indices_macro`. mes = "YYYY-MM" (se acepta "YYYY-MM-DD" y se recorta). */
 export interface IndiceMes { mes: string; ipc: number | null; usd_oficial: number | null; usd_mep?: number | null }
@@ -28,7 +33,7 @@ export interface IndicesMacro {
 }
 
 export interface ConvContext {
-  moneda: Moneda;
+  moneda: MonedaCalc;
   idx: IndicesMacro;
   base: string | null;        // mes base de "constantes" (YYYY-MM)
 }
@@ -52,7 +57,7 @@ export function mesLabel(mes: string | null | undefined): string {
 
 export function parseMoneda(v: string | string[] | null | undefined): Moneda {
   const s = ((Array.isArray(v) ? v[0] : v) ?? "").toString().toLowerCase().trim();
-  return s === "constantes" || s === "usd" ? s : "corrientes";
+  return s === "usd" ? "usd" : "corrientes"; // "constantes" (link viejo) cae a "$"
 }
 
 const pos = (x: unknown): number | null => { const n = Number(x); return x != null && x !== "" && Number.isFinite(n) && n > 0 ? n : null; };
@@ -145,11 +150,11 @@ export function mesesEntre(desde: string, hasta: string): string[] {
   return out;
 }
 
-/** Contexto listo para usar: si se pidió constantes/usd y no hay índices, vuelve a corrientes y lo avisa. */
-export function resolverContexto(moneda: Moneda, rows: IndiceMes[] | null | undefined, base?: string | null): { ctx: ConvContext; aviso: string | null } {
+/** Contexto listo para usar: si se pidió usd (o constantes, uso interno) y no hay índices, vuelve a "$" y lo avisa. */
+export function resolverContexto(moneda: MonedaCalc, rows: IndiceMes[] | null | undefined, base?: string | null): { ctx: ConvContext; aviso: string | null } {
   const idx = buildIndices(rows);
-  if (moneda === "constantes" && !idx.ipc.size) return { ctx: { moneda: "corrientes", idx, base: null }, aviso: "Todavía no tenemos la serie de inflación (IPC): se muestran pesos corrientes." };
-  if (moneda === "usd" && !idx.usd.size) return { ctx: { moneda: "corrientes", idx, base: null }, aviso: "Todavía no tenemos la serie del dólar oficial: se muestran pesos corrientes." };
+  if (moneda === "constantes" && !idx.ipc.size) return { ctx: { moneda: "corrientes", idx, base: null }, aviso: "Todavía no tenemos la serie de inflación (IPC): los montos van sin ajustar." };
+  if (moneda === "usd" && !idx.usd.size) return { ctx: { moneda: "corrientes", idx, base: null }, aviso: "Todavía no tenemos la serie del dólar oficial: se muestran en $." };
   const b = normMes(base ?? null) && idx.ipc.has(normMes(base)!) ? normMes(base) : idx.ultimoIpc;
   return { ctx: { moneda, idx, base: moneda === "constantes" ? b : null }, aviso: null };
 }
@@ -167,7 +172,7 @@ export function avisoFaltantes(ctx: ConvContext, faltantes: string[]): string | 
 export function monedaLabel(ctx: Pick<ConvContext, "moneda" | "base">): string {
   if (ctx.moneda === "usd") return "USD (dólar oficial del mes)";
   if (ctx.moneda === "constantes") return `Pesos constantes (de ${mesLabel(ctx.base)})`;
-  return "Pesos corrientes";
+  return "$";
 }
 
 /** Código de moneda para los formateadores ("ARS" / "USD"). */

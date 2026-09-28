@@ -1,5 +1,5 @@
 // ============================================================================
-// Moneda constante / USD aplicada al Plan de Medios de Drean (portado de BIP lib/moneda-pauta.ts,
+// Moneda (USD) aplicada al Plan de Medios de Drean (portado de BIP lib/moneda-pauta.ts,
 // sep-2026). PURO y client-safe. Lo usa el server component de /performance ANTES de pasarle la data
 // al tablero → el cliente (performance-client) NO cambia: recibe los montos ya convertidos y todo lo
 // derivado (CPM, CPC, costo por vista, cuatrimestres, metas) sale en la misma moneda.
@@ -7,7 +7,7 @@
 //  · DV360 viene en USD y el tablero lo pasa a ARS con fx_rates del mes: se aplica el mismo factor
 //    mensual a revenue_usd (el producto conmuta). En "usd": revenue_usd × fx ÷ dólar oficial ≈ USD.
 //  · Metas de Inversión (valores[12] del año) con el mismo factor → se comparan en la misma moneda.
-// Default (sin ?moneda) = corrientes → devuelve los mismos objetos (cero cambio).
+// Default (sin ?moneda) = "$" (corrientes) → devuelve los mismos objetos (cero cambio).
 // ============================================================================
 import { factorMes, normMes, mesKey, type ConvContext } from "./moneda";
 

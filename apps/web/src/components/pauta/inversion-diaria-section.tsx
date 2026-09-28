@@ -68,7 +68,7 @@ export function InversionDiariaSection({ d }: { d: PautaDiariaData }) {
         </div>
       </div>
       <p className="mb-3 mt-1 text-[11px] text-muted-foreground">
-        Gasto real por día, tal cual lo informa cada plataforma ($ corrientes, no responde a los filtros ni al selector de moneda). Sirve para
+        Gasto real por día, tal cual lo informa cada plataforma (en $, no responde a los filtros ni al selector de moneda). Sirve para
         detectar una pauta mal configurada que se gasta el presupuesto del mes en pocos días. Un punto <b style={{ color: "#b91c1c" }}>rojo</b> marca un
         día que gastó más de {CFG_DIARIA.factorPico} veces lo de un día normal de ese medio (mediana de los 14 días anteriores con gasto).
         {d.google.desde && <> Google Ads por día desde el {fFecha(d.google.desde)}.</>}
