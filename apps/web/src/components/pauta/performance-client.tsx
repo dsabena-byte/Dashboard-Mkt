@@ -42,9 +42,9 @@ import { esMedioApi } from "@/lib/pauta-medios";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { MarcaActivacionSection } from "@/components/pauta/marca-activacion";
 import { splitMarcaActivacion } from "@/lib/marca-activacion";
-import { computePacing } from "@/lib/pauta-pacing";
 import { fatigaPiezas } from "@/lib/pauta-fatiga";
-import { PacingSection } from "@/components/pauta/pacing-section";
+import { InversionDiariaSection } from "@/components/pauta/inversion-diaria-section";
+import type { PautaDiariaData } from "@/lib/pauta-diaria";
 import { FatigaSection } from "@/components/pauta/fatiga-section";
 
 const fmtUSD = (n: number): string =>
@@ -334,7 +334,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], bgtPauta = null, initialTab, headerExtra }: { /** Server: selector de moneda + salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; bgtPauta?: { versiones: (string | null)[]; valores: (number | null)[] } | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], pautaDiaria = null, initialTab, headerExtra }: { /** Server: selector de moneda + salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
   // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
   // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
   // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
@@ -904,14 +904,6 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
     });
   }, [data, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, arsMode, fxFallback, currentMonth, catImp]);
 
-  // Ritmo de inversión del mes EN CURSO (pacing) vs la meta de Inversión — mismo modelo por medio
-  // (buildPautaMediosMensual, vía lib/pauta-pacing). Momento del dato = última sync de Meta.
-  const pacing = useMemo(() => {
-    try {
-      const asOf = freshness?.meta ? new Date(freshness.meta) : new Date();
-      return computePacing({ pauta: rawData, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, anio: 2026, asOf, now: new Date(), plan: metas["Inversión"]?.valores ?? null, bgt: bgtPauta, extra: [{ medio: "Ecommerce", valores: ecommerceInv }] });
-    } catch { return null; }
-  }, [rawData, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, freshness?.meta, metas, bgtPauta, ecommerceInv]);
   // Fatiga creativa por pieza (serie mensual Meta + DV360). Año completo, sin filtros.
   const fatiga = useMemo(() => {
     try { return fatigaPiezas({ metaPaid, dv360, dv360Reach, fxRates, mesEnCurso: new Date().toISOString().slice(0, 7) }); } catch { return null; }
@@ -1296,12 +1288,6 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
             ))}
           </section>
 
-          {pacing && (
-            <div className="mt-4">
-              <PacingSection p={pacing} />
-            </div>
-          )}
-
           <SectionTitle>Evolución mensual · real vs meta</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
             Año completo 2026 (no responde a los filtros). Real en azul/tinta, meta en gris pizarra.
@@ -1462,6 +1448,12 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       {/* ===== POR MEDIO · arranca con el marco transversal de Calidad/Impacto ===== */}
       {tab === "Eficiencia Medios" && (
         <div>
+          {pautaDiaria && (
+            <>
+              <SectionTitle>Inversión diaria · medios con API · detección de gasto fuera de lo normal</SectionTitle>
+              <InversionDiariaSection d={pautaDiaria} />
+            </>
+          )}
           <div className="mb-4">{filtros}</div>
           <SectionTitle>Tabla maestra · medios digitales · general + efectivo</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">

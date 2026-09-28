@@ -88,31 +88,45 @@ async function listAllAdAccounts(token: string): Promise<AdAccount[]> {
 
 // Días REALES que cada pieza estuvo entregando en el mes: una consulta de
 // insights a nivel cuenta con time_increment=1 (una fila por ad × día) pidiendo
-// solo `impressions`. Contamos, por ad_id, los días con impresiones > 0. Es una
-// llamada barata (campo mínimo) y NO toca la llamada pesada de /ads con creative.
-// Nunca rompe el sync: ante error devuelve un mapa vacío (dias_activos queda null).
+// solo `impressions` + `spend`. Contamos, por ad_id, los días con impresiones > 0
+// y además sumamos el gasto por (día, campaña) → tabla meta_paid_daily (migración
+// 0124; alimenta "Inversión diaria por medio" en Eficiencia Medios). Es una
+// llamada barata (campos mínimos) y NO toca la llamada pesada de /ads con creative.
+// Nunca rompe el sync: ante error devuelve mapas vacíos (dias_activos queda null).
+interface DailyCampaign { fecha: string; campaign_id: string; campaign_name: string | null; spend: number; impresiones: number }
 async function fetchActiveDaysMap(
   actId: string,
   since: string,
   until: string,
   token: string,
-): Promise<Map<string, number>> {
+): Promise<{ activeDays: Map<string, number>; daily: DailyCampaign[] }> {
   const days = new Map<string, Set<string>>();
+  const daily = new Map<string, DailyCampaign>();
   const timeRange = encodeURIComponent(JSON.stringify({ since, until }));
   let nextUrl: string | undefined =
     `${GRAPH_API}/${actId}/insights?level=ad&time_increment=1` +
-    `&fields=ad_id,impressions&time_range=${timeRange}&limit=500&access_token=${token}`;
+    `&fields=ad_id,campaign_id,campaign_name,impressions,spend&time_range=${timeRange}&limit=500&access_token=${token}`;
   try {
     let pages = 0;
     while (nextUrl && pages < 100) {
-      const page: { data?: Array<{ ad_id?: string; impressions?: string; date_start?: string }>; paging?: { next?: string } } =
+      const page: { data?: Array<{ ad_id?: string; campaign_id?: string; campaign_name?: string; impressions?: string; spend?: string; date_start?: string }>; paging?: { next?: string } } =
         await graphGet(nextUrl);
       for (const row of page.data ?? []) {
         const adId = row.ad_id;
         const impr = Number(row.impressions ?? 0) || 0;
+        const spend = Number(row.spend ?? 0) || 0;
+        const fecha = row.date_start ?? "";
+        if (fecha && (spend > 0 || impr > 0)) {
+          const cid = row.campaign_id ?? "(sin campaña)";
+          const k = `${fecha}|${cid}`;
+          const d = daily.get(k) ?? { fecha, campaign_id: cid, campaign_name: row.campaign_name ?? null, spend: 0, impresiones: 0 };
+          d.spend += spend;
+          d.impresiones += impr;
+          daily.set(k, d);
+        }
         if (!adId || impr <= 0) continue;
         const set = days.get(adId) ?? new Set<string>();
-        set.add(row.date_start ?? ""); // una fila por día → date_start es el día
+        set.add(fecha); // una fila por día → date_start es el día
         days.set(adId, set);
       }
       nextUrl = page.paging?.next;
@@ -120,11 +134,37 @@ async function fetchActiveDaysMap(
     }
   } catch {
     // Si la cuenta/token no permite insights a nivel cuenta, seguimos sin el dato.
-    return new Map();
+    return { activeDays: new Map(), daily: [] };
   }
   const out = new Map<string, number>();
   for (const [adId, set] of days) out.set(adId, set.size);
-  return out;
+  return { activeDays: out, daily: [...daily.values()].map((d) => ({ ...d, spend: Math.round(d.spend * 100) / 100 })) };
+}
+
+// Guarda el gasto diario por campaña del mes (clean-replace del rango del mes, así una campaña que dejó de
+// gastar no queda con un dato viejo). Sin la migración 0124 devuelve el aviso y no rompe el sync.
+async function upsertMetaDaily(rows: DailyCampaign[], since: string, until: string): Promise<string> {
+  const url = env("NEXT_PUBLIC_SUPABASE_URL");
+  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  const h = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+  try {
+    if (!rows.length) return "sin filas diarias";
+    const del = await fetch(`${url}/rest/v1/meta_paid_daily?fecha=gte.${since}&fecha=lte.${until}`, { method: "DELETE", headers: { ...h, Prefer: "return=minimal" } });
+    if (!del.ok) {
+      const t = await del.text();
+      return /PGRST205|42P01|does not exist|schema cache/i.test(t) ? "falta migración 0124_meta_paid_daily" : `daily delete ${del.status}: ${t.slice(0, 160)}`;
+    }
+    const now = new Date().toISOString();
+    const res = await fetch(`${url}/rest/v1/meta_paid_daily?on_conflict=fecha,campaign_id`, {
+      method: "POST",
+      headers: { ...h, Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(rows.map((r) => ({ ...r, updated_at: now }))),
+    });
+    if (!res.ok) return `daily upsert ${res.status}: ${(await res.text()).slice(0, 160)}`;
+    return `${rows.length} filas diarias`;
+  } catch (e) {
+    return `daily error: ${e instanceof Error ? e.message : String(e)}`;
+  }
 }
 
 async function discoverActId(token: string): Promise<{ act_id: string; name: string }> {
@@ -743,7 +783,8 @@ export async function GET(req: Request) {
     phase = "active_days";
     // Días reales pautados por pieza (impresiones > 0 por día). Una sola serie de
     // llamadas baratas a nivel cuenta; si falla, el mapa queda vacío y no rompe nada.
-    const activeDaysMap = await fetchActiveDaysMap(act_id!, since, until, token);
+    const { activeDays: activeDaysMap, daily: dailyRows } = await fetchActiveDaysMap(act_id!, since, until, token);
+    const dailyResult = await upsertMetaDaily(dailyRows, since, until);
 
     phase = "upsert";
     // Diagnóstico de origen de imagen: cuántas piezas resolvieron por cada vía y
@@ -934,6 +975,7 @@ export async function GET(req: Request) {
       fallback_sample: fallbackSample,
       upsert: upsertResult,
       aggregate: aggregateResult,
+      diario: dailyResult,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
