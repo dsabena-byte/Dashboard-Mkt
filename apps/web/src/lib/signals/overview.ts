@@ -42,9 +42,9 @@ export function computeOverviewSignals(seg: SeguimientoObjetivos | null | undefi
   const pal = palancas(seg).filter((p) => p.puntosSalud >= 1);
   pal.slice(0, 3).forEach((p, i) => S({
     key: `overview_lever_${p.kpi}`, tipo: "oportunidad", prioridad: i === 0 || p.puntosSalud >= 5 ? "alta" : "media",
-    titulo: `${i === 0 ? "Mayor palanca" : "Palanca"}: llevar "${p.kpi}" a su meta suma +${p.puntosSalud.toFixed(1)} pts de Salud de Marca`,
-    descripcion: `${p.kpi} (${p.plan}) cumple ${fPct(p.cumplYtd, 0)} YTD y pesa ${fPct(p.pesoGlobal, 1)} de la Salud de Marca vía ${p.objetivos.join(", ")}.`,
-    acciones: [`Priorizar las acciones del plan ${p.plan} que mueven ${p.kpi}`, "Revisar en su tablero la causa de la brecha (costo, volumen o calidad)"],
+    titulo: `${i === 0 ? "Lo que más suma" : "También suma"}: si "${p.kpi}" llega a su meta, la Salud de Marca sube +${p.puntosSalud.toFixed(1)} puntos`,
+    descripcion: `${p.kpi} (${p.plan}) va al ${fPct(p.cumplYtd, 0)} de su meta en lo que va del año y explica el ${fPct(p.pesoGlobal, 1)} de la Salud de Marca, a través de ${p.objetivos.join(", ")}.`,
+    acciones: [`Poné primero las acciones de ${p.plan} que mueven "${p.kpi}"`, "En su tablero, fijate por qué no llega: si es por costo, por volumen o por calidad"],
     datos: { ...p },
     impacto: { metrica: "Puntos de Salud de Marca", valor: p.puntosSalud, unidad: "pts" },
   }));
@@ -55,17 +55,17 @@ export function computeOverviewSignals(seg: SeguimientoObjetivos | null | undefi
       const peor = [...o.aportes].filter((a) => a.cumpl != null).sort((a, b) => (100 - b.cumpl!) * b.peso - (100 - a.cumpl!) * a.peso)[0];
       S({
         key: `overview_objective_off_${o.id}`, tipo: "alerta", prioridad: o.cumplYtd < 60 ? "alta" : "media",
-        titulo: `Objetivo "${o.nombre}" en ${fPct(o.cumplYtd, 0)} de cumplimiento YTD`,
-        descripcion: `Peso estratégico ${fPct(o.pesoEstrategico, 0)}. Mes: ${o.cumplMes == null ? "s/d" : fPct(o.cumplMes, 0)}.${peor ? ` El KPI que más lo frena: ${peor.kpi} (${fPct(peor.cumpl!, 0)}, peso ${peor.peso}%).` : ""}`,
-        acciones: peor ? [`Atacar primero ${peor.kpi}`, "Revisar si la meta del objetivo es realista con el presupuesto actual"] : ["Revisar los KPIs del objetivo"],
+        titulo: `El objetivo "${o.nombre}" va al ${fPct(o.cumplYtd, 0)} de lo planeado en lo que va del año`,
+        descripcion: `Este objetivo pesa el ${fPct(o.pesoEstrategico, 0)} de la estrategia. Último mes: ${o.cumplMes == null ? "sin dato" : fPct(o.cumplMes, 0)}.${peor ? ` El indicador que más lo frena: ${peor.kpi} (va al ${fPct(peor.cumpl!, 0)}; pesa ${peor.peso}% en este objetivo).` : ""}`,
+        acciones: peor ? [`Arrancá por "${peor.kpi}"`, "Revisá si la meta del objetivo se puede cumplir con el presupuesto que hay"] : ["Revisá los indicadores (KPIs) del objetivo"],
         datos: { objetivo: o.nombre, cumplYtd: r2(o.cumplYtd), cumplMes: o.cumplMes == null ? null : r2(o.cumplMes), aportes: o.aportes },
       });
     }
     if (o.cobertura < 60) S({
       key: `overview_objective_coverage_${o.id}`, tipo: "info", prioridad: "media",
-      titulo: `"${o.nombre}" se mide solo con el ${fPct(o.cobertura, 0)} de su peso`,
-      descripcion: `KPIs sin dato: ${o.aportes.filter((a) => a.cumpl == null).map((a) => a.kpi).join(", ") || "—"}. El cumplimiento puede estar sesgado.`,
-      acciones: ["Conectar la fuente o cargar metas de los KPIs faltantes"],
+      titulo: `"${o.nombre}" se está midiendo con solo el ${fPct(o.cobertura, 0)} de sus indicadores`,
+      descripcion: `Indicadores sin dato: ${o.aportes.filter((a) => a.cumpl == null).map((a) => a.kpi).join(", ") || "—"}. El % de cumplimiento puede no reflejar la realidad.`,
+      acciones: ["Cargá las metas de esos indicadores (o pedí que se conecte la fuente de datos que falta)"],
       datos: { objetivo: o.nombre, cobertura: r2(o.cobertura) },
     });
   }
@@ -84,17 +84,17 @@ export function computeOverviewSignals(seg: SeguimientoObjetivos | null | undefi
       const c = pr.cierre, nec = pr.necesarioVsRitmoPct;
       S({
         key: `overview_kpi_off_pace_${k.plan}_${k.kpi}`, tipo: "alerta", prioridad: pr.probabilidad! < 0.1 ? "alta" : "media",
-        titulo: `"${k.kpi}": ${Math.round(pr.probabilidad! * 100)}% de probabilidad de llegar a la meta anual`,
-        descripcion: `${k.plan}. ${k.tipo === "sum" ? "Cierre" : "Promedio"} proyectado ${u(c.p50)}${c.p10 != null && c.p90 != null ? ` (rango ${u(c.p10)}–${u(c.p90)})` : ""} vs meta ${u(pr.metaAnual)}.${nec != null && Number.isFinite(nec) && k.direccion === "up" && nec > 0 ? ` Para llegar hace falta +${nec.toFixed(0)}% sobre el ritmo proyectado de los ${pr.mensual.length} meses que quedan.` : ""} Método: ${pr.metodoTexto}, ${pr.n} meses con dato.`,
-        acciones: [`Revisar en ${k.plan} qué palanca mueve ${k.kpi} (inversión, contenido, conversión)`, "Si la meta ya no es alcanzable con el presupuesto actual, recalibrarla y decirlo"],
+        titulo: `"${k.kpi}": ${Math.round(pr.probabilidad! * 100)}% de probabilidad de llegar a la meta del año`,
+        descripcion: `${k.plan}. Si sigue así, el año ${k.tipo === "sum" ? "cierra" : "promedia"} en ${u(c.p50)}${c.p10 != null && c.p90 != null ? ` (entre ${u(c.p10)} y ${u(c.p90)})` : ""} contra una meta de ${u(pr.metaAnual)}.${nec != null && Number.isFinite(nec) && k.direccion === "up" && nec > 0 ? ` Para llegar hace falta +${nec.toFixed(0)}% sobre el ritmo proyectado de los ${pr.mensual.length} meses que quedan.` : ""} Cómo se calculó: ${pr.metodoTexto}, con ${pr.n} meses de datos.`,
+        acciones: [`En ${k.plan}, identificá qué mueve "${k.kpi}": más inversión, otro contenido o mejor conversión`, "Si con el presupuesto actual la meta ya no se puede cumplir, ajustala y avisale al equipo"],
         datos: { kpi: k.kpi, plan: k.plan, probabilidad: r2(pr.probabilidad!), cierreP50: r2(c.p50), rango: c.p10 != null && c.p90 != null ? [r2(c.p10), r2(c.p90)] : null, metaAnual: r2(pr.metaAnual), metodo: pr.metodo, meses: pr.n },
       });
     }
     if (!conPace && last3.length === 3 && last3[0].v > last3[1].v && last3[1].v > last3[2].v && last3[2].v < 100 && last3[0].v - last3[2].v >= 10) S({
       key: `overview_kpi_diverging_${k.plan}_${k.kpi}`, tipo: "alerta", prioridad: "media",
-      titulo: `"${k.kpi}" se aleja de la meta 3 meses seguidos (${last3.map((x) => `${MES[x.i]} ${fPct(x.v, 0)}`).join(" → ")})`,
-      descripcion: `${k.plan}. La tendencia anticipa incumplimiento del cierre si no se corrige.`,
-      acciones: [`Revisar en ${k.plan} qué cambió en esos meses (inversión, contenido, estacionalidad)`],
+      titulo: `"${k.kpi}" se aleja de la meta hace 3 meses seguidos (${last3.map((x) => `${MES[x.i]} ${fPct(x.v, 0)}`).join(" → ")})`,
+      descripcion: `${k.plan}. Si no se corrige, lo más probable es no llegar a la meta del año.`,
+      acciones: [`En ${k.plan}, fijate qué cambió en esos meses: la inversión, el contenido o la época del año`],
       datos: { kpi: k.kpi, plan: k.plan, cumplimiento: last3.map((x) => ({ mes: MES[x.i], cumpl: r2(x.v) })) },
     });
     const lastReal = [...k.realM].map((v, i) => ({ v, i })).filter((x) => x.v != null).pop();
@@ -102,9 +102,9 @@ export function computeOverviewSignals(seg: SeguimientoObjetivos | null | undefi
       const meta = k.metaM[lastReal.i];
       if (meta == null) S({
         key: `overview_kpi_no_meta_${k.plan}_${k.kpi}`, tipo: "info", prioridad: "baja",
-        titulo: `"${k.kpi}" tiene dato real en ${MES[lastReal.i]} pero no tiene meta cargada`,
-        descripcion: `${k.plan}. Sin meta no suma al cumplimiento de los objetivos.`,
-        acciones: ["Cargar la meta mensual en el tablero del plan"],
+        titulo: `"${k.kpi}" tiene dato de ${MES[lastReal.i]} pero no tiene meta cargada`,
+        descripcion: `${k.plan}. Sin meta, no cuenta para el cumplimiento de los objetivos.`,
+        acciones: ["Cargá la meta mensual en el tablero de ese plan (botón de metas, arriba del tablero)"],
         datos: { kpi: k.kpi, plan: k.plan },
       });
       else {
@@ -112,9 +112,9 @@ export function computeOverviewSignals(seg: SeguimientoObjetivos | null | undefi
         const ytdOver = pts.length >= 3 && pts.slice(-3).every((x) => x.v >= 130);
         if (c != null && ytdOver) S({
           key: `overview_kpi_meta_lax_${k.plan}_${k.kpi}`, tipo: "info", prioridad: "baja",
-          titulo: `"${k.kpi}" supera la meta ≥ 30% hace 3 meses — recalibrar`,
-          descripcion: `${k.plan}: ${MES[lastReal.i]} al ${fPct(c, 0)} de la meta. O la meta quedó baja o hay sobre-inversión que podría ir a un KPI con brecha.`,
-          acciones: ["Subir la meta o reasignar recursos a la mayor palanca"],
+          titulo: `"${k.kpi}" supera la meta en 30% o más hace 3 meses: conviene revisar la meta`,
+          descripcion: `${k.plan}: ${MES[lastReal.i]} al ${fPct(c, 0)} de la meta. O la meta quedó baja, o se está poniendo más de lo necesario acá y esos recursos podrían ir a un indicador que no llega.`,
+          acciones: ["Subí la meta, o reasigná recursos al indicador que más suma a la Salud de Marca"],
           datos: { kpi: k.kpi, plan: k.plan, cumplimiento: pts.slice(-3).map((x) => ({ mes: MES[x.i], cumpl: r2(x.v) })) },
         });
       }
@@ -125,9 +125,9 @@ export function computeOverviewSignals(seg: SeguimientoObjetivos | null | undefi
   const sm = seg.saludMarca;
   if (sm.cumplMes != null && sm.cumplYtd != null && Math.abs(sm.cumplMes - sm.cumplYtd) >= 10) S({
     key: "overview_salud_trend", tipo: sm.cumplMes < sm.cumplYtd ? "alerta" : "info", prioridad: sm.cumplMes < sm.cumplYtd ? "media" : "baja",
-    titulo: `Salud de Marca: ${seg.refMes} ${fPct(sm.cumplMes, 0)} vs ${fPct(sm.cumplYtd, 0)} YTD`,
-    descripcion: sm.cumplMes < sm.cumplYtd ? "El último mes rinde por debajo del acumulado: el año se está desacelerando." : "El último mes rinde por encima del acumulado: el plan está ganando tracción.",
-    acciones: sm.cumplMes < sm.cumplYtd ? ["Atacar las palancas de mayor peso este mes"] : ["Sostener el mix actual"],
+    titulo: `Salud de Marca: ${seg.refMes} al ${fPct(sm.cumplMes, 0)} contra ${fPct(sm.cumplYtd, 0)} en lo que va del año`,
+    descripcion: sm.cumplMes < sm.cumplYtd ? "El último mes vino peor que el promedio del año: se está frenando." : "El último mes vino mejor que el promedio del año: el plan está tomando impulso.",
+    acciones: sm.cumplMes < sm.cumplYtd ? ["Este mes, poné foco en los indicadores que más suman (los de \"Lo que más suma\")"] : ["Mantené la mezcla actual de acciones"],
     datos: { cumplMes: r2(sm.cumplMes), cumplYtd: r2(sm.cumplYtd), refMes: seg.refMes },
   });
 

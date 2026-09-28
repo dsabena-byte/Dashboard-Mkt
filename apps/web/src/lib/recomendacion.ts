@@ -7,8 +7,9 @@
 //
 //   prioridad = impacto (1-5) × confianza (alta 1 · media 0,7 · baja 0,4) ÷ esfuerzo (1-3)
 //
-// Drean: sin persistencia del "La voy a hacer" (no hay tabla de seguimiento de recomendaciones);
-// las funciones puras de medición antes/después quedan acá (testeadas) para cuando se sume.
+// Drean: "La voy a hacer" / "Hecha" / "Descartar" se guardan en `recomendacion_seguimiento` (migración
+// 0122) vía /api/recomendaciones/seguimiento; el bloque "Mis acciones" es lib/recomendacion-seguimiento.
+// Las funciones puras de medición antes/después (baseline) quedan acá (testeadas) para cuando se sumen.
 // Test: cd apps/web && npx tsx scripts/recomendacion.test.ts
 // ============================================================================
 import type { Signal } from "@/lib/signals/types";
@@ -95,7 +96,9 @@ export function explicarPrioridad(r: Pick<Recomendacion, "prioridad" | "impactoN
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-const canon = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9%]+/g, " ").trim();
+/** Normaliza un texto (minúsculas, sin tildes ni signos): base de los ids de las tarjetas IA. */
+export const canonRec = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9%]+/g, " ").trim();
+const canon = canonRec;
 /** Hash corto y estable (djb2) para ids de recomendación. */
 export function hashRec(s: string): string {
   let h = 5381;
@@ -115,7 +118,9 @@ const QUIEN: Record<string, string> = {
   funnel: "Marketing / finanzas", mercado: "Marketing / comercial", "salud-marca": "Marketing", influencia: "Contenido / influencia",
   "mkt-canal": "Trade marketing", "performance-conversion": "Ecommerce",
 };
-const RE_ESF_BAJO = /\b(pausa|pausar|apaga|apagar|reasign\w*|mover? (el |la |parte del? )?(presupuesto|inversion)|subir (el |la )?(presupuesto|inversion|puja)|bajar|tope de frecuencia|puja|oferta|title|meta ?description|robots|rotar|reescrib\w*|escalar)\b/;
+// Incluye las formas en lenguaje simple de las señales ("pasá plata", "bajale", "escalá", "pausala"),
+// equivalentes a los verbos técnicos de siempre (mismo nivel de esfuerzo).
+const RE_ESF_BAJO = /\b(pausa|pausar|pausal[ao]s?|apaga|apagar|reasign\w*|mover? (el |la |parte del? )?(presupuesto|inversion)|pasa (esa |la |parte de (la |esa )?)?(plata|presupuesto)|subir (el |la )?(presupuesto|inversion|puja)|(subi|suba) (el |la )?(presupuesto|inversion)|bajar|bajale|baje|tope de frecuencia|puja|oferta|title|meta ?description|robots|rotar|reescrib\w*|escalar|escala)\b/;
 const RE_ESF_ALTO = /\b(redisen\w*|desarroll\w*|migrar|nuevo sitio|contratar|estudio|investigacion de mercado|integrar|implementar|produc\w*|crear (una )?landing|nueva landing|plataforma)\b/;
 /** Esfuerzo heurístico por el texto de la acción (1 bajo · 2 medio · 3 alto). */
 export function estimarEsfuerzo(texto: string, dash: string): Recomendacion["esfuerzo"] {
@@ -154,16 +159,16 @@ export function recursoPara(m: Metrica | undefined, dash: string): Recomendacion
 function kpiYMedicion(m: Metrica | undefined, dash: string): Pick<Recomendacion, "kpi" | "medicion"> {
   const ventanaDias = ventanaPara(dash);
   if (!m) {
-    return { kpi: null, medicion: { kpi: null, unidad: "", direccion: "up", ventanaDias, criterio: "Sin KPI con serie automática: revisá el tablero al cumplirse la ventana." } };
+    return { kpi: null, medicion: { kpi: null, unidad: "", direccion: "up", ventanaDias, criterio: "No hay un indicador que se mida solo: revisá el tablero cuando se cumpla el plazo." } };
   }
   const seguimiento = m.plan ? m.nombre : null; // Drean: nombre exacto del KPI en el Seguimiento
-  const dir = m.direccion === "down" ? "(menor es mejor)" : "(mayor es mejor)";
+  const dir = m.direccion === "down" ? "(cuanto más bajo, mejor)" : "(cuanto más alto, mejor)";
   return {
     kpi: { id: m.id, nombre: m.nombre, seguimiento },
     medicion: {
       kpi: seguimiento, unidad: m.unidad, direccion: m.direccion, ventanaDias,
       criterio: seguimiento
-        ? `${m.nombre} ${dir}: último mes cerrado vs el baseline tomado al marcarla.`
+        ? `${m.nombre} ${dir}: compará el último mes cerrado con el valor que tenía cuando empezaste la acción.`
         : `${m.nombre} ${dir}: no tiene serie mensual en el Seguimiento; comparalo en el tablero.`,
     },
   };
@@ -203,7 +208,9 @@ const IMP_BASE: Record<"alta" | "media" | "baja", number> = { alta: 4, media: 3,
 export function fromSignal(s: Signal): Recomendacion {
   // Drean: si la señal trae el KPI exacto (datos.kpi, ej. off-pace del Seguimiento), manda ese.
   const kpiDato = typeof s.datos?.kpi === "string" ? metricaPorNombre(s.datos.kpi as string) : undefined;
-  const metrica = kpiDato ?? metricaDeTextos([s.impacto?.metrica, s.titulo], s.dash);
+  // Métrica fijada por la regla (s.metrica; null = ninguna) antes que la detección por texto.
+  const fijada = s.metrica === undefined ? undefined : s.metrica ? ajustarPorDash(getMetrica(s.metrica), s.dash) ?? null : null;
+  const metrica = kpiDato ?? (fijada === undefined ? metricaDeTextos([s.impacto?.metrica, s.titulo], s.dash) : fijada ?? undefined);
   const v = s.impacto ? Math.abs(s.impacto.valor) : null;
   const impacto: ImpactoRec | null = s.impacto && v != null && Number.isFinite(v)
     ? { bajo: r2(v * 0.5), alto: r2(v), unidad: s.impacto.unidad, metrica: s.impacto.metrica, texto: `${s.impacto.metrica}: ${v.toLocaleString("es-AR", { maximumFractionDigits: 1 })} ${s.impacto.unidad}`, supuesto: "Rango entre la mitad y el total del potencial que calcula la regla (en la práctica se captura parcialmente)." }

@@ -68,9 +68,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
       const x = cpcvOf(c) / med;
       if (x >= 3) S({
         key: `pauta_cpcv_outlier_${c.id}`, tipo: "alerta", prioridad: x >= 8 ? "alta" : "media",
-        titulo: `"${clip(c.name, 50)}": cada vista completa cuesta ${x.toFixed(1)}× la mediana (CPCV ${$(cpcvOf(c))})`,
-        descripcion: `${tag(c)}. Invirtió ${$(c.spend)} (${fPct(share(c), 0)} del total) para ${fInt(c.p100)} vistas completas; VTR ${fPct(c.vtr100, 1)}. Mediana de CPCV de tus campañas de video: ${$(med)}; el cuartil más eficiente: ${$(best)}.`,
-        acciones: ["Revisar formato (¿salteable?, duración) y el hook de los primeros segundos", "Bajar presupuesto y moverlo a las campañas de CPCV más bajo", "Si el video es forzado y completa poco, revisar el tagging / tráfico inválido"],
+        titulo: `"${clip(c.name, 50)}": cada persona que ve el video completo sale ${x.toFixed(1)} veces más cara que en tus otras campañas (costo por video visto completo o CPCV: ${$(cpcvOf(c))})`,
+        descripcion: `${tag(c)}. Se invirtieron ${$(c.spend)} (${fPct(share(c), 0)} del total) y ${fInt(c.p100)} personas vieron el video hasta el final; lo terminó el ${fPct(c.vtr100, 1)} de los que lo empezaron (VTR). En tus campañas de video, un video completo cuesta normalmente ${$(med)} (valor del medio o mediana); en las más eficientes, ${$(best)}.`,
+        acciones: ["Pedile a la agencia que revise el formato (si se puede saltear, cuánto dura) y los primeros 3 segundos del video: ahí se decide si la gente sigue mirando", "Bajale presupuesto y pasá esa plata a las campañas de video donde ver el video completo sale más barato", "Si el video no se puede saltear y aun así casi nadie lo termina, pedile a la agencia que revise la medición y si hay visitas falsas (tráfico inválido)"],
         datos: { campaña: c.name, medio: medioDe(c), rol: rolDe(c.objective), cpcv: r2(cpcvOf(c)), medianaCpcv: r2(med), benchmarkP25: r2(best), inversion: Math.round(c.spend), vistasCompletas: c.p100 },
         impacto: { metrica: "Vistas completas adicionales al costo mediano", valor: Math.round(c.spend / med - c.p100), unidad: "vistas completas" },
       });
@@ -83,9 +83,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
       const gain = mover / cpcvOf(b) - mover / cpcvOf(w);
       S({
         key: "pauta_realloc_video", tipo: "oportunidad", prioridad: "alta",
-        titulo: `Mover ${$(mover)} de "${clip(w.name, 40)}" a "${clip(b.name, 40)}" suma ≈${fNum(gain)} vistas completas al mismo costo`,
-        descripcion: `CPCV ${$(cpcvOf(w))} vs ${$(cpcvOf(b))} (${(cpcvOf(w) / cpcvOf(b)).toFixed(1)}× más caro). "${clip(w.name, 40)}" concentra ${fPct(share(w), 0)} de la inversión. Supuesto: el costo marginal se mantiene (validar inventario/audiencia antes de escalar).`,
-        acciones: [`Reducir "${clip(w.name, 40)}" un 30%`, `Subir "${clip(b.name, 40)}" en ${$(mover)} y monitorear que el CPCV no se degrade`],
+        titulo: `Pasá ${$(mover)} de "${clip(w.name, 40)}" a "${clip(b.name, 40)}": con la misma plata, ≈${fNum(gain)} personas más verían el video completo`,
+        descripcion: `En "${clip(w.name, 40)}" cada video visto completo cuesta ${$(cpcvOf(w))}; en "${clip(b.name, 40)}", ${$(cpcvOf(b))}: ${(cpcvOf(w) / cpcvOf(b)).toFixed(1)} veces más caro (costo por video completo o CPCV). "${clip(w.name, 40)}" se lleva el ${fPct(share(w), 0)} de la inversión. Supuesto: la campaña barata sigue igual de barata al darle más plata (confirmá con la agencia que tiene público de sobra antes de subirla).`,
+        acciones: [`Pedile a la agencia que achique "${clip(w.name, 40)}" un 30%`, `Que esa plata (${$(mover)}) vaya a "${clip(b.name, 40)}", y a las 2 semanas mirá que el costo por video completo no haya subido`],
         datos: { desde: { campaña: w.name, cpcv: r2(cpcvOf(w)), inversion: Math.round(w.spend) }, hacia: { campaña: b.name, cpcv: r2(cpcvOf(b)), inversion: Math.round(b.spend) }, mover: Math.round(mover) },
         impacto: { metrica: "Vistas completas adicionales", valor: Math.round(gain), unidad: "vistas completas" },
       });
@@ -93,9 +93,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     // Escalables: CPCV en el cuartil más eficiente y < 12% del gasto.
     for (const c of vid) if (cpcvOf(c) <= best && share(c) < 12 && c !== b) S({
       key: `pauta_scalable_video_${c.id}`, tipo: "oportunidad", prioridad: "media",
-      titulo: `"${clip(c.name, 50)}": video eficiente (CPCV ${$(cpcvOf(c))}) con solo ${fPct(share(c), 0)} de la inversión`,
-      descripcion: `Está en el cuartil más eficiente de tus campañas de video (VTR ${fPct(c.vtr100, 1)}). Hay margen para escalar.`,
-      acciones: ["Subir el presupuesto 30-50% por etapas", "Vigilar frecuencia y CPCV al escalar"],
+      titulo: `"${clip(c.name, 50)}": video barato de ver completo (${$(cpcvOf(c))} por video completo — CPCV) que recibe solo el ${fPct(share(c), 0)} de la inversión`,
+      descripcion: `Está entre el 25% más eficiente de tus campañas de video (lo termina el ${fPct(c.vtr100, 1)} de los que lo empiezan — VTR). Le podés dar más plata.`,
+      acciones: ["Pedile a la agencia que le suba el presupuesto 30-50%, de a poco (por ejemplo, un escalón por semana)", "Al subirlo, mirá que la gente no lo vea demasiadas veces (frecuencia) y que el costo por video completo no suba"],
       datos: { campaña: c.name, cpcv: r2(cpcvOf(c)), share: r2(share(c)) },
       impacto: { metrica: "Vistas completas adicionales con +50% de inversión", valor: Math.round(c.p100 * 0.5), unidad: "vistas completas" },
     });
@@ -106,9 +106,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
       const weak = ret.filter((x) => x.r <= mr * 0.5).sort((a, b) => b.c.spend - a.c.spend)[0];
       if (weak) S({
         key: `pauta_hook_weak_${weak.c.id}`, tipo: "alerta", prioridad: "media",
-        titulo: `"${clip(weak.c.name, 50)}": solo ${fPct(weak.r * 100, 0)} llega al 25% del video (mediana ${fPct(mr * 100, 0)})`,
-        descripcion: "La caída ocurre antes del primer cuarto: el problema es el hook/apertura, no la duración.",
-        acciones: ["Reeditar los primeros 2-3 segundos (producto/beneficio al inicio)", "Probar versiones más cortas"],
+        titulo: `"${clip(weak.c.name, 50)}": solo el ${fPct(weak.r * 100, 0)} de la gente mira el primer cuarto del video (en tus otros videos, ${fPct(mr * 100, 0)})`,
+        descripcion: "La gente se va en los primeros segundos: el problema es cómo arranca el video (el gancho o hook), no que sea largo.",
+        acciones: ["Pedile a la agencia que reedite los primeros 2-3 segundos: que se vea el producto o el beneficio de entrada", "Probar una versión más corta del mismo video"],
         datos: { campaña: weak.c.name, retencion25: r2(weak.r * 100), mediana: r2(mr * 100) },
       });
     }
@@ -123,9 +123,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
       const vidSpend = sum(camps.filter((c) => c.vbase > 0).map((c) => c.spend));
       S({
         key: "pauta_video_waste", tipo: "alerta", prioridad: vtr50 < 30 ? "alta" : "media",
-        titulo: `${fPct(100 - vtr50, 0)} de las impresiones de video no llega a la mitad`,
-        descripcion: `VTR≥50% total ${fPct(vtr50, 1)} sobre ${fNum(vbase)} impresiones de video. Aproximadamente ${$(vidSpend * (1 - vtr50 / 100))} de la inversión en video se va en impresiones que no se ven hasta la mitad.`,
-        acciones: ["Priorizar formatos cortos o no salteables", "Mover presupuesto a las campañas de mejor VTR", "Revisar los primeros segundos de las piezas con peor retención"],
+        titulo: `El ${fPct(100 - vtr50, 0)} de las veces que se mostró un video, la gente no llegó a ver la mitad`,
+        descripcion: `Solo el ${fPct(vtr50, 1)} de ${fNum(vbase)} reproducciones llegó a la mitad del video (VTR al 50%). Más o menos ${$(vidSpend * (1 - vtr50 / 100))} de lo invertido en video se fue en videos que no se vieron ni hasta la mitad.`,
+        acciones: ["Pedile a la agencia que use más videos cortos o formatos que no se puedan saltear", "Pasá plata a las campañas donde más gente ve el video hasta la mitad (mejor VTR)", "Revisá los primeros segundos de los videos que peor retienen: ahí se pierde a la gente"],
         datos: { vtr50: r2(vtr50), impresionesVideo: vbase, inversionVideo: Math.round(vidSpend) },
         impacto: { metrica: "Inversión en video que no llega al 50%", valor: Math.round(vidSpend * (1 - vtr50 / 100)), unidad: cur ?? "$" },
       });
@@ -141,9 +141,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
       const d = deltaPct(c.cpm, med) ?? 0;
       if (d > 25) S({
         key: `pauta_cpm_outlier_${c.id}`, tipo: "alerta", prioridad: d > 50 ? "alta" : "media",
-        titulo: `"${clip(c.name, 50)}": CPM ${$(c.cpm)}, ${fDelta(d)} sobre la mediana de Awareness en ${k}`,
-        descripcion: `Invirtió ${$(c.spend)} para ${fNum(c.impressions)} impresiones. Mediana de CPM de tus campañas de Awareness en ${k}: ${$(med)}.`,
-        acciones: ["Revisar segmentación (audiencias muy chicas encarecen el CPM)", "Revisar ubicaciones y calidad del creativo", "Mover parte del presupuesto a las campañas de CPM más bajo"],
+        titulo: `"${clip(c.name, 50)}": mostrar el aviso mil veces cuesta ${$(c.cpm)} (costo por mil o CPM), ${fDelta(d)} más que en tus otras campañas para que te conozcan en ${k}`,
+        descripcion: `Se invirtieron ${$(c.spend)} para mostrar el aviso ${fNum(c.impressions)} veces (impresiones). En tus campañas para que te conozcan (Awareness) en ${k}, mil impresiones cuestan normalmente ${$(med)}.`,
+        acciones: ["Pedile a la agencia que revise a quién le muestra el aviso: un público muy chico encarece cada impresión (segmentación)", "Que revise dónde aparece el aviso (ubicaciones) y si la pieza es buena: las piezas flojas se pagan más caro", "Pasá parte de la plata a las campañas donde mostrar el aviso sale más barato"],
         datos: { campaña: c.name, medio: k, cpm: r2(c.cpm), medianaCpm: r2(med), inversion: Math.round(c.spend) },
         impacto: { metrica: "Impresiones adicionales al CPM mediano", valor: Math.round((c.spend / med) * 1000 - c.impressions), unidad: "impresiones" },
       });
@@ -160,9 +160,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
       const gain = mover / b.cpc - mover / w.cpc;
       S({
         key: "pauta_realloc_clicks", tipo: "oportunidad", prioridad: "alta",
-        titulo: `Mover ${$(mover)} de "${clip(w.name, 40)}" a "${clip(b.name, 40)}" suma ≈${fNum(gain)} clicks`,
-        descripcion: `CPC ${$(w.cpc)} (${medioDe(w)}) vs ${$(b.cpc)} (${medioDe(b)}) — ${(w.cpc / b.cpc).toFixed(1)}× más caro. Supuesto: costo marginal estable; validar calidad del tráfico (conversión en la web) antes de mover.`,
-        acciones: [`Reducir "${clip(w.name, 40)}" un 30%`, `Escalar "${clip(b.name, 40)}" y controlar CPC y tasa de conversión en la web`],
+        titulo: `Pasá ${$(mover)} de "${clip(w.name, 40)}" a "${clip(b.name, 40)}": con la misma plata, ≈${fNum(gain)} clics más`,
+        descripcion: `Cada clic cuesta ${$(w.cpc)} en "${clip(w.name, 40)}" (${medioDe(w)}) y ${$(b.cpc)} en "${clip(b.name, 40)}" (${medioDe(b)}): ${(w.cpc / b.cpc).toFixed(1)} veces más caro (costo por clic o CPC). Supuesto: la campaña barata sigue igual de barata al darle más plata. Antes de mover, mirá en Web que esas visitas baratas también compren o consulten (tasa de conversión).`,
+        acciones: [`Pedile a la agencia que baje "${clip(w.name, 40)}" un 30%`, `Que suba "${clip(b.name, 40)}" con esa plata, y a las 2 semanas revisá que el costo por clic no haya subido y que en Web esas visitas sigan comprando o consultando`],
         datos: { desde: { campaña: w.name, cpc: r2(w.cpc), ctr: r2(w.ctr) }, hacia: { campaña: b.name, cpc: r2(b.cpc), ctr: r2(b.ctr) }, mover: Math.round(mover) },
         impacto: { metrica: "Clicks adicionales", valor: Math.round(gain), unidad: "clicks" },
       });
@@ -170,9 +170,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     const p25 = quantile(cons.map((c) => c.cpc), 0.25);
     for (const c of cons) if (c.cpc <= p25 && share(c) < 12 && c !== b) S({
       key: `pauta_scalable_clicks_${c.id}`, tipo: "oportunidad", prioridad: "media",
-      titulo: `"${clip(c.name, 50)}": CPC ${$(c.cpc)} (cuartil más eficiente) con solo ${fPct(share(c), 0)} de la inversión`,
-      descripcion: `CTR ${fPct(c.ctr, 2)}. Candidata a escalar.`,
-      acciones: ["Subir presupuesto 30-50% por etapas", "Controlar que el CPC no suba más de 20%"],
+      titulo: `"${clip(c.name, 50)}": clics baratos (${$(c.cpc)} cada uno — costo por clic o CPC) y recibe solo el ${fPct(share(c), 0)} de la inversión`,
+      descripcion: `Está entre el 25% de tus campañas de visitas con el clic más barato. Hace clic el ${fPct(c.ctr, 2)} de los que ven el aviso (CTR). Le podés dar más plata.`,
+      acciones: ["Pedile a la agencia que le suba el presupuesto 30-50%, de a poco", "Si el costo por clic sube más de 20%, frená la suba"],
       datos: { campaña: c.name, cpc: r2(c.cpc), share: r2(share(c)) },
       impacto: { metrica: "Clicks adicionales con +50% de inversión", valor: Math.round(c.clicks * 0.5), unidad: "clicks" },
     });
@@ -184,9 +184,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     const lim = isSearch(c) ? 2 : 0.6;
     if (c.ctr < lim) S({
       key: `pauta_ctr_low_${c.id}`, tipo: "alerta", prioridad: (!isSearch(c) && c.ctr < 0.3) || (isSearch(c) && c.ctr < 1) ? "alta" : "media",
-      titulo: `"${clip(c.name, 50)}": CTR ${fPct(c.ctr, 2)} en una campaña de tráfico (referencia ≥ ${fPct(lim, 1)})`,
-      descripcion: `${fNum(c.impressions)} impresiones y ${fInt(c.clicks)} clicks. ${isSearch(c) ? "En Search un CTR bajo indica keywords/anuncios poco relevantes." : "Creativo o segmentación con poca afinidad."}`,
-      acciones: isSearch(c) ? ["Revisar términos de búsqueda y negativas", "Mejorar la relevancia de los anuncios (títulos con la keyword)"] : ["A/B test de creativo y copy", "Acotar la segmentación", "Probar otro formato (carrusel / video corto)"],
+      titulo: `"${clip(c.name, 50)}": solo el ${fPct(c.ctr, 2)} de los que ven el aviso hace clic (CTR), en una campaña que busca visitas o tráfico (lo esperable es ${fPct(lim, 1)} o más)`,
+      descripcion: `El aviso se mostró ${fNum(c.impressions)} veces y tuvo ${fInt(c.clicks)} clics. ${isSearch(c) ? "En Google (búsqueda), esto suele querer decir que el aviso aparece en búsquedas que no tienen que ver, o que el texto no responde lo que la gente busca." : "La pieza o el público no están conectando: la gente lo ve pero no le interesa."}`,
+      acciones: isSearch(c) ? ["Pedile a la agencia que revise qué búsquedas reales activan el aviso y excluya las que no sirven (palabras negativas)", "Que el título del aviso repita lo que la persona buscó (anuncios más relevantes)"] : ["Pedile a la agencia que pruebe 2 versiones de pieza y texto a la vez y se quede con la de más clics (prueba A/B)", "Achicar el público a gente más interesada (segmentación)", "Probar otro formato: carrusel o video corto"],
       datos: { campaña: c.name, medio: medioDe(c), ctr: r2(c.ctr), referencia: lim, impresiones: c.impressions },
     });
   }
@@ -198,9 +198,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     const [lim, alto] = rol === "Conversión" ? [8, 12] : [4, 6];
     if (c.frequency > lim) S({
       key: `pauta_frequency_high_${c.id}`, tipo: "alerta", prioridad: c.frequency > alto ? "alta" : "media",
-      titulo: `"${clip(c.name, 50)}": frecuencia ${c.frequency.toFixed(1)} — riesgo de saturación`,
-      descripcion: `${rol}: cada persona alcanzada vio el aviso ${c.frequency.toFixed(1)} veces en promedio (${fNum(c.reach)} de alcance). Rendimientos decrecientes y posible rechazo.`,
-      acciones: ["Ampliar la audiencia o sumar exclusiones", "Rotar creativos (variantes con otros hooks)", "Poner tope de frecuencia"],
+      titulo: `"${clip(c.name, 50)}": cada persona vio el aviso ${c.frequency.toFixed(1)} veces en promedio (frecuencia) — la gente se puede cansar`,
+      descripcion: `Campaña de ${rol}: ${fNum(c.reach)} personas distintas vieron el aviso (alcance), ${c.frequency.toFixed(1)} veces cada una. Pasado cierto punto, repetir más no suma y hasta molesta.`,
+      acciones: ["Pedile a la agencia que le muestre el aviso a más gente distinta (ampliar el público) o que excluya a quienes ya lo vieron mucho", "Sumar versiones nuevas de la pieza con otro arranque, para que no sea siempre la misma", "Pedile que ponga un máximo de veces por persona (tope de frecuencia)"],
       datos: { campaña: c.name, frecuencia: r2(c.frequency), alcance: c.reach, rol },
       impacto: { metrica: `Impresiones por encima de frecuencia ${lim}`, valor: Math.round(c.impressions - c.reach * lim), unidad: "impresiones" },
     });
@@ -211,9 +211,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     if (share(c) < 1) continue;
     if (c.clicks === 0 && c.p100 === 0 && (c.reach === 0 || c.impressions < 1000)) S({
       key: `pauta_spend_no_results_${c.id}`, tipo: "alerta", prioridad: "alta",
-      titulo: `"${clip(c.name, 50)}" gastó ${$(c.spend)} sin clicks ni vistas completas`,
-      descripcion: `${fNum(c.impressions)} impresiones, 0 clicks, 0 vistas completas. Probable error de configuración (tracking, ubicaciones o puja).`,
-      acciones: ["Revisar la configuración de la campaña y el píxel/etiquetas", "Pausar hasta corregir"],
+      titulo: `"${clip(c.name, 50)}" gastó ${$(c.spend)} y no tuvo ni un clic ni un video visto completo`,
+      descripcion: `Se mostró ${fNum(c.impressions)} veces, con 0 clics y 0 videos completos. Casi seguro está mal configurada (la medición, dónde aparece el aviso o cómo se paga — puja).`,
+      acciones: ["Pedile a la agencia que revise la configuración de la campaña y la medición (píxel o etiquetas)", "Pausala hasta que esté corregida"],
       datos: { campaña: c.name, inversion: Math.round(c.spend), impresiones: c.impressions },
       impacto: { metrica: "Inversión sin resultado medible", valor: Math.round(c.spend), unidad: cur ?? "$" },
     });
@@ -229,9 +229,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
         const mover = hi.spend * 0.2;
         S({
           key: "pauta_medio_cpc_gap", tipo: "oportunidad", prioridad: "media",
-          titulo: `${lo.medio} trae clicks ${(hi.cpc / lo.cpc).toFixed(1)}× más baratos que ${hi.medio} (CPC ${$(lo.cpc)} vs ${$(hi.cpc)})`,
-          descripcion: `${hi.medio}: ${$(hi.spend)} y ${fNum(hi.clicks)} clicks (CTR ${fPct(hi.ctr, 2)}). ${lo.medio}: ${$(lo.spend)} y ${fNum(lo.clicks)} clicks (CTR ${fPct(lo.ctr, 2)}). Ojo: el rol de cada medio no es el mismo (Search capta demanda; Meta la genera) — comparar también la conversión en la web.`,
-          acciones: [`Si el objetivo es tráfico, mover ~20% (${$(mover)}) de ${hi.medio} a ${lo.medio}`, "Cruzar con la tasa de conversión por canal en Web antes de decidir"],
+          titulo: `En ${lo.medio} cada clic sale ${(hi.cpc / lo.cpc).toFixed(1)} veces más barato que en ${hi.medio} (${$(lo.cpc)} contra ${$(hi.cpc)} — costo por clic o CPC)`,
+          descripcion: `${hi.medio}: ${$(hi.spend)} invertidos y ${fNum(hi.clicks)} clics (hace clic el ${fPct(hi.ctr, 2)} de los que ven el aviso — CTR). ${lo.medio}: ${$(lo.spend)} y ${fNum(lo.clicks)} clics (${fPct(lo.ctr, 2)}). Ojo: no cumplen el mismo rol (en Google la gente ya está buscando; en Meta se genera el interés) — antes de mover, mirá también cuántas de esas visitas compran o consultan en la web.`,
+          acciones: [`Si lo que buscás son visitas a la web, pasá ~20% (${$(mover)}) de ${hi.medio} a ${lo.medio}`, "Antes de decidir, mirá en el tablero Web qué canal convierte mejor (tasa de conversión por canal)"],
           datos: { medios: byMedio.map((m) => ({ medio: m.medio, inversion: Math.round(m.spend), cpm: r2(m.cpm), cpc: r2(m.cpc), ctr: r2(m.ctr), cpcv: r2(m.cpcv) })) },
           impacto: { metrica: "Clicks adicionales (20% reasignado)", valor: Math.round(mover / lo.cpc - mover / hi.cpc), unidad: "clicks" },
         });
@@ -245,9 +245,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     const top = sorted[0]!;
     if (share(top) > 50) S({
       key: "pauta_budget_concentration", tipo: "alerta", prioridad: "media",
-      titulo: `"${clip(top.name, 50)}" concentra ${fPct(share(top), 0)} de la inversión`,
-      descripcion: `Dependencia de una sola campaña: si se fatiga o encarece, arrastra todo el plan. Las otras ${camps.length - 1} campañas suman ${fPct(100 - share(top), 0)}.`,
-      acciones: ["Diversificar con 1-2 campañas de prueba (otros formatos/audiencias)", "Monitorear frecuencia y CPM de la campaña principal semana a semana"],
+      titulo: `"${clip(top.name, 50)}" se lleva el ${fPct(share(top), 0)} de toda la inversión digital`,
+      descripcion: `Todo depende de una sola campaña: si la gente se cansa de verla o se encarece, arrastra todo el plan. Las otras ${camps.length - 1} campañas suman ${fPct(100 - share(top), 0)}.`,
+      acciones: ["Pedile a la agencia 1 o 2 campañas de prueba con otros formatos o públicos", "Revisá cada semana, en la campaña principal, cuántas veces ve el aviso cada persona (frecuencia) y cuánto cuesta mostrarlo mil veces (CPM)"],
       datos: { campaña: top.name, share: r2(share(top)), campañas: camps.length },
     });
   }
@@ -268,17 +268,17 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     if (dentroDeLoNormal(ev)) { /* variación dentro del rango normal de la serie → sin señal */ }
     else if (d >= 25) S({
       key: "pauta_cpm_inflation", tipo: "alerta", prioridad: d >= 50 ? "alta" : "media",
-      titulo: `${last.mes}: el CPM subió ${fDelta(d)} vs el promedio de los 3 meses previos (${$(cpm(last))})`,
-      descripcion: `Promedio previo ${$(avg(base.map(cpm)))}.${txtRango} Con la misma inversión se compran menos impresiones.`,
-      acciones: ["Revisar si cambió el mix de objetivos/medios del mes", "Ampliar audiencias o renovar creativos (fatiga eleva el CPM)", "Considerar estacionalidad (subasta más cara)"],
+      titulo: `${last.mes}: mostrar el aviso mil veces salió ${fDelta(d)} más caro que en los 3 meses anteriores (${$(cpm(last))} — costo por mil o CPM)`,
+      descripcion: `Antes costaba ${$(avg(base.map(cpm)))} en promedio.${txtRango} Con la misma plata, el aviso se mostró menos veces.`,
+      acciones: ["Fijate si ese mes cambió la mezcla de medios u objetivos (algunos medios son más caros por naturaleza)", "Pedile a la agencia que amplíe los públicos o renueve las piezas: cuando la gente se cansa de un aviso, mostrarlo sale más caro", "Tené en cuenta la época del año: en fechas con mucha competencia (Hot Sale, Día de la Madre, fin de año) los avisos se encarecen"],
       datos: { mes: last.mes, cpm: r2(cpm(last)), promedio3m: r2(avg(base.map(cpm))), deltaPct: r2(d), ...(rango ? { rangoEsperado: rango } : {}) },
       impacto: { metrica: "Impresiones perdidas vs CPM previo", valor: Math.round((last.inv / avg(base.map(cpm))) * 1000 - last.impr), unidad: "impresiones" },
     });
     else if (d <= -20) S({
       key: "pauta_cpm_improved", tipo: "info", prioridad: "baja",
-      titulo: `${last.mes}: el CPM bajó ${fDelta(d)} vs los 3 meses previos`,
-      descripcion: `CPM ${$(cpm(last))} vs ${$(avg(base.map(cpm)))}.${txtRango} Momento eficiente para comprar alcance.`,
-      acciones: ["Evaluar adelantar inversión mientras el costo está bajo"],
+      titulo: `${last.mes}: mostrar el aviso mil veces salió ${fDelta(d)} más barato que en los 3 meses anteriores (costo por mil o CPM)`,
+      descripcion: `${$(cpm(last))} contra ${$(avg(base.map(cpm)))} de antes.${txtRango} Es buen momento para llegar a más gente con la misma plata.`,
+      acciones: ["Evaluá con la agencia adelantar inversión mientras está barato"],
       datos: { mes: last.mes, cpm: r2(cpm(last)), deltaPct: r2(d), ...(rango ? { rangoEsperado: rango } : {}) },
     });
   }
@@ -292,9 +292,9 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     const proy = rateCur * daysIn(now.getMonth());
     if (x >= 1.3 || (x > 0 && x <= 0.7)) S({
       key: x >= 1.3 ? "pauta_pacing_fast" : "pauta_pacing_slow", tipo: x >= 1.3 ? "alerta" : "info", prioridad: "media",
-      titulo: `Ritmo de gasto del mes: ${$(rateCur)}/día, ${x.toFixed(1)}× el de los últimos meses`,
-      descripcion: `A este ritmo el mes cierra en ≈${$(proy)} (promedio diario previo ${$(ratePrev)}). ${x >= 1.3 ? "Si no es una campaña planificada, revisar presupuestos diarios." : "Posible sub-ejecución: validar si es intencional."}`,
-      acciones: x >= 1.3 ? ["Revisar presupuestos diarios y campañas nuevas", "Confirmar que el aumento responde al plan"] : ["Confirmar si hay campañas pausadas o rechazadas"],
+      titulo: `Este mes se está gastando ${$(rateCur)} por día: ${x.toFixed(1)} veces lo de los últimos meses`,
+      descripcion: `A este ritmo el mes cierra en ≈${$(proy)} (antes se gastaban ${$(ratePrev)} por día). ${x >= 1.3 ? "Si no hay una campaña especial planificada, hay que revisar cuánto gasta cada campaña por día." : "Puede que se esté gastando menos de lo planeado: confirmá si es a propósito."}`,
+      acciones: x >= 1.3 ? ["Pedile a la agencia el presupuesto diario de cada campaña y qué campañas nuevas arrancaron", "Confirmá que el aumento estaba en el plan"] : ["Preguntale a la agencia si hay campañas pausadas o avisos rechazados por Meta o Google"],
       datos: { gastoDiario: r2(rateCur), gastoDiarioPrevio: r2(ratePrev), proyeccionMes: Math.round(proy) },
     });
   }
@@ -306,26 +306,26 @@ export function computePautaSignals(pauta: PautaFull | null | undefined, opts?: 
     const medCtr = median(cr.map((c) => c.ctr));
     const star = [...cr].sort((a, b) => b.ctr - a.ctr)[0]!;
     if (medCtr > 0 && star.ctr >= medCtr * 2 && star.spend / crTot < 0.15) S({
-      key: `pauta_creative_star_${star.id}`, tipo: "oportunidad", prioridad: "media",
-      titulo: `Pieza con CTR ${fPct(star.ctr, 2)} (${(star.ctr / medCtr).toFixed(1)}× la mediana) y poca inversión`,
-      descripcion: `"${clip(star.name, 60)}": ${$(star.spend)} (${fPct((star.spend / crTot) * 100, 0)} de las piezas top).`,
-      acciones: ["Darle más presupuesto o duplicarla en otras campañas", "Producir variantes con el mismo ángulo"],
+      key: `pauta_creative_star_${star.id}`, metrica: "inversion", tipo: "oportunidad", prioridad: "media",
+      titulo: `Una pieza a la que la gente le hace clic ${(star.ctr / medCtr).toFixed(1)} veces más que a las demás (${fPct(star.ctr, 2)} — CTR) recibe poca plata`,
+      descripcion: `"${clip(star.name, 60)}": ${$(star.spend)} (solo el ${fPct((star.spend / crTot) * 100, 0)} de lo invertido en las piezas principales).`,
+      acciones: ["Pedile a la agencia que le dé más presupuesto o que la use también en otras campañas", "Producir versiones nuevas con la misma idea"],
       datos: creativeData(star, medCtr),
     });
     const fat = cr.filter((c) => c.frequency > 5 && c.spend / crTot >= 0.05).sort((a, b) => b.frequency - a.frequency)[0];
     if (fat) S({
       key: `pauta_creative_fatigue_${fat.id}`, tipo: "alerta", prioridad: "media",
-      titulo: `Pieza con frecuencia ${fat.frequency.toFixed(1)}: riesgo de fatiga creativa`,
-      descripcion: `"${clip(fat.name, 60)}": ${$(fat.spend)}, CTR ${fPct(fat.ctr, 2)}.`,
-      acciones: ["Rotar la pieza con variantes nuevas", "Ampliar la audiencia de su conjunto de anuncios"],
+      titulo: `Una pieza que cada persona ya vio ${fat.frequency.toFixed(1)} veces (frecuencia): la gente se puede cansar de verla (fatiga creativa)`,
+      descripcion: `"${clip(fat.name, 60)}": ${$(fat.spend)} invertidos; hace clic el ${fPct(fat.ctr, 2)} de los que la ven (CTR).`,
+      acciones: ["Pedile a la agencia versiones nuevas para rotar la pieza", "Que le muestre el aviso a un público más amplio"],
       datos: creativeData(fat, medCtr),
     });
     const cara = cr.filter((c) => c.spend / crTot >= 0.08 && c.ctr <= medCtr * 0.5).sort((a, b) => b.spend - a.spend)[0];
     if (cara) S({
-      key: `pauta_creative_costly_${cara.id}`, tipo: "alerta", prioridad: "media",
-      titulo: `Pieza con ${fPct((cara.spend / crTot) * 100, 0)} de la inversión y CTR ${fPct(cara.ctr, 2)} (mitad de la mediana)`,
-      descripcion: `"${clip(cara.name, 60)}": ${$(cara.spend)} para ${fNum(cara.impressions)} impresiones.${cara.vtr100 > 0 ? ` VTR ${fPct(cara.vtr100, 1)}.` : ""} Si su rol es awareness puede ser aceptable; si busca tráfico, no.`,
-      acciones: ["Confirmar el objetivo de la pieza", "Si es de tráfico: pausar o reemplazar por la de mejor CTR"],
+      key: `pauta_creative_costly_${cara.id}`, metrica: "inversion", tipo: "alerta", prioridad: "media",
+      titulo: `Una pieza se lleva el ${fPct((cara.spend / crTot) * 100, 0)} de la plata y la gente le hace la mitad de clics que a las demás (${fPct(cara.ctr, 2)} — CTR)`,
+      descripcion: `"${clip(cara.name, 60)}": ${$(cara.spend)} para mostrarse ${fNum(cara.impressions)} veces.${cara.vtr100 > 0 ? ` Ve el video completo el ${fPct(cara.vtr100, 1)} (VTR).` : ""} Si la pieza es para que te conozcan (alcance), puede estar bien; si es para llevar gente a la web, no.`,
+      acciones: ["Confirmá con la agencia para qué es esa pieza (que te conozcan o traer visitas)", "Si es para traer visitas: pausala o reemplazala por la pieza con más clics"],
       datos: creativeData(cara, medCtr),
     });
   }
@@ -353,9 +353,9 @@ function offlineSignals(pauta: PautaFull, S: (s: Omit<Signal, "dash">) => void, 
       const x = med > 0 ? (c.cpmContactos ?? 0) / med : 0;
       if (x >= 1.5 && c.spend / offTotal >= 0.02) S({
         key: `pauta_off_cpm_${c.id}`, tipo: "alerta", prioridad: x >= 2.5 ? "alta" : "media",
-        titulo: `${medio} · "${clip(c.name, 50)}": mil contactos cuestan ${x.toFixed(1)}× la mediana del medio (${$(c.cpmContactos ?? 0)})`,
-        descripcion: `Invirtió ${$(c.spend)} para ${fNum(c.contactos ?? 0)} contactos. Mediana de CPM de contactos en ${medio}: ${$(med)}. Si el soporte no aporta una audiencia distinta (target, región, afinidad), está caro.`,
-        acciones: ["Renegociar tarifa o bonificación con el medio", "Mover parte a los soportes de CPM más bajo del mismo medio", "Validar que los contactos informados sean del target y no totales"],
+        titulo: `${medio} · "${clip(c.name, 50)}": llegar a mil personas cuesta ${x.toFixed(1)} veces más que en el resto de ${medio} (${$(c.cpmContactos ?? 0)} — costo por mil contactos o CPM)`,
+        descripcion: `Se invirtieron ${$(c.spend)} para ${fNum(c.contactos ?? 0)} contactos (personas expuestas al aviso). En ${medio}, mil contactos cuestan normalmente ${$(med)}. Si este espacio no llega a un público distinto (otro perfil, otra zona), está caro.`,
+        acciones: ["Pedile a la agencia de medios que renegocie la tarifa o pida bonificación", "Llevá parte de la plata a los espacios más baratos del mismo medio", "Pedile a la agencia que confirme que los contactos informados son de tu público objetivo y no el total de la audiencia"],
         datos: { medio, soporte: c.name, cpmContactos: r2(c.cpmContactos ?? 0), medianaMedio: r2(med), inversion: Math.round(c.spend), contactos: c.contactos ?? 0 },
         impacto: { metrica: "Contactos adicionales al CPM mediano", valor: Math.round((c.spend / med) * 1000 - (c.contactos ?? 0)), unidad: "contactos" },
       });
@@ -369,10 +369,10 @@ function offlineSignals(pauta: PautaFull, S: (s: Omit<Signal, "dash">) => void, 
     const med = median(medioCpm.map((m) => m.cpm));
     const caro = medioCpm.filter((m) => m.offline && m.cpm >= med * 2).sort((a, b) => b.spend - a.spend)[0];
     if (caro) S({
-      key: `pauta_off_medio_cpm_${caro.medio}`, tipo: "alerta", prioridad: "media",
-      titulo: `${caro.medio}: el CPM de contactos (${$(caro.cpm)}) es ${(caro.cpm / med).toFixed(1)}× la mediana de tus medios`,
-      descripcion: `Mediana de CPM entre tus medios: ${$(med)}. Ojo: un contacto offline y una impresión digital no son idénticos (visibilidad, atención, cobertura del target); la comparación marca el orden de magnitud, no reemplaza el rol de cada medio.`,
-      acciones: ["Confirmar qué aporta ese medio que los demás no (alcance incremental, target, cobertura regional)", "Negociar tarifa o probar un mix con más peso en los medios de menor costo por contacto"],
+      key: `pauta_off_medio_cpm_${caro.medio}`, metrica: "contactos", tipo: "alerta", prioridad: "media",
+      titulo: `${caro.medio}: llegar a mil personas cuesta ${$(caro.cpm)}, ${(caro.cpm / med).toFixed(1)} veces más que en tus otros medios (costo por mil o CPM)`,
+      descripcion: `En tus medios, mil contactos o impresiones cuestan normalmente ${$(med)}. Ojo: ver un cartel o un aviso de TV no es lo mismo que ver un aviso en el celular (cuánto se ve, cuánta atención, a quién llega); la comparación da una idea del orden de magnitud, no reemplaza el rol de cada medio.`,
+      acciones: ["Preguntale a la agencia qué aporta ese medio que los demás no (gente nueva, tu público, zonas del país)", "Negociar la tarifa o probar una mezcla con más peso en los medios que llegan a la gente más barato"],
       datos: { medios: medioCpm.map((m) => ({ medio: m.medio, cpm: r2(m.cpm), inversion: Math.round(m.spend), tipo: m.offline ? "offline" : "online" })), mediana: r2(med) },
     });
   }
@@ -386,9 +386,9 @@ function offlineSignals(pauta: PautaFull, S: (s: Omit<Signal, "dash">) => void, 
     const sh = (top.spend / tot) * 100;
     if (sh > 60) S({
       key: "pauta_off_medio_concentration", tipo: "alerta", prioridad: sh > 80 ? "alta" : "media",
-      titulo: `${top.medio} concentra ${fPct(sh, 0)} de la inversión en medios`,
-      descripcion: `${$(top.spend)} de ${$(tot)} (${shares.length} medios con inversión). Depender de un medio expone el plan a su costo y a su techo de alcance: pasado cierto punto, más inversión en el mismo medio repite a las mismas personas.`,
-      acciones: ["Evaluar un medio complementario que sume alcance incremental", "Revisar la curva de alcance del medio principal antes de subirle más presupuesto"],
+      titulo: `${top.medio} se lleva el ${fPct(sh, 0)} de la inversión en medios`,
+      descripcion: `${$(top.spend)} de ${$(tot)} (${shares.length} medios con inversión). Depender de un medio te deja atado a su precio y a su techo: pasado cierto punto, poner más plata en el mismo medio le repite el aviso a las mismas personas en vez de llegar a gente nueva.`,
+      acciones: ["Evaluá con la agencia sumar otro medio que llegue a gente nueva (alcance incremental)", "Antes de darle más plata al medio principal, pedile a la agencia cuánta gente nueva sumaría (curva de alcance)"],
       datos: { medios: shares.map((m) => ({ medio: m.medio, inversion: Math.round(m.spend), share: r2((m.spend / tot) * 100) })) },
     });
   }
@@ -400,9 +400,9 @@ function offlineSignals(pauta: PautaFull, S: (s: Omit<Signal, "dash">) => void, 
     const worst = group.filter((c) => (c.cpp ?? 0) >= med * 1.5).sort((a, b) => b.spend - a.spend)[0];
     if (worst) S({
       key: `pauta_off_cpp_${worst.id}`, tipo: "alerta", prioridad: (worst.cpp ?? 0) >= med * 2.5 ? "alta" : "media",
-      titulo: `${medio} · "${clip(worst.name, 50)}": costo por GRP ${$(worst.cpp ?? 0)}, ${((worst.cpp ?? 0) / med).toFixed(1)}× la mediana del medio`,
-      descripcion: `${fNum(worst.grps ?? 0)} GRPs por ${$(worst.spend)}. Mediana de costo por GRP en ${medio}: ${$(med)}. Un CPP alto se justifica solo si ese soporte llega a un target que los demás no cubren (franja, programa, región).`,
-      acciones: ["Revisar franja/programas: el prime time encarece el punto", "Pedir la curva de alcance del soporte: si solo suma frecuencia, bajarlo", "Negociar bonificación o paquetes"],
+      titulo: `${medio} · "${clip(worst.name, 50)}": cada punto de rating cuesta ${$(worst.cpp ?? 0)}, ${((worst.cpp ?? 0) / med).toFixed(1)} veces más que en el resto de ${medio} (costo por GRP o CPP)`,
+      descripcion: `Se compraron ${fNum(worst.grps ?? 0)} puntos de rating (GRPs: cuánto del público vio el aviso, sumando repeticiones) por ${$(worst.spend)}. En ${medio}, cada punto cuesta normalmente ${$(med)}. Pagar más solo vale la pena si ese espacio llega a gente que los otros no (horario, programa, zona).`,
+      acciones: ["Pedile a la agencia que revise horarios y programas: el horario central (prime time) encarece cada punto", "Pedile cuánta gente nueva suma ese espacio (curva de alcance): si solo le repite el aviso a los mismos, bajalo", "Negociar bonificación o paquetes"],
       datos: { medio, soporte: worst.name, cpp: r2(worst.cpp ?? 0), medianaCpp: r2(med), grps: r2(worst.grps ?? 0), inversion: Math.round(worst.spend) },
       impacto: { metrica: "GRPs adicionales al CPP mediano", valor: Math.round(worst.spend / med - (worst.grps ?? 0)), unidad: "GRPs" },
     });
@@ -416,9 +416,9 @@ function offlineSignals(pauta: PautaFull, S: (s: Omit<Signal, "dash">) => void, 
       const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
       S({
         key: "pauta_off_sin_digital", tipo: "alerta", prioridad: "media",
-        titulo: `${huecos.length === 1 ? "Un mes" : `${huecos.length} meses`} con medios offline y sin pauta digital (${huecos.map((i) => MES[i]).join(", ")})`,
-        descripcion: "La TV, la radio o la vía pública generan interés que la gente busca después (búsquedas de marca, visitas, redes). Sin pauta digital activa en esos meses, esa demanda no se captura ni se re-impacta.",
-        acciones: ["Acompañar cada flight offline con búsqueda de marca y remarketing", "Cruzar esos meses con las búsquedas y el tráfico directo en Web para ver el efecto"],
+        titulo: `${huecos.length === 1 ? "Un mes" : `${huecos.length} meses`} con TV, radio o vía pública pero sin avisos digitales (${huecos.map((i) => MES[i]).join(", ")})`,
+        descripcion: "La TV, la radio o la vía pública despiertan interés que la gente después busca en Google, en la web o en redes. Si ese mes no hay avisos digitales, ese interés no se aprovecha: nadie aparece cuando la persona busca ni le vuelve a mostrar la marca.",
+        acciones: ["Cada vez que salga TV, radio o vía pública, pedile a la agencia avisos en Google para cuando busquen la marca y avisos para quienes ya visitaron la web (remarketing)", "Mirá en Web si esos meses subieron las búsquedas de la marca y las visitas directas: eso muestra el efecto"],
         datos: { meses: huecos.map((i) => MES[i]) },
       });
     }
@@ -434,9 +434,9 @@ function offlineSignals(pauta: PautaFull, S: (s: Omit<Signal, "dash">) => void, 
       const d = shareOf(last) - base;
       if (Math.abs(d) >= 15) S({
         key: "pauta_off_share_shift", tipo: "info", prioridad: "baja",
-        titulo: `${last.mes}: el offline fue ${fPct(shareOf(last), 0)} de la inversión (promedio previo ${fPct(base, 0)})`,
-        descripcion: `El mix se movió ${d > 0 ? "hacia" : "fuera de"} los medios offline ${Math.abs(d).toFixed(0)} puntos. Si no fue planificado, revisá si el cambio respondió a un objetivo (lanzamiento, estacionalidad) y cómo se movieron alcance y búsquedas ese mes.`,
-        acciones: ["Confirmar que el cambio de mix responde al plan", "Comparar alcance, búsquedas de marca y tráfico de ese mes contra los anteriores"],
+        titulo: `${last.mes}: TV, radio y vía pública (offline) fueron el ${fPct(shareOf(last), 0)} de la inversión (antes, ${fPct(base, 0)} en promedio)`,
+        descripcion: `La mezcla de medios se movió ${Math.abs(d).toFixed(0)} puntos ${d > 0 ? "hacia" : "fuera de"} los medios offline. Si no fue planificado, revisá si respondió a un objetivo (un lanzamiento, una temporada) y cómo se movieron ese mes la gente alcanzada y las búsquedas.`,
+        acciones: ["Confirmá con la agencia que el cambio estaba en el plan", "Compará ese mes contra los anteriores: gente alcanzada, búsquedas de la marca y visitas a la web"],
         datos: { mes: last.mes, shareOffline: r2(shareOf(last)), promedioPrevio: r2(base) },
       });
     }
@@ -470,17 +470,17 @@ export function pacingSignals(p: PacingMes | null | undefined): Signal[] {
   const dCentral = p.desvioPct ?? 0;
   const pend = p.pendientes.length ? ` Faltan cargar de OMD: ${p.pendientes.join(", ")} (estimados por su promedio de 3 meses en el valor central y por su máximo en el techo).` : "";
   return [{
-    key: sobre ? "pauta_pacing_plan_over" : "pauta_pacing_plan_under",
+    key: sobre ? "pauta_pacing_plan_over" : "pauta_pacing_plan_under", metrica: "inversion",
     dash: "performance",
     tipo: "alerta",
     prioridad: Math.abs(dCentral) >= 25 ? "alta" : "media",
     titulo: sobre
-      ? `${p.mes}: a este ritmo la inversión cierra entre ${$(p.rango.piso)} y ${$(p.rango.techo)}, por encima del plan (${$(p.plan)})`
-      : `${p.mes}: a este ritmo la inversión cierra entre ${$(p.rango.piso)} y ${$(p.rango.techo)}, debajo del plan (${$(p.plan)})`,
-    descripcion: `Día ${dias} de ${p.diasMes}: van ${$(p.gastado)} (${fPct(p.avancePct ?? 0, 0)} del plan; lo esperado a hoy era ${$(p.planALaFecha ?? 0)}). Valor central ${$(p.rango.central)} (${fDelta(dCentral)} vs plan). Medios con API se proyectan lineal; lo cargado por OMD se toma como está.${pend}${p.bgt ? ` Presupuesto vigente de la cuenta de pauta (${p.bgt.version}): ${$(p.bgt.valor)}.` : ""}`,
+      ? `${p.mes}: a este ritmo de gasto (pacing), el mes cierra entre ${$(p.rango.piso)} y ${$(p.rango.techo)}: más de lo planeado (${$(p.plan)})`
+      : `${p.mes}: a este ritmo de gasto (pacing), el mes cierra entre ${$(p.rango.piso)} y ${$(p.rango.techo)}: menos de lo planeado (${$(p.plan)})`,
+    descripcion: `Día ${dias} de ${p.diasMes}: van ${$(p.gastado)} gastados (${fPct(p.avancePct ?? 0, 0)} del plan; a esta altura tendrían que ir ${$(p.planALaFecha ?? 0)}). Lo más probable es cerrar en ${$(p.rango.central)} (${fDelta(dCentral)} contra el plan). Los medios que se leen solos (Meta, Google, DV360) se proyectan al ritmo actual; lo que carga la agencia (OMD) se toma como está.${pend}${p.bgt ? ` Presupuesto vigente de la cuenta de pauta (${p.bgt.version}): ${$(p.bgt.valor)}.` : ""}`,
     acciones: sobre
-      ? ["Bajar presupuestos diarios de las campañas que más gastan", "Confirmar si el sobregasto responde a una acción planificada (lanzamiento, fecha especial)", "Actualizar la meta de Inversión si el plan cambió"]
-      : ["Pedir a OMD el avance de los medios sin API del mes (TikTok, Mercado Ads, Geo, TV/Streaming)", `Revisar campañas pausadas o con presupuesto agotado (para llegar al plan harían falta ≈${$(restante / diasRest)} por día en lo que queda del mes)`, "Si la sub-ejecución es intencional, actualizar la meta de Inversión"],
+      ? ["Pedile a la agencia que baje el gasto diario de las campañas que más gastan", "Confirmá si el gasto extra es por algo planificado (un lanzamiento, una fecha especial)", "Si el plan cambió, actualizá la meta de Inversión"]
+      : ["Pedile a OMD cuánto se lleva gastado este mes en los medios que no se leen solos (TikTok, Mercado Ads, Geo, TV/Streaming)", `Preguntale a la agencia si hay campañas pausadas o que se quedaron sin presupuesto (para llegar al plan harían falta ≈${$(restante / diasRest)} por día en lo que queda del mes)`, "Si gastar menos es a propósito, actualizá la meta de Inversión"],
     datos: { mes: p.mes, dia: r2(p.diasTranscurridos), diasMes: p.diasMes, gastado: Math.round(p.gastado), plan: Math.round(p.plan), planALaFecha: Math.round(p.planALaFecha ?? 0), piso: Math.round(p.rango.piso), central: Math.round(p.rango.central), techo: Math.round(p.rango.techo), desvioPct: r2(dCentral), pendientesOmd: p.pendientes },
     impacto: { metrica: sobre ? "Sobregasto proyectado a cierre (piso)" : "Inversión sin ejecutar proyectada a cierre (techo)", valor: Math.round(Math.abs(sobre ? p.rango.piso - p.plan : p.plan - p.rango.techo)), unidad: "ARS" },
   }];
@@ -495,18 +495,18 @@ export function fatigaSignals(f: FatigaResumen | null | undefined): Signal[] {
     out.push({
       key: `pauta_creative_fatigue_${x.key.replace(/[^a-z0-9]+/gi, "_").slice(0, 60)}`,
       dash: "performance", tipo: "alerta", prioridad: (x.caidaPct ?? 0) <= -50 && !x.parcial ? "alta" : "media",
-      titulo: `Fatiga creativa: "${clip(x.nombre, 50)}" (${x.fuente === "DV360" ? `DV360 ${x.canal}` : "Meta"}) — ${x.metrica} ${fDelta(x.caidaPct ?? 0)} con más frecuencia`,
-      descripcion: `${x.motivo} ${fInt(ult.impr)} impresiones en el último mes.${x.frecFuente === "línea" ? " DV360 no informa alcance por pieza: la frecuencia es la de su línea (canal × categoría)." : ""}${x.parcial ? " El último mes está en curso (frecuencia todavía acumulando)." : ""}`,
-      acciones: ["Rotar la pieza o sumar variantes nuevas del mismo mensaje", "Bajar el tope de frecuencia o ampliar la audiencia de la línea", "Mover presupuesto a las piezas que mantienen su tasa"],
+      titulo: `La gente se está cansando de "${clip(x.nombre, 50)}" (${x.fuente === "DV360" ? `DV360 ${x.canal}` : "Meta"}): su respuesta (${x.metrica}) cayó ${fDelta(x.caidaPct ?? 0)} mientras cada persona la ve más veces (fatiga creativa)`,
+      descripcion: `${x.motivo} Se mostró ${fInt(ult.impr)} veces en el último mes.${x.frecFuente === "línea" ? " DV360 no dice a cuánta gente distinta llegó cada pieza: las veces por persona (frecuencia) son las de su línea (canal × categoría)." : ""}${x.parcial ? " El último mes todavía está en curso (las veces por persona siguen sumando)." : ""}`,
+      acciones: ["Pedile a la agencia que cambie la pieza o sume versiones nuevas del mismo mensaje", "Que baje el máximo de veces por persona (tope de frecuencia) o le muestre el aviso a más gente", "Pasá plata a las piezas que siguen funcionando igual"],
       datos: { pieza: x.nombre, fuente: x.fuente, canal: x.canal, categoria: x.categoria, metrica: x.metrica, tasaUltimo: r2(x.tasaUlt), tasaPrevios: r2(x.tasaPrev), caidaPct: r2(x.caidaPct ?? 0), frecuenciaUltimo: x.frecUlt != null ? r2(x.frecUlt) : null, frecuenciaPrevios: x.frecPrev != null ? r2(x.frecPrev) : null, mes: x.mesUlt, parcial: x.parcial },
     });
   }
   const altas = f.piezas.filter((p) => p.estado === "frecuencia_alta");
   if (altas.length) out.push({
     key: "pauta_frecuencia_mensual_alta", dash: "performance", tipo: "info", prioridad: "baja",
-    titulo: `${altas.length} pieza${altas.length === 1 ? "" : "s"} con frecuencia mensual alta (>5) sin caída de respuesta todavía`,
+    titulo: `${altas.length} pieza${altas.length === 1 ? "" : "s"} que cada persona vio más de 5 veces en el mes (frecuencia alta), todavía sin que la gente responda menos`,
     descripcion: altas.slice(0, 4).map((p) => `"${clip(p.nombre, 40)}": ${p.motivo}`).join(" "),
-    acciones: ["Preparar el relevo creativo antes de que caiga la tasa", "Revisar tope de frecuencia"],
+    acciones: ["Pedile a la agencia que vaya preparando piezas nuevas antes de que la gente se canse", "Que revise el máximo de veces por persona (tope de frecuencia)"],
     datos: { piezas: altas.map((p) => p.nombre).slice(0, 10) },
   });
   return out;

@@ -42,8 +42,8 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
         const top = b.faltantes.slice(0, 5);
         S({
           key: k("keywords_missing"), tipo: "alerta", prioridad: fvPct >= 40 ? "alta" : "media",
-          titulo: `${pre}no rankeás en ${b.faltantes.length} keywords que suman ${fNum(fv)} búsquedas/mes (${fPct(fvPct, 0)} de la demanda relevada)`,
-          descripcion: `Las de mayor volumen: ${top.map((f) => `"${f.keyword}" (${fNum(f.vol)}, lidera ${f.lider}${f.posLider ? ` #${f.posLider}` : ""})`).join(" · ")}.`,
+          titulo: `${pre}no aparecés en Google para ${b.faltantes.length} búsquedas (keywords) que suman ${fNum(fv)} búsquedas por mes (${fPct(fvPct, 0)} de todas las que medimos)`,
+          descripcion: `Las más buscadas: ${top.map((f) => `"${f.keyword}" (${fNum(f.vol)} por mes; primero sale ${f.lider}${f.posLider ? `, en el lugar ${f.posLider}` : ""})`).join(" · ")}.`,
           acciones: ["Para las búsquedas más grandes, tener una página del sitio que responda justo eso (la categoría, una comparativa o una guía de compra); si ya existe, mejorarla", "Mirar la página del competidor que sale primero en Google: qué formato usa, qué tan completa es y qué preguntas responde", "Poner links hacia esas páginas desde la home y las páginas más visitadas del sitio"],
           datos: { volumenFaltante: fv, pctDemanda: r2(fvPct), top: top },
           impacto: { metrica: "Clicks/mes estimados si llegaras al top-5 en las 5 mayores", valor: Math.round(sum(top.map((f) => f.vol * (ctrPos(5) / 100)))), unidad: "clicks/mes" },
@@ -63,9 +63,9 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
       }
       if (b.fuertes.length) S({
         key: k("keywords_strong"), tipo: "info", prioridad: "baja",
-        titulo: `${pre}${b.fuertes.length} keywords en top-3 (${fNum(sum(b.fuertes.map((f) => f.vol)))} búsquedas/mes) — defender`,
-        descripcion: b.fuertes.slice(0, 5).map((f) => `"${f.keyword}" #${f.pos}`).join(" · "),
-        acciones: ["Mantener actualizadas esas páginas y vigilar a quien está en #4-5"],
+        titulo: `${pre}aparecés entre los 3 primeros de Google en ${b.fuertes.length} búsquedas (${fNum(sum(b.fuertes.map((f) => f.vol)))} búsquedas/mes): hay que cuidarlas`,
+        descripcion: b.fuertes.slice(0, 5).map((f) => `"${f.keyword}" (lugar ${f.pos})`).join(" · "),
+        acciones: ["Mantené esas páginas actualizadas y fijate quién está en el 4° y 5° lugar, que son los que te pueden pasar"],
         datos: { fuertes: b.fuertes.slice(0, 8) },
       });
     }
@@ -82,16 +82,16 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
         const gap = leader.share_pct - own.share_pct;
         if (gap >= 10) S({
           key: k("share_gap"), tipo: "alerta", prioridad: gap >= 25 ? "alta" : "media",
-          titulo: `${pre}share of search ${fPct(own.share_pct, 0)} vs ${fPct(leader.share_pct, 0)} de ${leader.marca} (−${gap.toFixed(0)} pp)`,
-          descripcion: `Mes ${lastMes}. El share of search es proxy de la intención de compra futura: la brecha anticipa pérdida de share de mercado si persiste.`,
-          acciones: ["Aumentar la notoriedad (pauta de awareness/video) para generar búsquedas de marca", "Capturar la demanda genérica con SEO y Search"],
+          titulo: `${pre}te buscan menos que a ${leader.marca}: tenés el ${fPct(own.share_pct, 0)} de las búsquedas de marcas contra su ${fPct(leader.share_pct, 0)} (−${gap.toFixed(0)} puntos de share of search)`,
+          descripcion: `Mes ${lastMes}. Qué parte de las búsquedas de marcas del rubro son de tu marca (share of search) anticipa las ganas de comprar: si la diferencia sigue, después suele verse en las ventas (share de mercado).`,
+          acciones: ["Invertí en avisos para que te conozcan (video y alcance): hacen que más gente busque la marca", "Aparecé cuando buscan sin marca (por ejemplo, \"lavarropas\"): posicionamiento en Google (SEO) y avisos en el buscador"],
           datos: { mes: lastMes, propio: r2(own.share_pct), lider: { marca: leader.marca, share: r2(leader.share_pct) }, ranking: cur.slice(0, 6).map((s) => ({ marca: s.marca, share: r2(s.share_pct) })) },
         });
         else if (own.share_pct >= leader.share_pct) S({
           key: k("share_leader"), tipo: "info", prioridad: "baja",
-          titulo: `${pre}liderás el share of search (${fPct(own.share_pct, 0)}; 2° ${leader.marca} ${fPct(leader.share_pct, 0)})`,
+          titulo: `${pre}sos la marca más buscada en Google (${fPct(own.share_pct, 0)} de las búsquedas de marcas — share of search; segunda ${leader.marca} con ${fPct(leader.share_pct, 0)})`,
           descripcion: `Mes ${lastMes}.`,
-          acciones: ["Sostener la inversión en notoriedad; vigilar la tendencia del 2°"],
+          acciones: ["Mantené la inversión en avisos para que te conozcan y seguí de cerca al segundo"],
           datos: { mes: lastMes, propio: r2(own.share_pct), segundo: { marca: leader.marca, share: r2(leader.share_pct) } },
         });
       }
@@ -102,16 +102,16 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
           const dpp = own.share_pct - prev.share_pct;
           if (dpp <= -3) S({
             key: k("share_trend_down"), tipo: "alerta", prioridad: dpp <= -6 ? "alta" : "media",
-            titulo: `${pre}el share of search cayó ${Math.abs(dpp).toFixed(1)} pp en 3 meses (${fPct(prev.share_pct, 1)} → ${fPct(own.share_pct, 1)})`,
+            titulo: `${pre}te buscan menos en Google: tu parte de las búsquedas de marcas bajó ${Math.abs(dpp).toFixed(1)} puntos en 3 meses (${fPct(prev.share_pct, 1)} → ${fPct(own.share_pct, 1)} — share of search)`,
             descripcion: `${prevMes} → ${lastMes}.`,
-            acciones: ["Revisar si bajó la inversión en awareness o si un competidor lanzó campaña"],
+            acciones: ["Fijate si bajó la inversión en avisos para que te conozcan o si un competidor lanzó una campaña"],
             datos: { desde: prevMes, hasta: lastMes, shareDesde: r2(prev.share_pct), shareHasta: r2(own.share_pct) },
           });
           else if (dpp >= 3) S({
             key: k("share_trend_up"), tipo: "info", prioridad: "baja",
-            titulo: `${pre}el share of search subió ${dpp.toFixed(1)} pp en 3 meses`,
+            titulo: `${pre}te buscan más en Google: tu parte de las búsquedas de marcas subió ${dpp.toFixed(1)} puntos en 3 meses (share of search)`,
             descripcion: `${fPct(prev.share_pct, 1)} → ${fPct(own.share_pct, 1)} (${prevMes} → ${lastMes}).`,
-            acciones: ["Identificar qué acciones lo explican y sostenerlas"],
+            acciones: ["Identificá qué acciones lo explican y seguí por ahí"],
             datos: { shareDesde: r2(prev.share_pct), shareHasta: r2(own.share_pct) },
           });
         }
@@ -127,21 +127,21 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
       if (!own || own.menciones === 0) S({
         key: k("llm_absent"), tipo: "alerta", prioridad: "alta",
         titulo: `${pre}tu marca no aparece en las respuestas de los asistentes de IA${leader ? ` (lidera ${leader.marca} con ${fPct(leader.share_pct, 0)})` : ""}`,
-        descripcion: `Sobre ${ll[0]?.prompts ?? 0} prompts de compra de la categoría. Cada vez más búsquedas se resuelven en ChatGPT/Gemini sin pasar por Google.`,
+        descripcion: `Sobre ${ll[0]?.prompts ?? 0} preguntas de compra de la categoría que le hicimos a la IA (prompts). Cada vez más gente pregunta en ChatGPT o Gemini en vez de buscar en Google.`,
         acciones: ["Publicar comparativas y guías de compra con datos concretos (medidas, consumo, preguntas frecuentes) que un asistente de IA pueda citar", "Aparecer en las reseñas y medios que los asistentes de IA (ChatGPT, Gemini) usan como fuente", "Pedirle al desarrollador que marque las fichas de producto para que Google y la IA las lean bien (datos estructurados o schema de Producto y Preguntas frecuentes)"],
         datos: { ranking: ll.slice(0, 5).map((l) => ({ marca: l.marca, share: r2(l.share_pct), menciones: l.menciones })) },
       });
       else if (leader && leader.share_pct - own.share_pct >= 15) S({
         key: k("llm_gap"), tipo: "alerta", prioridad: "media",
-        titulo: `${pre}visibilidad en IA ${fPct(own.share_pct, 0)} vs ${fPct(leader.share_pct, 0)} de ${leader.marca}`,
-        descripcion: `${own.menciones} menciones sobre ${own.prompts} prompts${own.rank_prom ? `, posición promedio ${own.rank_prom.toFixed(1)}` : ""}.`,
-        acciones: ["Reforzar contenido citable (comparativas, specs, guías) y presencia en reviews"],
+        titulo: `${pre}los asistentes de IA te nombran en el ${fPct(own.share_pct, 0)} de las respuestas; a ${leader.marca}, en el ${fPct(leader.share_pct, 0)} (visibilidad en IA)`,
+        descripcion: `${own.menciones} menciones sobre ${own.prompts} preguntas${own.rank_prom ? `; cuando te nombran, aparecés en promedio en el lugar ${own.rank_prom.toFixed(1)}` : ""}.`,
+        acciones: ["Publicá contenido que la IA pueda citar (comparativas, especificaciones, guías de compra) y buscá aparecer en sitios de reseñas"],
         datos: { propio: r2(own.share_pct), lider: { marca: leader.marca, share: r2(leader.share_pct) } },
       });
       if (own && own.menciones > 0 && ownSos != null && ownSos > 0 && own.share_pct < ownSos * 0.6) S({
-        key: k("llm_vs_search"), tipo: "oportunidad", prioridad: "media",
-        titulo: `${pre}tu visibilidad en IA (${fPct(own.share_pct, 0)}) está muy por debajo de tu share of search (${fPct(ownSos, 0)})`,
-        descripcion: "La marca tiene demanda pero los asistentes no la recomiendan en proporción: brecha de GEO (Generative Engine Optimization).",
+        key: k("llm_vs_search"), metrica: "visibilidad_ia", tipo: "oportunidad", prioridad: "media",
+        titulo: `${pre}la IA te nombra mucho menos de lo que te buscan: ${fPct(own.share_pct, 0)} de las respuestas de IA contra ${fPct(ownSos, 0)} de las búsquedas en Google (share of search)`,
+        descripcion: "La gente busca la marca, pero los asistentes de IA no la recomiendan en la misma proporción (a mejorar esto se lo llama GEO: optimización para motores de IA).",
         acciones: ["Ver qué sitios citan los asistentes de IA (ChatGPT, Gemini) cuando alguien pregunta por la categoría, y buscar aparecer en esos sitios", "Publicar preguntas frecuentes y comparativas con datos verificables"],
         datos: { shareIa: r2(own.share_pct), shareSearch: r2(ownSos) },
       });
@@ -154,9 +154,9 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
       const d = deltaPct(last.search_volume, avg(base.map((x) => x.search_volume)));
       if (d != null && Math.abs(d) >= 20) S({
         key: k("demand_change"), tipo: d > 0 ? "oportunidad" : "info", prioridad: "baja",
-        titulo: `${pre}la demanda genérica ${d > 0 ? "subió" : "bajó"} ${fDelta(d)} (${last.mes}: ${fNum(last.search_volume)} búsquedas)`,
-        descripcion: `Promedio de los 3 meses previos ${fNum(avg(base.map((x) => x.search_volume)))}. ${d > 0 ? "Ventana para capturar demanda con Search/SEO." : "Contexto: parte de la caída de tráfico puede ser de mercado, no de ejecución."}`,
-        acciones: d > 0 ? ["Subir presupuesto de Search en las keywords genéricas mientras dure el pico"] : ["Ajustar las metas de tráfico al contexto de demanda"],
+        titulo: `${pre}las búsquedas sin marca del rubro ${d > 0 ? "subieron" : "bajaron"} ${fDelta(d)} (${last.mes}: ${fNum(last.search_volume)} búsquedas — demanda genérica)`,
+        descripcion: `Promedio de los 3 meses anteriores: ${fNum(avg(base.map((x) => x.search_volume)))}. ${d > 0 ? "Es un buen momento para aparecer en Google (avisos en el buscador y SEO)." : "Ojo: parte de la caída de visitas puede ser porque el mercado busca menos, no por algo que se hizo mal."}`,
+        acciones: d > 0 ? ["Pedile a la agencia que suba el presupuesto de avisos en Google para búsquedas sin marca mientras dure el pico"] : ["Ajustá las metas de visitas a lo que está buscando el mercado"],
         datos: { mes: last.mes, volumen: last.search_volume, promedio3m: Math.round(avg(base.map((x) => x.search_volume))), deltaPct: r2(d) },
       });
     }
@@ -171,9 +171,9 @@ export function computeSeoSignals(data: SeoData | null | undefined): Signal[] {
       const gaps = rows.filter((r) => r.idx <= medIdx * 0.6).sort((a, b2) => b2.generico - a.generico).slice(0, 3);
       if (gaps.length) S({
         key: k("region_gap"), tipo: "oportunidad", prioridad: "baja",
-        titulo: `${pre}${gaps.map((g) => g.provincia).join(", ")}: alta demanda de la categoría y bajo interés en tu marca`,
-        descripcion: gaps.map((g) => `${g.provincia}: genérico ${g.generico}, marca ${g.marca}`).join(" · ") + " (índice Google Trends 0-100).",
-        acciones: ["Segmentar pauta geográfica en esas provincias", "Revisar distribución/retail en esas zonas"],
+        titulo: `${pre}${gaps.map((g) => g.provincia).join(", ")}: se busca mucho la categoría pero poco tu marca`,
+        descripcion: gaps.map((g) => `${g.provincia}: interés en el producto ${g.generico}, en tu marca ${g.marca}`).join(" · ") + " (índice de Google Trends, de 0 a 100).",
+        acciones: ["Pedile a la agencia avisos dirigidos a esas provincias", "Revisá con Comercial la distribución y las cadenas en esas zonas"],
         datos: { provincias: gaps },
       });
     }

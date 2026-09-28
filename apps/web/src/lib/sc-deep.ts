@@ -115,10 +115,10 @@ export interface PaginaDecae {
   causa: CausaDecay; clicksPerdidos: number; sinInteranual: boolean;
 }
 export const CAUSA_TXT: Record<CausaDecay, { titulo: string; accion: string }> = {
-  ranking: { titulo: "perdió posiciones", accion: "Refrescá y ampliá el contenido (datos actualizados, subtemas que cubren las páginas que te pasaron), revisá enlaces internos hacia la página." },
-  serp: { titulo: "misma posición, menos clics (cambió la SERP)", accion: "La página rankea igual pero la gente hace menos clic: probablemente apareció un Resumen IA u otros elementos. Apuntá a ser citado (datos concretos, specs, comparativas) y mejorá título/descripción." },
-  demanda: { titulo: "bajaron las búsquedas", accion: "La posición se sostiene y cayeron las impresiones: es demanda (estacional o de mercado). Cruzalo con la demanda de la categoría antes de tocar la página." },
-  mixta: { titulo: "caída sin una causa dominante", accion: "Revisá la página: contenido desactualizado, cambios técnicos recientes (redirecciones, canonical, noindex) y la SERP actual de sus búsquedas principales." },
+  ranking: { titulo: "bajó de lugar en Google", accion: "Actualizá y ampliá el contenido de la página (datos al día, los temas que cubren las páginas que te pasaron) y sumá links hacia ella desde otras páginas del sitio (enlaces internos)." },
+  serp: { titulo: "mismo lugar en Google, pero menos clics (cambió cómo se ven los resultados)", accion: "La página aparece en el mismo lugar pero la gente hace menos clic: probablemente Google ahora muestra un Resumen con IA u otros recuadros arriba. Buscá que la IA te cite (datos concretos, especificaciones, comparativas) y mejorá el título y la descripción que muestra Google." },
+  demanda: { titulo: "bajaron las búsquedas", accion: "Sigue en el mismo lugar pero aparece menos veces: es que la gente busca menos (por la época del año o el mercado). Antes de tocar la página, compará con las búsquedas de la categoría." },
+  mixta: { titulo: "cayó sin una causa clara", accion: "Pedile al equipo web que revise la página: contenido viejo, cambios técnicos recientes (redirecciones, etiquetas canonical o noindex) y cómo se ven hoy los resultados de Google para sus búsquedas principales." },
 };
 
 export function detectarDecaimiento(

@@ -13,8 +13,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import type { Signal } from "@/lib/signals/types";
 import type { Insights, InsItem, ReportMeta } from "@/lib/insights/types";
-import { recomendacionesDeSenales, recomendacionesDeDiagnostico, unirRecomendaciones } from "@/lib/recomendacion";
+import { recomendacionesDeSenales, recomendacionesDeDiagnostico, unirRecomendaciones, fmtImpacto, type Recomendacion } from "@/lib/recomendacion";
+import { aplicarCambio, estadoPorId, misAcciones, snapshotDe, type AccionSeguida, type EstadoAccion, type MiAccion } from "@/lib/recomendacion-seguimiento";
+import { debeReusarDiagnostico, fechaCorta, haceTexto, GUARD_HORAS } from "@/lib/insights/guard";
 import { RecomendacionesLista } from "./recomendacion-card";
+import { MisAcciones } from "./mis-acciones";
 import { AnotacionesPanel } from "@/components/anotaciones/anotaciones-panel";
 import { LearnButton } from "@/components/knowledge/learn-button";
 import { GuiameButton } from "@/components/copiloto/guiame-button";
@@ -191,6 +194,12 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
   const [err, setErr] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  // Guarda del Diagnóstico IA: confirmación en la página si ya hay uno de hace menos de GUARD_HORAS.
+  const [confirmGen, setConfirmGen] = useState<{ edadMs: number | null } | null>(null);
+  // "Mis acciones" (migración 0122): null = cargando.
+  const [seg, setSeg] = useState<{ disponible: boolean; aviso: string | null; items: AccionSeguida[] | null }>({ disponible: true, aviso: null, items: null });
+  const [segErr, setSegErr] = useState<string | null>(null);
+  const [segOcupado, setSegOcupado] = useState<string | null>(null);
 
   const q = encodeURIComponent(dash);
   const loadList = useCallback(async () => {
@@ -236,6 +245,15 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
   }, [q]);
   useEffect(() => () => sigAbort.current?.abort(), []);
 
+  const loadSeguimiento = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/recomendaciones/seguimiento?dash=${q}`);
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j) { setSeg({ disponible: true, aviso: null, items: [] }); setSegErr(j?.error ? String(j.error) : null); return; }
+      setSeg({ disponible: j.disponible !== false, aviso: j.aviso ?? null, items: Array.isArray(j.items) ? j.items : [] });
+    } catch { setSeg({ disponible: true, aviso: null, items: [] }); }
+  }, [q]);
+
   // Carga perezosa: recién al abrir la sección.
   useEffect(() => {
     if (!open || loaded) return;
@@ -243,20 +261,56 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
     loadSignals();
     loadSaved();
     loadList();
-  }, [open, loaded, loadSignals, loadSaved, loadList]);
+    loadSeguimiento();
+  }, [open, loaded, loadSignals, loadSaved, loadList, loadSeguimiento]);
 
-  const generate = async () => {
+  const generate = async (force: boolean) => {
+    setConfirmGen(null);
     setGenerating(true); setErr(null); setWarn(null);
     try {
-      const r = await fetch("/api/insights", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dash }) });
+      const r = await fetch("/api/insights", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dash, force }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || "No se pudo generar el diagnóstico.");
       setData(j.insights as Insights); setMeta({ id: j.id ?? null, createdAt: j.createdAt ?? null, model: j.model });
+      // El servidor devolvió el guardado (hay uno reciente): se pregunta antes de gastar otra corrida.
+      if (j.reused) setConfirmGen({ edadMs: typeof j.edadMs === "number" ? j.edadMs : null });
       if (j.warning) setWarn(j.warning);
       loadList();
     } catch (e) { setErr((e as Error).message); }
     finally { setGenerating(false); }
   };
+  // Botón: si la última versión tiene menos de GUARD_HORAS, primero pregunta en la página.
+  const onGenerar = () => {
+    const ultimo = versiones[0]?.createdAt ?? meta?.createdAt ?? null;
+    const g = debeReusarDiagnostico(ultimo, new Date(), false);
+    if (g.reusar && data) { setConfirmGen({ edadMs: g.edadMs }); return; }
+    void generate(false);
+  };
+
+  // Marcar una tarjeta: UI optimista + POST; sin la tabla (0122) se revierte y se muestra el aviso.
+  const marcar = async (base: { id: string; titulo: string; snapshot: AccionSeguida["snapshot"] }, estado: EstadoAccion) => {
+    const prev = seg.items ?? [];
+    const cambio: AccionSeguida = { id: base.id, dash, estado, titulo: base.titulo, snapshot: base.snapshot, autor: null, updatedAt: new Date().toISOString() };
+    setSegErr(null); setSegOcupado(base.id);
+    setSeg((s) => ({ ...s, items: aplicarCambio(s.items ?? [], { ...cambio, autor: (s.items ?? []).find((a) => a.id === base.id)?.autor ?? null }) }));
+    try {
+      const r = await fetch("/api/recomendaciones/seguimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: base.id, dash, estado, titulo: base.titulo, snapshot: base.snapshot }) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) {
+        setSeg((s) => ({ ...s, items: prev, ...(r.status === 503 ? { disponible: false, aviso: j?.error ?? null } : {}) }));
+        if (r.status !== 503) setSegErr(j?.error || "No se pudo guardar la acción.");
+        return;
+      }
+      if (j?.item) setSeg((s) => ({ ...s, items: aplicarCambio(s.items ?? [], j.item as AccionSeguida) }));
+    } catch {
+      setSeg((s) => ({ ...s, items: prev }));
+      setSegErr("No se pudo guardar la acción (sin conexión).");
+    } finally { setSegOcupado(null); }
+  };
+  const marcarRec = (rec: Recomendacion, estado: EstadoAccion) =>
+    marcar({ id: rec.id, titulo: rec.titulo, snapshot: snapshotDe({ ...rec, impactoTexto: fmtImpacto(rec.impacto) || null }) }, estado);
+  const marcarMia = (a: MiAccion, estado: EstadoAccion) =>
+    marcar({ id: a.id, titulo: a.titulo, snapshot: a.actual ? snapshotDe({ ...a.actual, impactoTexto: fmtImpacto(a.actual.impacto) || null }) : a.snapshot }, estado);
 
   const n = (t: Signal["tipo"]) => (signals ?? []).filter((s) => s.tipo === t).length;
   // "Qué hacer ahora": señales accionables + plan/oportunidades/hallazgos del Diagnóstico IA, con un
@@ -266,6 +320,10 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
     catch { return []; }
   }, [signals, data, dash]);
   const latestId = versiones[0]?.id ?? null;
+  const estados = useMemo(() => estadoPorId(seg.items ?? []), [seg.items]);
+  const mias = useMemo(() => (seg.items ? misAcciones(seg.items, recs) : null), [seg.items, recs]);
+  // En "Qué hacer ahora" no se repiten las descartadas (siguen en "Mis acciones" para reactivarlas).
+  const recsVisibles = useMemo(() => recs.filter((r) => estados.get(r.id) !== "descartada"), [recs, estados]);
 
   return (
     <div className="rounded-lg border bg-card p-4">
@@ -279,13 +337,14 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
 
       {open && (
         <div className="mt-4 grid gap-4">
-          <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, ordenadas de lo más urgente a lo menos (según cuánto mueven el resultado, qué tan seguro es el dato y cuánto trabajo llevan). Abrí cada una para ver los pasos, o tocá «Guiame paso a paso» y el copiloto te explica cómo hacerlo, en palabras simples.">
+          <MisAcciones items={mias} disponible={seg.disponible} aviso={seg.aviso} error={segErr} onEstado={marcarMia} ocupado={segOcupado} />
+          <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, ordenadas de lo más urgente a lo menos (según cuánto mueven el resultado, qué tan seguro es el dato y cuánto trabajo llevan). Abrí cada una para ver los pasos, o tocá «Guiame paso a paso» y el copiloto te explica cómo hacerlo, en palabras simples. Marcá «La voy a hacer», «Hecha» o «Descartar» para seguirlas en «Mis acciones».">
             {signals == null && !recs.length ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando las recomendaciones…</div>
             ) : (
               <>
                 {/* Con lo que haya llegado: si el Diagnóstico IA guardado llega antes que las señales, se muestra ya. */}
-                <RecomendacionesLista recs={recs} cargando={loadingDiag} />
+                <RecomendacionesLista recs={recsVisibles} cargando={loadingDiag} estados={estados} onEstado={marcarRec} ocupado={segOcupado} />
                 {signals == null && <div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-3.5 w-3.5 animate-spin" />Sumando las acciones de las señales…</div>}
               </>
             )}
@@ -317,17 +376,30 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
           <div className="grid gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: INK }}><Sparkles className="h-4 w-4" style={{ color: DATA }} />Diagnóstico IA</div>
-              {versiones.length > 1 ? (
-                <select value={meta?.id ?? ""} onChange={(e) => loadSaved(Number(e.target.value))} className="rounded-md border bg-white px-2 py-1 text-xs font-medium" style={{ color: INK }}>
-                  {versiones.map((v) => <option key={v.id} value={v.id}>{fFecha(v.createdAt)}{v.id === latestId ? " (actual)" : ""}</option>)}
-                </select>
-              ) : meta?.createdAt ? <span className="text-xs text-slate-500">Versión del {fFecha(meta.createdAt)}</span> : null}
-              {meta?.id != null && latestId != null && meta.id !== latestId && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700">versión histórica</span>}
-              <button type="button" onClick={generate} disabled={generating} className="ml-auto inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ background: DATA }}>
+              {meta?.createdAt && <span className="text-xs text-slate-500">Generado el {fechaCorta(meta.createdAt)}</span>}
+              {versiones.length > 1 && (
+                <label className="flex items-center gap-1 text-xs text-slate-500">
+                  <span className="sr-only sm:not-sr-only">Historial:</span>
+                  <select value={meta?.id ?? ""} onChange={(e) => loadSaved(Number(e.target.value))} className="rounded-md border bg-white px-2 py-1 text-xs font-medium" style={{ color: INK }} aria-label="Versiones anteriores del diagnóstico">
+                    {versiones.map((v) => <option key={v.id} value={v.id}>{fFecha(v.createdAt)}{v.id === latestId ? " (la más nueva)" : ""}</option>)}
+                  </select>
+                </label>
+              )}
+              {meta?.id != null && latestId != null && meta.id !== latestId && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700">versión anterior</span>}
+              <button type="button" onClick={onGenerar} disabled={generating} className="ml-auto inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ background: DATA }}>
                 {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : data ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {generating ? "Analizando…" : data ? "Regenerar diagnóstico IA" : "Generar diagnóstico IA"}
+                {generating ? "Analizando…" : data ? "Generar otro diagnóstico IA" : "Generar diagnóstico IA"}
               </button>
             </div>
+            {confirmGen && (
+              <div role="alertdialog" aria-label="Confirmar nuevo diagnóstico" className="flex flex-wrap items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs" style={{ color: INK }}>
+                <span>Ya tenés un diagnóstico de hace {haceTexto(confirmGen.edadMs)} (se guardan y se reusan durante {GUARD_HORAS} horas). ¿Generar otro?</span>
+                <span className="ml-auto flex gap-2">
+                  <button type="button" onClick={() => void generate(true)} className="rounded-md px-2.5 py-1 font-semibold text-white" style={{ background: DATA }}>Sí, generar otro</button>
+                  <button type="button" onClick={() => setConfirmGen(null)} className="rounded-md border bg-white px-2.5 py-1 font-semibold text-slate-600 hover:bg-slate-50">No, quedarme con este</button>
+                </span>
+              </div>
+            )}
             {warn && <div className="text-[11px] text-amber-700">{warn}</div>}
             {err && <div className="text-xs text-red-700">{err}</div>}
             {generating ? (

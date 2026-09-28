@@ -20,9 +20,9 @@ export function computePautaDataSignals(warnings: string[] | undefined): Signal[
   if (!warnings?.length) return [];
   return [{
     key: "pauta_omd_sin_performance", dash: "performance", tipo: "info", prioridad: "media",
-    titulo: `${warnings.length} línea${warnings.length > 1 ? "s" : ""} del plan OMD con inversión y sin impresiones cargadas`,
-    descripcion: `${warnings.slice(0, 4).join(" · ")}${warnings.length > 4 ? " …" : ""}. Quedan fuera de las métricas de eficiencia (CPM/CTR) hasta que se cargue el reporte mensual de OMD.`,
-    acciones: ["Cargar la performance del reporte OMD del mes (impresiones/alcance/clics)", "Validar que la inversión cargada sea ejecución y no plan"],
+    titulo: `${warnings.length} línea${warnings.length > 1 ? "s" : ""} de la agencia (OMD) tienen la plata cargada pero no cuántas veces se mostró el aviso (impresiones)`,
+    descripcion: `${warnings.slice(0, 4).join(" · ")}${warnings.length > 4 ? " …" : ""}. Hasta que se cargue el reporte mensual de OMD, no entran en los cálculos de costo por mil (CPM) ni de % de clics (CTR).`,
+    acciones: ["Pedile a OMD el reporte del mes con impresiones, alcance y clics, y cargalo", "Confirmá con OMD que la plata cargada es lo gastado de verdad y no lo planificado"],
     datos: { lineas: warnings.slice(0, 10) },
   }];
 }
@@ -47,17 +47,17 @@ export function computeCbSignals(inp: CbSignalInput): Signal[] {
     const gap = last.v - metaMes;
     if (gap <= -3) S({
       key: "cb_below_meta", tipo: "alerta", prioridad: gap <= -8 ? "alta" : "media",
-      titulo: `Cuadro Básico ${MES[last.i]}: ${fPct(last.v, 1)} vs meta ${fPct(metaMes, 0)} (${gap.toFixed(1)} pp)`,
-      descripcion: `Cumplimiento del surtido obligatorio en las tiendas relevadas (trade_monthly). ${p.length >= 2 ? `Mes previo: ${fPct(p[p.length - 2]!.v, 1)}.` : ""}`,
-      acciones: ["Revisar en el tab de Tiendas cuáles bajan el promedio (quiebres de Infaltables)", "Priorizar reposición de los modelos Infaltables con más faltantes", "Coordinar con la fuerza de ventas las cadenas por debajo del objetivo"],
+      titulo: `Cuadro Básico ${MES[last.i]}: las tiendas tienen el ${fPct(last.v, 1)} de los modelos obligatorios, contra una meta de ${fPct(metaMes, 0)} (${gap.toFixed(1)} puntos)`,
+      descripcion: `Qué parte de los modelos que cada tienda tiene que tener exhibidos (surtido obligatorio o Cuadro Básico) está efectivamente, en las tiendas relevadas. ${p.length >= 2 ? `Mes anterior: ${fPct(p[p.length - 2]!.v, 1)}.` : ""}`,
+      acciones: ["En la pestaña de Tiendas, mirá cuáles bajan el promedio (les faltan modelos Infaltables)", "Pedile a Comercial que reponga primero los modelos Infaltables que más faltan", "Coordiná con la fuerza de ventas una visita a las cadenas que están debajo de la meta"],
       datos: { mes: MES[last.i], cb: r2(last.v), meta: metaMes, gapPp: r2(gap) },
       impacto: { metrica: "Puntos de CB hasta la meta", valor: r2(-gap), unidad: "pp" },
     });
     else if (gap >= 5) S({
       key: "cb_above_meta", tipo: "info", prioridad: "baja",
-      titulo: `Cuadro Básico ${MES[last.i]}: ${fPct(last.v, 1)}, ${gap.toFixed(1)} pp sobre la meta`,
-      descripcion: "Si se sostiene 3 meses, conviene recalibrar la meta o mover el foco a Floor Share.",
-      acciones: ["Sostener la rutina de reposición", "Evaluar subir la meta del próximo cuatrimestre"],
+      titulo: `Cuadro Básico ${MES[last.i]}: ${fPct(last.v, 1)}, ${gap.toFixed(1)} puntos arriba de la meta`,
+      descripcion: "Si se mantiene 3 meses, conviene subir la meta o poner el foco en el espacio en góndola (Floor Share).",
+      acciones: ["Mantené la rutina de reposición", "Evaluá subir la meta del próximo cuatrimestre"],
       datos: { mes: MES[last.i], cb: r2(last.v), meta: metaMes },
     });
   }
@@ -67,16 +67,16 @@ export function computeCbSignals(inp: CbSignalInput): Signal[] {
     const d = last.v - b;
     if (d <= -4) S({
       key: "cb_trend_down", tipo: "alerta", prioridad: d <= -8 ? "alta" : "media",
-      titulo: `El Cuadro Básico cayó ${Math.abs(d).toFixed(1)} pp vs el promedio de los 3 meses previos`,
-      descripcion: `${MES[last.i]} ${fPct(last.v, 1)} vs ${base.map((x) => `${MES[x.i]} ${fPct(x.v, 1)}`).join(", ")}.`,
-      acciones: ["Cruzar con quiebres de stock / cambios de surtido del mes", "Revisar si cambió el universo de tiendas relevadas"],
+      titulo: `El Cuadro Básico (modelos obligatorios en tienda) cayó ${Math.abs(d).toFixed(1)} puntos contra el promedio de los 3 meses anteriores`,
+      descripcion: `${MES[last.i]} ${fPct(last.v, 1)} contra ${base.map((x) => `${MES[x.i]} ${fPct(x.v, 1)}`).join(", ")}.`,
+      acciones: ["Preguntale a Comercial si ese mes faltó stock o cambió el surtido", "Fijate si cambiaron las tiendas que se relevan (si entraron tiendas nuevas, el promedio se mueve)"],
       datos: { mes: MES[last.i], cb: r2(last.v), promedio3m: r2(b), deltaPp: r2(d) },
     });
     else if (d >= 4) S({
       key: "cb_trend_up", tipo: "info", prioridad: "baja",
-      titulo: `El Cuadro Básico mejoró ${d.toFixed(1)} pp vs los 3 meses previos`,
-      descripcion: `${MES[last.i]} ${fPct(last.v, 1)} vs promedio ${fPct(b, 1)}.`,
-      acciones: ["Identificar qué cadenas explican la mejora y replicar la rutina"],
+      titulo: `El Cuadro Básico (modelos obligatorios en tienda) mejoró ${d.toFixed(1)} puntos contra los 3 meses anteriores`,
+      descripcion: `${MES[last.i]} ${fPct(last.v, 1)} contra ${fPct(b, 1)} de promedio.`,
+      acciones: ["Identificá qué cadenas explican la mejora y repetí esa rutina en las demás"],
       datos: { cb: r2(last.v), promedio3m: r2(b) },
     });
   }
@@ -108,9 +108,9 @@ export function computeFsSignals(inp: FsSignalInput): Signal[] {
       const gap = last.v - meta;
       if (gap <= -2) S({
         key: k("below_meta"), tipo: "alerta", prioridad: gap <= -5 ? "alta" : "media",
-        titulo: `Floor Share ${cat} ${MES[last.i]}: ${fPct(last.v, 1)} vs meta ${fPct(meta, 1)} (${gap.toFixed(1)} pp)`,
-        descripcion: `Share de exhibición de Drean en góndola (unidades exhibidas Drean ÷ total relevado).`,
-        acciones: [`Negociar exhibición adicional de ${cat} en las cadenas de mayor volumen`, "Revisar qué marca ganó espacio (ranking por categoría)"],
+        titulo: `Espacio en góndola de ${cat} ${MES[last.i]}: Drean tiene el ${fPct(last.v, 1)} contra una meta de ${fPct(meta, 1)} (${gap.toFixed(1)} puntos — Floor Share)`,
+        descripcion: `Qué parte de los equipos exhibidos en los locales son Drean (unidades Drean exhibidas ÷ total relevado).`,
+        acciones: [`Pedile a Comercial que negocie más exhibición de ${cat} en las cadenas que más venden`, "Mirá en el ranking de la categoría qué marca ganó espacio"],
         datos: { categoria: cat, mes: MES[last.i], share: r2(last.v), meta: r2(meta), gapPp: r2(gap) },
         impacto: { metrica: "Puntos de share de góndola hasta la meta", valor: r2(-gap), unidad: "pp" },
       });
@@ -120,9 +120,9 @@ export function computeFsSignals(inp: FsSignalInput): Signal[] {
       const d = last.v - b;
       if (Math.abs(d) >= 1.5) S({
         key: k(d < 0 ? "trend_down" : "trend_up"), tipo: d < 0 ? "alerta" : "info", prioridad: d <= -3 ? "alta" : d < 0 ? "media" : "baja",
-        titulo: `Floor Share ${cat}: ${d > 0 ? "+" : ""}${d.toFixed(1)} pp vs el promedio de los 3 meses previos (${fPct(last.v, 1)})`,
-        descripcion: `Promedio previo ${fPct(b, 1)}.`,
-        acciones: d < 0 ? ["Ver qué cadenas/tiendas explican la caída (tab por cliente)", "Chequear stock de exhibición y material POP"] : ["Sostener lo que explica la suba (acuerdos de exhibición, lanzamientos)"],
+        titulo: `Espacio en góndola de ${cat} (Floor Share): ${d > 0 ? "+" : ""}${d.toFixed(1)} puntos contra el promedio de los 3 meses anteriores (${fPct(last.v, 1)})`,
+        descripcion: `Promedio anterior: ${fPct(b, 1)}.`,
+        acciones: d < 0 ? ["Mirá en la pestaña por cliente qué cadenas o tiendas explican la caída", "Revisá con Comercial si hay stock para exhibir y material de punto de venta (POP)"] : ["Mantené lo que explica la suba (acuerdos de exhibición, lanzamientos)"],
         datos: { categoria: cat, share: r2(last.v), promedio3m: r2(b), deltaPp: r2(d) },
       });
     }
@@ -136,16 +136,16 @@ export function computeFsSignals(inp: FsSignalInput): Signal[] {
     if (!own || !rival) continue;
     if (rival.share > own.share) S({
       key: `fs_leader_lost_${c}`, tipo: "alerta", prioridad: rival.share - own.share >= 3 ? "alta" : "media",
-      titulo: `${rival.marca} lidera la góndola de ${c}: ${fPct(rival.share, 1)} vs ${fPct(own.share, 1)} de Drean`,
-      descripcion: `Ranking de exhibición (período del relevamiento precalculado): ${rows.slice(0, 4).map((r) => `${r.marca} ${fPct(r.share, 1)}`).join(" · ")}.`,
-      acciones: [`Revisar qué cadenas concentran la exhibición de ${rival.marca}`, "Negociar exhibición en las cadenas donde Drean vende más"],
+      titulo: `${rival.marca} tiene más espacio en la góndola de ${c}: ${fPct(rival.share, 1)} contra ${fPct(own.share, 1)} de Drean`,
+      descripcion: `Ranking de exhibición (período del último relevamiento): ${rows.slice(0, 4).map((r) => `${r.marca} ${fPct(r.share, 1)}`).join(" · ")}.`,
+      acciones: [`Mirá en qué cadenas está concentrada la exhibición de ${rival.marca}`, "Pedile a Comercial que negocie exhibición en las cadenas donde Drean más vende"],
       datos: { categoria: c, drean: r2(own.share), lider: { marca: rival.marca, share: r2(rival.share) } },
     });
     else if (own.share - rival.share < 2) S({
       key: `fs_leader_tight_${c}`, tipo: "info", prioridad: "media",
-      titulo: `Góndola de ${c}: Drean lidera por solo ${(own.share - rival.share).toFixed(1)} pp sobre ${rival.marca}`,
-      descripcion: `${fPct(own.share, 1)} vs ${fPct(rival.share, 1)}.`,
-      acciones: ["Blindar la exhibición en las cadenas top antes de que el 2° pase adelante"],
+      titulo: `Góndola de ${c}: Drean tiene más espacio por solo ${(own.share - rival.share).toFixed(1)} puntos sobre ${rival.marca}`,
+      descripcion: `${fPct(own.share, 1)} contra ${fPct(rival.share, 1)}.`,
+      acciones: ["Asegurá la exhibición en las cadenas principales antes de que el segundo te pase"],
       datos: { categoria: c, drean: r2(own.share), segundo: { marca: rival.marca, share: r2(rival.share) } },
     });
   }
@@ -158,9 +158,9 @@ export function computeFsSignals(inp: FsSignalInput): Signal[] {
       .sort((a, b) => b.total.total_units - a.total.total_units).slice(0, 4);
     if (low.length) S({
       key: "fs_clientes_bajo_share", tipo: "oportunidad", prioridad: "media",
-      titulo: `${low.length} cadena${low.length > 1 ? "s" : ""} con mucho volumen de góndola y share Drean ≤ 70% del promedio (${fPct(ref, 1)})`,
-      descripcion: low.map((r) => `${clip(r.cliente, 30)}: ${fPct(r.total.share, 1)} (${fInt(r.total.total_units)} u. relevadas)`).join(" · "),
-      acciones: ["Priorizar estas cadenas en la negociación de exhibición", "Revisar surtido (Cuadro Básico) en esas cadenas"],
+      titulo: `${low.length} cadena${low.length > 1 ? "s" : ""} grande${low.length > 1 ? "s" : ""} donde Drean tiene poco espacio en góndola: 70% o menos del promedio (${fPct(ref, 1)})`,
+      descripcion: low.map((r) => `${clip(r.cliente, 30)}: ${fPct(r.total.share, 1)} (${fInt(r.total.total_units)} equipos relevados)`).join(" · "),
+      acciones: ["Pedile a Comercial que ponga estas cadenas primero en la negociación de exhibición", "Revisá si en esas cadenas están los modelos obligatorios (Cuadro Básico)"],
       datos: { referencia: r2(ref), cadenas: low.map((r) => ({ cliente: r.cliente, share: r2(r.total.share), unidades: r.total.total_units })) },
       impacto: { metrica: "Unidades Drean exhibidas si llegaran al promedio", valor: Math.round(sum(low.map((r) => (ref / 100) * r.total.total_units - r.total.drean_units))), unidad: "unidades" },
     });
@@ -189,17 +189,17 @@ export function computeUgcSignals(inp: UgcSignalInput): Signal[] {
     const star = [...ps].sort((a, b) => erOf(b) - erOf(a))[0]!;
     if (medEr > 0 && erOf(star) >= medEr * 2 && sh(star) < 15) S({
       key: `ugc_piece_star_${star.id}`, tipo: "oportunidad", prioridad: "media",
-      titulo: `Pieza UGC con interacción ${(erOf(star) / medEr).toFixed(1)}× la mediana y solo ${fPct(sh(star), 0)} de la inversión UGC`,
-      descripcion: `"${clip(star.nombre, 60)}": ${fPct(erOf(star), 2)} de interacciones (reacciones+comentarios+compartidos+guardados) sobre impresiones vs mediana ${fPct(medEr, 2)}. ${fMoney(star.spend)} invertidos.`,
-      acciones: ["Subirle presupuesto o duplicarla en las campañas de consideración", "Pedir al creador variantes con el mismo ángulo"],
+      titulo: `Una pieza de creador de contenido (UGC) genera ${(erOf(star) / medEr).toFixed(1)} veces más interacción que las demás y recibe solo el ${fPct(sh(star), 0)} de la inversión UGC`,
+      descripcion: `"${clip(star.nombre, 60)}": de cada 100 veces que se mostró, ${fPct(erOf(star), 2)} terminó en una reacción, comentario, compartido o guardado; en la pieza UGC típica, ${fPct(medEr, 2)}. ${fMoney(star.spend)} invertidos.`,
+      acciones: ["Pedile a la agencia que le dé más presupuesto o la use también en las campañas que buscan que la gente considere comprar", "Pedile al creador otras versiones con la misma idea"],
       datos: { pieza: star.nombre, permalink: star.permalink, er: r2(erOf(star)), medianaEr: r2(medEr), share: r2(sh(star)) },
     });
     const cara = ps.filter((p) => sh(p) >= 10 && erOf(p) <= medEr * 0.5).sort((a, b) => b.spend - a.spend)[0];
     if (cara) S({
       key: `ugc_piece_costly_${cara.id}`, tipo: "alerta", prioridad: "media",
-      titulo: `Pieza UGC con ${fPct(sh(cara), 0)} de la inversión e interacción a la mitad de la mediana`,
-      descripcion: `"${clip(cara.nombre, 60)}": ER ${fPct(erOf(cara), 2)} vs mediana ${fPct(medEr, 2)} (${fMoney(cara.spend)}).`,
-      acciones: ["Rotarla por las piezas UGC de mejor interacción", "Revisar el hook y el encaje producto-creador"],
+      titulo: `Una pieza de creador (UGC) se lleva el ${fPct(sh(cara), 0)} de la inversión y genera la mitad de interacción que las demás`,
+      descripcion: `"${clip(cara.nombre, 60)}": ${fPct(erOf(cara), 2)} de interacción (ER) contra ${fPct(medEr, 2)} de la pieza típica (${fMoney(cara.spend)}).`,
+      acciones: ["Reemplazala por las piezas UGC que mejor funcionan", "Revisá cómo arranca el video (el gancho) y si el creador encaja con el producto"],
       datos: { pieza: cara.nombre, er: r2(erOf(cara)), medianaEr: r2(medEr), inversion: Math.round(cara.spend) },
     });
     const vid = ps.filter((p) => p.vbase > 0);
@@ -208,10 +208,10 @@ export function computeUgcSignals(inp: UgcSignalInput): Signal[] {
       const medV = median(vid.map(vtr));
       const weak = vid.filter((p) => vtr(p) <= medV * 0.6 && sh(p) >= 5).sort((a, b) => b.spend - a.spend)[0];
       if (weak) S({
-        key: `ugc_vtr_low_${weak.id}`, tipo: "alerta", prioridad: "media",
-        titulo: `Video UGC con VTR≥50% de ${fPct(vtr(weak), 1)} (mediana UGC ${fPct(medV, 1)})`,
-        descripcion: `"${clip(weak.nombre, 60)}" pierde a la audiencia antes de la mitad. ${fMoney(weak.spend)} invertidos.`,
-        acciones: ["Reeditar los primeros 3 segundos con el producto visible", "Probar un corte más corto"],
+        key: `ugc_vtr_low_${weak.id}`, metrica: null, tipo: "alerta", prioridad: "media",
+        titulo: `Video de creador (UGC) que solo el ${fPct(vtr(weak), 1)} ve hasta la mitad (VTR al 50%); en los demás videos UGC, ${fPct(medV, 1)}`,
+        descripcion: `"${clip(weak.nombre, 60)}" pierde a la gente antes de la mitad. ${fMoney(weak.spend)} invertidos.`,
+        acciones: ["Reeditá los primeros 3 segundos para que se vea el producto", "Probá una versión más corta"],
         datos: { pieza: weak.nombre, vtr50: r2(vtr(weak)), mediana: r2(medV) },
       });
     }
@@ -223,9 +223,9 @@ export function computeUgcSignals(inp: UgcSignalInput): Signal[] {
     const er = impr ? (sum(ps.map((p) => p.reactions + p.comments + p.shares + p.saves)) / impr) * 100 : 0;
     if (cpm > 0 && er >= inp.brandEr * 1.5) S({
       key: "ugc_vs_brand_engagement", tipo: "oportunidad", prioridad: "media",
-      titulo: `El UGC genera ${(er / (inp.brandEr || 1)).toFixed(1)}× la interacción por impresión de la pauta de marca en Meta`,
-      descripcion: `UGC: ER ${fPct(er, 2)} con CPM ${fMoney(cpm)}; pauta de marca (Meta, sin UGC): ER ${fPct(inp.brandEr, 2)} con CPM ${fMoney(inp.brandCpm)}.`,
-      acciones: ["Usar piezas UGC como creativos de consideración en las campañas de marca", "Medir el efecto en VTR y clicks antes de escalar"],
+      titulo: `Las piezas de creadores (UGC) generan ${(er / (inp.brandEr || 1)).toFixed(1)} veces más interacción por vez mostrada que los avisos de marca en Meta`,
+      descripcion: `UGC: ${fPct(er, 2)} de interacción (ER), con un costo por mil impresiones (CPM) de ${fMoney(cpm)}; avisos de marca en Meta (sin UGC): ${fPct(inp.brandEr, 2)} con CPM de ${fMoney(inp.brandCpm)}.`,
+      acciones: ["Pedile a la agencia que use piezas UGC en las campañas de marca que buscan que la gente considere comprar", "Antes de escalar (hacer más), mirá si suben el % que ve el video (VTR) y los clics"],
       datos: { ugc: { er: r2(er), cpm: r2(cpm) }, marca: { er: r2(inp.brandEr), cpm: r2(inp.brandCpm) } },
     });
   }
@@ -233,9 +233,9 @@ export function computeUgcSignals(inp: UgcSignalInput): Signal[] {
   const neg = inp.pieces.filter((p) => /negativ|baja/i.test(p.analysis?.percepcion ?? "") && p.spend > 0).sort((a, b) => b.spend - a.spend);
   if (neg.length) S({
     key: "ugc_percepcion_negativa", tipo: "alerta", prioridad: neg.length >= 3 ? "alta" : "media",
-    titulo: `${neg.length} pieza${neg.length > 1 ? "s" : ""} UGC con percepción de marca negativa/baja en el análisis de comentarios`,
-    descripcion: neg.slice(0, 3).map((p) => `"${clip(p.nombre, 40)}" (${fMoney(p.spend)})`).join(" · ") + ". El análisis ya calibra con guardados/compartidos/VTR (no es solo por pocos comentarios).",
-    acciones: ["Leer los comentarios de esas piezas en el tab de análisis", "Pausar la amplificación si la crítica es sobre el producto"],
+    titulo: `${neg.length} pieza${neg.length > 1 ? "s" : ""} de creadores (UGC) dejan una imagen de marca negativa o baja, según el análisis de comentarios`,
+    descripcion: neg.slice(0, 3).map((p) => `"${clip(p.nombre, 40)}" (${fMoney(p.spend)})`).join(" · ") + ". El análisis ya tiene en cuenta guardados, compartidos y cuánto se ve el video (no es solo por pocos comentarios).",
+    acciones: ["Leé los comentarios de esas piezas en la pestaña de análisis", "Si la crítica es sobre el producto, sacale la pauta a esa pieza"],
     datos: { piezas: neg.slice(0, 5).map((p) => ({ pieza: p.nombre, inversion: Math.round(p.spend), percepcion: p.analysis?.percepcion })) },
   });
   const altas = inp.pieces.filter((p) => /alta/i.test(p.analysis?.intencion ?? "") && p.spend > 0);
@@ -243,9 +243,9 @@ export function computeUgcSignals(inp: UgcSignalInput): Signal[] {
     const sh = (sum(altas.map((p) => p.spend)) / tot) * 100;
     if (sh < 30) S({
       key: "ugc_intencion_alta_subinvertida", tipo: "oportunidad", prioridad: "media",
-      titulo: `Las piezas UGC con intención de compra ALTA reciben solo el ${fPct(sh, 0)} de la inversión UGC`,
-      descripcion: `${altas.length} pieza${altas.length > 1 ? "s" : ""} con intención alta según el análisis de comentarios: ${altas.slice(0, 3).map((p) => `"${clip(p.nombre, 35)}"`).join(", ")}.`,
-      acciones: ["Reasignar presupuesto UGC hacia esas piezas", "Usarlas en retargeting / consideración"],
+      titulo: `Las piezas de creadores (UGC) que más ganas de comprar generan (intención de compra alta) reciben solo el ${fPct(sh, 0)} de la inversión UGC`,
+      descripcion: `${altas.length} pieza${altas.length > 1 ? "s" : ""} con intención de compra alta según el análisis de comentarios: ${altas.slice(0, 3).map((p) => `"${clip(p.nombre, 35)}"`).join(", ")}.`,
+      acciones: ["Pasá presupuesto UGC a esas piezas", "Usalas en avisos para gente que ya visitó la web (remarketing) o que está evaluando comprar"],
       datos: { piezas: altas.length, shareInversion: r2(sh) },
     });
   }
@@ -272,25 +272,25 @@ export function computeMercadoSignals(rows: MercadoRowLite[], ownBrand = "DREAN"
     if (own && leader) {
       if ((leader.value_share ?? 0) > (own.value_share ?? 0)) S({
         key: k("leader_gap"), tipo: "alerta", prioridad: (leader.value_share ?? 0) - (own.value_share ?? 0) >= 3 ? "alta" : "media",
-        titulo: `${cat} (${ml}): ${leader.marca} lidera en valor con ${fPct(leader.value_share ?? 0, 1)} vs ${fPct(own.value_share ?? 0, 1)} de Drean`,
-        descripcion: `Ranking value share: ${cur.slice(0, 4).map((r) => `${r.marca} ${fPct(r.value_share ?? 0, 1)}`).join(" · ")}. Unit share Drean ${fPct(own.unit_share ?? 0, 1)}.`,
-        acciones: ["Ver en qué segmento (High/Mid/Low) pierde Drean", "Cruzar con Floor Share y Share of Search de la categoría"],
+        titulo: `${cat} (${ml}): ${leader.marca} vende más en pesos: se lleva el ${fPct(leader.value_share ?? 0, 1)} del mercado contra ${fPct(own.value_share ?? 0, 1)} de Drean`,
+        descripcion: `Ranking de participación en pesos vendidos (value share): ${cur.slice(0, 4).map((r) => `${r.marca} ${fPct(r.value_share ?? 0, 1)}`).join(" · ")}. En unidades, Drean tiene el ${fPct(own.unit_share ?? 0, 1)} (unit share).`,
+        acciones: ["Mirá en qué rango de precio pierde Drean: alto, medio o bajo (segmentos High/Mid/Low)", "Compará con el espacio en góndola (Floor Share) y con cuánto te buscan en Google (Share of Search) en la categoría"],
         datos: { categoria: cat, mes: ml, drean: { value: own.value_share, unit: own.unit_share }, lider: { marca: leader.marca, value: leader.value_share } },
       });
       else if ((own.value_share ?? 0) - (leader.value_share ?? 0) < 2) S({
         key: k("leader_tight"), tipo: "info", prioridad: "media",
-        titulo: `${cat} (${ml}): Drean lidera en valor por solo ${((own.value_share ?? 0) - (leader.value_share ?? 0)).toFixed(1)} pp sobre ${leader.marca}`,
-        descripcion: `${fPct(own.value_share ?? 0, 1)} vs ${fPct(leader.value_share ?? 0, 1)}.`,
-        acciones: ["Vigilar el segmento donde crece el 2°"],
+        titulo: `${cat} (${ml}): Drean es la que más vende en pesos, pero por solo ${((own.value_share ?? 0) - (leader.value_share ?? 0)).toFixed(1)} puntos sobre ${leader.marca}`,
+        descripcion: `${fPct(own.value_share ?? 0, 1)} contra ${fPct(leader.value_share ?? 0, 1)} (share en valor).`,
+        acciones: ["Seguí de cerca el rango de precio donde está creciendo el segundo"],
         datos: { categoria: cat, drean: own.value_share, segundo: { marca: leader.marca, value: leader.value_share } },
       });
       // Valor vs unidades: vende más barato que su volumen.
       const vs = own.value_share ?? 0, us = own.unit_share ?? 0;
       if (us > 0 && vs < us * 0.9) S({
         key: k("value_below_units"), tipo: "info", prioridad: "baja",
-        titulo: `${cat}: Drean tiene ${fPct(us, 1)} de las unidades pero ${fPct(vs, 1)} del valor (precio medio por debajo del mercado)`,
-        descripcion: "El mix vendido se concentra en segmentos/modelos de menor precio que el promedio de la categoría.",
-        acciones: ["Revisar el share en el segmento High (premium)", "Evaluar comunicación de producto de mayor valor"],
+        titulo: `${cat}: Drean vende el ${fPct(us, 1)} de los equipos pero se lleva el ${fPct(vs, 1)} de la plata (vende más barato que el promedio del mercado)`,
+        descripcion: "Lo que se vende de Drean son sobre todo modelos más baratos que el promedio de la categoría.",
+        acciones: ["Mirá la participación en el rango de precio alto (segmento High o premium)", "Evaluá comunicar más los productos de mayor valor"],
         datos: { categoria: cat, unitShare: us, valueShare: vs },
       });
     }
@@ -302,9 +302,9 @@ export function computeMercadoSignals(rows: MercadoRowLite[], ownBrand = "DREAN"
       const d = lv - b;
       if (Math.abs(d) >= 1.5) S({
         key: k(d < 0 ? "share_down" : "share_up"), tipo: d < 0 ? "alerta" : "info", prioridad: d <= -3 ? "alta" : d < 0 ? "media" : "baja",
-        titulo: `${cat}: el value share de Drean ${d < 0 ? "cayó" : "subió"} ${Math.abs(d).toFixed(1)} pp vs el promedio de los 3 meses previos (${fPct(lv, 1)})`,
-        descripcion: `Promedio previo ${fPct(b, 1)} (GfK mensual).`,
-        acciones: d < 0 ? ["Identificar qué marca ganó el share (ranking del mes)", "Cruzar con inversión en pauta y exhibición del período"] : ["Identificar qué palanca lo explica y sostenerla"],
+        titulo: `${cat}: la participación de Drean en pesos vendidos ${d < 0 ? "cayó" : "subió"} ${Math.abs(d).toFixed(1)} puntos contra el promedio de los 3 meses anteriores (${fPct(lv, 1)} — value share)`,
+        descripcion: `Promedio anterior: ${fPct(b, 1)} (GfK mensual).`,
+        acciones: d < 0 ? ["Mirá en el ranking del mes qué marca ganó lo que perdiste", "Compará con la inversión en avisos y el espacio en góndola de esos meses"] : ["Identificá qué lo explica y seguí por ahí"],
         datos: { categoria: cat, share: r2(lv), promedio3m: r2(b), deltaPp: r2(d) },
       });
     }
@@ -314,9 +314,9 @@ export function computeMercadoSignals(rows: MercadoRowLite[], ownBrand = "DREAN"
         const r = rows.find((x) => x.categoria === cat && x.segmento === seg && x.mes === last && isOwn(x.marca));
         if (r?.value_share != null && r.value_share <= own.value_share * 0.6) S({
           key: k(`segment_weak_${seg}`), tipo: "oportunidad", prioridad: seg === "High" ? "media" : "baja",
-          titulo: `${cat} · segmento ${seg}: Drean tiene ${fPct(r.value_share, 1)} vs ${fPct(own.value_share, 1)} en el total de la categoría`,
-          descripcion: `El segmento ${seg} es donde Drean está más sub-representado (${ml}).`,
-          acciones: [`Revisar el portfolio y la comunicación para el segmento ${seg}`, "Cruzar con el share de góndola del segmento"],
+          titulo: `${cat} · precio ${seg === "High" ? "alto" : seg === "Mid" ? "medio" : "bajo"} (segmento ${seg}): Drean tiene el ${fPct(r.value_share, 1)} contra ${fPct(own.value_share, 1)} en toda la categoría`,
+          descripcion: `En ese rango de precio es donde Drean está menos presente (${ml}).`,
+          acciones: [`Revisá qué modelos y qué comunicación tiene Drean para ese rango de precio (portfolio)`, "Compará con el espacio en góndola de ese rango"],
           datos: { categoria: cat, segmento: seg, shareSegmento: r.value_share, shareTotal: own.value_share },
         });
       }
@@ -335,7 +335,13 @@ export interface SaludSignalInput {
   /** Value share GfK MAT de Drean por categoría y mes "YYYY-MM" (para el cruce share ↔ equity). */
   shareMat?: Record<string, Record<string, number>>;
 }
-const DIM_LBL: Record<keyof KantarVals, string> = { tom: "Top of Mind", som: "Share of Mind", int: "Intención de compra", poder: "Poder de Marca" };
+// Versión en lenguaje simple (qué significa primero, el nombre técnico entre paréntesis).
+const DIM_EXPL: Record<keyof KantarVals, string> = {
+  tom: "la marca que a la gente se le viene primero a la cabeza (Top of Mind)",
+  som: "las marcas que la gente recuerda (Share of Mind)",
+  int: "las ganas de comprar la marca (Intención de compra)",
+  poder: "la fuerza de la marca frente a las demás (Poder de Marca)",
+};
 const WAVE_MES: Record<string, string> = { nov: "11", jun: "06" };
 const waveYm = (w: string) => { const [m, y] = w.split("-"); return `20${y}-${WAVE_MES[m ?? ""] ?? "01"}`; };
 export function computeSaludSignals(inp: SaludSignalInput): Signal[] {
@@ -355,9 +361,9 @@ export function computeSaludSignals(inp: SaludSignalInput): Signal[] {
       const d = cur - pv;
       if (Math.abs(d) >= 3) S({
         key: k(`${dim}_${d < 0 ? "down" : "up"}`), tipo: d < 0 ? "alerta" : "info", prioridad: d <= -5 ? "alta" : d < 0 ? "media" : "baja",
-        titulo: `${cat}: ${DIM_LBL[dim]} de Drean ${d < 0 ? "cayó" : "subió"} ${Math.abs(d).toFixed(1)} pts (${prev} ${fPct(pv, 1)} → ${last} ${fPct(cur, 1)})`,
-        descripcion: "Kantar (ola vs ola). Es el resultado estratégico que miden los objetivos TOM/SOM/Intención/Poder del Mapa.",
-        acciones: d < 0 ? ["Revisar la presión de medios de awareness de la categoría entre olas", "Cruzar con share of search y alcance de pauta del período"] : ["Identificar qué acciones del período lo explican"],
+        titulo: `${cat}: ${DIM_EXPL[dim]} de Drean ${d < 0 ? "cayó" : "subió"} ${Math.abs(d).toFixed(1)} puntos (${prev} ${fPct(pv, 1)} → ${last} ${fPct(cur, 1)})`,
+        descripcion: "Encuesta de Kantar, comparando una medición (ola) con la anterior. Es el resultado que miden los objetivos del Mapa Estratégico (TOM, SOM, Intención y Poder).",
+        acciones: d < 0 ? ["Revisá cuánta plata hubo en avisos para que te conozcan en esa categoría entre una medición y otra", "Compará con cuánto te buscaron en Google (share of search) y a cuánta gente llegaron los avisos (alcance) en ese período"] : ["Identificá qué acciones de ese período lo explican"],
         datos: { categoria: cat, dimension: dim, olaPrevia: prev, previo: pv, ola: last, actual: cur, deltaPts: r2(d) },
       });
     }
@@ -367,9 +373,9 @@ export function computeSaludSignals(inp: SaludSignalInput): Signal[] {
     const myTom = mine[last]?.tom;
     if (top && myTom != null && top.tom > myTom) S({
       key: k("tom_leader_gap"), tipo: "alerta", prioridad: "alta",
-      titulo: `${cat}: ${top.marca} supera a Drean en Top of Mind (${fPct(top.tom, 0)} vs ${fPct(myTom, 0)}, ${last})`,
-      descripcion: "Perder el primer lugar en la mente del consumidor anticipa pérdida de share.",
-      acciones: ["Aumentar la presión de awareness (video/alcance) en la categoría", "Revisar la consistencia del mensaje de marca"],
+      titulo: `${cat}: cuando le preguntan a la gente qué marca se le viene primero a la cabeza, ${top.marca} supera a Drean (${fPct(top.tom, 0)} contra ${fPct(myTom, 0)}, ${last} — Top of Mind)`,
+      descripcion: "Perder el primer lugar en la cabeza de la gente suele anticipar que después se pierden ventas (share de mercado).",
+      acciones: ["Poné más plata en avisos para que te conozcan en esa categoría (video y alcance)", "Revisá que el mensaje de marca sea el mismo en todos los avisos"],
       datos: { categoria: cat, ola: last, drean: myTom, lider: top },
     });
     // CRUCE share ↔ equity: el share de mercado sube mientras el TOM cae (o al revés).
@@ -383,18 +389,18 @@ export function computeSaludSignals(inp: SaludSignalInput): Signal[] {
           out.push({
             dash: "salud-marca", cruce: true,
             key: k("cruce_share_up_tom_down"), tipo: "alerta", prioridad: "alta",
-            titulo: `${cat}: el share de mercado sube (+${dS.toFixed(1)} pp) pero el Top of Mind cae (${dT.toFixed(1)} pts) entre ${prev} y ${last}`,
-            descripcion: "La venta se sostiene por precio/distribución mientras la marca pierde lugar en la mente: el equity se está consumiendo y el share es vulnerable a mediano plazo.",
-            acciones: ["Reforzar inversión de awareness en la categoría (no solo conversión)", "Monitorear share of search como indicador adelantado"],
+            titulo: `${cat}: las ventas suben (+${dS.toFixed(1)} puntos de share de mercado) pero cada vez menos gente piensa primero en Drean (${dT.toFixed(1)} puntos de Top of Mind) entre ${prev} y ${last}`,
+            descripcion: "Se vende por precio o por estar en todos lados, mientras la marca pierde lugar en la cabeza de la gente: se está gastando el valor de marca (equity) y las ventas pueden caer más adelante.",
+            acciones: ["Reforzá la inversión en avisos para que te conozcan en la categoría (no solo avisos de venta)", "Seguí cuánto te buscan en Google (share of search): suele anticipar lo que pasa con las ventas"],
             datos: { categoria: cat, shareMatPrevio: sP, shareMatActual: sL, tomPrevio: tP, tomActual: tL },
           });
         } else if (dT >= 3 && dS <= -0.5) {
           out.push({
             dash: "salud-marca", cruce: true,
             key: k("cruce_tom_up_share_down"), tipo: "oportunidad", prioridad: "media",
-            titulo: `${cat}: el Top of Mind sube (+${dT.toFixed(1)} pts) pero el share de mercado cae (${dS.toFixed(1)} pp)`,
-            descripcion: "La marca gana mente pero no convierte en venta: el cuello está en precio, surtido o góndola.",
-            acciones: ["Revisar Floor Share y Cuadro Básico de la categoría", "Revisar precio relativo (índice de precio GfK)"],
+            titulo: `${cat}: más gente piensa primero en Drean (+${dT.toFixed(1)} puntos de Top of Mind) pero las ventas caen (${dS.toFixed(1)} puntos de share de mercado)`,
+            descripcion: "La marca gana lugar en la cabeza de la gente pero eso no se convierte en ventas: el freno está en el precio, en los modelos disponibles o en la góndola.",
+            acciones: ["Revisá el espacio en góndola (Floor Share) y los modelos obligatorios en tienda (Cuadro Básico) de la categoría", "Revisá si Drean está caro contra la competencia (índice de precio GfK)"],
             datos: { categoria: cat, shareMatPrevio: sP, shareMatActual: sL, tomPrevio: tP, tomActual: tL },
           });
         }
@@ -426,16 +432,16 @@ export function computeMktCanalSignals(rows: MktCanalRowLite[]): Signal[] {
     const worst = [...g].sort((a, b) => ctr(a) - ctr(b))[0]!;
     if (med > 0 && ctr(best) >= med * 1.8) S({
       key: `mktcanal_best_${plat}_${best.cliente}`.replace(/\s+/g, "_"), tipo: "oportunidad", prioridad: "media",
-      titulo: `${best.cliente} · "${clip(best.accion, 40)}" (${plat}): CTR ${fPct(ctr(best), 2)}, ${(ctr(best) / med).toFixed(1)}× la mediana de las acciones en ${plat}`,
-      descripcion: `${fNum(best.impr)} impresiones y ${fNum(best.clics)} clics. Mediana ${fPct(med, 2)} sobre ${g.length} acciones.`,
-      acciones: ["Replicar la mecánica/creatividad en otros retailers", "Negociar más inventario con ese retailer"],
+      titulo: `${best.cliente} · "${clip(best.accion, 40)}" (${plat}): hace clic el ${fPct(ctr(best), 2)} de los que ven el aviso (CTR), ${(ctr(best) / med).toFixed(1)} veces más que la acción típica en ${plat}`,
+      descripcion: `Se mostró ${fNum(best.impr)} veces y tuvo ${fNum(best.clics)} clics. La acción típica logra ${fPct(med, 2)} (sobre ${g.length} acciones).`,
+      acciones: ["Repetí esa mecánica y esa pieza con otras cadenas", "Negociá con esa cadena más espacios de aviso"],
       datos: { cliente: best.cliente, accion: best.accion, plataforma: plat, ctr: r2(ctr(best)), mediana: r2(med) },
     });
     if (med > 0 && worst !== best && ctr(worst) <= med * 0.4) S({
       key: `mktcanal_worst_${plat}_${worst.cliente}`.replace(/\s+/g, "_"), tipo: "alerta", prioridad: "baja",
-      titulo: `${worst.cliente} · "${clip(worst.accion, 40)}" (${plat}): CTR ${fPct(ctr(worst), 2)} vs mediana ${fPct(med, 2)}`,
-      descripcion: `${fNum(worst.impr)} impresiones, ${fNum(worst.clics)} clics.`,
-      acciones: ["Revisar creatividad y segmentación con el retailer antes de renovar"],
+      titulo: `${worst.cliente} · "${clip(worst.accion, 40)}" (${plat}): hace clic solo el ${fPct(ctr(worst), 2)} de los que ven el aviso (CTR); en la acción típica, ${fPct(med, 2)}`,
+      descripcion: `Se mostró ${fNum(worst.impr)} veces y tuvo ${fNum(worst.clics)} clics.`,
+      acciones: ["Antes de renovar, revisá con la cadena la pieza y a quién se le muestra (segmentación)"],
       datos: { cliente: worst.cliente, accion: worst.accion, plataforma: plat, ctr: r2(ctr(worst)), mediana: r2(med) },
     });
   }
@@ -447,9 +453,9 @@ export function computeMktCanalSignals(rows: MktCanalRowLite[]): Signal[] {
     const low = roas.filter((a) => r(a) <= med * 0.5).sort((a, b) => b.inv - a.inv)[0];
     if (low) S({
       key: `mktcanal_roas_low_${low.cliente}`.replace(/\s+/g, "_"), tipo: "alerta", prioridad: "media",
-      titulo: `${low.cliente} · "${clip(low.accion, 40)}": ROAS ${r(low).toFixed(1)}x vs mediana ${med.toFixed(1)}x`,
-      descripcion: `Inversión ${fMoney(low.inv)}, ingresos ${fMoney(low.ing)}.`,
-      acciones: ["Reasignar a las acciones con ROAS sobre la mediana"],
+      titulo: `${low.cliente} · "${clip(low.accion, 40)}": cada $1 invertido volvió $${r(low).toFixed(1)} en ventas; en la acción típica, $${med.toFixed(1)} (ROAS)`,
+      descripcion: `Inversión ${fMoney(low.inv)}, ventas ${fMoney(low.ing)}.`,
+      acciones: ["Pasá esa plata a las acciones con cadenas que devuelven más ventas por peso"],
       datos: { cliente: low.cliente, accion: low.accion, roas: r2(r(low)), mediana: r2(med) },
     });
   }
@@ -457,9 +463,9 @@ export function computeMktCanalSignals(rows: MktCanalRowLite[]): Signal[] {
   const sinInv = rows.filter((x) => (x.impresiones ?? 0) > 0 && !(x.inversion ?? 0)).length;
   if (conDatos >= 5 && sinInv / conDatos >= 0.5) S({
     key: "mktcanal_sin_inversion", tipo: "info", prioridad: "baja",
-    titulo: `${fPct((sinInv / conDatos) * 100, 0)} de las acciones en retailers no informan inversión ni ingresos`,
-    descripcion: "Sin esos datos no se puede calcular ROAS ni comparar eficiencia entre retailers; solo CTR.",
-    acciones: ["Pedir a los retailers inversión e ingresos atribuidos en el reporte de cierre de cada acción"],
+    titulo: `El ${fPct((sinInv / conDatos) * 100, 0)} de las acciones con cadenas no informa la inversión ni cuánto se vendió`,
+    descripcion: "Sin esos datos no se puede saber cuántas ventas trae cada peso (ROAS) ni comparar qué cadena rinde más; solo el % de clics (CTR).",
+    acciones: ["Pedile a cada cadena que en el reporte de cierre de cada acción informe la inversión y las ventas que generó"],
     datos: { acciones: conDatos, sinInversion: sinInv },
   });
   return sortSignals(out);
@@ -480,24 +486,24 @@ export function computeConversionSignals(inp: ConvSignalInput): Signal[] {
     const dR = deltaPct(roas(last), avg(base.map(roas)));
     if (dR != null && dR <= -20) S({
       key: "conv_roas_drop", tipo: "alerta", prioridad: dR <= -35 ? "alta" : "media",
-      titulo: `${MES[last.mesIdx]}: el ROAS de la pauta de ecommerce bajó ${fDelta(dR)} (${roas(last).toFixed(1)}x vs ${avg(base.map(roas)).toFixed(1)}x)`,
-      descripcion: `Costo ${fMoney(last.costo)}, ${fInt(last.compras)} compras, ingresos ${fMoney(last.ingresos)} (GA4, campañas inhouse).`,
-      acciones: ["Revisar qué campañas explican la caída (tabla por campaña)", "Chequear precio/stock de los productos más vendidos"],
+      titulo: `${MES[last.mesIdx]}: los avisos de la tienda online devolvieron ${fDelta(dR)} ventas por peso: $${roas(last).toFixed(1)} por cada $1, contra $${avg(base.map(roas)).toFixed(1)} antes (ROAS)`,
+      descripcion: `Costo ${fMoney(last.costo)}, ${fInt(last.compras)} compras, ventas ${fMoney(last.ingresos)} (Google Analytics, campañas propias).`,
+      acciones: ["Mirá en la tabla por campaña cuáles explican la caída", "Revisá precio y stock de los productos más vendidos"],
       datos: { mes: MES[last.mesIdx], roas: r2(roas(last)), promedio3m: r2(avg(base.map(roas))), deltaPct: r2(dR) },
     });
     else if (dR != null && dR >= 20) S({
       key: "conv_roas_up", tipo: "info", prioridad: "baja",
-      titulo: `${MES[last.mesIdx]}: el ROAS mejoró ${fDelta(dR)} (${roas(last).toFixed(1)}x)`,
-      descripcion: `Promedio previo ${avg(base.map(roas)).toFixed(1)}x.`,
-      acciones: ["Evaluar escalar presupuesto mientras el ROAS se sostenga"],
+      titulo: `${MES[last.mesIdx]}: los avisos de la tienda online devolvieron ${fDelta(dR)} ventas por peso: $${roas(last).toFixed(1)} por cada $1 (ROAS)`,
+      descripcion: `Antes, $${avg(base.map(roas)).toFixed(1)} por cada $1 en promedio.`,
+      acciones: ["Evaluá escalar (darle más presupuesto) mientras siga rindiendo así"],
       datos: { roas: r2(roas(last)), deltaPct: r2(dR) },
     });
     const dC = deltaPct(cpa(last), avg(base.map(cpa)));
     if (dC != null && dC >= 25 && last.compras > 0) S({
-      key: "conv_cpa_up", tipo: "alerta", prioridad: "media",
-      titulo: `${MES[last.mesIdx]}: el costo por compra subió ${fDelta(dC)} (${fMoney(cpa(last))})`,
-      descripcion: `Promedio de los 3 meses previos ${fMoney(avg(base.map(cpa)))}.`,
-      acciones: ["Revisar términos de búsqueda y audiencias de las campañas más caras"],
+      key: "conv_cpa_up", metrica: null, tipo: "alerta", prioridad: "media",
+      titulo: `${MES[last.mesIdx]}: conseguir cada venta online salió ${fDelta(dC)} más caro (${fMoney(cpa(last))} por compra — CPA)`,
+      descripcion: `En los 3 meses anteriores, ${fMoney(avg(base.map(cpa)))} en promedio.`,
+      acciones: ["Pedile a quien maneja las campañas que revise qué búsquedas y qué públicos están activando las campañas más caras"],
       datos: { cpa: r2(cpa(last)), promedio3m: r2(avg(base.map(cpa))), deltaPct: r2(dC) },
     });
   }
@@ -513,17 +519,17 @@ export function computeConversionSignals(inp: ConvSignalInput): Signal[] {
       const mover = worst.costo * 0.2;
       S({
         key: "conv_realloc", tipo: "oportunidad", prioridad: "alta",
-        titulo: `Mover ${fMoney(mover)} de "${clip(worst.campania, 35)}" (ROAS ${roas(worst).toFixed(1)}x) a "${clip(best.campania, 35)}" (${roas(best).toFixed(1)}x)`,
-        descripcion: `Ingreso adicional estimado ≈${fMoney(mover * (roas(best) - roas(worst)))} con el mismo costo (supuesto: ROAS marginal estable). Mediana de ROAS por campaña ${med.toFixed(1)}x.`,
-        acciones: [`Reducir "${clip(worst.campania, 35)}" 20%`, `Escalar "${clip(best.campania, 35)}" y controlar el ROAS semanal`],
+        titulo: `Pasá ${fMoney(mover)} de "${clip(worst.campania, 35)}" (devuelve $${roas(worst).toFixed(1)} por cada $1) a "${clip(best.campania, 35)}" (devuelve $${roas(best).toFixed(1)} — ROAS)`,
+        descripcion: `Ventas extra estimadas ≈${fMoney(mover * (roas(best) - roas(worst)))} con la misma plata (supuesto: la campaña buena sigue rindiendo igual al darle más). La campaña típica devuelve $${med.toFixed(1)} por cada $1.`,
+        acciones: [`Bajale un 20% a "${clip(worst.campania, 35)}"`, `Subí "${clip(best.campania, 35)}" con esa plata y revisá cada semana que siga devolviendo lo mismo`],
         datos: { desde: { campania: worst.campania, roas: r2(roas(worst)), costo: Math.round(worst.costo) }, hacia: { campania: best.campania, roas: r2(roas(best)), costo: Math.round(best.costo) } },
         impacto: { metrica: "Ingresos adicionales estimados", valor: Math.round(mover * (roas(best) - roas(worst))), unidad: "$" },
       });
     } else if (worst) S({
       key: "conv_campaign_low_roas", tipo: "alerta", prioridad: "media",
-      titulo: `"${clip(worst.campania, 45)}" concentra ${fPct(sh(worst), 0)} del costo con ROAS ${roas(worst).toFixed(1)}x (mediana ${med.toFixed(1)}x)`,
-      descripcion: `Costo ${fMoney(worst.costo)}, ingresos ${fMoney(worst.ingresos)}.`,
-      acciones: ["Revisar segmentación/pujas o pausar"],
+      titulo: `"${clip(worst.campania, 45)}" se lleva el ${fPct(sh(worst), 0)} del costo y devuelve $${roas(worst).toFixed(1)} por cada $1 (la campaña típica, $${med.toFixed(1)} — ROAS)`,
+      descripcion: `Costo ${fMoney(worst.costo)}, ventas ${fMoney(worst.ingresos)}.`,
+      acciones: ["Pedile a quien maneja la campaña que revise a quién se le muestra y cuánto se paga por aviso (segmentación y puja), o pausala"],
       datos: { campania: worst.campania, roas: r2(roas(worst)), mediana: r2(med) },
     });
   }
@@ -542,33 +548,33 @@ export function computeInversionSignals(cuatris: CuatriLite[], opts: { maxDesvio
     if (!c.bgtAvailable) {
       if (c.estado !== "futuro") S({
         key: `inv_bgt_missing_${c.id}`, tipo: "info", prioridad: "media",
-        titulo: `${per}: la versión de presupuesto "${c.bgtLabel}" no está cargada`,
-        descripcion: `Real ejecutado ${usd(c.realVal)} sin BGT vigente contra qué compararlo.`,
-        acciones: ["Cargar la versión de BGT en SharePoint para que sincronice"],
+        titulo: `${per}: la versión del presupuesto "${c.bgtLabel}" no está cargada`,
+        descripcion: `Se gastaron ${usd(c.realVal)} y no hay presupuesto aprobado (BGT) contra el cual compararlo.`,
+        acciones: ["Pedile a Finanzas que suba esa versión del presupuesto a SharePoint para que se sincronice"],
         datos: { cuatrimestre: c.id, version: c.bgtLabel },
       });
       continue;
     }
     if (c.desvio != null && c.desvio >= opts.maxDesvio) S({
       key: `inv_sobre_ejecucion_${c.id}`, tipo: "alerta", prioridad: c.desvio >= opts.maxDesvio * 2 ? "alta" : "media",
-      titulo: `${per}: sobre-ejecución de ${fPct(c.desvio, 1)} vs ${c.bgtLabel} (tope ${fPct(opts.maxDesvio, 0)})`,
-      descripcion: `Real ${usd(c.realVal)} vs BGT ${usd(c.bgtVal)}.`,
-      acciones: ["Ver en el comparador qué cuentas/conceptos explican el desvío", "Ajustar el plan de los meses que quedan del cuatrimestre"],
+      titulo: `${per}: se gastó ${fPct(c.desvio, 1)} más que el presupuesto ${c.bgtLabel} (el máximo aceptado es ${fPct(opts.maxDesvio, 0)})`,
+      descripcion: `Gastado ${usd(c.realVal)} contra un presupuesto (BGT) de ${usd(c.bgtVal)}.`,
+      acciones: ["En el comparador, mirá qué cuentas o conceptos explican la diferencia", "Ajustá el plan de los meses que quedan del cuatrimestre"],
       datos: { cuatrimestre: c.id, real: Math.round(c.realVal), bgt: Math.round(c.bgtVal), desvioPct: r2(c.desvio) },
       impacto: { metrica: "Sobre-ejecución vs BGT", valor: Math.round(c.realVal - c.bgtVal), unidad: "USD" },
     });
     else if (c.desvio != null && c.desvio <= -15) S({
       key: `inv_sub_ejecucion_${c.id}`, tipo: "info", prioridad: "media",
-      titulo: `${per}: sub-ejecución de ${fPct(Math.abs(c.desvio), 1)} vs ${c.bgtLabel}`,
-      descripcion: `Real ${usd(c.realVal)} vs BGT ${usd(c.bgtVal)}. Presupuesto disponible que puede ir a la mayor palanca del Seguimiento.`,
-      acciones: ["Confirmar si es timing (facturas pendientes) o ahorro real", "Reasignar a los KPIs con más brecha"],
+      titulo: `${per}: se gastó ${fPct(Math.abs(c.desvio), 1)} menos que el presupuesto ${c.bgtLabel}`,
+      descripcion: `Gastado ${usd(c.realVal)} contra un presupuesto (BGT) de ${usd(c.bgtVal)}. Es plata disponible que podría ir a lo que más suma en el Seguimiento de Objetivos.`,
+      acciones: ["Confirmá con Finanzas si faltan facturas por cargar o si es un ahorro real", "Pasá esa plata a los indicadores que están más lejos de su meta"],
       datos: { cuatrimestre: c.id, real: Math.round(c.realVal), bgt: Math.round(c.bgtVal), desvioPct: r2(c.desvio) },
     });
     if (c.invFact != null && c.invFact > opts.maxInvFact) S({
       key: `inv_fact_alta_${c.id}`, tipo: "alerta", prioridad: "media",
-      titulo: `${per}: Inversión/Facturación ${fPct(c.invFact, 2)} (tope ${fPct(opts.maxInvFact, 1)})`,
-      descripcion: `La inversión de marketing crece más rápido que la facturación del período.`,
-      acciones: ["Revisar el ritmo de inversión vs la venta del cuatrimestre"],
+      titulo: `${per}: marketing se llevó el ${fPct(c.invFact, 2)} de lo facturado (Inversión/Facturación; el máximo es ${fPct(opts.maxInvFact, 1)})`,
+      descripcion: `La inversión de marketing crece más rápido que lo que factura la empresa en el período.`,
+      acciones: ["Revisá el ritmo de gasto de marketing contra las ventas del cuatrimestre"],
       datos: { cuatrimestre: c.id, invFact: r2(c.invFact), tope: opts.maxInvFact },
     });
   }

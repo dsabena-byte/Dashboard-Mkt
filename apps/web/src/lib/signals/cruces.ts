@@ -86,32 +86,32 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
     if (dSpend != null && Math.abs(dSos) >= 1.5 && Math.abs(dSpend) >= 15) {
       if (dSos < 0 && dSpend < 0) S("performance", {
         key: "cruce_esov_sos_down_spend_down", tipo: "alerta", prioridad: dSos <= -3 ? "alta" : "media",
-        titulo: `Tu share of search cae ${Math.abs(dSos).toFixed(1)} pp mientras bajaste la inversión ${fDelta(dSpend)}`,
-        descripcion: `${per}: inversión promedio ${fMoney(sP, cur)} → ${fMoney(sL, cur)} por mes; share of search ${fPct(oP)} → ${fPct(oL)}. ${esov}${r != null ? ` Correlación inversión↔share en ${aligned.length} meses: r=${r.toFixed(2)}.` : ""}`,
-        acciones: ["Recuperar la inversión de awareness (video/alcance) al menos al nivel previo", "Priorizar formatos que generan búsqueda de marca (video con la marca en los primeros segundos)", "Seguir el share of search mes a mes: es el indicador adelantado de share de mercado"],
+        titulo: `Te buscan menos en Google (−${Math.abs(dSos).toFixed(1)} puntos de tu parte de las búsquedas o share of search) desde que bajaste la inversión ${fDelta(dSpend)}`,
+        descripcion: `${per}: inversión promedio ${fMoney(sP, cur)} → ${fMoney(sL, cur)} por mes; tu parte de las búsquedas de marcas del rubro pasó de ${fPct(oP)} a ${fPct(oL)}. ${esov}${r != null ? ` Qué tan juntas se movieron inversión y búsquedas en ${aligned.length} meses (correlación, de −1 a 1): r=${r.toFixed(2)}.` : ""}`,
+        acciones: ["Volvé a invertir en avisos para que te conozcan (video y alcance) por lo menos lo que se invertía antes", "Pedile a la agencia videos que muestren la marca en los primeros segundos: son los que más hacen que la gente te busque después", "Seguí mes a mes tu parte de las búsquedas: anticipa lo que después pasa con las ventas (share de mercado)"],
         datos, impacto: { metrica: "Share of search perdido", valor: r2(dSos), unidad: "pp" },
       });
       else if (dSos > 0 && dSpend > 0) {
         const elas = dSos / (dSpend / 10);
         S("performance", {
           key: "cruce_esov_spend_up_sos_up", tipo: "oportunidad", prioridad: "media",
-          titulo: `Invertiste ${fDelta(dSpend)} más y tu share of search subió ${dSos.toFixed(1)} pp`,
-          descripcion: `${per}. Aproximadamente +${elas.toFixed(2)} pp de share por cada +10% de inversión (lectura de tendencia, no causalidad probada). ${esov}`,
-          acciones: ["Sostener el nivel de inversión en awareness mientras el share responda", "Identificar qué campañas/medios explican la suba y darles más peso", "Probar un escalón más de inversión y medir si la respuesta del share se mantiene"],
+          titulo: `Invertiste ${fDelta(dSpend)} más y te buscan más en Google: +${dSos.toFixed(1)} puntos de tu parte de las búsquedas (share of search)`,
+          descripcion: `${per}. Más o menos +${elas.toFixed(2)} puntos por cada 10% más de inversión (es una tendencia observada, no está probado que una cosa cause la otra). ${esov}`,
+          acciones: ["Mantené la inversión en avisos para que te conozcan mientras las búsquedas sigan respondiendo", "Identificá qué campañas o medios explican la suba y dales más plata", "Probá subir un escalón más la inversión y mirá si las búsquedas siguen acompañando"],
           datos: { ...datos, ppPorMas10Inversion: r2(elas) }, impacto: { metrica: "pp de share of search por cada +10% de inversión", valor: r2(elas), unidad: "pp" },
         });
       } else if (dSos < 0 && dSpend > 0) S("performance", {
         key: "cruce_esov_spend_up_sos_down", tipo: "alerta", prioridad: "alta",
-        titulo: `Invertiste ${fDelta(dSpend)} más pero tu share of search cayó ${Math.abs(dSos).toFixed(1)} pp`,
-        descripcion: `${per}. La pauta no se está traduciendo en búsquedas de tu marca: o el mix está volcado a conversión/tráfico (no construye marca) o un competidor aceleró más fuerte. ${esov}`,
-        acciones: ["Revisar el mix: qué parte de la inversión fue a awareness vs conversión", "Mirar en Redes si algún competidor aceleró su actividad en el mismo período", "Asegurar que las piezas nombren/muestren la marca en los primeros segundos"],
+        titulo: `Invertiste ${fDelta(dSpend)} más pero te buscan menos en Google: −${Math.abs(dSos).toFixed(1)} puntos de tu parte de las búsquedas (share of search)`,
+        descripcion: `${per}. Los avisos no se están traduciendo en gente que busca tu marca: o la plata fue sobre todo a avisos de venta o de visitas (que no construyen marca), o un competidor aceleró más fuerte. ${esov}`,
+        acciones: ["Pedile a la agencia cuánto de la inversión fue a avisos para que te conozcan (awareness) y cuánto a avisos de venta (conversión)", "Mirá en Redes si algún competidor aceleró en el mismo período", "Asegurate de que las piezas nombren o muestren la marca en los primeros segundos"],
         datos, impacto: { metrica: "Share of search perdido", valor: r2(dSos), unidad: "pp" },
       });
       else S("performance", {
         key: "cruce_esov_sos_up_spend_down", tipo: "info", prioridad: "baja",
-        titulo: `Tu share of search subió ${dSos.toFixed(1)} pp aun invirtiendo ${fDelta(dSpend)}`,
-        descripcion: `${per}. El crecimiento viene de otra fuente (orgánico, PR, estacionalidad o caída de la competencia). Buen momento para medir cuánto de la inversión previa era necesaria.`,
-        acciones: ["Identificar el motor del crecimiento (redes orgánicas, prensa, lanzamientos)", "No recortar más sin mirar el share mes a mes"],
+        titulo: `Te buscan más en Google (+${dSos.toFixed(1)} puntos de tu parte de las búsquedas o share of search) aunque la inversión cambió ${fDelta(dSpend)}`,
+        descripcion: `${per}. El crecimiento viene de otro lado (redes sin pauta, prensa, la época del año o que la competencia aflojó). Buen momento para medir cuánto de la inversión de antes hacía falta de verdad.`,
+        acciones: ["Identificá qué está empujando el crecimiento (redes, prensa, lanzamientos)", "No recortes más sin mirar mes a mes tu parte de las búsquedas"],
         datos,
       });
     }
@@ -133,9 +133,9 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
       const r = pearson(sm.map((x) => x.v), sm.map((x) => byCal.get(x.m)!));
       if (picos.length && dPicos > 0 && sPicos < dPicos * 0.75) S("performance", {
         key: "cruce_seasonality_misaligned", tipo: "alerta", prioridad: sPicos < dPicos * 0.5 ? "alta" : "media",
-        titulo: `Pautás fuera de los picos de demanda: ${picos.map((x) => MES[x.m]).join(", ")} concentran el ${fPct(dPicos, 0)} de las búsquedas y solo el ${fPct(sPicos, 0)} de tu inversión`,
-        descripcion: `Demanda genérica de la categoría (búsquedas en Google) vs tu inversión mensual en ${sm.length} meses.${r != null ? ` Correlación inversión↔demanda: r=${r.toFixed(2)}${r < 0 ? " (invertís más cuando la gente busca menos)" : ""}.` : ""} Invertir cuando la categoría está en la cabeza del comprador suele rendir más por peso.`,
-        acciones: ["Mover presupuesto de los meses valle a los meses pico de demanda", "Armar el calendario de pauta a partir de la curva de demanda del año anterior"],
+        titulo: `Estás invirtiendo en los meses en que menos se busca: ${picos.map((x) => MES[x.m]).join(", ")} juntan el ${fPct(dPicos, 0)} de las búsquedas del rubro y solo el ${fPct(sPicos, 0)} de tu inversión`,
+        descripcion: `Búsquedas en Google del rubro (sin marca, lo que se llama demanda genérica) contra tu inversión mensual, en ${sm.length} meses.${r != null ? ` Qué tan juntas se mueven inversión y búsquedas (correlación, de −1 a 1): r=${r.toFixed(2)}${r < 0 ? " (invertís más cuando la gente busca menos)" : ""}.` : ""} Invertir cuando la gente está pensando en comprar suele rendir más por cada peso.`,
+        acciones: ["Pasá plata de los meses flojos a los meses en que más se busca", "Armá el calendario de pauta con la curva de búsquedas del año anterior"],
         datos: { mesesPico: picos.map((x) => MES[x.m]), shareDemandaPicos: r2(dPicos), shareInversionPicos: r2(sPicos), correlacion: r == null ? null : r2(r), meses: sm.map((x) => ({ mes: x.k, inversion: Math.round(x.v), indiceDemanda: r2(idx(x.m)!) })) },
         impacto: { metrica: "Brecha entre peso de la demanda y de tu inversión en los picos", valor: r2(dPicos - sPicos), unidad: "pp" },
       });
@@ -147,9 +147,9 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
       const lead = ((nxt - now.getMonth() + 12) % 12);
       S("performance", {
         key: "cruce_seasonality_next_peak", tipo: "oportunidad", prioridad: lead <= 1 ? "alta" : "media",
-        titulo: `Próximo pico de demanda en ${MES_LARGO[nxt]} (${fDelta((i - 1) * 100)} sobre el promedio): adelantá presupuesto`,
-        descripcion: `Según la demanda de la categoría del último año, ${MES_LARGO[nxt]} tuvo ${fNum(byCal.get(nxt)!)} búsquedas vs ${fNum(demAvg)} de promedio. Pronóstico basado en el año anterior (la estacionalidad suele repetirse).`,
-        acciones: [`Planificar el pico: subir inversión de awareness 2-4 semanas antes de ${MES_LARGO[nxt]}`, "Asegurar presupuesto de Search para capturar la demanda genérica en el pico", "Tener listas las piezas y el stock para esas semanas"],
+        titulo: `Se viene un mes de muchas búsquedas: ${MES_LARGO[nxt]} (${fDelta((i - 1) * 100)} sobre el promedio). Adelantá presupuesto`,
+        descripcion: `El año pasado, en ${MES_LARGO[nxt]} hubo ${fNum(byCal.get(nxt)!)} búsquedas del rubro contra ${fNum(demAvg)} de promedio. El pronóstico usa el año anterior (los meses fuertes suelen repetirse: estacionalidad).`,
+        acciones: [`Subí la inversión en avisos para que te conozcan 2 a 4 semanas antes de ${MES_LARGO[nxt]}`, "Asegurá presupuesto de avisos en Google (búsqueda) para aparecer cuando la gente busque sin marca", "Tené listas las piezas y el stock para esas semanas"],
         datos: { mes: MES[nxt], indiceDemanda: r2(i), busquedas: byCal.get(nxt), promedio: Math.round(demAvg) },
         impacto: { metrica: "Búsquedas extra de la categoría vs un mes promedio", valor: Math.round(byCal.get(nxt)! - demAvg), unidad: "búsquedas" },
       });
@@ -169,25 +169,25 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
       const gap = soe.sharePropio - sosLast.share;
       if (Math.abs(gap) >= Math.max(8, sosLast.share * 0.35)) S("redes", gap < 0 ? {
         key: "cruce_soe_below_sos", tipo: "oportunidad", prioridad: gap <= -15 ? "alta" : "media",
-        titulo: `Te buscan más de lo que conversan con vos: share of search ${fPct(sosLast.share, 0)} vs share of engagement ${fPct(soe.sharePropio, 0)}`,
-        descripcion: `Share of engagement = tus interacciones (likes + comentarios) sobre las de todo el set competitivo en ${per}. La marca tiene demanda en Google pero en redes la conversación la capitaliza la competencia${leader ? ` (${leader.marca} ${fPct(leader.share, 0)})` : ""}.`,
-        acciones: ["Subir cadencia y formatos conversacionales (preguntas, encuestas, colaboraciones)", "Amplificar con pauta las piezas orgánicas de mejor engagement", "Analizar las piezas top del líder en conversación"],
+        titulo: `Te buscan más de lo que te hablan en redes: tenés el ${fPct(sosLast.share, 0)} de las búsquedas (share of search) pero solo el ${fPct(soe.sharePropio, 0)} de las interacciones (share of engagement)`,
+        descripcion: `Parte de las interacciones = tus me gusta + comentarios sobre los de todas las marcas competidoras en ${per}. La gente te busca en Google, pero en redes la conversación se la lleva la competencia${leader ? ` (${leader.marca} ${fPct(leader.share, 0)})` : ""}.`,
+        acciones: ["Publicá más seguido y con formatos que invitan a responder (preguntas, encuestas, colaboraciones)", "Poné pauta detrás de las publicaciones que más interacción tuvieron", "Mirá las mejores publicaciones de la marca que más conversación genera"],
         datos: { shareEngagement: r2(soe.sharePropio), shareSearch: r2(sosLast.share), mesSearch: sosLast.mes, ventana: per, ranking },
         impacto: { metrica: "Brecha share of engagement vs share of search", valor: r2(gap), unidad: "pp" },
       } : {
         key: "cruce_soe_above_sos", tipo: "oportunidad", prioridad: "media",
-        titulo: `Conversan con vos más de lo que te buscan: share of engagement ${fPct(soe.sharePropio, 0)} vs share of search ${fPct(sosLast.share, 0)}`,
-        descripcion: `En ${per} tu marca se lleva una parte de la conversación social mayor que su parte de las búsquedas: el engagement no se está convirtiendo en intención de compra.`,
-        acciones: ["Sumar llamados a buscar/visitar (nombre de producto, link a la web, CTA a tienda)", "Llevar las piezas de mejor engagement a pauta con objetivo de tráfico o consideración", "Revisar si el engagement viene de contenido de entretenimiento sin producto"],
+        titulo: `Te hablan en redes más de lo que te buscan: tenés el ${fPct(soe.sharePropio, 0)} de las interacciones (share of engagement) pero el ${fPct(sosLast.share, 0)} de las búsquedas (share of search)`,
+        descripcion: `En ${per} tu marca se lleva más conversación en redes que búsquedas en Google: la interacción no se está convirtiendo en ganas de comprar.`,
+        acciones: ["Sumá invitaciones concretas a buscar o visitar: nombre del producto, link a la web, \"encontralo en tu tienda\" (llamado a la acción)", "Poné pauta, con objetivo de visitas a la web, detrás de las publicaciones con más interacción", "Revisá si la interacción viene de contenido de entretenimiento donde no aparece el producto"],
         datos: { shareEngagement: r2(soe.sharePropio), shareSearch: r2(sosLast.share), mesSearch: sosLast.mes, ventana: per, ranking },
         impacto: { metrica: "Brecha share of engagement vs share of search", valor: r2(gap), unidad: "pp" },
       });
     }
     if (leader && own && leader.share >= Math.max(own.share * 2, 20)) S("redes", {
-      key: "cruce_soe_leader_gap", tipo: "alerta", prioridad: own.share < 100 / soe.porMarca.length / 2 ? "alta" : "media",
-      titulo: `${leader.marca} se lleva el ${fPct(leader.share, 0)} de la conversación del set vs tu ${fPct(own.share, 0)}`,
-      descripcion: `Interacciones totales en ${per} (${soe.redes.join(" + ")}). Por post: ${leader.marca} ${fNum(leader.porPost)} vs vos ${fNum(own.porPost)}${leader.posts > own.posts ? `; además publicó ${leader.posts} piezas vs tus ${own.posts}` : ""}.`,
-      acciones: [leader.porPost > own.porPost * 1.5 ? `El problema es de calidad por pieza: analizar formatos y pilares de ${leader.marca}` : `El problema es de volumen: igualar la cadencia de ${leader.marca} con tus formatos más fuertes`],
+      key: "cruce_soe_leader_gap", metrica: null, tipo: "alerta", prioridad: own.share < 100 / soe.porMarca.length / 2 ? "alta" : "media",
+      titulo: `${leader.marca} se lleva el ${fPct(leader.share, 0)} de las interacciones entre las marcas del rubro; vos, el ${fPct(own.share, 0)}`,
+      descripcion: `Interacciones totales en ${per} (${soe.redes.join(" + ")}). Por publicación: ${leader.marca} ${fNum(leader.porPost)} contra ${fNum(own.porPost)} tuyas${leader.posts > own.posts ? `; además publicó ${leader.posts} veces contra tus ${own.posts}` : ""}.`,
+      acciones: [leader.porPost > own.porPost * 1.5 ? `El problema es que cada publicación tuya engancha menos: mirá qué formatos y temas usa ${leader.marca}` : `El problema es cuánto publicás: acercate al ritmo de ${leader.marca} con tus formatos más fuertes`],
       datos: { ventana: per, ranking },
     });
   }
@@ -222,12 +222,12 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
           break;
         }
       }
-      const partes = [burstPosts ? `publicó ${recent} piezas en los últimos 14 días (${rateR.toFixed(1)}/semana vs ${rateB!.toFixed(1)} antes)` : null, burstPaid ? `${payR} posts pautados en 30 días (vs ${payB} en los 30 previos)` : null].filter(Boolean);
+      const partes = [burstPosts ? `publicó ${recent} veces en los últimos 14 días (${rateR.toFixed(1)} por semana contra ${rateB!.toFixed(1)} antes)` : null, burstPaid ? `promocionó con pauta ${payR} publicaciones en 30 días (contra ${payB} en los 30 anteriores)` : null].filter(Boolean);
       S("redes", {
         key: `cruce_comp_burst_${marca}`.replace(/\s+/g, "_"), tipo: "alerta", prioridad: webPeak ? "alta" : "media",
-        titulo: `${marca} aceleró en redes${burstPaid ? ` (${payR} posts pautados)` : ""}${webPeak ? ` y tuvo un pico de tráfico web (${fDelta(webPeak.delta)} en ${mesLbl(webPeak.mes)})` : ""}`,
-        descripcion: `${marca} ${partes.join(" y ")}.${webPeak ? " El pico de visitas a su sitio el mismo mes sugiere una campaña (lanzamiento, promo o evento)." : ""} Visitas web estimadas por SimilarWeb.`,
-        acciones: [`Ver las piezas recientes de ${marca} en la sección de competencia (tema, oferta, formato)`, "Decidir si responder (contra-oferta, refuerzo de pauta) o sostener tu plan", "Vigilar tu share of search las próximas semanas"],
+        titulo: `${marca} aceleró en redes${burstPaid ? ` (${payR} publicaciones con pauta)` : ""}${webPeak ? ` y le subieron las visitas a su web (${fDelta(webPeak.delta)} en ${mesLbl(webPeak.mes)})` : ""}`,
+        descripcion: `${marca} ${partes.join(" y ")}.${webPeak ? " Que su web tenga más visitas el mismo mes hace pensar en una campaña (lanzamiento, promoción o evento)." : ""} Visitas web estimadas por SimilarWeb.`,
+        acciones: [`Mirá las publicaciones recientes de ${marca} en la sección de competencia: de qué hablan, qué ofrecen, en qué formato`, "Decidí si responder (una contra-oferta, más pauta) o seguir con tu plan", "Seguí tu parte de las búsquedas en Google (share of search) las próximas semanas"],
         datos: { marca, postsUlt14d: recent, ritmoReciente: r2(rateR), ritmoPrevio: rateB == null ? null : r2(rateB), pautadosUlt30d: payR, pautadosPrev30d: payB, picoWeb: webPeak ? { mes: webPeak.mes, deltaPct: r2(webPeak.delta) } : null },
       });
     }
@@ -248,20 +248,20 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
     const ownSearch = ownF ? (ownF.search ?? 0) : ga4Org;
     const fuente = ownF ? "SimilarWeb (misma medición para todas las marcas)" : "tu GA4 (canal Organic Search) contra SimilarWeb de la competencia — mediciones distintas, tomalo como orientación";
     if (ownSearch != null && medSearch > 0 && ownSearch <= medSearch * 0.7 && medSearch - ownSearch >= 5) S("web", {
-      key: "cruce_web_search_share_low", tipo: "oportunidad", prioridad: ownSearch <= medSearch * 0.5 ? "alta" : "media",
-      titulo: `Solo el ${fPct(ownSearch, 0)} de tu tráfico llega desde buscadores vs ${fPct(medSearch, 0)} de la mediana de la competencia`,
-      descripcion: `Fuente: ${fuente}. La competencia captura más demanda desde Google: oportunidad de SEO (contenido por intención de búsqueda, fichas optimizadas).`,
-      acciones: ["Atacar las keywords faltantes y quick wins del tablero SEO", "Optimizar títulos y descripciones de las páginas que ya rankean", "Crear páginas de categoría/guía para las búsquedas genéricas"],
+      key: "cruce_web_search_share_low", metrica: "trafico", tipo: "oportunidad", prioridad: ownSearch <= medSearch * 0.5 ? "alta" : "media",
+      titulo: `Solo el ${fPct(ownSearch, 0)} de las visitas a tu web llega desde Google y otros buscadores; en la competencia típica, el ${fPct(medSearch, 0)}`,
+      descripcion: `Fuente: ${fuente}. La competencia aprovecha mejor a la gente que busca en Google: hay oportunidad de posicionamiento en buscadores (SEO) con páginas que respondan lo que la gente busca y fichas de producto más completas.`,
+      acciones: ["Trabajá las búsquedas donde no aparecés o estás cerca del top, en el tablero SEO", "Mejorá el título y la descripción que muestra Google de las páginas que ya aparecen", "Creá páginas de categoría o guías de compra para búsquedas sin marca (\"lavarropas carga frontal\")"],
       datos: { propioPct: r2(ownSearch), medianaCompetencia: r2(medSearch), competidores: rivalsF.map((x) => ({ marca: x.d.marca, busquedaPct: r2(x.f.search ?? 0) })) },
       impacto: ownF && ownDom?.visitas ? { metrica: "Visitas mensuales extra si igualaras la mediana (estimación SimilarWeb)", valor: Math.round(((medSearch - ownSearch) / 100) * ownDom.visitas), unidad: "visitas/mes" } : undefined,
     });
     const ownOrganicLike = ownF ? (ownF.search ?? 0) + (ownF.direct ?? 0) : null;
     const medOrganicLike = medSearch + medDirect;
     if (ga4Paid != null && ga4Paid >= 45 && (ownOrganicLike == null || ownOrganicLike < medOrganicLike - 5)) S("web", {
-      key: "cruce_web_paid_dependency", tipo: "alerta", prioridad: ga4Paid >= 60 ? "alta" : "media",
-      titulo: `Tu sitio depende de la pauta: ${fPct(ga4Paid, 0)} de las sesiones vienen de canales pagos`,
-      descripcion: `GA4 del período.${ownOrganicLike != null ? ` Tu tráfico directo + buscadores es ${fPct(ownOrganicLike, 0)} vs ${fPct(medOrganicLike, 0)} de la mediana de la competencia (SimilarWeb).` : ""} Si se corta la inversión, el tráfico cae en proporción: poca demanda propia.`,
-      acciones: ["Construir tráfico propio: SEO, email/CRM y redes orgánicas", "Medir cuánto del tráfico pago es de marca (lo capturarías igual) vs genérico"],
+      key: "cruce_web_paid_dependency", metrica: "sesiones", tipo: "alerta", prioridad: ga4Paid >= 60 ? "alta" : "media",
+      titulo: `Tu web depende de la pauta: el ${fPct(ga4Paid, 0)} de las visitas llega por avisos pagos`,
+      descripcion: `Google Analytics (GA4) del período.${ownOrganicLike != null ? ` Las visitas que llegan solas (escribiendo la dirección o desde buscadores) son el ${fPct(ownOrganicLike, 0)}; en la competencia típica, el ${fPct(medOrganicLike, 0)} (SimilarWeb).` : ""} Si se corta la inversión, las visitas caen en la misma proporción: poca gente llega por su cuenta.`,
+      acciones: ["Construí visitas propias: posicionamiento en Google (SEO), mails a clientes (email/CRM) y redes sin pauta", `Pedile a la agencia cuánto de las visitas pagas son de gente que buscó "${ownBrand || "tu marca"}" (esas llegarían igual) y cuánto de búsquedas sin marca`],
       datos: { pagoGa4Pct: r2(ga4Paid), directoMasBusquedaPropioPct: ownOrganicLike == null ? null : r2(ownOrganicLike), medianaCompetenciaPct: r2(medOrganicLike) },
     });
   }
@@ -279,16 +279,16 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
       const dSos = sL != null && sP.length ? sL - avg(sP) : null;
       if (dC <= -15) S("seo-search", dSos == null || dSos > -1 ? {
         key: "cruce_seo_clicks_drop_not_demand", tipo: "alerta", prioridad: dC <= -30 ? "alta" : "media",
-        titulo: `Perdés clicks orgánicos (${fDelta(dC)} en ${mesLbl(L.mes)}) ${dSos == null ? "" : "aunque la demanda de tu marca se mantiene"}`,
-        descripcion: `Search Console: ${fNum(L.clicks)} clicks vs ${fNum(avg(P.map((m) => m.clicks)))} de promedio en los 2 meses previos; posición promedio ${L.position.toFixed(1)} (${dPos > 0 ? "empeoró" : "mejoró"} ${Math.abs(dPos).toFixed(1)}).${dSos != null ? ` Share of search ${fPct(sL!)} (${dSos >= 0 ? "+" : ""}${dSos.toFixed(1)} pp).` : ""} Es un problema de posiciones/CTR en Google, no de demanda.`,
-        acciones: ["Revisar qué páginas perdieron clicks (tabla de páginas de Search Console)", "Chequear cambios recientes del sitio (URLs, títulos, velocidad, indexación)", "Recuperar las búsquedas que bajaron de posición con contenido actualizado"],
+        titulo: `Llegan menos visitas desde Google sin pagar (${fDelta(dC)} de clics en ${mesLbl(L.mes)})${dSos == null ? "" : ", aunque te siguen buscando igual"}`,
+        descripcion: `Search Console (la herramienta de Google que muestra los clics desde el buscador): ${fNum(L.clicks)} clics contra ${fNum(avg(P.map((m) => m.clicks)))} de promedio en los 2 meses anteriores; lugar promedio en Google ${L.position.toFixed(1)} (${dPos > 0 ? "empeoró" : "mejoró"} ${Math.abs(dPos).toFixed(1)}).${dSos != null ? ` Tu parte de las búsquedas (share of search): ${fPct(sL!)} (${dSos >= 0 ? "+" : ""}${dSos.toFixed(1)} puntos).` : ""} El problema es que aparecés más abajo en Google o que menos gente hace clic, no que te busquen menos.`,
+        acciones: ["Pedile al equipo web que mire en Search Console qué páginas perdieron clics (tabla de páginas)", "Preguntá si hubo cambios recientes en el sitio: direcciones de páginas, títulos, velocidad o páginas que Google dejó de mostrar (indexación)", "Actualizá el contenido de las páginas que bajaron de lugar"],
         datos: { mes: L.mes, clicks: L.clicks, promedioPrevio: Math.round(avg(P.map((m) => m.clicks))), deltaPct: r2(dC), deltaPosicion: r2(dPos), deltaSharePp: dSos == null ? null : r2(dSos) },
         impacto: { metrica: "Clicks orgánicos perdidos vs los meses previos", valor: Math.round(avg(P.map((m) => m.clicks)) - L.clicks), unidad: "clicks/mes" },
       } : {
-        key: "cruce_seo_clicks_drop_demand", tipo: "info", prioridad: "media",
-        titulo: `Caen los clicks orgánicos (${fDelta(dC)}) junto con tu share of search (${dSos.toFixed(1)} pp)`,
-        descripcion: `${mesLbl(L.mes)}. La baja de tráfico desde Google viene de menos búsquedas de tu marca: es un tema de notoriedad/demanda más que de SEO técnico.`,
-        acciones: ["Reforzar awareness (ver señales de inversión vs share of search)", "Proteger las búsquedas genéricas donde ya rankeás bien"],
+        key: "cruce_seo_clicks_drop_demand", metrica: "clicks_organicos", tipo: "info", prioridad: "media",
+        titulo: `Llegan menos visitas desde Google sin pagar (${fDelta(dC)} de clics) y a la vez te buscan menos (${dSos.toFixed(1)} puntos de share of search)`,
+        descripcion: `${mesLbl(L.mes)}. Llegan menos visitas desde Google porque menos gente busca tu marca: es un tema de que te conozcan y te tengan en mente, más que de la parte técnica del sitio (SEO técnico).`,
+        acciones: ["Reforzá los avisos para que te conozcan (mirá las señales de inversión contra búsquedas)", "Cuidá las búsquedas sin marca donde ya aparecés bien"],
         datos: { mes: L.mes, deltaClicksPct: r2(dC), deltaSharePp: r2(dSos) },
       });
     }
@@ -357,10 +357,10 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
         return { provincia: g.nombre, interesGenerico: Math.round(g.v), sesiones: own, fueraDelTop: !ses.has(k) && truncated, indice: idx, interesMarca: marcaI.has(k) ? Math.round(avg(marcaI.get(k)!)) : null };
       }).filter((r) => r.indice <= 0.5 && r.provincia).sort((a, b) => b.interesGenerico - a.interesGenerico).slice(0, 3);
       if (rows.length) S("performance", {
-        key: "cruce_geo_demand_gap", tipo: "oportunidad", prioridad: "media",
-        titulo: `${rows.map((r) => r.provincia).join(", ")}: alta demanda de la categoría y poco tráfico a tu web`,
-        descripcion: rows.map((r) => `${r.provincia}: interés de la categoría ${r.interesGenerico}/100, ${r.fueraDelTop ? "fuera de tus 8 regiones con más tráfico" : `${Math.round((r.sesiones / (sesTot || 1)) * 100)}% de tus sesiones`}${r.interesMarca != null ? `, interés en tu marca ${r.interesMarca}/100` : ""}`).join(" · ") + ". Interés = Google Trends; tráfico = GA4 del período.",
-        acciones: ["Segmentar pauta geográfica hacia esas provincias (probar 10-15% del presupuesto)", "Revisar distribución y retailers con presencia en esas zonas", "Medir el efecto en sesiones por región el mes siguiente"],
+        key: "cruce_geo_demand_gap", metrica: "trafico", tipo: "oportunidad", prioridad: "media",
+        titulo: `${rows.map((r) => r.provincia).join(", ")}: se busca mucho la categoría pero llegan pocas visitas a tu web`,
+        descripcion: rows.map((r) => `${r.provincia}: interés en el rubro ${r.interesGenerico}/100, ${r.fueraDelTop ? "fuera de tus 8 regiones con más visitas" : `${Math.round((r.sesiones / (sesTot || 1)) * 100)}% de tus visitas`}${r.interesMarca != null ? `, interés en tu marca ${r.interesMarca}/100` : ""}`).join(" · ") + ". Interés = Google Trends; visitas = Google Analytics (GA4) del período.",
+        acciones: ["Pedile a la agencia avisos dirigidos a esas provincias (probá con 10-15% del presupuesto)", "Revisá con Comercial la distribución y qué cadenas tienen presencia en esas zonas", "Al mes siguiente, mirá si subieron las visitas desde esas provincias"],
         datos: { provincias: rows.map((r) => ({ ...r, indice: r2(r.indice) })) },
       });
     }
@@ -379,10 +379,10 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
       const medEr = median(rows.map((r) => r.er));
       const ownShare = (own.filter((p) => p.content_type === top.formato).length / own.length) * 100;
       if (top.er >= medEr * 1.3 && ownShare < 15) S("redes", {
-        key: "cruce_comp_format_gap", tipo: "oportunidad", prioridad: "media",
-        titulo: `En tu mercado ganan los ${fmtLbl(top.formato)} (${fPct(top.er, 2)} de engagement por seguidor) y son solo el ${fPct(ownShare, 0)} de tus piezas`,
-        descripcion: `Engagement promedio por formato en la competencia: ${rows.slice(0, 4).map((r) => `${fmtLbl(r.formato)} ${fPct(r.er, 2)} (${r.posts} posts)`).join(" · ")}. Mediana ${fPct(medEr, 2)}.`,
-        acciones: [`Testear 4-6 ${fmtLbl(top.formato)} en el próximo mes con tus pilares más fuertes`, "Comparar su engagement contra tu mediana antes de escalar"],
+        key: "cruce_comp_format_gap", metrica: "engagement", tipo: "oportunidad", prioridad: "media",
+        titulo: `En tu rubro, los ${fmtLbl(top.formato)} son los que más interacción generan (${fPct(top.er, 2)} por seguidor) y son solo el ${fPct(ownShare, 0)} de lo que publicás`,
+        descripcion: `Interacción promedio por formato en la competencia (engagement): ${rows.slice(0, 4).map((r) => `${fmtLbl(r.formato)} ${fPct(r.er, 2)} (${r.posts} publicaciones)`).join(" · ")}. Valor típico: ${fPct(medEr, 2)}.`,
+        acciones: [`Probá 4 a 6 ${fmtLbl(top.formato)} el mes que viene, con tus temas más fuertes`, "Antes de escalar (hacer más), compará su interacción con tu publicación típica"],
         datos: { formatosCompetencia: rows.slice(0, 5).map((r) => ({ ...r, er: r2(r.er) })), sharePropio: r2(ownShare) },
       });
     }
@@ -395,9 +395,9 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
       const extra = sum(top.map((r) => r.clicksExtra));
       S("seo-search", {
         key: "cruce_sc_ctr_low", tipo: "oportunidad", prioridad: extra >= 300 ? "alta" : "media",
-        titulo: `${sca.ctrBajo.length} búsquedas donde estás top-5 pero pocos hacen click: reescribir título y descripción suma ≈${fNum(extra)} clicks`,
-        descripcion: top.map((r) => `"${r.key}" pos ${r.position.toFixed(1)}, CTR ${fPct(r.ctr, 1)} (esperado ~${fPct(r.ctrEsperado, 0)})`).join(" · ") + `. Search Console, ${sc.monthly?.[0]?.mes ?? ""} → ${sc.monthly?.[sc.monthly.length - 1]?.mes ?? ""}.`,
-        acciones: ["Reescribir el title y la meta description de esas páginas (beneficio concreto, precio/cuotas, año)", "Sumar datos estructurados (producto, reseñas, FAQ) para ganar espacio en el resultado", "Revisar si la página responde a la intención de la búsqueda"],
+        titulo: `${sca.ctrBajo.length} búsquedas donde aparecés entre los 5 primeros de Google pero pocos hacen clic: reescribir el título y la descripción suma ≈${fNum(extra)} clics`,
+        descripcion: top.map((r) => `"${r.key}" lugar ${r.position.toFixed(1)}, hace clic el ${fPct(r.ctr, 1)} (lo normal en ese lugar: ~${fPct(r.ctrEsperado, 0)} — CTR)`).join(" · ") + `. Search Console, ${sc.monthly?.[0]?.mes ?? ""} → ${sc.monthly?.[sc.monthly.length - 1]?.mes ?? ""}.`,
+        acciones: ["Pedile al equipo web que reescriba el título y la descripción que muestra Google de esas páginas (title y meta description): beneficio concreto, precio o cuotas, año", "Que marque la página para que Google muestre estrellas, precio o preguntas en el resultado (datos estructurados)", "Revisá si la página responde lo que la gente buscaba"],
         datos: { busquedas: top.map((r) => ({ busqueda: r.key, posicion: r2(r.position), ctr: r2(r.ctr), ctrEsperado: r2(r.ctrEsperado), impresiones: r.impressions, clicksExtra: r.clicksExtra, pagina: r.pagina })) },
         impacto: { metrica: "Clicks extra si el CTR llegara al esperado para su posición (período de 3 meses)", valor: extra, unidad: "clicks" },
       });
@@ -407,18 +407,18 @@ export function computeCrucesSignals(inp: CrucesInput): Signal[] {
       const extra = sum(top.map((r) => r.clicksExtra));
       S("seo-search", {
         key: "cruce_sc_quick_wins", tipo: "oportunidad", prioridad: extra >= 300 ? "alta" : "media",
-        titulo: `${sca.quickWins.length} búsquedas reales en posición 8-20 con muchas impresiones: llevarlas al top-3 suma ≈${fNum(extra)} clicks`,
-        descripcion: top.map((r) => `"${r.key}" pos ${r.position.toFixed(1)} (${fNum(r.impressions)} impresiones)`).join(" · ") + ". Datos reales de Search Console (no estimación de volumen).",
-        acciones: ["Mejorar la página que ya aparece para cada búsqueda (contenido, title, enlaces internos)", "Priorizar las de mayor impresiones y más cerca de la página 1"],
+        titulo: `${sca.quickWins.length} búsquedas reales donde aparecés entre el 8° y el 20° lugar y te ven mucho: subirlas a los 3 primeros suma ≈${fNum(extra)} clics`,
+        descripcion: top.map((r) => `"${r.key}" lugar ${r.position.toFixed(1)} (te vieron ${fNum(r.impressions)} veces — impresiones)`).join(" · ") + ". Datos reales de Search Console (no es una estimación).",
+        acciones: ["Mejorá la página que ya aparece para cada búsqueda: más contenido útil, título con la búsqueda (title) y links desde otras páginas del sitio (enlaces internos)", "Empezá por las que más veces aparecen y están más cerca de la primera página"],
         datos: { busquedas: top.map((r) => ({ busqueda: r.key, posicion: r2(r.position), impresiones: r.impressions, clicksExtra: r.clicksExtra, pagina: r.pagina })) },
         impacto: { metrica: "Clicks extra estimados (período de 3 meses)", valor: extra, unidad: "clicks" },
       });
     }
     if (sca.marca && sca.marca.shareGenerico < 25 && sca.totales && sca.totales.clicks >= 200) S("seo-search", {
-      key: "cruce_sc_brand_dependency", tipo: "alerta", prioridad: "media",
-      titulo: `El ${fPct(100 - sca.marca.shareGenerico, 0)} de tus clicks orgánicos son búsquedas con tu marca: casi no capturás demanda genérica`,
-      descripcion: `Clicks de búsquedas sin la marca: ${fNum(sca.marca.clicksGenerico)} de ${fNum(sca.totales.clicks)}. Quien todavía no te conoce no te encuentra en Google.`,
-      acciones: ["Crear contenido para búsquedas de categoría (\"mejor…\", \"cómo elegir…\", \"precio…\")", "Cruzar con las keywords faltantes del tablero SEO"],
+      key: "cruce_sc_brand_dependency", metrica: "demanda", tipo: "alerta", prioridad: "media",
+      titulo: `El ${fPct(100 - sca.marca.shareGenerico, 0)} de los clics que llegan desde Google sin pagar son de gente que ya buscó "${ownBrand || "tu marca"}": casi no te encuentran los que buscan sin marca`,
+      descripcion: `Clics de búsquedas sin la marca (demanda genérica): ${fNum(sca.marca.clicksGenerico)} de ${fNum(sca.totales.clicks)}. Quien todavía no te conoce no te encuentra en Google.`,
+      acciones: ["Creá contenido para búsquedas del rubro (\"mejor…\", \"cómo elegir…\", \"precio…\")", "Cruzalo con las búsquedas donde no aparecés, en el tablero SEO"],
       datos: { ...sca.marca },
     });
   }

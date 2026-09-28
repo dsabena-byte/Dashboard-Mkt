@@ -20,9 +20,9 @@ export function webCalidadSignals(r: WebReports, t: WebCalidadTotals, opts: { pe
   const q = trackingQuality(r, { tx: t.tx, revenue: t.revenue, ke: t.ke, sessions: t.sessions, currency: opts.currency ?? null, failedReports: opts.failedReports });
   for (const c of q.checks.filter((x) => x.estado === "falla" && x.key !== "conversiones")) S({
     key: `web_tracking_${c.key}`, tipo: "alerta", prioridad: c.key === "purchase_value" || c.key === "purchase" ? "alta" : "media",
-    titulo: `Calidad del dato: ${c.label.toLowerCase()} — ${c.detalle.split(":")[0]}`,
-    descripcion: `${c.detalle} Las conclusiones del tablero sobre ese punto no son confiables hasta corregirlo.`,
-    acciones: [c.arreglo ?? "Revisar la implementación de GA4", "Validar en GA4 → DebugView después del cambio"],
+    titulo: `Hay un problema en cómo se mide la web: ${c.label.toLowerCase()} — ${c.detalle.split(":")[0]}`,
+    descripcion: `${c.detalle} Hasta que se corrija, lo que muestra el tablero sobre ese punto no es confiable.`,
+    acciones: [c.arreglo ?? "Pedile al equipo web que revise cómo está instalado Google Analytics (GA4)", "Después del cambio, que lo verifique en Google Analytics → DebugView (la vista para probar la medición en vivo)"],
     datos: { check: c.key, estado: c.estado, sello: q.sello },
   });
 
@@ -33,13 +33,13 @@ export function webCalidadSignals(r: WebReports, t: WebCalidadTotals, opts: { pe
     const aov = t.tx > 0 ? t.revenue / t.tx : 0;
     S({
       key: "web_funnel_step_drop", tipo: "alerta", prioridad: m.deltaPp / m.tasaPrev <= -0.3 ? "alta" : "media",
-      titulo: `Embudo: "${m.label}" cayó a ${fPct(m.tasa, 1)} (${fPct(m.tasaPrev, 1)} en los 28 días previos${per ? ` a ${per}` : ""})`,
-      descripcion: `Es el paso que más empeoró (${m.deltaPp.toFixed(1)} pp). Con la tasa anterior se habrían logrado ≈${fInt(m.comprasPerdidas)} compras más${aov > 0 ? ` (≈${fMoney(m.comprasPerdidas * aov)})` : ""}. Conversión punta a punta: ${f.total != null ? fPct(f.total, 2) : "—"}${f.totalPrev != null ? ` vs ${fPct(f.totalPrev, 2)}` : ""}.`,
+      titulo: `Recorrido de compra: el paso "${m.label}" bajó a ${fPct(m.tasa, 1)} (era ${fPct(m.tasaPrev, 1)} en los 28 días anteriores${per ? ` a ${per}` : ""})`,
+      descripcion: `Es el paso del recorrido de compra (embudo) que más empeoró: ${m.deltaPp.toFixed(1)} puntos. Con el % anterior se habrían logrado ≈${fInt(m.comprasPerdidas)} compras más${aov > 0 ? ` (≈${fMoney(m.comprasPerdidas * aov)})` : ""}. De cada 100 que ven un producto, compran ${f.total != null ? fPct(f.total, 2) : "—"}${f.totalPrev != null ? ` (antes ${fPct(f.totalPrev, 2)})` : ""}.`,
       acciones: m.key === "add_to_cart"
-        ? ["Revisar precio, stock, cuotas y envío visibles en la ficha de producto", "Comparar mobile vs desktop en el embudo por dispositivo"]
+        ? ["Revisá que en la página del producto se vean bien el precio, el stock, las cuotas y el envío", "Compará celular contra computadora en el recorrido por dispositivo"]
         : m.key === "begin_checkout"
-          ? ["Revisar el carrito: costo de envío sorpresa, cupones, botón de checkout visible", "Mostrar cuotas y medios de pago antes del checkout"]
-          : ["Revisar el checkout: registro obligatorio, errores de pago, medios disponibles", "Probar el pago con cada medio (tarjeta, Mercado Pago) en mobile"],
+          ? ["Revisá el carrito: que el envío no aparezca de sorpresa, que los cupones funcionen y que el botón para pagar se vea", "Mostrá cuotas y medios de pago antes del paso de pago"]
+          : ["Pedile al equipo web que revise el paso de pago (checkout): si obliga a registrarse, si hay errores de pago, qué medios hay", "Que pruebe pagar con cada medio (tarjeta, Mercado Pago) desde un celular"],
       datos: { paso: m.key, tasa: r2(m.tasa), tasaPrevia: r2(m.tasaPrev), deltaPp: r2(m.deltaPp), total: f.total == null ? null : r2(f.total) },
       impacto: aov > 0
         ? { metrica: "Ingresos perdidos vs la tasa anterior", valor: Math.round(m.comprasPerdidas * aov), unidad: "$" }
@@ -50,9 +50,9 @@ export function webCalidadSignals(r: WebReports, t: WebCalidadTotals, opts: { pe
     const mob = f.porDispositivo.find((d) => d.device === "mobile"), desk = f.porDispositivo.find((d) => d.device === "desktop");
     if (mob?.total != null && desk?.total != null && (mob.usuarios[0] ?? 0) >= 100 && (desk.usuarios[0] ?? 0) >= 100 && mob.total <= desk.total * 0.5) S({
       key: "web_funnel_mobile_gap", tipo: "oportunidad", prioridad: "media",
-      titulo: `En mobile compra el ${fPct(mob.total, 2)} de quienes ven un producto vs ${fPct(desk.total, 2)} en desktop`,
-      descripcion: `Mobile es ${fInt(mob.usuarios[0] ?? 0)} usuarios en ficha. Si convirtiera la mitad que desktop sumaría ≈${fInt((mob.usuarios[0] ?? 0) * ((desk.total / 2 - mob.total) / 100))} compras en el período.`,
-      acciones: ["Recorrer la compra en un celular: velocidad, formularios, pago", "Priorizar checkout express / billeteras en mobile"],
+      titulo: `Desde el celular compra el ${fPct(mob.total, 2)} de quienes ven un producto; desde la computadora, el ${fPct(desk.total, 2)}`,
+      descripcion: `Desde el celular, ${fInt(mob.usuarios[0] ?? 0)} personas vieron un producto. Si compraran aunque sea la mitad que desde la computadora, serían ≈${fInt((mob.usuarios[0] ?? 0) * ((desk.total / 2 - mob.total) / 100))} compras más en el período.`,
+      acciones: ["Hacé una compra de prueba desde un celular: fijate la velocidad, los formularios y el pago", "Pedile al equipo web un pago rápido en el celular (billeteras como Mercado Pago, sin registrarse — checkout express)"],
       datos: { mobile: r2(mob.total), desktop: r2(desk.total) },
     });
   }
@@ -64,10 +64,10 @@ export function webCalidadSignals(r: WebReports, t: WebCalidadTotals, opts: { pe
     const convBetter = ai.conv != null && ai.convSitio != null && ai.convSitio > 0 && ai.conv >= ai.convSitio * 1.3;
     const growing = ai.delta != null && ai.sesionesPrev >= 10 && ai.delta >= 30;
     if (convBetter || growing) S({
-      key: "web_ai_referrals", tipo: "oportunidad", prioridad: convBetter && ai.share >= 1 ? "media" : "baja",
-      titulo: `Los asistentes de IA trajeron ${fInt(ai.sesiones)} sesiones (${fPct(ai.share, 2)} del sitio)${growing ? `, ${fDelta(ai.delta!)} vs los 28 días previos` : ""}`,
-      descripcion: `${top ? `Principal: ${top.asistente} (${fInt(top.sesiones)}). ` : ""}Conversión desde IA ${ai.conv != null ? fPct(ai.conv, 2) : "—"} vs ${ai.convSitio != null ? fPct(ai.convSitio, 2) : "—"} del sitio.${convBetter ? " Es tráfico de alta intención: llega con la pregunta resuelta." : ""}`,
-      acciones: ["Cruzar con Visibilidad en IA del tablero SEO: qué preguntas nombran a Drean y qué fuentes cita la IA", "Reforzar las páginas a las que llegan (ficha técnica, comparativas, preguntas frecuentes)"],
+      key: "web_ai_referrals", metrica: "sesiones", tipo: "oportunidad", prioridad: convBetter && ai.share >= 1 ? "media" : "baja",
+      titulo: `Asistentes de IA como ChatGPT trajeron ${fInt(ai.sesiones)} visitas (${fPct(ai.share, 2)} de la web)${growing ? `, ${fDelta(ai.delta!)} contra los 28 días anteriores` : ""}`,
+      descripcion: `${top ? `El que más trae: ${top.asistente} (${fInt(top.sesiones)}). ` : ""}De esas visitas, termina en compra o consulta el ${ai.conv != null ? fPct(ai.conv, 2) : "—"}; en toda la web, el ${ai.convSitio != null ? fPct(ai.convSitio, 2) : "—"}.${convBetter ? " Es gente con ganas de comprar: llega con la duda ya resuelta." : ""}`,
+      acciones: ["Mirá en el tablero SEO (Visibilidad en IA) en qué preguntas aparece Drean y qué páginas cita la IA", "Mejorá las páginas a las que llega esa gente: ficha técnica, comparativas, preguntas frecuentes"],
       datos: { sesiones: ai.sesiones, sesionesPrevias: ai.sesionesPrev, share: r2(ai.share), conv: ai.conv == null ? null : r2(ai.conv), convSitio: ai.convSitio == null ? null : r2(ai.convSitio), porAsistente: ai.porAsistente.slice(0, 5) },
     });
   }
@@ -78,9 +78,9 @@ export function webCalidadSignals(r: WebReports, t: WebCalidadTotals, opts: { pe
     const lost = ld.drops.reduce((a, d) => a + d.perdidas, 0);
     S({
       key: "web_landing_traffic_drop", tipo: "alerta", prioridad: ld.drops.length >= 2 || (ld.drops[0]?.delta ?? 0) <= -60 ? "media" : "baja",
-      titulo: `${ld.drops.length} página${ld.drops.length > 1 ? "s" : ""} de entrada perdi${ld.drops.length > 1 ? "eron" : "ó"} tráfico mucho más que el sitio (${ld.sitioDelta != null ? fDelta(ld.sitioDelta) : "—"})`,
-      descripcion: ld.drops.map((d) => `${clip(d.path, 50)}: ${fInt(d.sesionesPrev)} → ${fInt(d.sesiones)} (${fDelta(d.delta)})`).join(" · ") + ".",
-      acciones: ["Revisar si cambió la URL, se despublicó o redirige mal", "Ver en Search Console si perdió posiciones; en Plan de Medios si se pausó la pauta que la usaba"],
+      titulo: `${ld.drops.length} página${ld.drops.length > 1 ? "s" : ""} por donde entra la gente perdi${ld.drops.length > 1 ? "eron" : "ó"} muchas más visitas que el resto de la web (toda la web: ${ld.sitioDelta != null ? fDelta(ld.sitioDelta) : "—"})`,
+      descripcion: ld.drops.map((d) => `${clip(d.path, 50)}: ${fInt(d.sesionesPrev)} → ${fInt(d.sesiones)} visitas (${fDelta(d.delta)})`).join(" · ") + ".",
+      acciones: ["Pedile al equipo web que revise si cambió la dirección de la página, si se dio de baja o si redirige mal", "Mirá en Search Console si bajó en Google, y en Plan de Medios si se pausaron los avisos que llevaban ahí"],
       datos: { sitioDelta: ld.sitioDelta == null ? null : r2(ld.sitioDelta), landings: ld.drops.map((d) => ({ path: d.path, sesiones: d.sesiones, sesionesPrevias: d.sesionesPrev, delta: r2(d.delta) })) },
       impacto: { metrica: "Sesiones perdidas", valor: Math.round(lost), unidad: "sesiones" },
     });
@@ -105,9 +105,9 @@ export function computeWebCalidadSignals(inp: { snapshot: WebCalidadSnapshot | n
         if (p.estado !== "debajo" || p.meta == null) continue;
         S({
           key: `web_cierre_${k}_debajo`, tipo: "alerta", prioridad: (p.pctMeta ?? 100) < 85 ? "alta" : "media",
-          titulo: `${lab} del mes: cierre proyectado ${fmt(p.cierre)} (${p.pctMeta != null ? fPct(p.pctMeta, 0) : "—"} de la meta ${fmt(p.meta)})`,
-          descripcion: `Real a la fecha ${fmt(p.real)} con ${c.diasConDato} de ${c.diasMes} días. Rango probable ${p.p10 != null ? fmt(p.p10) : "—"} a ${p.p90 != null ? fmt(p.p90) : "—"}: la meta queda por encima del rango. Para llegar hacen falta ${p.necesarioDia != null ? fmt(p.necesarioDia) : "—"}/día vs un ritmo de ${fmt(p.ritmoDia)}/día.`,
-          acciones: ["Revisar la pauta de conversión (Performance Max / Search) de los días que quedan", "Activar una acción comercial corta (cuotas, envío) si el gap es grande"],
+          titulo: `${lab} online del mes: si sigue así, el mes cierra en ${fmt(p.cierre)} (${p.pctMeta != null ? fPct(p.pctMeta, 0) : "—"} de la meta de ${fmt(p.meta)})`,
+          descripcion: `Van ${fmt(p.real)} con ${c.diasConDato} de ${c.diasMes} días. Lo más probable es terminar entre ${p.p10 != null ? fmt(p.p10) : "—"} y ${p.p90 != null ? fmt(p.p90) : "—"}: la meta queda por encima. Para llegar hacen falta ${p.necesarioDia != null ? fmt(p.necesarioDia) : "—"} por día y hoy se hacen ${fmt(p.ritmoDia)} por día.`,
+          acciones: ["Revisá con quien maneja los avisos de venta (Performance Max y búsqueda en Google) qué se puede hacer en los días que quedan", "Si falta mucho, lanzá una acción comercial corta (cuotas, envío gratis)"],
           datos: { mes: c.mes, real: Math.round(p.real), cierre: Math.round(p.cierre), p10: p.p10 == null ? null : Math.round(p.p10), p90: p.p90 == null ? null : Math.round(p.p90), meta: p.meta, pctMeta: p.pctMeta },
           impacto: { metrica: `Gap a la meta de ${lab.toLowerCase()}`, valor: Math.round(p.meta - p.cierre), unidad: k === "ingresos" ? "$" : "compras" },
         });
@@ -138,10 +138,10 @@ export function computeWebCalidadSignals(inp: { snapshot: WebCalidadSnapshot | n
     const ms = snap.iaMensual.filter((m) => m.mes < ym);
     const u = ms[ms.length - 1], p = ms[ms.length - 2];
     if (u && p && p.sesiones >= 50 && u.sesiones >= p.sesiones * 1.3) S({
-      key: "web_ai_referrals", tipo: "oportunidad", prioridad: "baja",
-      titulo: `Los asistentes de IA trajeron ${fInt(u.sesiones)} sesiones en ${u.mes} (${fDelta(((u.sesiones - p.sesiones) / p.sesiones) * 100)} vs ${p.mes})`,
-      descripcion: `${u.sesionesSitio ? `${fPct((u.sesiones / u.sesionesSitio) * 100, 2)} del sitio. ` : ""}${fInt(u.transacciones)} compras (${fMoney(u.ingresos)}).`,
-      acciones: ["Cruzar con Visibilidad en IA del tablero SEO", "Reforzar las páginas a las que llegan"],
+      key: "web_ai_referrals", metrica: "sesiones", tipo: "oportunidad", prioridad: "baja",
+      titulo: `Asistentes de IA como ChatGPT trajeron ${fInt(u.sesiones)} visitas en ${u.mes} (${fDelta(((u.sesiones - p.sesiones) / p.sesiones) * 100)} contra ${p.mes})`,
+      descripcion: `${u.sesionesSitio ? `${fPct((u.sesiones / u.sesionesSitio) * 100, 2)} de la web. ` : ""}${fInt(u.transacciones)} compras (${fMoney(u.ingresos)}).`,
+      acciones: ["Mirá en el tablero SEO (Visibilidad en IA) en qué preguntas aparece Drean", "Mejorá las páginas a las que llega esa gente"],
       datos: { meses: ms.slice(-4).map((m) => ({ mes: m.mes, sesiones: m.sesiones, compras: m.transacciones })) },
     });
   }

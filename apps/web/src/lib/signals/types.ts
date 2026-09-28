@@ -20,6 +20,9 @@ export interface Signal {
   impacto?: { metrica: string; valor: number; unidad: string };
   /** Señal CRUZADA (lib/signals/cruces.ts): combina datos de 2+ fuentes (propios × mercado). */
   cruce?: boolean;
+  /** Métrica del catálogo (lib/metricas, id) que mueve la señal; null = ninguna. Si falta, "Qué hacer
+   *  ahora" la detecta por el texto. Se fija en las reglas cuyo texto en lenguaje simple ya no la nombra. */
+  metrica?: string | null;
 }
 
 const PRIO: Record<Signal["prioridad"], number> = { alta: 0, media: 1, baja: 2 };
