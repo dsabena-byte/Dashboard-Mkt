@@ -372,6 +372,13 @@ reporte_existencia/cb_homologos).
   (likes/coment./views), no reemplaza followers del post, nunca null; posts que solo trae BD reciben pilar (parte `pilar`,
   gpt-4o-mini, 5 pilares del scraper); las fotos "apify" no re-registran lo que BD ya fotografió. Lo que BD NO trae: texto
   de comentarios (sentimiento), alcance, FB, TikTok, Stories. Test `npx tsx scripts/bd-paridad.test.ts`.
+  **Scraper sin n8n (28-sep, rama `claude/drean-scraper-sin-n8n`):** `/api/cron/competencia-social` (`part=fb|ig|web|fbfol`,
+  `?dry=1`) + `competencia-social.yml` reemplazan los n8n "Social Scraper" (FB diario; IG por Apify solo comentarios,
+  lunes) y "Competitor Web Traffic Sync" (SimilarWeb domingo). Ports literales del mapeo n8n + `mergeSocialRow` sin
+  pérdida; NO escribe hasta `COMPETENCIA_SCRAPER_CODE=1` (con el flag, BD suma la cuenta propia). Mapa n8n reconstruido
+  desde la data (el vivo ≠ export: FB = posts-scraper sin copy/miniatura, web = radeance + Samsung, sin TikTok) y plan
+  de corte en **`docs/n8n-migracion.md`**. Paridad: `npx tsx scripts/n8n-paridad.ts fb.json ig.json web.json`.
+  Test `scripts/competencia-scraper.test.ts`.
 - **Web / SEO (#743):** /web = cierre proyectado del mes (sep: ingresos $428M = 71% de meta), consent indirecto (GA4 ve 59–73% de
   clicks Search+PMax), calidad GA4/embudo/tráfico IA (ago 2.265 ses, 95% ChatGPT) desde `web_calidad_snapshot` (0117, cron
   web-calidad). /seo-search = salud digital (53, #3/13) + ESoS (Lav +16,6/Refri −9,4 pp), LLMO con IC de Wilson + fuentes

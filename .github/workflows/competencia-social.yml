@@ -1,0 +1,65 @@
+name: Competencia social + web (scraper en código, reemplaza n8n)
+
+# Reemplaza los workflows de n8n "Social Scraper — Apify + GPT → Supabase" y "Competitor Web Traffic Sync"
+# (docs/n8n-migracion.md). El endpoint NO escribe nada hasta que COMPETENCIA_SCRAPER_CODE=1 en Vercel
+# (responde estado "desactivado"), así que este workflow puede quedar activo mientras n8n siga prendido.
+#  · diario 07:05 UTC  → fb (Facebook de las 5 marcas) + ig (comentarios/sentimiento por Apify; el endpoint solo
+#                        lo corre los días de COMPETENCIA_IG_APIFY_DIAS, default lunes)
+#  · domingo 00:05 UTC → web (SimilarWeb → competitor_web) + fbfol (seguidores de las Páginas de FB)
+# Manual: part = fb | ig | web | fbfol (o varias separadas por coma), dry = 1 para comparar sin escribir.
+
+on:
+  schedule:
+    - cron: "5 7 * * *"
+    - cron: "5 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      part:
+        description: "fb | ig | web | fbfol (varias: fb,ig)"
+        required: false
+        default: "fb,ig"
+      dry:
+        description: "1 = dry-run (devuelve filas, no escribe)"
+        required: false
+        default: ""
+      force:
+        description: "1 = correr ig aunque hoy no toque"
+        required: false
+        default: ""
+
+jobs:
+  competencia-social:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Trigger /api/cron/competencia-social
+        run: |
+          set -euo pipefail
+          if [ -n "${PART_INPUT:-}" ]; then PART="$PART_INPUT";
+          elif [ "${SCHEDULE:-}" = "5 0 * * 0" ]; then PART="web,fbfol";
+          else PART="fb,ig"; fi
+          BASE="${APP_URL:-https://dashboard-mkt-seven.vercel.app}"
+          FAIL=0
+          # Una llamada por parte (cada una tiene sus 300 s de Vercel).
+          for P in ${PART//,/ }; do
+            URL="$BASE/api/cron/competencia-social?part=$P&dry=${DRY_INPUT:-}&force=${FORCE_INPUT:-}"
+            echo "GET $URL"
+            if [ -n "${CRON_SECRET:-}" ]; then
+              curl -fsS --max-time 295 "$URL" -H "Authorization: Bearer $CRON_SECRET" > "out-$P.json" || FAIL=1
+            else
+              curl -fsS --max-time 295 "$URL" > "out-$P.json" || FAIL=1
+            fi
+            cat "out-$P.json"; echo
+            if grep -q '"apifySinCupo"' "out-$P.json"; then
+              echo "::warning::Apify sin cupo mensual: la corrida se cortó (subir el límite en console.apify.com → Billing → Limits)"
+            fi
+            if grep -q '"ok":false' "out-$P.json"; then echo "Parte $P devolvió ok=false"; FAIL=1; fi
+          done
+          exit $FAIL
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+          SCHEDULE: ${{ github.event.schedule }}
+          PART_INPUT: ${{ inputs.part }}
+          DRY_INPUT: ${{ inputs.dry }}
+          FORCE_INPUT: ${{ inputs.force }}
