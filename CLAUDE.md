@@ -933,4 +933,6 @@ toca Drean.** Estado, decisiones, identidad (`bip.explore@gmail.com`, dominio `b
 pendientes en **`docs/bip-platform-handoff.md`**. El código se entregó al user como zips.
 **TikTok (BIP) — NO volver a pedirlo:** el user YA corrigió el perfil de empresa y REENVIÓ las apps (lo dijo 2 veces, 28-sep-2026);
 el perfil está "en revisión" hace mucho → solo queda insistir con TikTok por soporte, no repetir los pasos de corrección.
+**28-sep-2026:** en My Apps las dos apps (BIP Connector / BIP Organic) figuran **"Rejected"** sin App ID; el user abrió ticket en el
+Developer Ticket Platform (categoría App Management & Approvals) pidiendo el motivo y cómo re-revisar. Esperar respuesta.
 </content>
