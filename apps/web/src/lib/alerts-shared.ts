@@ -11,7 +11,11 @@ export const FREC_LABEL: Record<Frecuencia, string> = {
   off: "No recibir emails de alertas",
 };
 
-export interface AlertPrefs { emailOn: boolean; frecuencia: Frecuencia; destinatarios: string[]; reporteOn: boolean; migrated: boolean }
+export interface AlertPrefs {
+  emailOn: boolean; frecuencia: Frecuencia; destinatarios: string[]; reporteOn: boolean; migrated: boolean;
+  /** Canal WhatsApp (columnas de la migración 0123; sin ella: apagado y whatsappMigrated=false). */
+  whatsappOn: boolean; whatsappDestinatarios: string[]; whatsappMigrated: boolean;
+}
 
 export interface AlertItem {
   key: string;

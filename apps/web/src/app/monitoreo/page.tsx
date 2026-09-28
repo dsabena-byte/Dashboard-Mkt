@@ -1,12 +1,18 @@
 import { getHealth } from "@/lib/monitoreo-queries";
 import { BADGE, fmtDate, fmtAge, fmtCadencia } from "@/lib/monitoreo-config";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { lastWhatsappHeartbeat } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
+const WA_TXT: Record<string, string> = {
+  enviado: "enviado", desconectado: "desconectado", sin_config: "sin configurar (faltan EVO_URL / EVO_API_KEY)",
+  sin_destinatarios: "sin números cargados", error: "error al enviar",
+};
+
 export default async function MonitoreoPage() {
-  const rows = await getHealth();
+  const [rows, wa] = await Promise.all([getHealth(), lastWhatsappHeartbeat()]);
   const alertas = rows.filter((r) => r.estado === "critico" || r.estado === "atrasado");
 
   return (
@@ -83,6 +89,15 @@ export default async function MonitoreoPage() {
           </table>
         </div>
       </section>
+
+      {wa && (
+        <div className={`rounded-xl border border-l-[5px] p-3 text-xs ${wa.estado === "enviado" ? "border-l-emerald-500" : "border-l-amber-500"}`}>
+          <span className="font-semibold">WhatsApp de alertas (Evolution API):</span>{" "}
+          último intento {fmtDate(wa.at)} ({wa.tipo || "envío"}) →{" "}
+          <b>{WA_TXT[wa.estado] ?? wa.estado}</b>
+          {wa.estado === "desconectado" && " · falta vincular el número dedicado (escanear el QR en el Manager de Evolution). El email sigue saliendo."}
+        </div>
+      )}
 
       <p className="text-[11px] text-muted-foreground">
         <strong>Conexiones:</strong> <b>GitHub Action</b> = cron en el repo (Actions), reintentable automáticamente ·{" "}
