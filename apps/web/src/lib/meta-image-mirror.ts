@@ -73,3 +73,70 @@ export async function mirrorMetaImage(metaUrl: string | null | undefined, key: s
 
   return publicUrl(supabaseUrl, key);
 }
+
+/**
+ * Variante estricta (miniaturas DV360): mismo bucket y misma lógica que `mirrorMetaImage`, pero devuelve el
+ * resultado explícito y exige que la respuesta sea una imagen (no sube una página de error como si fuera .jpg).
+ * `already` = ya estaba en el bucket (no se re-descarga). Con `dry` solo verifica que la fuente responda imagen.
+ */
+export async function mirrorImageStrict(
+  srcUrl: string,
+  key: string,
+  opts: { dry?: boolean } = {},
+): Promise<{ ok: true; url: string; already: boolean } | { ok: false; error: string }> {
+  const supabaseUrl = env("NEXT_PUBLIC_SUPABASE_URL").replace(/\/+$/, "");
+  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  try {
+    if (await exists(supabaseUrl, key)) return { ok: true, url: publicUrl(supabaseUrl, key), already: true };
+  } catch {
+    // seguimos a la descarga
+  }
+  let buf: ArrayBuffer;
+  let contentType: string;
+  try {
+    const res = await fetch(srcUrl, { cache: "no-store" });
+    if (!res.ok) return { ok: false, error: `fuente ${res.status}` };
+    contentType = (res.headers.get("content-type") || "").split(";")[0]!.trim();
+    if (!contentType.startsWith("image/")) return { ok: false, error: `fuente no es imagen (${contentType || "sin content-type"})` };
+    buf = await res.arrayBuffer();
+    if (buf.byteLength < 100) return { ok: false, error: `imagen vacía (${buf.byteLength} B)` };
+  } catch (e) {
+    return { ok: false, error: `fuente: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  if (opts.dry) return { ok: true, url: srcUrl, already: false };
+  try {
+    const up = await fetch(`${supabaseUrl}/storage/v1/object/${BUCKET}/${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": contentType, "x-upsert": "true" },
+      body: buf,
+    });
+    if (!up.ok) return { ok: false, error: `storage ${up.status}: ${(await up.text()).slice(0, 200)}` };
+  } catch (e) {
+    return { ok: false, error: `storage: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  return { ok: true, url: publicUrl(supabaseUrl, key), already: false };
+}
+
+/** Sube un JSON al mismo bucket (manifiestos). Cache corto para que el dash vea la versión nueva enseguida. */
+export async function uploadBucketJson(key: string, data: unknown): Promise<{ ok: boolean; url: string; error?: string }> {
+  const supabaseUrl = env("NEXT_PUBLIC_SUPABASE_URL").replace(/\/+$/, "");
+  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const url = publicUrl(supabaseUrl, key);
+  const r = await fetch(`${supabaseUrl}/storage/v1/object/${BUCKET}/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      "Content-Type": "application/json",
+      "x-upsert": "true",
+      "cache-control": "max-age=60",
+    },
+    body: JSON.stringify(data),
+  });
+  return r.ok ? { ok: true, url } : { ok: false, url, error: `storage ${r.status}: ${(await r.text()).slice(0, 200)}` };
+}
+
+/** URL pública de un objeto del bucket de miniaturas. */
+export function bucketPublicUrl(key: string): string {
+  return publicUrl(env("NEXT_PUBLIC_SUPABASE_URL"), key);
+}

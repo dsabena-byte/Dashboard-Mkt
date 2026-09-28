@@ -1,0 +1,38 @@
+name: DV360 miniaturas (API, solo lectura)
+
+# Llama /api/cron/dv360-thumbs: lista los creatives del anunciante Drean en la Display & Video 360 API, espeja
+# la imagen de cada uno al bucket meta-thumbs (dv360/<id>.jpg) y escribe el manifiesto dv360/index.json que usa
+# /performance → Eficiencia Medios → "Piezas pautadas · Programmatic + Marketplace". Los NÚMEROS de DV360 siguen
+# viniendo del reporte de OMD (Apps Script); esto solo agrega las imágenes.
+on:
+  schedule:
+    - cron: "30 9 * * *" # 06:30 ART, después del Apps Script de DV360 (9am)
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "1 = dry-run (prueba la descarga de 8 imágenes, no escribe). Vacío = sincroniza."
+        required: false
+        default: ""
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: GET /api/cron/dv360-thumbs
+        run: |
+          set -euo pipefail
+          BASE="${APP_URL:-https://dashboard-mkt-seven.vercel.app}"
+          URL="$BASE/api/cron/dv360-thumbs"
+          if [ -n "${DRY_INPUT:-}" ]; then URL="${URL}?dry=1"; fi
+          echo "GET $URL"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 320 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+          echo "HTTP $HTTP_CODE"
+          cat response.json; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
+          if grep -q '"ok":false' response.json; then echo "::error::cron devolvió error"; exit 1; fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+          DRY_INPUT: ${{ inputs.dry }}

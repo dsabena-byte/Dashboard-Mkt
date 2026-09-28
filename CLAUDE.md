@@ -547,6 +547,12 @@ reporte_existencia/cb_homologos).
   (Programmatic 2.557 + YouTube 1.957) vs la recarga completa de US$17.108 → el `syncDv360` diario lo re-pisó con
   CSV parcial (el pendiente de "recurrencia" se materializó). Ago-26 también sospechoso (US$9.081 vs jul US$39.073).
   Fix de fondo = rango fijo/largo en el reporte "DV360 Video Drean" o que `syncDv360` no reescriba un mes con CSV parcial.
+- **DV360 miniaturas (28-sep-2026):** números = reporte OMD (sin cambios); imágenes = API DV360 solo lectura (scope
+  `display-video`, anunciante 8003891470). Cron `/api/cron/dv360-thumbs` + `dv360-thumbs.yml` (diario, `dry`) espeja
+  `/simgad/<n>` (tpc.googlesyndication.com, respaldo s0.2mdn.net) / YouTube a `meta-thumbs/dv360/<id>.jpg` + manifiesto
+  `dv360/index.json` (sin migración). Match por nombre normalizado (fallback cat+WxH solo si único) en
+  `lib/dv360-thumbs-shared.ts` (test `scripts/dv360-thumbs.test.ts`). YouTube del reporte = "Unknown" → sin miniatura.
+  Detalle en `docs/dv360-sync.md` "Thumbnails".
 - **DV360 subcuenta meses viejos — CONFIRMADO con el CSV real (sep-2026).** DV360 NO se carga
     manual: el Apps Script "Sync Drive Tablero CB" (`syncDv360`) lee el CSV del reporte "DV360 Video
     Drean" desde Gmail (`.zip`) y hace `delete WHERE mes IN (meses del CSV) + insert` → solo toca los

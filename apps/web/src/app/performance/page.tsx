@@ -1,6 +1,7 @@
 import { getPautaPerformance } from "@/lib/pauta-queries";
 import { getMetaPaidCreatives } from "@/lib/meta-paid-queries";
 import { getDv360Creatives, getDv360Reach } from "@/lib/dv360-queries";
+import { getDv360ThumbMap } from "@/lib/dv360-thumbs";
 import { getFxRates } from "@/lib/fx-queries";
 import { getPlanningMedia } from "@/lib/planning-media-queries";
 import { getGoogleAdsOmd } from "@/lib/google-ads-omd-queries";
@@ -114,9 +115,11 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
   const ecomInv = convertir12(ctx, currentYear, rawEcomInv, col);
   // Metas mensuales de los 6 KPIs de Impacto Campaña (plan "Pauta Mkt"), en paralelo.
   // + inversión diaria por medio con API (Eficiencia Medios; REST, tablas chicas, $ corrientes).
-  const [metasArr, pautaDiaria] = await Promise.all([
+  // + miniaturas DV360 (manifiesto del cron dv360-thumbs; solo nombre → url, fail-safe {}).
+  const [metasArr, pautaDiaria, dv360Thumbs] = await Promise.all([
     Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK))),
     safe(getPautaDiaria(), null),
+    safe(getDv360ThumbMap(rawDv360.map((r) => r.creative)), {} as Awaited<ReturnType<typeof getDv360ThumbMap>>),
   ]);
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
   // La meta de Inversión ($) se lleva a la misma moneda que el real.
@@ -135,6 +138,6 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     </div>
   );
   return (
-    <PerformanceClient headerExtra={headerExtra} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} />
+    <PerformanceClient headerExtra={headerExtra} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} dv360Thumbs={dv360Thumbs} />
   );
 }
