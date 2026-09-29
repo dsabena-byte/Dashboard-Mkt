@@ -402,7 +402,7 @@ reporte_existencia/cb_homologos).
 - **Mis tableros v2 + copiloto (#741):** "Armame el tablero" NL (`lib/tableros-nl.ts`) + fuentes nativas `nat:*` (pauta/web/IG/
   seguimiento, por `dashboard_access`); anotaciones (0119, entran al Diagnóstico IA) y umbrales propios en /alerts (CPM/CPC sobre
   medios con impresiones); compartir por link firmado (`/compartido/[token]`) + envío programado (solo dominios del equipo +
-  `SHARE_ALLOWED_DOMAINS`); copiloto 👍/👎 + respuestas verificadas (0120) + `/copiloto` "Calidad del copiloto"; eval-set
+  `SHARE_ALLOWED_DOMAINS`); copiloto 👍/👎 + respuestas verificadas (0120) + `/copiloto` "Calidad del copiloto" (**29-sep-2026: fuera del menú** — pedido del user: es interno, no va en un tablero comercial; la página sigue solo por URL directa; en BIP vive en el CRM de staff `/consultor/copiloto`); eval-set
   (sumar casos al agregar tools). Pendiente menor: la receta CPM de "Armame el tablero" usa inversión total.
 - **Worktrees de agentes:** usar symlinks a los `node_modules` del checkout principal (con `cp -al` tsc da errores falsos); NO
   commitear el symlink `apps/web/node_modules` (se coló una vez).

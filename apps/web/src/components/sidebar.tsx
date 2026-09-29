@@ -16,7 +16,6 @@ import {
   GraduationCap,
   LayoutGrid,
   Bell,
-  BadgeCheck,
   ChevronRight,
   Menu,
   X,
@@ -69,7 +68,6 @@ const TREE: NavNode[] = [
   { type: "link", href: "/contenido", label: "Generador de Contenido", icon: Sparkles },
   { type: "link", href: "/monitoreo", label: "Monitoreo conexiones", icon: Activity },
   { type: "link", href: "/alerts", label: "Alertas y reportes", icon: Bell },
-  { type: "link", href: "/copiloto", label: "Calidad del copiloto", icon: BadgeCheck },
   { type: "divider" },
   { type: "link", href: "/guia", label: "Proceso Estratégico", icon: GraduationCap },
 ];
