@@ -124,19 +124,19 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
   // La meta de Inversión ($) se lleva a la misma moneda que el real.
   if (ctx.moneda !== "corrientes") metas["Inversión"] = { ...metas["Inversión"], valores: convertir12(ctx, currentYear, metas["Inversión"].valores) };
-  const headerExtra = (
-    <div className="flex flex-col items-end gap-1.5">
-      <Suspense fallback={null}>
-        <MonedaSelector
-          actual={ctx.moneda === "usd" ? "usd" : "corrientes"}
-          disponible={{ usd: ctx.idx.usd.size > 0 }}
-          notas={[aviso, avisoFaltantes(ctx, [...col.faltantes])]}
-        />
-      </Suspense>
-      <DataHealth dash="performance" />
-    </div>
+  // Salud de los datos junto al título; el selector de moneda va más abajo, en la fila de pestañas
+  // (pedido del user: no mezclarlo con las fechas de actualización).
+  const headerExtra = <DataHealth dash="performance" />;
+  const monedaSlot = (
+    <Suspense fallback={null}>
+      <MonedaSelector
+        actual={ctx.moneda === "usd" ? "usd" : "corrientes"}
+        disponible={{ usd: ctx.idx.usd.size > 0 }}
+        notas={[aviso, avisoFaltantes(ctx, [...col.faltantes])]}
+      />
+    </Suspense>
   );
   return (
-    <PerformanceClient headerExtra={headerExtra} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} dv360Thumbs={dv360Thumbs} />
+    <PerformanceClient headerExtra={headerExtra} monedaSlot={monedaSlot} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} dv360Thumbs={dv360Thumbs} />
   );
 }

@@ -335,7 +335,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], pautaDiaria = null, dv360Thumbs = {}, initialTab, headerExtra }: { /** Miniaturas DV360 por nombre de creative (API DV360, cron dv360-thumbs). */ dv360Thumbs?: Record<string, Dv360Thumb>; /** Server: selector de moneda + salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], pautaDiaria = null, dv360Thumbs = {}, initialTab, headerExtra, monedaSlot }: { /** Selector de moneda (server): va en la fila de pestañas, a la derecha. */ monedaSlot?: React.ReactNode; /** Miniaturas DV360 por nombre de creative (API DV360, cron dv360-thumbs). */ dv360Thumbs?: Record<string, Dv360Thumb>; /** Server: salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
   // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
   // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
   // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
@@ -1241,6 +1241,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
             {l.label}
           </Link>
         ))}
+        {monedaSlot && <div className="ml-auto self-center py-1">{monedaSlot}</div>}
       </div>
 
       {/* ===== IMPACTO CAMPAÑA ===== */}
