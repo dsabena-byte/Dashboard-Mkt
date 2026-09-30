@@ -937,6 +937,12 @@ Los `handoff-*.md` son notas de sesiones previas.
 multi-cliente (fork + capa de conexiones OAuth vía Nango + planes/upgrade/add-ons + billing). **NO
 toca Drean.** Estado, decisiones, identidad (`bip.explore@gmail.com`, dominio `bip-go.com`) y pasos
 pendientes en **`docs/bip-platform-handoff.md`**. El código se entregó al user como zips.
+**Demo Federada Salud (BIP, 30-sep-2026):** cuenta `federada.demo@bip-go.com` (tenant `federada-demo`, Accelerate, `bip_role=review`
+= interna, sin conexiones). Lecciones (el user se enojó: gastó plata/tokens): (1) VALIDAR handles/datos ANTES de lanzar syncs pagos
+(Apify/DataForSEO); (2) NO correr `alertas.yml` para bajar la pauta de la competencia → usar `solo_ad_library=1` (se mandaron 2 mails);
+(3) mails automáticos bloqueados para cuentas internas y en las primeras 24 h (`lib/mail-gate.ts`); (4) sin conexiones propias Redes/Web
+igual muestran competencia. IG competidores: @avaliansalud @sancor.salud @prevencionsaludoficial @jerarquicossaludoficial @medifeoficial
+@osde @swissmedicalgroup @galeno; Federada @federadasaludoficial.
 **TikTok (BIP) — NO volver a pedirlo:** el user YA corrigió el perfil de empresa y REENVIÓ las apps (lo dijo 2 veces, 28-sep-2026);
 el perfil está "en revisión" hace mucho → solo queda insistir con TikTok por soporte, no repetir los pasos de corrección.
 **28-sep-2026:** en My Apps las dos apps (BIP Connector / BIP Organic) figuran **"Rejected"** sin App ID; el user abrió ticket en el
