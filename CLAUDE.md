@@ -852,6 +852,7 @@ reporte_existencia/cb_homologos).
   "más vendidos"), DV360 "lo armamos con vos" (conector coordinado), TikTok/Tiendanube/WhatsApp "muy pronto". Sumados: inversión
   diaria por medio (reemplaza "ritmo de inversión", #148), Guiame paso a paso + Mis acciones, ayuda/videos, Salud de Marca
   (Accelerate). Las dos copias (bip.html y Roque) se parchean con el MISMO script → mantenerlas idénticas salvo WhatsApp/rutas.
+  **Historial por fuente (30-sep-2026, pedido del user):** "6/12/24 meses" es de TUS datos (pauta, redes, web). Competencia (Apify) NO sigue el plan: arranca con los últimos 25 posts por marca y red + web 3 meses + anuncios activos desde el alta; búsquedas: demanda 12 m, Search Console 13 m, IA desde el alta. Filas nuevas en la tabla de planes (web + `PLAN_MATRIX` de bip-platform).
 
 - **Generador de Contenido — Calendario + publicación IG/FB (dic-2026):** `/contenido` →
   `/contenido/calendario` (tabs: RRSS, UGC, Biblioteca UGC, Adaptación de piezas). Las piezas viven en
