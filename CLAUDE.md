@@ -943,6 +943,10 @@ pendientes en **`docs/bip-platform-handoff.md`**. El código se entregó al user
 (3) mails automáticos bloqueados para cuentas internas y en las primeras 24 h (`lib/mail-gate.ts`); (4) sin conexiones propias Redes/Web
 igual muestran competencia. IG competidores: @avaliansalud @sancor.salud @prevencionsaludoficial @jerarquicossaludoficial @medifeoficial
 @osde @swissmedicalgroup @galeno; Federada @federadasaludoficial.
+(5) 30-sep se agotó el crédito de OpenAI (429 "no credits" = causa real de 0 clasificados/0 sentimiento, NO los emojis); el user cargó
+crédito. (6) `sync-competitors.yml` tiene input `partes` (`ig social web ia`): `social` = no re-pagar SimilarWeb; **`ia` = reclasificar +
+sentimiento de lo YA guardado, sin Apify** (comentarios guardados en `competitor_post_comments`, migración BIP **0050**; sin ella no hay
+sentimiento en el reproceso).
 **TikTok (BIP) — NO volver a pedirlo:** el user YA corrigió el perfil de empresa y REENVIÓ las apps (lo dijo 2 veces, 28-sep-2026);
 el perfil está "en revisión" hace mucho → solo queda insistir con TikTok por soporte, no repetir los pasos de corrección.
 **28-sep-2026:** en My Apps las dos apps (BIP Connector / BIP Organic) figuran **"Rejected"** sin App ID; el user abrió ticket en el
