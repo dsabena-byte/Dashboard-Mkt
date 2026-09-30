@@ -983,19 +983,19 @@ const PLANS = [
   {key:'insight',name:'Insight',tag:'plan base',price6:'199',price3:'249',
    q:'¿Cómo me va contra mi meta?',promesa:'Dejá de reportar y empezá a decidir.',
    ideal:'querés tener todo tu marketing medido contra la meta, en un solo lugar y sin armar reportes a mano.',
-   spec:[['1','usuario'],['1','categoría'],['6','meses de historia']],
+   spec:[['1','usuario'],['1','categoría'],['6','meses de tus datos']],
    incl:'Incluye',
    feats:[['Mapa Estratégico + Seguimiento de Objetivos: real vs meta, cierre proyectado y qué explica la brecha'],['Metas sugeridas a partir de tu propia historia'],['Plan de Medios online + offline: inversión diaria por medio, fatiga creativa y marca vs activación'],['Redes Sociales de tu marca: Stories, mejores formatos y horarios'],['Web / Ecommerce con tus ventas reales y dónde se traba la navegación'],['Resultados Comerciales (ventas, share, precio, cobertura) e Inversión de Marketing'],['Mis tableros: pedilos en tus palabras, anotalos y compartilos con un link'],['IA: preguntale a tus datos y pedile "Guiame paso a paso"; seguí tus acciones en un solo lugar'],['Confianza en el dato: estado de cada conexión y montos en pesos constantes o dólares'],['Alertas en la plataforma, con tus propios umbrales'],['Ayuda en cada función y videos cortos que te guían']],},
   {key:'optimize',name:'Optimize',tag:'plan intermedio',price6:'399',price3:'499',reco:true,
    q:'¿Le estoy ganando a mi competencia?',promesa:'Decidí con contexto de mercado.',
    ideal:'ya medís tu operación y necesitás saber cómo te va contra tu competencia, y defenderlo con datos ante la dirección.',
-   spec:[['4','usuarios'],['2','categorías'],['12','meses de historia']],
+   spec:[['4','usuarios'],['2','categorías'],['12','meses de tus datos']],
    incl:'Todo Insight, más:',
    feats:[['Tu mercado: tu marca vs hasta 5 competidores en redes (con su pauta probable), web y búsquedas',1],['Share of search y ESoS: tu cuota de búsquedas vs tu share de mercado',1],['SEO técnico: auditoría del sitio, Core Web Vitals y Search Console a fondo',1],['Visibilidad en IA: cuánto te mencionan los asistentes y con qué fuentes',1],['Góndola Mercado Libre: tu presencia, precios y reseñas vs la competencia, y lo más buscado',1],['Trade Mkt: Surtido + Floor Share',1],['KPIs de mercado en tu Mapa y cruces con la competencia en el diagnóstico',1],['Resumen semanal de alertas y envío programado de tableros por email (WhatsApp, muy pronto)',1]],},
   {key:'accelerate',name:'Accelerate',tag:'plan full',price6:'695',price3:'869',
    q:'¿Dónde pongo el próximo peso?',promesa:'Anticipá, no solo reacciones.',
    ideal:'manejás varias categorías y un presupuesto relevante: necesitás simular escenarios y reportar a la dirección sin armar nada.',
-   spec:[['10','usuarios'],['3','categorías'],['24','meses de historia']],
+   spec:[['10','usuarios'],['3','categorías'],['24','meses de tus datos']],
    incl:'Todo Optimize, más:',
    feats:[['Simulador de presupuesto por medio + proyección de demanda',1],['Qué aporta cada medio a tus ventas (MMM-lite), con su nivel de confianza',1],['Pauta de la competencia: qué anuncia cada marca, con qué intensidad y qué sostiene',1],['Salud de Marca: tu estudio de marca por ola, vs la competencia y cruzado con tu share',1],['Hasta 10 competidores + retailers',1],['Todos los tableros abiertos por categoría',1],['Alertas diarias + reporte ejecutivo mensual por email',1]],},
 ];
@@ -1042,7 +1042,9 @@ document.getElementById('matrix').innerHTML =
   `<tr class="section"><td colspan="4">Acceso</td></tr>`+
   `<tr><td>Usuarios incluidos</td><td><span class="val">1</span></td><td><span class="val">Hasta 4</span></td><td><span class="val">Hasta 10</span></td></tr>`+
   `<tr><td>Competidores</td><td><span class="no">—</span></td><td><span class="val">Hasta 5</span></td><td><span class="val">Hasta 10 + retailers</span></td></tr>`+
-  `<tr><td>Historial de datos</td><td><span class="val">6 meses</span></td><td><span class="val">12 meses</span></td><td><span class="val">24 meses</span></td></tr>`+
+  `<tr><td>Historial de tus datos (pauta, redes, web)</td><td><span class="val">6 meses</span></td><td><span class="val">12 meses</span></td><td><span class="val">24 meses</span></td></tr>`+
+  `<tr><td>Historial de la competencia</td><td>—</td><td>Desde el alta: últimos 25 posts por marca y red; web de los últimos 3 meses. Suma historia semana a semana</td><td>Igual + anuncios activos desde el alta</td></tr>`+
+  `<tr><td>Historial de búsquedas</td><td>—</td><td>Demanda 12 meses · Search Console 13 meses · IA desde el alta</td><td>Igual</td></tr>`+
   `<tr><td>Marca</td><td><span class="val">1</span></td><td><span class="val">1</span></td><td><span class="val">1</span></td></tr>`+
   `<tr><td>Categorías incluidas</td><td><span class="val">1</span></td><td><span class="val">2</span></td><td><span class="val">3</span></td></tr>` +
   FULL.map(s=>`<tr class="section"><td colspan="4">${s.t}</td></tr>`+s.r.map(([l,a,b,c])=>`<tr><td>${l}</td><td>${cell(a)}</td><td>${cell(b)}</td><td>${cell(c)}</td></tr>`).join('')).join('');
