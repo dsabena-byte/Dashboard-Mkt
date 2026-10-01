@@ -1,3 +1,4 @@
+import { fmtEng } from "@/lib/fmt-eng";
 import { KpiCard } from "@/components/kpi-card";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { parseDateRange } from "@/lib/dates";
@@ -356,7 +357,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
                   )}
                 </div>
                 <div className="text-base font-bold tabular-nums" style={{ color: "#dc2626" }}>
-                  {n.engagement_promedio.toFixed(2)}%
+                  {fmtEng(n.engagement_promedio)}
                 </div>
               </div>
               {/* Sentiment nested SOLO en el card de Instagram */}
@@ -392,7 +393,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
 
       {/* KPI cards */}
       <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-        <KpiCard title="Engagement (mediana)" value={`${erGlobal.value.toFixed(3)}%`} hint={`${erGlobal.metodo === "maduro" ? "Posts con 7+ días" : "Preliminar"} · prom. ${kpis.engagement_promedio.toFixed(2)}%`} />
+        <KpiCard title="Engagement (mediana)" value={`${erGlobal.value.toFixed(3)}%`} hint={`${erGlobal.metodo === "maduro" ? "Posts con 7+ días" : "Preliminar"} · prom. ${fmtEng(kpis.engagement_promedio)}`} />
         <KpiCard title="Total likes" value={fmtK(kpis.total_likes)} hint={`${kpis.posts} posts`} />
         <KpiCard title="Total views" value={fmtK(kpis.total_views)} hint="Videos e IG" />
         <KpiCard

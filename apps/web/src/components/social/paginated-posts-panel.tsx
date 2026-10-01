@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtEng } from "@/lib/fmt-eng";
 import { useState } from "react";
 
 interface PaginatedPost {
@@ -69,7 +70,7 @@ export function PaginatedPostsPanel({
         <span className={`rounded px-1.5 py-0.5 ${bg}`}>{posts.length} posts</span>
       </div>
       <div className="mb-3 text-[10px] text-muted-foreground">
-        Eng. promedio de la marca: {avgEngagement.toFixed(2)}%
+        Eng. promedio de la marca: {fmtEng(avgEngagement)}
       </div>
 
       {posts.length === 0 ? (
@@ -83,7 +84,7 @@ export function PaginatedPostsPanel({
                 className={`rounded-md border-l-2 ${border} ${bg} p-2`}
               >
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-bold">{(p.engagement ?? 0).toFixed(2)}%</span>
+                  <span className="font-bold">{fmtEng(p.engagement)}</span>
                   <span
                     className="rounded px-1.5 py-0.5 text-[10px]"
                     style={{
