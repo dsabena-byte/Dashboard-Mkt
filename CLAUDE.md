@@ -951,4 +951,10 @@ sentimiento en el reproceso).
 el perfil está "en revisión" hace mucho → solo queda insistir con TikTok por soporte, no repetir los pasos de corrección.
 **28-sep-2026:** en My Apps las dos apps (BIP Connector / BIP Organic) figuran **"Rejected"** sin App ID; el user abrió ticket en el
 Developer Ticket Platform (categoría App Management & Approvals) pidiendo el motivo y cómo re-revisar: **ticket #4469780** (14:32, bip@roque-in.com). Esperar respuesta (ver "All tickets").
+**1-oct-2026 — respondió TikTok (Ricky, TPS Support, ticket #4469780):** el **Developer Profile sigue RECHAZADO**; nombre/web/dominio de
+mail ya coinciden, pero la web de la empresa debe mostrar públicamente empresa + producto, estar completa y funcional (nada "en
+construcción" ni placeholders). Pasos que pidió: (1) revisar la web, (2) **reenviar el Developer Profile**, (3) recién aprobado el perfil,
+**crear apps NUEVAS** (BIP Connector / BIP Organic: las rechazadas no se reabren), (4) antes de pedir el permiso "TikTok Accounts",
+completar el **Accounts API Access Application Form** (revisión aparte). Responder el ticket al reenviar el perfil (cierra solo a las 96 h
+sin respuesta). Riesgo detectado en bip.html: badges "Muy pronto" (incl. TikTok) pueden leerse como placeholder.
 </content>
