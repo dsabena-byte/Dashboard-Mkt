@@ -9,7 +9,8 @@ import { igApifyToca, fbToca, FB_DIAS_DEFAULT, IG_APIFY_DIAS_DEFAULT } from "@/l
 //   ?part=web     SimilarWeb → competitor_web (mensual, día 15: el dato de SimilarWeb es mensual)
 //   ?part=fbfol   Seguidores de las Páginas de FB → social_followers (semanal; nuevo, n8n no lo tenía)
 //   ?dry=1        corre actores + LLM y devuelve las filas SIN escribir (para scripts/n8n-paridad.ts). Funciona con el flag apagado.
-// Guarda: COMPETENCIA_SCRAPER_CODE=1 habilita la escritura (así n8n y el código no corren dos veces por accidente).
+// Guarda: COMPETENCIA_SCRAPER_CODE=1 habilita la escritura (así n8n y el código no corren dos veces por accidente),
+// salvo fbfol, que escribe siempre (no tiene equivalente en n8n).
 // Cupo de Apify agotado → las partes siguientes se saltean y se informa (`apifySinCupo`).
 
 export const maxDuration = 300;
@@ -25,7 +26,9 @@ export async function GET(request: Request) {
   const force = u.searchParams.get("force") === "1";
   const parts = (u.searchParams.get("part") ?? "fb").split(",").map((s) => s.trim()).filter(Boolean);
   const enabled = process.env.COMPETENCIA_SCRAPER_CODE === "1";
-  if (!enabled && !dry) {
+  // fbfol (seguidores de las Páginas de FB) NO se pisa con n8n (n8n nunca los cargó: social_followers FB quedó
+  // en may-2026) → escribe aunque el flag esté apagado. El resto de las partes sigue esperando el flag.
+  if (!enabled && !dry && parts.some((p) => p !== "fbfol")) {
     return NextResponse.json({ ok: true, estado: "desactivado", motivo: "COMPETENCIA_SCRAPER_CODE != 1 (n8n sigue siendo la fuente). Usá ?dry=1 para comparar.", parts });
   }
   const num = (k: string) => { const n = Number(u.searchParams.get(k)); return Number.isFinite(n) && n > 0 ? Math.round(n) : undefined; };

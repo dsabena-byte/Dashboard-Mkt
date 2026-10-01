@@ -5,7 +5,7 @@ name: Competencia social + web (scraper en código, reemplaza n8n)
 # (responde estado "desactivado"), así que este workflow puede quedar activo mientras n8n siga prendido.
 #  · diario 07:05 UTC  → fb (Facebook de las 5 marcas; el endpoint solo lo corre los días de COMPETENCIA_FB_DIAS,
 #                        default lun y jue) + ig (comentarios/sentimiento por Apify; COMPETENCIA_IG_APIFY_DIAS, default lunes)
-#  · domingo 00:05 UTC → fbfol (seguidores de las Páginas de FB)
+#  · domingo 00:05 UTC → fbfol (seguidores de las Páginas de FB; escribe aunque el flag esté apagado)
 #  · día 15, 00:20 UTC → web (SimilarWeb → competitor_web). SimilarWeb es MENSUAL y publica el mes cerrado
 #                        ~2ª semana (ago-26 apareció entre el 6 y el 13-sep) → una corrida por mes alcanza.
 # Manual: part = fb | ig | web | fbfol (o varias separadas por coma), dry = 1 para comparar sin escribir.
