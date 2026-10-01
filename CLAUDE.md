@@ -389,7 +389,7 @@ reporte_existencia/cb_homologos).
   pérdida; NO escribe hasta `COMPETENCIA_SCRAPER_CODE=1` (con el flag, BD suma la cuenta propia). Mapa n8n reconstruido
   desde la data (el vivo ≠ export: FB = posts-scraper sin copy/miniatura, web = radeance + Samsung, sin TikTok) y plan
   de corte en **`docs/n8n-migracion.md`**. Paridad: `npx tsx scripts/n8n-paridad.ts fb.json ig.json web.json`.
-  Test `scripts/competencia-scraper.test.ts`. **Volumen "razonable" (decisión del user, NO paridad con n8n):** FB 10 posts
+  Test `scripts/competencia-scraper.test.ts`. **`fbfol` (seguidores de Páginas FB → `social_followers`) escribe SIN el flag** (1-oct-2026: n8n nunca los cargó, FB quedó en may-2026 y el engagement FB se calculaba con seguidores viejos); domingo 00:05 UTC, validado en dry-run (Drean 129.767, Electrolux 5,30M). **Volumen "razonable" (decisión del user, NO paridad con n8n):** FB 10 posts
   por Página lun y jue (`COMPETENCIA_FB_DIAS`/`_LIMIT`), pilar con gpt-4o-mini; las marcas publican 8–18 posts/mes en FB. **SimilarWeb (web competencia) = mensual, día 15** (el
   dato es por mes; n8n lo bajaba cada domingo y repetía el mismo número 4 semanas).
 - **Web / SEO (#743):** /web = cierre proyectado del mes (sep: ingresos $428M = 71% de meta), consent indirecto (GA4 ve 59–73% de
