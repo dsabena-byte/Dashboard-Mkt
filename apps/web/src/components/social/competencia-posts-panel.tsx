@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtEng } from "@/lib/fmt-eng";
 import { useEffect, useMemo, useState } from "react";
 import { PostSentimentBlock } from "@/components/social/post-sentiment";
 import type { PostSentiment } from "@/lib/post-sentiment";
@@ -130,7 +131,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
     <section className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Posteos por marca — competencia <span className="font-normal text-muted-foreground">(Instagram)</span></h3>
-        <span className="text-xs text-muted-foreground">{filtered.length} posts · Eng. promedio {marcaLabel(marcaSel)}: <strong>{avgEng.toFixed(2)}%</strong></span>
+        <span className="text-xs text-muted-foreground">{filtered.length} posts · Eng. promedio {marcaLabel(marcaSel)}: <strong>{fmtEng(avgEng)}</strong></span>
       </div>
 
       {/* Selector de marca */}
@@ -191,7 +192,7 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
                   {p.copy || <span className="italic text-muted-foreground">Sin texto</span>}
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] tabular-nums text-muted-foreground">
-                  <span className={`font-semibold ${arriba ? "text-emerald-600" : "text-rose-600"}`}>{arriba ? "▲" : "▼"} {eng.toFixed(2)}%</span>
+                  <span className={`font-semibold ${arriba ? "text-emerald-600" : "text-rose-600"}`}>{arriba ? "▲" : "▼"} {fmtEng(eng)}</span>
                   {(p.views ?? 0) > 0 && <span>👁 {fmtK(p.views ?? 0)}</span>}
                   <span>❤ {p.likes != null && p.likes >= 0 ? fmtK(p.likes) : "—"}</span>
                   <span>💬 {fmtK(p.comentarios ?? 0)}</span>
