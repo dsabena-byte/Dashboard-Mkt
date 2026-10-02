@@ -28,6 +28,7 @@ const PERIODOS: { key: Periodo; label: string }[] = [
   { key: "c1", label: "Cuatrimestre 1 (Ene–Abr)" },
   { key: "c2", label: "Cuatrimestre 2 (May–Ago)" },
   { key: "c3", label: "Cuatrimestre 3 (Sep–Dic)" },
+  { key: "rango", label: "Meses a elección…" },
 ];
 
 function fmtShort(v: number): string {
@@ -47,6 +48,9 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
   const [pptoA, setPptoA] = useState(() => pick(`REAL ${year}`, 0));
   const [pptoB, setPptoB] = useState(() => pick(`4+8 ${year}`, Math.min(1, versiones.length - 1)));
   const [periodo, setPeriodo] = useState<Periodo>("anual");
+  // Rango libre de meses (índices 0-11). Un solo mes = Desde y Hasta iguales.
+  const [mesDesde, setMesDesde] = useState(0);
+  const [mesHasta, setMesHasta] = useState(() => Math.max(0, new Date().getMonth() - 1));
   const moneda: Moneda = monedaUI === "usd" ? "usd" : "ars";
   const [cuentasSel, setCuentasSel] = useState<Set<string>>(new Set());
   const [cuentaOpen, setCuentaOpen] = useState(false);
@@ -57,7 +61,7 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
   const fmt = (v: number) => `${v < 0 ? "-" : ""}${pre}${new Intl.NumberFormat("es-AR").format(Math.abs(Math.round(v)))}`;
   const fmtMon = (v: number) => `${pre}${fmtShort(v)}`;
 
-  const mesesUp = mesesDePeriodo(periodo);
+  const mesesUp = useMemo(() => mesesDePeriodo(periodo, mesDesde, mesHasta), [periodo, mesDesde, mesHasta]);
   const valField: keyof BgtRow = moneda;
 
   const filtered = useMemo(() => {
@@ -164,6 +168,22 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
             {PERIODOS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
           </select>
         </label>
+        {periodo === "rango" && (
+          <>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Desde</span>
+              <select className={selectCls} value={mesDesde} onChange={(e) => { const v = Number(e.target.value); setMesDesde(v); if (v > mesHasta) setMesHasta(v); }}>
+                {MESES_CAP.map((m, i) => <option key={m} value={i}>{m}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Hasta</span>
+              <select className={selectCls} value={mesHasta} onChange={(e) => { const v = Number(e.target.value); setMesHasta(v); if (v < mesDesde) setMesDesde(v); }}>
+                {MESES_CAP.map((m, i) => <option key={m} value={i}>{m}</option>)}
+              </select>
+            </label>
+          </>
+        )}
         <div className="relative flex flex-col gap-1">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Cuenta</span>
           <button type="button" onClick={() => setCuentaOpen((o) => !o)} className={`${selectCls} min-w-[150px] text-left`}>

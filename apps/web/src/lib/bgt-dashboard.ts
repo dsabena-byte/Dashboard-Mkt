@@ -58,9 +58,14 @@ export function yearOf(ppto: string): number | null {
 export const MESES_CAP = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 export type Moneda = "ars" | "usd";
-export type Periodo = "anual" | "c1" | "c2" | "c3";
+export type Periodo = "anual" | "c1" | "c2" | "c3" | "rango";
 
-export function mesesDePeriodo(periodo: Periodo): string[] {
+/** Meses del período. "rango" = desde..hasta (índices 0-11, inclusive; un solo mes si son iguales). */
+export function mesesDePeriodo(periodo: Periodo, desde = 0, hasta = 11): string[] {
+  if (periodo === "rango") {
+    const a = Math.max(0, Math.min(11, Math.min(desde, hasta))), b = Math.max(0, Math.min(11, Math.max(desde, hasta)));
+    return MESES_UP.slice(a, b + 1);
+  }
   if (periodo === "c1") return MESES_UP.slice(0, 4);
   if (periodo === "c2") return MESES_UP.slice(4, 8);
   if (periodo === "c3") return MESES_UP.slice(8, 12);
