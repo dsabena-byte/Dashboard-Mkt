@@ -897,6 +897,11 @@ reporte_existencia/cb_homologos).
   repo. NO traen los conectores MCP. Solo Dashboard-Mkt (no BIP). **`addyosmani/agent-skills` NO se
   copió** (el filtro del modo auto lo bloquea como código de terceros). Actualizar = re-clonar y
   re-copiar. No afirmar que un plugin está disponible sin chequear `ListPlugins` en la sesión.
+- **Skills de diseño (2-oct-2026, pedido del user):** copiados OFICIALES de Anthropic (Apache 2.0) en `.claude/skills/` de
+  Drean **y** bip-platform: `frontend-design` (anthropics/claude-plugins-official: diseño visual con identidad, no plantilla),
+  `canvas-design` (anthropics/skills: piezas gráficas estáticas PNG/PDF — posters, piezas para redes/presentaciones; trae
+  `canvas-fonts` OFL) y `theme-factory` (10 temas color+tipografía para decks/docs/landings, o uno a medida). Los plugins de
+  claude.ai (frontend-design, Design, Canva) se pueden instalar pero NO llegan a las sesiones cloud (sync = 0 plugins).
 - **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
   irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
 - **Gotchas del entorno:** (1) un proyecto **multi-repo** NO lee el `.claude/settings.json` (hooks)
