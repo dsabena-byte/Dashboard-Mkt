@@ -254,3 +254,8 @@ causa raíz · qué se hizo.
      `fecha_generado`), para limpiar la alarma sin esperar el próximo deploy+cron.
 - **Estado:** resuelto. El semáforo vuelve a OK; el fix de código evita que se
   repita.
+
+## 2026-10-02 12:20 UTC — seo-sync (run schedule 1-oct fallido)
+- **Proceso:** `seo-sync` (GitHub Action). Sin Issue abierto del watchdog; los otros 12 syncs en success.
+- **Diagnóstico:** último run (id 36871761658, schedule 2026-10-01 13:51Z) en failure; no se pudieron bajar los logs desde el entorno (403 del log receiver).
+- **Acción:** re-trigger con `gh run rerun --failed`; el run quedó `in_progress`. Si vuelve a fallar, revisar el código de `api/cron/seo-sync` (pendiente).
