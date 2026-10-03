@@ -907,6 +907,8 @@ reporte_existencia/cb_homologos).
   excluye los settings de usuario (`--settings launcher-settings.json`, sin `--setting-sources`) ⇒ instalados por el **Setup
   script** deberían cargar al arrancar la sesión siguiente (FALTA validar en una sesión nueva). OJO: el plugin `marketing` trae
   13 MCP (Slack, Canva, HubSpot…) que piden OAuth; los skills de los 6 knowledge-work ya están copiados en `.claude/skills/`.
+  **PENDIENTE (3-oct, el user responde desde la compu):** (1) en qué cuenta/org de claude.ai están los 14 plugins y si tienen el
+  interruptor prendido; (2) cuáles quiere de verdad → armar las líneas del Setup script y validar en una sesión nueva.
 - **Skills de diseño (2-oct-2026, pedido del user):** copiados OFICIALES de Anthropic (Apache 2.0) en `.claude/skills/` de
   Drean **y** bip-platform: `frontend-design` (anthropics/claude-plugins-official: diseño visual con identidad, no plantilla),
   `canvas-design` (anthropics/skills: piezas gráficas estáticas PNG/PDF — posters, piezas para redes/presentaciones; trae
