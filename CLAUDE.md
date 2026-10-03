@@ -902,6 +902,12 @@ reporte_existencia/cb_homologos).
   `canvas-design` (anthropics/skills: piezas gráficas estáticas PNG/PDF — posters, piezas para redes/presentaciones; trae
   `canvas-fonts` OFL) y `theme-factory` (10 temas color+tipografía para decks/docs/landings, o uno a medida). Los plugins de
   claude.ai (frontend-design, Design, Canva) se pueden instalar pero NO llegan a las sesiones cloud (sync = 0 plugins).
+- **Skills de terceros (3-oct-2026, pedido del user):** en `.claude/skills/` de Drean: `mcp-builder` (anthropics/skills,
+  Apache 2.0), `web-design-guidelines` (vercel-labs/agent-skills, MIT: baja las reglas de diseño de Vercel en cada revisión),
+  `find-skills` (vercel-labs/skills, MIT: busca skills con `npx skills find`; desde el sandbox la búsqueda devolvió vacío) y
+  `agent-browser` (vercel-labs/agent-browser, Apache 2.0: es un stub, necesita el CLI → sumar
+  `npm i -g agent-browser` al Setup script del environment). **"Prompt design" NO se instaló:** no hay skill oficial con ese
+  nombre; falta que el user diga cuál (link/repo).
 - **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
   irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
 - **Gotchas del entorno:** (1) un proyecto **multi-repo** NO lee el `.claude/settings.json` (hooks)
