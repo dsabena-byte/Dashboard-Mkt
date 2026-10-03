@@ -254,3 +254,10 @@ causa raíz · qué se hizo.
      `fecha_generado`), para limpiar la alarma sin esperar el próximo deploy+cron.
 - **Estado:** resuelto. El semáforo vuelve a OK; el fix de código evita que se
   repita.
+
+## 2026-10-03 (UTC) — seo-sync
+- **Proceso:** `seo-sync` (GitHub Action). Último run (36871761658, 2026-10-01) en `failure`.
+- **Diagnóstico:** job `trigger` — `curl` timeout (exit 28, `--max-time 300`) en el primer chunk
+  (`offset=0`). No hay Issue abierto del watchdog; el resto de los syncs está en success.
+- **Acción:** re-trigger (`rerun --failed`). Si vuelve a fallar por timeout, es un tema de código
+  (chunk `limit=100` demasiado pesado con la cola Standard de DataForSEO) → revisar.
