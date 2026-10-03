@@ -897,6 +897,16 @@ reporte_existencia/cb_homologos).
   repo. NO traen los conectores MCP. Solo Dashboard-Mkt (no BIP). **`addyosmani/agent-skills` NO se
   copió** (el filtro del modo auto lo bloquea como código de terceros). Actualizar = re-clonar y
   re-copiar. No afirmar que un plugin está disponible sin chequear `ListPlugins` en la sesión.
+  **Re-diagnóstico 3-oct-2026 (con la doc oficial `code.claude.com/docs/en/plugins/loading`):** la sesión corre como
+  `dsabena@gmail.com`, org `77bb346a…`; `ListPlugins` (la lista del SERVIDOR de plugins prendidos en esa cuenta) = vacía y el
+  sync da `count:0` en las 6 sesiones del día (no es timing: `sync_wait timed_out:false`). Los skills de esa misma cuenta SÍ
+  llegan (`safe-changes`, docx…). ⇒ para ESA cuenta/org no hay plugins prendidos para Claude Code; los 14 que ve el user son de
+  otra cuenta/org o de Cowork/chat. La doc lista el sync de plugins solo para Cowork y terminal; en la web no está documentado.
+  **Vía que SÍ funciona (probada 3-oct):** el CLI `claude` del contenedor instala plugins: `claude plugin marketplace add
+  <owner/repo>` + `claude plugin install <plugin>@<marketplace>` → scope user, `claude plugin list` = enabled. El launcher NO
+  excluye los settings de usuario (`--settings launcher-settings.json`, sin `--setting-sources`) ⇒ instalados por el **Setup
+  script** deberían cargar al arrancar la sesión siguiente (FALTA validar en una sesión nueva). OJO: el plugin `marketing` trae
+  13 MCP (Slack, Canva, HubSpot…) que piden OAuth; los skills de los 6 knowledge-work ya están copiados en `.claude/skills/`.
 - **Skills de diseño (2-oct-2026, pedido del user):** copiados OFICIALES de Anthropic (Apache 2.0) en `.claude/skills/` de
   Drean **y** bip-platform: `frontend-design` (anthropics/claude-plugins-official: diseño visual con identidad, no plantilla),
   `canvas-design` (anthropics/skills: piezas gráficas estáticas PNG/PDF — posters, piezas para redes/presentaciones; trae
