@@ -908,7 +908,7 @@ reporte_existencia/cb_homologos).
   `agent-browser` (vercel-labs/agent-browser, Apache 2.0: es un stub, necesita el CLI). **Probado 3-oct en sandbox:**
   Setup script `npm i -g agent-browser` + env vars del environment `AGENT_BROWSER_EXECUTABLE_PATH=/opt/pw-browsers/chromium`
   (sin eso: "Chrome not found"; NO correr `agent-browser install`) y `AGENT_BROWSER_IGNORE_HTTPS_ERRORS=1` (el proxy re-firma
-  TLS → ERR_CERT_AUTHORITY_INVALID). Solo navega hosts que permite la política de red (github.com OK; example.com y Vercel bloqueados). **"Prompt design" NO se instaló:** no hay skill oficial con ese
+  TLS → ERR_CERT_AUTHORITY_INVALID). Solo navega hosts que permite la política de red (github.com OK; example.com bloqueado). **3-oct-2026 el user YA cargó** el Setup script + las 2 env vars en el environment (no volver a pedírselo); falta validar en una sesión nueva (incl. `dashboard-mkt-seven.vercel.app`, que está en Allowed domains). **"Prompt design" NO se instaló:** no hay skill oficial con ese
   nombre; falta que el user diga cuál (link/repo).
 - **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
   irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
