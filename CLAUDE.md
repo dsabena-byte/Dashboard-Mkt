@@ -905,8 +905,10 @@ reporte_existencia/cb_homologos).
 - **Skills de terceros (3-oct-2026, pedido del user):** en `.claude/skills/` de Drean: `mcp-builder` (anthropics/skills,
   Apache 2.0), `web-design-guidelines` (vercel-labs/agent-skills, MIT: baja las reglas de diseño de Vercel en cada revisión),
   `find-skills` (vercel-labs/skills, MIT: busca skills con `npx skills find`; desde el sandbox la búsqueda devolvió vacío) y
-  `agent-browser` (vercel-labs/agent-browser, Apache 2.0: es un stub, necesita el CLI → sumar
-  `npm i -g agent-browser` al Setup script del environment). **"Prompt design" NO se instaló:** no hay skill oficial con ese
+  `agent-browser` (vercel-labs/agent-browser, Apache 2.0: es un stub, necesita el CLI). **Probado 3-oct en sandbox:**
+  Setup script `npm i -g agent-browser` + env vars del environment `AGENT_BROWSER_EXECUTABLE_PATH=/opt/pw-browsers/chromium`
+  (sin eso: "Chrome not found"; NO correr `agent-browser install`) y `AGENT_BROWSER_IGNORE_HTTPS_ERRORS=1` (el proxy re-firma
+  TLS → ERR_CERT_AUTHORITY_INVALID). Solo navega hosts que permite la política de red (github.com OK; example.com y Vercel bloqueados). **"Prompt design" NO se instaló:** no hay skill oficial con ese
   nombre; falta que el user diga cuál (link/repo).
 - **Skills:** `safe-changes` (backup + mostrar plan/aprobación + verificar, antes de toda acción
   irreversible) + `pauta-omd-reconciliacion` (runbook), en `.claude/skills/`.
