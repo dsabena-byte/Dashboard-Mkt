@@ -34,15 +34,17 @@ function Barra({ v }: { v: number | null }) {
 }
 
 // Desglose por categoría: resultado (derivado del cumplimiento de KPIs) vs meta por Lav/Refri/Cocc + General.
-function PorCategoria({ items }: { items: CatDesglose[] }) {
+// La fila General es el MISMO número que el "Resultado acum. · Meta" de arriba (`general`): el ponderado
+// de las categorías no lo iguala porque cada KPI se topa en 100% por categoría.
+function PorCategoria({ items, general }: { items: CatDesglose[]; general?: { resultado: number | null; meta: number | null } }) {
   if (!items.length || items.every((i) => i.resultado == null && i.meta == null)) return null;
-  const genRes = generalPonderado(Object.fromEntries(items.map((i) => [i.categoria, i.resultado])));
-  const genMeta = generalPonderado(Object.fromEntries(items.map((i) => [i.categoria, i.meta])));
+  const genRes = general ? general.resultado : generalPonderado(Object.fromEntries(items.map((i) => [i.categoria, i.resultado])));
+  const genMeta = general ? general.meta : generalPonderado(Object.fromEntries(items.map((i) => [i.categoria, i.meta])));
   const rows: (CatDesglose & { gen?: boolean })[] = [...items, { categoria: "General", resultado: genRes, meta: genMeta, gen: true }];
   return (
     <details className="mt-2.5 border-t pt-2">
       <summary className="cursor-pointer select-none text-[9px] font-semibold uppercase tracking-wide text-primary [&::-webkit-details-marker]:hidden">
-        Por categoría · resultado (derivado de KPIs) vs meta
+        Por categoría · resultado acumulado del año (derivado de KPIs) vs meta
       </summary>
       <div className="mt-1.5 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2.5 gap-y-1 text-[11px]">
         <span className="text-[8px] uppercase tracking-wide text-muted-foreground/60" />
@@ -126,7 +128,7 @@ function ObjetivoCard({ o, refMes }: { o: ObjetivoRollup; refMes: string }) {
         <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>
       )}
       {o.proyeccion && <div className="mt-1.5"><ProyeccionObjetivo pr={o.proyeccion} /></div>}
-      <PorCategoria items={o.porCategoria} />
+      <PorCategoria items={o.porCategoria} general={{ resultado: res, meta: o.metaNegMes }} />
       <div className="mt-2.5 border-t pt-2">
         <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70">Aporte de KPIs · peso × cumpl</div>
         <div className="space-y-1">
@@ -192,7 +194,7 @@ export function ObjetivosHero({ data }: { data: SeguimientoObjetivos }) {
         </div>
         <div className="mt-3"><Barra v={sm.cumplYtd} /></div>
         {sm.proyeccion && <div className="mt-2"><ProyeccionObjetivo pr={sm.proyeccion} /></div>}
-        <div className="max-w-md"><PorCategoria items={sm.porCategoria} /></div>
+        <div className="max-w-md"><PorCategoria items={sm.porCategoria} general={{ resultado: resultadoAcum(sm.metaNegMes, sm.cumplYtd), meta: sm.metaNegMes }} /></div>
         <ContribucionGlobalView c={sm.contribucion} />
       </div>
 

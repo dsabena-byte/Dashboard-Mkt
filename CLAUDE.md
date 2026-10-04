@@ -293,6 +293,9 @@ reporte_existencia/cb_homologos).
     categorías** (meta y real). `cumpl(objetivo,cat)=Σ peso×cumpl(KPI,cat)` y **`resultado =
     meta × cumpl/100`** → si los KPIs se cumplen al 100%, el resultado iguala la meta. Salud de
     Marca por cat = 0.25·Σ(TOM+SOM+IC+Poder). **Ya NO se usa `getDreanSerie`/Kantar en el rollup.**
+    **Desglose por categoría del hero (4-oct-2026):** usa cumplimiento ACUMULADO YTD por categoría (`cumplKpiCatYtd`; antes era
+    solo el mes ref → General 30,6 vs arriba 33,7) y la fila General = el MISMO "Resultado acum." de arriba (Σcat×peso no lo
+    iguala: Brand cuenta en las 3 categorías y cada KPI se topa en 100% por categoría). Validado sep-26: cats 40,2/19,5/13,2.
   - **Mix cargado (sep-2026):** el usuario definió un mix **único** `Brand 30/Lavado 35/Refri 20/
     Cocción 15` aplicado a los 5 KPIs de suma (Alcance único, Impresiones, Clicks, Tráfico web
     usuarios, Alcance orgánico) — escrito en `mapa_estrategico`. Los demás (engagement, conversión,
