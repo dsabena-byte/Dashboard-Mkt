@@ -60,9 +60,6 @@ function SignalList({ signals, initial = 6 }: { signals: Signal[]; initial?: num
             </button>
             <div className="mt-0.5 text-[12.5px] leading-relaxed text-slate-600">{s.descripcion}</div>
             {s.impacto && isOpen && <div className="mt-1 text-xs text-slate-600"><span className="font-semibold" style={{ color: INK }}>Impacto estimado:</span> {s.impacto.metrica} — {fImpacto(s.impacto)}</div>}
-            {s.acciones.length > 0 && (isOpen
-              ? <ul className="mt-1.5 list-disc pl-4 text-[12.5px] leading-relaxed" style={{ color: INK }}>{s.acciones.map((a, i) => <li key={i}>{a}</li>)}</ul>
-              : <button type="button" onClick={() => setOpen(s.key)} className="mt-1 text-xs font-semibold" style={{ color: DATA }}>Qué hacer ({s.acciones.length}) ›</button>)}
             {s.acciones.length > 0 && <div className="mt-1.5"><GuiameButton item={{ tipo: s.tipo === "alerta" ? "alerta" : s.tipo === "oportunidad" ? "oportunidad" : "señal", titulo: s.titulo, dash: s.dash, dato: s.descripcion, impacto: s.impacto ? `${s.impacto.metrica}: ${fImpacto(s.impacto)}` : null, queHacer: s.acciones }} /></div>}
           </div>
         );
@@ -338,7 +335,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
       {open && (
         <div className="mt-4 grid gap-4">
           <MisAcciones items={mias} disponible={seg.disponible} aviso={seg.aviso} error={segErr} onEstado={marcarMia} ocupado={segOcupado} />
-          <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, ordenadas de lo más urgente a lo menos (según cuánto mueven el resultado, qué tan seguro es el dato y cuánto trabajo llevan). Abrí cada una para ver los pasos, o tocá «Guiame paso a paso» y el copiloto te explica cómo hacerlo, en palabras simples. Marcá «La voy a hacer», «Hecha» o «Descartar» para seguirlas en «Mis acciones».">
+          <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, ordenadas de lo más urgente a lo menos (según cuánto mueven el resultado, qué tan seguro es el dato y cuánto trabajo llevan). Tocá «Guiame paso a paso» y el copiloto te explica cómo hacerlo, paso a paso y en palabras simples. Marcá «La voy a hacer», «Hecha» o «Descartar» para seguirlas en «Mis acciones».">
             {signals == null && !recs.length ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando las recomendaciones…</div>
             ) : (
