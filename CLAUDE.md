@@ -268,7 +268,9 @@ reporte_existencia/cb_homologos).
     Objetivo `{id,nombre,color,peso}` (peso estratégico, se normaliza a 100% entre objetivos).
     KPI `{nombre, vinculos:Record<objId,pesoInbound>, mix?:Record<cat,%>}`. Regla: **la suma de
     pesos inbound por objetivo se capa en 100%** (el editor lo fuerza). El **mix** (Brand/Lavado/
-    Refrigeración/Cocción, suma 100) desglosa la meta total del KPI por categoría. **Persistido en
+    Refrigeración/Cocción, suma 100) desglosa la meta total del KPI por categoría. **UI (4-oct-2026, pedido del user):** orden 1 Objetivos → 2 Metas
+    de los objetivos → 3 Aporte de cada KPI → 4 Mix por categoría → 5 Composición; los 5 son desplegables y arrancan CERRADOS;
+    % de la matriz en 13px. **Persistido en
     la tabla `mapa_estrategico`** (singleton id=1, jsonb `objetivos`+`planes`) — NO localStorage
     (había un draft localStorage de safety, pero la **fuente de verdad es la DB**; una vez se
     perdió toda la config por guardar solo en localStorage → NUNCA volver a eso). Lee SSR con

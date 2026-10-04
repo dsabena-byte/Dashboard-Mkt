@@ -205,12 +205,14 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
       </div>
 
       {/* 1. Objetivos */}
-      <section>
-        <div className="mb-2.5 flex items-center gap-2">
+      <details className="group/sec rounded-xl border bg-card/40 px-3 py-2 [&[open]]:pb-3">
+        <summary className="flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
+          <span className="w-3 text-xs text-muted-foreground transition-transform group-open/sec:rotate-90">▸</span>
           <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">1</span>
           <h3 className="text-sm font-semibold tracking-tight">Objetivos estratégicos</h3>
-          <button onClick={addObj} className="ml-auto text-xs font-semibold text-primary hover:underline">+ Agregar</button>
-        </div>
+          <button onClick={(e) => { e.preventDefault(); const d = e.currentTarget.closest("details"); if (d) d.open = true; addObj(); }} className="ml-auto text-xs font-semibold text-primary hover:underline">+ Agregar</button>
+        </summary>
+        <div className="mt-2.5">
         <div className="space-y-2">
           {objs.map((o, i) => (
             <div key={o.id} className="flex items-center gap-2.5 rounded-xl border bg-card px-3 py-2.5">
@@ -226,15 +228,37 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
           ))}
         </div>
         <p className="mt-1.5 text-[11px] text-muted-foreground"><b className="text-foreground">Peso estratégico</b> = importancia relativa de cada objetivo (suma 100%). Los KPIs se conectan directo a los objetivos (modelo aplanado).</p>
-      </section>
+        </div>
+      </details>
 
-      {/* 2. Matriz de vínculos inbound */}
-      <section>
-        <div className="mb-2.5 flex items-center gap-2">
+      {/* 2. Metas de negocio mensuales de los objetivos (primero el objetivo, después su meta) */}
+      <details className="group/sec rounded-xl border bg-card/40 px-3 py-2 [&[open]]:pb-3">
+        <summary className="flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
+          <span className="w-3 text-xs text-muted-foreground transition-transform group-open/sec:rotate-90">▸</span>
           <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">2</span>
+          <h3 className="text-sm font-semibold tracking-tight">Metas de negocio de los objetivos</h3>
+        </summary>
+        <div className="mt-2.5">
+        <MetaPanel
+          plan="Objetivos Estratégicos"
+          skipRefresh
+          catPesos={CATEGORIA_PESOS}
+          titulo="Configuración de metas de los Objetivos Estratégicos"
+          subtitulo="Cargá la meta MENSUAL de cada objetivo POR CATEGORÍA (Lavado/Refrigeración/Cocción). El valor General se calcula solo (Σ categoría × peso nov-25). Guardá arriba los cambios de objetivos antes para que la lista quede firme."
+          kpis={objMetaKpis}
+        />
+        </div>
+      </details>
+
+      {/* 3. Matriz de vínculos inbound */}
+      <details className="group/sec rounded-xl border bg-card/40 px-3 py-2 [&[open]]:pb-3">
+        <summary className="flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
+          <span className="w-3 text-xs text-muted-foreground transition-transform group-open/sec:rotate-90">▸</span>
+          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">3</span>
           <h3 className="text-sm font-semibold tracking-tight">Aporte de cada KPI al objetivo</h3>
           <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">por objetivo suma ≤ 100%</span>
-        </div>
+        </summary>
+        <div className="mt-2.5">
         <div className="overflow-x-auto rounded-xl border bg-card">
           <div style={{ minWidth: 140 + objs.length * 66 }}>
             {/* header objetivos + asignado/libre */}
@@ -245,8 +269,8 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
                 const libre = 100 - asg;
                 return (
                   <div key={o.id} className="border-l px-1 py-1 text-center">
-                    <div className="truncate font-mono text-[9px] font-semibold uppercase" style={{ color: o.color }} title={o.nombre}>{shortObj(o.nombre)}</div>
-                    <div className="mt-0.5 font-mono text-[9px]" style={{ color: libre < 0 ? "#dc2626" : "hsl(var(--muted-foreground))" }}>
+                    <div className="truncate font-mono text-[11px] font-bold uppercase" style={{ color: o.color }} title={o.nombre}>{shortObj(o.nombre)}</div>
+                    <div className="mt-0.5 font-mono text-[11px]" style={{ color: libre < 0 ? "#dc2626" : "hsl(var(--muted-foreground))" }}>
                       {asg}% · libre {libre}%
                     </div>
                   </div>
@@ -272,7 +296,7 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
                   {p.kpis.map((k, ki) => (
                     <div key={ki} className="group grid items-center border-b last:border-b-0" style={{ gridTemplateColumns: cols }}>
                       <div className="flex items-center gap-1 py-1 pl-2 pr-1">
-                        <input value={k.nombre} onChange={(e) => setKpiName(pi, ki, e.target.value)} className="min-w-0 flex-1 bg-transparent text-[11.5px] outline-none focus:text-foreground" />
+                        <input value={k.nombre} onChange={(e) => setKpiName(pi, ki, e.target.value)} className="min-w-0 flex-1 bg-transparent text-[13px] outline-none focus:text-foreground" />
                         {!catKpiNames.has(k.nombre) && <span title="Sin fuente — pendiente de instrumentar" className="shrink-0 text-[8px]">⏳</span>}
                         <button onClick={() => removeKpi(pi, ki)} title="Quitar" className="shrink-0 text-[11px] text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100">✕</button>
                       </div>
@@ -280,7 +304,7 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
                         const h = k.vinculos[o.id] || 0;
                         return (
                           <div key={o.id} className="flex min-h-[40px] flex-col justify-center gap-0.5 border-l px-1.5 py-1">
-                            <span className="text-center font-mono text-[10px] font-semibold" style={{ color: h ? o.color : "hsl(var(--muted-foreground))" }}>{h ? h + "%" : "·"}</span>
+                            <span className="text-center font-mono text-[13px] font-bold tabular-nums" style={{ color: h ? o.color : "hsl(var(--muted-foreground))" }}>{h ? h + "%" : "·"}</span>
                             <input type="range" min={0} max={100} value={h} onChange={(e) => setLink(pi, ki, o.id, +e.target.value)} style={{ ["--c" as string]: o.color, width: "100%", height: 3 }} />
                           </div>
                         );
@@ -315,15 +339,18 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
           </div>
         </div>
         <p className="mt-1.5 text-[11px] text-muted-foreground">El <b className="text-foreground">aporte</b> = qué fracción del objetivo explica ese KPI. Por objetivo <b className="text-foreground">no puede pasar de 100%</b> (el slider se frena en lo que queda libre). Un KPI puede aportar a varios objetivos.</p>
-      </section>
+        </div>
+      </details>
 
-      {/* 3. Mix por categoría de cada KPI */}
-      <section>
-        <div className="mb-2.5 flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">3</span>
+      {/* 4. Mix por categoría de cada KPI */}
+      <details className="group/sec rounded-xl border bg-card/40 px-3 py-2 [&[open]]:pb-3">
+        <summary className="flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
+          <span className="w-3 text-xs text-muted-foreground transition-transform group-open/sec:rotate-90">▸</span>
+          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">4</span>
           <h3 className="text-sm font-semibold tracking-tight">Mix por categoría de cada KPI</h3>
           <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">suma 100%</span>
-        </div>
+        </summary>
+        <div className="mt-2.5">
         <div className="overflow-x-auto rounded-xl border bg-card">
           <table className="w-full min-w-[560px] text-xs">
             <thead>
@@ -358,14 +385,17 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
           </table>
         </div>
         <p className="mt-1.5 text-[11px] text-muted-foreground">La <b className="text-foreground">meta por categoría</b> de cada KPI = meta total × mix. <b className="text-foreground">Brand</b> se suma a las 3 categorías. Los KPIs sin mix quedan solo con el total (no se desglosan).</p>
-      </section>
-
-      {/* 4. Composición por objetivo */}
-      <section>
-        <div className="mb-2.5 flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">4</span>
-          <h3 className="text-sm font-semibold tracking-tight">Composición de cada objetivo</h3>
         </div>
+      </details>
+
+      {/* 5. Composición por objetivo */}
+      <details className="group/sec rounded-xl border bg-card/40 px-3 py-2 [&[open]]:pb-3">
+        <summary className="flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
+          <span className="w-3 text-xs text-muted-foreground transition-transform group-open/sec:rotate-90">▸</span>
+          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">5</span>
+          <h3 className="text-sm font-semibold tracking-tight">Composición de cada objetivo</h3>
+        </summary>
+        <div className="mt-2.5">
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {objs.map((o) => {
             const parts = planes.flatMap((p) => p.kpis.filter((k) => (k.vinculos[o.id] ?? 0) > 0).map((k) => ({ nombre: k.nombre, w: k.vinculos[o.id]! })));
@@ -402,23 +432,9 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
             );
           })}
         </div>
-      </section>
-
-      {/* 4. Metas de negocio mensuales de los objetivos */}
-      <section>
-        <div className="mb-2.5 flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-md bg-secondary font-mono text-xs font-semibold">5</span>
-          <h3 className="text-sm font-semibold tracking-tight">Metas de negocio de los objetivos</h3>
         </div>
-        <MetaPanel
-          plan="Objetivos Estratégicos"
-          skipRefresh
-          catPesos={CATEGORIA_PESOS}
-          titulo="Configuración de metas de los Objetivos Estratégicos"
-          subtitulo="Cargá la meta MENSUAL de cada objetivo POR CATEGORÍA (Lavado/Refrigeración/Cocción). El valor General se calcula solo (Σ categoría × peso nov-25). Guardá arriba los cambios de objetivos antes para que la lista quede firme."
-          kpis={objMetaKpis}
-        />
-      </section>
+      </details>
+
     </div>
   );
 }
