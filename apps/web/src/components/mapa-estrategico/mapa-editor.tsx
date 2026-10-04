@@ -242,6 +242,7 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
         <MetaPanel
           plan="Objetivos Estratégicos"
           skipRefresh
+          defaultOpen
           catPesos={CATEGORIA_PESOS}
           titulo="Configuración de metas de los Objetivos Estratégicos"
           subtitulo="Cargá la meta MENSUAL de cada objetivo POR CATEGORÍA (Lavado/Refrigeración/Cocción). El valor General se calcula solo (Σ categoría × peso nov-25). Guardá arriba los cambios de objetivos antes para que la lista quede firme."

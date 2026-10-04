@@ -44,6 +44,8 @@ interface Props {
    * components que dependan de la meta, ej. dentro del editor del Mapa: el refresh
    * remontaría el editor cliente y haría flash). */
   skipRefresh?: boolean;
+  /** Arranca desplegado (cuando ya vive dentro de otra sección plegable, p. ej. el Mapa). */
+  defaultOpen?: boolean;
   /** Peso de cada categoría (categoría → peso). Si viene, el KPI se carga SOLO por
    * categoría y el valor "General" se CALCULA como Σ (categoría × peso) (read-only),
    * en vez de cargarse a mano. El tab General va último. */
@@ -66,7 +68,7 @@ function fmt(n: number | null | undefined, unidad?: string | null): string {
   return unidad === "%" ? `${s}%` : unidad === "$" ? `$${s}` : s;
 }
 
-export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefresh, catPesos }: Props) {
+export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefresh, catPesos, defaultOpen }: Props) {
   const now = new Date();
   const year = anio ?? now.getFullYear();
   const month = mes ?? now.getMonth() + 1;
@@ -156,7 +158,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
 
   const dirty = touchedCfg.size > 0 || touchedVal.size > 0;
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(true); // arranca colapsado para no ocupar espacio
+  const [collapsed, setCollapsed] = useState(!defaultOpen); // arranca colapsado para no ocupar espacio (salvo defaultOpen)
 
   async function save() {
     setSaving(true);
