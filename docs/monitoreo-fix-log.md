@@ -254,3 +254,8 @@ causa raíz · qué se hizo.
      `fecha_generado`), para limpiar la alarma sin esperar el próximo deploy+cron.
 - **Estado:** resuelto. El semáforo vuelve a OK; el fix de código evita que se
   repita.
+
+## 2026-10-04 (UTC) — seo-sync en rojo
+- **Proceso:** `seo-sync` (GitHub Action). Último run programado (1-oct, run 36871761658) = failure; sin Issue de watchdog abierto.
+- **Diagnóstico:** el job `trigger` terminó con `curl` exit 28 (timeout de 300 s) en el primer chunk (`offset=0`) de `/api/cron/seo-sync`. No es bug de código evidente: mismo patrón que los fallos del 10-ago, que se resolvieron re-disparando.
+- **Acción:** re-trigger por `workflow_dispatch` (seo-sync.yml, main). Si vuelve a dar timeout de 300 s, revisar el tamaño de chunk (`LIMIT=100`) / la cola DataForSEO.
