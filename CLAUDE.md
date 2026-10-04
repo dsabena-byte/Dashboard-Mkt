@@ -225,6 +225,9 @@ reporte_existencia/cb_homologos).
      de meta. Interacciones apiladas = rampa azul monocromática (`ENG_COLORS`).
   5. El guardado del `MetaPanel` ya hace **`router.refresh()`** → los server components toman la
      meta nueva sin recargar. El `MetaPanel` arranca **colapsable/cerrado**.
+  6. **ORDEN FIJO EN TODOS LOS DASH (pedido del user 4-oct-2026):** 1º cards con meta → 2º sus gráficos de evolución real vs
+     meta (+ MetaPanel) → 3º el resto del contenido (cards secundarias sin meta, cierre proyectado, tablas, etc.). Aplicado en
+     /web (cierre + secundarias bajaron), IG/FB (sub-cards debajo de los gráficos) y /floor-share (evolución arriba de rankings).
   Referencia canónica = `IgOrganicSection` + `FbOrganicSection`. Replicar SIEMPRE ese sistema
   (cards, gráficos, colores, método) en cada dashboard nuevo. **Validar este checklist antes de
   decir que las metas están "listas".**

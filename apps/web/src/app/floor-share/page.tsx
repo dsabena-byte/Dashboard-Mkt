@@ -168,6 +168,14 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               contexto={`${overall.coccion.drean_units.toLocaleString()} / ${overall.coccion.total_units.toLocaleString()}`} />
           </section>
 
+          {/* Estructura estándar: cards → evolución → contenido. */}
+          {weekly.length > 1 && (
+            <section className="rounded-xl border bg-card p-4">
+              <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal — Top 5 marcas</h3>
+              <FloorShareWeeklyChart data={weekly} marcas={top5} />
+            </section>
+          )}
+
           <section className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-4">
               <h3 className="mb-3 text-sm font-bold">🏆 Ranking de marcas (share total)</h3>
@@ -214,13 +222,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               </div>
             </div>
           </section>
-
-          {weekly.length > 1 && (
-            <section className="rounded-xl border bg-card p-4">
-              <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal — Top 5 marcas</h3>
-              <FloorShareWeeklyChart data={weekly} marcas={top5} />
-            </section>
-          )}
 
           <ClienteTable rows={byCliente} />
           <TiendaTable rows={byTienda} />
