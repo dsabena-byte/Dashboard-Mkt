@@ -607,23 +607,6 @@ export default async function WebPage({ searchParams }: PageProps) {
         />
       </section>
 
-      {/* Cierre proyectado del mes en curso (transacciones / ingresos vs meta) + chequeo de medición */}
-      {cierre && <CierreMesSection c={cierre} />}
-      {consent && calidad?.consent && <ConsentCheckSection c={consent} criterio={calidad.consent.criterio} todas={calidad.consent.sesionesTodas} />}
-
-      {/* Cards secundarios (chicos, sin meta) */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiCard
-          title={chartSesiones ? "Sesiones (mes)" : "Sesiones"}
-          value={formatNumber(chartSesiones ?? totals.sesiones)}
-          hint={formatDelta(deltaSesiones)}
-        />
-        <KpiCard title="Conversiones" value={formatNumber(totals.conversiones)} hint={formatDelta(deltaConversiones)} />
-        <KpiCard title="Pageviews" value={formatNumber(totals.pageviews)} hint={`${totals.pages_per_session?.toFixed(2) ?? "—"} pages/session`} />
-        <KpiCard title="Bounce rate" value={totals.bounce_rate !== null ? formatPct(totals.bounce_rate * 100, 1) : "—"} hint="GA4 engaged-sessions def" />
-        <KpiCard title="Top canal" value={channels[0]?.canal ?? "—"} hint={channels[0] ? `${formatNumber(channels[0].sesiones)} sesiones` : ""} />
-      </section>
-
       {/* Evolución mensual de los 6 KPIs principales (real vs meta), 2 por línea */}
       <section className="rounded-lg border bg-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground">Evolución mensual — KPIs principales (real vs meta)</h3>
@@ -662,6 +645,24 @@ export default async function WebPage({ searchParams }: PageProps) {
           { nombre: "Pageviews", actual: totals.pageviews },
         ]}
       />
+
+      {/* Estructura estándar de los tableros: cards con meta → sus gráficos de evolución vs meta → contenido. */}
+      {/* Cierre proyectado del mes en curso (transacciones / ingresos vs meta) + chequeo de medición */}
+      {cierre && <CierreMesSection c={cierre} />}
+      {consent && calidad?.consent && <ConsentCheckSection c={consent} criterio={calidad.consent.criterio} todas={calidad.consent.sesionesTodas} />}
+
+      {/* Cards secundarios (chicos, sin meta) */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <KpiCard
+          title={chartSesiones ? "Sesiones (mes)" : "Sesiones"}
+          value={formatNumber(chartSesiones ?? totals.sesiones)}
+          hint={formatDelta(deltaSesiones)}
+        />
+        <KpiCard title="Conversiones" value={formatNumber(totals.conversiones)} hint={formatDelta(deltaConversiones)} />
+        <KpiCard title="Pageviews" value={formatNumber(totals.pageviews)} hint={`${totals.pages_per_session?.toFixed(2) ?? "—"} pages/session`} />
+        <KpiCard title="Bounce rate" value={totals.bounce_rate !== null ? formatPct(totals.bounce_rate * 100, 1) : "—"} hint="GA4 engaged-sessions def" />
+        <KpiCard title="Top canal" value={channels[0]?.canal ?? "—"} hint={channels[0] ? `${formatNumber(channels[0].sesiones)} sesiones` : ""} />
+      </section>
 
       {/* Calidad del dato (GA4) + embudo + tráfico desde IA + landings en caída (snapshot del cron web-calidad) */}
       {calidadSnap.status !== "ok" ? (

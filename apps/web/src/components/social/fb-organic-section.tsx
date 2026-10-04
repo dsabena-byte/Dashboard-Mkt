@@ -193,6 +193,30 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
             </div>
           </div>
 
+          {/* Gráfico 1 — Alcance (real vs meta) */}
+          {md.length > 0 && (
+            <div className="rounded-lg border bg-background p-4">
+              <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Alcance mensual &mdash; real vs meta
+              </h4>
+              <p className="mb-3 text-[10px] leading-relaxed text-muted-foreground">
+                ℹ️ Alcance = suma del reach de los posts del mes (métrica nueva de Meta, ACUMULATIVA). Los <strong>últimos 1-2 meses
+                aparecen subestimados</strong> porque los posts recientes todavía no maduraron su reach; van a subir. No incluye Stories.
+              </p>
+              <IgAlcanceChart data={alcChartData} />
+            </div>
+          )}
+
+          {/* Gráfico 2 — Engagement % + interacciones por tipo */}
+          {md.length > 0 && (
+            <div className="rounded-lg border bg-background p-4">
+              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Engagement % (real vs meta) e interacciones mensuales por tipo
+              </h4>
+              <SocialEngagementChart data={engChartData} components={FB_ENG_COMPONENTS} />
+            </div>
+          )}
+
           {/* Engagement total como card resaltado + sub-cards */}
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
@@ -220,30 +244,6 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
               value={fmtK(totalVideoViews)}
             />
           </div>
-
-          {/* Gráfico 1 — Alcance (real vs meta) */}
-          {md.length > 0 && (
-            <div className="rounded-lg border bg-background p-4">
-              <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Alcance mensual &mdash; real vs meta
-              </h4>
-              <p className="mb-3 text-[10px] leading-relaxed text-muted-foreground">
-                ℹ️ Alcance = suma del reach de los posts del mes (métrica nueva de Meta, ACUMULATIVA). Los <strong>últimos 1-2 meses
-                aparecen subestimados</strong> porque los posts recientes todavía no maduraron su reach; van a subir. No incluye Stories.
-              </p>
-              <IgAlcanceChart data={alcChartData} />
-            </div>
-          )}
-
-          {/* Gráfico 2 — Engagement % + interacciones por tipo */}
-          {md.length > 0 && (
-            <div className="rounded-lg border bg-background p-4">
-              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Engagement % (real vs meta) e interacciones mensuales por tipo
-              </h4>
-              <SocialEngagementChart data={engChartData} components={FB_ENG_COMPONENTS} />
-            </div>
-          )}
 
           {/* Demografía */}
           {(data.fansByAgeGender.length > 0 || data.fansByCountry.length > 0 || data.fansByCity.length > 0) && (

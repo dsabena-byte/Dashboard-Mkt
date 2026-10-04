@@ -209,6 +209,26 @@ export function IgOrganicSection({
         </div>
       </div>
 
+      {/* Gráfico 1 — Alcance (real vs meta) */}
+      {data.monthlyData.length > 0 && (
+        <div className="rounded-lg border bg-background p-4">
+          <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Alcance mensual &mdash; real vs meta
+          </h4>
+          <IgAlcanceChart data={alcChartData} />
+        </div>
+      )}
+
+      {/* Gráfico 2 — Engagement % (líneas real/meta) + interacciones absolutas (barras apiladas) */}
+      {data.monthlyData.length > 0 && (
+        <div className="rounded-lg border bg-background p-4">
+          <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Engagement % (real vs meta) e interacciones mensuales por tipo
+          </h4>
+          <SocialEngagementChart data={engChartData} components={IG_ENG_COMPONENTS} />
+        </div>
+      )}
+
       {/* Engagement resaltado + sub-cards */}
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <div className="rounded-lg border-2 border-blue-200 bg-blue-50/50 p-4">
@@ -236,26 +256,6 @@ export function IgOrganicSection({
           value={fmtK(data.totalVideoViews)}
         />
       </div>
-
-      {/* Gráfico 1 — Alcance (real vs meta) */}
-      {data.monthlyData.length > 0 && (
-        <div className="rounded-lg border bg-background p-4">
-          <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Alcance mensual &mdash; real vs meta
-          </h4>
-          <IgAlcanceChart data={alcChartData} />
-        </div>
-      )}
-
-      {/* Gráfico 2 — Engagement % (líneas real/meta) + interacciones absolutas (barras apiladas) */}
-      {data.monthlyData.length > 0 && (
-        <div className="rounded-lg border bg-background p-4">
-          <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Engagement % (real vs meta) e interacciones mensuales por tipo
-          </h4>
-          <SocialEngagementChart data={engChartData} components={IG_ENG_COMPONENTS} />
-        </div>
-      )}
 
       {/* Demografia */}
       {(data.demoAge.length > 0 || data.demoGender.length > 0) && (
