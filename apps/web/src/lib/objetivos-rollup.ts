@@ -222,10 +222,21 @@ export async function getSeguimientoObjetivos(anio: number, skipTrade = false): 
   const kpiByName = new Map<string, KpiSeguimiento>(kpis.map((k) => [k.kpi, k]));
   const catRM = makeCatRealMeta(kpis, mapa);
   // Cumplimiento de un KPI EN UNA CATEGORÍA (mes mesIdx), capado a 100%.
-  const cumplKpiCat = (kName: string, cat: string, mesIdx: number): number | null => {
+
+  // Cumplimiento ACUMULADO (YTD) de un KPI en una categoría: misma regla que el total (suma o promedio de
+  // enero al último mes con dato del KPI), sobre real/meta de la categoría. Así el desglose por categoría
+  // usa el mismo período que el "Resultado acum." de arriba.
+  const cumplKpiCatYtd = (kName: string, cat: string): number | null => {
     const k = kpiByName.get(kName);
     if (!k) return null;
-    const { real, meta } = catRM(kName, cat, mesIdx);
+    let ri = -1;
+    for (let i = 11; i >= 0; i--) { if (k.realM[i] != null) { ri = i; break; } }
+    if (ri < 0) return null;
+    const rs: (number | null)[] = [], ms: (number | null)[] = [];
+    for (let i = 0; i <= ri; i++) { const x = catRM(kName, cat, i); rs.push(x.real); ms.push(x.meta); }
+    const vals = (xs: (number | null)[]) => xs.filter((x): x is number => x != null);
+    const agg = (xs: (number | null)[]) => { const d = vals(xs); if (!d.length) return null; const t = d.reduce((a, b) => a + b, 0); return k.tipo === "sum" ? t : t / d.length; };
+    const real = agg(rs), meta = agg(ms);
     if (meta == null || meta <= 0) return null;
     return cap(cumplimientoPct(real, meta, k.direccion));
   };
@@ -270,9 +281,10 @@ export async function getSeguimientoObjetivos(anio: number, skipTrade = false): 
     // Cumplimiento por mes = ponderado del cumplimiento de los KPIs en ese mes.
     const cumplSerie = Array.from({ length: 12 }, (_, m) => ponderado(conexiones.map((c) => ({ w: c.peso, c: c.serie[m] ?? null }))).val);
     conexiones.sort((a, b) => b.peso - a.peso);
-    // Desglose por categoría: cumplimiento derivado de los KPIs → resultado = meta × cumpl/100.
+    // Desglose por categoría: cumplimiento ACUMULADO (YTD) derivado de los KPIs → resultado = meta × cumpl/100
+    // (mismo período que el "Resultado acum." del total; antes usaba solo el mes de referencia).
     const porCategoria: CatDesglose[] = CATEGORIAS_CORE.map((cat) => {
-      const cumplCat = ponderado(conexiones.map((c) => ({ w: c.peso, c: cumplKpiCat(c.kpi, cat, refIdx) }))).val;
+      const cumplCat = ponderado(conexiones.map((c) => ({ w: c.peso, c: cumplKpiCatYtd(c.kpi, cat) }))).val;
       const meta = objMetas[o.nombre]?.[cat]?.[refIdx] ?? null;
       return { categoria: cat, resultado: meta != null && cumplCat != null ? (meta * cumplCat) / 100 : null, meta };
     });
