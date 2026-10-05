@@ -12,7 +12,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { DashDiagnostico } from "./dash-diagnostico";
+import { DashDiagnostico, type AnalisisExtra } from "./dash-diagnostico";
 
 type Vista = "tablero" | "diagnostico";
 const Ctx = createContext<{ vista: Vista; setVista: (v: Vista) => void } | null>(null);
@@ -22,7 +22,7 @@ export function DashTabs({ dash, className, children, diagExtra, startDiag = fal
   className?: string;
   children: ReactNode;
   /** Contenido extra de la pestaña Diagnóstico (ej. los ex "Insights" del tablero). */
-  diagExtra?: ReactNode;
+  diagExtra?: AnalisisExtra;
   /** Abrir directo en Diagnóstico (ej. links viejos ?tab=insights). */
   startDiag?: boolean;
 }) {
@@ -44,7 +44,7 @@ export function DashTabs({ dash, className, children, diagExtra, startDiag = fal
         {children}
         {diagMounted && (
           <div data-dash-keep data-dash-diag className="space-y-4">
-            {/* diagExtra va DENTRO del recorrido (en "Ver el análisis completo"), no como bloque aparte. */}
+            {/* diagExtra va DENTRO del «Plan de mejoras» como una parte numerada más del análisis, no como bloque aparte. */}
             <DashDiagnostico dash={dash} embedded analisisExtra={diagExtra} />
           </div>
         )}

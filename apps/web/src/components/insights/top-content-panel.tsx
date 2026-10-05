@@ -124,10 +124,22 @@ function PlatformBlock({
 export function TopContentPanel({
   instagram,
   facebook,
+  bare = false,
 }: {
   instagram: TopAndBottom;
   facebook: TopAndBottom;
+  /** Sin recuadro ni título: lo pone el «Plan de mejoras» del Diagnóstico (parte numerada). */
+  bare?: boolean;
 }) {
+  if (bare) {
+    if (instagram.top.length === 0 && facebook.top.length === 0) return <p className="text-xs text-muted-foreground">Sin posts con suficiente alcance en el período.</p>;
+    return (
+      <div className="space-y-5">
+        <PlatformBlock platform="instagram" data={instagram} />
+        <PlatformBlock platform="facebook" data={facebook} />
+      </div>
+    );
+  }
   if (instagram.top.length === 0 && facebook.top.length === 0) {
     return (
       <section className="rounded-xl border bg-card p-4">

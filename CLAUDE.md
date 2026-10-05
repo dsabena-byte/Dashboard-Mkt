@@ -101,14 +101,14 @@ reporte_existencia/cb_homologos).
     Pauta Ecommerce y Mkt Canal (iframe en un recuadro) también tienen Tablero · Diagnóstico; Contenido = título →
     Cómo leer → RRSS · UGC · Biblioteca UGC · Adaptación (mismo estilo). Monitoreo = una sola vista, sin pestañas.
     NO volver a poner barras de tabs arriba del título ni un segundo nivel de pestañas.
-  - **Pestaña Diagnóstico = UN recorrido (5-oct-2026, pedido del user: "me pierdo, ¿no debería ser un solo plan?"):**
-    Diagnóstico (texto IA + generar/historial) → **Plan de mejoras** (= "Qué hacer ahora": señales + plan/oportunidades/
-    hallazgos IA unificados, sin repetir) → Mis acciones → "Ver el análisis completo" PLEGADO (evolución, metas, correlaciones,
-    qué funcionó, señales de contexto `info`; SIN acciones) → Anotaciones. Se sacaron "Señales detectadas" como lista aparte y
-    las secciones Oportunidades/Plan de acción del IA (ya estaban en el plan). **Foco de la IA por tablero:** `PLANES_DASH` en
+  - **Pestaña Diagnóstico = UN bloque «Plan de mejoras» (5-oct-2026, pedidos del user: "me pierdo" + "primero el análisis"):** dentro,
+    partes NUMERADAS 1, 2, 3… (según las que haya): Diagnóstico IA (texto + generar/historial) → Evolución → Metas → Correlaciones →
+    Qué funcionó y qué no → parte propia del tablero (`analisisExtra = {titulo, desc, contenido}`, Redes = `TopContentPanel bare`) →
+    Contexto (señales `info`) → **Mejoras** (señales + plan/oportunidades/hallazgos IA unificados, sin repetir) → Mis acciones. Afuera:
+    Anotaciones. **Semáforo** en Evolución/Metas/Qué funcionó: `lib/insights/semaforo-item.ts` lee "(±X% vs meta)" del texto (mes y YTD;
+    verde ≥100% cumpl., ámbar ≥90, rojo; CPM/CPC/costo/posición/rebote = menos es mejor) y si no hay brecha usa `estado` bueno|regular|malo
+    que ahora devuelve la IA. Test `npx tsx scripts/insights-semaforo.test.ts`. **Foco de la IA por tablero:** `PLANES_DASH` en
     `app/api/insights/route.ts` → cada tablero recibe SOLO sus KPIs del Seguimiento (overview ve todo).
-    Redes: `TopContentPanel` (mejores/peores posts 30 d) va DENTRO de "Ver el análisis completo" (prop `analisisExtra` vía `diagExtra`, pedido del user) y el `InsightsPanel` viejo (insights_log
-    30d vs 30d del cron organic-insights, repetía las señales `redes_*`) se borró → TODOS los dash tienen el mismo recorrido.
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
   - **Señales rápidas y sin cuelgues (27-sep-2026, /seo-search quedaba "pensando"):** `LoadCtx` corta cada fuente a
     **12 s** (`SourceTimeoutError`; cruces 15 s; pack IA 25 s) y anota `skipped` → una fuente lenta solo se lleva sus
