@@ -6,7 +6,7 @@ name: SEO sync (SERP matrix · competitivo)
 # hasta cubrir todo. MENSUAL (el índice se mueve lento → no hace falta semanal).
 # COLA STANDARD (sep-2026): cada chunk encola sus keywords (task_post, ≈3,3× más barato que /live) y
 # completa por /live solo lo que no llega a tiempo. Antes, todo /live depth-100 ≈ $5-7 por corrida.
-# Chunks de 100 (la cola tarda 1-3 min por chunk). DATAFORSEO_MODE=live (Vercel) vuelve a todo /live
+# Chunks de 50 (100 tardaba ~4,6 min y chocaba con el corte de 300 s; oct-2026). DATAFORSEO_MODE=live (Vercel) vuelve a todo /live
 # (entonces conviene limit=40). NECESITA saldo en DataForSEO.
 on:
   schedule:
@@ -14,9 +14,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Keywords por chunk (default 100 con cola Standard; 40 si DATAFORSEO_MODE=live)"
+        description: "Keywords por chunk (default 50 con cola Standard; 40 si DATAFORSEO_MODE=live)"
         required: false
-        default: "100"
+        default: "50"
 
 jobs:
   trigger:
@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://dashboard-mkt-seven.vercel.app/api/cron/seo-sync"
-          LIMIT="${{ github.event.inputs.limit || '100' }}"
+          LIMIT="${{ github.event.inputs.limit || '50' }}"
           OFFSET=0
           for i in $(seq 1 30); do
             URL="${BASE}?offset=${OFFSET}&limit=${LIMIT}"
