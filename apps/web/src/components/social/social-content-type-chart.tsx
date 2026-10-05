@@ -19,16 +19,16 @@ export function SocialContentTypeChart({ data }: Props) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={240}>
       <PieChart>
         <Pie
           data={dataWithPct}
           dataKey="count"
           nameKey="content_type"
-          cx="40%"
-          cy="50%"
-          outerRadius={75}
-          innerRadius={40}
+          cx="50%"
+          cy="42%"
+          outerRadius={62}
+          innerRadius={34}
           label={(props) => {
             const { cx, cy, midAngle, innerRadius, outerRadius, pct } = props as unknown as {
               cx: number;
@@ -63,9 +63,9 @@ export function SocialContentTypeChart({ data }: Props) {
           contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 11 }}
         />
         <Legend
-          layout="vertical"
-          align="right"
-          verticalAlign="middle"
+          layout="horizontal"
+          align="center"
+          verticalAlign="bottom"
           wrapperStyle={{ fontSize: 10 }}
           formatter={(value, entry) => {
             const item = entry.payload as unknown as { pct: number };
