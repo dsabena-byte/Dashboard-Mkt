@@ -101,6 +101,12 @@ reporte_existencia/cb_homologos).
     Pauta Ecommerce y Mkt Canal (iframe en un recuadro) también tienen Tablero · Diagnóstico; Contenido = título →
     Cómo leer → RRSS · UGC · Biblioteca UGC · Adaptación (mismo estilo). Monitoreo = una sola vista, sin pestañas.
     NO volver a poner barras de tabs arriba del título ni un segundo nivel de pestañas.
+  - **Pestaña Diagnóstico = UN recorrido (5-oct-2026, pedido del user: "me pierdo, ¿no debería ser un solo plan?"):**
+    Diagnóstico (texto IA + generar/historial) → **Plan de mejoras** (= "Qué hacer ahora": señales + plan/oportunidades/
+    hallazgos IA unificados, sin repetir) → Mis acciones → "Ver el análisis completo" PLEGADO (evolución, metas, correlaciones,
+    qué funcionó, señales de contexto `info`; SIN acciones) → Anotaciones. Se sacaron "Señales detectadas" como lista aparte y
+    las secciones Oportunidades/Plan de acción del IA (ya estaban en el plan). **Foco de la IA por tablero:** `PLANES_DASH` en
+    `app/api/insights/route.ts` → cada tablero recibe SOLO sus KPIs del Seguimiento (overview ve todo).
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
   - **Señales rápidas y sin cuelgues (27-sep-2026, /seo-search quedaba "pensando"):** `LoadCtx` corta cada fuente a
     **12 s** (`SourceTimeoutError`; cruces 15 s; pack IA 25 s) y anota `skipped` → una fuente lenta solo se lleva sus
