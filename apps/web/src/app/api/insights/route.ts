@@ -60,7 +60,34 @@ function kpiLine(k: KpiSegLite): string {
   return `- ${k.kpi} (${k.plan}, ${k.direccion === "down" ? "menor es mejor" : "mayor es mejor"}): ${MES[li]} real ${fmt(real)}${u} vs meta ${fmt(meta)}${u}${brecha != null ? ` (${brecha >= 0 ? "+" : ""}${brecha.toFixed(0)}% vs meta)` : ""}. YTD real ${fmt(ytdReal)} vs meta ${fmt(ytdMeta)}${ytdBrecha != null ? ` (${ytdBrecha >= 0 ? "+" : ""}${ytdBrecha.toFixed(0)}%)` : ""}. Tendencia: ${trend}.`;
 }
 
-function seguimientoCtx(seg: SeguimientoObjetivos, year: number): string {
+// Planes del Seguimiento que le corresponden a cada tablero (5-oct-2026, pedido del user: el diagnóstico de Plan de
+// Medios hablaba de "tasa de conversión" de Web). `overview` ve todo; un tablero sin plan propio no recibe KPIs ajenos.
+const PLANES_DASH: Record<string, string[]> = {
+  performance: ["Pauta Mkt"],
+  redes: ["Instagram", "Redes Sociales"],
+  web: ["Web / Ecommerce"],
+  "seo-search": ["Mercado y competencia"],
+  "cuadros-basicos": ["Cuadros Básicos"],
+  "floor-share": ["Floor Share"],
+};
+
+function seguimientoCtx(seg: SeguimientoObjetivos, year: number, dash: string): string {
+  const planes = dash === "overview" ? null : (PLANES_DASH[dash] ?? []);
+  const kpis = planes ? seg.kpis.filter((k) => planes.includes(k.plan)) : seg.kpis;
+  if (planes && !kpis.length) return "";
+  const propios = new Set(kpis.map((k) => k.kpi));
+  if (planes) {
+    // Tablero puntual: SOLO sus KPIs (real vs meta) y a qué objetivo aporta cada uno. Sin Salud de Marca global
+    // ni KPIs de otros tableros: el diagnóstico habla de lo que se gestiona acá.
+    const aporta = seg.objetivos.map((o) => {
+      const ap = o.aportes.filter((a) => propios.has(a.kpi)).map((a) => `${a.kpi} (peso ${a.peso}%)`).join("; ");
+      return ap ? `- Objetivo "${o.nombre}": ${ap}.` : "";
+    }).filter(Boolean).join("\n");
+    return `\n\n=== KPIs DE ESTE TABLERO (año ${year}, mes de referencia ${seg.refMes}) — datos reales, NO inventes ===
+${kpis.map(kpiLine).join("\n")}${aporta ? `\nA qué objetivo estratégico aporta cada uno (peso en el objetivo):\n${aporta}` : ""}
+Instrucción: analizá SOLO estos KPIs y los datos del tablero; no opines sobre KPIs de otros tableros (web, redes, trade, etc.).
+=== FIN KPIs ===`;
+  }
   const objs = seg.objetivos.map((o) => {
     const ap = o.aportes.map((a) => `${a.kpi} (peso ${a.peso}%, cumpl ${a.cumpl == null ? "s/d" : Math.round(a.cumpl) + "%"})`).join("; ");
     return `- Objetivo "${o.nombre}" (peso estratégico ${Math.round(o.pesoEstrategico)}%): cumplimiento mes ${o.cumplMes == null ? "s/d" : Math.round(o.cumplMes) + "%"}, YTD ${o.cumplYtd == null ? "s/d" : Math.round(o.cumplYtd) + "%"}, cobertura ${Math.round(o.cobertura)}%. KPIs que lo explican: ${ap || "—"}.`;
@@ -71,7 +98,7 @@ SALUD DE MARCA (cumplimiento ponderado global): mes ${sm.cumplMes == null ? "s/d
 OBJETIVOS ESTRATÉGICOS y los KPIs que los explican (con su peso):
 ${objs}
 KPIs — real vs meta (último mes con dato + acumulado YTD + tendencia):
-${seg.kpis.map(kpiLine).join("\n")}
+${kpis.map(kpiLine).join("\n")}
 === FIN SEGUIMIENTO ===`;
 }
 
@@ -108,7 +135,7 @@ export async function POST(req: Request) {
 
   // Contexto ADN: Seguimiento real vs meta (best-effort).
   const seg = await loadOverview(ctx).catch(() => null);
-  const segCtx = seg ? seguimientoCtx(seg, year) : "";
+  const segCtx = seg ? seguimientoCtx(seg, year, dash) : "";
   // Pack del tablero + señales (hallazgos pre-calculados).
   const loaded = await loadDash(ctx, dash, seg).catch(() => ({ seg }));
   const { pack, signals } = await buildDataPack(ctx, dash, loaded).catch(() => ({ pack: "", signals: [] }));

@@ -99,21 +99,17 @@ function ItemRows({ items }: { items: InsItem[] }) {
   );
 }
 
-function InsightsView({ data, dash }: { data: Insights; dash: string }) {
+// Análisis completo del Diagnóstico IA (plegado): evidencia, SIN acciones — las acciones del plan, oportunidades y
+// hallazgos a corregir ya están en el «Plan de mejoras» (lib/recomendacion), una sola vez.
+function AnalisisIA({ data }: { data: Insights }) {
   const pos = data.hallazgos.filter((h) => h.tipo === "positivo");
   const neg = data.hallazgos.filter((h) => h.tipo === "negativo");
   return (
     <div className="grid gap-3">
-      {data.diagnostico && (
-        <section className="rounded-lg border bg-white p-4" style={{ borderLeft: `3px solid ${DATA}` }}>
-          <div className="mb-1.5 text-sm font-semibold" style={{ color: INK }}>Diagnóstico</div>
-          <p className="text-[13.5px] leading-relaxed" style={{ color: INK }}>{data.diagnostico}</p>
-        </section>
-      )}
-      {data.evolucion.length > 0 && <Section n="01" titulo="Evolución" desc="La trayectoria de cada indicador en el tiempo."><ItemRows items={data.evolucion} /></Section>}
-      {data.metas.length > 0 && <Section n="02" titulo="Metas" desc="Real vs meta: la brecha es la unidad de gestión."><ItemRows items={data.metas} /></Section>}
+      {data.evolucion.length > 0 && <Section titulo="Evolución" desc="La trayectoria de cada indicador en el tiempo."><ItemRows items={data.evolucion} /></Section>}
+      {data.metas.length > 0 && <Section titulo="Metas" desc="Real vs meta: la brecha es la unidad de gestión."><ItemRows items={data.metas} /></Section>}
       {data.correlaciones.length > 0 && (
-        <Section n="03" titulo="Correlaciones" desc="Cómo un indicador explica a otro y a los objetivos.">
+        <Section titulo="Correlaciones" desc="Cómo un indicador explica a otro y a los objetivos.">
           <div className="grid gap-3">
             {data.correlaciones.map((c, i) => (
               <div key={i} className={i ? "border-t pt-3" : ""}>
@@ -125,7 +121,7 @@ function InsightsView({ data, dash }: { data: Insights; dash: string }) {
         </Section>
       )}
       {(pos.length > 0 || neg.length > 0) && (
-        <Section n="04" titulo="Qué funcionó y qué no" desc="Para replicar lo que rinde y no repetir lo que no.">
+        <Section titulo="Qué funcionó y qué no" desc="Para replicar lo que rinde y no repetir lo que no.">
           <div className="grid gap-4 md:grid-cols-2">
             {[{ items: pos, label: "Funcionó", cls: "text-emerald-700", dot: "bg-emerald-600" }, { items: neg, label: "A corregir", cls: "text-amber-700", dot: "bg-amber-600" }].map((col) => col.items.length > 0 && (
               <div key={col.label}>
@@ -136,38 +132,9 @@ function InsightsView({ data, dash }: { data: Insights; dash: string }) {
                       <div className="text-[13px] font-semibold" style={{ color: INK }}>{h.titulo}</div>
                       {h.evidencia && <div className="text-[12.5px] leading-relaxed text-slate-600">{h.evidencia}</div>}
                       {h.porque && <div className="text-[12.5px] leading-relaxed text-slate-600"><span className="font-semibold" style={{ color: INK }}>Causa:</span> {h.porque}</div>}
-                      {h.tipo === "negativo" && <div className="mt-1"><GuiameButton item={{ tipo: "alerta", titulo: `Corregir: ${h.titulo}`, dash, dato: [h.evidencia, h.porque ? `Causa probable: ${h.porque}` : ""].filter(Boolean).join(" ") }} /></div>}
                     </div>
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-      {data.oportunidades.length > 0 && (
-        <Section n="05" titulo="Oportunidades" desc="Palancas de eficiencia cuantificadas con los números del tablero.">
-          <div className="grid gap-3">
-            {data.oportunidades.map((o, i) => (
-              <div key={i} className={i ? "border-t pt-3" : ""}>
-                <div className="flex flex-wrap items-center gap-2"><PrioChip p={o.prioridad} /><span className="text-[13px] font-semibold" style={{ color: INK }}>{o.palanca}</span></div>
-                {o.impacto && <div className="mt-0.5 text-[12.5px] font-semibold" style={{ color: DATA }}>{o.impacto}</div>}
-                {o.calculo && <div className="text-[12px] leading-relaxed text-slate-500">{o.calculo}</div>}
-                <div className="mt-1"><GuiameButton item={{ tipo: "oportunidad", titulo: o.palanca, dash, dato: o.calculo, impacto: o.impacto }} /></div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-      {data.planAccion.length > 0 && (
-        <Section n="06" titulo="Plan de acción" desc="Instrucciones concretas, con el KPI/objetivo que mueven.">
-          <div className="grid gap-3">
-            {data.planAccion.map((a, i) => (
-              <div key={i} className={i ? "border-t pt-3" : ""}>
-                <div className="flex flex-wrap items-center gap-2"><PrioChip p={a.prioridad} /><span className="text-[13px] font-semibold" style={{ color: INK }}>{a.accion}</span></div>
-                {a.porque && <div className="mt-0.5 text-[12.5px] leading-relaxed text-slate-600"><span className="font-semibold" style={{ color: INK }}>Por qué:</span> {a.porque}</div>}
-                {a.impactoEsperado && <div className="text-[12.5px] leading-relaxed text-slate-600"><span className="font-semibold" style={{ color: INK }}>Impacto esperado:</span> {a.impactoEsperado}</div>}
-                <div className="mt-1"><GuiameButton item={{ tipo: "recomendación", titulo: a.accion, dash, dato: a.porque, impacto: a.impactoEsperado }} /></div>
               </div>
             ))}
           </div>
@@ -309,7 +276,8 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
   const marcarMia = (a: MiAccion, estado: EstadoAccion) =>
     marcar({ id: a.id, titulo: a.titulo, snapshot: a.actual ? snapshotDe({ ...a.actual, impactoTexto: fmtImpacto(a.actual.impacto) || null }) : a.snapshot }, estado);
 
-  const n = (t: Signal["tipo"]) => (signals ?? []).filter((s) => s.tipo === t).length;
+  // Señales de contexto (sin acción): van al análisis plegado; las alertas/oportunidades ya están en el plan.
+  const contexto = useMemo(() => (signals ?? []).filter((s) => s.tipo === "info"), [signals]);
   // "Qué hacer ahora": señales accionables + plan/oportunidades/hallazgos del Diagnóstico IA, con un
   // único formato y ordenadas por prioridad = impacto × confianza ÷ esfuerzo (lib/recomendacion).
   const recs = useMemo(() => {
@@ -328,52 +296,18 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
         {!embedded && <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition ${open ? "" : "-rotate-90"}`} />}
         <div className="flex-1">
           <h3 className="text-sm font-semibold tracking-tight">{titulo}</h3>
-          <p className="text-[11px] text-muted-foreground">Señales automáticas sobre los datos del tablero + diagnóstico IA (evolución, metas, correlaciones, oportunidades y plan de acción).</p>
+          <p className="text-[11px] text-muted-foreground">Diagnóstico, un único plan de mejoras y el seguimiento de lo que el equipo decidió hacer.</p>
         </div>
       </button>
 
       {open && (
         <div className="mt-4 grid gap-4">
-          <MisAcciones items={mias} disponible={seg.disponible} aviso={seg.aviso} error={segErr} onEstado={marcarMia} ocupado={segOcupado} />
-          <Section titulo="Qué hacer ahora" learn="que_hacer" desc="Acciones concretas de las señales y del Diagnóstico IA, ordenadas de lo más urgente a lo menos (según cuánto mueven el resultado, qué tan seguro es el dato y cuánto trabajo llevan). Tocá «Guiame paso a paso» y el copiloto te explica cómo hacerlo, paso a paso y en palabras simples. Marcá «La voy a hacer», «Hecha» o «Descartar» para seguirlas en «Mis acciones».">
-            {signals == null && !recs.length ? (
-              <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando las recomendaciones…</div>
-            ) : (
-              <>
-                {/* Con lo que haya llegado: si el Diagnóstico IA guardado llega antes que las señales, se muestra ya. */}
-                <RecomendacionesLista recs={recsVisibles} cargando={loadingDiag} estados={estados} onEstado={marcarRec} ocupado={segOcupado} />
-                {signals == null && <div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-3.5 w-3.5 animate-spin" />Sumando las acciones de las señales…</div>}
-              </>
-            )}
-          </Section>
-          <Section titulo="Señales detectadas" desc={signals ? `Reglas determinísticas sobre los datos actuales — ${n("alerta")} alertas · ${n("oportunidad")} oportunidades · ${n("info")} de contexto. Se recalculan en cada apertura.` : undefined}>
-            {signals == null ? (
-              <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Calculando señales…</div>
-            ) : (
-              <>
-                {sigErr ? (
-                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    <span>{sigErr}</span>
-                    <button type="button" onClick={() => loadSignals(true)} className="inline-flex items-center gap-1 rounded border border-amber-300 bg-white px-2 py-0.5 font-semibold text-amber-800 hover:bg-amber-100"><RefreshCw className="h-3 w-3" />Reintentar</button>
-                  </div>
-                ) : !signals.length ? <div className="py-2 text-xs text-slate-500">Sin señales relevantes con los datos actuales.</div> : null}
-                {signals.length > 0 && <SignalList signals={signals} />}
-                {skipped.length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                    <span>No respondieron a tiempo y se omitieron sus señales: {skipped.join(", ")}.</span>
-                    <button type="button" onClick={() => loadSignals(true)} className="font-semibold" style={{ color: DATA }}>Reintentar</button>
-                  </div>
-                )}
-              </>
-            )}
-          </Section>
-
-          <AnotacionesPanel tablero={dash} />
-
-          <div className="grid gap-3">
+          {/* UN solo recorrido (5-oct-2026, pedido del user: "me pierdo"): Diagnóstico → Plan de mejoras → Mis acciones →
+              análisis completo plegado → anotaciones. Cada acción aparece UNA vez (señales + IA unificadas en el plan). */}
+          <section className="grid gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: INK }}><Sparkles className="h-4 w-4" style={{ color: DATA }} />Diagnóstico IA</div>
-              {meta?.createdAt && <span className="text-xs text-slate-500">Generado el {fechaCorta(meta.createdAt)}</span>}
+              <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: INK }}><Sparkles className="h-4 w-4" style={{ color: DATA }} />Diagnóstico</div>
+              {meta?.createdAt && <span className="text-xs text-slate-500">IA · generado el {fechaCorta(meta.createdAt)}</span>}
               {versiones.length > 1 && (
                 <label className="flex items-center gap-1 text-xs text-slate-500">
                   <span className="sr-only sm:not-sr-only">Historial:</span>
@@ -385,7 +319,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
               {meta?.id != null && latestId != null && meta.id !== latestId && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700">versión anterior</span>}
               <button type="button" onClick={onGenerar} disabled={generating} className="ml-auto inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ background: DATA }}>
                 {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : data ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {generating ? "Analizando…" : data ? "Generar otro diagnóstico IA" : "Generar diagnóstico IA"}
+                {generating ? "Analizando…" : data ? "Generar otro diagnóstico" : "Generar diagnóstico"}
               </button>
             </div>
             {confirmGen && (
@@ -403,10 +337,53 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
               <div className="flex items-center gap-2 rounded-lg border bg-white p-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Analizando la evolución de los KPIs, el cumplimiento de metas y las correlaciones… (puede tardar unos segundos)</div>
             ) : loadingDiag ? (
               <div className="flex items-center gap-2 py-3 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Cargando el último diagnóstico…</div>
-            ) : data ? <InsightsView data={data} dash={dash} /> : (
-              <div className="rounded-lg border border-dashed bg-white p-4 text-xs text-slate-500">Todavía no hay un diagnóstico guardado para este tablero. Generalo con el botón (usa los datos del tablero, las metas del Seguimiento y las señales detectadas).</div>
+            ) : data?.diagnostico ? (
+              <p className="rounded-lg border bg-white p-4 text-[13.5px] leading-relaxed" style={{ color: INK, borderLeft: `3px solid ${DATA}` }}>{data.diagnostico}</p>
+            ) : (
+              <div className="rounded-lg border border-dashed bg-white p-4 text-xs text-slate-500">Todavía no hay un diagnóstico para este tablero. Generalo con el botón: lee los datos y las metas de este tablero y suma sus acciones al plan de abajo.</div>
             )}
-          </div>
+          </section>
+
+          <Section titulo="Plan de mejoras" learn="que_hacer" desc="Todo lo que conviene hacer en este tablero, en una sola lista y de lo más urgente a lo menos (según cuánto mueve el resultado, qué tan seguro es el dato y cuánto trabajo lleva). Junta las alertas automáticas y lo que propone el diagnóstico, sin repetir. Tocá «Guiame paso a paso» para que el copiloto te explique cómo hacerlo, y marcá «La voy a hacer», «Hecha» o «Descartar» para seguirlo en «Mis acciones».">
+            {signals == null && !recs.length ? (
+              <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando el plan…</div>
+            ) : (
+              <>
+                <RecomendacionesLista recs={recsVisibles} cargando={loadingDiag} estados={estados} onEstado={marcarRec} ocupado={segOcupado} />
+                {signals == null && <div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-3.5 w-3.5 animate-spin" />Sumando las alertas automáticas…</div>}
+              </>
+            )}
+            {sigErr && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <span>{sigErr}</span>
+                <button type="button" onClick={() => loadSignals(true)} className="inline-flex items-center gap-1 rounded border border-amber-300 bg-white px-2 py-0.5 font-semibold text-amber-800 hover:bg-amber-100"><RefreshCw className="h-3 w-3" />Reintentar</button>
+              </div>
+            )}
+            {skipped.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                <span>No respondieron a tiempo y se omitieron sus alertas: {skipped.join(", ")}.</span>
+                <button type="button" onClick={() => loadSignals(true)} className="font-semibold" style={{ color: DATA }}>Reintentar</button>
+              </div>
+            )}
+          </Section>
+
+          <MisAcciones items={mias} disponible={seg.disponible} aviso={seg.aviso} error={segErr} onEstado={marcarMia} ocupado={segOcupado} />
+
+          {(data || contexto.length > 0) && (
+            <details className="group rounded-lg border bg-white">
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden" style={{ color: INK }}>
+                <ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground transition group-open:rotate-0" />
+                Ver el análisis completo
+                <span className="text-[11px] font-normal text-slate-500">evolución, metas, correlaciones, qué funcionó y contexto — sin acciones (están en el plan)</span>
+              </summary>
+              <div className="grid gap-3 border-t p-4">
+                {data && <AnalisisIA data={data} />}
+                {contexto.length > 0 && <Section titulo="Contexto" desc="Datos para leer el tablero; no piden una acción."><SignalList signals={contexto} /></Section>}
+              </div>
+            </details>
+          )}
+
+          <AnotacionesPanel tablero={dash} />
         </div>
       )}
     </div>
