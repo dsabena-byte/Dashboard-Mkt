@@ -144,7 +144,7 @@ function AnalisisIA({ data }: { data: Insights }) {
   );
 }
 
-export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", embedded = false }: { dash: string; titulo?: string; /** Dentro del tab "Diagnóstico e inteligencia" (DashTabs): abierto y sin colapsar. */ embedded?: boolean }) {
+export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", embedded = false, analisisExtra }: { /** Bloques propios del tablero que van dentro de "Ver el análisis completo" (ej. Redes: mejores/peores posts). */ analisisExtra?: React.ReactNode; dash: string; titulo?: string; /** Dentro del tab "Diagnóstico e inteligencia" (DashTabs): abierto y sin colapsar. */ embedded?: boolean }) {
   const [open, setOpen] = useState(embedded);
   const [signals, setSignals] = useState<Signal[] | null>(null);
   const [sigErr, setSigErr] = useState<string | null>(null);
@@ -369,7 +369,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
 
           <MisAcciones items={mias} disponible={seg.disponible} aviso={seg.aviso} error={segErr} onEstado={marcarMia} ocupado={segOcupado} />
 
-          {(data || contexto.length > 0) && (
+          {(data || contexto.length > 0 || analisisExtra) && (
             <details className="group rounded-lg border bg-white">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden" style={{ color: INK }}>
                 <ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground transition group-open:rotate-0" />
@@ -378,6 +378,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
               </summary>
               <div className="grid gap-3 border-t p-4">
                 {data && <AnalisisIA data={data} />}
+                {analisisExtra}
                 {contexto.length > 0 && <Section titulo="Contexto" desc="Datos para leer el tablero; no piden una acción."><SignalList signals={contexto} /></Section>}
               </div>
             </details>
