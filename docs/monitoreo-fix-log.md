@@ -259,3 +259,8 @@ causa raíz · qué se hizo.
 - **Proceso:** `seo-sync` (GitHub Action). Último run programado (1-oct, run 36871761658) = failure; sin Issue de watchdog abierto.
 - **Diagnóstico:** el job `trigger` terminó con `curl` exit 28 (timeout de 300 s) en el primer chunk (`offset=0`) de `/api/cron/seo-sync`. No es bug de código evidente: mismo patrón que los fallos del 10-ago, que se resolvieron re-disparando.
 - **Acción:** re-trigger por `workflow_dispatch` (seo-sync.yml, main). Si vuelve a dar timeout de 300 s, revisar el tamaño de chunk (`LIMIT=100`) / la cola DataForSEO.
+
+## 2026-10-05 (UTC) — seo-sync en rojo (2º fallo, el re-trigger también falló)
+- **Proceso:** `seo-sync` (GitHub Action). El re-trigger manual del 4-oct (run 37201419795) = failure; sin Issue de watchdog abierto.
+- **Diagnóstico:** causa real, no flake: el chunk offset=0 (100 keywords) tardó 4 min 38 s y el chunk offset=100 superó los 300 s de `curl --max-time` (exit 28). Con la cola Standard + completado por /live, 100 keywords por chunk queda al borde del límite.
+- **Acción:** PR con `LIMIT` por defecto 100 → 50 en `seo-sync.yml` (489 keywords = 10 chunks, dentro de las 30 iteraciones). Tras mergear, re-disparar el workflow.
