@@ -107,7 +107,7 @@ reporte_existencia/cb_homologos).
     qué funcionó, señales de contexto `info`; SIN acciones) → Anotaciones. Se sacaron "Señales detectadas" como lista aparte y
     las secciones Oportunidades/Plan de acción del IA (ya estaban en el plan). **Foco de la IA por tablero:** `PLANES_DASH` en
     `app/api/insights/route.ts` → cada tablero recibe SOLO sus KPIs del Seguimiento (overview ve todo).
-    Redes ya no suma bloques propios al Diagnóstico: `TopContentPanel` pasó a Analítica y el `InsightsPanel` viejo (insights_log
+    Redes: `TopContentPanel` (mejores/peores posts 30 d) va DENTRO de "Ver el análisis completo" (prop `analisisExtra` vía `diagExtra`, pedido del user) y el `InsightsPanel` viejo (insights_log
     30d vs 30d del cron organic-insights, repetía las señales `redes_*`) se borró → TODOS los dash tienen el mismo recorrido.
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
   - **Señales rápidas y sin cuelgues (27-sep-2026, /seo-search quedaba "pensando"):** `LoadCtx` corta cada fuente a

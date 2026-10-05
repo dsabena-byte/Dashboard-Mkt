@@ -44,8 +44,8 @@ export function DashTabs({ dash, className, children, diagExtra, startDiag = fal
         {children}
         {diagMounted && (
           <div data-dash-keep data-dash-diag className="space-y-4">
-            {diagExtra}
-            <DashDiagnostico dash={dash} embedded />
+            {/* diagExtra va DENTRO del recorrido (en "Ver el análisis completo"), no como bloque aparte. */}
+            <DashDiagnostico dash={dash} embedded analisisExtra={diagExtra} />
           </div>
         )}
       </div>

@@ -237,6 +237,8 @@ export default async function RedesPage({ searchParams }: PageProps) {
       dash="redes"
       className="space-y-4"
       startDiag={tab === "insights"}
+      // Lo que mejor y peor funcionó (top/bottom posts 30 días): dentro del análisis completo del Diagnóstico.
+      diagExtra={<TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />}
     >
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -292,11 +294,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
           { nombre: "Engagement rate", unidad: "%", actual: fbEngMes },
         ]}
       />
-
-      {/* Top y bottom posts de los últimos 30 días (era parte del Diagnóstico; 5-oct-2026 pasó al tablero:
-          el Diagnóstico tiene UN recorrido igual en todos los dash, y el panel viejo de insights 30d vs 30d se sacó
-          porque repetía las señales redes_* del plan de mejoras). */}
-      <TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />
 
       {/* Separador visual */}
       <div className="border-t-2 border-muted pt-6">

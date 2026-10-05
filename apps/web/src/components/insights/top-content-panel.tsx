@@ -131,7 +131,7 @@ export function TopContentPanel({
   if (instagram.top.length === 0 && facebook.top.length === 0) {
     return (
       <section className="rounded-xl border bg-card p-4">
-        <h3 className="text-sm font-bold">🏆 Top & Bottom contenidos — últimos 30 días</h3>
+        <h3 className="text-sm font-bold">Qué funcionó y qué no · posts de los últimos 30 días</h3>
         <p className="mt-1 text-xs text-muted-foreground">Sin posts con suficiente alcance en el período.</p>
       </section>
     );
@@ -140,7 +140,7 @@ export function TopContentPanel({
   return (
     <section className="space-y-5 rounded-xl border bg-card p-4">
       <div>
-        <h3 className="text-sm font-bold">🏆 Top & Bottom contenidos — últimos 30 días</h3>
+        <h3 className="text-sm font-bold">Qué funcionó y qué no · posts de los últimos 30 días</h3>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
           Top 5 (mejor) y Bottom 5 (peor) por engagement rate (engagement / alcance). Filtra reach &lt; 500 para evitar outliers.
         </p>
