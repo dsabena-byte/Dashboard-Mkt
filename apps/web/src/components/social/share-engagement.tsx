@@ -21,7 +21,7 @@ export function ShareEngagementSection({ soe, shareSearch }: { soe: SoeData | nu
   if (!soe) return null;
   const max = Math.max(...soe.porMarca.map((b) => b.share), 1);
   const fair = 100 / soe.porMarca.length;
-  const mx = Math.max(...soe.mensual.map((x) => x.share), 1);
+  const mxP = Math.max(...soe.mensual.map((x) => x.share), soe.sharePropio, 1);
   return (
     <section className="rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -58,15 +58,26 @@ export function ShareEngagementSection({ soe, shareSearch }: { soe: SoeData | nu
         {soe.mensual.length >= 2 ? (
           <div>
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Share Drean por mes</div>
-            <div className="flex h-28 items-end gap-2 border-b">
+            {/* Línea punteada = share del período completo; el total NO es el promedio de las barras (cada mes pesa según
+                cuántas interacciones hubo; debajo de cada mes, las de Drean sobre las del set). Igual que BIP (5-oct-2026). */}
+            <div className="relative flex h-28 items-end gap-2 border-b">
+              <div aria-hidden className="absolute inset-x-0 z-[1] border-t-[1.5px] border-dashed border-slate-500" style={{ bottom: `${(soe.sharePropio / mxP) * 85}%` }} />
+              <span className="absolute right-0 z-[2] bg-white/85 px-1 text-[10px] font-semibold text-slate-600" style={{ bottom: `calc(${(soe.sharePropio / mxP) * 85}% + 2px)` }}>período {nf(soe.sharePropio, 1)}%</span>
               {soe.mensual.map((m) => (
                 <div key={m.mes} className="flex h-full flex-1 flex-col items-center justify-end" title={`${mesLbl(m.mes)}: ${nf(m.propio)} de ${nf(m.total)} interacciones`}>
                   <span className="mb-0.5 text-[10px] font-semibold tabular-nums">{nf(m.share, 1)}%</span>
-                  <div className="w-[70%] max-w-[34px] rounded-t" style={{ height: `${Math.max(3, (m.share / mx) * 85)}%`, background: DATA }} />
+                  <div className="w-[70%] max-w-[34px] rounded-t" style={{ height: `${Math.max(3, (m.share / mxP) * 85)}%`, background: DATA }} />
                 </div>
               ))}
             </div>
-            <div className="mt-1 flex gap-2">{soe.mensual.map((m) => <span key={m.mes} className="flex-1 text-center text-[10px] text-muted-foreground">{mesLbl(m.mes)}</span>)}</div>
+            <div className="mt-1 flex gap-2">
+              {soe.mensual.map((m) => (
+                <span key={m.mes} className="flex-1 text-center text-[10px] leading-tight text-muted-foreground">
+                  {mesLbl(m.mes)}<br /><span className="tabular-nums">{fN(m.propio)} de {fN(m.total)}</span>
+                </span>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[10.5px] text-muted-foreground">Debajo de cada mes: interacciones de Drean sobre las del set. El share del período no es el promedio de los meses: pesa más el mes con más interacciones.</p>
           </div>
         ) : (
           <p className="self-center text-xs text-muted-foreground">La evolución mensual aparece cuando haya al menos dos meses comparables.</p>

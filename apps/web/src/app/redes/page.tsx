@@ -436,9 +436,10 @@ export default async function RedesPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Benchmark + Distribución por contenido */}
-      <section className="grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3 rounded-lg border bg-card p-4">
+      {/* Benchmark + Distribución por contenido: la tabla se lleva el ancho (sin scroll) y el donut queda angosto al costado;
+          en pantallas medianas, uno abajo del otro (5-oct-2026, igual que BIP). */}
+      <section className="grid gap-4 2xl:grid-cols-5">
+        <div className="2xl:col-span-4 rounded-lg border bg-card p-4">
           <h3 className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Benchmark de marcas · KPIs comparados <LearnButton k="er_comparable" />
           </h3>
@@ -519,7 +520,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
             </table>
           </div>
         </div>
-        <div className="lg:col-span-2 rounded-lg border bg-card p-4">
+        <div className="2xl:col-span-1 rounded-lg border bg-card p-4">
           <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Distribución por tipo de contenido
           </h3>
