@@ -21,6 +21,10 @@ import { MisAcciones } from "./mis-acciones";
 import { AnotacionesPanel } from "@/components/anotaciones/anotaciones-panel";
 import { LearnButton } from "@/components/knowledge/learn-button";
 import { GuiameButton } from "@/components/copiloto/guiame-button";
+import { brechasDeItem, semaforoDeItem, SEMAFORO_COLOR, SEMAFORO_TEXTO } from "@/lib/insights/semaforo-item";
+
+/** Parte propia de un tablero dentro del análisis (se numera junto con las demás). */
+export interface AnalisisExtra { titulo: string; desc?: string; contenido: React.ReactNode }
 
 const DATA = "#1e40af";
 const INK = "#0f172a";
@@ -77,7 +81,7 @@ function Section({ n, titulo, desc, learn, children }: { n?: string; titulo: str
   return (
     <section className="rounded-lg border bg-white p-4">
       <div className="mb-3">
-        <div className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: INK }}><span>{n && <span className="text-slate-400">{n} · </span>}{titulo}</span>{learn && <LearnButton k={learn} />}</div>
+        <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: INK }}>{n && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold text-white tabular-nums" style={{ background: INK }}>{n}</span>}<span>{titulo}</span>{learn && <LearnButton k={learn} />}</div>
         {desc && <div className="mt-0.5 text-xs text-slate-500">{desc}</div>}
       </div>
       {children}
@@ -85,31 +89,49 @@ function Section({ n, titulo, desc, learn, children }: { n?: string; titulo: str
   );
 }
 
+// Cada KPI con su semáforo (verde bien · ámbar atención · rojo mal), leído de la brecha vs meta del texto
+// (lib/insights/semaforo-item); el color es SOLO estado.
 function ItemRows({ items }: { items: InsItem[] }) {
   return (
-    <div className="grid gap-3">
-      {items.map((it, i) => (
-        <div key={i} className={i ? "border-t pt-3" : ""}>
-          <div className="mb-0.5 text-[13px] font-semibold" style={{ color: INK }}>{it.titulo}</div>
-          {it.evidencia && <div className="text-[12.5px] leading-relaxed text-slate-600">{it.evidencia}</div>}
-          {it.lectura && <div className="mt-0.5 text-[12.5px] leading-relaxed" style={{ color: INK }}>{it.lectura}</div>}
-        </div>
-      ))}
+    <div className="grid gap-2">
+      {items.map((it, i) => {
+        const sem = semaforoDeItem(it);
+        const color = SEMAFORO_COLOR[sem];
+        const brechas = brechasDeItem(it);
+        return (
+          <div key={i} className="rounded-md border bg-white px-3 py-2.5" style={{ borderLeft: `4px solid ${color}` }}>
+            <div className="mb-0.5 flex flex-wrap items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} aria-hidden />
+              <span className="text-[13px] font-semibold" style={{ color: INK }}>{it.titulo}</span>
+              {sem !== "sin-meta" && <span className="text-[10.5px] font-semibold uppercase tracking-wide" style={{ color }}>{SEMAFORO_TEXTO[sem]}</span>}
+              <span className="ml-auto flex flex-wrap gap-1.5">
+                {brechas.map((b) => (
+                  <span key={b.label} className="rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums" style={{ color: SEMAFORO_COLOR[b.semaforo], background: `${SEMAFORO_COLOR[b.semaforo]}14` }}>
+                    {b.label} {b.pct > 0 ? "+" : ""}{b.pct.toLocaleString("es-AR", { maximumFractionDigits: 1 })}% vs meta
+                  </span>
+                ))}
+              </span>
+            </div>
+            {it.evidencia && <div className="text-[12.5px] leading-relaxed text-slate-600">{it.evidencia}</div>}
+            {it.lectura && <div className="mt-0.5 text-[12.5px] leading-relaxed" style={{ color: INK }}>{it.lectura}</div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-// Análisis completo del Diagnóstico IA (plegado): evidencia, SIN acciones — las acciones del plan, oportunidades y
-// hallazgos a corregir ya están en el «Plan de mejoras» (lib/recomendacion), una sola vez.
-function AnalisisIA({ data }: { data: Insights }) {
+// Partes del análisis del Diagnóstico IA (evidencia, SIN acciones — las acciones están en «Mejoras», una sola vez).
+// `num()` da el número de cada parte dentro del «Plan de mejoras» (1, 2, 3… según las que haya).
+function AnalisisIA({ data, num }: { data: Insights; num: () => string }) {
   const pos = data.hallazgos.filter((h) => h.tipo === "positivo");
   const neg = data.hallazgos.filter((h) => h.tipo === "negativo");
   return (
-    <div className="grid gap-3">
-      {data.evolucion.length > 0 && <Section titulo="Evolución" desc="La trayectoria de cada indicador en el tiempo."><ItemRows items={data.evolucion} /></Section>}
-      {data.metas.length > 0 && <Section titulo="Metas" desc="Real vs meta: la brecha es la unidad de gestión."><ItemRows items={data.metas} /></Section>}
+    <>
+      {data.evolucion.length > 0 && <Section n={num()} titulo="Evolución" desc="La trayectoria de cada indicador en el tiempo. Verde = bien, ámbar = atención, rojo = mal (vs su meta)."><ItemRows items={data.evolucion} /></Section>}
+      {data.metas.length > 0 && <Section n={num()} titulo="Metas" desc="Real vs meta: la brecha es la unidad de gestión."><ItemRows items={data.metas} /></Section>}
       {data.correlaciones.length > 0 && (
-        <Section titulo="Correlaciones" desc="Cómo un indicador explica a otro y a los objetivos.">
+        <Section n={num()} titulo="Correlaciones" desc="Cómo un indicador explica a otro y a los objetivos.">
           <div className="grid gap-3">
             {data.correlaciones.map((c, i) => (
               <div key={i} className={i ? "border-t pt-3" : ""}>
@@ -121,14 +143,14 @@ function AnalisisIA({ data }: { data: Insights }) {
         </Section>
       )}
       {(pos.length > 0 || neg.length > 0) && (
-        <Section titulo="Qué funcionó y qué no" desc="Para replicar lo que rinde y no repetir lo que no.">
+        <Section n={num()} titulo="Qué funcionó y qué no" desc="Para replicar lo que rinde y no repetir lo que no.">
           <div className="grid gap-4 md:grid-cols-2">
-            {[{ items: pos, label: "Funcionó", cls: "text-emerald-700", dot: "bg-emerald-600" }, { items: neg, label: "A corregir", cls: "text-amber-700", dot: "bg-amber-600" }].map((col) => col.items.length > 0 && (
+            {[{ items: pos, label: "Funcionó", color: SEMAFORO_COLOR.verde }, { items: neg, label: "No funcionó", color: SEMAFORO_COLOR.rojo }].map((col) => col.items.length > 0 && (
               <div key={col.label}>
-                <div className="mb-2 flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${col.dot}`} /><span className={`text-[11px] font-semibold uppercase tracking-wide ${col.cls}`}>{col.label}</span></div>
-                <div className="grid gap-2.5">
+                <div className="mb-2 flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: col.color }} /><span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: col.color }}>{col.label}</span></div>
+                <div className="grid gap-2">
                   {col.items.map((h, i) => (
-                    <div key={i}>
+                    <div key={i} className="rounded-md border bg-white px-3 py-2" style={{ borderLeft: `4px solid ${col.color}` }}>
                       <div className="text-[13px] font-semibold" style={{ color: INK }}>{h.titulo}</div>
                       {h.evidencia && <div className="text-[12.5px] leading-relaxed text-slate-600">{h.evidencia}</div>}
                       {h.porque && <div className="text-[12.5px] leading-relaxed text-slate-600"><span className="font-semibold" style={{ color: INK }}>Causa:</span> {h.porque}</div>}
@@ -140,11 +162,11 @@ function AnalisisIA({ data }: { data: Insights }) {
           </div>
         </Section>
       )}
-    </div>
+    </>
   );
 }
 
-export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", embedded = false, analisisExtra }: { /** Bloques propios del tablero que van dentro de "Ver el análisis completo" (ej. Redes: mejores/peores posts). */ analisisExtra?: React.ReactNode; dash: string; titulo?: string; /** Dentro del tab "Diagnóstico e inteligencia" (DashTabs): abierto y sin colapsar. */ embedded?: boolean }) {
+export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", embedded = false, analisisExtra }: { /** Parte propia del tablero dentro del análisis del «Plan de mejoras» (ej. Redes: mejores/peores posts). */ analisisExtra?: AnalisisExtra; dash: string; titulo?: string; /** Dentro del tab "Diagnóstico e inteligencia" (DashTabs): abierto y sin colapsar. */ embedded?: boolean }) {
   const [open, setOpen] = useState(embedded);
   const [signals, setSignals] = useState<Signal[] | null>(null);
   const [sigErr, setSigErr] = useState<string | null>(null);
@@ -296,17 +318,25 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
         {!embedded && <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition ${open ? "" : "-rotate-90"}`} />}
         <div className="flex-1">
           <h3 className="text-sm font-semibold tracking-tight">{titulo}</h3>
-          <p className="text-[11px] text-muted-foreground">Diagnóstico, un único plan de mejoras y el seguimiento de lo que el equipo decidió hacer.</p>
+          <p className="text-[11px] text-muted-foreground">Un único plan de mejoras: análisis, qué hacer y el seguimiento de lo que el equipo decidió.</p>
         </div>
       </button>
 
-      {open && (
+      {open && (() => {
+        // UN solo bloque «Plan de mejoras» (5-oct-2026, pedido del user): primero el análisis (diagnóstico, evolución,
+        // metas, correlaciones, qué funcionó…), después las mejoras y el seguimiento — partes numeradas 1, 2, 3…
+        let k = 0;
+        const num = () => String(++k);
+        return (
         <div className="mt-4 grid gap-4">
-          {/* UN solo recorrido (5-oct-2026, pedido del user: "me pierdo"): Diagnóstico → Plan de mejoras → Mis acciones →
-              análisis completo plegado → anotaciones. Cada acción aparece UNA vez (señales + IA unificadas en el plan). */}
-          <section className="grid gap-2">
+          <div className="grid gap-3 rounded-xl border-2 p-4" style={{ borderColor: "#cbd5e1", background: "#f8fafc" }}>
+            <div>
+              <div className="flex items-center gap-2 text-base font-semibold" style={{ color: INK }}>Plan de mejoras<LearnButton k="que_hacer" /></div>
+              <div className="mt-0.5 text-xs text-slate-500">Primero qué está pasando y por qué (verde = bien, ámbar = atención, rojo = mal, contra la meta), después qué hacer y el seguimiento de lo que el equipo decidió.</div>
+            </div>
+          <section className="grid gap-2 rounded-lg border bg-white p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: INK }}><Sparkles className="h-4 w-4" style={{ color: DATA }} />Diagnóstico</div>
+              <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: INK }}><span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold text-white tabular-nums" style={{ background: INK }}>{num()}</span><Sparkles className="h-4 w-4" style={{ color: DATA }} />Diagnóstico IA</div>
               {meta?.createdAt && <span className="text-xs text-slate-500">IA · generado el {fechaCorta(meta.createdAt)}</span>}
               {versiones.length > 1 && (
                 <label className="flex items-center gap-1 text-xs text-slate-500">
@@ -344,9 +374,14 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
             )}
           </section>
 
-          <Section titulo="Plan de mejoras" learn="que_hacer" desc="Todo lo que conviene hacer en este tablero, en una sola lista y de lo más urgente a lo menos (según cuánto mueve el resultado, qué tan seguro es el dato y cuánto trabajo lleva). Junta las alertas automáticas y lo que propone el diagnóstico, sin repetir. Tocá «Guiame paso a paso» para que el copiloto te explique cómo hacerlo, y marcá «La voy a hacer», «Hecha» o «Descartar» para seguirlo en «Mis acciones».">
+
+          {data && <AnalisisIA data={data} num={num} />}
+          {analisisExtra && <Section n={num()} titulo={analisisExtra.titulo} desc={analisisExtra.desc}>{analisisExtra.contenido}</Section>}
+          {contexto.length > 0 && <Section n={num()} titulo="Contexto" desc="Datos para leer el tablero; no piden una acción."><SignalList signals={contexto} /></Section>}
+
+          <Section n={num()} titulo="Mejoras" learn="que_hacer" desc="Todo lo que conviene hacer en este tablero, en una sola lista y de lo más urgente a lo menos (según cuánto mueve el resultado, qué tan seguro es el dato y cuánto trabajo lleva). Junta las alertas automáticas y lo que propone el diagnóstico, sin repetir. Tocá «Guiame paso a paso» para que el copiloto te explique cómo hacerlo, y marcá «La voy a hacer», «Hecha» o «Descartar» para seguirlo en «Mis acciones».">
             {signals == null && !recs.length ? (
-              <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando el plan…</div>
+              <div className="flex items-center gap-2 py-4 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Armando las mejoras…</div>
             ) : (
               <>
                 <RecomendacionesLista recs={recsVisibles} cargando={loadingDiag} estados={estados} onEstado={marcarRec} ocupado={segOcupado} />
@@ -367,26 +402,13 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
             )}
           </Section>
 
-          <MisAcciones items={mias} disponible={seg.disponible} aviso={seg.aviso} error={segErr} onEstado={marcarMia} ocupado={segOcupado} />
-
-          {(data || contexto.length > 0 || analisisExtra) && (
-            <details className="group rounded-lg border bg-white">
-              <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden" style={{ color: INK }}>
-                <ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground transition group-open:rotate-0" />
-                Ver el análisis completo
-                <span className="text-[11px] font-normal text-slate-500">evolución, metas, correlaciones, qué funcionó y contexto — sin acciones (están en el plan)</span>
-              </summary>
-              <div className="grid gap-3 border-t p-4">
-                {data && <AnalisisIA data={data} />}
-                {analisisExtra}
-                {contexto.length > 0 && <Section titulo="Contexto" desc="Datos para leer el tablero; no piden una acción."><SignalList signals={contexto} /></Section>}
-              </div>
-            </details>
-          )}
+          <MisAcciones n={num()} items={mias} disponible={seg.disponible} aviso={seg.aviso} error={segErr} onEstado={marcarMia} ocupado={segOcupado} />
+          </div>
 
           <AnotacionesPanel tablero={dash} />
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

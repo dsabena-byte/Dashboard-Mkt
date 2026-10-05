@@ -169,8 +169,8 @@ REGLAS: cada afirmación lleva su número (valor, variación %, brecha vs meta, 
 Respondé EXCLUSIVAMENTE con un objeto JSON válido:
 {
  "diagnostico": "3-4 frases: síntesis multi-causal con los números clave y el veredicto",
- "evolucion": [{"titulo":"KPI y su tendencia","evidencia":"serie con valores y variación %","lectura":"qué indica"}],
- "metas": [{"titulo":"KPI vs su meta","evidencia":"real vs meta (mes y YTD) + brecha %","lectura":"cumple / no cumple y por qué"}],
+ "evolucion": [{"titulo":"KPI y su tendencia","evidencia":"serie con valores y variación %","lectura":"qué indica","estado":"bueno|regular|malo"}],
+ "metas": [{"titulo":"KPI vs su meta","evidencia":"real vs meta (mes y YTD) + brecha %","lectura":"cumple / no cumple y por qué","estado":"bueno|regular|malo"}],
  "correlaciones": [{"indicadores":"KPI A ↔ KPI/Objetivo B","hallazgo":"relación causal con números"}],
  "hallazgos": [{"titulo":"qué funcionó o qué no","evidencia":"su métrica","tipo":"positivo|negativo","porque":"la causa"}],
  "planAccion": [{"accion":"instrucción específica","prioridad":"alta|media|baja","porque":"el dato que la justifica","impactoEsperado":"qué KPI/objetivo mueve y cuánto"}],
@@ -218,7 +218,7 @@ function parseInsights(raw: string): Insights {
     const str = (x: unknown) => (x == null ? "" : String(x));
     const arr = (x: unknown): Record<string, unknown>[] => (Array.isArray(x) ? (x.filter((v) => v && typeof v === "object") as Record<string, unknown>[]) : []);
     const pri = (p: unknown): "alta" | "media" | "baja" => (p === "alta" || p === "baja" ? p : "media");
-    const items = (x: unknown, n = 4): InsItem[] => arr(x).slice(0, n).map((v) => ({ titulo: str(v.titulo), evidencia: str(v.evidencia), ...(v.lectura ? { lectura: str(v.lectura) } : {}) })).filter((i) => i.titulo || i.evidencia);
+    const items = (x: unknown, n = 4): InsItem[] => arr(x).slice(0, n).map((v) => ({ titulo: str(v.titulo), evidencia: str(v.evidencia), ...(v.lectura ? { lectura: str(v.lectura) } : {}), ...(v.estado === "bueno" || v.estado === "regular" || v.estado === "malo" ? { estado: v.estado as NonNullable<InsItem["estado"]> } : {}) })).filter((i) => i.titulo || i.evidencia);
     const corr: InsCorr[] = arr(j.correlaciones).slice(0, 4).map((v) => ({ indicadores: str(v.indicadores), hallazgo: str(v.hallazgo) })).filter((c) => c.hallazgo);
     const hall: InsHallazgo[] = arr(j.hallazgos).slice(0, 6).map((v) => ({ titulo: str(v.titulo), evidencia: str(v.evidencia), tipo: v.tipo === "negativo" ? "negativo" as const : "positivo" as const, porque: str(v.porque) })).filter((h) => h.titulo || h.evidencia);
     const plan: InsPlanAccion[] = arr(j.planAccion).slice(0, 5).map((v) => ({ accion: str(v.accion), prioridad: pri(v.prioridad), porque: str(v.porque), impactoEsperado: str(v.impactoEsperado) })).filter((p) => p.accion);

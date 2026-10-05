@@ -42,7 +42,8 @@ function Fila({ a, onEstado, ocupado }: { a: MiAccion; onEstado: (a: MiAccion, e
   );
 }
 
-export function MisAcciones({ items, disponible, aviso, error, onEstado, ocupado }: {
+export function MisAcciones({ n, items, disponible, aviso, error, onEstado, ocupado }: {
+  /** Número de la parte dentro del «Plan de mejoras». */ n?: string;
   items: MiAccion[] | null; disponible: boolean; aviso?: string | null; error?: string | null;
   onEstado: (a: MiAccion, e: EstadoAccion) => void; ocupado: string | null;
 }) {
@@ -53,9 +54,9 @@ export function MisAcciones({ items, disponible, aviso, error, onEstado, ocupado
   return (
     <section className="rounded-lg border bg-white p-4">
       <div className="mb-2">
-        <div className="text-sm font-semibold" style={{ color: INK }}>Mis acciones</div>
+        <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: INK }}>{n && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold text-white tabular-nums" style={{ background: INK }}>{n}</span>}Mis acciones</div>
         <div className="mt-0.5 text-xs text-slate-500">
-          Lo que el equipo marcó en «Qué hacer ahora»: <b>La voy a hacer</b>, <b>Hecha</b> o <b>Descartar</b>. Queda guardado aunque la recomendación ya no aparezca en los datos.
+          Lo que el equipo marcó en «Mejoras»: <b>La voy a hacer</b>, <b>Hecha</b> o <b>Descartar</b>. Queda guardado aunque la recomendación ya no aparezca en los datos.
           {items && items.length > 0 ? ` ${pend} pendiente${pend === 1 ? "" : "s"} · ${activas.length - pend} hecha${activas.length - pend === 1 ? "" : "s"}.` : ""}
         </div>
       </div>

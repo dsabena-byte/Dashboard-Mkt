@@ -238,7 +238,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       className="space-y-4"
       startDiag={tab === "insights"}
       // Lo que mejor y peor funcionó (top/bottom posts 30 días): dentro del análisis completo del Diagnóstico.
-      diagExtra={<TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />}
+      diagExtra={{ titulo: "Qué funcionó y qué no · posts de los últimos 30 días", desc: "Top 5 (mejor) y Bottom 5 (peor) por engagement rate (engagement / alcance). Filtra reach < 500 para evitar outliers.", contenido: <TopContentPanel bare instagram={topContent.instagram} facebook={topContent.facebook} /> }}
     >
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>

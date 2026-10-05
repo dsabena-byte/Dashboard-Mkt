@@ -1,7 +1,8 @@
 // Tipos del Diagnóstico IA por tablero (portado de BIP, sep-2026). Client-safe: sin server-only,
 // lo importan el componente cliente (components/diagnostico/dash-diagnostico.tsx) y la API.
 
-export interface InsItem { titulo: string; evidencia: string; lectura?: string }
+/** `estado` = cómo está el KPI según la IA (respaldo del semáforo cuando el texto no trae la brecha vs meta). */
+export interface InsItem { titulo: string; evidencia: string; lectura?: string; estado?: "bueno" | "regular" | "malo" }
 export interface InsHallazgo { titulo: string; evidencia: string; tipo: "positivo" | "negativo"; porque: string }
 export interface InsCorr { indicadores: string; hallazgo: string }
 export interface InsPlanAccion { accion: string; prioridad: "alta" | "media" | "baja"; porque: string; impactoEsperado: string }
