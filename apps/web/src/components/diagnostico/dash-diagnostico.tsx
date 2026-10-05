@@ -375,7 +375,8 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
           </section>
 
 
-          {data && <AnalisisIA data={data} num={num} />}
+          {/* Se llama como función (no como componente) para que num() numere en orden: un componente hijo renderiza DESPUÉS del padre y se llevaría los últimos números. */}
+          {data && AnalisisIA({ data, num })}
           {analisisExtra && <Section n={num()} titulo={analisisExtra.titulo} desc={analisisExtra.desc}>{analisisExtra.contenido}</Section>}
           {contexto.length > 0 && <Section n={num()} titulo="Contexto" desc="Datos para leer el tablero; no piden una acción."><SignalList signals={contexto} /></Section>}
 
