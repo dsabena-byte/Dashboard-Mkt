@@ -430,3 +430,18 @@ function fmtLbl(f: string): string {
   const m: Record<string, string> = { REEL: "reels", VIDEO: "videos", IMAGE: "imágenes", SIDECAR: "carruseles" };
   return m[f] ?? f.toLowerCase();
 }
+
+// ── Qué cruce pertenece a cada tablero (5-oct-2026, pedido del user: "cada Insight con la información de SU
+// dash; no se pueden cruzar dash"). Un tablero solo recibe los cruces armados con datos que él mismo muestra
+// (Web = GA4 + tráfico de la competencia; SEO = share of search + Search Console; Redes = formatos de la
+// competencia). Los que mezclan tableros (inversión × share of search, share of engagement × share of search,
+// demanda, geo, web × SEO) van SOLO a la visión estratégica (overview). Mismo criterio que BIP.
+const CRUCES_PROPIOS: Record<string, RegExp> = {
+  web: /^cruce_web_(search_share_low|paid_dependency)$/,
+  redes: /^cruce_comp_format_gap$/,
+  "seo-search": /^cruce_(sc_|seo_clicks_drop_)/,
+};
+export function cruceDelTablero(s: Pick<Signal, "key">, dash: string): boolean {
+  const re = CRUCES_PROPIOS[dash];
+  return !!re && re.test(s.key);
+}
