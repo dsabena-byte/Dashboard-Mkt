@@ -12,10 +12,9 @@ import { BrandSentimentSummary } from "@/components/social/brand-sentiment-summa
 import { FbOrganicSection } from "@/components/social/fb-organic-section";
 import { IgOrganicSection } from "@/components/social/ig-organic-section";
 import { OrganicBuildupPanel } from "@/components/social/organic-buildup-panel";
-import { InsightsPanel } from "@/components/insights/insights-panel";
 import { TopContentPanel } from "@/components/insights/top-content-panel";
 import { MetaPanel } from "@/components/metas/meta-panel";
-import { getInsightsByCategoria, getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
+import { getTopAndBottomPostsLastNDays } from "@/lib/insights-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import { getMetaKpi, type MetaKpiData } from "@/lib/metas-server";
@@ -99,13 +98,12 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const metaFallback: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
   // Share of engagement (año completo, todas las marcas/redes): mismo cálculo que el KPI del Mapa.
   const mercadoP = safe(getMercadoSeries(currentYear), null, "getMercadoSeries");
-  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, insightsOrganico, topContent, metaAlc, metaEng, fbMetaAlc, fbMetaEng] = await Promise.all([
+  const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, topContent, metaAlc, metaEng, fbMetaAlc, fbMetaEng] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
     getSocialFollowers(),
     getFbOrganicSummary({ from: range.from, to: range.to }),
     getIgOrganicSummary({ from: range.from, to: range.to }),
-    safe(getInsightsByCategoria("organico_drean", 12), [] as Awaited<ReturnType<typeof getInsightsByCategoria>>, "getInsightsByCategoria"),
     safe(
       getTopAndBottomPostsLastNDays(30, 5),
       { instagram: { top: [], bottom: [] }, facebook: { top: [], bottom: [] } } as Awaited<ReturnType<typeof getTopAndBottomPostsLastNDays>>,
@@ -239,16 +237,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
       dash="redes"
       className="space-y-4"
       startDiag={tab === "insights"}
-      diagExtra={
-        <>
-          <p className="text-xs text-muted-foreground">
-            Top contenidos del período + análisis automático comparando los últimos 30 días vs los 30 días previos
-            (el cron corre 1x/día). Abajo, las señales y el Diagnóstico IA del tablero.
-          </p>
-          <TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />
-          <InsightsPanel insights={insightsOrganico} titulo="📊 Insights orgánico Drean (últimos 30d vs 30d previos)" />
-        </>
-      }
     >
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -262,7 +250,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <DataHealth dash="redes" className="-mt-2" />
       <HowToRead slug="redes" />
 
-      <DashTabBar items={[{ key: "analitica", label: "Analítica" }]} diagBadge={insightsOrganico.length || undefined} />
+      <DashTabBar items={[{ key: "analitica", label: "Analítica" }]} />
 
       {(
         <>
@@ -304,6 +292,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
           { nombre: "Engagement rate", unidad: "%", actual: fbEngMes },
         ]}
       />
+
+      {/* Top y bottom posts de los últimos 30 días (era parte del Diagnóstico; 5-oct-2026 pasó al tablero:
+          el Diagnóstico tiene UN recorrido igual en todos los dash, y el panel viejo de insights 30d vs 30d se sacó
+          porque repetía las señales redes_* del plan de mejoras). */}
+      <TopContentPanel instagram={topContent.instagram} facebook={topContent.facebook} />
 
       {/* Separador visual */}
       <div className="border-t-2 border-muted pt-6">
