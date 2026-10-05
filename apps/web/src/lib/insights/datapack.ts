@@ -85,19 +85,25 @@ function mercadoPack(dash: string, C: CrucesInput) {
   const avgD = dem.length ? sum(dem.map((d) => d.busquedas)) / dem.length : 0;
   const soe = C.social ? shareOfEngagement(C.social.posts, C.social.ownBrand) : null;
   const pi = seoPositionIndex(C.seo);
-  const out: Record<string, unknown> = {
-    nota: "Share of search = búsquedas de tu marca ÷ las de todas las marcas del set (termómetro de mercado; la inversión de la competencia no se conoce). Share of engagement = tus interacciones ÷ las del set en redes.",
-    shareOfSearchMensual: sos.map((x) => ({ mes: x.mes, share: x.share })),
-    shareOfEngagement: soe ? { propio: soe.sharePropio, ventana: `${soe.desde}→${soe.hasta}`, porMarca: soe.porMarca.slice(0, 6).map((b) => ({ marca: b.marca, share: b.share })) } : null,
-  };
-  if (dash === "performance" || dash === "overview") {
+  // Cada tablero recibe SOLO los datos de mercado que él mismo muestra (5-oct-2026: nada de cruzar tableros);
+  // la visión estratégica (overview) ve todo.
+  const all = dash === "overview";
+  const out: Record<string, unknown> = {};
+  if (all || dash === "seo-search") {
+    out.nota = "Share of search = búsquedas de tu marca ÷ las de todas las marcas del set (termómetro de mercado).";
+    out.shareOfSearchMensual = sos.map((x) => ({ mes: x.mes, share: x.share }));
+    out.indicePosicionSeo = pi.porMarca.slice(0, 6);
+    out.visibilidadIaPropia = llmoPropio(C.seo);
+  }
+  if (all || dash === "redes") {
+    out.shareOfEngagement = soe ? { propio: soe.sharePropio, ventana: `${soe.desde}→${soe.hasta}`, porMarca: soe.porMarca.slice(0, 6).map((b) => ({ marca: b.marca, share: b.share })) } : null;
+  }
+  if (all) {
     out.inversionVsShareOfSearch = [...spend.entries()].slice(-8).map(([mes, inv]) => ({ mes, inversion: Math.round(inv), shareSearch: sos.find((x) => x.mes === mes)?.share ?? null }));
     out.demandaCategoria = dem.map((d) => ({ mes: d.mes, busquedas: d.busquedas, indice: avgD ? d.busquedas / avgD : null }));
   }
-  if (dash === "web" || dash === "seo-search" || dash === "overview") {
-    out.fuentesCompetencia = (C.competitorWeb?.domains ?? []).slice(0, 5).map((d) => ({ marca: d.marca, fuentes: d.fuentes, variacionMensualPct: d.delta_mom }));
-    out.indicePosicionSeo = pi.porMarca.slice(0, 6);
-    out.visibilidadIaPropia = llmoPropio(C.seo);
+  if (all || dash === "web") {
+    out.traficoWebCompetencia = (C.competitorWeb?.domains ?? []).slice(0, 5).map((d) => ({ marca: d.marca, fuentes: d.fuentes, variacionMensualPct: d.delta_mom }));
   }
   if (dash === "redes") {
     const m = new Map<string, number[]>();
@@ -329,7 +335,7 @@ export async function buildDataPack(ctx: LoadCtx, dash: string, L: DashLoaded): 
   } catch { data = null; }
   const signals = await dashSignals(ctx, dash);
   let mercado = "";
-  try { if (L.cruces) mercado = JSON.stringify(rnd(mercadoPack(dash, L.cruces))); } catch { mercado = ""; }
+  try { if (L.cruces) { const m = mercadoPack(dash, L.cruces); if (Object.keys(m).length) mercado = JSON.stringify(rnd(m)); } } catch { mercado = ""; }
   if (mercado.length > 3500) mercado = `${mercado.slice(0, 3500)}…(recortado)`;
   const room = MAX_PACK - (mercado ? mercado.length + 40 : 0);
   let pack = data ? JSON.stringify(rnd(data)) : "";

@@ -15,7 +15,7 @@ import { gastoDiarioSignals } from "./pauta-diaria";
 import { computeWebSignals } from "./web";
 import { computeSeoSignals } from "./seo";
 import { computeOverviewSignals } from "./overview";
-import { computeCrucesSignals } from "./cruces";
+import { computeCrucesSignals, cruceDelTablero } from "./cruces";
 import { computeWebCalidadSignals } from "./web-calidad";
 import { computeSeoAvanzadoSignals } from "./seo-avanzado";
 import { computePautaDataSignals, computeCbSignals, computeFsSignals, computeUgcSignals, computeMercadoSignals, computeSaludSignals, computeMktCanalSignals, computeConversionSignals, computeInversionSignals } from "./drean";
@@ -91,7 +91,8 @@ async function forDash(ctx: LoadCtx, dash: SignalDash, cruces: Promise<Signal[]>
       ? Promise.all((["cuadros-basicos", "floor-share", "mercado", "salud-marca"] as SignalDash[]).map((d) => baseSignals(ctx, d).then((s) => s.filter((x) => x.tipo !== "info").slice(0, OVERVIEW_PER_DASH)).catch(() => [] as Signal[])))
       : Promise.resolve([] as Signal[][]),
   ]);
-  const extra = dash === "overview" ? cr.slice(0, OVERVIEW_CRUCES) : cr.filter((c) => c.dash === dash);
+  // Cada tablero, solo los cruces con SUS datos; los que mezclan tableros van a la visión estratégica.
+  const extra = dash === "overview" ? cr.filter((c) => !cruceDelTablero(c, c.dash)).slice(0, OVERVIEW_CRUCES) : cr.filter((c) => c.dash === dash && cruceDelTablero(c, dash));
   return sortSignals([...base, ...extra, ...tops.flat()]);
 }
 
@@ -100,10 +101,8 @@ export async function computeSignals(dash?: SignalScope, ctx: LoadCtx = new Load
   const cruces = crucesFor(ctx);
   if (dash === "cruces") return cruces;
   if (dash) return forDash(ctx, dash, cruces);
-  // Todos: cada señal una sola vez (en su tablero), sin duplicar en overview.
-  const all = await Promise.all(SIGNAL_DASHES.map((d) => (d === "overview"
-    ? baseSignals(ctx, d)
-    : forDash(ctx, d, cruces))));
+  // Todos: cada señal una sola vez (el cruce propio en su tablero; el que mezcla tableros, en overview).
+  const all = await Promise.all(SIGNAL_DASHES.map((d) => forDash(ctx, d, cruces)));
   const seen = new Set<string>();
   return sortSignals(all.flat().filter((s) => (seen.has(s.key) ? false : (seen.add(s.key), true))));
 }

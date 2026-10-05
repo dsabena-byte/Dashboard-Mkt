@@ -109,6 +109,10 @@ reporte_existencia/cb_homologos).
     verde ≥100% cumpl., ámbar ≥90, rojo; CPM/CPC/costo/posición/rebote = menos es mejor) y si no hay brecha usa `estado` bueno|regular|malo
     que ahora devuelve la IA. Test `npx tsx scripts/insights-semaforo.test.ts`. **Foco de la IA por tablero:** `PLANES_DASH` en
     `app/api/insights/route.ts` → cada tablero recibe SOLO sus KPIs del Seguimiento (overview ve todo).
+  - **Cada Diagnóstico = SOLO su tablero (5-oct-2026, pedido del user: "no se pueden cruzar dash", igual en BIP):** `mercadoPack`
+    (`lib/insights/datapack.ts`) da a cada tablero solo lo que muestra (Web = tráfico de la competencia; Redes = share of engagement +
+    formatos; SEO = share of search, índice, IA; Pauta = nada); `cruceDelTablero` (`lib/signals/cruces.ts`) deja los cruces que mezclan
+    tableros (ESOV, SoE vs SoS, demanda, geo, web×SEO) SOLO en overview; el prompt de los tableros prohíbe métricas de otros tableros.
   - Test: `cd apps/web && npx tsx scripts/signals-drean.test.ts`.
   - **Señales rápidas y sin cuelgues (27-sep-2026, /seo-search quedaba "pensando"):** `LoadCtx` corta cada fuente a
     **12 s** (`SourceTimeoutError`; cruces 15 s; pack IA 25 s) y anota `skipped` → una fuente lenta solo se lleva sus
