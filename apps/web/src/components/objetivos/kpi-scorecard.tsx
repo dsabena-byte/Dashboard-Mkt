@@ -61,7 +61,7 @@ function Spark({ realM, metaM }: { realM: (number | null)[]; metaM: (number | nu
     return d.trim();
   };
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Evolución real vs meta" className="block">
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Evolución real vs meta" className="block max-w-[150px]">
       <path d={path(metaM)} fill="none" stroke="#94a3b8" strokeWidth={1.3} strokeDasharray="3 3" />
       <path d={path(realM)} fill="none" stroke="#1e40af" strokeWidth={1.9} strokeLinejoin="round" />
       {realM.map((v, i) => (v == null ? null : <circle key={i} cx={x(i).toFixed(1)} cy={y(v).toFixed(1)} r={1.9} fill="#1e40af" />))}
@@ -105,7 +105,20 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
         </span>
       </div>
       <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-        <table className="w-full min-w-[980px] border-collapse text-[13px]">
+        {/* Anchos FIJOS (table-fixed + colgroup): todas las tablas de planes alinean sus columnas al mismo lugar (5-oct-2026). */}
+        <table className="w-full min-w-[1100px] table-fixed border-collapse text-[13px]">
+          <colgroup>
+            <col style={{ width: "25%" }} />
+            <col style={{ width: "5%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "7.5%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "7.5%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "14%" }} />
+          </colgroup>
           <thead>
             <tr className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-2.5 text-left font-semibold" rowSpan={2}>KPI</th>
@@ -147,7 +160,7 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
                   <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{fmt(metaYtd, k.unit)}</td>
                   <td className="px-3 py-2.5 text-right"><Chip actual={realYtd} meta={metaYtd} direccion={k.direccion} umbralVerde={k.umbralVerde} umbralAmarillo={k.umbralAmarillo} /></td>
                   <td className="border-l px-3 py-2 text-right text-xs">{pronosticos ? <ProyeccionKpi pr={pronosticos[k.kpi]?.pronostico} unit={k.unit} /> : <span className="text-muted-foreground/60">—</span>}</td>
-                  <td className="border-l px-3 py-2"><div className="flex justify-center"><Spark realM={k.realM} metaM={k.metaM} /></div></td>
+                  <td className="border-l px-3 py-2"><div className="flex w-full justify-center"><Spark realM={k.realM} metaM={k.metaM} /></div></td>
                 </tr>
               );
             })}
