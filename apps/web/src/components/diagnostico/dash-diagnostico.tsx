@@ -368,7 +368,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
             ) : loadingDiag ? (
               <div className="flex items-center gap-2 py-3 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Cargando el último diagnóstico…</div>
             ) : data?.diagnostico ? (
-              <p className="rounded-lg border bg-white p-4 text-[13.5px] leading-relaxed" style={{ color: INK, borderLeft: `3px solid ${DATA}` }}>{data.diagnostico}</p>
+              <p className="rounded-lg border bg-white p-4 text-[12.5px] leading-relaxed" style={{ color: INK, borderLeft: `3px solid ${DATA}` }}>{data.diagnostico}</p>
             ) : (
               <div className="rounded-lg border border-dashed bg-white p-4 text-xs text-slate-500">Todavía no hay un diagnóstico para este tablero. Generalo con el botón: lee los datos y las metas de este tablero y suma sus acciones al plan de abajo.</div>
             )}
