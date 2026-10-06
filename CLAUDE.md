@@ -6,6 +6,13 @@
 
 ## Cómo trabajar con este usuario (preferencias — aplican siempre)
 - **Español**, directo y conciso. No re-explicar lo ya decidido ni narrar opciones que no se van a tomar.
+- **CERO SUPOSICIONES (regla dura, 6-oct-2026 — el user perdió tiempo, plata y créditos de Netlify por hipótesis mías):**
+  (1) Prohibido presentar una hipótesis como causa o dar un paso "probá esto" sin evidencia. (2) Cada afirmación lleva
+  **[verificado: cómo]** o **[sin verificar]**. (3) Si no puedo comprobar algo (red bloqueada, sin acceso, solo hay una captura):
+  decir **"no lo sé"** + qué dato exacto necesito o qué acceso me falta — UNA vez, sin listar teorías. (4) Antes de mandar al user
+  a hacer algo que cuesta (deploy, créditos, sync pago): probarlo yo primero o decir explícitamente que no está probado.
+  (5) Si dije algo que resultó falso, corregirlo explícito. Netlify (bip-go.com) 6-oct: el user subió varias veces y la raíz
+  mostró Privacidad/Términos; quedó ~1 deploy de crédito; causa NO verificada (la red del sandbox bloquea bip-go.com y Netlify).
 - **Validá con datos, NO asumas.** Es su preferencia #1. Antes de afirmar una causa, comprobala
   (consultá la DB por REST con la service key, corré el código, leé el archivo). Si no lo podés
   verificar, decilo — no maquilles ni inventes. Corregí explícitamente cuando algo que dijiste
