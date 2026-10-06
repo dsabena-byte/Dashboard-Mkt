@@ -24,6 +24,11 @@
   `docs/`, el de bip-platform o el vault `bip-knowledge`) con qué hizo, cuándo y qué resultó. **Antes de pedirle un paso,
   revisá ese registro** — no le pidas de nuevo algo que ya probó (le molesta mucho). Ej: Mercado Libre →
   `bip-platform/docs/mercado-libre-app-estado.md`; TikTok → nota de abajo.
+- **PENDIENTES = `PENDIENTES.md` (raíz del repo), fuente ÚNICA (6-oct-2026, tras un reporte de pendientes desactualizado):**
+  no escribir "PENDIENTE" sueltos en este archivo ni en docs/. Al resolver algo, cerrar su fila **en el mismo commit**. Antes de
+  listarle pendientes al user: **re-verificar cada fila con datos** (DB/código/docs del tema/`git log`) y decir "sin verificar"
+  lo que no se pueda comprobar. Los clones del sandbox son **shallow (50 commits)** → `git fetch --depth=1500 origin main`
+  antes de usar el historial como evidencia. Los pendientes de BIP viven en `bip-platform/PENDIENTES.md`.
 - **Mantené esta memoria al día:** después de cualquier decisión/fix importante, actualizá este
   `CLAUDE.md` y/o `docs/` **proactivamente**, sin que te lo pidan.
 - **Seguridad:** hay credenciales de producción en el entorno (service-role key, API keys). No
@@ -175,8 +180,8 @@ reporte_existencia/cb_homologos).
     instancia `drean-cron` está `open`; si no → saltea, latido `alert_log` canal `whatsapp` (estado `desconectado`/
     `sin_config`, visible en /alerts y /monitoreo) y el email sigue igual. `lib/whatsapp.ts` (server, nunca tira) +
     `lib/whatsapp-shared.ts` (puro: celulares AR → `549…`, mensajes ≤1500 con `*negrita*`; test `scripts/whatsapp.test.ts`)
-    + `/api/alertas/whatsapp-test` (GET estado / POST prueba). Frecuencia = la del email; dedupe por canal. **Pendiente:**
-    migración **0123** + env Vercel **`EVO_URL`, `EVO_API_KEY`, `EVO_INSTANCE`** + número dedicado con QR.
+    + `/api/alertas/whatsapp-test` (GET estado / POST prueba). Frecuencia = la del email; dedupe por canal. Migración 0123
+    corrida; falta número + env (PENDIENTES D6).
 - **"Guiame paso a paso" (sep-2026, pedido del user: las recomendaciones eran "chino básico"):** todo ítem accionable (Qué hacer ahora, señales, Diagnóstico IA oportunidades/plan/hallazgos a corregir, consent de /web; **el panel 🎓 NO** — 4-oct-2026, es teórico) lleva `<GuiameButton item=…>` (`components/copiloto/guiame-button.tsx`) → `pedirGuia(promptGuia(item))` (`lib/copiloto-guia.ts`, puro) dispara **`window` event `copiloto:ask` {prompt}** → `GlobalDataChat` abre el chat y envía la pregunta en una conversación nueva (en rutas sin copiloto lo monta con `GENERAL`). El prompt arranca con "Guiame paso a paso" → **"Modo guía"** del system prompt (`copiloto.ts`: pasos numerados sin jerga, término técnico entre paréntesis, quién lo hace, dónde hacer clic, mensaje listo para la agencia/dev, tiempo, cómo verificarlo en el tablero). **4-oct-2026: se SACÓ "Cómo hacerlo" de las tarjetas de "Qué hacer ahora" y "Qué hacer (n)" de las señales en TODOS los dash** (pedido del user: queda SOLO "Guiame paso a paso"). Prioridad/Confianza/Esfuerzo = palabras + tooltip (`explicarPrioridad`, `CONFIANZA_AYUDA`, `ESFUERZO_AYUDA` en `lib/recomendacion.ts`); la fórmula solo en el tooltip. Copy nuevo: primero lenguaje simple, técnico entre paréntesis. Test: `npx tsx scripts/copiloto-guia.test.ts`.
 - **Lenguaje simple en TODAS las señales + "Mis acciones" (28-sep-2026):** títulos/detalle/pasos de `lib/signals/*` (pauta, redes,
   overview, cruces, drean, web, web-calidad, seo, seo-avanzado), `pauta-fatiga` (motivo), `sc-deep` (CAUSA_TXT), `stats/forecast`
@@ -525,10 +530,8 @@ reporte_existencia/cb_homologos).
   T3·8+4**, desvío <5%, Inv/Fact ≤1,3%); (2) **Comparador libre A vs B** (selects de versión/período/
   cuenta/moneda, KPI cards, evolución + acumulado, distribución, árbol por concepto). Paleta: **A
   (REAL) azul `#1e40af`, B (comparación) gris pizarra `#94a3b8`**, verde/rojo solo desvíos. Nota:
-  `8+4 2026` todavía NO está cargado en `bgt_marketing` → T3 sale "no cargada". **PENDIENTE:** el
-  usuario quiere **borrar el tab "OKR Mkt" de `/overview`** una vez que valide este dash (Obj.1 ya
-  vive acá; Obj.2/3/4 = Floor Share/CB/Salud de Marca ya están en sus dashboards). El iframe viejo
-  (`public/bgt-mkt/`) quedó sin uso — se puede borrar.
+  `8+4 2026` todavía NO está cargado en `bgt_marketing` → T3 sale "no cargada" (PENDIENTES D4). El tab
+  "OKR Mkt" de `/overview` **se borró el 4-sep-2026** (`49830d9`). Iframe viejo `public/bgt-mkt/` sin uso (PENDIENTES D13).
 - **Pauta Mkt (`/performance`) — inversión: fuente de verdad POR MEDIO (dic-2026).** El dash
   brand **no mezcla ecommerce** (conversión/PMax/shopping va aparte, en `/performance-conversion`
   vía `pauta-conversion-queries`; **Performance Max se EXCLUYE** de Pauta Mkt). Fuente por medio:
@@ -583,7 +586,7 @@ reporte_existencia/cb_homologos).
     (approach aproximado). Google jun → re-disparar `google-ads-sync.yml` con `days≥120`
     (workflow_dispatch, aditivo). No cargar DV360/Google a mano en `pauta_performance` (rompe la regla
     "medio con API → volumen de la API").
-  - **DV360 junio VOLVIÓ a quedar truncado (validado REST 24-sep-2026):** `dv360_creatives` jun-26 = **US$4.514**
+  - **(6-oct-2026: junio volvió a estar COMPLETO, US$17.108; abril/mayo/ago siguen bajos → PENDIENTES D1–D3.)** Histórico — **DV360 junio VOLVIÓ a quedar truncado (validado REST 24-sep-2026):** `dv360_creatives` jun-26 = **US$4.514**
   (Programmatic 2.557 + YouTube 1.957) vs la recarga completa de US$17.108 → el `syncDv360` diario lo re-pisó con
   CSV parcial (el pendiente de "recurrencia" se materializó). Ago-26 también sospechoso (US$9.081 vs jul US$39.073).
   Fix de fondo = rango fijo/largo en el reporte "DV360 Video Drean" o que `syncDv360` no reescriba un mes con CSV parcial.
