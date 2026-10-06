@@ -1007,4 +1007,9 @@ construcción" ni placeholders). Pasos que pidió: (1) revisar la web, (2) **ree
 **crear apps NUEVAS** (BIP Connector / BIP Organic: las rechazadas no se reabren), (4) antes de pedir el permiso "TikTok Accounts",
 completar el **Accounts API Access Application Form** (revisión aparte). Responder el ticket al reenviar el perfil (cierra solo a las 96 h
 sin respuesta). Riesgo detectado en bip.html: badges "Muy pronto" (incl. TikTok) pueden leerse como placeholder.
+**6-oct-2026 — web preparada para reenviar el perfil:** `bip.html` (y la copia de Roque) SIN ningún "Muy pronto" (se sacaron TikTok y
+Tiendanube de la grilla de integraciones y de la tabla de planes, y "WhatsApp, muy pronto"); pie con identidad legal (producto de ROQUÉ
+Research Solutions · Buenos Aires · info@roque-in.com · © ROQUÉ). Privacidad: TikTok como fuente (solo lectura, revocable, TikTok for
+Developers ToS), domicilio y `info@roque-in.com`; Términos: TikTok en plataformas de terceros. Paquete Netlify armado (index.html +
+privacy/index.html + terms/index.html + bip/). Pendiente del user: subirlo a Netlify, reenviar el Developer Profile y responder el ticket.
 </content>
