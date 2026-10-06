@@ -1018,5 +1018,5 @@ sin respuesta). Riesgo detectado en bip.html: badges "Muy pronto" (incl. TikTok)
 Tiendanube de la grilla de integraciones y de la tabla de planes, y "WhatsApp, muy pronto"); pie con identidad legal (producto de ROQUÉ
 Research Solutions · Buenos Aires · info@roque-in.com · © ROQUÉ). Privacidad: TikTok como fuente (solo lectura, revocable, TikTok for
 Developers ToS), domicilio y `info@roque-in.com`; Términos: TikTok en plataformas de terceros. Paquete Netlify armado (index.html +
-privacy/index.html + terms/index.html + bip/). Pendiente del user: subirlo a Netlify, reenviar el Developer Profile y responder el ticket.
+privacy/index.html + terms/index.html + bip/). **6-oct: el user lo subió a Netlify y la web funciona (dicho por el user; el sandbox no llega a bip-go.com).** Pendiente del user: reenviar el Developer Profile y responder el ticket. Texto literal de la respuesta de TikTok del 1-oct NO está guardado (solo este resumen) → pedirlo si hace falta citarlo.
 </content>
