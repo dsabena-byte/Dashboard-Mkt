@@ -12,3 +12,9 @@ Contacto configurado:
 Los botones "Empezar" llevan al alta de BIP (https://bip-platform.vercel.app/signup).
 Las rutas de imagen y video son relativas: la carpeta se puede publicar en cualquier ruta
 del sitio (ej. roque-in.com/bip/).
+
+IMPORTANTE (pedido de TikTok para aprobar el perfil de desarrollador de ROQUÉ):
+  1. Publicar esta carpeta en https://roque-in.com/bip/ (que abra sin login, desde cualquier red).
+  2. Agregar un link VISIBLE en el menú o en la home de roque-in.com que diga
+     "BIP – Business Impact Platform" y lleve a https://roque-in.com/bip/
+  3. Avisar cuando esté publicado para verificarlo.
