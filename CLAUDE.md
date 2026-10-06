@@ -161,7 +161,9 @@ reporte_existencia/cb_homologos).
     `/api/cron/reporte-ejecutivo` (`?dry=1`, `?force=1`) + workflow `alertas.yml` (08:00 ART). "Qué te avisaríamos
     hoy" se pide por API al abrir (no en el render). Latido de crons en `alert_log` canal `cron` → `/monitoreo`.
     Validado con data real (dry-run): 12 alertas en ~10s; reporte ago-26 con 4 objetivos, 13 KPIs, SoS 21,5%.
-  - **Pendiente para activar:** (1) correr **`supabase/migrations/0108_alertas.sql`** (competitor_ads_snapshot,
+  - **Verificado 6-oct-2026 por REST:** migraciones 0106–0124 corridas (tablas/columnas existen); Apify ad-library OK
+    (snapshots 5-oct sin error); WhatsApp sigue apagado (`whatsapp_on=false`, sin EVO_* ni número).
+  - **Pendiente para activar (histórico):** (1) correr **`supabase/migrations/0108_alertas.sql`** (competitor_ads_snapshot,
     alert_log, alert_prefs) — sin ella: snapshot vacío con aviso, prefs no se guardan, el diario no se envía;
     (2) env vars en **Vercel, proyecto Dashboard-Mkt** (`dashboard-mkt-seven.vercel.app`): **`RESEND_API_KEY`**,
     **`NOTIFY_FROM`** (remitente con dominio verificado en Resend; default `onboarding@resend.dev` solo entrega a la
