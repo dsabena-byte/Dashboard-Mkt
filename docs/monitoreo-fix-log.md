@@ -264,3 +264,8 @@ causa raíz · qué se hizo.
 - **Proceso:** `seo-sync` (GitHub Action). El re-trigger manual del 4-oct (run 37201419795) = failure; sin Issue de watchdog abierto.
 - **Diagnóstico:** causa real, no flake: el chunk offset=0 (100 keywords) tardó 4 min 38 s y el chunk offset=100 superó los 300 s de `curl --max-time` (exit 28). Con la cola Standard + completado por /live, 100 keywords por chunk queda al borde del límite.
 - **Acción:** PR con `LIMIT` por defecto 100 → 50 en `seo-sync.yml` (489 keywords = 10 chunks, dentro de las 30 iteraciones). Tras mergear, re-disparar el workflow.
+
+## 2026-10-07 (UTC) — seo-sync en rojo (último run previo al fix #806)
+- **Proceso:** `seo-sync` (GitHub Action). Último run (5-oct, run 37309344425) = failure; sin Issue de watchdog abierto. Resto de syncs en verde.
+- **Diagnóstico:** el último run es anterior al merge de #806 (chunks de 50 keywords); main ya tiene `LIMIT=50`. Logs del job no accesibles desde acá (403).
+- **Acción:** re-trigger por `workflow_dispatch` (seo-sync.yml, main) con el fix. Si vuelve a fallar → revisar saldo/cola DataForSEO (pendiente humano).
