@@ -989,7 +989,22 @@ real (ruta nueva, leyendo `mercado_share` + `salud-marca-model.ts` en vivo).
 GfK → `mercado_share`), **`docs/calendario-publicacion-meta.md`** (calendario de contenidos +
 publicación orgánica IG/FB + estado de permisos Meta), y varios `*-sync.md` (dv360, google-ads, etc.).
 Los `handoff-*.md` son notas de sesiones previas.
-**`docs/investigacion-precios/`** (7-oct-2026): benchmark de monitoreo de precios (global + AR, cuotas/CFT, matching SKU, KPIs, calidad) para un feature nuevo de BIP; informe + notas con fuentes. **Informe principal = `benchmark-precios-multicategoria-bip.md`** (cualquier categoría de producto o servicio; el de electro quedó como antecedente, pedido del user 7-oct). Feature NO implementado: pendiente de las decisiones abiertas del informe.
+**`docs/investigacion-precios/`** (7-oct-2026) — **Monitoreo de precios de la competencia, feature NUEVO de BIP (no implementado).**
+  **Informe principal = `benchmark-precios-multicategoria-bip.md`** (multicategoría: productos Y servicios — el user corrigió "no es
+  solo línea blanca, es para BIP, cualquier categoría"); `benchmark-inteligencia-precios.md` (electro/Drean) queda como antecedente;
+  notas con fuentes en `notas/` y `notas-multicategoria/`. Conclusiones clave: (1) ningún vendor global mide cuotas/CFT/promos por
+  medio de pago → diferencial de BIP; (2) diseño = núcleo común de observación + **plantillas de categoría como datos** + pool
+  compartido de listados/observaciones entre tenants (catálogo, competidores, segmentos y equivalencias privados) + cascada de
+  matching GTIN→modelo→candidatos→LLM elige→humano; (3) normalización: precio por unidad (Res. 4/2025), efectivo mensual a 12/24 m
+  (servicios), tasa implícita de cuotas; índice Jevons con cobertura visible; semáforo por banda del cliente (no "verde=barato");
+  "desvío vs precio sugerido", nunca "violación MAP" (Ley 27.442). **Verificado en vivo 7-oct:** API pública VTEX
+  (`/api/catalog_system/pub/products/search`) respondió en 12/12 retailers grandes (súper, farma, deportes, hogar, mascotas,
+  electro) con EAN + grilla `Installments`; Tiendanube expone `LS.variants` (cuotas por pasarela + stock); Mercado Libre API sin
+  token = 403 y su web bloquea bots (403); `AvailableQuantity` de VTEX es tope (usar `IsAvailable`); Jumbo/Disco traen `ListPrice`
+  basura (validar lista≥venta). **Próximo paso = el user define las 12 decisiones abiertas del informe** (ML, build vs buy, opinión
+  legal, fórmula del índice, bandas, perfiles de servicios, pool compartido, cadencia, capturas…) → recién ahí se arma la estructura.
+  **Entorno 7-oct-2026: el user cambió Network access del environment a "acceso total"** (antes example.com/wikipedia daban 000;
+  después 200, verificado con curl) → no volver a pedírselo.
 
 **Proyecto APARTE — BIP (SaaS self-serve multi-tenant):** convertir este dashboard en un producto
 multi-cliente (fork + capa de conexiones OAuth vía Nango + planes/upgrade/add-ons + billing). **NO
