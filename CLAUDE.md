@@ -12,7 +12,7 @@
   decir **"no lo sé"** + qué dato exacto necesito o qué acceso me falta — UNA vez, sin listar teorías. (4) Antes de mandar al user
   a hacer algo que cuesta (deploy, créditos, sync pago): probarlo yo primero o decir explícitamente que no está probado.
   (5) Si dije algo que resultó falso, corregirlo explícito. Netlify (bip-go.com) 6-oct: el user subió varias veces y la raíz
-  mostró Privacidad/Términos; quedó ~1 deploy de crédito; causa NO verificada (la red del sandbox bloquea bip-go.com y Netlify).
+  mostró Privacidad/Términos; quedó ~1 deploy de crédito; causa NO verificada (la red del sandbox bloqueaba bip-go.com y Netlify). **7-oct-2026: el sandbox SÍ llega a bip-go.com** (curl 200: raíz = landing "BIP — Estrategia que se convierte en resultados", `/privacy` OK).
 - **Validá con datos, NO asumas.** Es su preferencia #1. Antes de afirmar una causa, comprobala
   (consultá la DB por REST con la service key, corré el código, leé el archivo). Si no lo podés
   verificar, decilo — no maquilles ni inventes. Corregí explícitamente cuando algo que dijiste
@@ -876,8 +876,8 @@ reporte_existencia/cb_homologos).
   una franja de **badges honestos** (`.tbadges`: APIs oficiales de Google/Meta, OAuth 2.0, solo lectura de métricas, revocable,
   cifrado, Vercel+Supabase, no se venden). **Regla:** sin logos de Google/Meta ni "verificada/partner/certified" mientras la
   verificación OAuth de Google y el App Review de Meta sigan pendientes; **"App verificada por Google" ACTIVO desde 27-sep-2026** (Verification Center:
-  marca + acceso a datos verificados); "App aprobada por Meta" sigue **comentado** (`<!-- ACTIVAR cuando … -->`) hasta el App Review.
-  "Solo lectura" se dice de las MÉTRICAS. La moderación de comentarios de IG existe SOLO para el App Review de Meta (cuenta de revisión); los clientes NO la tienen (4-oct-2026, bip-platform#214).
+  marca + acceso a datos verificados); "App aprobada por Meta" sigue **comentado** (`<!-- ACTIVAR cuando … -->`) en bip.html y la copia de Roque. **7-oct-2026: el App Review de Meta quedó APROBADO** (captura del user: envío 6-oct 22:23, `instagram_manage_comments` Aprobado + 8 Renovado; detalle en bip-platform `docs/conectores.md`) → se puede activar el sello, pero NO está hecho: requiere re-subir bip-go.com (Netlify) y la copia de Roque.
+  "Solo lectura" se dice de las MÉTRICAS. La moderación de comentarios de IG existe SOLO para el App Review de Meta (cuenta de revisión); los clientes NO la tienen (4-oct-2026, bip-platform#214). Sigue así tras la aprobación del 7-oct (decisión de producto, no de permisos).
   **Novedades + franja de integraciones (28-sep-2026, rama `claude/bip-web-novedades`):** sección `#integraciones` (16 logos SVG
   inline de `simple-icons` CC0, gris → color de marca al hover; Clarity/Excel-SharePoint/Bing/Mercado Libre/Tiendanube = badge
   tipográfico porque no están en simple-icons); estados según bip-platform: ML disponible en modo catálogo (Optimize, sin prometer
