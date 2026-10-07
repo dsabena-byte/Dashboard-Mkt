@@ -989,7 +989,7 @@ real (ruta nueva, leyendo `mercado_share` + `salud-marca-model.ts` en vivo).
 GfK → `mercado_share`), **`docs/calendario-publicacion-meta.md`** (calendario de contenidos +
 publicación orgánica IG/FB + estado de permisos Meta), y varios `*-sync.md` (dv360, google-ads, etc.).
 Los `handoff-*.md` son notas de sesiones previas.
-**`docs/investigacion-precios/`** (7-oct-2026): benchmark de monitoreo de precios (global + AR, cuotas/CFT, matching SKU, KPIs, calidad) para un feature nuevo de BIP; informe + notas con fuentes. Feature NO implementado: pendiente de las decisiones abiertas del informe.
+**`docs/investigacion-precios/`** (7-oct-2026): benchmark de monitoreo de precios (global + AR, cuotas/CFT, matching SKU, KPIs, calidad) para un feature nuevo de BIP; informe + notas con fuentes. **Informe principal = `benchmark-precios-multicategoria-bip.md`** (cualquier categoría de producto o servicio; el de electro quedó como antecedente, pedido del user 7-oct). Feature NO implementado: pendiente de las decisiones abiertas del informe.
 
 **Proyecto APARTE — BIP (SaaS self-serve multi-tenant):** convertir este dashboard en un producto
 multi-cliente (fork + capa de conexiones OAuth vía Nango + planes/upgrade/add-ons + billing). **NO
