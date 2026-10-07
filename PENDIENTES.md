@@ -23,6 +23,7 @@
 | D11 | LG: 8/16 avisos de revendedores, sin exclusión | Claude (cuando se pida) | 27-sep | sin verificar | `competitor_ads_snapshot` LG |
 | D12 | Guía/🎓 a tabla (editar sin deploy) | Claude (cuando se pida) | sep-2026 | 6-oct: sigue en `lib/guia/*` | código |
 | D13 | Borrar `public/bgt-mkt/` (iframe viejo sin uso) | Claude | sep-2026 | 6-oct: sigue el archivo | `apps/web/public/bgt-mkt` |
+| D14 | **Monitoreo de precios (BIP):** definir las 12 decisiones abiertas de `docs/investigacion-precios/benchmark-precios-multicategoria-bip.md` para recién ahí diseñar la estructura | User (decisión) | 7-oct | 7-oct: informe mergeado (#824), nada implementado | sección "Decisiones abiertas" del informe |
 
 ## Cerrados (con evidencia)
 - **Tab "OKR Mkt" de /overview** — borrado el 4-sep-2026 (`49830d9`). La memoria lo seguía dando como pendiente.
