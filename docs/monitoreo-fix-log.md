@@ -269,3 +269,9 @@ causa raíz · qué se hizo.
 - **Proceso:** `seo-sync` (GitHub Action). Último run (5-oct, run 37309344425) = failure; sin Issue de watchdog abierto. Resto de syncs en verde.
 - **Diagnóstico:** el último run es anterior al merge de #806 (chunks de 50 keywords); main ya tiene `LIMIT=50`. Logs del job no accesibles desde acá (403).
 - **Acción:** re-trigger por `workflow_dispatch` (seo-sync.yml, main) con el fix. Si vuelve a fallar → revisar saldo/cola DataForSEO (pendiente humano).
+
+## 2026-10-08 (UTC) — seo-sync sigue en rojo tras el fix #806; tiktok-sync en rojo
+- **Proceso:** `seo-sync` (GitHub Action). El re-trigger del 7-oct (run 37620554162, ya con chunks de 50) = failure en el paso "SERP matrix por chunks" tras ~14 min. Sin Issue de watchdog abierto. Resto de syncs de la lista en verde.
+- **Diagnóstico:** el fix de `LIMIT=50` no alcanzó. Logs no accesibles desde acá (403) → causa sin verificar.
+- **Acción:** NO se re-disparó otra vez (cada corrida gasta créditos de DataForSEO; 4 fallos seguidos). **Pendiente humano:** ver el log del run 37620554162 y revisar saldo/cola de DataForSEO.
+- **Proceso:** `tiktok-sync` (fuera de la lista de syncs vigilados). Falla a diario desde al menos el 6-oct en 7 s en el paso "Trigger /api/cron/tiktok-sync" (último run 37775565780). Logs inaccesibles; probable falta de credenciales TikTok (apps rechazadas) — **sin verificar**. Pendiente humano.
