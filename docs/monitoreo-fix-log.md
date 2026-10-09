@@ -275,3 +275,9 @@ causa raíz · qué se hizo.
 - **Diagnóstico:** el fix de `LIMIT=50` no alcanzó. Logs no accesibles desde acá (403) → causa sin verificar.
 - **Acción:** NO se re-disparó otra vez (cada corrida gasta créditos de DataForSEO; 4 fallos seguidos). **Pendiente humano:** ver el log del run 37620554162 y revisar saldo/cola de DataForSEO.
 - **Proceso:** `tiktok-sync` (fuera de la lista de syncs vigilados). Falla a diario desde al menos el 6-oct en 7 s en el paso "Trigger /api/cron/tiktok-sync" (último run 37775565780). Logs inaccesibles; probable falta de credenciales TikTok (apps rechazadas) — **sin verificar**. Pendiente humano.
+
+## 2026-10-09 (UTC) — Watchdog #828 (BGT Inversión) + seo-sync/tiktok-sync siguen en rojo
+- **Proceso:** `BGT Inversión` (GitHub Action `bgt-sync`). Issue #828 abierto (detectado 8-oct 13:32: sin actualizar hace 39h). Los runs de `bgt-sync` están todos en success (último 9-oct 03:36, cada 12 h) → los runs corren bien pero la frescura medida no baja; mismo patrón que el falso positivo de `updated_at` del 10-ago (upsert que no bumpea `updated_at` si no hay cambios) — **sin verificar** (sin acceso a la DB desde acá).
+- **Acción:** re-trigger por `workflow_dispatch` de `bgt-sync.yml` (barato, ~10 s). Si el issue sigue abierto tras el próximo watchdog → revisar si `bgt-sync` bumpea `updated_at` en `bgt_marketing`.
+- **Proceso:** `seo-sync` — último run (7-oct, 37620554162) = failure; NO se re-disparó (gasta créditos DataForSEO). **Pendiente humano:** log del run + saldo/cola DataForSEO.
+- **Proceso:** `tiktok-sync` — falla a diario en 7 s (último 9-oct, 37927911321); probable falta de credenciales (apps TikTok rechazadas), sin verificar. **Pendiente humano.**
