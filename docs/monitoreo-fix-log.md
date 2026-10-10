@@ -281,3 +281,8 @@ causa raíz · qué se hizo.
 - **Acción:** re-trigger por `workflow_dispatch` de `bgt-sync.yml` (barato, ~10 s). Si el issue sigue abierto tras el próximo watchdog → revisar si `bgt-sync` bumpea `updated_at` en `bgt_marketing`.
 - **Proceso:** `seo-sync` — último run (7-oct, 37620554162) = failure; NO se re-disparó (gasta créditos DataForSEO). **Pendiente humano:** log del run + saldo/cola DataForSEO.
 - **Proceso:** `tiktok-sync` — falla a diario en 7 s (último 9-oct, 37927911321); probable falta de credenciales (apps TikTok rechazadas), sin verificar. **Pendiente humano.**
+
+## 2026-10-10 (UTC) — Watchdog #828 sigue abierto; seo-sync en rojo
+- **Proceso:** `BGT Inversión` (`bgt-sync`). Issue #828 sigue abierto (cuerpo del 8-oct 13:32). `bgt-sync` corre en success cada 12 h (último 10-oct 03:17) y el watchdog también corre (último 10-oct 05:54, success) → no hay nada que re-disparar. Sospecha de falso positivo por `updated_at` sin bump — **sin verificar** (sin acceso a la DB). **Pendiente humano:** confirmar en `/monitoreo` si BGT sigue en rojo; si no, cerrar #828.
+- **Proceso:** `seo-sync` — último run (7-oct, 37620554162) = failure; NO se re-disparó (gasta créditos DataForSEO). **Pendiente humano:** log del run + saldo/cola DataForSEO.
+- **Proceso:** `tiktok-sync` — sigue fallando; **pendiente humano** (credenciales TikTok, sin verificar).
