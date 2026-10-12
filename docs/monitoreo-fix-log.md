@@ -291,3 +291,9 @@ causa raíz · qué se hizo.
 - **Proceso:** `seo-sync` (GitHub Action). Log del run 37620554162 leído por la API de GitHub (MCP): chunks offset 0–150 OK; en offset=200 la ruta devolvió `{"ok":false,"error":"DataForSEO sin saldo (Payment Required) — cargá fondos"}` → HTTP 500. **Causa verificada: la cuenta de DataForSEO se quedó sin fondos** (no es bug de código ni timeout; el fix #806 era correcto, los chunks 0–150 corren).
 - **Acción:** NO se re-disparó (fallaría igual y gasta créditos). **Pendiente humano: cargar saldo en DataForSEO** y luego re-disparar `seo-sync.yml`.
 - **Proceso:** `BGT Inversión` (`bgt-sync`). Issue #828 abierto; el watchdog del 11-oct 05:49 UTC marca "sin actualizar hace 104h" aunque `bgt-sync` corre en success cada 12 h (último 11-oct 02:50). La frescura crece sin bajar → o el sync no escribe/bumpea `updated_at`, o es falso positivo; **sin verificar** (sin acceso a la DB). Pendiente humano/siguiente sesión: revisar `apps/web` ruta bgt-sync y `monitoreo-config.ts`.
+
+## 2026-10-12 (UTC) — BGT #828: causa verificada en código; seo-sync sigue sin saldo
+- **Proceso:** `BGT Inversión` (`bgt-sync`). Issue #828 abierto (watchdog 12-oct 06:00: sin actualizar hace 128h). `bgt-sync` corre en success cada 12 h (último 12-oct 03:13). **Verificado en `app/api/cron/bgt-sync/route.ts` (l.73–74): `updated_at` = fecha REAL de la fuente (`syncedAt` del data.json de SharePoint), no "ahora"** → el sync funciona, pero la fuente (data.json) no se actualiza desde hace ~5 días. No es un falso positivo ni un bug del cron.
+- **Acción:** nada que re-disparar. **Pendiente humano:** regenerar/actualizar el data.json de BGT en la fuente (SharePoint/flujo que lo publica); recién entonces cierra #828.
+- **Proceso:** `seo-sync` — sigue en failure (7-oct) por DataForSEO sin saldo (verificado el 11-oct). No se re-disparó. **Pendiente humano: cargar saldo.**
+- **Proceso:** `tiktok-sync` — sin cambios, pendiente humano.
