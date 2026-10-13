@@ -762,7 +762,10 @@ reporte_existencia/cb_homologos).
   dos repos, montos leídos a ojo):** Drean seguro ~US$10,5 (seo-sync 1-sep ~6,8 + reintentos 1/3/4/7-oct + trends lunes); días
   con gasto y SIN corrida de Drean = BIP ~US$14,5 (16-17, 24-25, 30-sep, 2-oct; BIP también gasta al guardar la competencia de un
   tenant — `after()` en `api/profile/competencia` — y en `/api/mercado/sugerencias`, sin workflow); mezclados ~US$9,7 (21-sep,
-  28-sep, 5-oct). Los "DataForSEO Labs" son solo de BIP (Drean no usa Labs).
+  28-sep, 5-oct). Los "DataForSEO Labs" son solo de BIP (Drean no usa Labs). **Frecuencias ajustadas 13-oct-2026 (pedido del user: "no comprar lo mismo"):** Drean `trends-sync` semanal→MENSUAL
+  día 5 (volumen de Google Ads es mensual) y `fbfol` domingo→MENSUAL día 1; `seo-sync` sigue mensual (con reanudación). BIP
+  (bip-platform#257): SEO por plan (Accelerate 13 días, resto 27), fuentes pagas sin reintento <20 h tras una falla, un solo
+  intento por tenant en sync-seo y social/web, y el agente del CRM no reintenta fuentes pagas. n8n apagado (13-oct).
 - **Modelo:** el proyecto usa OpenAI (no Anthropic) para las features de IA existentes.
 - **LLMO (Visibilidad en IA) — modelo dado de baja:** `gpt-4o-search-preview` murió el 23-jul-2026 (404 en todas las llamadas → sep-2026 en 0). `llmo-sync` ahora usa la **Responses API** (`/v1/responses`) con la tool `web_search` forzada (`tool_choice`) y ubicación AR; modelo env **`OPENAI_LLMO_MODEL`** (default `gpt-4.1-mini`). Parseo en `lib/llmo-fuentes.ts` (`textoRespuesta`/`extraerCitas`, compat con el formato chat). Con 0 respuestas no escribe `seo_llmo` y devuelve `error` con el primer mensaje de OpenAI.
 - **Monitoreo (Routine "System health check") — auto-fix POR GITHUB, no por Vercel/Supabase:**

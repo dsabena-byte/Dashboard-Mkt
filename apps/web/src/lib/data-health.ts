@@ -30,7 +30,7 @@ const F = {
   trade: { label: "Trade (CB + Floor Share)", tabla: "trade_monthly", col: "updated_at", cadenciaH: 24 },
   bgt: { label: "BGT", tabla: "bgt_marketing", col: "updated_at", cadenciaH: 12 },
   gfk: { label: "GfK", tabla: "mercado_share", col: "updated_at", cadenciaH: 2160 },
-  demanda: { label: "Demanda (DataForSEO)", tabla: "search_volume", col: "fetched_at", cadenciaH: 168 },
+  demanda: { label: "Demanda (DataForSEO)", tabla: "search_volume", col: "fetched_at", cadenciaH: 720 },
   serp: { label: "Posición SEO", tabla: "seo_rankings", col: "fetched_at", cadenciaH: 720 },
   llmo: { label: "Visibilidad en IA", tabla: "seo_llmo", col: "updated_at", cadenciaH: 168 },
   sc: { label: "Search Console", tabla: "search_console_snapshot", col: "updated_at", cadenciaH: 168 },
