@@ -51,6 +51,13 @@ async function serp(keyword: string): Promise<SerpTask | undefined> {
   return task;
 }
 
+async function sbGet<T>(path: string): Promise<T> {
+  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  const res = await fetch(`${env("NEXT_PUBLIC_SUPABASE_URL")}/rest/v1/${path}`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  if (!res.ok) throw new Error(`Supabase seo_rankings (lectura): ${res.status} ${(await res.text()).slice(0, 300)}`);
+  return (await res.json()) as T;
+}
+
 async function sbUpsert(rows: unknown[]): Promise<void> {
   if (rows.length === 0) return;
   const url = env("NEXT_PUBLIC_SUPABASE_URL");
@@ -78,12 +85,31 @@ export async function GET(request: Request) {
 
   // Universo ordenado por volumen desc (lo más importante primero).
   const universo = [...KEYWORD_UNIVERSE].sort((a, b) => b.volume - a.volume);
-  const slice = universo.slice(offset, offset + limit);
-  const fecha = new Date().toISOString().slice(0, 10);
+  const chunk = universo.slice(offset, offset + limit);
+  const force = url.searchParams.get("force") === "1";
   const now = new Date().toISOString();
 
-  const out: Record<string, unknown> = { total: universo.length, offset, limit, procesadas: slice.length };
+  const out: Record<string, unknown> = { total: universo.length, offset, limit };
   try {
+    // REANUDAR (oct-2026: 6 corridas fallidas re-pagaron las mismas keywords y vaciaron el saldo): si este mes
+    // ya hay una foto (corrida cortada), se completa ESA fecha (los tableros leen la última foto) y no se
+    // vuelven a comprar las keywords que ya tienen filas. ?force=1 re-consulta todo.
+    // shortcut: una keyword sin ningún dominio trackeado en el top 100 no deja filas → se re-compra al reanudar.
+    let fecha = now.slice(0, 10);
+    let slice = chunk;
+    if (!force && chunk.length) {
+      const last = await sbGet<{ fecha: string }[]>(`seo_rankings?select=fecha&fecha=gte.${fecha.slice(0, 8)}01&order=fecha.desc&limit=1`);
+      if (last[0]?.fecha) {
+        fecha = last[0].fecha;
+        const kws = chunk.map((k) => `"${k.keyword.replace(/"/g, '\\"')}"`).join(",");
+        const hechas = await sbGet<{ keyword: string }[]>(`seo_rankings?select=keyword&fecha=eq.${fecha}&keyword=in.(${encodeURIComponent(kws)})`);
+        const ya = new Set(hechas.map((h) => h.keyword));
+        slice = chunk.filter((k) => !ya.has(k.keyword));
+      }
+    }
+    out.fecha = fecha;
+    out.yaHechas = chunk.length - slice.length;
+    out.procesadas = slice.length;
     const rows: Record<string, unknown>[] = [];
     const pushRows = (kw: (typeof slice)[number], items: SerpItems) => {
       const seen = new Set<string>();
@@ -133,7 +159,7 @@ export async function GET(request: Request) {
     if (sinSaldo) throw new Error("DataForSEO sin saldo (Payment Required) — cargá fondos");
     await sbUpsert(rows);
     out.filas = rows.length;
-    out.resto = Math.max(0, universo.length - (offset + slice.length));
+    out.resto = Math.max(0, universo.length - (offset + chunk.length));
     out.ok = true;
     return NextResponse.json(out);
   } catch (e) {
