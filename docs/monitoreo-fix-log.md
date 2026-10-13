@@ -302,3 +302,7 @@ causa raíz · qué se hizo.
 - **Proceso:** `trends-sync` (GitHub Action). Último run (12-oct 15:43, 38272266000) = failure. **Verificado en el log del job (MCP):** HTTP 500 `"DataForSEO sin saldo (Payment Required) — cargá fondos en la cuenta"`. Misma causa raíz que `seo-sync`.
 - **Acción:** NO se re-disparó (fallaría igual). **Pendiente humano: cargar saldo en DataForSEO**, luego re-disparar `seo-sync.yml` y `trends-sync.yml`.
 - **Proceso:** `BGT Inversión` (#828 abierto): sin cambios, la fuente data.json no se actualiza (ver entrada 12-oct). `tiktok-sync`: sin cambios.
+
+## 2026-10-13 (UTC) — seo-sync: reanuda en vez de re-comprar
+- **Proceso:** `seo-sync`. Las 6 corridas fallidas de octubre (1-oct ×3, 4, 5, 7) arrancaban siempre en offset 0 y re-pagaban las mismas keywords → contribuyeron a dejar DataForSEO sin saldo.
+- **Acción:** la ruta ahora completa la foto del mes en curso y saltea las keywords ya guardadas (`?force=1` para re-consultar todo). **Pendiente humano:** cargar saldo; sacar `seo-sync`/`trends-sync` de la lista de re-disparo de la rutina "System health check".
