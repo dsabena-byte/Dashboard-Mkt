@@ -297,3 +297,8 @@ causa raíz · qué se hizo.
 - **Acción:** nada que re-disparar. **Pendiente humano:** regenerar/actualizar el data.json de BGT en la fuente (SharePoint/flujo que lo publica); recién entonces cierra #828.
 - **Proceso:** `seo-sync` — sigue en failure (7-oct) por DataForSEO sin saldo (verificado el 11-oct). No se re-disparó. **Pendiente humano: cargar saldo.**
 - **Proceso:** `tiktok-sync` — sin cambios, pendiente humano.
+
+## 2026-10-13 (UTC) — DataForSEO sin saldo ahora también tumba trends-sync
+- **Proceso:** `trends-sync` (GitHub Action). Último run (12-oct 15:43, 38272266000) = failure. **Verificado en el log del job (MCP):** HTTP 500 `"DataForSEO sin saldo (Payment Required) — cargá fondos en la cuenta"`. Misma causa raíz que `seo-sync`.
+- **Acción:** NO se re-disparó (fallaría igual). **Pendiente humano: cargar saldo en DataForSEO**, luego re-disparar `seo-sync.yml` y `trends-sync.yml`.
+- **Proceso:** `BGT Inversión` (#828 abierto): sin cambios, la fuente data.json no se actualiza (ver entrada 12-oct). `tiktok-sync`: sin cambios.
