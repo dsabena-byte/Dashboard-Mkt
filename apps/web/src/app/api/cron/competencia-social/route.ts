@@ -7,7 +7,7 @@ import { igApifyToca, fbToca, FB_DIAS_DEFAULT, IG_APIFY_DIAS_DEFAULT } from "@/l
 //   ?part=ig      Instagram por Apify SOLO para comentarios/sentimiento/pin (días COMPETENCIA_IG_APIFY_DIAS, default lunes;
 //                 ?force=1 lo corre igual). Las métricas diarias de IG vienen de Business Discovery (competencia-ig).
 //   ?part=web     SimilarWeb → competitor_web (mensual, día 15: el dato de SimilarWeb es mensual)
-//   ?part=fbfol   Seguidores de las Páginas de FB → social_followers (semanal; nuevo, n8n no lo tenía)
+//   ?part=fbfol   Seguidores de las Páginas de FB → social_followers (mensual, día 1: los seguidores casi no se mueven en una semana; nuevo, n8n no lo tenía)
 //   ?dry=1        corre actores + LLM y devuelve las filas SIN escribir (para scripts/n8n-paridad.ts). Funciona con el flag apagado.
 // Guarda: COMPETENCIA_SCRAPER_CODE=1 habilita la escritura (así n8n y el código no corren dos veces por accidente),
 // salvo fbfol, que escribe siempre (no tiene equivalente en n8n).

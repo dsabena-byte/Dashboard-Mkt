@@ -1,11 +1,11 @@
 name: Trends sync (demanda · Share of Search)
 
 # Módulo A de Inteligencia Competitiva: volúmenes absolutos + Google Trends desde
-# DataForSEO → search_volume + trends_interest. Semanal (los volúmenes son
-# mensuales, con actualizar 1x/semana sobra). Dispara el route en Vercel.
+# DataForSEO → search_volume + trends_interest. MENSUAL, día 5 (los volúmenes de Google Ads son mensuales:
+# semanal pagaba 4 veces el mismo número; Trends trae 12 meses de puntos semanales en cada corrida). Oct-2026.
 on:
   schedule:
-    - cron: "20 6 * * 1"  # lunes 06:20 UTC
+    - cron: "20 6 5 * *"  # día 5 de cada mes, 06:20 UTC
   workflow_dispatch:
     inputs:
       only:
