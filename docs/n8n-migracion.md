@@ -128,4 +128,9 @@ Electrolux `tienda.electrolux.com.ar`, Gafa `tienda.gafa.com.ar`, Philco `philco
 5. Desactivar en n8n.cloud los workflows "Social Scraper — Apify + GPT → Supabase" y "Competitor Web Traffic Sync".
    Rollback: volver a activarlos y borrar `COMPETENCIA_SCRAPER_CODE`.
 
+**Estado 13-oct-2026:** pasos 3 y 5 HECHOS. El scraper en código escribe (log del run 38278991962, 12-oct: FB 50 posts,
+IG 30 posts) y el user despublicó TODOS los flows de n8n (dicho por el user el 13-oct; no verificado desde el sandbox:
+sin acceso a n8n). Verificación: n8n → Executions sin corridas nuevas; Apify → Runs solo lun/jue (FB), lunes (IG),
+día 15 (SimilarWeb).
+
 Tests: `cd apps/web && npx tsx scripts/competencia-scraper.test.ts` (mapeo IG/FB/web, merge sin pérdida, cupo, cadencia).
