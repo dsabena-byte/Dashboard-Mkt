@@ -306,3 +306,7 @@ causa raíz · qué se hizo.
 ## 2026-10-13 (UTC) — seo-sync: reanuda en vez de re-comprar
 - **Proceso:** `seo-sync`. Las 6 corridas fallidas de octubre (1-oct ×3, 4, 5, 7) arrancaban siempre en offset 0 y re-pagaban las mismas keywords → contribuyeron a dejar DataForSEO sin saldo.
 - **Acción:** la ruta ahora completa la foto del mes en curso y saltea las keywords ya guardadas (`?force=1` para re-consultar todo). **Pendiente humano:** cargar saldo; sacar `seo-sync`/`trends-sync` de la lista de re-disparo de la rutina "System health check".
+
+## 2026-10-14 (UTC) — sin cambios: #828 (BGT) y DataForSEO sin saldo
+- **Detección:** 11 de 13 syncs en success. Rojos: `seo-sync` (7-oct) y `trends-sync` (12-oct), ambos por DataForSEO sin saldo (verificado 11 y 13-oct) → NO se re-dispararon (pagos, fallarían igual). Issue #828 (BGT) sigue abierto; `bgt-sync` en success cada 12 h (último 14-oct 02:38), la fuente data.json no se actualiza (ver 12-oct).
+- **Pendiente humano:** cargar saldo en DataForSEO y re-disparar `seo-sync`/`trends-sync`; actualizar data.json de BGT en SharePoint.
