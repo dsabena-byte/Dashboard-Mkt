@@ -13,6 +13,12 @@
   a hacer algo que cuesta (deploy, créditos, sync pago): probarlo yo primero o decir explícitamente que no está probado.
   (5) Si dije algo que resultó falso, corregirlo explícito. Netlify (bip-go.com) 6-oct: el user subió varias veces y la raíz
   mostró Privacidad/Términos; quedó ~1 deploy de crédito; causa NO verificada (la red del sandbox bloqueaba bip-go.com y Netlify). **7-oct-2026: el sandbox SÍ llega a bip-go.com** (curl 200: raíz = landing "BIP — Estrategia que se convierte en resultados", `/privacy` OK).
+- **CERO GASTO SIN APROBACIÓN (regla dura, 14-oct-2026):** ninguna llamada paga (fal, OpenAI, Apify, DataForSEO, Perplexity,
+  deploys con crédito…) sin que el user apruebe ANTES ese gasto puntual, con el costo estimado. Que haya aprobado una prueba no
+  autoriza la siguiente. Origen: video BIP, generé ~US$2,85 de imágenes en fal en 3 vueltas sin preguntar y el user lo reclamó.
+  **Video BIP para WhatsApp (14-oct):** concepto vigente «Del ruido a la claridad» (ruido digital → norte/objetivos → capas de
+  inteligencia, ejecución, aprendizaje → respaldo ROQUÉ), 4:5, sin locución. Storyboard: claude.ai/artifact/Cc4YNhnVxXLra4qGcVu33Q.
+  Descartados: «El hilo» (papel — "no tiene nada que ver, es todo digital") y las direcciones A/B/C.
 - **Validá con datos, NO asumas.** Es su preferencia #1. Antes de afirmar una causa, comprobala
   (consultá la DB por REST con la service key, corré el código, leé el archivo). Si no lo podés
   verificar, decilo — no maquilles ni inventes. Corregí explícitamente cuando algo que dijiste
