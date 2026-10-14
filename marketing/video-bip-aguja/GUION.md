@@ -1,6 +1,6 @@
 # BIP · Video para WhatsApp — guion v2 (≈51 s, 4:5, sin locución)
 
-Regla del user: oraciones cortas (máx. ~6 palabras por línea).
+Regla del user: CONCEPTOS, no oraciones. Cada parte = una palabra grande + como mucho una bajada corta.
 
 Textos pedidos por el user (14-oct-2026). Pantallas = réplica con marca ficticia y «Datos ilustrativos».
 

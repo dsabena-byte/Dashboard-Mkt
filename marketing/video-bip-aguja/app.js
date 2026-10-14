@@ -81,7 +81,7 @@ const PILS = [['01', 'Orden', 'Tu estrategia, de punta a punta.'], ['02', 'Contr
   ['03', 'Eficiencia', 'Evidencia, no intuición.'], ['04', 'Expertise', 'Expertise world-class.'],
   ['05', 'Impacto', 'El impacto económico de cada decisión.']];
 const PIL_T = PILS.map((_, i) => 14.0 + i * .95);
-$('pils').innerHTML = PILS.map((p, i) => `<div class="pil" id="pil${i}" style="top:${200 + i * 210}px"><b>${p[0]}</b><span>${p[1]}</span><em>${p[2]}</em></div>`).join('');
+$('pils').innerHTML = PILS.map((p, i) => `<div class="pil" id="pil${i}" style="top:${190 + i * 210}px"><b>${p[0]}</b><span>${p[1]}</span></div>`).join('');
 PIL_T.forEach(t => AUDIO.push({ t, type: 'tick', f: 1175 }));
 
 /* ---------- parte 3 ---------- */

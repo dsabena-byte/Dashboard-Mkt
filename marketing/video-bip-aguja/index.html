@@ -38,8 +38,8 @@
   .ring i{position:absolute;border-radius:50%;border:10px solid var(--cyan)}
   .onoma{position:absolute;left:640px;top:1010px;font:800 96px 'Poppins';color:var(--cyan);opacity:0}
   /* titulares de las partes 2 y 3 */
-  .eb{position:absolute;left:84px;top:96px;font:600 24px 'Inter';letter-spacing:.14em;text-transform:uppercase;color:var(--navy);opacity:0}
-  .hl{position:absolute;left:84px;right:84px;top:140px;font:600 72px/1.08 'Poppins';color:var(--ink);letter-spacing:-.01em;opacity:0}
+  .eb{display:none;position:absolute;left:84px;top:96px;font:600 24px 'Inter';letter-spacing:.14em;text-transform:uppercase;color:var(--navy);opacity:0}
+  .hl{position:absolute;left:84px;right:84px;top:120px;font:700 92px/1.04 'Poppins';color:var(--ink);letter-spacing:-.01em;opacity:0}
   .hl small{display:block;font:500 34px/1.3 'Inter';color:var(--muted);margin-top:16px;letter-spacing:0}
   .panel{position:absolute;left:84px;right:84px;background:#fff;border-radius:28px;box-shadow:0 30px 70px rgba(10,40,90,.14),0 0 0 1px #e3e9f2;opacity:0}
   .ptitle{display:flex;align-items:center;gap:14px;padding:30px 36px 0;font:600 30px 'Poppins';color:var(--ink)}
@@ -54,8 +54,8 @@
   #clinks path{fill:none;stroke:var(--cyan);stroke-width:3.5}
   /* parte 2: los 5 puntos */
   .pil{position:absolute;left:84px;right:84px;display:grid;grid-template-columns:110px 1fr;gap:6px 26px;align-items:baseline;opacity:0}
-  .pil b{font:800 64px 'Poppins';color:var(--cyan);grid-row:span 2}
-  .pil span{font:600 46px 'Poppins';color:var(--ink)}
+  .pil b{font:800 72px 'Poppins';color:var(--cyan);grid-row:span 2}
+  .pil span{font:700 84px 'Poppins';color:var(--ink)}
   .pil em{font:400 30px/1.3 'Inter';color:var(--muted);font-style:normal}
   /* parte 3: medición */
   #segBody{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:30px 36px 36px}
@@ -137,8 +137,8 @@
   <div class="touch" id="touch"></div>
 
   <!-- parte 2: concepto y los 5 puntos -->
-  <div class="hl" id="hConcept">Del caos<br>de iniciativas…</div>
-  <div class="hl" id="hConcept2">…a un sistema<br>conectado al impacto.</div>
+  <div class="hl" id="hConcept">Del caos…</div>
+  <div class="hl" id="hConcept2">…al impacto.</div>
   <div id="concept"><svg id="clinks" viewBox="0 0 1080 1350"></svg><div id="impact">Impacto en el negocio</div></div>
   <div class="eb" id="ePil">Por qué BIP</div>
   <div id="pils"></div>
@@ -146,11 +146,11 @@
   <!-- parte 3: las capas -->
   <div class="ilus" id="ilus">Datos ilustrativos</div>
   <div class="eb" id="eMed">Medición y monitoreo</div>
-  <div class="hl" id="hMed">Medís todo contra<br>tus objetivos.</div>
+  <div class="hl" id="hMed">Medición<small>Todo, contra tus objetivos.</small></div>
   <div class="panel" id="pMed" style="top:430px"><div class="ptitle">Seguimiento de Objetivos <small>· real vs meta</small></div><div id="segBody"></div></div>
 
   <div class="eb" id="eLrn">Aprendizaje</div>
-  <div class="hl" id="hLrn">El know-how de ROQUÉ,<br>en cada KPI.</div>
+  <div class="hl" id="hLrn">Aprendizaje<small>Know-how de ROQUÉ.</small></div>
   <div class="panel" id="pLrn" style="top:430px"><div class="ptitle">Buenas prácticas <small>· VTR (≥50%)</small></div>
     <div class="lrn" id="l0"><b>Qué mide</b><span>Cuánta gente vio medio video.</span></div>
     <div class="lrn" id="l1"><b>Cómo se lee</b><span>Más de 30% es bueno.</span></div>
@@ -158,8 +158,8 @@
     <div class="badge" id="lBadge"><i></i>Know-how de <strong>ROQUÉ Research Solutions</strong></div></div>
 
   <div class="eb" id="eIa">Inteligencia artificial</div>
-  <div class="hl" id="hIa">Insights y<br>analítica aplicada.</div>
-  <div class="hl" id="hIa2">Y te guía<br>paso a paso.</div>
+  <div class="hl" id="hIa">IA<small>Insights y analítica.</small></div>
+  <div class="hl" id="hIa2">IA<small>Te guía paso a paso.</small></div>
   <div class="panel" id="pIa" style="top:360px">
     <div class="ubub" id="ubub">¿Qué movió la aguja en Refrigeración?</div>
     <div class="abox" id="abox"><div class="who">✦ Copiloto</div><div id="ans"></div></div>
@@ -171,21 +171,21 @@
   <div class="touch" id="touch2"></div>
 
   <div class="eb" id="eCmp">Competencia</div>
-  <div class="hl" id="hCmp">Conocé a fondo a<br>tu competencia.<small>Qué les funciona. Qué no. Qué hacer.</small></div>
-  <div class="panel" id="pCmp" style="top:520px">
+  <div class="hl" id="hCmp">Competencia<small>Qué les funciona. Qué no.</small></div>
+  <div class="panel" id="pCmp" style="top:430px">
     <div class="cmp" id="c0"><div class="cn"><i style="background:#7c3aed"></i>Vanté</div><p><b style="color:var(--up)">✓ Le funciona:</b> Reels de producto.</p><p><b style="color:var(--dn)">✗ No le funciona:</b> sorteos.</p></div>
     <div class="cmp" id="c1"><div class="cn"><i style="background:#ea580c"></i>Kova</div><p><b style="color:var(--up)">✓ Le funciona:</b> 18 avisos activos.</p><p><b style="color:var(--dn)">✗ No le funciona:</b> su marca en búsquedas.</p></div>
     <div class="todo" id="cTodo"><small>Qué hacer</small>Sumá Reels de producto.</div></div>
 
   <div class="eb" id="eAl">Alertas</div>
-  <div class="hl" id="hAl">Siempre informado<br>sobre lo importante.</div>
-  <div class="al" id="a0" style="top:520px"><i style="background:var(--dn)">!</i><b>Meta gastó 66% del mes en 3 días.</b><span>Plan de Medios · urgente</span></div>
-  <div class="al" id="a1" style="top:730px"><i style="background:var(--up)">▲</i><b>Tu share of search subió 2,1 pp.</b><span>SEO y búsquedas</span></div>
-  <div class="al" id="a2" style="top:940px"><i style="background:var(--navy)">●</i><b>Vanté lanzó 4 avisos.</b><span>Pauta de la competencia</span></div>
+  <div class="hl" id="hAl">Alertas<small>Solo lo importante.</small></div>
+  <div class="al" id="a0" style="top:430px"><i style="background:var(--dn)">!</i><b>Meta gastó 66% del mes en 3 días.</b><span>Plan de Medios · urgente</span></div>
+  <div class="al" id="a1" style="top:640px"><i style="background:var(--up)">▲</i><b>Tu share of search subió 2,1 pp.</b><span>SEO y búsquedas</span></div>
+  <div class="al" id="a2" style="top:850px"><i style="background:var(--navy)">●</i><b>Vanté lanzó 4 avisos.</b><span>Pauta de la competencia</span></div>
 
   <!-- cierre -->
   <div class="navy" id="navy"></div>
-  <div class="cl" id="cl0" style="top:330px">Todo tu marketing,<br>conectado al negocio.</div>
+  <div class="cl" id="cl0" style="top:330px">Marketing<br>conectado.</div>
   <div class="cl" id="cl1" style="top:640px;color:var(--cyan)">Estrategia en acción.</div>
   <div class="cl" id="cl2" style="top:800px">Impacto en el negocio.</div>
   <div id="endRing"><i></i></div>
