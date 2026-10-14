@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>BIP · ¿Qué movió la aguja?</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  :root{
+    --night:#070b12; --ink:#16202e; --muted:#5b6778; --paper:#ffffff; --mist:#f1f6fc;
+    --navy:#0a4da0; --navy-deep:#073c80; --cyan:#12a6f4; --up:#16a34a; --dn:#dc2626; --mid:#d97706;
+  }
+  html,body{margin:0;background:#000}
+  #stage{position:relative;width:1080px;height:1350px;overflow:hidden;background:var(--night);font-family:'Inter',sans-serif;color:#fff}
+  .layer{position:absolute;inset:0}
+  .bg-light{background:var(--mist);opacity:0}
+  /* titulares */
+  .head{position:absolute;left:84px;right:84px;font:600 92px/1.04 'Poppins',sans-serif;letter-spacing:-.01em}
+  .q{position:absolute;left:84px;right:84px;top:520px;font:600 104px/1.02 'Poppins',sans-serif;letter-spacing:-.015em}
+  .scrimTop{position:absolute;left:0;right:0;top:0;height:420px;background:linear-gradient(180deg,rgba(7,11,18,.96) 55%,rgba(7,11,18,0))}
+  .logoSmall{position:absolute;left:84px;bottom:96px;width:260px}
+  /* tarjetas de ruido: piezas de interfaz que parecen reales */
+  .card{position:absolute;background:#fff;color:var(--ink);border-radius:18px;box-shadow:0 18px 40px rgba(0,0,0,.45);padding:20px 24px;transform-origin:center}
+  .card .src{font:600 18px 'Inter';color:var(--muted);letter-spacing:.02em;display:flex;align-items:center;gap:10px}
+  .card .src i{width:12px;height:12px;border-radius:50%;display:inline-block}
+  .card .big{font:700 52px/1.05 'Inter';margin-top:6px;font-variant-numeric:tabular-nums}
+  .card .lbl{font:500 20px 'Inter';color:var(--muted);margin-top:2px}
+  .card .chg{font:700 24px 'Inter';margin-top:6px}
+  .file{position:absolute;background:#e9eef5;color:var(--ink);border-radius:12px;padding:14px 20px;font:600 22px 'Inter';display:flex;gap:12px;align-items:center;box-shadow:0 12px 30px rgba(0,0,0,.4)}
+  .file b{font:700 15px 'Inter';color:#fff;padding:4px 8px;border-radius:6px}
+  .toast{position:absolute;background:#1b2433;color:#e9eef5;border-radius:16px;padding:16px 22px;font:500 22px 'Inter';display:flex;gap:14px;align-items:center;box-shadow:0 14px 34px rgba(0,0,0,.5);border:1px solid #2b3648}
+  .toast i{width:14px;height:14px;border-radius:50%;flex:none}
+  /* botón BIP (triángulo del logo) */
+  .tri{position:absolute;width:132px;height:132px;left:474px;top:1010px}
+  .tri svg{width:100%;height:100%;overflow:visible}
+  .halo{position:absolute;width:260px;height:260px;left:410px;top:946px;border-radius:50%;background:radial-gradient(circle,rgba(7,11,18,.95) 40%,rgba(7,11,18,0) 70%)}
+  .pulse{position:absolute;left:540px;top:1076px;width:0;height:0}
+  .pulse i{position:absolute;left:-80px;top:-80px;width:160px;height:160px;border-radius:50%;border:3px solid var(--cyan)}
+  .touch{position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.28);border:3px solid rgba(255,255,255,.75);left:0;top:0}
+  .ring{position:absolute;left:540px;top:1076px;width:0;height:0}
+  .ring i{position:absolute;border-radius:50%;border:10px solid var(--cyan)}
+  .onoma{position:absolute;left:640px;top:1010px;font:600 96px 'Poppins';color:var(--cyan);letter-spacing:-.01em}
+  .fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="layer bg-light" id="bgLight"></div>
+  <div class="layer" id="noise"></div>
+  <div class="scrimTop" id="scrim"></div>
+  <div class="head" id="h1" style="top:120px">Hacemos mucho.</div>
+  <div class="head" id="h2" style="top:120px">Medimos mucho.</div>
+  <div class="halo" id="halo"></div>
+  <div class="pulse" id="pulse"><i></i></div>
+  <div class="tri" id="tri"><svg viewBox="0 0 100 100"><path d="M24 14 Q18 10 18 18 L18 82 Q18 90 24 86 L84 54 Q90 50 84 46 Z" fill="#12a6f4"/></svg></div>
+  <div class="ring" id="ring"><i></i></div>
+  <div class="onoma" id="onoma">bip.</div>
+  <div class="touch" id="touch"></div>
+  <div class="q" id="q">¿Qué movió<br>la aguja?</div>
+  <img class="logoSmall" id="logoSmall" src="logo-blanco.png" alt="">
+  <div class="fade" id="fade"></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
