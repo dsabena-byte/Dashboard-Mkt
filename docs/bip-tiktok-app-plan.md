@@ -27,6 +27,20 @@
 > **Pendiente de wiring:** API route de selección de advertiser + picker en Conexiones +
 > sección TikTok en `/performance` + diag. Test recién con App ID/Secret + Sandbox Ad Account.
 
+## Re-creación de apps tras aprobar el Developer Profile (14-oct-2026) — verificado en doc oficial
+
+Fuentes (vía Perplexity; business-api.tiktok.com sigue bloqueado desde el sandbox): API Reference v1.3 y v2.0
+(`/portal/docs/api-reference/v1.3`), "Create a developer app" (`/portal/docs?id=1738855242728450`).
+- `/report/integrated/get/` → **Reporting > Consolidated Report** (v1.3 y v2.0). El panel derecho del formulario
+  muestra solo PARTE de las rutas (en v2.0 lista solo `/report/subscription/*`) y el buscador no la encuentra:
+  NO es señal de que falte. "Ad insight report" (`ad_benchmark`, `video_performance`) NO se usa → no tildar.
+- `/oauth2/advertiser/get/` y `/advertiser/info/` → **Ad Account Management > Ad Account Information**.
+- **App description** con el formato que pide TikTok: **Intended Uses** (funciones + por qué cada permiso) +
+  **Developer App Access Controls** (uso interno o compartido con cuentas externas).
+- Revisión 2–3 días hábiles; si rechazan se edita y reenvía. La regla de "video de demo por scope" es de
+  TikTok for Developers (developers.tiktok.com), NO aparece en el flujo de Marketing API.
+- Desde 20-mar-2026: **Accounts API Access Application Form ANTES** de enviar una app con "TikTok Accounts".
+
 ## Lo que confirmé de la doc oficial (lo que evita iterar)
 
 1. **Sandbox Mode = la clave anti-iteración.** Las apps nuevas arrancan en **Sandbox**:
