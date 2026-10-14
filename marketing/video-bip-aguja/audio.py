@@ -43,6 +43,14 @@ def main(src, dst):
             n = int((dur - e['t']) * SR); t = np.arange(n) / SR; g = np.minimum(t / 1.5, 1) * .05
             pad = sum(np.sin(2 * np.pi * f * t) for f in (261.6, 329.6, 392.0, 523.3))
             add(buf, e['t'], pad * g)
+        elif e['type'] == 'tick':
+            add(buf, e['t'], tone(e.get('f', 1200), .09, d=.025), .16)
+        elif e['type'] == 'click':
+            add(buf, e['t'], tone(2400, .05, d=.006) + .5 * tone(900, .05, d=.012), .3)
+        elif e['type'] == 'chime':
+            add(buf, e['t'], verb(sum(tone(f, .9, d=.35) for f in (523.3, 659.3, 784.0))), .12)
+        elif e['type'] == 'final':
+            add(buf, e['t'] + .05, verb(sum(tone(f, 2.6, d=1.1, h=((2, .15),)) for f in (261.6, 392.0, 523.3, 659.3)), .25), .1)
     buf = buf[:int(dur * SR)]
     fade = int(.25 * SR); buf[-fade:] *= np.linspace(1, 0, fade)
     buf = buf / max(1e-9, np.max(np.abs(buf))) * .89
