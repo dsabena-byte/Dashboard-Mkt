@@ -4,7 +4,7 @@
    window.__AUDIO lista los eventos de sonido para que render.mjs arme la pista.
    Datos ilustrativos: ninguna cifra es de un cliente real.
    ========================================================================= */
-const DUR = 51.5;
+const DUR = 65.1;
 const T = { n2: 3.2, n3: 5.4, tri: 2.6, touch: 7.05, bip: 7.6, light: 8.0 };
 const P = { // [inicio, fin] de cada parte
   concept: [8.4, 13.6], pil: [13.6, 20.0], med: [20.0, 24.4], lrn: [24.4, 29.0],
@@ -77,12 +77,14 @@ const chips = [];
   });
   $('clinks').innerHTML = paths;
 })();
-const PILS = [['01', 'Orden', 'Tu estrategia, de punta a punta.'], ['02', 'Control', 'Todo, en un solo lugar.'],
-  ['03', 'Eficiencia', 'Evidencia, no intuición.'], ['04', 'Expertise', 'Expertise world-class.'],
-  ['05', 'Impacto', 'El impacto económico de cada decisión.']];
-const PIL_T = PILS.map((_, i) => 14.0 + i * .95);
-$('pils').innerHTML = PILS.map((p, i) => `<div class="pil" id="pil${i}" style="top:${190 + i * 210}px"><b>${p[0]}</b><span>${p[1]}</span></div>`).join('');
-PIL_T.forEach(t => AUDIO.push({ t, type: 'tick', f: 1175 }));
+const PILS = [['01', 'Orden', 'Tu estrategia, de punta a punta.<br>Cada métrica y acción, conectada al objetivo.'],
+  ['02', 'Control', 'Todo tu ecosistema en un solo lugar.<br>Visibilidad total para recalibrar a tiempo.'],
+  ['03', 'Eficiencia', 'Optimizá con evidencia, no con intuición.<br>Hacés más, con más asertividad.'],
+  ['04', 'Expertise', 'Expertise world class de tu lado.<br>Las mejores prácticas, dentro de la plataforma.'],
+  ['05', 'Impacto', 'Medí el impacto económico de cada decisión.<br>Sabé dónde te conviene invertir.']];
+const PIL_T = PILS.map((_, i) => 13.6 + i * 2.2); // uno por vez, 2,2 s cada uno
+$('pils').innerHTML = PILS.map((p, i) => `<div class="pil" id="pil${i}"><b>${p[0]}</b><span>${p[1]}</span><em>${p[2]}</em></div>`).join('');
+PIL_T.forEach(t => AUDIO.push({ t: t + .05, type: 'tick', f: 1175, keep: true }));
 
 /* ---------- parte 3 ---------- */
 const SEGS = [['TOM', '31,5', '31,4'], ['SOM', '58,7', '58,6'], ['Intención de Compra', '34,2', '34,1'], ['Poder de Marca', '15,6', '15,5']];
@@ -104,6 +106,18 @@ AUDIO.push({ t: PRESS, type: 'click' });
 const AL_T = [40.7, 41.4, 42.1];
 AL_T.forEach(t => AUDIO.push({ t, type: 'tick', f: 1568 }));
 AUDIO.push({ t: P.end + .4, type: 'chime' }, { t: P.bip2, type: 'bip' }, { t: P.bip2, type: 'final' });
+
+/* REMAP: las capas se armaron en una línea de tiempo vieja; acá se reubican sin reescribir cada tiempo.
+   [inicio viejo, fin viejo, desplazamiento] → orden nuevo: Medición, Aprendizaje, IA, Alertas, Competencia, cierre. */
+const REMAP = [[20, 35.4, 13.6], [40, 43.84, 9.0], [35.4, 40, 17.6], [44, 51.5, 13.6]];
+const oldToNew = o => { const m = REMAP.find(([a, b]) => o >= a && o < b); return m ? o + m[2] : o; };
+function newToOld(n) {
+  for (const [a, b, d] of REMAP) if (n >= a + d && n < b + d) return n - d;
+  return n >= 51.5 + 13.6 ? 51.5 : 0; // fuera de las capas: tiempo neutro (nada de la parte 3 visible)
+}
+for (const e of AUDIO) if (e.t >= 20 && !e.keep) e.t = oldToNew(e.t);
+[25.0, 25.8, 26.6, 27.4].forEach(t => AUDIO.push({ t, type: 'tick', f: 880 }));
+[30.2, 30.8, 31.4, 32.0].forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
 
 function seek(t) {
   /* ===== parte 1: ruido ===== */
@@ -132,7 +146,7 @@ function seek(t) {
   if (t >= T.touch && t < T.bip + .2) {
     const m = eio(S(t, T.touch, T.touch + .4));
     tc.style.opacity = t < T.bip ? eo(S(t, T.touch, T.touch + .15)) : 1 - S(t, T.bip, T.bip + .2);
-    tc.style.transform = `translate(${lerp(860, 480, m)}px,${lerp(1300, 1016, m)}px) scale(${press < 1 ? .82 : 1})`;
+    tc.style.transform = `translate(${lerp(860, 480, m)}px,${lerp(1300, 616, m)}px) scale(${press < 1 ? .82 : 1})`;
   } else tc.style.opacity = 0;
   const rp = S(t, T.bip, T.bip + .55), ri = $('ring').firstElementChild, R = lerp(70, 1900, eo(rp));
   ri.style.width = ri.style.height = 2 * R + 'px'; ri.style.left = ri.style.top = -R + 'px';
@@ -158,9 +172,29 @@ function seek(t) {
   $('impact').style.opacity = im; $('impact').style.transform = `scale(${lerp(.9, 1, im)})`;
   $('impact').style.boxShadow = t >= 12 ? `0 0 ${40 * eo(S(t, 12, 12.4))}px rgba(18,166,244,.6)` : 'none';
 
-  const ap = win(t, P.pil);
-  show('ePil', ap, 10);
-  PILS.forEach((_, i) => show('pil' + i, Math.min(eo(S(t, PIL_T[i], PIL_T[i] + .35)), 1 - S(t, P.pil[1] - .3, P.pil[1])), 30));
+  const ap = win(t, [13.6, 24.6]);
+  show('ePil', ap, 10); $('dots').style.opacity = ap;
+  PILS.forEach((_, i) => show('pil' + i, win(t, [PIL_T[i], PIL_T[i] + 2.2], .3, .25), 30));
+  $('dots').querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', t >= PIL_T[i]));
+
+  /* la plataforma */
+  const apl = win(t, [24.6, 29.6]);
+  show('ePlat', apl, 10); show('hPlat', apl); $('ilus2').style.opacity = apl;
+  [25.0, 25.8, 26.6, 27.4].forEach((s, i) => {
+    const e = $('s' + i), a = eo(S(t, s, s + .45)), out = 1 - S(t, 29.3, 29.6);
+    const later = [25.0, 25.8, 26.6, 27.4].filter(x => x > s && t >= x).length; // pantallas que ya se le pusieron encima
+    e.style.opacity = a * out; e.style.zIndex = 5 + i;
+    e.style.top = (470 + i * 120) + 'px';
+    e.style.transform = `translateY(${(1 - a) * 160}px) scale(${1 - later * .03})`;
+    e.style.filter = `brightness(${1 - later * .06})`;
+  });
+
+  /* las 4 capas de valor */
+  const ak4 = win(t, [29.6, 33.6]);
+  show('hCapas', ak4);
+  [30.2, 30.8, 31.4, 32.0].forEach((s, i) => show('k' + i, Math.min(eo(S(t, s, s + .3)), 1 - S(t, 33.3, 33.6)), 16));
+
+  t = newToOld(t); // las capas y el cierre usan su línea de tiempo original, reubicada (ver REMAP)
 
   /* ===== parte 3: capas ===== */
   const lightUI = t >= P.med[0] && t < P.al[0];
