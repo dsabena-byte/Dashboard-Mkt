@@ -41,6 +41,14 @@ Fuentes (vía Perplexity; business-api.tiktok.com sigue bloqueado desde el sandb
   TikTok for Developers (developers.tiktok.com), NO aparece en el flujo de Marketing API.
 - Desde 20-mar-2026: **Accounts API Access Application Form ANTES** de enviar una app con "TikTok Accounts".
 
+### BIP Organic — nodos del árbol "TikTok Accounts" (API Reference v1.3, verificado 14-oct vía Perplexity)
+- `/business/get/` (perfil + insights de cuenta) → **TikTok Accounts > Account User** (campos: user.info.basic/username/stats,
+  user.account.type, user.insights según el campo).
+- `/business/video/list/` (videos + insights) → **TikTok Accounts > Get Account Media**.
+- `/business/comment/list/` + `/business/comment/reply/list/` → **TikTok Accounts > Account Comment > Get Business Comment**.
+- NO tildar: Account Comment > **Manage Account Comment** (crear/responder/ocultar/borrar), Account Post Content (> Video Publish…),
+  Auth Code Management (autorización de posts para ads), Mentions, URL properties, webhooks.
+
 ## Lo que confirmé de la doc oficial (lo que evita iterar)
 
 1. **Sandbox Mode = la clave anti-iteración.** Las apps nuevas arrancan en **Sandbox**:
