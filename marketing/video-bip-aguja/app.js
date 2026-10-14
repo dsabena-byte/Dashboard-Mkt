@@ -4,7 +4,7 @@
    window.__AUDIO lista los eventos de sonido para que render.mjs arme la pista.
    Datos ilustrativos: ninguna cifra es de un cliente real.
    ========================================================================= */
-const DUR = 65.1;
+const DUR = 69.5;
 const T = { n2: 3.2, n3: 5.4, tri: 2.6, touch: 7.05, bip: 7.6, light: 8.0 };
 const P = { // [inicio, fin] de cada parte
   concept: [8.4, 13.6], pil: [13.6, 20.0], med: [20.0, 24.4], lrn: [24.4, 29.0],
@@ -102,22 +102,34 @@ function answerHtml(n) {
 const STEP_T = [32.6, 33.1, 33.6], PRESS = 34.4;
 STEP_T.forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
 AUDIO.push({ t: PRESS, type: 'click' });
-[36.6, 37.4, 38.2].forEach(t => AUDIO.push({ t, type: 'tick', f: 880 }));
 const AL_T = [40.7, 41.4, 42.1];
 AL_T.forEach(t => AUDIO.push({ t, type: 'tick', f: 1568 }));
 AUDIO.push({ t: P.end + .4, type: 'chime' }, { t: P.bip2, type: 'bip' }, { t: P.bip2, type: 'final' });
 
 /* REMAP: las capas se armaron en una línea de tiempo vieja; acá se reubican sin reescribir cada tiempo.
    [inicio viejo, fin viejo, desplazamiento] → orden nuevo: Medición, Aprendizaje, IA, Alertas, Competencia, cierre. */
-const REMAP = [[20, 35.4, 13.6], [40, 43.84, 9.0], [35.4, 40, 17.6], [44, 51.5, 13.6]];
+const REMAP = [[20, 35.4, 13.6], [40, 43.84, 9.0], [44, 51.5, 18.0]];
 const oldToNew = o => { const m = REMAP.find(([a, b]) => o >= a && o < b); return m ? o + m[2] : o; };
 function newToOld(n) {
   for (const [a, b, d] of REMAP) if (n >= a + d && n < b + d) return n - d;
-  return n >= 51.5 + 13.6 ? 51.5 : 0; // fuera de las capas: tiempo neutro (nada de la parte 3 visible)
+  return n >= 51.5 + 18.0 ? 51.5 : 0; // fuera de las capas: tiempo neutro (nada de la parte 3 visible)
 }
 for (const e of AUDIO) if (e.t >= 20 && !e.keep) e.t = oldToNew(e.t);
 [25.0, 25.8, 26.6, 27.4].forEach(t => AUDIO.push({ t, type: 'tick', f: 880 }));
 [30.2, 30.8, 31.4, 32.0].forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
+
+/* ---------- competencia (datos ilustrativos, marcas ficticias) ---------- */
+const CMP_W = [53.0, 62.0];
+const CMP_P = [['cA', 53.4, 55.6], ['cB', 55.6, 57.6], ['cC', 57.6, 59.6], ['cD', 59.6, 62.0]];
+const BARS = {
+  barsA: [['Vanté', 100, '18 avisos', 'Intensidad 100'], ['Kova', 72, '11 avisos', ''], ['Tu marca', 58, '9 avisos', '', 1], ['Areté', 41, '5 avisos', '']],
+  barsB: [['Vanté', 100, '3,4%', 'Reels de producto'], ['Tu marca', 62, '2,1%', 'Reels', 1], ['Kova', 35, '1,2%', 'Carruseles'], ['Areté', 18, '0,6%', 'Sorteos']],
+  barsC: [['Vanté', 100, '34%', ''], ['Tu marca', 79, '27%', '', 1], ['Kova', 65, '22%', ''], ['Areté', 50, '17%', '']],
+};
+for (const [id, rows] of Object.entries(BARS))
+  $(id).innerHTML = rows.map(([n, w, v, sub, me]) => `<div class="br${me ? ' me' : ''}"><span>${n}</span><div class="tr"><i data-w="${w}"></i></div><em>${v}</em>${sub ? `<small>${sub}</small>` : ''}</div>`).join('');
+CMP_P.forEach(([, s]) => AUDIO.push({ t: s + .3, type: 'tick', f: 988 }));
+[59.9, 60.4, 60.9].forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
 
 function seek(t) {
   /* ===== parte 1: ruido ===== */
@@ -194,6 +206,16 @@ function seek(t) {
   show('hCapas', ak4);
   [30.2, 30.8, 31.4, 32.0].forEach((s, i) => show('k' + i, Math.min(eo(S(t, s, s + .3)), 1 - S(t, 33.3, 33.6)), 16));
 
+  /* competencia (línea de tiempo nueva): pauta → redes → búsquedas → qué hacer */
+  const ak = win(t, CMP_W);
+  show('eCmp', ak, 10); show('hCmp', ak); $('ilus2').style.opacity = Math.max(apl, ak);
+  CMP_P.forEach(([id, s, e]) => {
+    show(id, win(t, [s, e], .3, .25), 30);
+    const grow = eio(S(t, s + .3, s + 1.2));
+    $(id).querySelectorAll('.tr i').forEach(b => { b.style.width = (+b.dataset.w * grow).toFixed(1) + '%'; });
+  });
+  [59.9, 60.4, 60.9].forEach((s, i) => show('d' + i, eo(S(t, s, s + .3)), 12));
+
   t = newToOld(t); // las capas y el cierre usan su línea de tiempo original, reubicada (ver REMAP)
 
   /* ===== parte 3: capas ===== */
@@ -234,9 +256,6 @@ function seek(t) {
     t2.style.transform = `translate(${lerp(900, bx, m)}px,${lerp(1330, by, m)}px) scale(${t >= PRESS - .05 && t < PRESS + .12 ? .82 : 1})`;
   } else t2.style.opacity = 0;
 
-  const ak = win(t, P.cmp);
-  show('eCmp', ak, 10); show('hCmp', ak); show('pCmp', ak, 40);
-  show('c0', eo(S(t, 36.4, 36.7)), 12); show('c1', eo(S(t, 37.2, 37.5)), 12); show('cTodo', eo(S(t, 38.0, 38.3)), 12);
 
   const aa = win(t, P.al);
   show('eAl', aa, 10); show('hAl', aa);

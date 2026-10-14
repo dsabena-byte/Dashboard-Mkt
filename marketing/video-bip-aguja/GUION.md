@@ -1,4 +1,4 @@
-# BIP · Video para WhatsApp — guion v3 (≈65 s, 4:5, sin locución)
+# BIP · Video para WhatsApp — guion v3 (≈70 s, 4:5, sin locución)
 
 Reglas del user: conceptos, no oraciones largas; explicar cada punto de a uno; know-how "world class / best practices del mercado" (NO "de ROQUÉ"; ROQUÉ solo en "Respaldado por").
 
@@ -14,5 +14,5 @@ Reglas del user: conceptos, no oraciones largas; explicar cada punto de a uno; k
 | 38–42,6 s | Capa 2 | Aprendizaje: know-how world class, las best practices del mercado en cada KPI |
 | 42,6–49 s | Capa 3 | Inteligencia artificial: encuentra las oportunidades → y te guía paso a paso |
 | 49–52,8 s | Capa 4 | Alertas: te avisa solo lo importante, a tiempo |
-| 53–57,6 s | Y además | Competencia: qué les funciona, qué no y cómo superarlos |
-| 57,6–65 s | Cierre | Marketing conectado. Estrategia en acción. Impacto en el negocio. → BIP (sonido) → logo → Probá BIP 15 días · Link en el mensaje ↓ · Respaldado por ROQUÉ Research Solutions |
+| 53–62 s | Y además | Competencia: qué les funciona, qué no y cómo superarlos → Su pauta (avisos activos, intensidad, aviso que más sostiene) → Sus redes (engagement, mejor formato, lo que no les funciona) → Búsquedas (share of search, visibilidad en IA) → Qué hacer para ser mejor (3 acciones) |
+| 62–69,5 s | Cierre | Marketing conectado. Estrategia en acción. Impacto en el negocio. → BIP (sonido) → logo → Probá BIP 15 días · Link en el mensaje ↓ · Respaldado por ROQUÉ Research Solutions |
