@@ -21,6 +21,10 @@ def verb(x, mix=.18):
 def bip():  # B · "que resuelve": dos notas que suben (bi-ip)
     return verb(np.concatenate([tone(1319, .07, d=.03), tone(1976, .30, d=.08)]))
 
+def pluck(f, dur):  # marimba: fundamental + parcial alto que se apaga rápido
+    n = int(dur * SR); t = np.arange(n) / SR
+    return (np.sin(2 * np.pi * f * t) * np.exp(-t * 9) + .35 * np.sin(2 * np.pi * f * 3.9 * t) * np.exp(-t * 30)) * np.minimum(t / .002, 1)
+
 def add(buf, t, x, v=1.0):
     i = int(t * SR); e = min(len(buf), i + len(x))
     if i < len(buf): buf[i:e] += x[:e - i] * v
@@ -59,23 +63,17 @@ def main(src, dst):
                     c = rng.standard_normal(int(.12 * SR)) * np.exp(-np.arange(int(.12 * SR)) / SR * 30)
                     add(buf, tb, c, .07)
                 tb += spb; k += 1
-        elif e['type'] == 'whoosh':  # transición suave: un brillo de campanitas que se abre (reemplaza el barrido de ruido)
-            n = int(.9 * SR); tt = np.arange(n) / SR
-            env_ = np.minimum(tt / .18, 1) * np.exp(-np.maximum(tt - .18, 0) / .3)
-            notes = (783.99, 1174.66, 1567.98)  # Sol, Re, Sol: quinta abierta, sin choque con los acordes
-            s = sum(np.sin(2 * np.pi * f * tt + k) * (.6 ** k) for k, f in enumerate(notes))
-            air = np.random.default_rng(int(e['t'] * 100)).standard_normal(n); y = np.zeros(n)
-            for i in range(1, n): y[i] = y[i - 1] + .03 * (air[i] - y[i - 1])  # aire muy filtrado, apenas
-            add(buf, e['t'] - .18, verb(s * env_ * .09 + y * env_ * .5, .3))
+        elif e['type'] == 'whoosh':  # transición: dos notas de marimba que suben (sin ruido ni barrido)
+            for k, (dt, f) in enumerate(((0, 783.99), (.09, 1174.66))):
+                add(buf, e['t'] - .05 + dt, verb(pluck(f, .35)), .12 - k * .02)
         elif e['type'] == 'hit':  # golpe grave + click
             n = int(.5 * SR); tt = np.arange(n) / SR
             boom = np.sin(2 * np.pi * (38 * tt + 90 * (1 - np.exp(-tt * 18)) / 18)) * np.exp(-tt * 6)
             add(buf, e['t'], boom, .45); add(buf, e['t'], tone(3200, .02, d=.004), .2)
-        elif e['type'] == 'riser':  # subida antes de un cambio
-            d = e.get('d', 1.0); n = int(d * SR); tt = np.arange(n) / SR
-            f = 200 + 1400 * (tt / d) ** 2; s = np.sin(2 * np.pi * np.cumsum(f) / SR)
-            nz = np.random.default_rng(9).standard_normal(n) * .3
-            add(buf, e['t'], (s * .6 + nz) * (tt / d) ** 2, .12)
+        elif e['type'] == 'riser':  # antes de un cambio: arpegio de marimba que sube y se acelera (sin barrido)
+            d = e.get('d', 1.0); notes = (261.63, 329.63, 392.0, 523.25, 659.25, 783.99, 1046.5)
+            for k, f in enumerate(notes):
+                add(buf, e['t'] + d * (1 - (1 - k / len(notes)) ** 1.6), verb(pluck(f, .4)), .07 + .015 * k)
         elif e['type'] == 'tick':
             add(buf, e['t'], tone(e.get('f', 1200), .09, d=.025), .16)
         elif e['type'] == 'click':
