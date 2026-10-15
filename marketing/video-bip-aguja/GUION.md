@@ -1,4 +1,6 @@
-# BIP · Video para WhatsApp — guion v3 (≈70 s, 4:5, sin locución)
+# BIP · Video para WhatsApp — guion v4 (≈79 s, 4:5, sin locución)
+
+v4 (15-oct): abre con BIP + sonido sobre navy (= cierre); 5 puntos con visual animado c/u; número gigante antes de cada capa; cierre con frases grandes de a una; música sintetizada (pulso 104 bpm, acordes, whoosh, golpes, subidas).
 
 Reglas del user: conceptos, no oraciones largas; explicar cada punto de a uno; know-how "world class / best practices del mercado" (NO "de ROQUÉ"; ROQUÉ solo en "Respaldado por").
 

@@ -53,11 +53,11 @@
   #clinks{position:absolute;left:0;top:0;width:1080px;height:1350px;overflow:visible}
   #clinks path{fill:none;stroke:var(--cyan);stroke-width:3.5}
   /* parte 2: los 5 puntos */
-  .pil{position:absolute;left:84px;right:84px;top:300px;opacity:0}
+  .pil{position:absolute;left:84px;right:84px;top:230px;opacity:0}
   .pil b{display:block;font:800 200px/1 'Poppins';color:var(--cyan)}
   .pil span{display:block;font:700 110px/1.05 'Poppins';color:var(--ink);margin-top:20px}
   .pil em{display:block;font:500 44px/1.3 'Inter';color:var(--muted);font-style:normal;margin-top:30px}
-  .dots{position:absolute;left:84px;top:1180px;display:flex;gap:14px;opacity:0}
+  .dots{position:absolute;left:84px;top:1250px;display:flex;gap:14px;opacity:0}
   .dots i{width:46px;height:8px;border-radius:99px;background:#d6deea}
   .dots i.on{background:var(--cyan)}
   /* la plataforma */
@@ -127,7 +127,33 @@
   .al span{font:500 24px 'Inter';color:var(--muted)}
   /* cierre */
   .navy{position:absolute;inset:0;background:radial-gradient(circle at 50% 38%,#0a4da0 0%,#073c80 60%);opacity:0}
-  .cl{position:absolute;left:84px;right:84px;text-align:center;font:600 70px/1.1 'Poppins';color:#fff;opacity:0}
+  .cl{position:absolute;left:60px;right:60px;top:520px;text-align:center;font:700 112px/1.04 'Poppins';color:#fff;opacity:0;transform-origin:center}
+  /* visuales de los 5 puntos */
+  .pv{position:relative;height:330px;margin-top:44px}
+  .pv .sq{position:absolute;width:200px;height:64px;display:grid;place-items:center;font:600 24px 'Inter';color:var(--ink);box-sizing:border-box;border-radius:14px;background:#fff;border:2px solid #d6deea;box-shadow:0 8px 20px rgba(10,40,90,.08)}
+  .pv .sq.on{border-color:var(--cyan);background:#eaf6fe}
+  .pv .tile{position:absolute;width:290px;height:140px;border-radius:18px;background:#fff;box-shadow:0 10px 24px rgba(10,40,90,.1);padding:18px 22px;box-sizing:border-box}
+  .pv .tile b{display:block;font:700 44px 'Inter';color:var(--ink)} .pv .tile span{font:500 20px 'Inter';color:var(--muted)}
+  .pv .tile i{position:absolute;right:20px;top:22px;width:16px;height:16px;border-radius:50%;background:#cbd5e1}
+  .pv .bar{position:absolute;bottom:20px;width:70px;border-radius:12px 12px 0 0;background:#c8d5e6}
+  .pv .bar.hi{background:var(--cyan)}
+  .pv .up{position:absolute;right:0;top:10px;font:800 64px 'Poppins';color:var(--up)}
+  .pv .chk{display:flex;align-items:center;gap:22px;font:600 36px 'Inter';color:var(--ink);margin-bottom:26px}
+  .pv .chk i{flex:none;width:56px;height:56px;border-radius:50%;border:4px solid #cbd5e1;box-sizing:border-box;display:grid;place-items:center;font:800 28px 'Inter';color:#fff;font-style:normal}
+  .pv .chk.on i{background:var(--up);border-color:var(--up)}
+  .pv .cnt{font:800 150px/1 'Poppins';color:var(--navy);letter-spacing:-.02em}
+  .pv .cnt small{display:block;font:500 26px 'Inter';color:var(--muted);letter-spacing:0;margin-top:14px}
+  /* tarjetas de número de cada capa */
+  .capcard{position:absolute;left:84px;right:84px;top:300px;opacity:0}
+  .capcard em{display:block;font:600 26px 'Inter';letter-spacing:.14em;text-transform:uppercase;color:var(--navy);font-style:normal}
+  .capcard b{display:block;font:800 330px/1 'Poppins';color:var(--cyan);margin-top:10px;transform-origin:left bottom}
+  .capcard span{display:block;font:700 104px/1.04 'Poppins';color:var(--ink);margin-top:10px}
+  /* intro */
+  #intro{position:absolute;inset:0;background:radial-gradient(circle at 50% 42%,#0a4da0 0%,#073c80 62%)}
+  #iWord{position:absolute;left:50%;top:560px;font:800 230px 'Poppins';color:var(--cyan);letter-spacing:-.02em}
+  #iLogo{position:absolute;left:50%;top:560px;width:680px;opacity:0}
+  #iRing{position:absolute;left:540px;top:560px;width:0;height:0}
+  #iRing i{position:absolute;border-radius:50%;border:8px solid var(--cyan)}
   #word{position:absolute;left:50%;top:430px;font:800 190px 'Poppins';color:var(--cyan);letter-spacing:-.02em;opacity:0}
   #logoBig{position:absolute;left:50%;top:430px;width:600px;opacity:0}
   #endRing{position:absolute;left:540px;top:430px;width:0;height:0}
@@ -183,6 +209,10 @@
 
   <!-- parte 3: las capas -->
   <div class="ilus" id="ilus">Datos ilustrativos</div>
+  <div class="capcard" id="cc0"><em>Capa 1 de 4</em><b>1</b><span>Medición y<br>monitoreo</span></div>
+  <div class="capcard" id="cc1"><em>Capa 2 de 4</em><b>2</b><span>Aprendizaje</span></div>
+  <div class="capcard" id="cc2"><em>Capa 3 de 4</em><b>3</b><span>Inteligencia<br>artificial</span></div>
+  <div class="capcard" id="cc3"><em>Capa 4 de 4</em><b>4</b><span>Alertas</span></div>
   <div class="eb" id="eMed">Capa 1 de 4</div>
   <div class="hl" id="hMed">Medición y<br>monitoreo<small>Cada KPI contra su meta, todos los meses.</small></div>
   <div class="panel" id="pMed" style="top:470px"><div class="ptitle">Seguimiento de Objetivos <small>· real vs meta</small></div><div id="segBody"></div></div>
@@ -229,15 +259,16 @@
 
   <!-- cierre -->
   <div class="navy" id="navy"></div>
-  <div class="cl" id="cl0" style="top:330px">Marketing<br>conectado.</div>
-  <div class="cl" id="cl1" style="top:640px;color:var(--cyan)">Estrategia en acción.</div>
-  <div class="cl" id="cl2" style="top:800px">Impacto en el negocio.</div>
+  <div class="cl" id="cl0">Marketing<br>conectado.</div>
+  <div class="cl" id="cl1" style="color:var(--cyan)">Estrategia<br>en acción.</div>
+  <div class="cl" id="cl2">Impacto en<br>el negocio.</div>
   <div id="endRing"><i></i></div>
   <div id="word">BIP</div>
   <img id="logoBig" src="logo-blanco.png" alt="BIP">
   <div class="end" id="cta"><span>Probá BIP 15 días</span></div>
   <div class="end" id="link">Link en el mensaje ↓</div>
   <div class="end" id="roque">Respaldado por ROQUÉ Research Solutions</div>
+  <div id="intro"><div id="iRing"><i></i></div><div id="iWord">BIP</div><img id="iLogo" src="logo-blanco.png" alt="BIP"></div>
 </div>
 <script src="app.js"></script>
 </body>

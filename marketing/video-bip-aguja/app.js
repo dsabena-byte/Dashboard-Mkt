@@ -4,7 +4,9 @@
    window.__AUDIO lista los eventos de sonido para que render.mjs arme la pista.
    Datos ilustrativos: ninguna cifra es de un cliente real.
    ========================================================================= */
-const DUR = 69.5;
+const INTRO = 1.6; // apertura: BIP + sonido sobre navy, igual que el cierre
+const E = 68.8;    // inicio del cierre (línea de tiempo principal)
+const DUR = INTRO + E + 8.4;
 const T = { n2: 3.2, n3: 5.4, tri: 2.6, touch: 7.05, bip: 7.6, light: 8.0 };
 const P = { // [inicio, fin] de cada parte
   concept: [8.4, 13.6], pil: [13.6, 20.0], med: [20.0, 24.4], lrn: [24.4, 29.0],
@@ -82,9 +84,20 @@ const PILS = [['01', 'Orden', 'Tu estrategia, de punta a punta.<br>Cada métrica
   ['03', 'Eficiencia', 'Optimizá con evidencia, no con intuición.<br>Hacés más, con más asertividad.'],
   ['04', 'Expertise', 'Expertise world class de tu lado.<br>Las mejores prácticas, dentro de la plataforma.'],
   ['05', 'Impacto', 'Medí el impacto económico de cada decisión.<br>Sabé dónde te conviene invertir.']];
-const PIL_T = PILS.map((_, i) => 13.6 + i * 2.2); // uno por vez, 2,2 s cada uno
-$('pils').innerHTML = PILS.map((p, i) => `<div class="pil" id="pil${i}"><b>${p[0]}</b><span>${p[1]}</span><em>${p[2]}</em></div>`).join('');
-PIL_T.forEach(t => AUDIO.push({ t: t + .05, type: 'tick', f: 1175, keep: true }));
+const PIL_T = PILS.map((_, i) => 13.6 + i * 2.6); // uno por vez, 2,6 s cada uno, con su visual
+const PV = [ // visual de cada punto
+  ['Objetivo', 'KPI', 'Meta', 'Plan', 'Acción', 'Canal', 'Inversión', 'Resultado'].map((x, i) => `<div class="sq" id="q${i}">${x}</div>`).join(''),
+  [['TOM', '31,5'], ['Alcance', '26,0M'], ['VTR', '30,6%'], ['Tráfico', '318K'], ['Share', '27%'], ['Inversión', '$81M']]
+    .map(([l, v], i) => `<div class="tile" id="tl${i}" style="left:${(i % 3) * 306}px;top:${Math.floor(i / 3) * 160}px"><b>${v}</b><span>${l}</span><i></i></div>`).join(''),
+  Array.from({ length: 8 }, (_, i) => `<div class="bar${i === 7 ? ' hi' : ''}" id="br${i}" style="left:${i * 96}px"></div>`).join('') + '<div class="up" id="upTag">+32%</div>',
+  ['Best practices del mercado', 'Benchmarks por categoría', 'Una guía en cada KPI'].map((x, i) => `<div class="chk" id="ck${i}"><i>✓</i>${x}</div>`).join(''),
+  '<div class="cnt"><span id="cntV">$ 0</span><small>Impacto económico estimado · dato ilustrativo</small></div>',
+];
+$('pils').innerHTML = PILS.map((p, i) => `<div class="pil" id="pil${i}"><b>${p[0]}</b><span>${p[1]}</span><em>${p[2]}</em><div class="pv">${PV[i]}</div></div>`).join('');
+const SQ = Array.from({ length: 8 }, (_, i) => { const r = rng(31 + i * 7); r();
+  return { fx: r() * 700, fy: r() * 250, fr: (r() - .5) * 40, tx: (i % 4) * 228, ty: 60 + Math.floor(i / 4) * 100 }; });
+PIL_T.forEach(t => AUDIO.push({ t, type: 'whoosh', keep: true }, { t: t + .12, type: 'hit', keep: true }));
+AUDIO.push({ t: 13.6 + 3 * 2.6 + 1.0, type: 'tick', f: 1318, keep: true }, { t: 13.6 + 3 * 2.6 + 1.4, type: 'tick', f: 1397, keep: true }, { t: 13.6 + 3 * 2.6 + 1.8, type: 'tick', f: 1568, keep: true });
 
 /* ---------- parte 3 ---------- */
 const SEGS = [['TOM', '31,5', '31,4'], ['SOM', '58,7', '58,6'], ['Intención de Compra', '34,2', '34,1'], ['Poder de Marca', '15,6', '15,5']];
@@ -104,23 +117,31 @@ STEP_T.forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
 AUDIO.push({ t: PRESS, type: 'click' });
 const AL_T = [40.7, 41.4, 42.1];
 AL_T.forEach(t => AUDIO.push({ t, type: 'tick', f: 1568 }));
-AUDIO.push({ t: P.end + .4, type: 'chime' }, { t: P.bip2, type: 'bip' }, { t: P.bip2, type: 'final' });
 
 /* REMAP: las capas se armaron en una línea de tiempo vieja; acá se reubican sin reescribir cada tiempo.
    [inicio viejo, fin viejo, desplazamiento] → orden nuevo: Medición, Aprendizaje, IA, Alertas, Competencia, cierre. */
-const REMAP = [[20, 35.4, 13.6], [40, 43.84, 9.0], [44, 51.5, 18.0]];
+const REMAP = [[20, 24.4, 16.8], [24.4, 29, 18.0], [29, 35.4, 19.2], [40, 43.84, 15.8]];
 const oldToNew = o => { const m = REMAP.find(([a, b]) => o >= a && o < b); return m ? o + m[2] : o; };
 function newToOld(n) {
   for (const [a, b, d] of REMAP) if (n >= a + d && n < b + d) return n - d;
-  return n >= 51.5 + 18.0 ? 51.5 : 0; // fuera de las capas: tiempo neutro (nada de la parte 3 visible)
+  return 0; // fuera de las capas: tiempo neutro (nada de la parte 3 visible)
 }
 for (const e of AUDIO) if (e.t >= 20 && !e.keep) e.t = oldToNew(e.t);
-[25.0, 25.8, 26.6, 27.4].forEach(t => AUDIO.push({ t, type: 'tick', f: 880 }));
-[30.2, 30.8, 31.4, 32.0].forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
+const SCR_T = [27.0, 27.8, 28.6, 29.4], K4_T = [32.2, 32.8, 33.4, 34.0];
+const CC = [[35.6, 36.8], [41.2, 42.4], [47.0, 48.2], [54.6, 55.8]]; // tarjetas con el número grande de cada capa
+SCR_T.forEach(t => AUDIO.push({ t, type: 'whoosh' }));
+K4_T.forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
+AUDIO.push({ t: 30.6, type: 'riser', d: 1.0 });
+CC.forEach(([s]) => AUDIO.push({ t: s - .05, type: 'whoosh' }, { t: s + .1, type: 'hit' }));
+/* música: pulso desde que aparece BIP hasta el cierre, y el cierre con su propio golpe */
+AUDIO.push({ t: 8.3, type: 'beat', end: E + 4.9, bpm: 104 });
+AUDIO.push({ t: E - 1.0, type: 'riser', d: 1.0 });
+[0, 1, 2].forEach(i => AUDIO.push({ t: E + .4 + i * 1.5, type: 'whoosh' }, { t: E + .5 + i * 1.5, type: 'hit' }));
+AUDIO.push({ t: E + 5.4, type: 'bip' }, { t: E + 5.4, type: 'final' });
 
 /* ---------- competencia (datos ilustrativos, marcas ficticias) ---------- */
-const CMP_W = [53.0, 62.0];
-const CMP_P = [['cA', 53.4, 55.6], ['cB', 55.6, 57.6], ['cC', 57.6, 59.6], ['cD', 59.6, 62.0]];
+const CMP_W = [59.8, 68.8];
+const CMP_P = [['cA', 60.2, 62.4], ['cB', 62.4, 64.4], ['cC', 64.4, 66.4], ['cD', 66.4, 68.8]];
 const BARS = {
   barsA: [['Vanté', 100, '18 avisos', 'Intensidad 100'], ['Kova', 72, '11 avisos', ''], ['Tu marca', 58, '9 avisos', '', 1], ['Areté', 41, '5 avisos', '']],
   barsB: [['Vanté', 100, '3,4%', 'Reels de producto'], ['Tu marca', 62, '2,1%', 'Reels', 1], ['Kova', 35, '1,2%', 'Carruseles'], ['Areté', 18, '0,6%', 'Sorteos']],
@@ -129,7 +150,8 @@ const BARS = {
 for (const [id, rows] of Object.entries(BARS))
   $(id).innerHTML = rows.map(([n, w, v, sub, me]) => `<div class="br${me ? ' me' : ''}"><span>${n}</span><div class="tr"><i data-w="${w}"></i></div><em>${v}</em>${sub ? `<small>${sub}</small>` : ''}</div>`).join('');
 CMP_P.forEach(([, s]) => AUDIO.push({ t: s + .3, type: 'tick', f: 988 }));
-[59.9, 60.4, 60.9].forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
+[66.7, 67.2, 67.7].forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
+CMP_P.forEach(([, s]) => AUDIO.push({ t: s, type: 'whoosh' }));
 
 function seek(t) {
   /* ===== parte 1: ruido ===== */
@@ -184,17 +206,31 @@ function seek(t) {
   $('impact').style.opacity = im; $('impact').style.transform = `scale(${lerp(.9, 1, im)})`;
   $('impact').style.boxShadow = t >= 12 ? `0 0 ${40 * eo(S(t, 12, 12.4))}px rgba(18,166,244,.6)` : 'none';
 
-  const ap = win(t, [13.6, 24.6]);
+  const ap = win(t, [13.6, 26.6]);
   show('ePil', ap, 10); $('dots').style.opacity = ap;
-  PILS.forEach((_, i) => show('pil' + i, win(t, [PIL_T[i], PIL_T[i] + 2.2], .3, .25), 30));
+  PILS.forEach((_, i) => {
+    const a = win(t, [PIL_T[i], PIL_T[i] + 2.6], .3, .25), el = $('pil' + i);
+    el.style.opacity = a; el.style.transform = `translateX(${(1 - eo(S(t, PIL_T[i], PIL_T[i] + .35))) * 120}px)`;
+    el.querySelector('b').style.transform = `scale(${lerp(1.5, 1, eo(S(t, PIL_T[i], PIL_T[i] + .4)))})`;
+    el.querySelector('b').style.transformOrigin = 'left bottom';
+  });
+  { const p = eio(S(t, PIL_T[0] + .5, PIL_T[0] + 1.5)); // orden: piezas sueltas que se alinean
+    SQ.forEach((q, i) => { const e = $('q' + i); e.style.transform = `translate(${lerp(q.fx, q.tx, p)}px,${lerp(q.fy, q.ty, p)}px) rotate(${lerp(q.fr, 0, p)}deg)`; e.classList.toggle('on', p >= 1); }); }
+  for (let i = 0; i < 6; i++) { const on = t >= PIL_T[1] + .5 + i * .22, e = $('tl' + i); // control: todo se enciende
+    e.style.opacity = on ? 1 : .35; e.querySelector('i').style.background = on ? 'var(--up)' : '#cbd5e1'; }
+  for (let i = 0; i < 8; i++) { const g = eio(S(t, PIL_T[2] + .4 + i * .08, PIL_T[2] + 1.0 + i * .08)); // eficiencia: barras que suben
+    $('br' + i).style.height = (g * (80 + i * 26)).toFixed(0) + 'px'; }
+  show('upTag', eo(S(t, PIL_T[2] + 1.3, PIL_T[2] + 1.6)), 20);
+  for (let i = 0; i < 3; i++) $('ck' + i).classList.toggle('on', t >= PIL_T[3] + 1.0 + i * .4); // expertise
+  { const c = eio(S(t, PIL_T[4] + .4, PIL_T[4] + 1.8)); $('cntV').textContent = '$ ' + (c * 12.4).toFixed(1).replace('.', ',') + 'M'; }
   $('dots').querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', t >= PIL_T[i]));
 
   /* la plataforma */
-  const apl = win(t, [24.6, 29.6]);
+  const apl = win(t, [26.6, 31.6]);
   show('ePlat', apl, 10); show('hPlat', apl); $('ilus2').style.opacity = apl;
-  [25.0, 25.8, 26.6, 27.4].forEach((s, i) => {
-    const e = $('s' + i), a = eo(S(t, s, s + .45)), out = 1 - S(t, 29.3, 29.6);
-    const later = [25.0, 25.8, 26.6, 27.4].filter(x => x > s && t >= x).length; // pantallas que ya se le pusieron encima
+  SCR_T.forEach((s, i) => {
+    const e = $('s' + i), a = eo(S(t, s, s + .45)), out = 1 - S(t, 31.3, 31.6);
+    const later = SCR_T.filter(x => x > s && t >= x).length; // pantallas que ya se le pusieron encima
     e.style.opacity = a * out; e.style.zIndex = 5 + i;
     e.style.top = (470 + i * 120) + 'px';
     e.style.transform = `translateY(${(1 - a) * 160}px) scale(${1 - later * .03})`;
@@ -202,9 +238,27 @@ function seek(t) {
   });
 
   /* las 4 capas de valor */
-  const ak4 = win(t, [29.6, 33.6]);
+  const ak4 = win(t, [31.6, 35.6]);
   show('hCapas', ak4);
-  [30.2, 30.8, 31.4, 32.0].forEach((s, i) => show('k' + i, Math.min(eo(S(t, s, s + .3)), 1 - S(t, 33.3, 33.6)), 16));
+  K4_T.forEach((s, i) => show('k' + i, Math.min(eo(S(t, s, s + .3)), 1 - S(t, 35.3, 35.6)), 16));
+  CC.forEach(([s, e], i) => { const c = $('cc' + i), a = win(t, [s, e], .2, .2);
+    c.style.opacity = a; c.querySelector('b').style.transform = `scale(${lerp(1.6, 1, eo(S(t, s, s + .35)))})`;
+    c.querySelector('span').style.transform = `translateY(${(1 - eo(S(t, s + .15, s + .5))) * 40}px)`; });
+
+  /* cierre: frases de a una, grandes, que entran y se van */
+  $('navy').style.opacity = eio(S(t, E - .15, E + .35));
+  [0, 1, 2].forEach(i => { const s = E + .4 + i * 1.5, el = $('cl' + i);
+    const a = Math.min(eo(S(t, s, s + .35)), 1 - S(t, s + 1.2, s + 1.5)), out = S(t, s + 1.2, s + 1.5);
+    el.style.opacity = a; el.style.transform = `scale(${lerp(1.35, 1, eo(S(t, s, s + .4))) * lerp(1, .85, out)})`; el.style.filter = `blur(${out * 8}px)`; });
+  { const b2 = E + 5.4, w = $('word'), lg = $('logoBig');
+    const wIn = eo(S(t, E + 5.0, E + 5.25)), morph = eio(S(t, b2, b2 + .45));
+    w.style.opacity = t >= E + 5.0 ? wIn * (1 - S(t, b2, b2 + .2)) : 0;
+    w.style.transform = `translate(-50%,-50%) scale(${lerp(.9, 1, wIn) * lerp(1, 1.6, morph)})`;
+    lg.style.opacity = eo(S(t, b2 + .12, b2 + .45)); lg.style.transform = `translate(-50%,-50%) scale(${lerp(.7, 1, morph)})`;
+    const er = $('endRing').firstElementChild, rp2 = S(t, b2, b2 + .6), R2 = lerp(60, 900, eo(rp2));
+    er.style.width = er.style.height = 2 * R2 + 'px'; er.style.left = er.style.top = -R2 + 'px';
+    er.style.opacity = t >= b2 && rp2 < 1 ? (1 - rp2) * .8 : 0;
+    show('cta', eo(S(t, E + 6.2, E + 6.5)), 14); show('link', eo(S(t, E + 6.55, E + 6.8)), 10); show('roque', eo(S(t, E + 6.75, E + 7.0)), 10); }
 
   /* competencia (línea de tiempo nueva): pauta → redes → búsquedas → qué hacer */
   const ak = win(t, CMP_W);
@@ -214,7 +268,7 @@ function seek(t) {
     const grow = eio(S(t, s + .3, s + 1.2));
     $(id).querySelectorAll('.tr i').forEach(b => { b.style.width = (+b.dataset.w * grow).toFixed(1) + '%'; });
   });
-  [59.9, 60.4, 60.9].forEach((s, i) => show('d' + i, eo(S(t, s, s + .3)), 12));
+  [66.7, 67.2, 67.7].forEach((s, i) => show('d' + i, eo(S(t, s, s + .3)), 12));
 
   t = newToOld(t); // las capas y el cierre usan su línea de tiempo original, reubicada (ver REMAP)
 
@@ -262,24 +316,25 @@ function seek(t) {
   AL_T.forEach((s, i) => { const e = $('a' + i), a = Math.min(eo(S(t, s, s + .3)), 1 - S(t, P.al[1] - .3, P.al[1]));
     e.style.opacity = a; e.style.transform = `translateX(${(1 - a) * 80}px)`; });
 
-  /* ===== cierre ===== */
-  $('navy').style.opacity = eio(S(t, P.end - .15, P.end + .35));
-  const lines = Math.min(1, 1 - S(t, 47.7, 48.1));
-  [44.4, 45.6, 46.6].forEach((s, i) => show('cl' + i, eo(S(t, s, s + .4)) * lines, 20));
-  const w = $('word'), lg = $('logoBig');
-  const wIn = eo(S(t, 48.1, 48.35)), morph = eio(S(t, P.bip2, P.bip2 + .45));
-  w.style.opacity = t >= 48.1 ? wIn * (1 - S(t, P.bip2, P.bip2 + .2)) : 0;
-  w.style.transform = `translate(-50%,-50%) scale(${lerp(.9, 1, wIn) * lerp(1, 1.6, morph)})`;
-  lg.style.opacity = eo(S(t, P.bip2 + .12, P.bip2 + .45));
-  lg.style.transform = `translate(-50%,-50%) scale(${lerp(.7, 1, morph)})`;
-  const er = $('endRing').firstElementChild, rp2 = S(t, P.bip2, P.bip2 + .6), R2 = lerp(60, 900, eo(rp2));
-  er.style.width = er.style.height = 2 * R2 + 'px'; er.style.left = er.style.top = -R2 + 'px';
-  er.style.opacity = t >= P.bip2 && rp2 < 1 ? (1 - rp2) * .8 : 0;
-  show('cta', eo(S(t, 49.3, 49.6)), 14); show('link', eo(S(t, 49.7, 49.95)), 10); show('roque', eo(S(t, 49.9, 50.15)), 10);
 }
 
+/* apertura: fondo navy como el cierre, BIP + sonido; después corta al ruido */
+for (const e of AUDIO) e.t += INTRO;
+AUDIO.push({ t: .35, type: 'bip' }, { t: INTRO - .15, type: 'whoosh' });
+function seekAll(t) {
+  seek(Math.max(0, t - INTRO));
+  const out = S(t, INTRO - .18, INTRO), w = $('iWord'), lg = $('iLogo'), m = eio(S(t, .35, .8));
+  $('intro').style.opacity = 1 - out;
+  w.style.opacity = 1 - S(t, .35, .55);
+  w.style.transform = `translate(-50%,-50%) scale(${lerp(1, 1.6, m)})`;
+  lg.style.opacity = eo(S(t, .47, .8));
+  lg.style.transform = `translate(-50%,-50%) scale(${lerp(.7, 1, m) * lerp(1, 1.25, out)})`;
+  const ri = $('iRing').firstElementChild, rp = S(t, .35, .95), R = lerp(60, 1000, eo(rp));
+  ri.style.width = ri.style.height = 2 * R + 'px'; ri.style.left = ri.style.top = -R + 'px';
+  ri.style.opacity = t >= .35 && rp < 1 ? (1 - rp) * .8 : 0;
+}
 window.__DURATION = DUR;
 window.__AUDIO = AUDIO;
-window.__seek = seek;
-seek(0);
+window.__seek = seekAll;
+seekAll(0);
 document.fonts.ready.then(() => { window.__ready = true; });
