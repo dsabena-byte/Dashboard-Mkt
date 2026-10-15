@@ -157,7 +157,8 @@ CMP_P.forEach(([, s]) => AUDIO.push({ t: s, type: 'whoosh' }));
 [['Marketing', 'conectado.'], ['Estrategia', 'en', 'acción.'], ['Impacto', 'en el', 'negocio.']].forEach((ws, i) => {
   $('cl' + i).innerHTML = ws.map((w, k) => `<span class="w${(i === 1 && k === 0) || (i !== 1 && k === ws.length - 1) ? ' c' : ''}">${w}</span>`).join('');
   $('cl' + i).style.color = '#fff'; });
-const SPK = Array.from({ length: 16 }, (_, i) => { const r = rng(97 + i * 7919); r(); r(); r(); return { x: 80 + r() * 900, y: 650 + r() * 560, d: r() * 1.6 }; });
+const hash = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); }; // pseudoaleatorio sin patrón
+const SPK = Array.from({ length: 16 }, (_, i) => ({ x: 80 + hash(i + 1) * 900, y: 650 + hash(i + 101) * 560, d: hash(i + 201) * 1.6 }));
 $('sparks').innerHTML = SPK.map((_, i) => `<div class="spark" id="sp${i}"></div>`).join('');
 
 function seek(t) {
