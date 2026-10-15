@@ -59,12 +59,14 @@ def main(src, dst):
                     c = rng.standard_normal(int(.12 * SR)) * np.exp(-np.arange(int(.12 * SR)) / SR * 30)
                     add(buf, tb, c, .07)
                 tb += spb; k += 1
-        elif e['type'] == 'whoosh':  # ruido filtrado que barre
-            n = int(.45 * SR); x = np.random.default_rng(int(e['t'] * 100)).standard_normal(n)
-            a = np.linspace(.02, .35, n); y = np.zeros(n)
-            for i in range(1, n): y[i] = y[i - 1] + a[i] * (x[i] - y[i - 1])
-            env_ = np.sin(np.pi * np.arange(n) / n) ** 2
-            add(buf, e['t'] - .3, y * env_, .25)
+        elif e['type'] == 'whoosh':  # transición suave: un brillo de campanitas que se abre (reemplaza el barrido de ruido)
+            n = int(.9 * SR); tt = np.arange(n) / SR
+            env_ = np.minimum(tt / .18, 1) * np.exp(-np.maximum(tt - .18, 0) / .3)
+            notes = (783.99, 1174.66, 1567.98)  # Sol, Re, Sol: quinta abierta, sin choque con los acordes
+            s = sum(np.sin(2 * np.pi * f * tt + k) * (.6 ** k) for k, f in enumerate(notes))
+            air = np.random.default_rng(int(e['t'] * 100)).standard_normal(n); y = np.zeros(n)
+            for i in range(1, n): y[i] = y[i - 1] + .03 * (air[i] - y[i - 1])  # aire muy filtrado, apenas
+            add(buf, e['t'] - .18, verb(s * env_ * .09 + y * env_ * .5, .3))
         elif e['type'] == 'hit':  # golpe grave + click
             n = int(.5 * SR); tt = np.arange(n) / SR
             boom = np.sin(2 * np.pi * (38 * tt + 90 * (1 - np.exp(-tt * 18)) / 18)) * np.exp(-tt * 6)
