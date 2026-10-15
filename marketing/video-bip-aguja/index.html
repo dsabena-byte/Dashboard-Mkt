@@ -128,6 +128,11 @@
   /* cierre */
   .navy{position:absolute;inset:0;background:radial-gradient(circle at 50% 38%,#0a4da0 0%,#073c80 60%);opacity:0}
   .cl{position:absolute;left:60px;right:60px;top:520px;text-align:center;font:700 112px/1.04 'Poppins';color:#fff;opacity:0;transform-origin:center}
+  .cl .w{display:inline-block;margin:0 .14em;will-change:transform}
+  .cl .w.c{color:var(--cyan)}
+  .clbar{position:absolute;left:50%;top:820px;height:10px;border-radius:99px;background:var(--cyan);width:0;transform:translateX(-50%);box-shadow:0 0 30px rgba(18,166,244,.8)}
+  .glow{position:absolute;left:50%;top:640px;width:900px;height:900px;margin:-450px 0 0 -450px;border-radius:50%;background:radial-gradient(circle,rgba(18,166,244,.38),rgba(18,166,244,0) 62%);opacity:0}
+  .spark{position:absolute;width:10px;height:10px;border-radius:50%;background:#bfe9ff;box-shadow:0 0 12px #12a6f4;opacity:0}
   /* visuales de los 5 puntos */
   .pv{position:relative;height:330px;margin-top:44px}
   .pv .sq{position:absolute;width:200px;height:64px;display:grid;place-items:center;font:600 24px 'Inter';color:var(--ink);box-sizing:border-box;border-radius:14px;background:#fff;border:2px solid #d6deea;box-shadow:0 8px 20px rgba(10,40,90,.08)}
@@ -259,6 +264,9 @@
 
   <!-- cierre -->
   <div class="navy" id="navy"></div>
+  <div class="glow" id="clGlow"></div>
+  <div id="sparks"></div>
+  <div class="clbar" id="clBar"></div>
   <div class="cl" id="cl0">Marketing<br>conectado.</div>
   <div class="cl" id="cl1" style="color:var(--cyan)">Estrategia<br>en acción.</div>
   <div class="cl" id="cl2">Impacto en<br>el negocio.</div>

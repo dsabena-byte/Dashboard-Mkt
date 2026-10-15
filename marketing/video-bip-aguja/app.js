@@ -136,7 +136,7 @@ CC.forEach(([s]) => AUDIO.push({ t: s - .05, type: 'whoosh' }, { t: s + .1, type
 /* música: pulso desde que aparece BIP hasta el cierre, y el cierre con su propio golpe */
 AUDIO.push({ t: 8.3, type: 'beat', end: E + 4.9, bpm: 104 });
 AUDIO.push({ t: E - 1.0, type: 'riser', d: 1.0 });
-[0, 1, 2].forEach(i => AUDIO.push({ t: E + .4 + i * 1.5, type: 'whoosh' }, { t: E + .5 + i * 1.5, type: 'hit' }));
+[0, 1, 2].forEach(i => AUDIO.push({ t: E + .4 + i * 1.5, type: 'whoosh' }, { t: E + .5 + i * 1.5, type: 'hit' }, { t: E + .75 + i * 1.5, type: 'tick', f: 1568 }));
 AUDIO.push({ t: E + 5.4, type: 'bip' }, { t: E + 5.4, type: 'final' });
 
 /* ---------- competencia (datos ilustrativos, marcas ficticias) ---------- */
@@ -152,6 +152,13 @@ for (const [id, rows] of Object.entries(BARS))
 CMP_P.forEach(([, s]) => AUDIO.push({ t: s + .3, type: 'tick', f: 988 }));
 [66.7, 67.2, 67.7].forEach(t => AUDIO.push({ t, type: 'tick', f: 1318 }));
 CMP_P.forEach(([, s]) => AUDIO.push({ t: s, type: 'whoosh' }));
+
+/* cierre: frases partidas en palabras + chispas de luz */
+[['Marketing', 'conectado.'], ['Estrategia', 'en', 'acción.'], ['Impacto', 'en el', 'negocio.']].forEach((ws, i) => {
+  $('cl' + i).innerHTML = ws.map((w, k) => `<span class="w${(i === 1 && k === 0) || (i !== 1 && k === ws.length - 1) ? ' c' : ''}">${w}</span>`).join('');
+  $('cl' + i).style.color = '#fff'; });
+const SPK = Array.from({ length: 16 }, (_, i) => { const r = rng(97 + i * 7919); r(); r(); r(); return { x: 80 + r() * 900, y: 650 + r() * 560, d: r() * 1.6 }; });
+$('sparks').innerHTML = SPK.map((_, i) => `<div class="spark" id="sp${i}"></div>`).join('');
 
 function seek(t) {
   /* ===== parte 1: ruido ===== */
@@ -247,9 +254,22 @@ function seek(t) {
 
   /* cierre: frases de a una, grandes, que entran y se van */
   $('navy').style.opacity = eio(S(t, E - .15, E + .35));
-  [0, 1, 2].forEach(i => { const s = E + .4 + i * 1.5, el = $('cl' + i);
-    const a = Math.min(eo(S(t, s, s + .35)), 1 - S(t, s + 1.2, s + 1.5)), out = S(t, s + 1.2, s + 1.5);
-    el.style.opacity = a; el.style.transform = `scale(${lerp(1.35, 1, eo(S(t, s, s + .4))) * lerp(1, .85, out)})`; el.style.filter = `blur(${out * 8}px)`; });
+  [0, 1, 2].forEach(i => { const s = E + .4 + i * 1.5, el = $('cl' + i), out = S(t, s + 1.15, s + 1.45);
+    el.style.opacity = t >= s && out < 1 ? 1 : 0;
+    el.style.transform = `scale(${lerp(1, 1.18, eio(out))})`; el.style.filter = `blur(${out * 10}px)`;
+    el.querySelectorAll('.w').forEach((w, k) => { // cada palabra entra desde abajo, girando y desenfocada
+      const p = eo(S(t, s + k * .09, s + .45 + k * .09));
+      w.style.opacity = p * (1 - out); w.style.transform = `translateY(${(1 - p) * 90}px) rotate(${(1 - p) * 8}deg) scale(${lerp(.7, 1, p)})`;
+      w.style.filter = `blur(${(1 - p) * 12}px)`; }); });
+  { const k = [0, 1, 2].findIndex(i => t >= E + .4 + i * 1.5 && t < E + 1.9 + i * 1.5), s = E + .4 + k * 1.5;
+    const bar = $('clBar'), g = $('clGlow');
+    if (k >= 0) { const p = eio(S(t, s + .3, s + .9)), out = S(t, s + 1.15, s + 1.45);
+      bar.style.width = (p * 520 * (1 - out)) + 'px'; bar.style.opacity = 1 - out;
+      const pulse = eo(S(t, s, s + .5)); g.style.opacity = (1 - out) * (.4 + .6 * (1 - pulse)); g.style.transform = `scale(${lerp(.6, 1.1, pulse)})`;
+    } else { bar.style.opacity = 0; g.style.opacity = 0; }
+    SPK.forEach((sp, i) => { const e = $('sp' + i), life = ((t - E - sp.d) % 1.6) / 1.6, on = t >= E + .3 && t < E + 4.9;
+      e.style.opacity = on ? Math.sin(Math.PI * life) * .9 : 0;
+      e.style.transform = `translate(${sp.x + Math.sin(life * 6 + i) * 20}px,${sp.y - life * 260}px) scale(${.5 + life})`; }); }
   { const b2 = E + 5.4, w = $('word'), lg = $('logoBig');
     const wIn = eo(S(t, E + 5.0, E + 5.25)), morph = eio(S(t, b2, b2 + .45));
     w.style.opacity = t >= E + 5.0 ? wIn * (1 - S(t, b2, b2 + .2)) : 0;
