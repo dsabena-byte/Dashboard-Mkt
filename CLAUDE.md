@@ -468,6 +468,16 @@ reporte_existencia/cb_homologos).
   vista (aunque la base esté vacía: el primer gasto crea `REAL <año>`); tocar un renglón lo edita. **Circuito del gasto (user):
   Solped → OC → recepción/factura → contabilización**: el formulario tiene esos 4 pasos y la etapa sale de los datos (`etapaDe`);
   columna y filtro "Etapa" en la tabla. Tipos de cambio: formulario de a uno (presupuesto + mes + valor) arriba de la grilla.
+  **v3 (16-oct, user: "no se entiende… el orden es el de la planilla"):** el formulario va PRIMERO y sus campos siguen el ORDEN de la
+  planilla (Presupuesto, CECO, Cuenta, Año, Mes, Concepto, Nro proveedor, Proveedor, Detalle, Solped, OC, Nro recepción, Fecha
+  contabilización, Factura, $, Provisión); abajo "Gastos cargados" con filtros (solo cambian la lista) + "Descargar esta lista en
+  Excel". Se SACÓ "Pegar desde Excel". Listas base (cuentas/conceptos/CECOs) en `CATALOGO_BASE` → nunca salen vacías. El cliente
+  corta a los 45 s con mensaje (antes podía quedar en "Cargando…"); `getAll` pagina con limit/offset y tope de páginas.
+  **v4 (16-oct):** conceptos por cuenta FIJOS (`CUENTA_CONCEPTOS`, estructura del BGT del user; el form solo ofrece los de la cuenta
+  y el POST los valida). Lista "Seguimiento de Gastos" sin scroll horizontal, filtro tipo Excel en cada columna (buscar + tildar
+  valores) y ✎ al final para editar (ya no se edita tocando la fila; "Borrar" dentro del form). Tipos de cambio: grilla de solo
+  lectura con ✎ por fila; "Agregar presupuesto" = selects BGT/4+8/8+4 + año (no texto libre). Se SACÓ la pestaña "Traer histórico
+  del Excel" (user: "así no pisamos datos"; la API `/api/presupuesto/importar` queda sin UI).
 - **SharePoint vencido:** el link "anyone" se renovó el 7-sep (+30 días) → el `data.json` quedó en el sync del 6-oct; por eso /funnel
   no muestra el 8+4 2026 ni lo cargado en el Excel después del 6-oct hasta traer el histórico (o renovar el link).
   Chat (`get_inversion_mkt`) y señales leen lo mismo.

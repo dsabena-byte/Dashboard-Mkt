@@ -3,7 +3,7 @@ import { sbAdmin } from "@/lib/supabase-admin";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
 import {
-  agregarParaTablero, camposCambiados, tipoDeVersion,
+  CATALOGO_BASE, agregarParaTablero, camposCambiados, tipoDeVersion,
   type FilaAgregada, type ItemCatalogo, type Linea, type LineaIn, type Tc, type Version,
 } from "@/lib/presupuesto-core";
 
@@ -24,15 +24,17 @@ async function err(res: Response, what: string): Promise<never> {
   throw new PresupuestoError(`${what}: ${t.slice(0, 300)}`, 500);
 }
 
+// Paginado con limit/offset (los paths ya traen order estable) y tope de páginas: nunca un loop infinito.
 async function getAll<T>(path: string): Promise<T[]> {
   const out: T[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const res = await sbAdmin(path, { method: "GET", headers: { Range: `${from}-${from + PAGE - 1}`, "Range-Unit": "items" } });
+  for (let page = 0; page < 100; page++) {
+    const res = await sbAdmin(`${path}&limit=${PAGE}&offset=${page * PAGE}`, { method: "GET" });
     if (!res.ok) await err(res, "No se pudo leer");
     const rows = (await res.json()) as T[];
     out.push(...rows);
     if (rows.length < PAGE) return out;
   }
+  return out;
 }
 
 // ---------- usuario y permisos ----------
@@ -58,7 +60,13 @@ const LINEA_COLS = "id,version,mes,ceco,cuenta,nombre_cta,concepto,nro_proveedor
 
 export const listVersiones = () => getAll<Version>("bgt_versiones?select=nombre,tipo,anio,cerrada&order=anio.desc,nombre.asc");
 export const listTc = () => getAll<Tc>("bgt_tc?select=version,mes,tc&order=version.asc,mes.asc");
-export const listCatalogo = () => getAll<ItemCatalogo>("bgt_catalogo?select=tipo,clave,nombre&order=tipo.asc,nombre.asc");
+/** Catálogo guardado + el base (cuentas, conceptos y CECOs de la planilla): las listas nunca salen vacías. */
+export async function listCatalogo(): Promise<ItemCatalogo[]> {
+  const db = await getAll<ItemCatalogo>("bgt_catalogo?select=tipo,clave,nombre&order=tipo.asc,clave.asc");
+  const m = new Map(CATALOGO_BASE.map((c) => [`${c.tipo}|${c.clave}`, c]));
+  for (const c of db) m.set(`${c.tipo}|${c.clave}`, c.nombre ? c : { ...c, nombre: m.get(`${c.tipo}|${c.clave}`)?.nombre ?? "" });
+  return [...m.values()].sort((a, b) => a.tipo.localeCompare(b.tipo) || a.nombre.localeCompare(b.nombre));
+}
 
 export async function listLineas(version: string): Promise<Linea[]> {
   const rows = await getAll<Linea>(`bgt_lineas?select=${LINEA_COLS}&version=eq.${encodeURIComponent(version)}&order=mes.asc,created_at.asc,id.asc`);

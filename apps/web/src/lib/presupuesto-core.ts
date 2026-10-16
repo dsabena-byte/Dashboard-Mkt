@@ -255,6 +255,8 @@ export function validarLinea(l: Partial<LineaIn>, versiones: Version[]): string 
   if (!l.mes || l.mes < 1 || l.mes > 12) return "Elegí el mes.";
   if (!l.cuenta && !l.nombre_cta) return "Elegí la cuenta.";
   if (!l.concepto) return "Elegí el concepto.";
+  const validos = l.cuenta ? CUENTA_CONCEPTOS[l.cuenta] : undefined;
+  if (validos && !validos.includes(l.concepto)) return `El concepto ${l.concepto} no corresponde a la cuenta ${l.cuenta} (${validos.join(", ")}).`;
   if (typeof l.ars !== "number" || !Number.isFinite(l.ars) || l.ars === 0) return "Cargá el monto en pesos.";
   if (l.fecha_contabilizacion && !parseFecha(l.fecha_contabilizacion)) return "La fecha de contabilización no es válida.";
   return null;
@@ -383,3 +385,34 @@ export function etapaDe(l: Pick<LineaIn, "solped" | "oc" | "nro_recepcion" | "fa
   if (l.solped) return "solped";
   return "sin_datos";
 }
+
+/** Listas base de la carga (hoja "Menu Desplegable" de la planilla de Seguimiento, 16-oct-2026). */
+export const CATALOGO_BASE: ItemCatalogo[] = [
+  ...([
+    ["6202010034", "PUBLICIDAD.PRODUCCION Y AGENCIAS"], ["6202010036", "PUBLICIDAD.MATERIALES GRAFICOS"], ["6202010069", "PUBLICIDAD TV"],
+    ["6202010071", "PUBLICIDAD PROMOCIONES AL CONSUMIDOR"], ["6202010072", "PUBLICIDAD EXHIBICIONES"], ["6202010077", "INTEGRALES"],
+    ["6202010078", "PUBLICIDAD ESTUDIOS DE MERCADO"], ["6202010082", "PUBLICIDAD EVENTOS"], ["6202010084", "PUBLICIDAD COMPARTIDA"],
+    ["6202010033", "GASTOS VAR- PAUTA DIGITAL"],
+  ] as const).map(([clave, nombre]) => ({ tipo: "cuenta" as const, clave, nombre })),
+  ...[
+    "PRODUCCIÓN CONTENIDOS", "AGENCIAS VARIAS", "MATERIAL POP", "MERCHANDISING", "ACTIVACIONES WOW", "PAUTA ATL", "PAUTA DIGITAL", "BIC",
+    "INVESTIGACIONES MERCADO", "EVENTOS GRUPOS DE COMPRA", "ACCIONES COMPARTIDAS", "CAPACITACIONES", "INTEGRALES", "REGISTRO MARCAS",
+    "OTROS EVENTOS", "OTROS GASTOS", "OTRAS ACCIONES MKT",
+  ].map((c) => ({ tipo: "concepto" as const, clave: c, nombre: c })),
+  ...([["W014402001", "DREAN MKT"], ["W014402002", "DREAN TRADE"], ["W012400003", "KRONEN"]] as const)
+    .map(([clave, nombre]) => ({ tipo: "ceco" as const, clave, nombre })),
+];
+
+/** Conceptos válidos de cada cuenta (estructura del BGT que pasó el user, 16-oct-2026). Cuenta sin entrada = cualquier concepto. */
+export const CUENTA_CONCEPTOS: Record<string, string[]> = {
+  "6202010077": ["INTEGRALES"],
+  "6202010034": ["PRODUCCIÓN CONTENIDOS", "AGENCIAS VARIAS", "REGISTRO MARCAS", "PAUTA DIGITAL"],
+  "6202010069": ["PAUTA ATL"],
+  "6202010078": ["INVESTIGACIONES MERCADO"],
+  "6202010036": ["MATERIAL POP"],
+  "6202010072": ["ACTIVACIONES WOW"],
+  "6202010071": ["MERCHANDISING", "OTROS GASTOS"],
+  "6202010082": ["EVENTOS GRUPOS DE COMPRA", "OTROS EVENTOS"],
+  "6202010084": ["ACCIONES COMPARTIDAS"],
+};
+export const conceptosDeCuenta = (cuenta: string): string[] | null => CUENTA_CONCEPTOS[cuenta] ?? null;
