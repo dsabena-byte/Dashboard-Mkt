@@ -493,7 +493,7 @@ reporte_existencia/cb_homologos).
   (`importarPlanilla(..., todo=true)`, auditado). `parsePresupuesto`/`plantillaPresupuesto` en presupuesto-core (también acepta el
   formato Seguimiento con MES y $, solo la versión elegida). API `importar` tipo=presupuesto (nunca REAL).
 - **Facturación mensual en Cargar datos (16-oct):** pestaña **Facturación** = misma grilla que Tipos de cambio (fila = año, USD, ✎ por
-  fila, solo editores, auditada entidad `facturacion`). Escribe `facturacion_mensual` (0049) vía `/api/presupuesto/facturacion`. La grilla
+  fila, solo editores, auditada entidad `facturacion`). Escribe `facturacion_mensual` (0049 + **0126**, que crea la tabla/columnas si faltan) vía `/api/presupuesto/facturacion`. La grilla
   muestra lo mismo que el tablero (tabla + `FACTURACION_FALLBACK` del código); guardar una fila pasa a la tabla los meses del fallback.
 - **Sin 2023 (16-oct, user: "info muy vieja"):** `ANIO_MINIMO = 2024` (presupuesto-core) filtra años anteriores en `getBgtData` (tablero,
   chat, señales) y en `/api/presupuesto` (versiones, TC, facturación de la carga). Los datos NO se borran de la base.
