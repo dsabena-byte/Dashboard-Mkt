@@ -256,7 +256,8 @@ export function validarLinea(l: Partial<LineaIn>, versiones: Version[]): string 
   if (!l.cuenta && !l.nombre_cta) return "Elegí la cuenta.";
   if (!l.concepto) return "Elegí el concepto.";
   const validos = l.cuenta ? CUENTA_CONCEPTOS[l.cuenta] : undefined;
-  if (validos && !validos.includes(l.concepto)) return `El concepto ${l.concepto} no corresponde a la cuenta ${l.cuenta} (${validos.join(", ")}).`;
+  if (!validos) return `La cuenta ${l.cuenta || l.nombre_cta} no está habilitada para cargar gastos.`;
+  if (!validos.includes(l.concepto)) return `El concepto ${l.concepto} no corresponde a la cuenta ${l.cuenta} (${validos.join(", ")}).`;
   if (typeof l.ars !== "number" || !Number.isFinite(l.ars) || l.ars === 0) return "Cargá el monto en pesos.";
   if (l.fecha_contabilizacion && !parseFecha(l.fecha_contabilizacion)) return "La fecha de contabilización no es válida.";
   return null;
@@ -392,7 +393,6 @@ export const CATALOGO_BASE: ItemCatalogo[] = [
     ["6202010034", "PUBLICIDAD.PRODUCCION Y AGENCIAS"], ["6202010036", "PUBLICIDAD.MATERIALES GRAFICOS"], ["6202010069", "PUBLICIDAD TV"],
     ["6202010071", "PUBLICIDAD PROMOCIONES AL CONSUMIDOR"], ["6202010072", "PUBLICIDAD EXHIBICIONES"], ["6202010077", "INTEGRALES"],
     ["6202010078", "PUBLICIDAD ESTUDIOS DE MERCADO"], ["6202010082", "PUBLICIDAD EVENTOS"], ["6202010084", "PUBLICIDAD COMPARTIDA"],
-    ["6202010033", "GASTOS VAR- PAUTA DIGITAL"],
   ] as const).map(([clave, nombre]) => ({ tipo: "cuenta" as const, clave, nombre })),
   ...[
     "PRODUCCIÓN CONTENIDOS", "AGENCIAS VARIAS", "MATERIAL POP", "MERCHANDISING", "ACTIVACIONES WOW", "PAUTA ATL", "PAUTA DIGITAL", "BIC",
@@ -403,7 +403,8 @@ export const CATALOGO_BASE: ItemCatalogo[] = [
     .map(([clave, nombre]) => ({ tipo: "ceco" as const, clave, nombre })),
 ];
 
-/** Conceptos válidos de cada cuenta (estructura del BGT que pasó el user, 16-oct-2026). Cuenta sin entrada = cualquier concepto. */
+/** Cuentas habilitadas y sus conceptos (estructura del BGT que pasó el user, 16-oct-2026). Una cuenta fuera de esta lista no se
+ *  puede cargar (la 6202010033 se sacó el 16-oct: sin gastos en ningún presupuesto). */
 export const CUENTA_CONCEPTOS: Record<string, string[]> = {
   "6202010077": ["INTEGRALES"],
   "6202010034": ["PRODUCCIÓN CONTENIDOS", "AGENCIAS VARIAS", "REGISTRO MARCAS", "PAUTA DIGITAL"],

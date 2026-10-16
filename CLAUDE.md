@@ -474,7 +474,7 @@ reporte_existencia/cb_homologos).
   Excel". Se SACÓ "Pegar desde Excel". Listas base (cuentas/conceptos/CECOs) en `CATALOGO_BASE` → nunca salen vacías. El cliente
   corta a los 45 s con mensaje (antes podía quedar en "Cargando…"); `getAll` pagina con limit/offset y tope de páginas.
   **v4 (16-oct):** conceptos por cuenta FIJOS (`CUENTA_CONCEPTOS`, estructura del BGT del user; el form solo ofrece los de la cuenta
-  y el POST los valida). Lista "Seguimiento de Gastos" sin scroll horizontal, filtro tipo Excel en cada columna (buscar + tildar
+  y el POST los valida; solo esas cuentas se pueden cargar — la 6202010033 se sacó el 16-oct por no tener gastos). Lista "Seguimiento de Gastos" sin scroll horizontal, filtro tipo Excel en cada columna (buscar + tildar
   valores) y ✎ al final para editar (ya no se edita tocando la fila; "Borrar" dentro del form). Tipos de cambio: grilla de solo
   lectura con ✎ por fila; "Agregar presupuesto" = selects BGT/4+8/8+4 + año (no texto libre). Se SACÓ la pestaña "Traer histórico
   del Excel" (user: "así no pisamos datos"; la API `/api/presupuesto/importar` queda sin UI).

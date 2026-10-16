@@ -3,7 +3,7 @@ import { sbAdmin } from "@/lib/supabase-admin";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
 import {
-  CATALOGO_BASE, agregarParaTablero, camposCambiados, tipoDeVersion,
+  CATALOGO_BASE, CUENTA_CONCEPTOS, agregarParaTablero, camposCambiados, tipoDeVersion,
   type FilaAgregada, type ItemCatalogo, type Linea, type LineaIn, type Tc, type Version,
 } from "@/lib/presupuesto-core";
 
@@ -65,7 +65,8 @@ export async function listCatalogo(): Promise<ItemCatalogo[]> {
   const db = await getAll<ItemCatalogo>("bgt_catalogo?select=tipo,clave,nombre&order=tipo.asc,clave.asc");
   const m = new Map(CATALOGO_BASE.map((c) => [`${c.tipo}|${c.clave}`, c]));
   for (const c of db) m.set(`${c.tipo}|${c.clave}`, c.nombre ? c : { ...c, nombre: m.get(`${c.tipo}|${c.clave}`)?.nombre ?? "" });
-  return [...m.values()].sort((a, b) => a.tipo.localeCompare(b.tipo) || a.nombre.localeCompare(b.nombre));
+  // Solo cuentas habilitadas (CUENTA_CONCEPTOS): una cuenta vieja del Excel no vuelve a aparecer en el formulario.
+  return [...m.values()].filter((c) => c.tipo !== "cuenta" || c.clave in CUENTA_CONCEPTOS).sort((a, b) => a.tipo.localeCompare(b.tipo) || a.nombre.localeCompare(b.nombre));
 }
 
 export async function listLineas(version: string): Promise<Linea[]> {
