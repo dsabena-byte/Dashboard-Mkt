@@ -20,6 +20,7 @@ const btnPri = "rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-
 const btn = "rounded border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50";
 const MES_CAP = MESES.map((m) => m.charAt(0) + m.slice(1).toLowerCase());
 const ars = (n: number) => `$ ${Math.round(n).toLocaleString("es-AR")}`;
+const zebra = (i: number) => (i % 2 ? "bg-sky-50" : "bg-slate-50"); // filas alternadas: gris suave / celeste suave
 const usdTxt = (n: number | null) => (n == null ? "falta TC" : `US$ ${Math.round(n).toLocaleString("es-AR")}`);
 
 async function api<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
@@ -191,9 +192,9 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
             </tr>
           </thead>
           <tbody>
-            {filtradas.map((l) => (
+            {filtradas.map((l, i) => (
               <tr key={l.id}
-                className={`border-t align-top hover:bg-muted/30 ${editando !== "nueva" && editando?.id === l.id ? "bg-amber-50" : ""}`}>
+                className={`border-t align-top hover:bg-amber-50/50 ${editando !== "nueva" && editando?.id === l.id ? "bg-amber-50" : zebra(i)}`}>
                 {COLS.map((c) => (
                   <td key={c.key} className="break-words px-1.5 py-1.5">
                     {c.get(l) || "—"}
@@ -606,10 +607,10 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
             </tr>
           </thead>
           <tbody>
-            {versiones.map((n) => {
+            {versiones.map((n, i) => {
               const enEdicion = fila === n;
               return (
-                <tr key={n} className={`border-t ${enEdicion ? "bg-amber-50/60" : ""}`}>
+                <tr key={n} className={`border-t ${enEdicion ? "bg-amber-50/60" : zebra(i)}`}>
                   <td className="px-2 py-1.5 font-medium">{n}{cerrada(n) && <span className="ml-1 text-[10px] font-normal text-muted-foreground">(cerrada)</span>}</td>
                   {MESES.map((_, i) => (
                     <td key={i} className="px-1 py-1.5 text-center tabular-nums">
