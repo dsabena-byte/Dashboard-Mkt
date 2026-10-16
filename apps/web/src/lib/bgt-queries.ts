@@ -1,6 +1,7 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
 import { getDatosTablero } from "./presupuesto-server";
+import { ANIO_MINIMO } from "./presupuesto-core";
 
 /**
  * Datos del dash de "BGT Mkt". Fuente unificada: tabla Supabase `bgt_marketing`,
@@ -49,6 +50,11 @@ interface DbBgtRow {
 }
 
 export async function getBgtData(): Promise<BgtData> {
+  const d = await getBgtDataTodo();
+  return { ...d, rows: d.rows.filter((r) => Number(r.anio) >= ANIO_MINIMO), faltaTc: d.faltaTc?.filter((f) => Number(f.version.match(/20\d{2}/)?.[0]) >= ANIO_MINIMO) };
+}
+
+async function getBgtDataTodo(): Promise<BgtData> {
   // Lo cargado en el tablero (migración 0125) se SUMA a lo del Excel. Una versión traída del Excel con
   // "Traer histórico" (renglones origen import) reemplaza a la misma versión del Excel viejo.
   const [tablero, excel] = await Promise.all([getDatosTablero(), getBgtDataExcel().catch(() => null)]);
