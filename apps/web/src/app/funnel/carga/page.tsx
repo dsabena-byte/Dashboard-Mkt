@@ -15,7 +15,7 @@ export default function CargaPresupuestoPage() {
           Cargá el gasto real, los presupuestos y los tipos de cambio. Todo se guarda en pesos; los dólares salen del tipo de cambio de cada mes.
         </p>
       </header>
-      <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/funnel" }]} after={[{ key: "carga", label: "Cargar datos", href: "/funnel/carga" }]} active="carga" />
+      <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/funnel" }, { key: "diagnostico", label: "Diagnóstico e Inteligencia", href: "/funnel?vista=diagnostico" }]} after={[{ key: "carga", label: "Cargar datos", href: "/funnel/carga" }]} active="carga" />
       <CargaPresupuesto />
     </div>
   );
