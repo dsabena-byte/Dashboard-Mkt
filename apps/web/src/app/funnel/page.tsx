@@ -1,6 +1,6 @@
 import { getBgtData, hasVersion } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
-import { computeCuatris, MAX_DESVIO, MAX_INV_FACT } from "@/lib/bgt-dashboard";
+import { computeCuatris, MAX_DESVIO, MAX_INV_FACT, MESES_CAP } from "@/lib/bgt-dashboard";
 import { InversionComparador } from "@/components/inversion/inversion-comparador";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
@@ -74,6 +74,38 @@ function CompRow({ label, metaTxt, sem, chip, barPct }: {
   );
 }
 
+// Mes a mes del cuatrimestre: dónde estuvo el desvío (rojo = fuera de meta). Meses abiertos en gris.
+const fmtCorto = (n: number) => (Math.abs(n) >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : `${Math.round(n / 1e3)}K`);
+function MesAMes({ c }: { c: ReturnType<typeof computeCuatris>[number] }) {
+  const rojo = (malo: boolean, abierto: boolean) => (abierto ? "" : malo ? "font-semibold text-red-600" : "text-emerald-700");
+  return (
+    <table className="mt-3 w-full table-fixed border-t pt-2 text-[11px] tabular-nums">
+      <thead className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        <tr>
+          <th className="w-[14%] py-1.5 text-left font-medium">Mes</th>
+          <th className="py-1.5 text-right font-medium">Inversión</th>
+          <th className="py-1.5 text-right font-medium">{c.bgtLabel}</th>
+          <th className="py-1.5 text-right font-medium">Desvío</th>
+          <th className="py-1.5 text-right font-medium">Factur.</th>
+          <th className="py-1.5 text-right font-medium">Inv/Fact</th>
+        </tr>
+      </thead>
+      <tbody>
+        {c.porMes.map((m) => (
+          <tr key={m.mes} className={`border-t ${m.abierto ? "text-muted-foreground/60" : ""}`}>
+            <td className="py-1">{MESES_CAP[m.mes - 1]!.slice(0, 3)}</td>
+            <td className="py-1 text-right">{m.real ? fmtCorto(m.real) : "—"}</td>
+            <td className="py-1 text-right">{m.bgt ? fmtCorto(m.bgt) : "—"}</td>
+            <td className={`py-1 text-right ${m.desvio == null ? "" : rojo(m.desvio >= MAX_DESVIO, m.abierto)}`}>{m.desvio == null ? "—" : `${m.desvio >= 0 ? "+" : ""}${m.desvio.toFixed(1)}%`}</td>
+            <td className="py-1 text-right">{m.fact ? fmtCorto(m.fact) : "—"}</td>
+            <td className={`py-1 text-right ${m.invFact == null ? "" : rojo(m.invFact > MAX_INV_FACT, m.abierto)}`}>{m.invFact == null ? "—" : `${m.invFact.toFixed(2)}%`}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 // Card de un cuatrimestre — estilo MetaKpiCard (headline + filas con chip y barra).
 function CuatriCard({ c }: { c: ReturnType<typeof computeCuatris>[number] }) {
   const invFactLabel = MAX_INV_FACT.toString().replace(".", ","); // "1,3"
@@ -115,6 +147,7 @@ function CuatriCard({ c }: { c: ReturnType<typeof computeCuatris>[number] }) {
               chip={c.invFact == null ? "s/ fact" : <span>{c.invFact.toFixed(2)}%</span>}
             />
           </div>
+          <MesAMes c={c} />
         </>
       )}
     </div>
@@ -141,6 +174,15 @@ export default async function InversionMarketingPage() {
     ? new Date(bgt.syncedAt).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
     : "—";
   const dataLoaded = bgt.rows.length > 0;
+  // Última carga de gasto real: fecha y días sin cargar (en vez de "desactualizado").
+  const ultimoRealTxt = bgt.ultimoReal ? (() => {
+    const d = new Date(bgt.ultimoReal);
+    const dias = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+    return `Último gasto real cargado: ${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Argentina/Buenos_Aires" })} (${dias === 0 ? "hoy" : dias === 1 ? "hace 1 día" : `hace ${dias} días`})`;
+  })() : null;
+  // Tipos de cambio faltantes, agrupados por presupuesto: "4+8 2026: Oct, Nov".
+  const faltanTc = [...(bgt.faltaTc ?? []).reduce((m, f) => m.set(f.version, [...(m.get(f.version) ?? []), f.mes]), new Map<string, number[]>())]
+    .map(([v, ms]) => [v, ms.sort((a, b) => a - b).map((x) => MESES_CAP[x - 1]).join(", ")] as const);
 
   // Vencimiento estimado del link de SharePoint (renovado + 30 días).
   const venceLink = new Date(SHAREPOINT_LINK_RENOVADO + "T00:00:00");
@@ -160,22 +202,24 @@ export default async function InversionMarketingPage() {
       </header>
       <p className="-mt-2 text-xs text-muted-foreground">
         {bgt.fuente === "tablero" ? (
-          <>Fuente: carga en el tablero (pestaña Cargar datos) · Última modificación: {syncLabel}</>
+          <>Fuente: carga en el tablero (pestaña Cargar datos){ultimoRealTxt ? <> · {ultimoRealTxt}</> : null}</>
         ) : (
           <>
             {bgt.fuente === "mixta" ? "Fuente: carga en el tablero + versiones del Excel todavía no importadas" : "Fuente BGT: SharePoint → Supabase"} · Última {bgt.fuente === "mixta" ? "modificación" : "sincronización"}: {syncLabel}
+            {ultimoRealTxt ? <> · {ultimoRealTxt}</> : null}
             <span className="mx-1">·</span>
             <span className={linkColor}>{linkTexto}</span>
           </>
         )}
       </p>
-      {bgt.faltaTc && bgt.faltaTc.length > 0 && (
+      {faltanTc.length > 0 && (
         <div className="-mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Faltan tipos de cambio en {new Set(bgt.faltaTc.map((f) => f.version)).size} presupuesto(s) ({bgt.faltaTc.length} meses): esos meses salen en US$ 0.
+          Faltan tipos de cambio (esos meses salen en US$ 0): {faltanTc.map(([v, ms], i) => <span key={v}>{i ? " · " : ""}<b>{v}</b>: {ms}</span>)}.
           Cargalos en <a href="/funnel/carga" className="font-semibold underline">Cargar datos → Tipos de cambio</a>.
         </div>
       )}
-      <DataHealth dash="funnel" className="-mt-2" />
+      {/* La salud de la sincronización con SharePoint solo aplica mientras el BGT sale del Excel. */}
+      {bgt.fuente === "sharepoint" && <DataHealth dash="funnel" className="-mt-2" />}
       <HowToRead slug="funnel" />
       <DashTabBar after={[{ key: "carga", label: "Cargar datos", href: "/funnel/carga" }]} />
 

@@ -308,6 +308,8 @@ export interface DatosTablero {
   importadas: string[];
   faltaTc: { version: string; mes: number }[];
   updatedAt: string | null;
+  /** Última vez que se cargó o modificó un renglón de gasto REAL. */
+  ultimoReal: string | null;
 }
 
 /** Lo cargado en el tablero, con la forma del tablero. null si la migración no corrió o no hay nada cargado. */
@@ -323,7 +325,8 @@ export async function getDatosTablero(): Promise<DatosTablero | null> {
     const { rows, faltaTc } = agregarParaTablero(norm, versiones, tcs.map((t) => ({ ...t, tc: Number(t.tc) })));
     const updatedAt = norm.reduce<string | null>((m, l) => (!m || l.updated_at > m ? l.updated_at : m), null);
     const importadas = [...new Set(norm.filter((l) => l.origen === "import").map((l) => l.version))];
-    return { rows, versiones: [...new Set(norm.map((l) => l.version))], importadas, faltaTc, updatedAt };
+    const ultimoReal = norm.filter((l) => l.version.startsWith("REAL ")).reduce<string | null>((m, l) => (!m || l.updated_at > m ? l.updated_at : m), null);
+    return { rows, versiones: [...new Set(norm.map((l) => l.version))], importadas, faltaTc, updatedAt, ultimoReal };
   } catch {
     return null;
   }

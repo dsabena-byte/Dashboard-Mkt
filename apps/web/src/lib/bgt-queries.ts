@@ -31,6 +31,8 @@ export interface BgtData {
   fuente?: "tablero" | "mixta" | "sharepoint";
   /** Meses cargados en el tablero que todavía no tienen tipo de cambio (sus USD salen en 0). */
   faltaTc?: { version: string; mes: number }[];
+  /** Última carga/modificación de un gasto REAL en el tablero. */
+  ultimoReal?: string | null;
 }
 
 export const MESES_UP = [
@@ -66,6 +68,7 @@ async function getBgtDataTodo(): Promise<BgtData> {
     syncedAt: tablero.updatedAt,
     fuente: resto.length ? "mixta" : "tablero",
     faltaTc: tablero.faltaTc,
+    ultimoReal: tablero.ultimoReal,
   };
 }
 
