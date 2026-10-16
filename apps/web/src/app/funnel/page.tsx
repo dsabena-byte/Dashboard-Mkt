@@ -96,11 +96,19 @@ function MesAMes({ c }: { c: ReturnType<typeof computeCuatris>[number] }) {
             <td className="py-1">{MESES_CAP[m.mes - 1]!.slice(0, 3)}</td>
             <td className="py-1 text-right">{m.real ? fmtCorto(m.real) : "—"}</td>
             <td className="py-1 text-right">{m.bgt ? fmtCorto(m.bgt) : "—"}</td>
-            <td className={`py-1 text-right ${m.desvio == null ? "" : rojo(m.desvio >= MAX_DESVIO, m.abierto)}`}>{m.desvio == null ? "—" : `${m.desvio >= 0 ? "+" : ""}${m.desvio.toFixed(1)}%`}</td>
+            <td className={`py-1 text-right ${m.desvio == null ? "" : rojo(m.desvio >= MAX_DESVIO, m.abierto)}`}>{m.desvio == null || (m.abierto && !m.real) ? "—" : `${m.desvio >= 0 ? "+" : ""}${m.desvio.toFixed(1)}%`}</td>
             <td className="py-1 text-right">{m.fact ? fmtCorto(m.fact) : "—"}</td>
             <td className={`py-1 text-right ${m.invFact == null ? "" : rojo(m.invFact > MAX_INV_FACT, m.abierto)}`}>{m.invFact == null ? "—" : `${m.invFact.toFixed(2)}%`}</td>
           </tr>
         ))}
+        <tr className="border-t-2 font-semibold">
+          <td className="py-1">Total{c.coverage ? <span className="block text-[9px] font-normal text-muted-foreground">a {c.coverage}</span> : null}</td>
+          <td className="py-1 text-right">{c.realVal ? fmtCorto(c.realVal) : "—"}</td>
+          <td className="py-1 text-right">{c.bgtVal ? fmtCorto(c.bgtVal) : "—"}</td>
+          <td className={`py-1 text-right ${c.desvio == null ? "" : rojo(c.desvio >= MAX_DESVIO, !c.evaluable)}`}>{c.desvio == null ? "—" : `${c.desvio >= 0 ? "+" : ""}${c.desvio.toFixed(1)}%`}</td>
+          <td className="py-1 text-right">{c.fact ? fmtCorto(c.fact) : "—"}</td>
+          <td className={`py-1 text-right ${c.invFact == null ? "" : rojo(c.invFact > MAX_INV_FACT, !c.evaluable)}`}>{c.invFact == null ? "—" : `${c.invFact.toFixed(2)}%`}</td>
+        </tr>
       </tbody>
     </table>
   );
