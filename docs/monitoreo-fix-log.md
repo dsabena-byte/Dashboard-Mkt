@@ -310,3 +310,7 @@ causa raíz · qué se hizo.
 ## 2026-10-14 (UTC) — sin cambios: #828 (BGT) y DataForSEO sin saldo
 - **Detección:** 11 de 13 syncs en success. Rojos: `seo-sync` (7-oct) y `trends-sync` (12-oct), ambos por DataForSEO sin saldo (verificado 11 y 13-oct) → NO se re-dispararon (pagos, fallarían igual). Issue #828 (BGT) sigue abierto; `bgt-sync` en success cada 12 h (último 14-oct 02:38), la fuente data.json no se actualiza (ver 12-oct).
 - **Pendiente humano:** cargar saldo en DataForSEO y re-disparar `seo-sync`/`trends-sync`; actualizar data.json de BGT en SharePoint.
+
+## 2026-10-16 (UTC) — sin cambios: #828 (BGT) y DataForSEO sin saldo
+- **Detección:** 11 de 13 syncs en success. Rojos: `seo-sync` (7-oct) y `trends-sync` (12-oct), por DataForSEO sin saldo → NO se re-dispararon (pagos). Issue #828 (BGT) abierto; `bgt-sync` en success (último 16-oct 02:11), la fuente data.json no se actualiza.
+- **Pendiente humano:** cargar saldo en DataForSEO y re-disparar `seo-sync`/`trends-sync`; actualizar data.json de BGT en SharePoint.
