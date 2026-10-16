@@ -7,6 +7,9 @@ export const MESES = [
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
 ] as const;
 
+/** Años anteriores no se muestran ni en el tablero ni en la carga (16-oct-2026: "2023 es info muy vieja"). Los datos quedan en la base. */
+export const ANIO_MINIMO = 2024;
+
 export type TipoVersion = "BGT" | "4+8" | "8+4" | "REAL" | "OTRO";
 
 export interface Version { nombre: string; tipo: TipoVersion; anio: number; cerrada: boolean }
