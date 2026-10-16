@@ -2,14 +2,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ETAPAS, MESES, conceptosDeCuenta, etapaDe, normTxt, parseMonto, tipoDeVersion, type Etapa,
+  ETAPAS, MESES, conceptosDeCuenta, etapaDe, normTxt, parseMonto, plantillaPresupuesto, tipoDeVersion, type Etapa,
   type ItemCatalogo, type Linea, type LineaIn, type Tc, type Version,
 } from "@/lib/presupuesto-core";
 
-// Carga del presupuesto desde el tablero (/funnel/carga). Secciones: Gasto real · Tipos de cambio · Historial ·
-// sin importación desde la pantalla (pedido del user: no pisar datos). Todo pasa por /api/presupuesto y queda en el historial.
+// Carga del presupuesto desde el tablero (/funnel/carga). Secciones: Seguimiento de Gastos (gasto real, renglón por renglón) ·
+// Cargar presupuesto (BGT/4+8/8+4 entero por planilla, solo editores) · Tipos de cambio · Historial. Todo pasa por
+// /api/presupuesto y queda en el historial.
 
-type Seccion = "real" | "tc" | "historial";
+type Seccion = "real" | "presupuesto" | "tc" | "historial";
 interface Datos { usuario: { email: string; editor: boolean; puedeReal: boolean }; versiones: Version[]; tcs: Tc[]; catalogo: ItemCatalogo[]; lineas: Linea[] }
 interface Movimiento { id: number; at: string; usuario: string | null; entidad: string; accion: string; version: string | null; clave: string | null; antes: Record<string, unknown> | null; despues: Record<string, unknown> | null }
 
@@ -19,6 +20,7 @@ const btnPri = "rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-
 const btn = "rounded border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50";
 const MES_CAP = MESES.map((m) => m.charAt(0) + m.slice(1).toLowerCase());
 const ars = (n: number) => `$ ${Math.round(n).toLocaleString("es-AR")}`;
+const zebra = (i: number) => (i % 2 ? "bg-sky-50" : "bg-slate-50"); // filas alternadas: gris suave / celeste suave
 const usdTxt = (n: number | null) => (n == null ? "falta TC" : `US$ ${Math.round(n).toLocaleString("es-AR")}`);
 
 async function api<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
@@ -70,6 +72,7 @@ export function CargaPresupuesto() {
   const datosUI = { ...datos, versiones };
   const secciones: { key: Seccion; label: string }[] = [
     { key: "real", label: "Seguimiento de Gastos" },
+    ...(editor ? [{ key: "presupuesto" as const, label: "Cargar presupuesto" }] : []),
     { key: "tc", label: "Tipos de cambio" },
     { key: "historial", label: "Historial de cambios" },
   ];
@@ -92,6 +95,7 @@ export function CargaPresupuesto() {
         <Gastos datos={datosUI} version={version} cargando={cargando}
           onVersion={(v) => { setVersion(v); void cargar(v); }} onCambio={recargar} />
       )}
+      {seccion === "presupuesto" && editor && <CargarPresupuesto datos={datosUI} onCambio={recargar} />}
       {seccion === "tc" && <TiposDeCambio datos={datosUI} onCambio={recargar} />}
       {seccion === "historial" && <Historial versiones={datos.versiones} />}
     </div>
@@ -141,13 +145,14 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
       {v?.cerrada && <p className="text-xs text-muted-foreground">{v.nombre} está cerrada: se puede ver pero no modificar.</p>}
       {v && !v.cerrada && !puede && <p className="text-xs text-muted-foreground">Solo los editores del presupuesto pueden modificar {v.nombre}.</p>}
 
-      {editando && puede && (
+      {v && v.tipo !== "REAL" && <p className="text-xs text-muted-foreground">Los presupuestos (BGT, 4+8, 8+4) se cargan enteros desde <b>Cargar presupuesto</b>. Acá se puede corregir un renglón con ✎.</p>}
+      {editando && puede && (editando !== "nueva" || v?.tipo === "REAL") && (
         <div ref={formRef}><FormLinea key={editando === "nueva" ? `nueva-${nuevaN}` : editando.id} datos={datos}
           inicial={editando === "nueva" ? VACIA(version) : editando} id={editando === "nueva" ? null : editando.id}
           onCerrar={() => setEditando(null)} onGuardado={async () => { if (editando === "nueva") setNuevaN((n) => n + 1); else setEditando("nueva"); await onCambio(); }} />
           {editando !== "nueva" && <button type="button" className="mt-1 text-[11px] text-red-600 hover:underline" onClick={async () => { await borrar(editando); setEditando("nueva"); }}>Borrar este renglón</button>}</div>
       )}
-      {puede && editando !== "nueva" && <button type="button" className={btnPri} onClick={() => setEditando("nueva")}>+ Cargar un gasto nuevo</button>}
+      {puede && v?.tipo === "REAL" && editando !== "nueva" && <button type="button" className={btnPri} onClick={() => setEditando("nueva")}>+ Cargar un gasto nuevo</button>}
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2 border-t pt-4">
@@ -187,9 +192,9 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
             </tr>
           </thead>
           <tbody>
-            {filtradas.map((l) => (
+            {filtradas.map((l, i) => (
               <tr key={l.id}
-                className={`border-t align-top hover:bg-muted/30 ${editando !== "nueva" && editando?.id === l.id ? "bg-amber-50" : ""}`}>
+                className={`border-t align-top hover:bg-amber-50/50 ${editando !== "nueva" && editando?.id === l.id ? "bg-amber-50" : zebra(i)}`}>
                 {COLS.map((c) => (
                   <td key={c.key} className="break-words px-1.5 py-1.5">
                     {c.get(l) || "—"}
@@ -345,11 +350,11 @@ function FormLinea({ datos, inicial, id, onCerrar, onGuardado }: {
       {/* Mismo orden que la planilla de Seguimiento: presupuesto, CECO, cuenta, año, mes, concepto, proveedor, detalle,
           Solped, OC, recepción, contabilización, factura, $, provisión. */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <L t="Presupuesto *">
+        {id && <L t="Presupuesto *">
           <select className={inputCls} value={tv.tipo === "OTRO" ? "REAL" : tv.tipo} onChange={(e) => setVersion(e.target.value, tv.anio)}>
             {tipos.map((t) => <option key={t} value={t}>{t === "REAL" ? "Real (gasto)" : t}</option>)}
           </select>
-        </L>
+        </L>}
         <L t="CECO">
           <select className={inputCls} value={f.ceco} onChange={(e) => set("ceco", e.target.value)}>
             <option value="">—</option>
@@ -408,6 +413,120 @@ function FormLinea({ datos, inicial, id, onCerrar, onGuardado }: {
         <span className="self-center text-[11px] text-muted-foreground">{id ? "Cada cambio queda en el historial." : "Los dólares se calculan solos con el tipo de cambio del mes."}</span>
       </div>
     </div>
+  );
+}
+
+// ======================================================================= Cargar presupuesto
+interface VistaPrevia { version: string; total: number; porMes: number[]; renglones: number; antes: { total: number; renglones: number }; errores: { fila: number; error: string }[]; otrasVersiones: number }
+
+/** Presupuesto entero (BGT / 4+8 / 8+4) desde una planilla: plantilla → completar → subir → vista previa → reemplazar. */
+function CargarPresupuesto({ datos, onCambio }: { datos: Datos; onCambio: () => Promise<void> }) {
+  const hoy = new Date().getFullYear();
+  const [tipo, setTipo] = useState<"BGT" | "4+8" | "8+4">("BGT");
+  const [anio, setAnio] = useState(hoy + 1);
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [vista, setVista] = useState<VistaPrevia | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; txt: string } | null>(null);
+  const version = `${tipo} ${anio}`;
+  const existe = datos.versiones.find((v) => v.nombre === version);
+  const anios = [...new Set([hoy + 1, hoy, hoy - 1, ...datos.versiones.map((v) => v.anio)])].sort((a, b) => b - a);
+  const reset = () => { setVista(null); setMsg(null); };
+
+  async function plantilla(conDatos: boolean) {
+    setOcupado(true);
+    let lineas: Linea[] = [];
+    if (conDatos) {
+      const r = await api<Datos>(`/api/presupuesto?version=${encodeURIComponent(version)}`);
+      if (!r.ok) { setOcupado(false); setMsg({ ok: false, txt: r.data.error ?? "No se pudo leer el presupuesto." }); return; }
+      lineas = r.data.lineas.filter((l) => l.version === version);
+    }
+    const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(plantillaPresupuesto(lineas));
+    ws["!cols"] = [{ wch: 12 }, { wch: 46 }, { wch: 26 }, ...MESES.map(() => ({ wch: 13 }))];
+    XLSX.utils.book_append_sheet(wb, ws, version);
+    XLSX.writeFile(wb, `Presupuesto ${version.replace("+", "mas")}.xlsx`);
+    setOcupado(false);
+  }
+
+  async function enviar(confirmar: boolean) {
+    if (!archivo) return;
+    const fd = new FormData();
+    fd.set("archivo", archivo); fd.set("tipo", "presupuesto"); fd.set("version", version);
+    if (confirmar) fd.set("confirmar", "1");
+    setOcupado(true); setMsg(null);
+    const r = await api<VistaPrevia & { ok?: boolean }>("/api/presupuesto/importar", { method: "POST", body: fd });
+    setOcupado(false);
+    if (!r.ok) { setMsg({ ok: false, txt: r.data.error ?? "No se pudo leer la planilla." }); return; }
+    if (!confirmar) { setVista(r.data); return; }
+    setVista(null); setArchivo(null);
+    setMsg({ ok: true, txt: `${version} quedó cargado. El cambio quedó en el historial.` });
+    await onCambio();
+  }
+
+  return (
+    <section className="space-y-4 rounded-xl border bg-card p-4 shadow-sm">
+      <div>
+        <div className="text-sm font-semibold">Cargar un presupuesto entero</div>
+        <p className="text-xs text-muted-foreground">Para BGT, 4+8 y 8+4 (sin Solped, OC ni factura): una fila por cuenta y concepto, un monto en pesos por mes. Lo que subas <b>reemplaza todo</b> ese presupuesto; el gasto real no se toca.</p>
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs text-muted-foreground">Presupuesto<br />
+          <select className={selectCls} value={tipo} onChange={(e) => { setTipo(e.target.value as typeof tipo); reset(); }}>
+            {(["BGT", "4+8", "8+4"] as const).map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-muted-foreground">Año<br />
+          <select className={selectCls} value={anio} onChange={(e) => { setAnio(Number(e.target.value)); reset(); }}>
+            {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </label>
+        <span className="pb-2 text-xs text-muted-foreground">{existe ? (existe.cerrada ? `${version} está cerrada: reabrila en Tipos de cambio para cambiarla.` : `${version} ya tiene datos: se van a reemplazar.`) : `${version} es nuevo.`}</span>
+      </div>
+      <ol className="list-decimal space-y-3 pl-5 text-xs">
+        <li>
+          Bajá la plantilla y completá los montos en pesos (podés copiar y pegar desde tu Excel; no cambies los títulos).
+          <div className="mt-1 flex flex-wrap gap-2">
+            <button type="button" className={btn} disabled={ocupado} onClick={() => plantilla(false)}>Plantilla vacía</button>
+            {existe && <button type="button" className={btn} disabled={ocupado} onClick={() => plantilla(true)}>Plantilla con lo cargado en {version}</button>}
+          </div>
+        </li>
+        <li>
+          Subila:
+          <input type="file" accept=".xlsx,.xls,.csv" className="ml-2 text-xs" onChange={(e) => { setArchivo(e.target.files?.[0] ?? null); reset(); }} />
+          {archivo && !vista && <button type="button" className={`${btnPri} ml-2`} disabled={ocupado} onClick={() => enviar(false)}>{ocupado ? "Leyendo…" : "Revisar"}</button>}
+        </li>
+      </ol>
+
+      {vista && (
+        <div className="space-y-2 rounded-lg border p-3 text-xs">
+          <div><b>{vista.version}</b>: {vista.renglones} montos · total <b>{ars(vista.total)}</b>
+            {vista.antes.renglones > 0 && <span className="text-muted-foreground"> (hoy tiene {ars(vista.antes.total)} en {vista.antes.renglones} renglones, que se reemplazan)</span>}</div>
+          <table className="w-full table-fixed tabular-nums">
+            <thead className="text-[10px] uppercase text-muted-foreground"><tr>{MES_CAP.map((m) => <th key={m} className="px-1 text-right">{m.slice(0, 3)}</th>)}</tr></thead>
+            <tbody><tr>{vista.porMes.map((n, i) => <td key={i} className="px-1 text-right">{n ? Math.round(n / 1e6).toLocaleString("es-AR") + " M" : "—"}</td>)}</tr></tbody>
+          </table>
+          {vista.otrasVersiones > 0 && <p className="text-muted-foreground">Se ignoraron {vista.otrasVersiones} renglones de otros presupuestos.</p>}
+          {vista.errores.length > 0 ? (
+            <div className="text-red-700">
+              <p className="font-semibold">Hay {vista.errores.length} problemas; corregilos en el Excel y volvé a subirlo:</p>
+              <ul className="list-disc pl-5">{vista.errores.slice(0, 15).map((e, i) => <li key={i}>{e.fila ? `Fila ${e.fila}: ` : ""}{e.error}</li>)}</ul>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button type="button" className={btnPri} disabled={ocupado || !vista.renglones || existe?.cerrada}
+                onClick={() => { if (!vista.antes.renglones || confirm(`¿Reemplazar ${vista.version}? Lo cargado hoy (${ars(vista.antes.total)}) queda en el historial.`)) void enviar(true); }}>
+                {ocupado ? "Guardando…" : vista.antes.renglones ? `Reemplazar ${vista.version}` : `Guardar ${vista.version}`}
+              </button>
+              <button type="button" className={btn} onClick={reset}>Cancelar</button>
+            </div>
+          )}
+        </div>
+      )}
+      {msg && <p className={`text-xs ${msg.ok ? "text-emerald-700" : "text-red-600"}`}>{msg.txt}</p>}
+      <p className="text-[11px] text-muted-foreground">Los dólares salen del tipo de cambio de {version} (pestaña Tipos de cambio).</p>
+    </section>
   );
 }
 
@@ -488,10 +607,10 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
             </tr>
           </thead>
           <tbody>
-            {versiones.map((n) => {
+            {versiones.map((n, i) => {
               const enEdicion = fila === n;
               return (
-                <tr key={n} className={`border-t ${enEdicion ? "bg-amber-50/60" : ""}`}>
+                <tr key={n} className={`border-t ${enEdicion ? "bg-amber-50/60" : zebra(i)}`}>
                   <td className="px-2 py-1.5 font-medium">{n}{cerrada(n) && <span className="ml-1 text-[10px] font-normal text-muted-foreground">(cerrada)</span>}</td>
                   {MESES.map((_, i) => (
                     <td key={i} className="px-1 py-1.5 text-center tabular-nums">

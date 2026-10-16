@@ -222,7 +222,8 @@ export async function borrarLinea(id: string, usuario: string, versionPermitida:
  * Trae el histórico del Excel: reemplaza lo IMPORTADO antes de las versiones que trae la planilla; lo cargado a mano
  * en el tablero queda. Seguro ante fallas: primero inserta lo nuevo y después borra lo anterior.
  */
-export async function importarPlanilla(lineas: LineaIn[], catalogo: ItemCatalogo[], usuario: string): Promise<{ versiones: Record<string, { antes: number; despues: number; renglones: number }> }> {
+/** `todo`: reemplaza TODOS los renglones de esas versiones (carga de un presupuesto entero); si no, solo los importados. */
+export async function importarPlanilla(lineas: LineaIn[], catalogo: ItemCatalogo[], usuario: string, todo = false): Promise<{ versiones: Record<string, { antes: number; despues: number; renglones: number }> }> {
   const versiones = [...new Set(lineas.map((l) => l.version))];
   await asegurarVersiones(versiones, usuario);
   const cerradas = (await listVersiones()).filter((v) => v.cerrada && versiones.includes(v.nombre));
@@ -230,7 +231,7 @@ export async function importarPlanilla(lineas: LineaIn[], catalogo: ItemCatalogo
 
   const previos = new Map<string, { ids: string[]; total: number }>();
   for (const v of versiones) {
-    const ls = await getAll<{ id: string; ars: number }>(`bgt_lineas?select=id,ars&version=eq.${encodeURIComponent(v)}&origen=eq.import&order=id.asc`);
+    const ls = await getAll<{ id: string; ars: number }>(`bgt_lineas?select=id,ars&version=eq.${encodeURIComponent(v)}${todo ? "" : "&origen=eq.import"}&order=id.asc`);
     previos.set(v, { ids: ls.map((l) => l.id), total: ls.reduce((s, l) => s + Number(l.ars), 0) });
   }
   await insertar(lineas, "import", usuario);
@@ -247,6 +248,12 @@ export async function importarPlanilla(lineas: LineaIn[], catalogo: ItemCatalogo
   }
   await auditar(versiones.map((v) => ({ usuario, entidad: "importacion", accion: "importacion", version: v, clave: null, antes: { total_ars: resumen[v]!.antes, renglones: previos.get(v)?.ids.length ?? 0 }, despues: { total_ars: resumen[v]!.despues, renglones: resumen[v]!.renglones } })));
   return { versiones: resumen };
+}
+
+/** Total y renglones cargados hoy en una versión (vista previa antes de reemplazarla). */
+export async function resumenVersion(version: string): Promise<{ total: number; renglones: number }> {
+  const ls = await getAll<{ ars: number }>(`bgt_lineas?select=ars&version=eq.${encodeURIComponent(version)}&order=id.asc`);
+  return { total: ls.reduce((s, l) => s + Number(l.ars), 0), renglones: ls.length };
 }
 
 export async function agregarAlCatalogo(items: ItemCatalogo[]): Promise<void> {

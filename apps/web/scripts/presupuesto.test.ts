@@ -1,7 +1,7 @@
 // Presupuesto cargado desde el tablero (migración 0125). Puro. Correr: cd apps/web && npx tsx scripts/presupuesto.test.ts
 import {
   agregarParaTablero, armarCatalogo, etapaDe, normalizarCuentas, camposCambiados, claveDuplicado, parseFecha, parseMes, parseMonto, parsePlanilla,
-  parseTcPlantilla, tipoDeVersion, totalesPorVersion, validarLinea, type LineaIn, type Version,
+  parsePresupuesto, parseTcPlantilla, plantillaPresupuesto, tipoDeVersion, totalesPorVersion, validarLinea, type LineaIn, type Version,
 } from "../src/lib/presupuesto-core";
 
 let fails = 0, passes = 0;
@@ -124,6 +124,22 @@ const vl: Version[] = [{ nombre: "REAL 2026", tipo: "REAL", anio: 2026, cerrada:
 eq("concepto válido para la cuenta", validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010069", concepto: "PAUTA ATL", ars: 1 }, vl), null);
 ok("concepto de otra cuenta", /no corresponde/.test(validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010069", concepto: "AGENCIAS VARIAS", ars: 1 }, vl) ?? ""));
 ok("cuenta 6202010033 no habilitada", /no está habilitada/.test(validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010033", concepto: "PAUTA DIGITAL", ars: 1 }, vl) ?? ""));
+
+// ── presupuesto entero por planilla ──
+const pl = plantillaPresupuesto();
+eq("plantilla: títulos", pl[0]!.slice(0, 4), ["CECO", "CUENTA", "CONCEPTO", "ENERO"]);
+eq("plantilla: una fila por cuenta × concepto", pl.length - 1, 14);
+const rellena = pl.map((r, i) => (i === 0 ? r : r.map((c, j) => (j === 3 && String(r[2]) === "PAUTA ATL" ? "1.000.000" : j === 14 && String(r[2]) === "PAUTA ATL" ? 500 : c))));
+const pp = parsePresupuesto([["Presupuesto 2027"], ...rellena, ["", "TOTAL", "", 1000500]], "BGT 2027");
+eq("plantilla completada → renglones", pp.lineas.map((l) => [l.version, l.mes, l.cuenta, l.concepto, l.ars]), [["BGT 2027", 1, "6202010069", "PAUTA ATL", 1000000], ["BGT 2027", 12, "6202010069", "PAUTA ATL", 500]]);
+eq("plantilla completada sin errores", pp.errores, []);
+const pe = parsePresupuesto([["CECO", "CUENTA", "CONCEPTO", ...["ENE", "FEB", "MAR", "ABR", "MAY", "JUN"]], ["", "PUBLICIDAD TV", "pauta atl", 10], ["", "6202010069", "AGENCIAS VARIAS", 5], ["", "6202010033", "X", 5], ["", "6202010069", "PAUTA ATL", "abc"]], "4+8 2026");
+eq("cuenta por nombre y concepto sin mayúsculas", pe.lineas.map((l) => [l.cuenta, l.concepto, l.ceco]), [["6202010069", "PAUTA ATL", "W014402001"]]);
+eq("errores: concepto ajeno, cuenta no habilitada, monto inválido", pe.errores.map((e) => e.fila), [3, 4, 5]);
+const ida = plantillaPresupuesto(pp.lineas);
+eq("plantilla con lo cargado vuelve igual", parsePresupuesto(ida, "BGT 2027").lineas.map((l) => [l.mes, l.ars]), [[1, 1000000], [12, 500]]);
+const larga = parsePresupuesto([["PRESUPUESTO", "CECO", "CUENTA", "MES", "CONCEPTO", "$"], ["BGT 2027", "W014402001", "6202010069", "Enero", "PAUTA ATL", 7], ["REAL 2026", "W014402001", "6202010069", "Enero", "PAUTA ATL", 9]], "BGT 2027");
+eq("formato Seguimiento: solo la versión elegida", [larga.lineas.map((l) => l.ars), larga.otrasVersiones], [[7], 1]);
 
 console.log(`presupuesto: ${passes} OK, ${fails} fallas`);
 if (fails) process.exit(1);
