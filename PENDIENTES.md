@@ -25,7 +25,7 @@
 | D13 | Borrar `public/bgt-mkt/` (iframe viejo sin uso) | Claude | sep-2026 | 6-oct: sigue el archivo | `apps/web/public/bgt-mkt` |
 | D14 | **Monitoreo de precios (BIP):** definir las 12 decisiones abiertas de `docs/investigacion-precios/benchmark-precios-multicategoria-bip.md` para recién ahí diseñar la estructura | User (decisión) | 7-oct | 7-oct: informe mergeado (#824), nada implementado | sección "Decisiones abiertas" del informe |
 | D15 | **Presupuesto desde el tablero (0125):** (1) correr `supabase/migrations/0125_presupuesto.sql` en el SQL Editor; (2) /funnel → Cargar datos → Importar planilla (Seguimiento_BGT_2026.xlsx) y revisar los totales; (3) subir la plantilla de tipos de cambio; (4) pasar el email de Julieta para `bgt_editores`; (5) validado → apagar `bgt-sync` y el Excel | User | 16-oct | 16-oct: código en main, nada corrido | `bgt_versiones`/`bgt_lineas`/`bgt_tc` por REST; /funnel dice "Fuente: carga en el tablero" |
-| D16 | Presupuesto: grilla para cargar BGT/4+8/8+4 por cuenta × mes + "crear 4+8 / 8+4 / BGT del año siguiente" desde el REAL | Claude | 16-oct | 16-oct: no empezado | `/funnel/carga` |
+| D16 | Presupuesto: grilla para cargar BGT/4+8/8+4 por cuenta × mes + "crear 4+8 / 8+4 / BGT del año siguiente" desde el REAL | Claude | 16-oct | 16-oct: carga de un presupuesto entero por planilla HECHA (pestaña Cargar presupuesto); falta "crear 4+8/8+4/BGT" desde el REAL | `/funnel/carga` |
 
 ## Cerrados (con evidencia)
 - **Tab "OKR Mkt" de /overview** — borrado el 4-sep-2026 (`49830d9`). La memoria lo seguía dando como pendiente.

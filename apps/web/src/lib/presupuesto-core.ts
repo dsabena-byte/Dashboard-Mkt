@@ -417,3 +417,81 @@ export const CUENTA_CONCEPTOS: Record<string, string[]> = {
   "6202010084": ["ACCIONES COMPARTIDAS"],
 };
 export const conceptosDeCuenta = (cuenta: string): string[] | null => CUENTA_CONCEPTOS[cuenta] ?? null;
+
+// ---------- Presupuesto entero desde una planilla (BGT / 4+8 / 8+4: sin detalle de Solped, OC, factura…) ----------
+
+/** Cuenta (código, "código · nombre" o nombre) + concepto → los canónicos de CUENTA_CONCEPTOS, o el error. */
+export function canonCuentaConcepto(cuentaTxt: string, conceptoTxt: string): { cuenta: string; nombre_cta: string; concepto: string } | { error: string } {
+  const cuentas = CATALOGO_BASE.filter((c) => c.tipo === "cuenta");
+  const cod = cuentaTxt.match(/\b\d{10}\b/)?.[0];
+  const hit = cod ? cuentas.find((c) => c.clave === cod) : cuentas.find((c) => normTxt(c.nombre) === normTxt(cuentaTxt));
+  if (!hit || !CUENTA_CONCEPTOS[hit.clave]) return { error: `La cuenta "${cuentaTxt}" no está habilitada` };
+  const concepto = CUENTA_CONCEPTOS[hit.clave]!.find((c) => normTxt(c) === normTxt(conceptoTxt));
+  if (!concepto) return { error: `El concepto "${conceptoTxt}" no corresponde a la cuenta ${hit.clave} (${CUENTA_CONCEPTOS[hit.clave]!.join(", ")})` };
+  return { cuenta: hit.clave, nombre_cta: hit.nombre, concepto };
+}
+
+const PLANILLA_VACIA = { nro_proveedor: null, proveedor: null, detalle: null, solped: null, oc: null, nro_recepcion: null, nro_doc_contable: null, fecha_contabilizacion: null, factura: null, provision: null } as const;
+
+/**
+ * Planilla de un presupuesto → renglones de `version`. Formato de la plantilla: CECO | CUENTA | CONCEPTO | ENERO … DICIEMBRE
+ * (un renglón por cuenta × concepto, un monto por mes). También acepta la planilla de Seguimiento (columna MES y $): ahí se
+ * toman solo las filas de `version` (o sin presupuesto). Montos vacíos o 0 no generan renglón.
+ */
+export function parsePresupuesto(aoa: unknown[][], version: string): ParseResult & { otrasVersiones: number } {
+  const out = { lineas: [] as LineaIn[], errores: [] as ParseResult["errores"], omitidas: 0, otrasVersiones: 0 };
+  for (let h = 0; h < Math.min(aoa.length, 15); h++) {
+    const head = (aoa[h] ?? []).map((c) => (typeof c === "string" ? normTxt(c) : ""));
+    const iCta = head.findIndex((x) => /^CUENTA/.test(x));
+    const iCon = head.findIndex((x) => x === "CONCEPTO");
+    const iCeco = head.findIndex((x) => x === "CECO");
+    const meses = head.map((x, i) => [x.length >= 3 ? parseMes(x) : null, i] as const).filter(([m]) => m) as [number, number][];
+    if (iCta < 0 || iCon < 0 || meses.length < 6) continue;
+    for (let r = h + 1; r < aoa.length; r++) {
+      const row = aoa[r] ?? [];
+      const cta = txt(row[iCta]), con = txt(row[iCon]);
+      if (!cta && !con) { out.omitidas++; continue; }
+      if (/^TOTAL/.test(normTxt(cta)) || /^TOTAL/.test(normTxt(con))) { out.omitidas++; continue; }
+      const montos = meses.map(([mes, i]) => [mes, row[i]] as const).filter(([, v]) => txt(v) != null);
+      if (!montos.length) { out.omitidas++; continue; }
+      const cc = canonCuentaConcepto(cta ?? "", con ?? "");
+      if ("error" in cc) { out.errores.push({ fila: r + 1, error: cc.error }); continue; }
+      for (const [mes, v] of montos) {
+        const ars = parseMonto(v);
+        if (ars == null) { out.errores.push({ fila: r + 1, error: `${MESES[mes - 1]}: "${String(v)}" no es un número` }); continue; }
+        if (ars === 0) continue;
+        out.lineas.push({ ...PLANILLA_VACIA, version, mes, ceco: txt(iCeco >= 0 ? row[iCeco] : null)?.match(/^\S+/)?.[0] ?? "W014402001", ...cc, ars });
+      }
+    }
+    return out;
+  }
+  // Sin columnas de meses: planilla de Seguimiento (un renglón por mes).
+  const p = parsePlanilla(aoa, { versionPorDefecto: version });
+  out.errores = p.errores; out.omitidas = p.omitidas;
+  for (const l of p.lineas) {
+    if (normTxt(l.version) !== normTxt(version)) { out.otrasVersiones++; continue; }
+    const cc = canonCuentaConcepto(l.cuenta || l.nombre_cta, l.concepto);
+    if ("error" in cc) { out.errores.push({ fila: 0, error: `${MESES[l.mes - 1]} · ${cc.error}` }); continue; }
+    if (l.ars !== 0) out.lineas.push({ ...l, version, ...cc, ceco: l.ceco || "W014402001" });
+  }
+  if (!p.lineas.length && !p.errores.length) out.errores.push({ fila: 0, error: "No encontré los títulos CUENTA, CONCEPTO y los meses (usá la plantilla)." });
+  return out;
+}
+
+/** Plantilla para cargar un presupuesto: una fila por cuenta × concepto, con los montos de `lineas` si se pasan. */
+export function plantillaPresupuesto(lineas: Pick<LineaIn, "ceco" | "cuenta" | "concepto" | "mes" | "ars">[] = []): unknown[][] {
+  const nombres = new Map(CATALOGO_BASE.filter((c) => c.tipo === "cuenta").map((c) => [c.clave, c.nombre]));
+  const suma = new Map<string, number[]>();
+  for (const l of lineas) {
+    const k = `${l.ceco || "W014402001"}|${l.cuenta}|${l.concepto}`;
+    const arr = suma.get(k) ?? Array<number>(12).fill(0);
+    arr[l.mes - 1]! += l.ars;
+    suma.set(k, arr);
+  }
+  const filas = new Map<string, [string, string, string]>();
+  for (const [cta, cons] of Object.entries(CUENTA_CONCEPTOS)) for (const c of cons) filas.set(`W014402001|${cta}|${c}`, ["W014402001", cta, c]);
+  for (const k of suma.keys()) if (!filas.has(k)) filas.set(k, k.split("|") as [string, string, string]);
+  const aoa: unknown[][] = [["CECO", "CUENTA", "CONCEPTO", ...MESES]];
+  for (const [k, [ceco, cta, con]] of filas) aoa.push([ceco, `${cta} · ${nombres.get(cta) ?? ""}`, con, ...(suma.get(k) ?? Array(12).fill(null)).map((n) => n || null)]);
+  return aoa;
+}

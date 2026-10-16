@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { guardarTcs, importarPlanilla } from "@/lib/presupuesto-server";
-import { armarCatalogo, normalizarCuentas, parsePlanilla, parseTcPlantilla, totalesPorVersion } from "@/lib/presupuesto-core";
+import { guardarTcs, importarPlanilla, resumenVersion } from "@/lib/presupuesto-server";
+import { armarCatalogo, normalizarCuentas, parsePlanilla, parsePresupuesto, parseTcPlantilla, tipoDeVersion, totalesPorVersion } from "@/lib/presupuesto-core";
 import { conUsuario, soloEditor } from "../_auth";
 
 // Importación (solo editores), en dos pasos: sin `confirmar` devuelve la vista previa (totales por versión,
 // errores) sin escribir nada; con `confirmar=1` guarda. tipo=planilla → hoja "Planilla carga BGT - Facturas"
 // (+ catálogo de "Menu Desplegable"); reemplaza SOLO las versiones que trae. tipo=tc → plantilla de tipos de cambio.
+// tipo=presupuesto + version (BGT/4+8/8+4 año) → reemplaza TODO ese presupuesto con la planilla (nunca el REAL).
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -37,6 +38,22 @@ export async function POST(req: Request) {
       if (errores.length) return NextResponse.json({ error: "Corregí los errores antes de guardar.", errores }, { status: 400 });
       const n = await guardarTcs(tcs, u.email);
       return NextResponse.json({ ok: true, cambios: n });
+    }
+
+    if (tipo === "presupuesto") {
+      const version = String(fd?.get("version") ?? "").trim();
+      const tv = tipoDeVersion(version);
+      if (!tv || !["BGT", "4+8", "8+4"].includes(tv.tipo)) return NextResponse.json({ error: "Elegí el presupuesto (BGT, 4+8 u 8+4 y el año)." }, { status: 400 });
+      const hoja = nombres[0];
+      const r = parsePresupuesto(hoja ? sh[hoja]! : [], version);
+      const porMes = Array<number>(12).fill(0);
+      for (const l of r.lineas) porMes[l.mes - 1]! += l.ars;
+      const total = porMes.reduce((a, b) => a + b, 0);
+      if (!confirmar) return NextResponse.json({ vistaPrevia: true, version, total, porMes, renglones: r.lineas.length, antes: await resumenVersion(version), errores: r.errores, otrasVersiones: r.otrasVersiones });
+      if (r.errores.length) return NextResponse.json({ error: "Corregí los errores de la planilla antes de guardar.", errores: r.errores }, { status: 400 });
+      if (!r.lineas.length) return NextResponse.json({ error: "La planilla no tiene montos." }, { status: 400 });
+      const res = await importarPlanilla(r.lineas, [], u.email, true);
+      return NextResponse.json({ ok: true, ...res });
     }
 
     if (tipo !== "planilla") return NextResponse.json({ error: "tipo inválido" }, { status: 400 });

@@ -487,6 +487,11 @@ reporte_existencia/cb_homologos).
   Desplegable"` (UN TC por mes para todas las versiones). El user pidió NO usarlo: él completa la plantilla de TC por versión.
 - **No probado contra la base real** (el sandbox no tiene la service key de Drean): falta correr 0125 e importar (PENDIENTES D15).
 
+- **Presupuesto entero por planilla (16-oct, pedido del user):** el formulario "Cargar un gasto" es SOLO para el REAL (con Solped,
+  OC, factura…). BGT/4+8/8+4 se cargan en la pestaña **Cargar presupuesto** (solo editores): plantilla CECO | CUENTA | CONCEPTO |
+  ENERO…DICIEMBRE (vacía o con lo cargado) → subir → vista previa (total, por mes, antes) → **reemplaza TODO ese presupuesto**
+  (`importarPlanilla(..., todo=true)`, auditado). `parsePresupuesto`/`plantillaPresupuesto` en presupuesto-core (también acepta el
+  formato Seguimiento con MES y $, solo la versión elegida). API `importar` tipo=presupuesto (nunca REAL).
 ## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026
 - **Marca: en Drean NO aparece "BIP"** (BIP es un proyecto aparte). La capa se llama **"Proceso Estratégico"** (sidebar, `/guia`, 🎓, copiloto). Ids de módulo sin `bip-`: `proceso-estrategico`, `conectar-fuentes`, `mapa-estrategico`, `insights-chat`, `tableros-planilla`. El test `guia-integridad` falla si un módulo dice "BIP". Solo quedan comentarios de código e identificadores internos (`.bip-viz`, evento `bip:learn`) y la landing `public/bip.html` (es de BIP, no del dash).
 - `/guia` ("Proceso Estratégico", último ítem del sidebar) + `/guia/[id]`: 45 módulos estáticos en `lib/guia/*`
