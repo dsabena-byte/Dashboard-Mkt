@@ -461,8 +461,15 @@ reporte_existencia/cb_homologos).
   API `/api/presupuesto` (GET datos/historial, POST cerrar/abrir) + `/lineas` (POST/PATCH/DELETE) + `/tc` (PUT) + `/importar`
   (vista previa → confirmar; reemplaza SOLO las versiones del archivo) · UI `/funnel/carga` (`components/inversion/carga-presupuesto.tsx`:
   Gastos y presupuestos · Tipos de cambio · Historial · Importar planilla) y pestaña "Cargar datos" en /funnel.
-- **Lectura:** `getBgtData()` usa lo cargado en el tablero POR VERSIÓN (una versión con renglones acá reemplaza a la del Excel; las
-  que no se importaron siguen del Excel). Sin la migración / sin datos → igual que antes. /funnel avisa la fuente y los meses sin TC.
+- **Lectura (16-oct, v2):** lo cargado a mano en el tablero se SUMA a lo del Excel viejo (`bgt_marketing`); una versión traída con
+  "Traer histórico del Excel" (renglones `origen=import`) REEMPLAZA a la misma versión del Excel. "Traer histórico" reemplaza solo lo
+  importado antes (lo cargado a mano queda). Sin la migración / sin datos → igual que antes. /funnel avisa la fuente y los meses sin TC.
+- **UX (16-oct, user: "no quiero cargar planillas, quiero algo simple"):** /funnel/carga abre con el formulario "Cargar un gasto" a la
+  vista (aunque la base esté vacía: el primer gasto crea `REAL <año>`); tocar un renglón lo edita. **Circuito del gasto (user):
+  Solped → OC → recepción/factura → contabilización**: el formulario tiene esos 4 pasos y la etapa sale de los datos (`etapaDe`);
+  columna y filtro "Etapa" en la tabla. Tipos de cambio: formulario de a uno (presupuesto + mes + valor) arriba de la grilla.
+- **SharePoint vencido:** el link "anyone" se renovó el 7-sep (+30 días) → el `data.json` quedó en el sync del 6-oct; por eso /funnel
+  no muestra el 8+4 2026 ni lo cargado en el Excel después del 6-oct hasta traer el histórico (o renovar el link).
   Chat (`get_inversion_mkt`) y señales leen lo mismo.
 - **Planilla del 16-oct (`Seguimiento_BGT_2026.xlsx`, verificado parseándola):** 2.742 renglones, 13 versiones; los $ por versión
   dan igual al peso que el tablero viejo salvo BGT 2026 (+$420 M), REAL 2026 (+$753 M) y 8+4 2026 (nuevo, $6.100 M). 2 filas sin

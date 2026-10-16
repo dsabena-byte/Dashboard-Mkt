@@ -49,12 +49,12 @@ interface DbBgtRow {
 }
 
 export async function getBgtData(): Promise<BgtData> {
-  // Lo cargado en el tablero (migración 0125) manda por versión: una versión con renglones cargados acá
-  // reemplaza a la misma versión del Excel; las que todavía no se importaron siguen saliendo del Excel.
+  // Lo cargado en el tablero (migración 0125) se SUMA a lo del Excel. Una versión traída del Excel con
+  // "Traer histórico" (renglones origen import) reemplaza a la misma versión del Excel viejo.
   const [tablero, excel] = await Promise.all([getDatosTablero(), getBgtDataExcel().catch(() => null)]);
   if (!tablero) return { ...(excel ?? { rows: [], syncedAt: null }), fuente: "sharepoint" };
-  const enTablero = new Set(tablero.versiones);
-  const resto = (excel?.rows ?? []).filter((r) => !enTablero.has(r.presupuesto));
+  const importadas = new Set(tablero.importadas);
+  const resto = (excel?.rows ?? []).filter((r) => !importadas.has(r.presupuesto));
   return {
     rows: [...tablero.rows, ...resto],
     syncedAt: tablero.updatedAt,

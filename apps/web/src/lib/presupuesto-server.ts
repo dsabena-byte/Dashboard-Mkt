@@ -210,8 +210,8 @@ export async function borrarLinea(id: string, usuario: string, versionPermitida:
 
 // ---------- importación de la planilla ----------
 /**
- * Reemplaza los renglones de las versiones que trae la planilla (todas las demás quedan igual). Seguro ante
- * fallas: primero inserta lo nuevo y recién después borra lo anterior; si el insert falla, no se borra nada.
+ * Trae el histórico del Excel: reemplaza lo IMPORTADO antes de las versiones que trae la planilla; lo cargado a mano
+ * en el tablero queda. Seguro ante fallas: primero inserta lo nuevo y después borra lo anterior.
  */
 export async function importarPlanilla(lineas: LineaIn[], catalogo: ItemCatalogo[], usuario: string): Promise<{ versiones: Record<string, { antes: number; despues: number; renglones: number }> }> {
   const versiones = [...new Set(lineas.map((l) => l.version))];
@@ -221,7 +221,7 @@ export async function importarPlanilla(lineas: LineaIn[], catalogo: ItemCatalogo
 
   const previos = new Map<string, { ids: string[]; total: number }>();
   for (const v of versiones) {
-    const ls = await getAll<{ id: string; ars: number }>(`bgt_lineas?select=id,ars&version=eq.${encodeURIComponent(v)}&order=id.asc`);
+    const ls = await getAll<{ id: string; ars: number }>(`bgt_lineas?select=id,ars&version=eq.${encodeURIComponent(v)}&origen=eq.import&order=id.asc`);
     previos.set(v, { ids: ls.map((l) => l.id), total: ls.reduce((s, l) => s + Number(l.ars), 0) });
   }
   await insertar(lineas, "import", usuario);
@@ -247,21 +247,29 @@ export async function agregarAlCatalogo(items: ItemCatalogo[]): Promise<void> {
 }
 
 // ---------- lectura para el tablero /funnel ----------
-export interface DatosTablero { rows: FilaAgregada[]; versiones: string[]; faltaTc: { version: string; mes: number }[]; updatedAt: string | null }
+export interface DatosTablero {
+  rows: FilaAgregada[];
+  versiones: string[];
+  /** Versiones traídas del Excel con "Traer histórico": reemplazan a las del Excel viejo en el tablero. */
+  importadas: string[];
+  faltaTc: { version: string; mes: number }[];
+  updatedAt: string | null;
+}
 
 /** Lo cargado en el tablero, con la forma del tablero. null si la migración no corrió o no hay nada cargado. */
 export async function getDatosTablero(): Promise<DatosTablero | null> {
   try {
     const [versiones, tcs] = await Promise.all([listVersiones(), listTc()]);
     if (!versiones.length) return null;
-    const lineas = await getAll<{ version: string; mes: number; nombre_cta: string; concepto: string; ars: number; updated_at: string }>(
-      "bgt_lineas?select=version,mes,nombre_cta,concepto,ars,updated_at&order=id.asc",
+    const lineas = await getAll<{ version: string; mes: number; nombre_cta: string; concepto: string; ars: number; updated_at: string; origen: string }>(
+      "bgt_lineas?select=version,mes,nombre_cta,concepto,ars,updated_at,origen&order=id.asc",
     );
     if (!lineas.length) return null;
     const norm = lineas.map((l) => ({ ...l, ars: Number(l.ars) }));
     const { rows, faltaTc } = agregarParaTablero(norm, versiones, tcs.map((t) => ({ ...t, tc: Number(t.tc) })));
     const updatedAt = norm.reduce<string | null>((m, l) => (!m || l.updated_at > m ? l.updated_at : m), null);
-    return { rows, versiones: [...new Set(norm.map((l) => l.version))], faltaTc, updatedAt };
+    const importadas = [...new Set(norm.filter((l) => l.origen === "import").map((l) => l.version))];
+    return { rows, versiones: [...new Set(norm.map((l) => l.version))], importadas, faltaTc, updatedAt };
   } catch {
     return null;
   }
