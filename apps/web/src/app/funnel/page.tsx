@@ -159,13 +159,25 @@ export default async function InversionMarketingPage() {
         </p>
       </header>
       <p className="-mt-2 text-xs text-muted-foreground">
-        Fuente BGT: SharePoint → Supabase · Última sincronización: {syncLabel}
-        <span className="mx-1">·</span>
-        <span className={linkColor}>{linkTexto}</span>
+        {bgt.fuente === "tablero" ? (
+          <>Fuente: carga en el tablero (pestaña Cargar datos) · Última modificación: {syncLabel}</>
+        ) : (
+          <>
+            {bgt.fuente === "mixta" ? "Fuente: carga en el tablero + versiones del Excel todavía no importadas" : "Fuente BGT: SharePoint → Supabase"} · Última {bgt.fuente === "mixta" ? "modificación" : "sincronización"}: {syncLabel}
+            <span className="mx-1">·</span>
+            <span className={linkColor}>{linkTexto}</span>
+          </>
+        )}
       </p>
+      {bgt.faltaTc && bgt.faltaTc.length > 0 && (
+        <div className="-mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Faltan tipos de cambio en {new Set(bgt.faltaTc.map((f) => f.version)).size} presupuesto(s) ({bgt.faltaTc.length} meses): esos meses salen en US$ 0.
+          Cargalos en <a href="/funnel/carga" className="font-semibold underline">Cargar datos → Tipos de cambio</a>.
+        </div>
+      )}
       <DataHealth dash="funnel" className="-mt-2" />
       <HowToRead slug="funnel" />
-      <DashTabBar />
+      <DashTabBar after={[{ key: "carga", label: "Cargar datos", href: "/funnel/carga" }]} />
 
       {/* ===== Ejecución del Presupuesto (por cuatrimestre) ===== */}
       <section className="space-y-4">

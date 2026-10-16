@@ -1,5 +1,6 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
+import { getDatosTablero } from "./presupuesto-server";
 
 /**
  * Datos del dash de "BGT Mkt". Fuente unificada: tabla Supabase `bgt_marketing`,
@@ -25,6 +26,10 @@ export interface BgtRow {
 export interface BgtData {
   rows: BgtRow[];
   syncedAt: string | null;
+  /** "tablero" = todo viene de la carga en /funnel/carga; "mixta" = algunas versiones todavía del Excel. */
+  fuente?: "tablero" | "mixta" | "sharepoint";
+  /** Meses cargados en el tablero que todavía no tienen tipo de cambio (sus USD salen en 0). */
+  faltaTc?: { version: string; mes: number }[];
 }
 
 export const MESES_UP = [
@@ -44,6 +49,21 @@ interface DbBgtRow {
 }
 
 export async function getBgtData(): Promise<BgtData> {
+  // Lo cargado en el tablero (migración 0125) manda por versión: una versión con renglones cargados acá
+  // reemplaza a la misma versión del Excel; las que todavía no se importaron siguen saliendo del Excel.
+  const [tablero, excel] = await Promise.all([getDatosTablero(), getBgtDataExcel().catch(() => null)]);
+  if (!tablero) return { ...(excel ?? { rows: [], syncedAt: null }), fuente: "sharepoint" };
+  const enTablero = new Set(tablero.versiones);
+  const resto = (excel?.rows ?? []).filter((r) => !enTablero.has(r.presupuesto));
+  return {
+    rows: [...tablero.rows, ...resto],
+    syncedAt: tablero.updatedAt,
+    fuente: resto.length ? "mixta" : "tablero",
+    faltaTc: tablero.faltaTc,
+  };
+}
+
+async function getBgtDataExcel(): Promise<BgtData> {
   // 1) Fuente unificada: tabla Supabase bgt_marketing.
   try {
     const supabase = getServerSupabase();

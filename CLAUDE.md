@@ -447,6 +447,29 @@ reporte_existencia/cb_homologos).
 - **Worktrees de agentes:** usar symlinks a los `node_modules` del checkout principal (con `cp -al` tsc da errores falsos); NO
   commitear el symlink `apps/web/node_modules` (se coló una vez).
 
+## Presupuesto cargado desde el tablero (16-oct-2026, pedido del user: "dejar el Excel de SharePoint")
+- **Reglas del user:** todo gasto es en **pesos**; los USD NO se cargan ni se toman de la planilla: **USD = $ ÷ tipo de cambio de
+  ese presupuesto y ese mes** (uno por versión × mes, lo pasa finanzas, nunca se estima). Versiones BGT / 4+8 / 8+4 / REAL por año
+  ("BGT 2024 CRISIS" = histórico, no se ofrece). **REAL lo carga cualquiera con acceso a /funnel; presupuestos y tipos de cambio solo
+  `bgt_editores`** (hoy dsabena@gmail.com; falta el email de Julieta). **Todo cambio es trazable** (`bgt_auditoria`: quién, cuándo,
+  antes → después). Fecha de contabilización = campo nuevo (se empieza a cargar ahora); la columna vieja "FECHA CONTABILIZ" traía
+  números de documento (→ `nro_doc_contable`) y notas (→ al detalle).
+- **Piezas:** migración **`0125_presupuesto.sql`** (`bgt_versiones`, `bgt_tc`, `bgt_lineas`, `bgt_catalogo`, `bgt_auditoria`,
+  `bgt_editores`; RLS sin policies) · núcleo puro `lib/presupuesto-core.ts` (parseo de la planilla / pegado TSV / plantilla de TC,
+  montos es-AR, validación, duplicados factura+proveedor+monto, agregado al formato del tablero; test `scripts/presupuesto.test.ts`)
+  · `lib/presupuesto-server.ts` (REST service key, auditoría en cada escritura; la importación inserta primero y borra después) ·
+  API `/api/presupuesto` (GET datos/historial, POST cerrar/abrir) + `/lineas` (POST/PATCH/DELETE) + `/tc` (PUT) + `/importar`
+  (vista previa → confirmar; reemplaza SOLO las versiones del archivo) · UI `/funnel/carga` (`components/inversion/carga-presupuesto.tsx`:
+  Gastos y presupuestos · Tipos de cambio · Historial · Importar planilla) y pestaña "Cargar datos" en /funnel.
+- **Lectura:** `getBgtData()` usa lo cargado en el tablero POR VERSIÓN (una versión con renglones acá reemplaza a la del Excel; las
+  que no se importaron siguen del Excel). Sin la migración / sin datos → igual que antes. /funnel avisa la fuente y los meses sin TC.
+  Chat (`get_inversion_mkt`) y señales leen lo mismo.
+- **Planilla del 16-oct (`Seguimiento_BGT_2026.xlsx`, verificado parseándola):** 2.742 renglones, 13 versiones; los $ por versión
+  dan igual al peso que el tablero viejo salvo BGT 2026 (+$420 M), REAL 2026 (+$753 M) y 8+4 2026 (nuevo, $6.100 M). 2 filas sin
+  presupuesto ni mes (LOGISTICA $503.128, AJUSTE LAVASECA $399.799) no se importan. El USD de la planilla era `$ ÷ TC de "Menu
+  Desplegable"` (UN TC por mes para todas las versiones). El user pidió NO usarlo: él completa la plantilla de TC por versión.
+- **No probado contra la base real** (el sandbox no tiene la service key de Drean): falta correr 0125 e importar (PENDIENTES D15).
+
 ## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026
 - **Marca: en Drean NO aparece "BIP"** (BIP es un proyecto aparte). La capa se llama **"Proceso Estratégico"** (sidebar, `/guia`, 🎓, copiloto). Ids de módulo sin `bip-`: `proceso-estrategico`, `conectar-fuentes`, `mapa-estrategico`, `insights-chat`, `tableros-planilla`. El test `guia-integridad` falla si un módulo dice "BIP". Solo quedan comentarios de código e identificadores internos (`.bip-viz`, evento `bip:learn`) y la landing `public/bip.html` (es de BIP, no del dash).
 - `/guia` ("Proceso Estratégico", último ítem del sidebar) + `/guia/[id]`: 45 módulos estáticos en `lib/guia/*`
@@ -543,7 +566,8 @@ reporte_existencia/cb_homologos).
   T3·8+4**, desvío <5%, Inv/Fact ≤1,3%); (2) **Comparador libre A vs B** (selects de versión/período/
   cuenta/moneda, KPI cards, evolución + acumulado, distribución, árbol por concepto). Paleta: **A
   (REAL) azul `#1e40af`, B (comparación) gris pizarra `#94a3b8`**, verde/rojo solo desvíos. Nota:
-  `8+4 2026` todavía NO está cargado en `bgt_marketing` → T3 sale "no cargada" (PENDIENTES D4). El tab
+  `8+4 2026` todavía NO está cargado en `bgt_marketing` → T3 sale "no cargada" (PENDIENTES D4). **16-oct-2026: el presupuesto
+  pasa a cargarse DESDE EL TABLERO** (ver sección "Presupuesto cargado desde el tablero"). El tab
   "OKR Mkt" de `/overview` **se borró el 4-sep-2026** (`49830d9`). Iframe viejo `public/bgt-mkt/` sin uso (PENDIENTES D13).
 - **Pauta Mkt (`/performance`) — inversión: fuente de verdad POR MEDIO (dic-2026).** El dash
   brand **no mezcla ecommerce** (conversión/PMax/shopping va aparte, en `/performance-conversion`
