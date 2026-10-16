@@ -15,13 +15,15 @@ const MISSING_RE = /relation|does not exist|schema cache|PGRST205|42P01|Could no
 export const MIGRACION_PRESUPUESTO = "Falta correr la migración 0125_presupuesto.sql en el SQL Editor de Supabase.";
 const PAGE = 1000;
 
+const MIGRACION_FACTURACION = "Falta la tabla facturacion_mensual (migración 0049) o alguna de sus columnas: corré 0126_facturacion_mensual_carga.sql en el SQL Editor de Supabase";
+
 export class PresupuestoError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 
-async function err(res: Response, what: string): Promise<never> {
+async function err(res: Response, what: string, migracion = MIGRACION_PRESUPUESTO): Promise<never> {
   const t = await res.text().catch(() => "");
-  if (res.status === 404 || MISSING_RE.test(t)) throw new PresupuestoError(MIGRACION_PRESUPUESTO, 503);
+  if (res.status === 404 || MISSING_RE.test(t)) throw new PresupuestoError(`${migracion} (${t.slice(0, 160)})`, 503);
   throw new PresupuestoError(`${what}: ${t.slice(0, 300)}`, 500);
 }
 
@@ -141,11 +143,11 @@ export async function guardarFacturacion(cambios: { mes: string; facturacion: nu
   const upserts = reales.filter((c) => c.facturacion != null).map((c) => ({ mes: c.mes, facturacion: c.facturacion, moneda: "USD", fuente: `tablero (${usuario})`, updated_at: new Date().toISOString() }));
   if (upserts.length) {
     const res = await sbAdmin("facturacion_mensual?on_conflict=mes", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(upserts) });
-    if (!res.ok) await err(res, "No se pudo guardar la facturación");
+    if (!res.ok) await err(res, "No se pudo guardar la facturación", MIGRACION_FACTURACION);
   }
   for (const c of reales.filter((x) => x.facturacion == null)) {
     const res = await sbAdmin(`facturacion_mensual?mes=eq.${c.mes}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
-    if (!res.ok) await err(res, "No se pudo borrar la facturación");
+    if (!res.ok) await err(res, "No se pudo borrar la facturación", MIGRACION_FACTURACION);
   }
   await auditar(reales.map((c) => {
     const a = antes.get(c.mes) ?? null;
