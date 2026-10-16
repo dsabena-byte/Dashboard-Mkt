@@ -1,5 +1,6 @@
 import "server-only";
 import { sbAdmin } from "@/lib/supabase-admin";
+import { FACTURACION_FALLBACK } from "@/lib/facturacion-queries";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
 import {
@@ -116,6 +117,41 @@ async function versionAbierta(version: string): Promise<Version> {
   if (!v) throw new PresupuestoError(`No existe el presupuesto "${version}".`, 404);
   if (v.cerrada) throw new PresupuestoError(`${version} está cerrada: no se puede modificar.`, 409);
   return v;
+}
+
+// ---------- facturación mensual (tabla facturacion_mensual, migración 0049; USD) ----------
+export interface Facturacion { mes: string; facturacion: number } // mes = YYYY-MM-01
+async function facturacionDb(): Promise<Facturacion[]> {
+  const res = await sbAdmin("facturacion_mensual?select=mes,facturacion&order=mes.asc", { method: "GET" });
+  if (!res.ok) return []; // sin la migración 0049
+  return ((await res.json()) as Facturacion[]).map((f) => ({ mes: f.mes.slice(0, 10), facturacion: Number(f.facturacion) }));
+}
+/** Lo mismo que ve el tablero (getFacturacionMensual): la tabla manda; los meses que solo están en el código, también. */
+export async function listFacturacion(): Promise<Facturacion[]> {
+  const m = new Map(Object.entries(FACTURACION_FALLBACK));
+  for (const f of await facturacionDb()) m.set(f.mes, f.facturacion);
+  return [...m].map(([mes, facturacion]) => ({ mes, facturacion })).sort((a, b) => a.mes.localeCompare(b.mes));
+}
+/** Guarda (o borra, con valor null) la facturación de cada mes. Cada cambio queda en el historial. */
+export async function guardarFacturacion(cambios: { mes: string; facturacion: number | null }[], usuario: string): Promise<number> {
+  // shortcut: vaciar un mes que solo está en FACTURACION_FALLBACK no lo saca del tablero; sacarlo del código si pasa.
+  // Contra la TABLA: guardar una fila pasa a la tabla también los meses que solo estaban en el código.
+  const antes = new Map((await facturacionDb()).map((f) => [f.mes, f.facturacion]));
+  const reales = cambios.filter((c) => (antes.get(c.mes) ?? null) !== c.facturacion);
+  const upserts = reales.filter((c) => c.facturacion != null).map((c) => ({ mes: c.mes, facturacion: c.facturacion, moneda: "USD", fuente: `tablero (${usuario})`, updated_at: new Date().toISOString() }));
+  if (upserts.length) {
+    const res = await sbAdmin("facturacion_mensual?on_conflict=mes", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(upserts) });
+    if (!res.ok) await err(res, "No se pudo guardar la facturación");
+  }
+  for (const c of reales.filter((x) => x.facturacion == null)) {
+    const res = await sbAdmin(`facturacion_mensual?mes=eq.${c.mes}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    if (!res.ok) await err(res, "No se pudo borrar la facturación");
+  }
+  await auditar(reales.map((c) => {
+    const a = antes.get(c.mes) ?? null;
+    return { usuario, entidad: "facturacion", accion: a == null ? "alta" : c.facturacion == null ? "baja" : "cambio", version: `Facturación ${c.mes.slice(0, 4)}`, clave: String(Number(c.mes.slice(5, 7))), antes: a == null ? null : { facturacion: a }, despues: c.facturacion == null ? null : { facturacion: c.facturacion } };
+  }));
+  return reales.length;
 }
 
 // ---------- tipos de cambio ----------

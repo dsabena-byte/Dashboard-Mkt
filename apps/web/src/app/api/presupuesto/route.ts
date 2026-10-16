@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listAuditoria, listCatalogo, listLineas, listTc, listVersiones, setCerrada } from "@/lib/presupuesto-server";
+import { listAuditoria, listCatalogo, listFacturacion, listLineas, listTc, listVersiones, setCerrada } from "@/lib/presupuesto-server";
 import { conUsuario, soloEditor } from "./_auth";
 
 // Presupuesto cargado desde el tablero (migración 0125).
@@ -13,11 +13,11 @@ export async function GET(req: Request) {
     const sp = new URL(req.url).searchParams;
     const version = sp.get("version") ?? "";
     if (sp.get("historial")) return NextResponse.json({ movimientos: await listAuditoria({ version: version || undefined, limit: 300 }) });
-    const [versiones, tcs, catalogo] = await Promise.all([listVersiones(), listTc(), listCatalogo()]);
+    const [versiones, tcs, catalogo, facturacion] = await Promise.all([listVersiones(), listTc(), listCatalogo(), listFacturacion()]);
     const lineas = version && versiones.some((v) => v.nombre === version) ? await listLineas(version) : [];
     return NextResponse.json({
       usuario: { email: u.email, editor: u.editor, puedeReal: u.puedeReal },
-      versiones, tcs: tcs.map((t) => ({ ...t, tc: Number(t.tc) })), catalogo, lineas,
+      versiones, tcs: tcs.map((t) => ({ ...t, tc: Number(t.tc) })), catalogo, lineas, facturacion,
     });
   });
 }

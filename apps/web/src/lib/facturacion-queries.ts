@@ -12,7 +12,7 @@ export interface FacturacionRow {
  * indicador Inv/Fact calcule aunque la migration 0049 todavía no se haya
  * aplicado en Supabase. Cuando la tabla tiene el mes, ese valor manda.
  */
-const FACTURACION_FALLBACK: Record<string, number> = {
+export const FACTURACION_FALLBACK: Record<string, number> = {
   "2026-01-01": 17603000,
   "2026-02-01": 15500000,
   "2026-03-01": 19299000,
