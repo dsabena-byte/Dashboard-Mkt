@@ -2,14 +2,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ETAPAS, MESES, etapaDe, normTxt, parseMonto, parsePlanilla, type Etapa,
+  ETAPAS, MESES, conceptosDeCuenta, etapaDe, normTxt, parseMonto, tipoDeVersion, type Etapa,
   type ItemCatalogo, type Linea, type LineaIn, type Tc, type Version,
 } from "@/lib/presupuesto-core";
 
 // Carga del presupuesto desde el tablero (/funnel/carga). Secciones: Gasto real · Tipos de cambio · Historial ·
-// Importar planilla (editores). Todo pasa por /api/presupuesto; cada cambio queda en el historial.
+// sin importación desde la pantalla (pedido del user: no pisar datos). Todo pasa por /api/presupuesto y queda en el historial.
 
-type Seccion = "real" | "tc" | "historial" | "importar";
+type Seccion = "real" | "tc" | "historial";
 interface Datos { usuario: { email: string; editor: boolean; puedeReal: boolean }; versiones: Version[]; tcs: Tc[]; catalogo: ItemCatalogo[]; lineas: Linea[] }
 interface Movimiento { id: number; at: string; usuario: string | null; entidad: string; accion: string; version: string | null; clave: string | null; antes: Record<string, unknown> | null; despues: Record<string, unknown> | null }
 
@@ -22,9 +22,17 @@ const ars = (n: number) => `$ ${Math.round(n).toLocaleString("es-AR")}`;
 const usdTxt = (n: number | null) => (n == null ? "falta TC" : `US$ ${Math.round(n).toLocaleString("es-AR")}`);
 
 async function api<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
-  const res = await fetch(url, { cache: "no-store", ...init, headers: init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : undefined });
-  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  return { ok: res.ok, status: res.status, data };
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 45_000);
+  try {
+    const res = await fetch(url, { cache: "no-store", ...init, signal: ctl.signal, headers: init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : undefined });
+    const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+    if (!res.ok && !data.error) data.error = `El servidor respondió ${res.status}. Probá de nuevo en un rato.`;
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    const msg = e instanceof Error && e.name === "AbortError" ? "Tardó demasiado en responder. Recargá la página." : "No hay conexión con el servidor. Recargá la página.";
+    return { ok: false, status: 0, data: { error: msg } as T & { error?: string } };
+  } finally { clearTimeout(t); }
 }
 
 export function CargaPresupuesto() {
@@ -61,10 +69,9 @@ export function CargaPresupuesto() {
     ? datos.versiones : [{ nombre: `REAL ${anioHoy}`, tipo: "REAL", anio: anioHoy, cerrada: false }, ...datos.versiones];
   const datosUI = { ...datos, versiones };
   const secciones: { key: Seccion; label: string }[] = [
-    { key: "real", label: "Gastos" },
+    { key: "real", label: "Seguimiento de Gastos" },
     { key: "tc", label: "Tipos de cambio" },
     { key: "historial", label: "Historial de cambios" },
-    ...(editor ? [{ key: "importar" as const, label: "Traer histórico del Excel" }] : []),
   ];
 
   return (
@@ -87,14 +94,13 @@ export function CargaPresupuesto() {
       )}
       {seccion === "tc" && <TiposDeCambio datos={datosUI} onCambio={recargar} />}
       {seccion === "historial" && <Historial versiones={datos.versiones} />}
-      {seccion === "importar" && editor && <Importar onCambio={async () => { await cargar(""); router.refresh(); }} />}
     </div>
   );
 }
 
 // ======================================================================= Gastos
 const VACIA = (version: string): LineaIn => ({
-  version, mes: new Date().getMonth() + 1, ceco: "", cuenta: "", nombre_cta: "", concepto: "", nro_proveedor: null, proveedor: null,
+  version, mes: new Date().getMonth() + 1, ceco: "W014402001", cuenta: "", nombre_cta: "", concepto: "", nro_proveedor: null, proveedor: null,
   detalle: null, solped: null, oc: null, nro_recepcion: null, nro_doc_contable: null, fecha_contabilizacion: null, factura: null, provision: null, ars: 0,
 });
 
@@ -104,23 +110,14 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
   const v = datos.versiones.find((x) => x.nombre === version);
   const puede = !!v && !v.cerrada && (v.tipo === "REAL" ? datos.usuario.puedeReal : datos.usuario.editor);
   const formRef = useRef<HTMLDivElement>(null);
-  const editar = (l: Linea) => { setEditando(l); setPegar(false); requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })); };
+  const editar = (l: Linea) => { setEditando(l); requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })); };
   const tcMes = useMemo(() => new Map(datos.tcs.filter((t) => t.version === version).map((t) => [t.mes, t.tc])), [datos.tcs, version]);
-  const [mes, setMes] = useState(0);
-  const [cuenta, setCuenta] = useState("");
-  const [q, setQ] = useState("");
-  const [etapaF, setEtapaF] = useState<Etapa | "">("");
+  const [filtros, setFiltros] = useState<Record<string, Filtro>>({});
   const [editando, setEditando] = useState<Linea | "nueva" | null>("nueva");
-  const [pegar, setPegar] = useState(false);
   const [nuevaN, setNuevaN] = useState(0);
 
-  const filtradas = useMemo(() => {
-    const t = normTxt(q);
-    return datos.lineas.filter((l) =>
-      (!mes || l.mes === mes) && (!cuenta || l.nombre_cta === cuenta) && (!etapaF || etapaDe(l) === etapaF) &&
-      (!t || normTxt([l.proveedor, l.nro_proveedor, l.detalle, l.oc, l.solped, l.factura, l.nro_recepcion, l.concepto].join(" ")).includes(t)));
-  }, [datos.lineas, mes, cuenta, q, etapaF]);
-  const cuentas = useMemo(() => [...new Set(datos.lineas.map((l) => l.nombre_cta).filter(Boolean))].sort(), [datos.lineas]);
+  const filtradas = useMemo(() => datos.lineas.filter((l) => COLS.every((c) => pasaFiltro(filtros[c.key], c.get(l)))), [datos.lineas, filtros]);
+  const hayFiltros = Object.values(filtros).some((f) => f.txt || f.sel);
   const usdDe = (l: Pick<Linea, "mes" | "ars">) => { const t = tcMes.get(l.mes); return t ? l.ars / t : null; };
   const totArs = filtradas.reduce((s, l) => s + l.ars, 0);
   const sinTc = filtradas.some((l) => !tcMes.get(l.mes));
@@ -143,53 +140,38 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
   }
 
   return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="text-xs text-muted-foreground">Presupuesto<br />
-          <select className={selectCls} value={version} onChange={(e) => { onVersion(e.target.value); setEditando(null); setPegar(false); }}>
-            {["REAL", "BGT", "4+8", "8+4", "OTRO"].map((tipo) => {
-              const vs = datos.versiones.filter((x) => x.tipo === tipo);
-              return vs.length ? <optgroup key={tipo} label={tipo === "REAL" ? "Gasto real" : tipo === "OTRO" ? "Otros" : tipo}>{vs.map((x) => <option key={x.nombre} value={x.nombre}>{x.nombre}{x.cerrada ? " (cerrada)" : ""}</option>)}</optgroup> : null;
-            })}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">Mes<br />
-          <select className={selectCls} value={mes} onChange={(e) => setMes(Number(e.target.value))}>
-            <option value={0}>Todos</option>
-            {MES_CAP.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">Cuenta<br />
-          <select className={selectCls} value={cuenta} onChange={(e) => setCuenta(e.target.value)}>
-            <option value="">Todas</option>
-            {cuentas.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </label>
-        {v?.tipo === "REAL" && (
-          <label className="text-xs text-muted-foreground">Etapa<br />
-            <select className={selectCls} value={etapaF} onChange={(e) => setEtapaF(e.target.value as Etapa | "")}>
-              <option value="">Todas</option>
-              {ETAPAS.map((x) => <option key={x.key} value={x.key}>{x.label === "Solped" ? "Solo Solped (falta OC)" : x.label === "OC emitida" ? "Con OC (falta factura)" : x.label === "Facturado" ? "Facturado (falta contabilizar)" : "Contabilizado"}</option>)}
-            </select>
-          </label>
-        )}
-        <label className="min-w-[200px] flex-1 text-xs text-muted-foreground">Buscar (proveedor, detalle, OC, Solped, factura)<br />
-          <input className={inputCls} value={q} onChange={(e) => setQ(e.target.value)} placeholder="ej. OMD, 9501302505…" />
-        </label>
-        {puede && editando !== "nueva" && <button type="button" className={btnPri} onClick={() => { setEditando("nueva"); setPegar(false); }}>+ Cargar {v?.tipo === "REAL" ? "gasto" : "renglón"}</button>}
-        {puede && <button type="button" className={btn} onClick={() => { setPegar((p) => !p); setEditando(null); }}>Pegar desde Excel</button>}
-        <button type="button" className={btn} onClick={exportar} disabled={!filtradas.length}>Exportar a Excel</button>
-      </div>
-
+    <section className="space-y-6">
       {v?.cerrada && <p className="text-xs text-muted-foreground">{v.nombre} está cerrada: se puede ver pero no modificar.</p>}
       {v && !v.cerrada && !puede && <p className="text-xs text-muted-foreground">Solo los editores del presupuesto pueden modificar {v.nombre}.</p>}
 
       {editando && puede && (
         <div ref={formRef}><FormLinea key={editando === "nueva" ? `nueva-${nuevaN}` : editando.id} datos={datos}
           inicial={editando === "nueva" ? VACIA(version) : editando} id={editando === "nueva" ? null : editando.id}
-          onCerrar={() => setEditando(null)} onGuardado={async () => { if (editando === "nueva") setNuevaN((n) => n + 1); else setEditando("nueva"); await onCambio(); }} /></div>
+          onCerrar={() => setEditando(null)} onGuardado={async () => { if (editando === "nueva") setNuevaN((n) => n + 1); else setEditando("nueva"); await onCambio(); }} />
+          {editando !== "nueva" && <button type="button" className="mt-1 text-[11px] text-red-600 hover:underline" onClick={async () => { await borrar(editando); setEditando("nueva"); }}>Borrar este renglón</button>}</div>
       )}
-      {pegar && <Pegar datos={datos} version={version} onCerrar={() => setPegar(false)} onGuardado={async () => { setPegar(false); await onCambio(); }} />}
+      {puede && editando !== "nueva" && <button type="button" className={btnPri} onClick={() => setEditando("nueva")}>+ Cargar un gasto nuevo</button>}
+
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2 border-t pt-4">
+          <div>
+            <h3 className="text-sm font-semibold">Seguimiento de Gastos</h3>
+            <p className="text-xs text-muted-foreground">Todo lo cargado. Para completar (OC, factura, contabilización) o corregir un renglón, tocá ✎ al final. Cada cambio queda en el historial.</p>
+          </div>
+          <button type="button" className="text-xs text-primary hover:underline disabled:opacity-50" onClick={exportar} disabled={!filtradas.length}>Descargar esta lista en Excel</button>
+        </div>
+<div className="flex flex-wrap items-end gap-3">
+        <label className="text-xs text-muted-foreground">Ver<br />
+          <select className={selectCls} value={version} onChange={(e) => { onVersion(e.target.value); setFiltros({}); }}>
+            {["REAL", "BGT", "4+8", "8+4", "OTRO"].map((tipo) => {
+              const vs = datos.versiones.filter((x) => x.tipo === tipo);
+              return vs.length ? <optgroup key={tipo} label={tipo === "REAL" ? "Gasto real" : tipo === "OTRO" ? "Otros" : tipo}>{vs.map((x) => <option key={x.nombre} value={x.nombre}>{x.nombre}{x.cerrada ? " (cerrada)" : ""}</option>)}</optgroup> : null;
+            })}
+          </select>
+        </label>
+        <span className="pb-2 text-[11px] text-muted-foreground">Para filtrar, tocá ▾ en el título de cada columna (como en Excel).</span>
+        {hayFiltros && <button type="button" className="pb-2 text-xs text-primary hover:underline" onClick={() => setFiltros({})}>Quitar todos los filtros</button>}
+      </div>
 
       <div className="flex flex-wrap gap-4 rounded-lg border bg-card px-4 py-2 text-sm">
         <span><b>{filtradas.length}</b> renglones</span>
@@ -198,42 +180,116 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
         {cargando && <span className="text-muted-foreground">actualizando…</span>}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[1100px] text-xs">
-          <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-            <tr>{["Mes", "Etapa", "Cuenta", "Concepto", "Proveedor", "Detalle", "Solped", "OC", "Recepción", "Contabiliz.", "Factura", "Prov.", "$", "USD", ""].map((h) => <th key={h} className="px-2 py-2 font-semibold">{h}</th>)}</tr>
+      <div className="rounded-lg border">
+        <table className="w-full table-fixed text-[11px]">
+          <colgroup>{COLS.map((c) => <col key={c.key} style={{ width: c.w }} />)}<col style={{ width: "7%" }} /><col style={{ width: "3%" }} /></colgroup>
+          <thead className="bg-muted/50 text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+            <tr>
+              {COLS.map((c) => (
+                <th key={c.key} className="px-1.5 py-2 font-semibold">
+                  <ColFiltro label={c.label} valores={datos.lineas.map(c.get)} filtro={filtros[c.key]}
+                    onChange={(f) => setFiltros((p) => ({ ...p, [c.key]: f }))} />
+                </th>
+              ))}
+              <th className="px-1.5 py-2 text-right font-semibold">$ / USD</th>
+              <th />
+            </tr>
           </thead>
           <tbody>
             {filtradas.map((l) => (
-              <tr key={l.id} onClick={puede ? () => editar(l) : undefined} title={puede ? "Tocá para editar" : undefined}
-                className={`border-t align-top hover:bg-muted/30 ${puede ? "cursor-pointer" : ""} ${editando !== "nueva" && editando?.id === l.id ? "bg-amber-50" : ""}`}>
-                <td className="px-2 py-1.5">{MES_CAP[l.mes - 1]}</td>
-                <td className="px-2 py-1.5"><EtapaChip e={etapaDe(l)} /></td>
-                <td className="px-2 py-1.5" title={l.cuenta}>{l.nombre_cta}</td>
-                <td className="px-2 py-1.5">{l.concepto}</td>
-                <td className="px-2 py-1.5" title={l.nro_proveedor ?? ""}>{l.proveedor ?? l.nro_proveedor ?? "—"}</td>
-                <td className="max-w-[260px] px-2 py-1.5">{l.detalle ?? "—"}</td>
-                <td className="px-2 py-1.5 tabular-nums">{l.solped ?? "—"}</td>
-                <td className="px-2 py-1.5 tabular-nums">{l.oc ?? "—"}</td>
-                <td className="px-2 py-1.5 tabular-nums">{l.nro_recepcion ?? "—"}</td>
-                <td className="px-2 py-1.5 tabular-nums" title={l.nro_doc_contable ? `Doc. contable ${l.nro_doc_contable}` : ""}>{l.fecha_contabilizacion ? l.fecha_contabilizacion.split("-").reverse().join("/") : l.nro_doc_contable ? `doc ${l.nro_doc_contable}` : "—"}</td>
-                <td className="px-2 py-1.5">{l.factura ?? "—"}</td>
-                <td className="px-2 py-1.5">{l.provision ?? "—"}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{ars(l.ars)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{usdTxt(usdDe(l))}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right">
-                  {puede && <>
-                    <button type="button" className="text-primary hover:underline" onClick={(e) => { e.stopPropagation(); editar(l); }}>Editar</button>
-                    <button type="button" className="ml-2 text-red-600 hover:underline" onClick={(e) => { e.stopPropagation(); void borrar(l); }}>Borrar</button>
-                  </>}
+              <tr key={l.id}
+                className={`border-t align-top hover:bg-muted/30 ${editando !== "nueva" && editando?.id === l.id ? "bg-amber-50" : ""}`}>
+                {COLS.map((c) => (
+                  <td key={c.key} className="break-words px-1.5 py-1.5">
+                    {c.key === "etapa" ? <EtapaChip e={etapaDe(l)} /> : c.get(l) || "—"}
+                  </td>
+                ))}
+                <td className="px-1.5 py-1.5 text-right tabular-nums">{ars(l.ars)}<div className="text-[10px] text-muted-foreground">{usdTxt(usdDe(l))}</div></td>
+                <td className="px-1 py-1.5 text-right">
+                  {puede && <button type="button" title="Editar" aria-label="Editar renglón" className="text-base text-primary hover:opacity-70" onClick={() => editar(l)}>✎</button>}
                 </td>
               </tr>
             ))}
-            {!filtradas.length && <tr><td colSpan={15} className="px-2 py-6 text-center text-muted-foreground">No hay renglones con estos filtros.</td></tr>}
+            {!filtradas.length && <tr><td colSpan={COLS.length + 2} className="px-2 py-6 text-center text-muted-foreground">No hay renglones con estos filtros.</td></tr>}
           </tbody>
         </table>
       </div>
+      </div>
     </section>
+  );
+}
+
+// Columnas de la lista (orden de la planilla). get = texto que se ve y que se filtra.
+const etiquetaEtapa = (e: Etapa) => (e === "sin_datos" ? "Sin datos" : ETAPAS.find((x) => x.key === e)!.label);
+const COLS: { key: string; label: string; w: string; get: (l: Linea) => string }[] = [
+  { key: "mes", label: "Mes", w: "6%", get: (l) => MES_CAP[l.mes - 1] ?? "" },
+  { key: "etapa", label: "Etapa", w: "7%", get: (l) => etiquetaEtapa(etapaDe(l)) },
+  { key: "cuenta", label: "Cuenta", w: "10%", get: (l) => l.nombre_cta },
+  { key: "concepto", label: "Concepto", w: "9%", get: (l) => l.concepto },
+  { key: "proveedor", label: "Proveedor", w: "9%", get: (l) => l.proveedor ?? l.nro_proveedor ?? "" },
+  { key: "detalle", label: "Detalle", w: "11%", get: (l) => l.detalle ?? "" },
+  { key: "solped", label: "Solped", w: "7%", get: (l) => l.solped ?? "" },
+  { key: "oc", label: "OC", w: "7%", get: (l) => l.oc ?? "" },
+  { key: "recepcion", label: "Recepción", w: "7%", get: (l) => l.nro_recepcion ?? "" },
+  { key: "contab", label: "Contabiliz.", w: "6%", get: (l) => (l.fecha_contabilizacion ? l.fecha_contabilizacion.split("-").reverse().join("/") : l.nro_doc_contable ? `doc ${l.nro_doc_contable}` : "") },
+  { key: "factura", label: "Factura", w: "8%", get: (l) => l.factura ?? "" },
+  { key: "provision", label: "Prov.", w: "4%", get: (l) => l.provision ?? "" },
+];
+
+interface Filtro { txt: string; sel: string[] | null }
+const VACIO = "(vacías)";
+function pasaFiltro(f: Filtro | undefined, valor: string): boolean {
+  if (!f) return true;
+  if (f.txt && !normTxt(valor).includes(normTxt(f.txt))) return false;
+  return !f.sel || f.sel.includes(valor || VACIO);
+}
+
+/** Encabezado con filtro tipo Excel: buscar por texto + tildar valores. */
+function ColFiltro({ label, valores, filtro, onChange }: { label: string; valores: string[]; filtro?: Filtro; onChange: (f: Filtro) => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!abierto) return;
+    const cerrar = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setAbierto(false); };
+    document.addEventListener("mousedown", cerrar);
+    return () => document.removeEventListener("mousedown", cerrar);
+  }, [abierto]);
+  const unicos = useMemo(() => [...new Set(valores.map((v) => v || VACIO))].sort((a, b) => a.localeCompare(b, "es", { numeric: true })), [valores]);
+  const visibles = unicos.filter((v) => !busca || normTxt(v).includes(normTxt(busca)));
+  const f = filtro ?? { txt: "", sel: null };
+  const activo = !!(f.txt || f.sel);
+  const marcado = (v: string) => !f.sel || f.sel.includes(v);
+  const toggle = (v: string) => {
+    const base = f.sel ?? unicos;
+    const sel = base.includes(v) ? base.filter((x) => x !== v) : [...base, v];
+    onChange({ ...f, sel: sel.length === unicos.length ? null : sel });
+  };
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setAbierto((a) => !a)} className={`flex w-full items-center gap-1 text-left uppercase ${activo ? "text-primary" : ""}`}>
+        <span className="truncate">{label}</span><span aria-hidden>{activo ? "▼" : "▾"}</span>
+      </button>
+      {abierto && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-64 space-y-2 rounded-lg border bg-card p-2 text-xs normal-case tracking-normal text-foreground shadow-lg">
+          <input autoFocus className={inputCls} placeholder="Buscar…" value={busca}
+            onChange={(e) => { setBusca(e.target.value); onChange({ ...f, txt: e.target.value }); }} />
+          <div className="flex justify-between text-[11px]">
+            <button type="button" className="text-primary hover:underline" onClick={() => onChange({ ...f, sel: null })}>Seleccionar todo</button>
+            <button type="button" className="text-primary hover:underline" onClick={() => { setBusca(""); onChange({ txt: "", sel: null }); }}>Quitar filtro</button>
+          </div>
+          <div className="max-h-56 space-y-0.5 overflow-y-auto">
+            {visibles.map((v) => (
+              <label key={v} className="flex cursor-pointer items-start gap-1.5 rounded px-1 py-0.5 hover:bg-muted">
+                <input type="checkbox" className="mt-0.5" checked={marcado(v)} onChange={() => toggle(v)} />
+                <span className="break-words">{v}</span>
+              </label>
+            ))}
+            {!visibles.length && <div className="px-1 text-muted-foreground">Sin coincidencias</div>}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -245,17 +301,6 @@ function EtapaChip({ e }: { e: Etapa }) {
 
 // ======================================================================= Formulario de un renglón
 // Afuera del formulario: definido adentro se re-crea en cada render y los inputs pierden el foco al tipear.
-function Paso({ n, titulo, hecho, actual, children }: { n: number; titulo: string; hecho: boolean; actual: boolean; children: React.ReactNode }) {
-  return (
-    <div className={`space-y-2 rounded-lg border p-2.5 ${actual ? "border-amber-400 bg-amber-50/60" : hecho ? "bg-emerald-50/50" : "bg-muted/20"}`}>
-      <div className="flex items-center gap-1.5 text-xs font-semibold">
-        <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${hecho ? "bg-emerald-600 text-white" : actual ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"}`}>{hecho ? "✓" : n}</span>
-        {titulo}{actual && <span className="ml-auto text-[10px] font-medium text-amber-700">siguiente paso</span>}
-      </div>
-      {children}
-    </div>
-  );
-}
 function L({ t, children, w = "" }: { t: string; children: React.ReactNode; w?: string }) {
   return <label className={`text-[11px] font-medium text-muted-foreground ${w}`}>{t}<div className="mt-0.5">{children}</div></label>;
 }
@@ -269,11 +314,16 @@ function FormLinea({ datos, inicial, id, onCerrar, onGuardado }: {
   const set = <K extends keyof LineaIn>(k: K, val: LineaIn[K]) => setF((p) => ({ ...p, [k]: val }));
   const cat = (tipo: ItemCatalogo["tipo"]) => datos.catalogo.filter((c) => c.tipo === tipo);
   const cuentas = cat("cuenta"), conceptos = cat("concepto"), proveedores = cat("proveedor"), cecos = cat("ceco");
-  // Conceptos ya usados con la cuenta elegida, primero.
-  const usados = new Set(datos.lineas.filter((l) => l.cuenta === f.cuenta).map((l) => l.concepto));
-  const conceptosOrd = [...conceptos].sort((a, b) => Number(usados.has(b.clave)) - Number(usados.has(a.clave)) || a.clave.localeCompare(b.clave));
+  // Cada cuenta tiene sus conceptos (CUENTA_CONCEPTOS); sin cuenta elegida, no se ofrece ninguno.
+  const deCuenta = conceptosDeCuenta(f.cuenta);
+  const conceptosOrd = !f.cuenta ? [] : deCuenta ? deCuenta.map((c) => ({ tipo: "concepto" as const, clave: c, nombre: c })) : conceptos;
   const provTxt = f.proveedor ?? "";
   const etapa = etapaDe(f);
+  const tv = tipoDeVersion(f.version) ?? { tipo: "REAL" as const, anio: new Date().getFullYear() };
+  const tipos = datos.usuario.editor ? (["REAL", "BGT", "4+8", "8+4"] as const) : (["REAL"] as const);
+  const hoy = new Date().getFullYear();
+  const anios = [...new Set([hoy - 1, hoy, hoy + 1, ...datos.versiones.map((v) => v.anio)])].sort((a, b) => b - a);
+  const setVersion = (tipo: string, anio: number) => set("version", `${tipo} ${anio}`);
 
   function elegirProveedor(txt: string) {
     const t = normTxt(txt);
@@ -301,62 +351,66 @@ function FormLinea({ datos, inicial, id, onCerrar, onGuardado }: {
 
   return (
     <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
-      <div className="text-sm font-semibold">{id ? `Editar renglón · ${f.version}` : `Cargar ${f.version.startsWith("REAL") ? "un gasto" : "un renglón"} · ${f.version}`}</div>
+      <div className="text-sm font-semibold">{id ? `Editar renglón · ${f.version}` : "Cargar un gasto"}</div>
+      {/* Mismo orden que la planilla de Seguimiento: presupuesto, CECO, cuenta, año, mes, concepto, proveedor, detalle,
+          Solped, OC, recepción, contabilización, factura, $, provisión. */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <L t="Mes *"><select className={inputCls} value={f.mes} onChange={(e) => set("mes", Number(e.target.value))}>{MES_CAP.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></L>
-        <L t="Cuenta *">
-          <select className={inputCls} value={f.cuenta} onChange={(e) => { const c = cuentas.find((x) => x.clave === e.target.value); setF((p) => ({ ...p, cuenta: e.target.value, nombre_cta: c?.nombre ?? p.nombre_cta })); }}>
-            <option value="">Elegí…</option>
-            {cuentas.map((c) => <option key={c.clave} value={c.clave}>{c.nombre} ({c.clave})</option>)}
-          </select>
-        </L>
-        <L t="Concepto *">
-          <select className={inputCls} value={f.concepto} onChange={(e) => set("concepto", e.target.value)}>
-            <option value="">Elegí…</option>
-            {conceptosOrd.map((c) => <option key={c.clave} value={c.clave}>{c.clave}</option>)}
+        <L t="Presupuesto *">
+          <select className={inputCls} value={tv.tipo === "OTRO" ? "REAL" : tv.tipo} onChange={(e) => setVersion(e.target.value, tv.anio)}>
+            {tipos.map((t) => <option key={t} value={t}>{t === "REAL" ? "Real (gasto)" : t}</option>)}
           </select>
         </L>
         <L t="CECO">
           <select className={inputCls} value={f.ceco} onChange={(e) => set("ceco", e.target.value)}>
             <option value="">—</option>
-            {cecos.map((c) => <option key={c.clave} value={c.clave}>{c.nombre ? `${c.nombre} (${c.clave})` : c.clave}</option>)}
+            {cecos.map((c) => <option key={c.clave} value={c.clave}>{c.clave}{c.nombre ? ` · ${c.nombre}` : ""}</option>)}
           </select>
         </L>
-        <L t="Proveedor (nombre o número)" w="sm:col-span-2">
-          <input className={inputCls} list="ppto-proveedores" value={provTxt} onChange={(e) => elegirProveedor(e.target.value)} placeholder="Escribí y elegí de la lista; si es nuevo, escribilo" />
-          <datalist id="ppto-proveedores">{proveedores.map((p) => <option key={p.clave} value={`${p.nombre} · ${p.clave}`} />)}</datalist>
+        <L t="Cuenta *" w="sm:col-span-2">
+          <select className={inputCls} value={f.cuenta} onChange={(e) => {
+            const c = cuentas.find((x) => x.clave === e.target.value);
+            const validos = conceptosDeCuenta(e.target.value);
+            setF((p) => ({ ...p, cuenta: e.target.value, nombre_cta: c?.nombre ?? p.nombre_cta,
+              concepto: validos ? (validos.includes(p.concepto) ? p.concepto : validos.length === 1 ? validos[0]! : "") : p.concepto }));
+          }}>
+            <option value="">Elegí…</option>
+            {cuentas.map((c) => <option key={c.clave} value={c.clave}>{c.clave} · {c.nombre}</option>)}
+          </select>
         </L>
-        <L t="Nro proveedor"><input className={inputCls} value={f.nro_proveedor ?? ""} onChange={(e) => set("nro_proveedor", e.target.value || null)} /></L>
-        <L t={f.version.startsWith("REAL") ? "Monto en pesos * (el de la Solped; actualizalo con la factura)" : "Monto en pesos *"}><input className={`${inputCls} text-right tabular-nums`} inputMode="decimal" value={montoTxt} onChange={(e) => setMontoTxt(e.target.value)} placeholder="1.810.000" /></L>
+        <L t="Año *">
+          <select className={inputCls} value={tv.anio} onChange={(e) => setVersion(tv.tipo === "OTRO" ? "REAL" : tv.tipo, Number(e.target.value))}>
+            {anios.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </L>
+        <L t="Mes *"><select className={inputCls} value={f.mes} onChange={(e) => set("mes", Number(e.target.value))}>{MES_CAP.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></L>
+        <L t="Concepto *" w="sm:col-span-2">
+          <select className={inputCls} value={f.concepto} onChange={(e) => set("concepto", e.target.value)} disabled={!f.cuenta}>
+            <option value="">{f.cuenta ? "Elegí…" : "Primero elegí la cuenta"}</option>
+            {conceptosOrd.map((c) => <option key={c.clave} value={c.clave}>{c.clave}</option>)}
+          </select>
+        </L>
+        <L t="Nro proveedor"><input className={inputCls} value={f.nro_proveedor ?? ""} onChange={(e) => { const nro = e.target.value.trim(); const hit = proveedores.find((x) => x.clave === nro); setF((p) => ({ ...p, nro_proveedor: nro || null, proveedor: hit?.nombre ?? p.proveedor })); }} /></L>
+        <L t="Proveedor" w="sm:col-span-1 lg:col-span-3">
+          <input className={inputCls} list="ppto-proveedores" value={provTxt} onChange={(e) => elegirProveedor(e.target.value)} placeholder="Escribí y elegí de la lista; si es nuevo, escribilo" />
+          <datalist id="ppto-proveedores">{proveedores.map((x) => <option key={x.clave} value={`${x.nombre} · ${x.clave}`} />)}</datalist>
+        </L>
         <L t="Detalle" w="sm:col-span-2 lg:col-span-4"><input className={inputCls} value={f.detalle ?? ""} onChange={(e) => set("detalle", e.target.value || null)} /></L>
+        {f.version.startsWith("REAL") && <>
+          <L t="Solped"><input className={inputCls} value={f.solped ?? ""} onChange={(e) => set("solped", e.target.value || null)} /></L>
+          <L t="OC"><input className={inputCls} value={f.oc ?? ""} onChange={(e) => set("oc", e.target.value || null)} /></L>
+          <L t="Nro recepción"><input className={inputCls} value={f.nro_recepcion ?? ""} onChange={(e) => set("nro_recepcion", e.target.value || null)} /></L>
+          <L t="Fecha contabilización"><input type="date" className={inputCls} value={f.fecha_contabilizacion ?? ""} onChange={(e) => set("fecha_contabilizacion", e.target.value || null)} /></L>
+          <L t="Factura"><input className={inputCls} value={f.factura ?? ""} onChange={(e) => set("factura", e.target.value || null)} placeholder="00001-00000725" /></L>
+        </>}
+        <L t="$ (pesos) *"><input className={`${inputCls} text-right tabular-nums`} inputMode="decimal" value={montoTxt} onChange={(e) => setMontoTxt(e.target.value)} placeholder="1.810.000" /></L>
+        {f.version.startsWith("REAL") && <L t="Provisión">
+          <select className={inputCls} value={f.provision ?? ""} onChange={(e) => set("provision", (e.target.value || null) as LineaIn["provision"])}>
+            <option value="">—</option><option value="SI">SI</option><option value="NO">NO</option>
+          </select>
+        </L>}
+        {f.nro_doc_contable && <L t="Nro doc. contable (planilla vieja)"><input className={inputCls} value={f.nro_doc_contable} onChange={(e) => set("nro_doc_contable", e.target.value || null)} /></L>}
       </div>
-      {f.version.startsWith("REAL") ? (
-        <div className="space-y-2">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Circuito del gasto · completá cada paso cuando ocurra</div>
-          <div className="grid gap-2 lg:grid-cols-4">
-            <Paso n={1} titulo="Solped" hecho={!!f.solped} actual={etapa === "sin_datos"}>
-              <L t="Nro de Solped"><input className={inputCls} value={f.solped ?? ""} onChange={(e) => set("solped", e.target.value || null)} /></L>
-            </Paso>
-            <Paso n={2} titulo="Orden de compra" hecho={!!f.oc} actual={etapa === "solped"}>
-              <L t="Nro de OC"><input className={inputCls} value={f.oc ?? ""} onChange={(e) => set("oc", e.target.value || null)} /></L>
-            </Paso>
-            <Paso n={3} titulo="Recepción y factura" hecho={!!(f.factura || f.nro_recepcion)} actual={etapa === "oc"}>
-              <L t="Nro de recepción"><input className={inputCls} value={f.nro_recepcion ?? ""} onChange={(e) => set("nro_recepcion", e.target.value || null)} /></L>
-              <L t="Factura"><input className={inputCls} value={f.factura ?? ""} onChange={(e) => set("factura", e.target.value || null)} placeholder="00001-00000725" /></L>
-            </Paso>
-            <Paso n={4} titulo="Contabilización" hecho={!!(f.fecha_contabilizacion || f.nro_doc_contable)} actual={etapa === "factura"}>
-              <L t="Fecha de contabilización"><input type="date" className={inputCls} value={f.fecha_contabilizacion ?? ""} onChange={(e) => set("fecha_contabilizacion", e.target.value || null)} /></L>
-              {f.nro_doc_contable && <L t="Nro doc. contable (de la planilla)"><input className={inputCls} value={f.nro_doc_contable} onChange={(e) => set("nro_doc_contable", e.target.value || null)} /></L>}
-              <L t="Provisión">
-                <select className={inputCls} value={f.provision ?? ""} onChange={(e) => set("provision", (e.target.value || null) as LineaIn["provision"])}>
-                  <option value="">—</option><option value="SI">Sí</option><option value="NO">No</option>
-                </select>
-              </L>
-            </Paso>
-          </div>
-          <p className="text-[11px] text-muted-foreground">Si el monto final de la factura es distinto al de la Solped, actualizalo arriba: el cambio queda en el historial.</p>
-        </div>
-      ) : null}
+      {f.version.startsWith("REAL") && <p className="text-[11px] text-muted-foreground">El gasto se carga con la Solped y se va completando: OC → recepción y factura → contabilización. Etapa actual: <EtapaChip e={etapa} /></p>}
       {msg && <p className="text-xs text-red-600">{msg}</p>}
       <div className="flex gap-2">
         <button type="button" className={btnPri} disabled={guardando} onClick={() => guardar()}>{guardando ? "Guardando…" : "Guardar"}</button>
@@ -367,89 +421,41 @@ function FormLinea({ datos, inicial, id, onCerrar, onGuardado }: {
   );
 }
 
-// ======================================================================= Pegar desde Excel
-function Pegar({ datos, version, onCerrar, onGuardado }: { datos: Datos; version: string; onCerrar: () => void; onGuardado: () => Promise<void> }) {
-  const [txt, setTxt] = useState("");
-  const [guardando, setGuardando] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const cuentas = useMemo(() => datos.catalogo.filter((c) => c.tipo === "cuenta"), [datos.catalogo]);
-  const res = useMemo(() => {
-    if (!txt.trim()) return null;
-    const aoa = txt.replace(/\r/g, "").split("\n").map((l) => l.split("\t"));
-    const r = parsePlanilla(aoa, { versionPorDefecto: version });
-    // Completa código ↔ nombre de cuenta con el catálogo.
-    for (const l of r.lineas) {
-      if (l.cuenta && !l.nombre_cta) l.nombre_cta = cuentas.find((c) => c.clave === l.cuenta)?.nombre ?? "";
-      if (!l.cuenta && l.nombre_cta) l.cuenta = cuentas.find((c) => normTxt(c.nombre) === normTxt(l.nombre_cta))?.clave ?? "";
-    }
-    const otras = r.lineas.filter((l) => l.version !== version).length;
-    return { ...r, otras };
-  }, [txt, version, cuentas]);
-
-  async function guardar(force = false) {
-    if (!res?.lineas.length) return;
-    setGuardando(true); setMsg(null);
-    const r = await api<{ errores?: { fila: number; error: string }[]; duplicados?: { fila: number; factura: string }[] }>("/api/presupuesto/lineas", { method: "POST", body: JSON.stringify({ lineas: res.lineas, force }) });
-    setGuardando(false);
-    if (r.status === 409 && !force) {
-      const d = r.data.duplicados ?? [];
-      if (confirm(`${d.length} renglón(es) parecen repetidos (misma factura, proveedor y monto): ${d.slice(0, 5).map((x) => `fila ${x.fila} factura ${x.factura}`).join("; ")}. ¿Guardo todo igual?`)) return guardar(true);
-      return;
-    }
-    if (!r.ok) { setMsg(r.data.errores?.length ? r.data.errores.slice(0, 5).map((e) => `Fila ${e.fila}: ${e.error}`).join(" · ") : r.data.error ?? "No se pudo guardar."); return; }
-    await onGuardado();
-  }
-
-  return (
-    <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
-      <div className="text-sm font-semibold">Pegar renglones desde Excel · {version}</div>
-      <p className="text-xs text-muted-foreground">
-        En el Excel seleccioná las filas (mejor con la fila de títulos: PRESUPUESTO, CECO, CUENTA, NOMBRE CTA, AÑO, MES, CONCEPTO, NRO PROVEEDOR, PROVEEDOR, DETALLE, SOLPED, OC, NRO RECEPCIÓN, FECHA CONTABILIZ, FACTURA, $), copiá y pegá acá. La columna USD se ignora.
-      </p>
-      <textarea className={`${inputCls} h-40 font-mono text-[11px]`} value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="Pegá acá (Ctrl+V)" />
-      {res && (
-        <div className="space-y-1 text-xs">
-          <div><b>{res.lineas.length}</b> renglones listos · total <b>{ars(res.lineas.reduce((s, l) => s + l.ars, 0))}</b>{res.omitidas ? ` · ${res.omitidas} filas vacías o sin monto` : ""}</div>
-          {res.otras > 0 && <div className="text-amber-700">{res.otras} renglones son de otro presupuesto (columna PRESUPUESTO): se guardan en el suyo.</div>}
-          {res.errores.slice(0, 8).map((e) => <div key={e.fila} className="text-red-600">Fila {e.fila}: {e.error}</div>)}
-          {res.errores.length > 8 && <div className="text-red-600">…y {res.errores.length - 8} errores más</div>}
-        </div>
-      )}
-      {msg && <p className="text-xs text-red-600">{msg}</p>}
-      <div className="flex gap-2">
-        <button type="button" className={btnPri} disabled={guardando || !res?.lineas.length || !!res?.errores.length} onClick={() => guardar()}>{guardando ? "Guardando…" : `Guardar ${res?.lineas.length ?? 0} renglones`}</button>
-        <button type="button" className={btn} onClick={onCerrar}>Cancelar</button>
-      </div>
-    </div>
-  );
-}
-
 // ======================================================================= Tipos de cambio
 function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Promise<void> }) {
   const editor = datos.usuario.editor;
   const base = useMemo(() => new Map(datos.tcs.map((t) => [`${t.version}|${t.mes}`, t.tc])), [datos.tcs]);
-  const [edit, setEdit] = useState<Record<string, string>>({});
+  const [fila, setFila] = useState<string | null>(null); // presupuesto en edición
+  const [edit, setEdit] = useState<Record<number, string>>({});
   const [nuevas, setNuevas] = useState<string[]>([]);
-  const [nueva, setNueva] = useState("");
+  const hoy = new Date().getFullYear();
+  const [nuevoTipo, setNuevoTipo] = useState<"BGT" | "4+8" | "8+4">("BGT");
+  const [nuevoAnio, setNuevoAnio] = useState(hoy + 1);
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const versiones = [...datos.versiones.map((v) => v.nombre), ...nuevas.filter((n) => !datos.versiones.some((v) => v.nombre === n))];
   const cerrada = (n: string) => datos.versiones.find((v) => v.nombre === n)?.cerrada ?? false;
-  const valor = (k: string) => edit[k] ?? (base.get(k) != null ? String(base.get(k)).replace(".", ",") : "");
-  const cambios = Object.entries(edit).flatMap(([k, s]) => {
-    const [version, mes] = k.split("|");
-    const tc = s.trim() ? parseMonto(s) : null;
-    const antes = base.get(k) ?? null;
-    return tc === antes ? [] : [{ version: version!, mes: Number(mes), tc, invalido: s.trim() !== "" && (tc == null || tc <= 0) }];
-  });
+  const fmt = (n: number | undefined) => (n == null ? "—" : n.toLocaleString("es-AR", { maximumFractionDigits: 2 }));
+  const nuevoNombre = `${nuevoTipo} ${nuevoAnio}`;
+  const yaExiste = versiones.includes(nuevoNombre);
 
+  function editar(n: string) {
+    setFila(n); setMsg(null);
+    setEdit(Object.fromEntries(MESES.map((_, i) => [i + 1, base.get(`${n}|${i + 1}`) != null ? String(base.get(`${n}|${i + 1}`)).replace(".", ",") : ""])));
+  }
   async function guardar() {
-    if (cambios.some((c) => c.invalido)) { setMsg("Hay valores que no son números válidos."); return; }
+    if (!fila) return;
+    const cambios = Object.entries(edit).flatMap(([m, txt]) => {
+      const tc = txt.trim() ? parseMonto(txt) : null;
+      return tc === (base.get(`${fila}|${m}`) ?? null) ? [] : [{ version: fila, mes: Number(m), tc, invalido: txt.trim() !== "" && (tc == null || tc <= 0) }];
+    });
+    if (cambios.some((c) => c.invalido)) { setMsg("Hay valores que no son números válidos (ej. 1.522,50)."); return; }
+    if (!cambios.length) { setFila(null); return; }
     setGuardando(true); setMsg(null);
     const r = await api("/api/presupuesto/tc", { method: "PUT", body: JSON.stringify({ cambios: cambios.map(({ invalido: _i, ...c }) => c) }) });
     setGuardando(false);
     if (!r.ok) { setMsg(r.data.error ?? "No se pudo guardar."); return; }
-    setEdit({}); setNuevas([]);
+    setFila(null); setNuevas((p) => p.filter((x) => x !== fila));
     await onCambio();
   }
   async function toggleCerrada(n: string) {
@@ -457,96 +463,78 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
     if (!confirm(c ? `¿Reabrir ${n}? Se va a poder modificar de nuevo.` : `¿Cerrar ${n}? Nadie va a poder modificar sus renglones ni sus tipos de cambio hasta reabrirla.`)) return;
     const r = await api("/api/presupuesto", { method: "POST", body: JSON.stringify({ accion: c ? "abrir" : "cerrar", version: n }) });
     if (!r.ok) { alert(r.data.error ?? "No se pudo."); return; }
+    setFila(null);
     await onCambio();
   }
 
   return (
     <section className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Un tipo de cambio por presupuesto y por mes (pesos por dólar), el que pasa finanzas. Los dólares de cada renglón = pesos ÷ este valor.
-        {!editor && " Solo los editores del presupuesto pueden cambiarlos."}
+        Pesos por dólar de cada presupuesto y mes (los pasa finanzas). Los dólares = pesos ÷ este valor.
+        {editor ? " Para cargar o cambiar, tocá ✎ al final de la fila." : " Solo los editores del presupuesto pueden cambiarlos."}
       </p>
-      {editor && <TcRapido versiones={versiones} base={base} onCambio={onCambio} />}
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Todos los tipos de cambio</div>
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[1100px] text-xs">
+      {editor && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Agregar presupuesto:</span>
+          <select className={selectCls} value={nuevoTipo} onChange={(e) => setNuevoTipo(e.target.value as typeof nuevoTipo)}>
+            {(["BGT", "4+8", "8+4"] as const).map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select className={selectCls} value={nuevoAnio} onChange={(e) => setNuevoAnio(Number(e.target.value))}>
+            {[hoy + 1, hoy, hoy - 1].map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <button type="button" className={btn} disabled={yaExiste} onClick={() => { setNuevas((p) => [...p, nuevoNombre]); editar(nuevoNombre); }}>
+            {yaExiste ? `${nuevoNombre} ya está` : "Agregar fila"}
+          </button>
+        </div>
+      )}
+      <div className="rounded-lg border">
+        <table className="w-full table-fixed text-xs">
+          <colgroup><col style={{ width: "12%" }} />{MESES.map((m) => <col key={m} />)}{editor && <col style={{ width: "9%" }} />}</colgroup>
           <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
-            <tr><th className="px-2 py-2 text-left">Presupuesto</th>{MES_CAP.map((m) => <th key={m} className="px-1 py-2 text-right">{m.slice(0, 3)}</th>)}{editor && <th />}</tr>
+            <tr>
+              <th className="px-2 py-2 text-left">Presupuesto</th>
+              {MES_CAP.map((m) => <th key={m} className="px-1 py-2 text-center">{m.slice(0, 3)}</th>)}
+              {editor && <th />}
+            </tr>
           </thead>
           <tbody>
-            {versiones.map((n) => (
-              <tr key={n} className="border-t">
-                <td className="whitespace-nowrap px-2 py-1 font-medium">{n}{cerrada(n) && <span className="ml-1 text-[10px] text-muted-foreground">(cerrada)</span>}</td>
-                {MESES.map((_, i) => {
-                  const k = `${n}|${i + 1}`;
-                  return (
-                    <td key={k} className="px-1 py-1">
-                      <input className={`w-[72px] rounded border bg-card px-1 py-1 text-right tabular-nums ${edit[k] !== undefined ? "border-amber-400" : ""} ${!valor(k) ? "bg-amber-50" : ""}`}
-                        value={valor(k)} disabled={!editor || cerrada(n)} inputMode="decimal"
-                        onChange={(e) => setEdit((p) => ({ ...p, [k]: e.target.value }))} />
+            {versiones.map((n) => {
+              const enEdicion = fila === n;
+              return (
+                <tr key={n} className={`border-t ${enEdicion ? "bg-amber-50/60" : ""}`}>
+                  <td className="px-2 py-1.5 font-medium">{n}{cerrada(n) && <span className="ml-1 text-[10px] font-normal text-muted-foreground">(cerrada)</span>}</td>
+                  {MESES.map((_, i) => (
+                    <td key={i} className="px-1 py-1.5 text-center tabular-nums">
+                      {enEdicion
+                        ? <input className="w-full rounded border bg-card px-1 py-0.5 text-center tabular-nums" inputMode="decimal" value={edit[i + 1] ?? ""} onChange={(e) => setEdit((p) => ({ ...p, [i + 1]: e.target.value }))} />
+                        : <span className={base.get(`${n}|${i + 1}`) == null ? "text-muted-foreground/50" : ""}>{fmt(base.get(`${n}|${i + 1}`))}</span>}
                     </td>
-                  );
-                })}
-                {editor && <td className="px-2 py-1">{datos.versiones.some((v) => v.nombre === n) && <button type="button" className="text-[11px] text-primary hover:underline" onClick={() => toggleCerrada(n)}>{cerrada(n) ? "Reabrir" : "Cerrar"}</button>}</td>}
-              </tr>
-            ))}
+                  ))}
+                  {editor && (
+                    <td className="whitespace-nowrap px-1 py-1.5 text-right">
+                      {enEdicion ? (
+                        <>
+                          <button type="button" className="font-semibold text-primary hover:underline disabled:opacity-50" disabled={guardando} onClick={guardar}>{guardando ? "…" : "Guardar"}</button>
+                          <button type="button" title="Cancelar" className="ml-2 text-muted-foreground hover:underline" onClick={() => setFila(null)}>✕</button>
+                        </>
+                      ) : cerrada(n) ? (
+                        <button type="button" title="Reabrir para editar" className="text-[11px] text-muted-foreground hover:underline" onClick={() => toggleCerrada(n)}>Reabrir</button>
+                      ) : (
+                        <button type="button" title="Editar" aria-label={`Editar ${n}`} className="text-base text-primary hover:opacity-70" onClick={() => editar(n)}>✎</button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      {editor && (
-        <div className="flex flex-wrap items-center gap-2">
-          <input className={`${inputCls} w-48`} value={nueva} onChange={(e) => setNueva(e.target.value)} placeholder="Nuevo presupuesto (ej. BGT 2027)" />
-          <button type="button" className={btn} disabled={!/\b20\d{2}\b/.test(nueva)} onClick={() => { setNuevas((p) => [...p, nueva.trim().toUpperCase()]); setNueva(""); }}>Agregar fila</button>
-          <button type="button" className={btnPri} disabled={guardando || !cambios.length} onClick={guardar}>{guardando ? "Guardando…" : `Guardar ${cambios.length} cambio(s)`}</button>
-          {msg && <span className="text-xs text-red-600">{msg}</span>}
-          <span className="text-[11px] text-muted-foreground">Las celdas amarillas no tienen tipo de cambio: sus dólares salen en 0 en el tablero.</span>
-        </div>
+      {fila && editor && datos.versiones.some((v) => v.nombre === fila) && (
+        <button type="button" className="text-[11px] text-muted-foreground hover:underline" onClick={() => toggleCerrada(fila)}>Cerrar {fila} (que nadie lo modifique)</button>
       )}
+      {msg && <p className="text-xs text-red-600">{msg}</p>}
     </section>
-  );
-}
-
-/** Carga de a uno: presupuesto + mes + valor → Guardar. */
-function TcRapido({ versiones, base, onCambio }: { versiones: string[]; base: Map<string, number>; onCambio: () => Promise<void> }) {
-  const [version, setVersion] = useState(versiones[0] ?? `REAL ${new Date().getFullYear()}`);
-  const [otra, setOtra] = useState("");
-  const [mes, setMes] = useState(new Date().getMonth() + 1);
-  const [valor, setValor] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
-  const nombre = version === "__otra" ? otra.trim().toUpperCase() : version;
-  const actual = base.get(`${nombre}|${mes}`);
-  async function guardar() {
-    const tc = parseMonto(valor);
-    if (!/\b20\d{2}\b/.test(nombre)) { setMsg("Escribí el presupuesto con su año (ej. BGT 2027)."); return; }
-    if (tc == null || tc <= 0) { setMsg("Escribí un tipo de cambio válido (ej. 1.522,50)."); return; }
-    setGuardando(true); setMsg(null);
-    const r = await api("/api/presupuesto/tc", { method: "PUT", body: JSON.stringify({ cambios: [{ version: nombre, mes, tc }] }) });
-    setGuardando(false);
-    if (!r.ok) { setMsg(r.data.error ?? "No se pudo guardar."); return; }
-    setMsg(`Guardado: ${nombre} · ${MES_CAP[mes - 1]} = ${tc.toLocaleString("es-AR")}`); setValor("");
-    await onCambio();
-  }
-  return (
-    <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-card p-4 shadow-sm">
-      <div className="w-full text-sm font-semibold">Cargar un tipo de cambio</div>
-      <label className="text-xs text-muted-foreground">Presupuesto<br />
-        <select className={selectCls} value={version} onChange={(e) => setVersion(e.target.value)}>
-          {versiones.map((v) => <option key={v} value={v}>{v}</option>)}
-          <option value="__otra">Otro (nuevo)…</option>
-        </select>
-      </label>
-      {version === "__otra" && <label className="text-xs text-muted-foreground">Nombre<br /><input className={`${inputCls} w-36`} value={otra} onChange={(e) => setOtra(e.target.value)} placeholder="BGT 2027" /></label>}
-      <label className="text-xs text-muted-foreground">Mes<br />
-        <select className={selectCls} value={mes} onChange={(e) => setMes(Number(e.target.value))}>{MES_CAP.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
-      </label>
-      <label className="text-xs text-muted-foreground">Pesos por dólar<br />
-        <input className={`${inputCls} w-32 text-right tabular-nums`} inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder={actual ? String(actual).replace(".", ",") : "1.522,50"} />
-      </label>
-      <button type="button" className={btnPri} disabled={guardando || !valor.trim()} onClick={guardar}>{guardando ? "Guardando…" : actual ? "Reemplazar" : "Guardar"}</button>
-      <span className="text-[11px] text-muted-foreground">{actual ? `Hoy: ${actual.toLocaleString("es-AR")}` : "Todavía sin valor"}</span>
-      {msg && <span className="w-full text-xs">{msg}</span>}
-    </div>
   );
 }
 
@@ -613,69 +601,5 @@ function Historial({ versiones }: { versiones: Version[] }) {
         </div>
       )}
     </section>
-  );
-}
-
-// ======================================================================= Importar planilla
-interface Vista { vistaPrevia?: boolean; totales?: Record<string, number>; renglones?: Record<string, number>; errores?: ({ fila: number; error: string } | string)[]; omitidas?: number; catalogo?: number; tcs?: Tc[]; hoja?: string }
-
-function Importar({ onCambio }: { onCambio: () => Promise<void> }) {
-  return (
-    <section className="grid gap-4 lg:grid-cols-2">
-      <Subida tipo="planilla" titulo="Histórico de la planilla de Seguimiento"
-        ayuda='Opcional y por única vez: trae al tablero el histórico de la planilla de Seguimiento (hoja "Planilla carga BGT - Facturas") con proveedores, Solped, OC y facturas, y las listas de "Menu Desplegable". Lo que ya cargaste a mano en el tablero se mantiene. Solo se toman los pesos.'
-        onCambio={onCambio} />
-      <Subida tipo="tc" titulo="Plantilla de tipos de cambio"
-        ayuda="Una fila por mes y una columna por presupuesto (la plantilla que te pasamos). Las celdas vacías no se tocan."
-        onCambio={onCambio} />
-    </section>
-  );
-}
-
-function Subida({ tipo, titulo, ayuda, onCambio }: { tipo: "planilla" | "tc"; titulo: string; ayuda: string; onCambio: () => Promise<void> }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [vista, setVista] = useState<Vista | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  async function enviar(confirmar: boolean) {
-    if (!file) return;
-    setBusy(true); setMsg(null);
-    const fd = new FormData();
-    fd.set("archivo", file); fd.set("tipo", tipo); if (confirmar) fd.set("confirmar", "1");
-    const r = await api<Vista & { ok?: boolean; cambios?: number; versiones?: Record<string, { antes: number; despues: number; renglones: number }> }>("/api/presupuesto/importar", { method: "POST", body: fd });
-    setBusy(false);
-    if (!r.ok) { setMsg(r.data.error ?? "No se pudo procesar el archivo."); return; }
-    if (confirmar) {
-      setMsg(tipo === "tc" ? `Listo: ${r.data.cambios ?? 0} tipos de cambio guardados.` : `Listo: ${Object.keys(r.data.versiones ?? {}).length} presupuestos importados.`);
-      setVista(null); setFile(null);
-      await onCambio();
-    } else setVista(r.data);
-  }
-  const errores = vista?.errores ?? [];
-  return (
-    <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
-      <div className="text-sm font-semibold">{titulo}</div>
-      <p className="text-xs text-muted-foreground">{ayuda}</p>
-      <input type="file" accept=".xlsx,.xls" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setVista(null); setMsg(null); }} className="text-xs" />
-      <div className="flex gap-2">
-        <button type="button" className={btn} disabled={!file || busy} onClick={() => enviar(false)}>{busy && !vista ? "Leyendo…" : "Ver qué se va a cargar"}</button>
-        {vista && <button type="button" className={btnPri} disabled={busy} onClick={() => { if (tipo === "tc" || confirm("Se reemplazan los renglones de los presupuestos que trae el archivo. Queda registrado en el historial. ¿Seguimos?")) void enviar(true); }}>{busy ? "Guardando…" : "Confirmar y guardar"}</button>}
-      </div>
-      {vista?.totales && (
-        <table className="w-full text-xs">
-          <thead className="text-left text-[11px] uppercase text-muted-foreground"><tr><th className="py-1">Presupuesto</th><th className="py-1 text-right">Renglones</th><th className="py-1 text-right">Total $</th></tr></thead>
-          <tbody>{Object.keys(vista.totales).sort().map((k) => <tr key={k} className="border-t"><td className="py-1">{k}</td><td className="py-1 text-right tabular-nums">{vista.renglones?.[k]}</td><td className="py-1 text-right tabular-nums">{ars(vista.totales![k]!)}</td></tr>)}</tbody>
-        </table>
-      )}
-      {vista?.tcs && <p className="text-xs"><b>{vista.tcs.length}</b> tipos de cambio en {new Set(vista.tcs.map((t) => t.version)).size} presupuestos.</p>}
-      {vista && vista.omitidas ? <p className="text-[11px] text-muted-foreground">{vista.omitidas} filas vacías o sin monto (no se cargan).</p> : null}
-      {errores.length > 0 && (
-        <div className="space-y-0.5 text-xs text-red-600">
-          <div>{errores.length} filas con problemas {tipo === "planilla" ? "(no se cargan)" : "(corregilas para poder guardar)"}:</div>
-          {errores.slice(0, 10).map((e, i) => <div key={i}>{typeof e === "string" ? e : `Fila ${e.fila}: ${e.error}`}</div>)}
-        </div>
-      )}
-      {msg && <p className="text-xs font-medium">{msg}</p>}
-    </div>
   );
 }

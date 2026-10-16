@@ -119,5 +119,11 @@ eq("facturado", etapaDe({ ...e0, oc: "1", factura: "0001-1" }), "factura");
 eq("recepción cuenta como facturado", etapaDe({ ...e0, oc: "1", nro_recepcion: "5003647341" }), "factura");
 eq("contabilizado", etapaDe({ ...e0, factura: "x", fecha_contabilizacion: "2026-10-14" }), "contabilizado");
 
+// ── conceptos por cuenta ──
+const vl: Version[] = [{ nombre: "REAL 2026", tipo: "REAL", anio: 2026, cerrada: false }];
+eq("concepto válido para la cuenta", validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010069", concepto: "PAUTA ATL", ars: 1 }, vl), null);
+ok("concepto de otra cuenta", /no corresponde/.test(validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010069", concepto: "AGENCIAS VARIAS", ars: 1 }, vl) ?? ""));
+eq("cuenta sin mapa acepta cualquiera", validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010033", concepto: "PAUTA DIGITAL", ars: 1 }, vl), null);
+
 console.log(`presupuesto: ${passes} OK, ${fails} fallas`);
 if (fails) process.exit(1);
