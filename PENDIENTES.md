@@ -13,7 +13,7 @@
 | D1 | DV360 **abril (US$463) y mayo (US$1.104)** truncados → bajar CSV mensual completo de DV360 y recargar | User (CSV) + Claude (carga) | sep-2026 | 6-oct: siguen así | `dv360_creatives` suma `revenue_usd` por `mes` |
 | D2 | DV360 **ago-26 sospechoso** (US$9.081 vs jul 37.030, sep 26.093) | User (CSV ago) | 24-sep | 6-oct: sigue 9.081 | ídem |
 | D3 | Reporte "DV360 Video Drean" (ID 1693465149) entrega meses parciales → ampliar Date Range, o endurecer `syncDv360` (Apps Script, no está en el repo) | User | sep-2026 | sin verificar (fuera del repo) | Apps Script / DV360 Reports |
-| D4 | **BGT "8+4 2026" no cargado** → T3 de /funnel sale "no cargada" | User (planilla BGT) | sep-2026 | 6-oct: hay BGT 2026 / 4+8 2026 / REAL 2026, falta 8+4 | `bgt_marketing?anio=eq.2026` por `presupuesto` |
+| D4 | **BGT "8+4 2026" no cargado** → T3 de /funnel sale "no cargada". Se resuelve con D15 (la planilla del 16-oct ya trae el 8+4 2026: 108 renglones, $6.100 M) | User (importar) | sep-2026 | 16-oct: está en la planilla, falta importarla | `bgt_lineas` versión `8+4 2026` |
 | D5 | Search Console lee `https://www.drean.com.ar/` (~835 impr/mes) → dar acceso a `sc-domain:drean.com.ar` y re-sync | User | 27-sep | 6-oct: snapshot (29-sep) sigue con el URL-prefix | `search_console_snapshot.data.site` |
 | D6 | WhatsApp de alertas: número dedicado + QR + env Vercel `EVO_URL/EVO_API_KEY/EVO_INSTANCE` (migración 0123 YA corrida) | User | 28-sep | 6-oct: `whatsapp_on=false`, sin envíos | `alert_prefs`, `alert_log canal=whatsapp` |
 | D7 | Decidir si el mockup **Salud de Marca – metodología** pasa a dashboard real | User (decisión) | dic-2026 | 6-oct: no hay ruta nueva | `app/salud-marca/` |
@@ -24,6 +24,8 @@
 | D12 | Guía/🎓 a tabla (editar sin deploy) | Claude (cuando se pida) | sep-2026 | 6-oct: sigue en `lib/guia/*` | código |
 | D13 | Borrar `public/bgt-mkt/` (iframe viejo sin uso) | Claude | sep-2026 | 6-oct: sigue el archivo | `apps/web/public/bgt-mkt` |
 | D14 | **Monitoreo de precios (BIP):** definir las 12 decisiones abiertas de `docs/investigacion-precios/benchmark-precios-multicategoria-bip.md` para recién ahí diseñar la estructura | User (decisión) | 7-oct | 7-oct: informe mergeado (#824), nada implementado | sección "Decisiones abiertas" del informe |
+| D15 | **Presupuesto desde el tablero (0125):** (1) correr `supabase/migrations/0125_presupuesto.sql` en el SQL Editor; (2) /funnel → Cargar datos → Importar planilla (Seguimiento_BGT_2026.xlsx) y revisar los totales; (3) subir la plantilla de tipos de cambio; (4) pasar el email de Julieta para `bgt_editores`; (5) validado → apagar `bgt-sync` y el Excel | User | 16-oct | 16-oct: código en main, nada corrido | `bgt_versiones`/`bgt_lineas`/`bgt_tc` por REST; /funnel dice "Fuente: carga en el tablero" |
+| D16 | Presupuesto: grilla para cargar BGT/4+8/8+4 por cuenta × mes + "crear 4+8 / 8+4 / BGT del año siguiente" desde el REAL | Claude | 16-oct | 16-oct: no empezado | `/funnel/carga` |
 
 ## Cerrados (con evidencia)
 - **Tab "OKR Mkt" de /overview** — borrado el 4-sep-2026 (`49830d9`). La memoria lo seguía dando como pendiente.
