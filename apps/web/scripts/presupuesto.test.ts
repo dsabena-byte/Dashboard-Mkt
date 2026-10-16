@@ -123,7 +123,7 @@ eq("contabilizado", etapaDe({ ...e0, factura: "x", fecha_contabilizacion: "2026-
 const vl: Version[] = [{ nombre: "REAL 2026", tipo: "REAL", anio: 2026, cerrada: false }];
 eq("concepto válido para la cuenta", validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010069", concepto: "PAUTA ATL", ars: 1 }, vl), null);
 ok("concepto de otra cuenta", /no corresponde/.test(validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010069", concepto: "AGENCIAS VARIAS", ars: 1 }, vl) ?? ""));
-eq("cuenta sin mapa acepta cualquiera", validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010033", concepto: "PAUTA DIGITAL", ars: 1 }, vl), null);
+ok("cuenta 6202010033 no habilitada", /no está habilitada/.test(validarLinea({ version: "REAL 2026", mes: 1, cuenta: "6202010033", concepto: "PAUTA DIGITAL", ars: 1 }, vl) ?? ""));
 
 console.log(`presupuesto: ${passes} OK, ${fails} fallas`);
 if (fails) process.exit(1);
