@@ -1,6 +1,6 @@
 // Presupuesto cargado desde el tablero (migración 0125). Puro. Correr: cd apps/web && npx tsx scripts/presupuesto.test.ts
 import {
-  agregarParaTablero, armarCatalogo, normalizarCuentas, camposCambiados, claveDuplicado, parseFecha, parseMes, parseMonto, parsePlanilla,
+  agregarParaTablero, armarCatalogo, etapaDe, normalizarCuentas, camposCambiados, claveDuplicado, parseFecha, parseMes, parseMonto, parsePlanilla,
   parseTcPlantilla, tipoDeVersion, totalesPorVersion, validarLinea, type LineaIn, type Version,
 } from "../src/lib/presupuesto-core";
 
@@ -109,6 +109,15 @@ eq("proveedor de los renglones", cat.find((c) => c.tipo === "proveedor" && c.cla
 
 eq("nombre de cuenta unificado por código", normalizarCuentas([{ cuenta: "6202010034", nombre_cta: "PUBLICIDAD. PRODUCCION Y AGENCIA" }], cat)[0]!.nombre_cta, "PUBLICIDAD.PRODUCCION Y AGENCIAS");
 eq("código por nombre", normalizarCuentas([{ cuenta: "", nombre_cta: "publicidad exhibiciones" }], cat)[0]!.cuenta, "6202010072");
+
+// ── circuito del gasto ──
+const e0 = { solped: null, oc: null, nro_recepcion: null, factura: null, fecha_contabilizacion: null, nro_doc_contable: null };
+eq("sin datos", etapaDe(e0), "sin_datos");
+eq("solo solped", etapaDe({ ...e0, solped: "4014693004" }), "solped");
+eq("con OC", etapaDe({ ...e0, solped: "1", oc: "9501302505" }), "oc");
+eq("facturado", etapaDe({ ...e0, oc: "1", factura: "0001-1" }), "factura");
+eq("recepción cuenta como facturado", etapaDe({ ...e0, oc: "1", nro_recepcion: "5003647341" }), "factura");
+eq("contabilizado", etapaDe({ ...e0, factura: "x", fecha_contabilizacion: "2026-10-14" }), "contabilizado");
 
 console.log(`presupuesto: ${passes} OK, ${fails} fallas`);
 if (fails) process.exit(1);

@@ -1,8 +1,8 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  MESES, normTxt, parseMonto, parsePlanilla,
+  ETAPAS, MESES, etapaDe, normTxt, parseMonto, parsePlanilla, type Etapa,
   type ItemCatalogo, type Linea, type LineaIn, type Tc, type Version,
 } from "@/lib/presupuesto-core";
 
@@ -43,8 +43,8 @@ export function CargaPresupuesto() {
     setError(null);
     setDatos(r.data);
     if (!v) {
-      const real = r.data.versiones.filter((x) => x.tipo === "REAL").sort((a, b) => b.anio - a.anio)[0] ?? r.data.versiones[0];
-      if (real) { setVersion(real.nombre); void cargar(real.nombre); }
+      const real = r.data.versiones.filter((x) => x.tipo === "REAL").sort((a, b) => b.anio - a.anio)[0];
+      if (real) { setVersion(real.nombre); void cargar(real.nombre); } else setVersion(`REAL ${new Date().getFullYear()}`);
     }
   }, []);
   useEffect(() => { void cargar(""); }, [cargar]);
@@ -55,11 +55,16 @@ export function CargaPresupuesto() {
   if (!datos) return <div className="text-sm text-muted-foreground">Cargando…</div>;
 
   const editor = datos.usuario.editor;
+  // Sin nada cargado todavía: el gasto real del año en curso se crea con el primer renglón.
+  const anioHoy = new Date().getFullYear();
+  const versiones: Version[] = datos.versiones.some((v) => v.nombre === `REAL ${anioHoy}`)
+    ? datos.versiones : [{ nombre: `REAL ${anioHoy}`, tipo: "REAL", anio: anioHoy, cerrada: false }, ...datos.versiones];
+  const datosUI = { ...datos, versiones };
   const secciones: { key: Seccion; label: string }[] = [
-    { key: "real", label: "Gastos y presupuestos" },
+    { key: "real", label: "Gastos" },
     { key: "tc", label: "Tipos de cambio" },
     { key: "historial", label: "Historial de cambios" },
-    ...(editor ? [{ key: "importar" as const, label: "Importar planilla" }] : []),
+    ...(editor ? [{ key: "importar" as const, label: "Traer histórico del Excel" }] : []),
   ];
 
   return (
@@ -76,17 +81,11 @@ export function CargaPresupuesto() {
         </span>
       </div>
 
-      {!datos.versiones.length && (
-        <div className="rounded-lg border bg-muted/40 p-4 text-sm">
-          Todavía no hay datos cargados en el tablero.{editor ? " Empezá por “Importar planilla” para subir lo que hay en el Excel." : " Pedile a un editor que importe la planilla."}
-        </div>
-      )}
-
-      {seccion === "real" && datos.versiones.length > 0 && (
-        <Gastos datos={datos} version={version} cargando={cargando}
+      {seccion === "real" && version && (
+        <Gastos datos={datosUI} version={version} cargando={cargando}
           onVersion={(v) => { setVersion(v); void cargar(v); }} onCambio={recargar} />
       )}
-      {seccion === "tc" && <TiposDeCambio datos={datos} onCambio={recargar} />}
+      {seccion === "tc" && <TiposDeCambio datos={datosUI} onCambio={recargar} />}
       {seccion === "historial" && <Historial versiones={datos.versiones} />}
       {seccion === "importar" && editor && <Importar onCambio={async () => { await cargar(""); router.refresh(); }} />}
     </div>
@@ -104,19 +103,23 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
 }) {
   const v = datos.versiones.find((x) => x.nombre === version);
   const puede = !!v && !v.cerrada && (v.tipo === "REAL" ? datos.usuario.puedeReal : datos.usuario.editor);
+  const formRef = useRef<HTMLDivElement>(null);
+  const editar = (l: Linea) => { setEditando(l); setPegar(false); requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })); };
   const tcMes = useMemo(() => new Map(datos.tcs.filter((t) => t.version === version).map((t) => [t.mes, t.tc])), [datos.tcs, version]);
   const [mes, setMes] = useState(0);
   const [cuenta, setCuenta] = useState("");
   const [q, setQ] = useState("");
-  const [editando, setEditando] = useState<Linea | "nueva" | null>(null);
+  const [etapaF, setEtapaF] = useState<Etapa | "">("");
+  const [editando, setEditando] = useState<Linea | "nueva" | null>("nueva");
   const [pegar, setPegar] = useState(false);
+  const [nuevaN, setNuevaN] = useState(0);
 
   const filtradas = useMemo(() => {
     const t = normTxt(q);
     return datos.lineas.filter((l) =>
-      (!mes || l.mes === mes) && (!cuenta || l.nombre_cta === cuenta) &&
+      (!mes || l.mes === mes) && (!cuenta || l.nombre_cta === cuenta) && (!etapaF || etapaDe(l) === etapaF) &&
       (!t || normTxt([l.proveedor, l.nro_proveedor, l.detalle, l.oc, l.solped, l.factura, l.nro_recepcion, l.concepto].join(" ")).includes(t)));
-  }, [datos.lineas, mes, cuenta, q]);
+  }, [datos.lineas, mes, cuenta, q, etapaF]);
   const cuentas = useMemo(() => [...new Set(datos.lineas.map((l) => l.nombre_cta).filter(Boolean))].sort(), [datos.lineas]);
   const usdDe = (l: Pick<Linea, "mes" | "ars">) => { const t = tcMes.get(l.mes); return t ? l.ars / t : null; };
   const totArs = filtradas.reduce((s, l) => s + l.ars, 0);
@@ -162,10 +165,18 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
             {cuentas.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
+        {v?.tipo === "REAL" && (
+          <label className="text-xs text-muted-foreground">Etapa<br />
+            <select className={selectCls} value={etapaF} onChange={(e) => setEtapaF(e.target.value as Etapa | "")}>
+              <option value="">Todas</option>
+              {ETAPAS.map((x) => <option key={x.key} value={x.key}>{x.label === "Solped" ? "Solo Solped (falta OC)" : x.label === "OC emitida" ? "Con OC (falta factura)" : x.label === "Facturado" ? "Facturado (falta contabilizar)" : "Contabilizado"}</option>)}
+            </select>
+          </label>
+        )}
         <label className="min-w-[200px] flex-1 text-xs text-muted-foreground">Buscar (proveedor, detalle, OC, Solped, factura)<br />
           <input className={inputCls} value={q} onChange={(e) => setQ(e.target.value)} placeholder="ej. OMD, 9501302505…" />
         </label>
-        {puede && <button type="button" className={btnPri} onClick={() => { setEditando("nueva"); setPegar(false); }}>+ Nuevo {v?.tipo === "REAL" ? "gasto" : "renglón"}</button>}
+        {puede && editando !== "nueva" && <button type="button" className={btnPri} onClick={() => { setEditando("nueva"); setPegar(false); }}>+ Cargar {v?.tipo === "REAL" ? "gasto" : "renglón"}</button>}
         {puede && <button type="button" className={btn} onClick={() => { setPegar((p) => !p); setEditando(null); }}>Pegar desde Excel</button>}
         <button type="button" className={btn} onClick={exportar} disabled={!filtradas.length}>Exportar a Excel</button>
       </div>
@@ -173,10 +184,10 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
       {v?.cerrada && <p className="text-xs text-muted-foreground">{v.nombre} está cerrada: se puede ver pero no modificar.</p>}
       {v && !v.cerrada && !puede && <p className="text-xs text-muted-foreground">Solo los editores del presupuesto pueden modificar {v.nombre}.</p>}
 
-      {editando && (
-        <FormLinea key={editando === "nueva" ? "nueva" : editando.id} datos={datos}
+      {editando && puede && (
+        <div ref={formRef}><FormLinea key={editando === "nueva" ? `nueva-${nuevaN}` : editando.id} datos={datos}
           inicial={editando === "nueva" ? VACIA(version) : editando} id={editando === "nueva" ? null : editando.id}
-          onCerrar={() => setEditando(null)} onGuardado={async () => { setEditando(null); await onCambio(); }} />
+          onCerrar={() => setEditando(null)} onGuardado={async () => { if (editando === "nueva") setNuevaN((n) => n + 1); else setEditando("nueva"); await onCambio(); }} /></div>
       )}
       {pegar && <Pegar datos={datos} version={version} onCerrar={() => setPegar(false)} onGuardado={async () => { setPegar(false); await onCambio(); }} />}
 
@@ -190,12 +201,14 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[1100px] text-xs">
           <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-            <tr>{["Mes", "Cuenta", "Concepto", "Proveedor", "Detalle", "Solped", "OC", "Recepción", "Contabiliz.", "Factura", "Prov.", "$", "USD", ""].map((h) => <th key={h} className="px-2 py-2 font-semibold">{h}</th>)}</tr>
+            <tr>{["Mes", "Etapa", "Cuenta", "Concepto", "Proveedor", "Detalle", "Solped", "OC", "Recepción", "Contabiliz.", "Factura", "Prov.", "$", "USD", ""].map((h) => <th key={h} className="px-2 py-2 font-semibold">{h}</th>)}</tr>
           </thead>
           <tbody>
             {filtradas.map((l) => (
-              <tr key={l.id} className="border-t align-top hover:bg-muted/30">
+              <tr key={l.id} onClick={puede ? () => editar(l) : undefined} title={puede ? "Tocá para editar" : undefined}
+                className={`border-t align-top hover:bg-muted/30 ${puede ? "cursor-pointer" : ""} ${editando !== "nueva" && editando?.id === l.id ? "bg-amber-50" : ""}`}>
                 <td className="px-2 py-1.5">{MES_CAP[l.mes - 1]}</td>
+                <td className="px-2 py-1.5"><EtapaChip e={etapaDe(l)} /></td>
                 <td className="px-2 py-1.5" title={l.cuenta}>{l.nombre_cta}</td>
                 <td className="px-2 py-1.5">{l.concepto}</td>
                 <td className="px-2 py-1.5" title={l.nro_proveedor ?? ""}>{l.proveedor ?? l.nro_proveedor ?? "—"}</td>
@@ -210,13 +223,13 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
                 <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{usdTxt(usdDe(l))}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right">
                   {puede && <>
-                    <button type="button" className="text-primary hover:underline" onClick={() => { setEditando(l); setPegar(false); }}>Editar</button>
-                    <button type="button" className="ml-2 text-red-600 hover:underline" onClick={() => borrar(l)}>Borrar</button>
+                    <button type="button" className="text-primary hover:underline" onClick={(e) => { e.stopPropagation(); editar(l); }}>Editar</button>
+                    <button type="button" className="ml-2 text-red-600 hover:underline" onClick={(e) => { e.stopPropagation(); void borrar(l); }}>Borrar</button>
                   </>}
                 </td>
               </tr>
             ))}
-            {!filtradas.length && <tr><td colSpan={14} className="px-2 py-6 text-center text-muted-foreground">No hay renglones con estos filtros.</td></tr>}
+            {!filtradas.length && <tr><td colSpan={15} className="px-2 py-6 text-center text-muted-foreground">No hay renglones con estos filtros.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -224,8 +237,25 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
   );
 }
 
+const ETAPA_CLS: Record<Etapa, string> = { sin_datos: "bg-muted text-muted-foreground", solped: "bg-slate-100 text-slate-700", oc: "bg-blue-50 text-blue-800", factura: "bg-amber-50 text-amber-800", contabilizado: "bg-emerald-50 text-emerald-800" };
+function EtapaChip({ e }: { e: Etapa }) {
+  const label = e === "sin_datos" ? "—" : ETAPAS.find((x) => x.key === e)!.label;
+  return <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${ETAPA_CLS[e]}`}>{label}</span>;
+}
+
 // ======================================================================= Formulario de un renglón
 // Afuera del formulario: definido adentro se re-crea en cada render y los inputs pierden el foco al tipear.
+function Paso({ n, titulo, hecho, actual, children }: { n: number; titulo: string; hecho: boolean; actual: boolean; children: React.ReactNode }) {
+  return (
+    <div className={`space-y-2 rounded-lg border p-2.5 ${actual ? "border-amber-400 bg-amber-50/60" : hecho ? "bg-emerald-50/50" : "bg-muted/20"}`}>
+      <div className="flex items-center gap-1.5 text-xs font-semibold">
+        <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${hecho ? "bg-emerald-600 text-white" : actual ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"}`}>{hecho ? "✓" : n}</span>
+        {titulo}{actual && <span className="ml-auto text-[10px] font-medium text-amber-700">siguiente paso</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
 function L({ t, children, w = "" }: { t: string; children: React.ReactNode; w?: string }) {
   return <label className={`text-[11px] font-medium text-muted-foreground ${w}`}>{t}<div className="mt-0.5">{children}</div></label>;
 }
@@ -243,6 +273,7 @@ function FormLinea({ datos, inicial, id, onCerrar, onGuardado }: {
   const usados = new Set(datos.lineas.filter((l) => l.cuenta === f.cuenta).map((l) => l.concepto));
   const conceptosOrd = [...conceptos].sort((a, b) => Number(usados.has(b.clave)) - Number(usados.has(a.clave)) || a.clave.localeCompare(b.clave));
   const provTxt = f.proveedor ?? "";
+  const etapa = etapaDe(f);
 
   function elegirProveedor(txt: string) {
     const t = normTxt(txt);
@@ -270,7 +301,7 @@ function FormLinea({ datos, inicial, id, onCerrar, onGuardado }: {
 
   return (
     <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
-      <div className="text-sm font-semibold">{id ? "Editar renglón" : `Nuevo renglón · ${f.version}`}</div>
+      <div className="text-sm font-semibold">{id ? `Editar renglón · ${f.version}` : `Cargar ${f.version.startsWith("REAL") ? "un gasto" : "un renglón"} · ${f.version}`}</div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <L t="Mes *"><select className={inputCls} value={f.mes} onChange={(e) => set("mes", Number(e.target.value))}>{MES_CAP.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></L>
         <L t="Cuenta *">
@@ -296,25 +327,41 @@ function FormLinea({ datos, inicial, id, onCerrar, onGuardado }: {
           <datalist id="ppto-proveedores">{proveedores.map((p) => <option key={p.clave} value={`${p.nombre} · ${p.clave}`} />)}</datalist>
         </L>
         <L t="Nro proveedor"><input className={inputCls} value={f.nro_proveedor ?? ""} onChange={(e) => set("nro_proveedor", e.target.value || null)} /></L>
-        <L t="Monto en pesos *"><input className={`${inputCls} text-right tabular-nums`} inputMode="decimal" value={montoTxt} onChange={(e) => setMontoTxt(e.target.value)} placeholder="1.810.000" /></L>
+        <L t={f.version.startsWith("REAL") ? "Monto en pesos * (el de la Solped; actualizalo con la factura)" : "Monto en pesos *"}><input className={`${inputCls} text-right tabular-nums`} inputMode="decimal" value={montoTxt} onChange={(e) => setMontoTxt(e.target.value)} placeholder="1.810.000" /></L>
         <L t="Detalle" w="sm:col-span-2 lg:col-span-4"><input className={inputCls} value={f.detalle ?? ""} onChange={(e) => set("detalle", e.target.value || null)} /></L>
-        <L t="Solped"><input className={inputCls} value={f.solped ?? ""} onChange={(e) => set("solped", e.target.value || null)} /></L>
-        <L t="OC"><input className={inputCls} value={f.oc ?? ""} onChange={(e) => set("oc", e.target.value || null)} /></L>
-        <L t="Nro de recepción"><input className={inputCls} value={f.nro_recepcion ?? ""} onChange={(e) => set("nro_recepcion", e.target.value || null)} /></L>
-        <L t="Fecha de contabilización"><input type="date" className={inputCls} value={f.fecha_contabilizacion ?? ""} onChange={(e) => set("fecha_contabilizacion", e.target.value || null)} /></L>
-        <L t="Factura"><input className={inputCls} value={f.factura ?? ""} onChange={(e) => set("factura", e.target.value || null)} placeholder="00001-00000725" /></L>
-        <L t="Provisión">
-          <select className={inputCls} value={f.provision ?? ""} onChange={(e) => set("provision", (e.target.value || null) as LineaIn["provision"])}>
-            <option value="">—</option><option value="SI">Sí</option><option value="NO">No</option>
-          </select>
-        </L>
-        {f.nro_doc_contable && <L t="Nro doc. contable (de la planilla)"><input className={inputCls} value={f.nro_doc_contable} onChange={(e) => set("nro_doc_contable", e.target.value || null)} /></L>}
       </div>
+      {f.version.startsWith("REAL") ? (
+        <div className="space-y-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Circuito del gasto · completá cada paso cuando ocurra</div>
+          <div className="grid gap-2 lg:grid-cols-4">
+            <Paso n={1} titulo="Solped" hecho={!!f.solped} actual={etapa === "sin_datos"}>
+              <L t="Nro de Solped"><input className={inputCls} value={f.solped ?? ""} onChange={(e) => set("solped", e.target.value || null)} /></L>
+            </Paso>
+            <Paso n={2} titulo="Orden de compra" hecho={!!f.oc} actual={etapa === "solped"}>
+              <L t="Nro de OC"><input className={inputCls} value={f.oc ?? ""} onChange={(e) => set("oc", e.target.value || null)} /></L>
+            </Paso>
+            <Paso n={3} titulo="Recepción y factura" hecho={!!(f.factura || f.nro_recepcion)} actual={etapa === "oc"}>
+              <L t="Nro de recepción"><input className={inputCls} value={f.nro_recepcion ?? ""} onChange={(e) => set("nro_recepcion", e.target.value || null)} /></L>
+              <L t="Factura"><input className={inputCls} value={f.factura ?? ""} onChange={(e) => set("factura", e.target.value || null)} placeholder="00001-00000725" /></L>
+            </Paso>
+            <Paso n={4} titulo="Contabilización" hecho={!!(f.fecha_contabilizacion || f.nro_doc_contable)} actual={etapa === "factura"}>
+              <L t="Fecha de contabilización"><input type="date" className={inputCls} value={f.fecha_contabilizacion ?? ""} onChange={(e) => set("fecha_contabilizacion", e.target.value || null)} /></L>
+              {f.nro_doc_contable && <L t="Nro doc. contable (de la planilla)"><input className={inputCls} value={f.nro_doc_contable} onChange={(e) => set("nro_doc_contable", e.target.value || null)} /></L>}
+              <L t="Provisión">
+                <select className={inputCls} value={f.provision ?? ""} onChange={(e) => set("provision", (e.target.value || null) as LineaIn["provision"])}>
+                  <option value="">—</option><option value="SI">Sí</option><option value="NO">No</option>
+                </select>
+              </L>
+            </Paso>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Si el monto final de la factura es distinto al de la Solped, actualizalo arriba: el cambio queda en el historial.</p>
+        </div>
+      ) : null}
       {msg && <p className="text-xs text-red-600">{msg}</p>}
       <div className="flex gap-2">
         <button type="button" className={btnPri} disabled={guardando} onClick={() => guardar()}>{guardando ? "Guardando…" : "Guardar"}</button>
-        <button type="button" className={btn} onClick={onCerrar}>Cancelar</button>
-        <span className="self-center text-[11px] text-muted-foreground">Los dólares se calculan solos con el tipo de cambio del mes.</span>
+        <button type="button" className={btn} onClick={onCerrar}>{id ? "Cancelar" : "Cerrar"}</button>
+        <span className="self-center text-[11px] text-muted-foreground">{id ? "Cada cambio queda en el historial." : "Los dólares se calculan solos con el tipo de cambio del mes."}</span>
       </div>
     </div>
   );
@@ -419,6 +466,8 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
         Un tipo de cambio por presupuesto y por mes (pesos por dólar), el que pasa finanzas. Los dólares de cada renglón = pesos ÷ este valor.
         {!editor && " Solo los editores del presupuesto pueden cambiarlos."}
       </p>
+      {editor && <TcRapido versiones={versiones} base={base} onCambio={onCambio} />}
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Todos los tipos de cambio</div>
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[1100px] text-xs">
           <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -454,6 +503,50 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
         </div>
       )}
     </section>
+  );
+}
+
+/** Carga de a uno: presupuesto + mes + valor → Guardar. */
+function TcRapido({ versiones, base, onCambio }: { versiones: string[]; base: Map<string, number>; onCambio: () => Promise<void> }) {
+  const [version, setVersion] = useState(versiones[0] ?? `REAL ${new Date().getFullYear()}`);
+  const [otra, setOtra] = useState("");
+  const [mes, setMes] = useState(new Date().getMonth() + 1);
+  const [valor, setValor] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const nombre = version === "__otra" ? otra.trim().toUpperCase() : version;
+  const actual = base.get(`${nombre}|${mes}`);
+  async function guardar() {
+    const tc = parseMonto(valor);
+    if (!/\b20\d{2}\b/.test(nombre)) { setMsg("Escribí el presupuesto con su año (ej. BGT 2027)."); return; }
+    if (tc == null || tc <= 0) { setMsg("Escribí un tipo de cambio válido (ej. 1.522,50)."); return; }
+    setGuardando(true); setMsg(null);
+    const r = await api("/api/presupuesto/tc", { method: "PUT", body: JSON.stringify({ cambios: [{ version: nombre, mes, tc }] }) });
+    setGuardando(false);
+    if (!r.ok) { setMsg(r.data.error ?? "No se pudo guardar."); return; }
+    setMsg(`Guardado: ${nombre} · ${MES_CAP[mes - 1]} = ${tc.toLocaleString("es-AR")}`); setValor("");
+    await onCambio();
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-card p-4 shadow-sm">
+      <div className="w-full text-sm font-semibold">Cargar un tipo de cambio</div>
+      <label className="text-xs text-muted-foreground">Presupuesto<br />
+        <select className={selectCls} value={version} onChange={(e) => setVersion(e.target.value)}>
+          {versiones.map((v) => <option key={v} value={v}>{v}</option>)}
+          <option value="__otra">Otro (nuevo)…</option>
+        </select>
+      </label>
+      {version === "__otra" && <label className="text-xs text-muted-foreground">Nombre<br /><input className={`${inputCls} w-36`} value={otra} onChange={(e) => setOtra(e.target.value)} placeholder="BGT 2027" /></label>}
+      <label className="text-xs text-muted-foreground">Mes<br />
+        <select className={selectCls} value={mes} onChange={(e) => setMes(Number(e.target.value))}>{MES_CAP.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
+      </label>
+      <label className="text-xs text-muted-foreground">Pesos por dólar<br />
+        <input className={`${inputCls} w-32 text-right tabular-nums`} inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder={actual ? String(actual).replace(".", ",") : "1.522,50"} />
+      </label>
+      <button type="button" className={btnPri} disabled={guardando || !valor.trim()} onClick={guardar}>{guardando ? "Guardando…" : actual ? "Reemplazar" : "Guardar"}</button>
+      <span className="text-[11px] text-muted-foreground">{actual ? `Hoy: ${actual.toLocaleString("es-AR")}` : "Todavía sin valor"}</span>
+      {msg && <span className="w-full text-xs">{msg}</span>}
+    </div>
   );
 }
 
@@ -529,8 +622,8 @@ interface Vista { vistaPrevia?: boolean; totales?: Record<string, number>; rengl
 function Importar({ onCambio }: { onCambio: () => Promise<void> }) {
   return (
     <section className="grid gap-4 lg:grid-cols-2">
-      <Subida tipo="planilla" titulo="Planilla completa (Seguimiento BGT)"
-        ayuda='Sube la hoja "Planilla carga BGT - Facturas" con todos los presupuestos y gastos, y las listas de "Menu Desplegable". Reemplaza solo los presupuestos que trae el archivo. De la planilla se toman solo los pesos: la columna USD se ignora.'
+      <Subida tipo="planilla" titulo="Histórico de la planilla de Seguimiento"
+        ayuda='Opcional y por única vez: trae al tablero el histórico de la planilla de Seguimiento (hoja "Planilla carga BGT - Facturas") con proveedores, Solped, OC y facturas, y las listas de "Menu Desplegable". Lo que ya cargaste a mano en el tablero se mantiene. Solo se toman los pesos.'
         onCambio={onCambio} />
       <Subida tipo="tc" titulo="Plantilla de tipos de cambio"
         ayuda="Una fila por mes y una columna por presupuesto (la plantilla que te pasamos). Las celdas vacías no se tocan."

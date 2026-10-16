@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { agregarAlCatalogo, borrarLinea, crearLineas, editarLinea, listCatalogo, listLineas, listVersiones } from "@/lib/presupuesto-server";
-import { claveDuplicado, normalizarCuentas, parseFecha, validarLinea, type ItemCatalogo, type LineaIn } from "@/lib/presupuesto-core";
+import { agregarAlCatalogo, asegurarVersiones, borrarLinea, crearLineas, editarLinea, listCatalogo, listLineas, listVersiones } from "@/lib/presupuesto-server";
+import { claveDuplicado, normalizarCuentas, parseFecha, tipoDeVersion, validarLinea, type ItemCatalogo, type LineaIn } from "@/lib/presupuesto-core";
 import { conUsuario, puedeVersion } from "../_auth";
 
 // Renglones: POST {lineas, force?} alta (una o varias, ej. pegado desde Excel) · PATCH {id, patch} · DELETE {id}.
@@ -38,7 +38,13 @@ export async function POST(req: Request) {
     const entrada = (b.lineas ?? []).slice(0, MAX + 1);
     if (!entrada.length) return NextResponse.json({ error: "No hay renglones para guardar." }, { status: 400 });
     if (entrada.length > MAX) return NextResponse.json({ error: `Máximo ${MAX} renglones por vez.` }, { status: 400 });
-    const [versiones, catalogo] = await Promise.all([listVersiones(), listCatalogo()]);
+    let [versiones, catalogo] = await Promise.all([listVersiones(), listCatalogo()]);
+    // El primer gasto de un año crea su presupuesto (ej. "REAL 2026") si todavía no existe.
+    const nuevas = [...new Set(entrada.map((l) => String(l.version ?? "").trim()))].filter((n) => {
+      const t = tipoDeVersion(n);
+      return t && !versiones.some((v) => v.nombre === n) && (t.tipo === "REAL" ? u.puedeReal : u.editor);
+    });
+    if (nuevas.length) { await asegurarVersiones(nuevas, u.email); versiones = await listVersiones(); }
     const permitida = puedeVersion(u);
     let lineas: LineaIn[] = [];
     const errores: { fila: number; error: string }[] = [];

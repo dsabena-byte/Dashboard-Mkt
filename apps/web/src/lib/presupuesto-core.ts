@@ -366,3 +366,20 @@ export function normalizarCuentas<T extends Pick<LineaIn, "cuenta" | "nombre_cta
     return { ...l, cuenta, nombre_cta: porCodigo.get(cuenta) ?? l.nombre_cta };
   });
 }
+
+/** Circuito del gasto: Solped → OC → recepción/factura → contabilizado. La etapa sale de los datos cargados. */
+export const ETAPAS = [
+  { key: "solped", label: "Solped" },
+  { key: "oc", label: "OC emitida" },
+  { key: "factura", label: "Facturado" },
+  { key: "contabilizado", label: "Contabilizado" },
+] as const;
+export type Etapa = (typeof ETAPAS)[number]["key"] | "sin_datos";
+
+export function etapaDe(l: Pick<LineaIn, "solped" | "oc" | "nro_recepcion" | "factura" | "fecha_contabilizacion" | "nro_doc_contable">): Etapa {
+  if (l.fecha_contabilizacion || l.nro_doc_contable) return "contabilizado";
+  if (l.factura || l.nro_recepcion) return "factura";
+  if (l.oc) return "oc";
+  if (l.solped) return "solped";
+  return "sin_datos";
+}
