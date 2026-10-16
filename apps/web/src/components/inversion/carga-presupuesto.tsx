@@ -119,9 +119,6 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
   const filtradas = useMemo(() => datos.lineas.filter((l) => COLS.every((c) => pasaFiltro(filtros[c.key], c.get(l)))), [datos.lineas, filtros]);
   const hayFiltros = Object.values(filtros).some((f) => f.txt || f.sel);
   const usdDe = (l: Pick<Linea, "mes" | "ars">) => { const t = tcMes.get(l.mes); return t ? l.ars / t : null; };
-  const totArs = filtradas.reduce((s, l) => s + l.ars, 0);
-  const sinTc = filtradas.some((l) => !tcMes.get(l.mes));
-  const totUsd = filtradas.reduce((s, l) => s + (usdDe(l) ?? 0), 0);
 
   async function borrar(l: Linea) {
     if (!confirm(`¿Borrar el renglón de ${ars(l.ars)} (${l.proveedor ?? l.concepto})? Queda registrado en el historial.`)) return;
@@ -171,13 +168,7 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
         </label>
         <span className="pb-2 text-[11px] text-muted-foreground">Para filtrar, tocá ▾ en el título de cada columna (como en Excel).</span>
         {hayFiltros && <button type="button" className="pb-2 text-xs text-primary hover:underline" onClick={() => setFiltros({})}>Quitar todos los filtros</button>}
-      </div>
-
-      <div className="flex flex-wrap gap-4 rounded-lg border bg-card px-4 py-2 text-sm">
-        <span><b>{filtradas.length}</b> renglones</span>
-        <span>Total <b className="tabular-nums">{ars(totArs)}</b></span>
-        <span>≈ <b className="tabular-nums">{usdTxt(totUsd)}</b>{sinTc && <span className="ml-1 text-amber-700">(hay meses sin tipo de cambio)</span>}</span>
-        {cargando && <span className="text-muted-foreground">actualizando…</span>}
+        {cargando && <span className="pb-2 text-xs text-muted-foreground">actualizando…</span>}
       </div>
 
       <div className="rounded-lg border">
@@ -187,7 +178,7 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
             <tr>
               {COLS.map((c) => (
                 <th key={c.key} className="px-1.5 py-2 font-semibold">
-                  <ColFiltro label={c.label} valores={datos.lineas.map(c.get)} filtro={filtros[c.key]}
+                  <ColFiltro label={c.label} valores={datos.lineas.map(c.get)} orden={c.orden} filtro={filtros[c.key]}
                     onChange={(f) => setFiltros((p) => ({ ...p, [c.key]: f }))} />
                 </th>
               ))}
@@ -201,7 +192,7 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
                 className={`border-t align-top hover:bg-muted/30 ${editando !== "nueva" && editando?.id === l.id ? "bg-amber-50" : ""}`}>
                 {COLS.map((c) => (
                   <td key={c.key} className="break-words px-1.5 py-1.5">
-                    {c.key === "etapa" ? <EtapaChip e={etapaDe(l)} /> : c.get(l) || "—"}
+                    {c.get(l) || "—"}
                   </td>
                 ))}
                 <td className="px-1.5 py-1.5 text-right tabular-nums">{ars(l.ars)}<div className="text-[10px] text-muted-foreground">{usdTxt(usdDe(l))}</div></td>
@@ -220,14 +211,13 @@ function Gastos({ datos, version, cargando, onVersion, onCambio }: {
 }
 
 // Columnas de la lista (orden de la planilla). get = texto que se ve y que se filtra.
-const etiquetaEtapa = (e: Etapa) => (e === "sin_datos" ? "Sin datos" : ETAPAS.find((x) => x.key === e)!.label);
-const COLS: { key: string; label: string; w: string; get: (l: Linea) => string }[] = [
-  { key: "mes", label: "Mes", w: "6%", get: (l) => MES_CAP[l.mes - 1] ?? "" },
-  { key: "etapa", label: "Etapa", w: "7%", get: (l) => etiquetaEtapa(etapaDe(l)) },
+// orden = cómo se ordenan los valores en el filtro (por defecto alfabético).
+const COLS: { key: string; label: string; w: string; get: (l: Linea) => string; orden?: (v: string) => number }[] = [
+  { key: "mes", label: "Mes", w: "6%", get: (l) => MES_CAP[l.mes - 1] ?? "", orden: (v) => MES_CAP.indexOf(v) },
   { key: "cuenta", label: "Cuenta", w: "10%", get: (l) => l.nombre_cta },
   { key: "concepto", label: "Concepto", w: "9%", get: (l) => l.concepto },
   { key: "proveedor", label: "Proveedor", w: "9%", get: (l) => l.proveedor ?? l.nro_proveedor ?? "" },
-  { key: "detalle", label: "Detalle", w: "11%", get: (l) => l.detalle ?? "" },
+  { key: "detalle", label: "Detalle", w: "18%", get: (l) => l.detalle ?? "" },
   { key: "solped", label: "Solped", w: "7%", get: (l) => l.solped ?? "" },
   { key: "oc", label: "OC", w: "7%", get: (l) => l.oc ?? "" },
   { key: "recepcion", label: "Recepción", w: "7%", get: (l) => l.nro_recepcion ?? "" },
@@ -245,7 +235,7 @@ function pasaFiltro(f: Filtro | undefined, valor: string): boolean {
 }
 
 /** Encabezado con filtro tipo Excel: buscar por texto + tildar valores. */
-function ColFiltro({ label, valores, filtro, onChange }: { label: string; valores: string[]; filtro?: Filtro; onChange: (f: Filtro) => void }) {
+function ColFiltro({ label, valores, orden, filtro, onChange }: { label: string; valores: string[]; orden?: (v: string) => number; filtro?: Filtro; onChange: (f: Filtro) => void }) {
   const [abierto, setAbierto] = useState(false);
   const [busca, setBusca] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -255,7 +245,7 @@ function ColFiltro({ label, valores, filtro, onChange }: { label: string; valore
     document.addEventListener("mousedown", cerrar);
     return () => document.removeEventListener("mousedown", cerrar);
   }, [abierto]);
-  const unicos = useMemo(() => [...new Set(valores.map((v) => v || VACIO))].sort((a, b) => a.localeCompare(b, "es", { numeric: true })), [valores]);
+  const unicos = useMemo(() => [...new Set(valores.map((v) => v || VACIO))].sort((a, b) => (orden ? orden(a) - orden(b) : a.localeCompare(b, "es", { numeric: true }))), [valores, orden]);
   const visibles = unicos.filter((v) => !busca || normTxt(v).includes(normTxt(busca)));
   const f = filtro ?? { txt: "", sel: null };
   const activo = !!(f.txt || f.sel);
