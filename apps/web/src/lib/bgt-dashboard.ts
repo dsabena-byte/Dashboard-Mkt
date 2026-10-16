@@ -118,6 +118,8 @@ export interface CuatriResult extends CuatriDef {
   evaluable: boolean;
   desvioOk: boolean | null;
   invFactOk: boolean | null;
+  /** Mes a mes del cuatrimestre (USD), para ver en qué mes estuvo el desvío. abierto = mes en curso o futuro. */
+  porMes: { mes: number; real: number; bgt: number; fact: number | null; desvio: number | null; invFact: number | null; abierto: boolean }[];
 }
 
 // Calcula los 3 cuatrimestres (todo en USD). rows = filas BGT; sumFact = suma de
@@ -151,7 +153,18 @@ export function computeCuatris(
     const invFactOk = invFact != null ? invFact <= MAX_INV_FACT : null;
     const coverage = partial ? coverageLabel(useMonths) : null;
 
-    return { ...c, estado, bgtAvailable, partial, coverage, bgtVal, realVal, fact, desvio, invFact, evaluable, desvioOk, invFactOk };
+    const porMes = c.meses.map((m) => {
+      const up = [MESES_UP[m - 1]!];
+      const real = sumVersion(rows, REAL, up, "usd"), bgt = sumVersion(rows, c.bgtVersion, up, "usd");
+      const f = sumFact([`${year}-${String(m).padStart(2, "0")}-01`]);
+      return {
+        mes: m, real, bgt, fact: f,
+        desvio: bgtAvailable && bgt > 0 ? ((real - bgt) / bgt) * 100 : null,
+        invFact: f && f > 0 ? (real / f) * 100 : null,
+        abierto: !closedMonths.includes(m),
+      };
+    });
+    return { ...c, estado, bgtAvailable, partial, coverage, bgtVal, realVal, fact, desvio, invFact, evaluable, desvioOk, invFactOk, porMes };
   });
 }
 
