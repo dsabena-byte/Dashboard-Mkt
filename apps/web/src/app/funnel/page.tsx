@@ -174,6 +174,15 @@ export default async function InversionMarketingPage() {
     ? new Date(bgt.syncedAt).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
     : "—";
   const dataLoaded = bgt.rows.length > 0;
+  // Última carga de gasto real: fecha y días sin cargar (en vez de "desactualizado").
+  const ultimoRealTxt = bgt.ultimoReal ? (() => {
+    const d = new Date(bgt.ultimoReal);
+    const dias = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+    return `Último gasto real cargado: ${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Argentina/Buenos_Aires" })} (${dias === 0 ? "hoy" : dias === 1 ? "hace 1 día" : `hace ${dias} días`})`;
+  })() : null;
+  // Tipos de cambio faltantes, agrupados por presupuesto: "4+8 2026: Oct, Nov".
+  const faltanTc = [...(bgt.faltaTc ?? []).reduce((m, f) => m.set(f.version, [...(m.get(f.version) ?? []), f.mes]), new Map<string, number[]>())]
+    .map(([v, ms]) => [v, ms.sort((a, b) => a - b).map((x) => MESES_CAP[x - 1]).join(", ")] as const);
 
   // Vencimiento estimado del link de SharePoint (renovado + 30 días).
   const venceLink = new Date(SHAREPOINT_LINK_RENOVADO + "T00:00:00");
@@ -193,22 +202,24 @@ export default async function InversionMarketingPage() {
       </header>
       <p className="-mt-2 text-xs text-muted-foreground">
         {bgt.fuente === "tablero" ? (
-          <>Fuente: carga en el tablero (pestaña Cargar datos) · Última modificación: {syncLabel}</>
+          <>Fuente: carga en el tablero (pestaña Cargar datos){ultimoRealTxt ? <> · {ultimoRealTxt}</> : null}</>
         ) : (
           <>
             {bgt.fuente === "mixta" ? "Fuente: carga en el tablero + versiones del Excel todavía no importadas" : "Fuente BGT: SharePoint → Supabase"} · Última {bgt.fuente === "mixta" ? "modificación" : "sincronización"}: {syncLabel}
+            {ultimoRealTxt ? <> · {ultimoRealTxt}</> : null}
             <span className="mx-1">·</span>
             <span className={linkColor}>{linkTexto}</span>
           </>
         )}
       </p>
-      {bgt.faltaTc && bgt.faltaTc.length > 0 && (
+      {faltanTc.length > 0 && (
         <div className="-mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Faltan tipos de cambio en {new Set(bgt.faltaTc.map((f) => f.version)).size} presupuesto(s) ({bgt.faltaTc.length} meses): esos meses salen en US$ 0.
+          Faltan tipos de cambio (esos meses salen en US$ 0): {faltanTc.map(([v, ms], i) => <span key={v}>{i ? " · " : ""}<b>{v}</b>: {ms}</span>)}.
           Cargalos en <a href="/funnel/carga" className="font-semibold underline">Cargar datos → Tipos de cambio</a>.
         </div>
       )}
-      <DataHealth dash="funnel" className="-mt-2" />
+      {/* La salud de la sincronización con SharePoint solo aplica mientras el BGT sale del Excel. */}
+      {bgt.fuente === "sharepoint" && <DataHealth dash="funnel" className="-mt-2" />}
       <HowToRead slug="funnel" />
       <DashTabBar after={[{ key: "carga", label: "Cargar datos", href: "/funnel/carga" }]} />
 
