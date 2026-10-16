@@ -10,8 +10,8 @@ import {
 // Cargar presupuesto (BGT/4+8/8+4 entero por planilla, solo editores) · Tipos de cambio · Historial. Todo pasa por
 // /api/presupuesto y queda en el historial.
 
-type Seccion = "real" | "presupuesto" | "tc" | "historial";
-interface Datos { usuario: { email: string; editor: boolean; puedeReal: boolean }; versiones: Version[]; tcs: Tc[]; catalogo: ItemCatalogo[]; lineas: Linea[] }
+type Seccion = "real" | "presupuesto" | "tc" | "facturacion" | "historial";
+interface Datos { usuario: { email: string; editor: boolean; puedeReal: boolean }; versiones: Version[]; tcs: Tc[]; catalogo: ItemCatalogo[]; lineas: Linea[]; facturacion?: { mes: string; facturacion: number }[] }
 interface Movimiento { id: number; at: string; usuario: string | null; entidad: string; accion: string; version: string | null; clave: string | null; antes: Record<string, unknown> | null; despues: Record<string, unknown> | null }
 
 const selectCls = "rounded-lg border bg-card px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30";
@@ -74,6 +74,7 @@ export function CargaPresupuesto() {
     { key: "real", label: "Seguimiento de Gastos" },
     ...(editor ? [{ key: "presupuesto" as const, label: "Cargar presupuesto" }] : []),
     { key: "tc", label: "Tipos de cambio" },
+    { key: "facturacion", label: "Facturación" },
     { key: "historial", label: "Historial de cambios" },
   ];
 
@@ -97,6 +98,7 @@ export function CargaPresupuesto() {
       )}
       {seccion === "presupuesto" && editor && <CargarPresupuesto datos={datosUI} onCambio={recargar} />}
       {seccion === "tc" && <TiposDeCambio datos={datosUI} onCambio={recargar} />}
+      {seccion === "facturacion" && <FacturacionMensual datos={datosUI} onCambio={recargar} />}
       {seccion === "historial" && <Historial versiones={datos.versiones} />}
     </div>
   );
@@ -647,17 +649,117 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
   );
 }
 
+// ======================================================================= Facturación
+/** Facturación mensual de la empresa en USD (tabla facturacion_mensual): la usa el indicador Inv/Fact del tablero. Misma grilla que TC. */
+function FacturacionMensual({ datos, onCambio }: { datos: Datos; onCambio: () => Promise<void> }) {
+  const editor = datos.usuario.editor;
+  const base = useMemo(() => new Map((datos.facturacion ?? []).map((f) => [f.mes.slice(0, 7), f.facturacion])), [datos.facturacion]);
+  const hoy = new Date().getFullYear();
+  const [extra, setExtra] = useState<number[]>([]);
+  const [nuevoAnio, setNuevoAnio] = useState(hoy);
+  const anios = [...new Set([...[...base.keys()].map((k) => Number(k.slice(0, 4))), ...extra])].sort((a, b) => b - a);
+  const [fila, setFila] = useState<number | null>(null);
+  const [edit, setEdit] = useState<Record<number, string>>({});
+  const [guardando, setGuardando] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const k = (a: number, m: number) => `${a}-${String(m).padStart(2, "0")}`;
+  const fmt = (n: number | undefined) => (n == null ? "—" : Math.round(n).toLocaleString("es-AR"));
+
+  function editar(a: number) {
+    setFila(a); setMsg(null);
+    setEdit(Object.fromEntries(MESES.map((_, i) => [i + 1, base.get(k(a, i + 1)) != null ? String(base.get(k(a, i + 1))) : ""])));
+  }
+  async function guardar() {
+    if (fila == null) return;
+    const cambios = MESES.map((_, i) => {
+      const t = (edit[i + 1] ?? "").trim();
+      const v = t ? parseMonto(t) : null;
+      return { mes: `${k(fila, i + 1)}-01`, facturacion: v, invalido: t !== "" && (v == null || v <= 0) };
+    });
+    if (cambios.some((c) => c.invalido)) { setMsg("Hay valores que no son números válidos (ej. 17.603.000)."); return; }
+    setGuardando(true); setMsg(null);
+    const r = await api("/api/presupuesto/facturacion", { method: "PUT", body: JSON.stringify({ cambios: cambios.map(({ invalido: _i, ...c }) => c) }) });
+    setGuardando(false);
+    if (!r.ok) { setMsg(r.data.error ?? "No se pudo guardar."); return; }
+    setFila(null);
+    await onCambio();
+  }
+
+  return (
+    <section className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Facturación real de la empresa por mes, en <b>dólares</b>. La usa el indicador Inversión / Facturación del tablero.
+        {editor ? " Para cargar o cambiar, tocá ✎ al final de la fila." : " Solo los editores del presupuesto pueden cambiarla."}
+      </p>
+      {editor && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Agregar año:</span>
+          <select className={selectCls} value={nuevoAnio} onChange={(e) => setNuevoAnio(Number(e.target.value))}>
+            {[hoy + 1, hoy, hoy - 1, hoy - 2, hoy - 3].map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <button type="button" className={btn} disabled={anios.includes(nuevoAnio)} onClick={() => { setExtra((p) => [...p, nuevoAnio]); editar(nuevoAnio); }}>
+            {anios.includes(nuevoAnio) ? `${nuevoAnio} ya está` : "Agregar fila"}
+          </button>
+        </div>
+      )}
+      <div className="rounded-lg border">
+        <table className="w-full table-fixed text-[11px]">
+          <colgroup><col style={{ width: "8%" }} />{MESES.map((m) => <col key={m} />)}{editor && <col style={{ width: "7%" }} />}</colgroup>
+          <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-2 py-2 text-left">Año (USD)</th>
+              {MES_CAP.map((m) => <th key={m} className="px-1 py-2 text-center">{m.slice(0, 3)}</th>)}
+              {editor && <th />}
+            </tr>
+          </thead>
+          <tbody>
+            {anios.map((a, i) => {
+              const enEdicion = fila === a;
+              return (
+                <tr key={a} className={`border-t ${enEdicion ? "bg-amber-50/60" : zebra(i)}`}>
+                  <td className="px-2 py-1.5 font-medium">{a}</td>
+                  {MESES.map((_, m) => (
+                    <td key={m} className="px-0.5 py-1.5 text-center tabular-nums">
+                      {enEdicion
+                        ? <input className="w-full rounded border bg-card px-0.5 py-0.5 text-center tabular-nums" inputMode="decimal" value={edit[m + 1] ?? ""} onChange={(e) => setEdit((p) => ({ ...p, [m + 1]: e.target.value }))} />
+                        : <span className={base.get(k(a, m + 1)) == null ? "text-muted-foreground/50" : ""}>{fmt(base.get(k(a, m + 1)))}</span>}
+                    </td>
+                  ))}
+                  {editor && (
+                    <td className="whitespace-nowrap px-1 py-1.5 text-right">
+                      {enEdicion ? (
+                        <>
+                          <button type="button" className="font-semibold text-primary hover:underline disabled:opacity-50" disabled={guardando} onClick={guardar}>{guardando ? "…" : "Guardar"}</button>
+                          <button type="button" title="Cancelar" className="ml-2 text-muted-foreground hover:underline" onClick={() => setFila(null)}>✕</button>
+                        </>
+                      ) : (
+                        <button type="button" title="Editar" aria-label={`Editar ${a}`} className="text-base text-primary hover:opacity-70" onClick={() => editar(a)}>✎</button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+            {!anios.length && <tr><td colSpan={14} className="px-2 py-6 text-center text-muted-foreground">Todavía no hay facturación cargada.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {msg && <p className="text-xs text-red-600">{msg}</p>}
+    </section>
+  );
+}
+
 // ======================================================================= Historial
 const CAMPO_TXT: Record<string, string> = {
   version: "presupuesto", mes: "mes", ceco: "CECO", cuenta: "cuenta", nombre_cta: "nombre cta", concepto: "concepto", nro_proveedor: "nro proveedor",
   proveedor: "proveedor", detalle: "detalle", solped: "Solped", oc: "OC", nro_recepcion: "recepción", nro_doc_contable: "doc. contable",
-  fecha_contabilizacion: "fecha contab.", factura: "factura", provision: "provisión", ars: "$", tc: "tipo de cambio", cerrada: "cerrada",
+  fecha_contabilizacion: "fecha contab.", factura: "factura", provision: "provisión", ars: "$", tc: "tipo de cambio", facturacion: "facturación US$", cerrada: "cerrada",
   total_ars: "total $", renglones: "renglones", tipo: "tipo", anio: "año",
 };
 const valTxt = (k: string, v: unknown) => (v == null || v === "" ? "—" : k === "ars" || k === "total_ars" ? ars(Number(v)) : k === "mes" ? MES_CAP[Number(v) - 1] ?? String(v) : String(v));
 
 function describir(m: Movimiento): string {
-  const que = m.entidad === "linea" ? "renglón" : m.entidad === "tc" ? `tipo de cambio ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "importacion" ? "importación de la planilla" : "presupuesto";
+  const que = m.entidad === "linea" ? "renglón" : m.entidad === "facturacion" ? `facturación ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "tc" ? `tipo de cambio ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "importacion" ? "importación de la planilla" : "presupuesto";
   const acc: Record<string, string> = { alta: "Alta de", cambio: "Cambio en", baja: "Baja de", importacion: "", cierre: "Cierre del", apertura: "Reapertura del" };
   return `${acc[m.accion] ?? m.accion} ${que}`.trim();
 }
