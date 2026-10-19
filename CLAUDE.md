@@ -852,6 +852,10 @@ reporte_existencia/cb_homologos).
   `npm i pptxgenjs`, `NODE_PATH=<dir>/node_modules SKILL=<skill pptx> node formato.js`. Hace falta sesión con
   `SUPABASE_SERVICE_ROLE_KEY` de Drean (una sesión sin esa env no llega: el conector Supabase solo ve bip-platform y
   el de Vercel da 403 en el team de Drean).
+  **19-oct-2026: deck armado con data real** (`build.js` + snapshot `datos-2026-09.json`, 13 slides: Salud de Marca, objetivos,
+  cumplimiento por KPI, inversión, alcance, impresiones, web, conversión, IG, CB, Floor Share, Share of Search). Datos = el código
+  REAL del Seguimiento (`getSeguimientoKpis`/`getSeguimientoObjetivos`) corrido con tsx + shims (`server-only`, `react` cache,
+  `next/headers`, `next/cache`, `@dashboard/db` → cliente service key; no commiteado). Sep-26: OMD solo cargó OOH → inversión sep incompleta.
 - **Video demo 50s (`marketing/video-demo/`):** video de producto 16:9 sin personas que recorre el
   ciclo del modelo estratégico (objetivos → KPIs y pesos → metas mensuales → seguimiento real vs
   meta y GAPs → insights → optimización → recalibración anual), con cursor y escritura real en los
