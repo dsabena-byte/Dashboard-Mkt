@@ -57,4 +57,27 @@ export interface TikTokPiezaMes {
   activa: boolean | null;
 }
 
+/** Suma por anuncio los meses que pasan el filtro (meses = "YYYY-MM"; vacío = todos) y arma las tarjetas de PiezaGrid. */
+export function tiktokCards(
+  items: TikTokPiezaMes[],
+  f: { meses?: Set<string>; cats?: string[]; roles?: string[] } = {},
+) {
+  const acc = new Map<string, TikTokPiezaMes>();
+  for (const p of items) {
+    if (f.meses?.size && !f.meses.has(p.mes)) continue;
+    if (f.cats?.length && !f.cats.includes(p.categoria)) continue;
+    if (f.roles?.length && !f.roles.includes(p.objetivo)) continue;
+    const a = acc.get(p.ad_id);
+    acc.set(p.ad_id, a ? { ...a, inv: a.inv + p.inv, impr: a.impr + p.impr, clicks: a.clicks + p.clicks, alcance: a.alcance + p.alcance,
+      views: a.views + p.views, p100: a.p100 + p.p100, likes: a.likes + p.likes, comments: a.comments + p.comments, shares: a.shares + p.shares } : { ...p });
+  }
+  return [...acc.values()].sort((a, b) => b.inv - a.inv).map((p) => ({
+    id: `tiktok-${p.ad_id}`, titulo: p.ad_name, categoria: p.categoria, badges: [p.objetivo], img: p.img, link: p.link,
+    inv: p.inv, impr: p.impr, alcance: p.alcance || null, frecuencia: p.alcance ? p.impr / p.alcance : null, clicks: p.clicks,
+    ctr: p.impr ? (p.clicks / p.impr) * 100 : null, cpm: p.impr ? (p.inv / p.impr) * 1000 : null,
+    viewsCompl: p.p100 || null, vtr: p.views ? (p.p100 / p.views) * 100 : null, activa: p.activa,
+    engagement: { reactions: p.likes, comments: p.comments, shares: p.shares },
+  }));
+}
+
 export interface TikTokManifest { at: string; advertiser: string[]; items: TikTokPiezaMes[] }
