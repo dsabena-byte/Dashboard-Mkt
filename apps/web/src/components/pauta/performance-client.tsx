@@ -419,7 +419,8 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
     if (!digitalOk || !platOk("TikTok")) return [];
     const acc = new Map<string, TikTokPiezaMes>();
     for (const p of tiktokPiezas) {
-      if (selMesesISO.size > 0 && !selMesesISO.has(p.mes)) continue;
+      // El filtro usa "YYYY-MM-01"; el manifiesto guarda "YYYY-MM".
+      if (selMesesISO.size > 0 && !selMesesISO.has(`${p.mes}-01`)) continue;
       if (selCats.length > 0 && !selCats.includes(p.categoria)) continue;
       if (selRoles.length > 0 && !selRoles.includes(p.objetivo)) continue;
       const a = acc.get(p.ad_id);
