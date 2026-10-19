@@ -1009,7 +1009,7 @@ reporte_existencia/cb_homologos).
   **+ `pip install --force-reinstall cffi`**). OJO: `cffi`/`_cffi_backend` viene **roto** en el
   contenedor base → markitdown/pypdf crashean sin ese reinstall. Convierte PDF/Office/imágenes →
   Markdown (ahorra tokens; usar para leer reportes OMD y demás).
-- **Perplexity** = MCP en claude.ai (OAuth; Sonar API paga, ~US$10 cargados). Tools
+- **Perplexity** = MCP en claude.ai (OAuth; Sonar API paga, ~US$10 cargados; 19-oct-2026 se quedó sin saldo — 401 — y el user RECARGÓ en console.perplexity.ai/project/billing). Tools
   `perplexity_search/ask/reason/research`.
 - **Plugins (cuenta):** instalados y activos en claude.ai → Settings → Plugins → "Yours" (**14** al
   23-sep-2026, incl. Data, Marketing, Engineering, Design, Productivity, Finance…), **activados ANTES de
