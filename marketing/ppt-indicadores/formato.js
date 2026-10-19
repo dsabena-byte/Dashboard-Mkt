@@ -22,7 +22,7 @@ s.addChart([
   { type: pres.charts.BAR, data: [{ name: 'Real', labels: meses, values: [40,52,61,118,77,148] }],
     options: { chartColors: ['1E40AF'], barGapWidthPct: 60 } },
   { type: pres.charts.LINE, data: [{ name: 'Meta', labels: meses, values: [60,70,80,110,120,150] }],
-    options: { chartColors: ['64748B'], lineSize: 2, lineDash: 'dash', lineDataSymbol: 'none', showValue: false } },
+    options: { chartColors: ['64748B'], lineSize: 2, lineDash: 'dash', lineDataSymbol: 'none', showValue: false, dataLabelPosition: 't' } },
 ], { x: 0.6, y: 1.8, w: 8.3, h: 4.9, showLegend: true, legendPos: 't', legendFontSize: 11, legendFontFace: '+mn-lt',
   catAxisLabelColor: '64748B', valAxisLabelColor: '64748B', catAxisLabelFontSize: 11, valAxisLabelFontSize: 11,
   catAxisLabelFontFace: '+mn-lt', valAxisLabelFontFace: '+mn-lt',

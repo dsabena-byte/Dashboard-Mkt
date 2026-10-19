@@ -51,7 +51,8 @@ function slide({ titulo, sub, labels, real, meta, fmt = '0', cards, notas, horiz
   if (dentro) Object.assign(opts, { dataLabelPosition: 'inEnd', dataLabelColor: 'FFFFFF' });
   if (meta) {
     s.addChart([bar, { type: pres.charts.LINE, data: [{ name: 'Meta', labels, values: meta }],
-      options: { chartColors: ['64748B'], lineSize: 2, lineDash: 'dash', lineDataSymbol: 'none', showValue: false } }],
+      // PowerPoint rechaza dLblPos outEnd/inEnd en una línea (solo t/b/l/r/ctr): sin esto el archivo sale "dañado".
+      options: { chartColors: ['64748B'], lineSize: 2, lineDash: 'dash', lineDataSymbol: 'none', showValue: false, dataLabelPosition: 't' } }],
     { ...opts, showLegend: true });
   } else {
     s.addChart(bar.type, bar.data, { ...opts, ...bar.options, showLegend: false });

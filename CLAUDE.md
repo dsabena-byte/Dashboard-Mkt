@@ -847,7 +847,8 @@ reporte_existencia/cb_homologos).
   arriba a la izquierda (32pt bold) + subtítulo gris (fuente · período · unidad) → gráfico nativo a la izquierda (barras
   reales azul `1E40AF` con su valor, meta = línea gris punteada `64748B` sin etiquetas) → **3 cards a la derecha** con los
   insights más relevantes (fondo `F1F5F9`, punto semáforo verde/ámbar/rojo o azul si es informativa, título bold + 1 línea,
-  14pt) → pie "Drean · Marketing" + número. Arial, 16:9 wide. Contenido pedido: principales indicadores + evolución de los
+  14pt) → pie "Drean · Marketing" + número. **OJO (19-oct, el user: "está roto el archivo"):** la línea de meta del combo necesita
+  `dataLabelPosition: 't'` propio — si hereda `outEnd`/`inEnd` del gráfico, PowerPoint lo da por dañado (LibreOffice y validate.py lo pasan). Arial, 16:9 wide. Contenido pedido: principales indicadores + evolución de los
   planes de acción de marketing con datos REALES del dash (el preview usa números de ejemplo). Build: en un dir con
   `npm i pptxgenjs`, `NODE_PATH=<dir>/node_modules SKILL=<skill pptx> node formato.js`. Hace falta sesión con
   `SUPABASE_SERVICE_ROLE_KEY` de Drean (una sesión sin esa env no llega: el conector Supabase solo ve bip-platform y
