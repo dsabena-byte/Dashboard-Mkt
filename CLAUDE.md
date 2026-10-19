@@ -855,7 +855,7 @@ reporte_existencia/cb_homologos).
   **19-oct-2026: deck armado con data real** (`build.js` + snapshot `datos-2026-09.json`, 13 slides: Salud de Marca, objetivos,
   cumplimiento por KPI, inversión, alcance, impresiones, web, conversión, IG, CB, Floor Share, Share of Search). Datos = el código
   REAL del Seguimiento (`getSeguimientoKpis`/`getSeguimientoObjetivos`) corrido con tsx + shims (`server-only`, `react` cache,
-  `next/headers`, `next/cache`, `@dashboard/db` → cliente service key; no commiteado). Sep-26: OMD solo cargó OOH → inversión sep incompleta.
+  `next/headers`, `next/cache`, `@dashboard/db` → cliente service key; no commiteado). Sep-26: OMD solo cargó OOH → **19-oct cargados TikTok ($16,55M) + Mercado Ads ($25,40M) desde la planilla del user** (`pauta_performance` ids 3715–3723; productos Mickey/Casa FOA/Marcelino/Streaming → Brand) → Pauta sep $198M; siguen faltando offline (radio/TV/streaming/diarios) si los hubo.
 - **Video demo 50s (`marketing/video-demo/`):** video de producto 16:9 sin personas que recorre el
   ciclo del modelo estratégico (objetivos → KPIs y pesos → metas mensuales → seguimiento real vs
   meta y GAPs → insights → optimización → recalibración anual), con cursor y escritura real en los
