@@ -14,12 +14,12 @@ const THEME = { name: 'Drean Diagnostico 2026', headFontFace: 'Arial', bodyFontF
   colors: { dk1: P.ink, lt1: P.white, dk2: P.navy, lt2: P.bg, accent1: P.navy, accent2: P.blue,
     accent3: P.sky, accent4: P.accent, accent5: '0D9488', accent6: P.muted, hlink: P.blue, folHlink: P.muted } };
 
-function nuevo() {
+function nuevo({ titulo = 'Diagnóstico integral de Marketing 2026 · Drean', pieTexto = 'Drean · Diagnóstico integral de Marketing 2026' } = {}) {
   const pres = new pptxgen(); pres.layout = 'LAYOUT_WIDE';
   pres.theme = { headFontFace: 'Arial', bodyFontFace: 'Arial' };
-  pres.title = 'Diagnóstico integral de Marketing 2026 · Drean';
+  pres.title = titulo;
   const C = pres.SchemeColor;
-  const pie = [{ text: { text: 'Drean · Diagnóstico integral de Marketing 2026', options: { x: 0.5, y: 7.08, w: 7, h: 0.25, fontSize: 9, color: C.accent6, margin: 0 } } }];
+  const pie = [{ text: { text: pieTexto, options: { x: 0.5, y: 7.08, w: 7, h: 0.25, fontSize: 9, color: C.accent6, margin: 0 } } }];
   pres.defineSlideMaster({ title: 'PORTADA', background: { color: P.navy }, objects: [
     { placeholder: { options: { name: 'title', type: 'title', x: 0.8, y: 2.3, w: 11.7, h: 1.6, fontSize: 44, bold: true, color: C.background1, valign: 'bottom', align: 'left', margin: 0 }, text: '' } },
     { placeholder: { options: { name: 'sub', type: 'body', x: 0.8, y: 4.1, w: 11.7, h: 1.0, fontSize: 18, color: C.accent3, valign: 'top', margin: 0 }, text: '' } },
@@ -147,4 +147,4 @@ function vinetas(ctx, s, items, area = { x: 0.5, y: 1.8, w: 12.3, h: 4.8 }, font
 
 async function guardar(ctx, file) { await ctx.pres.writeFile({ fileName: file }); await applyTheme(file, THEME); }
 
-module.exports = { etiquetasMes, nuevo, contenido, lectura, linea, barras, dispersion, tabla, kpis, vinetas, guardar, MESES, P, AREA };
+module.exports = { AX, SERIES, etiquetasMes, nuevo, contenido, lectura, linea, barras, dispersion, tabla, kpis, vinetas, guardar, MESES, P, AREA };

@@ -871,6 +871,7 @@ reporte_existencia/cb_homologos).
   2025 solo si la fuente es comparable (pauta: no hay datos antes de abr-26; web: tracking desde 26-nov-25). Datos = snapshot en `datos/*.json`
   (lectura REST por 3 subagentes; pauta sep $198,0M y usuarios sep 562.088 = tablero). Gaps de medición detectados: ig-sync lee posts a 7 días
   desde jun (volúmenes no comparables), engagement GA4 97–99% inútil, `web_traffic.landing_page` vacía, OMD subcuenta Meta, offline sin performance.
+- **Market Intelligence 2026 (19-oct-2026, `marketing/mercado-2026/`):** diagnóstico de mercado GfK (Lavado/Refrigeración/Cocción) estilo consultora: `analisis.py` (extracto `datos/mercado_share-2026-10-19.json` → `datos/mercado.json`, con self-check), `insights.js` (18 hallazgos, fuente única de PPT/informe/anexo), `build.js` (24 slides, reusa `../diagnostico-2026/lib.js`; `nuevo({titulo,pieTexto})`), `build-anexo.py` (Excel), `diagnostico-mercado-2026.md/.docx`. **Límites de la base:** solo shares e índice (la fila "Market" de GfK se descarta al cargar) → sin share global, YTD ni tamaño de mercado; Refri/Cocción mensual Total desde jul-25; último mes jul-26 (PENDIENTES D18). Ranking sin contar "Otras". Se probó inferir la mezcla de segmentos por regresión entre marcas: inestable, descartado.
 - **Video demo 50s (`marketing/video-demo/`):** video de producto 16:9 sin personas que recorre el
   ciclo del modelo estratégico (objetivos → KPIs y pesos → metas mensuales → seguimiento real vs
   meta y GAPs → insights → optimización → recalibración anual), con cursor y escritura real en los
