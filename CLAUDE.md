@@ -857,6 +857,12 @@ reporte_existencia/cb_homologos).
   cumplimiento por KPI, inversión, alcance, impresiones, web, conversión, IG, CB, Floor Share, Share of Search). Datos = el código
   REAL del Seguimiento (`getSeguimientoKpis`/`getSeguimientoObjetivos`) corrido con tsx + shims (`server-only`, `react` cache,
   `next/headers`, `next/cache`, `@dashboard/db` → cliente service key; no commiteado). Sep-26: OMD solo cargó OOH → **19-oct cargados TikTok ($16,55M) + Mercado Ads ($25,40M) desde la planilla del user** (`pauta_performance` ids 3715–3723; productos Mickey/Casa FOA/Marcelino/Streaming → Brand) → Pauta sep $198M; siguen faltando offline (radio/TV/streaming/diarios) si los hubo.
+- **Diagnóstico integral de Marketing 2026 (19-oct-2026, `marketing/diagnostico-2026/`):** deck de 84 slides estilo consultora (título conclusivo →
+  gráfico → panel "Qué significa / Qué decisión habilita" + confianza), resumen ejecutivo (.md → docx) y anexo Excel (`build-anexo.py`). Reglas del user:
+  SOLO resultados reales (sin metas), SIN salud de marca/TOM/SOM/intención/CB/FS, ene–dic en todo gráfico mensual (`*` sin dato, `†` oct parcial),
+  2025 solo si la fuente es comparable (pauta: no hay datos antes de abr-26; web: tracking desde 26-nov-25). Datos = snapshot en `datos/*.json`
+  (lectura REST por 3 subagentes; pauta sep $198,0M y usuarios sep 562.088 = tablero). Gaps de medición detectados: ig-sync lee posts a 7 días
+  desde jun (volúmenes no comparables), engagement GA4 97–99% inútil, `web_traffic.landing_page` vacía, OMD subcuenta Meta, offline sin performance.
 - **Video demo 50s (`marketing/video-demo/`):** video de producto 16:9 sin personas que recorre el
   ciclo del modelo estratégico (objetivos → KPIs y pesos → metas mensuales → seguimiento real vs
   meta y GAPs → insights → optimización → recalibración anual), con cursor y escritura real en los

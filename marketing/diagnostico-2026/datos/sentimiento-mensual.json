@@ -1,0 +1,538 @@
+{
+"INSTAGRAM_2025": [
+{
+"posts": 4,
+"likes": 344,
+"comentarios": 300,
+"n_analizados": 4,
+"sorteos_excluidos": 0,
+"pos": 5.0,
+"neu": 1.2,
+"neg": 93.8,
+"neg_pond": 92.5
+},
+{
+"posts": 1,
+"likes": 59,
+"comentarios": 53,
+"n_analizados": 1,
+"sorteos_excluidos": 0,
+"pos": 0.0,
+"neu": 0.0,
+"neg": 100.0,
+"neg_pond": 100.0
+},
+{
+"posts": 1,
+"likes": 43,
+"comentarios": 128,
+"n_analizados": 1,
+"sorteos_excluidos": 0,
+"pos": 0.0,
+"neu": 0.0,
+"neg": 100.0,
+"neg_pond": 100.0
+},
+{
+"posts": 1,
+"likes": 140,
+"comentarios": 195,
+"n_analizados": 1,
+"sorteos_excluidos": 0,
+"pos": 0.0,
+"neu": 0.0,
+"neg": 100.0,
+"neg_pond": 100.0
+},
+{
+"posts": 9,
+"likes": 1191,
+"comentarios": 475,
+"n_analizados": 9,
+"sorteos_excluidos": 0,
+"pos": 2.8,
+"neu": 7.2,
+"neg": 90.0,
+"neg_pond": 85.3
+},
+{
+"posts": 5,
+"likes": 2403,
+"comentarios": 334,
+"n_analizados": 5,
+"sorteos_excluidos": 0,
+"pos": 8.8,
+"neu": 0.0,
+"neg": 91.2,
+"neg_pond": 90.1
+},
+{
+"posts": 4,
+"likes": 2711,
+"comentarios": 594,
+"n_analizados": 4,
+"sorteos_excluidos": 0,
+"pos": 5.5,
+"neu": 4.0,
+"neg": 90.5,
+"neg_pond": 88.2
+},
+{
+"posts": 3,
+"likes": 21576,
+"comentarios": 38107,
+"n_analizados": 2,
+"sorteos_excluidos": 1,
+"pos": 15.0,
+"neu": 10.0,
+"neg": 75.0,
+"neg_pond": 82.2
+},
+{
+"posts": 6,
+"likes": 1984,
+"comentarios": 186,
+"n_analizados": 6,
+"sorteos_excluidos": 0,
+"pos": 17.7,
+"neu": 7.2,
+"neg": 75.2,
+"neg_pond": 72.5
+},
+{
+"posts": 8,
+"likes": 168,
+"comentarios": 157,
+"n_analizados": 8,
+"sorteos_excluidos": 0,
+"pos": 3.1,
+"neu": 1.2,
+"neg": 95.6,
+"neg_pond": 95.8
+},
+{
+"posts": 6,
+"likes": 3771,
+"comentarios": 84,
+"n_analizados": 6,
+"sorteos_excluidos": 0,
+"pos": 16.3,
+"neu": 9.5,
+"neg": 74.2,
+"neg_pond": 58.0
+},
+{
+"posts": 11,
+"likes": 37874,
+"comentarios": 730,
+"n_analizados": 11,
+"sorteos_excluidos": 0,
+"pos": 31.5,
+"neu": 3.2,
+"neg": 65.4,
+"neg_pond": 23.2
+}
+],
+"INSTAGRAM_2026": [
+{
+"posts": 5,
+"likes": 123,
+"comentarios": 84,
+"n_analizados": 5,
+"sorteos_excluidos": 0,
+"pos": 6.0,
+"neu": 6.0,
+"neg": 88.0,
+"neg_pond": 93.6
+},
+{
+"posts": 3,
+"likes": 119,
+"comentarios": 60,
+"n_analizados": 3,
+"sorteos_excluidos": 0,
+"pos": 3.3,
+"neu": 0.0,
+"neg": 96.7,
+"neg_pond": 98.2
+},
+{
+"posts": 9,
+"likes": 262,
+"comentarios": 59,
+"n_analizados": 9,
+"sorteos_excluidos": 0,
+"pos": 3.9,
+"neu": 2.8,
+"neg": 93.3,
+"neg_pond": 93.6
+},
+{
+"posts": 8,
+"likes": 427,
+"comentarios": 74,
+"n_analizados": 6,
+"sorteos_excluidos": 0,
+"pos": 10.0,
+"neu": 25.5,
+"neg": 64.5,
+"neg_pond": 73.8
+},
+{
+"posts": 17,
+"likes": 1414,
+"comentarios": 134,
+"n_analizados": 2,
+"sorteos_excluidos": 0,
+"pos": 0.0,
+"neu": 0.0,
+"neg": 100.0,
+"neg_pond": 100.0
+},
+{
+"posts": 18,
+"likes": 725,
+"comentarios": 140,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 16,
+"likes": 1875,
+"comentarios": 211,
+"n_analizados": 4,
+"sorteos_excluidos": 0,
+"pos": 31.2,
+"neu": 6.2,
+"neg": 62.5,
+"neg_pond": 96.0
+},
+{
+"posts": 16,
+"likes": 1406,
+"comentarios": 256,
+"n_analizados": 14,
+"sorteos_excluidos": 0,
+"pos": 9.2,
+"neu": 7.5,
+"neg": 83.3,
+"neg_pond": 91.7
+},
+{
+"posts": 15,
+"likes": 5651,
+"comentarios": 3161,
+"n_analizados": 11,
+"sorteos_excluidos": 0,
+"pos": 22.0,
+"neu": 1.8,
+"neg": 76.2,
+"neg_pond": 50.5
+},
+{
+"posts": 9,
+"likes": 502,
+"comentarios": 78,
+"n_analizados": 6,
+"sorteos_excluidos": 0,
+"pos": 16.7,
+"neu": 33.3,
+"neg": 50.0,
+"neg_pond": 63.8
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+}
+],
+"FACEBOOK_2025": [
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+}
+],
+"FACEBOOK_2026": [
+{
+"posts": 6,
+"likes": 57,
+"comentarios": 8,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 3,
+"likes": 27,
+"comentarios": 14,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 7,
+"likes": 137,
+"comentarios": 48,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 10,
+"likes": 158,
+"comentarios": 23,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 26,
+"likes": 168,
+"comentarios": 15,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 25,
+"likes": 109,
+"comentarios": 2,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 24,
+"likes": 101,
+"comentarios": 4,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 21,
+"likes": 55,
+"comentarios": 1,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 33,
+"likes": 193,
+"comentarios": 15,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 15,
+"likes": 64,
+"comentarios": 7,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+},
+{
+"posts": 0,
+"likes": 0,
+"comentarios": 0,
+"n_analizados": 0,
+"sorteos_excluidos": 0,
+"pos": null,
+"neu": null,
+"neg": null,
+"neg_pond": null
+}
+]
+}
