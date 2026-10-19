@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { mirrorImageStrict, uploadBucketJson } from "@/lib/meta-image-mirror";
+import { TIKTOK_MANIFEST_KEY, chunks, piezaDe, type TikTokManifest, type TikTokPiezaMes, type TTAd } from "@/lib/tiktok-piezas";
 
 // Ingesta directa desde la TikTok Marketing API (reporting integrado, nivel AD)
 // para la cuenta de TikTok Ads de Drean. Trae el embudo de video (cuartiles) e
@@ -274,6 +276,105 @@ async function reemplazarMes(mes: string, filas: PautaRow[]): Promise<string> {
   return `${filas.length} filas (actualizó/insertó; borró ${sobran.length} viejas)`;
 }
 
+// ---- Piezas (anuncio × mes) con portada → manifiesto en el bucket ------------------------------------
+async function ttGet<T>(token: string, path: string, params: Record<string, string>): Promise<{ list: T[]; totalPage: number }> {
+  const res = await fetch(`${TT_API}${path}?${new URLSearchParams(params)}`, { headers: { "Access-Token": token } });
+  const json = (await res.json()) as { code?: number; message?: string; data?: { list?: T[]; page_info?: { total_page?: number } } };
+  if (json.code !== 0) throw new Error(`TikTok ${path}: code=${json.code} ${json.message ?? ""}`);
+  return { list: json.data?.list ?? [], totalPage: json.data?.page_info?.total_page ?? 1 };
+}
+
+async function piezasDelMes(advId: string, token: string, anio: number, mes: number, hastaIso: string): Promise<Omit<TikTokPiezaMes, "img" | "link" | "activa">[]> {
+  const ini = `${anio}-${String(mes + 1).padStart(2, "0")}-01`;
+  const finMes = new Date(Date.UTC(anio, mes + 1, 0)).toISOString().slice(0, 10);
+  const fin = finMes < hastaIso ? finMes : hastaIso;
+  if (fin < ini) return [];
+  const out: Omit<TikTokPiezaMes, "img" | "link" | "activa">[] = [];
+  for (let page = 1, total = 1; page <= total; page++) {
+    const r = await ttGet<TTItem>(token, "/report/integrated/get/", {
+      advertiser_id: advId, report_type: "BASIC", data_level: "AUCTION_AD", dimensions: JSON.stringify(["ad_id"]),
+      metrics: JSON.stringify(["ad_name", "campaign_name", "objective_type", "spend", "impressions", "clicks", "reach", "video_play_actions", "video_views_p100", "likes", "comments", "shares"]),
+      start_date: ini, end_date: fin, page: String(page), page_size: "1000",
+    });
+    total = r.totalPage;
+    for (const it of r.list) {
+      const m = it.metrics ?? {};
+      if (!(n(m.spend) > 0) || !it.dimensions?.ad_id) continue;
+      out.push({ ad_id: it.dimensions.ad_id, mes: ini.slice(0, 7), ad_name: String(m.ad_name ?? ""), campaign: String(m.campaign_name ?? ""),
+        categoria: categoriaTikTok(String(m.campaign_name ?? "")), objetivo: objetivoTikTok(String(m.objective_type ?? "")),
+        inv: Math.round(n(m.spend) * 100) / 100, impr: n(m.impressions), clicks: n(m.clicks), alcance: n(m.reach), views: n(m.video_play_actions),
+        p100: n(m.video_views_p100), likes: n(m.likes), comments: n(m.comments), shares: n(m.shares) });
+    }
+  }
+  return out;
+}
+
+// Portada por anuncio (Read ads + video/image library; Spark Ads → oEmbed del post). Espejada al bucket (las URLs de TikTok vencen).
+async function portadas(advId: string, token: string, adIds: string[], dry: boolean): Promise<Map<string, { img: string | null; link: string | null; activa: boolean | null }>> {
+  const ads: TTAd[] = [];
+  for (const ids of chunks(adIds, 100)) {
+    const r = await ttGet<TTAd>(token, "/ad/get/", { advertiser_id: advId, page_size: "100",
+      filtering: JSON.stringify({ ad_ids: ids }), fields: JSON.stringify(["ad_id", "video_id", "image_ids", "tiktok_item_id", "operation_status"]) });
+    ads.push(...r.list);
+  }
+  const videoCover = new Map<string, string>(), imageUrl = new Map<string, string>();
+  for (const ids of chunks([...new Set(ads.map((a) => a.video_id).filter(Boolean) as string[])], 60)) {
+    const r = await ttGet<{ video_id?: string; video_cover_url?: string }>(token, "/file/video/ad/info/", { advertiser_id: advId, video_ids: JSON.stringify(ids) }).catch(() => null);
+    for (const v of r?.list ?? []) if (v.video_id && v.video_cover_url) videoCover.set(v.video_id, v.video_cover_url);
+  }
+  for (const ids of chunks([...new Set(ads.flatMap((a) => a.image_ids ?? []))], 100)) {
+    const r = await ttGet<{ image_id?: string; image_url?: string }>(token, "/file/image/ad/info/", { advertiser_id: advId, image_ids: JSON.stringify(ids) }).catch(() => null);
+    for (const v of r?.list ?? []) if (v.image_id && v.image_url) imageUrl.set(v.image_id, v.image_url);
+  }
+  const out = new Map<string, { img: string | null; link: string | null; activa: boolean | null }>();
+  for (const lote of chunks(ads, 6)) {
+    await Promise.all(lote.map(async (ad) => {
+      const p = piezaDe(ad, videoCover, imageUrl);
+      let src = p.thumbnail;
+      if (!src && p.sparkItem) {
+        try {
+          const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(`https://www.tiktok.com/video/${p.sparkItem}`)}`, { signal: AbortSignal.timeout(8000), cache: "no-store" });
+          src = res.ok ? (((await res.json()) as { thumbnail_url?: string }).thumbnail_url ?? null) : null;
+        } catch { /* sin portada */ }
+      }
+      let img: string | null = null;
+      if (src) {
+        const m = await mirrorImageStrict(src, `tiktok/${ad.ad_id}.jpg`, { dry });
+        img = m.ok ? m.url : null;
+      }
+      out.set(String(ad.ad_id), { img, link: p.permalink, activa: p.active });
+    }));
+  }
+  return out;
+}
+
+async function syncPiezas(advs: string[], token: string, meses: [number, number][], end: string, dry: boolean): Promise<Record<string, unknown>> {
+  const nuevas: TikTokPiezaMes[] = [];
+  let conImg = 0;
+  for (const adv of advs) {
+    const filas = (await Promise.all(meses.map(([a, m]) => piezasDelMes(adv, token, a, m, end)))).flat();
+    const tapas = await portadas(adv, token, [...new Set(filas.map((f) => f.ad_id))], dry);
+    for (const f of filas) {
+      const t = tapas.get(f.ad_id) ?? { img: null, link: null, activa: null };
+      if (t.img) conImg++;
+      nuevas.push({ ...f, ...t });
+    }
+  }
+  const mesesTocados = new Set(nuevas.map((p) => p.mes));
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
+  let previas: TikTokPiezaMes[] = [];
+  try {
+    const r = await fetch(`${base}/storage/v1/object/public/meta-thumbs/${TIKTOK_MANIFEST_KEY}`, { cache: "no-store" });
+    if (r.ok) previas = ((await r.json()) as TikTokManifest).items ?? [];
+  } catch { /* primer manifiesto */ }
+  // Se reemplazan solo los meses que trajo esta corrida; el resto del historial queda.
+  const manifest: TikTokManifest = { at: new Date().toISOString(), advertiser: advs, items: [...previas.filter((p) => !mesesTocados.has(p.mes)), ...nuevas] };
+  const res: Record<string, unknown> = { piezas_mes: nuevas.length, con_portada: conImg, meses: [...mesesTocados].sort() };
+  if (dry) res.muestra = nuevas.slice(0, 5);
+  else res.manifiesto = nuevas.length > 0 ? await uploadBucketJson(TIKTOK_MANIFEST_KEY, manifest) : { ok: false, error: "0 piezas: no se pisa el manifiesto" };
+  return res;
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -332,6 +433,11 @@ export async function GET(request: Request) {
       }
     }
     out.pauta_performance = mensual;
+    try {
+      out.piezas = await syncPiezas(advs, token, meses, end, dry);
+    } catch (e) {
+      out.piezas = `sin piezas: ${e instanceof Error ? e.message : String(e)}`;
+    }
 
     if (dry) {
       out.muestra = all.slice(0, 15);
