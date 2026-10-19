@@ -81,9 +81,9 @@ slide({ titulo: 'Salud de Marca: cumplimiento mensual', dentro: true,
   sub: 'Seguimiento Objetivos · enero–septiembre 2026 · % de cumplimiento de las metas',
   labels: ENE_SEP, real: serie(D.saludMarca.serie, 0, 8, 1, 1), meta: CIEN(9), fmt: '0.0',
   cards: [
-    [AMBAR, 'Acumulado: 96,5%', 'Faltan 3,5 puntos para el 100% de las metas del año.'],
-    [AMBAR, 'Septiembre: 92,3%', 'Bajó 1,9 puntos vs agosto (94,2%).'],
-    [AZUL, 'Qué explica la brecha', 'Frecuencia (1,1 pts), Cuadros Básicos (0,9) e Impresiones (0,6).'],
+    [AMBAR, 'Acumulado: 97,0%', 'Faltan 3 puntos para el 100% de las metas del año.'],
+    [AMBAR, 'Septiembre: 92,9%', 'Bajó 1,3 puntos vs agosto (94,2%).'],
+    [AZUL, 'Qué explica la brecha', 'Frecuencia (1,0 pts), Cuadros Básicos (0,9) y Floor Share (0,5).'],
   ],
   notas: 'Salud de Marca = promedio ponderado de los 4 objetivos (25% cada uno). Cada objetivo = suma ponderada del cumplimiento de sus KPIs (tope 100% por KPI). Reparto de la brecha: Shapley del Seguimiento.' });
 
@@ -92,9 +92,9 @@ slide({ titulo: 'Objetivos estratégicos: cumplimiento acumulado', dentro: true,
   sub: 'Seguimiento Objetivos · acumulado enero–septiembre 2026 · % de cumplimiento',
   labels: objs.map((o) => o.nombre), real: objs.map((o) => +o.cumplYtd.toFixed(1)), meta: CIEN(objs.length), fmt: '0.0',
   cards: [
-    [AMBAR, 'Los 4 objetivos, parejos', 'Entre 96,3% (TOM) y 96,7% (Poder de Marca) en el acumulado.'],
-    [AMBAR, 'Septiembre, más bajo SOM', 'SOM 91,5% en el mes; Poder de Marca 92,9%, el más alto.'],
-    [AMBAR, 'Por categoría, ~92–95%', 'Lavado 40,1 vs 43,6 de meta; Refrigeración 19,5 vs 21,1; Cocción 13,2 vs 13,9.'],
+    [AMBAR, 'Los 4 objetivos, parejos', 'Entre 96,8% (TOM) y 97,2% (Poder de Marca) en el acumulado.'],
+    [AMBAR, 'Septiembre, más bajo SOM', 'SOM 92,3% en el mes; Poder de Marca 93,4%, el más alto.'],
+    [AMBAR, 'Por categoría, 92–96%', 'Lavado 40,7 vs 43,6 de meta; Refrigeración 19,5 vs 21,1; Cocción 13,3 vs 13,9.'],
   ] });
 
 // Planes de acción: cumplimiento acumulado (Σreal/Σmeta en sumas, promedio/promedio en tasas) de cada KPI con meta.
@@ -108,9 +108,9 @@ slide({ titulo: 'Planes de acción: cumplimiento por KPI',
   sub: 'Pauta, Web, Instagram, Cuadros Básicos y Floor Share · acumulado 2026 hasta septiembre · % de la meta',
   labels: conMeta.map(([k]) => k), real: conMeta.map(([, v]) => v), fmt: '0', horizontal: true,
   cards: [
-    [VERDE, '6 de 13 KPIs en meta', 'Engagement, conversión, sesión, alcance, VTR y clicks, en 100% o más.'],
-    [AMBAR, 'Cerca: 90–98%', 'Tráfico web 97%, impresiones 95%, IG alcance 94%, Floor Share 94%, frecuencia 92%, CB 90%.'],
-    [ROJO, 'Inversión 74%', 'Septiembre sin el reporte de OMD: de los medios sin API solo está cargado OOH.'],
+    [VERDE, '6 de 13 KPIs en meta', 'Engagement, conversión, clicks, alcance, sesión y VTR, en 100% o más.'],
+    [AMBAR, 'Cerca: 90–98%', 'Impresiones 98%, tráfico web 97%, IG alcance 94%, Floor Share 94%, frecuencia 92%, CB 90%.'],
+    [ROJO, 'Inversión 77%', 'Septiembre quedó en 42% de la meta: $198M vs $474M.'],
   ],
   notas: 'Acumulado = suma real / suma meta (alcance, impresiones, clicks, inversión, usuarios) o promedio real / promedio meta (tasas), en los meses con dato y meta.' });
 
@@ -119,27 +119,27 @@ slide({ titulo: 'Inversión en pauta: real vs meta',
   labels: ABR_SEP, real: serie(K['Inversión'].real, 3, 8, 1e6), meta: serie(K['Inversión'].meta, 3, 8, 1e6),
   cards: [
     [AMBAR, 'Abril–agosto: 93%', '$915M invertidos vs $981M de meta.'],
-    [ROJO, 'Septiembre incompleto', '$156M vs $474M: de OMD solo está cargado OOH (en agosto el resto sumó ~$222M).'],
+    [ROJO, 'Septiembre: 42%', '$198M vs $474M. Incluye TikTok y Mercado Ads; no hay radio, TV ni streaming cargados.'],
     [VERDE, 'Agosto, 95% de la meta', '$338M vs $355M; abril llegó al 100%.'],
   ],
-  notas: 'Meta, YouTube, Programmatic y Google salen de las APIs; TikTok, Mercado Ads, Geo Mobile y offline, del reporte OMD. En agosto esos medios OMD sumaron cerca de $222M.' });
+  notas: 'Meta, YouTube, Programmatic y Google salen de las APIs; TikTok, Mercado Ads, Geo Mobile y offline, de la carga manual (reporte OMD). Septiembre: TikTok $16,6M y Mercado Ads $25,4M cargados el 19-oct desde la planilla; OOH $35,5M.' });
 
 slide({ titulo: 'Alcance único: muchos más contactos, poca repetición',
   sub: 'Pauta Mkt · abril–septiembre 2026 · millones de personas',
   labels: ABR_SEP, real: serie(K['Alcance único'].real, 3, 8, 1e6, 1), meta: serie(K['Alcance único'].meta, 3, 8, 1e6, 1), fmt: '0.0',
   cards: [
-    [VERDE, 'Acumulado: 102%', '287M de alcance vs 282M de meta.'],
-    [VERDE, 'Septiembre: 52,2M', 'Casi el doble de la meta (28M).'],
-    [ROJO, 'Frecuencia por debajo', 'Sep 2,25 vs 3,0 de meta (75%); es lo que más resta a Salud de Marca.'],
+    [VERDE, 'Acumulado: 105%', '296M de alcance vs 282M de meta.'],
+    [VERDE, 'Septiembre: 61,3M', 'Más del doble de la meta (28M).'],
+    [ROJO, 'Frecuencia por debajo', 'Sep 2,33 vs 3,0 de meta (78%); es lo que más resta a Salud de Marca.'],
   ] });
 
 slide({ titulo: 'Impresiones: real vs meta',
   sub: 'Pauta Mkt · abril–septiembre 2026 · millones',
   labels: ABR_SEP, real: serie(K['Impresiones'].real, 3, 8, 1e6, 1), meta: serie(K['Impresiones'].meta, 3, 8, 1e6, 1), fmt: '0.0',
   cards: [
-    [AMBAR, 'Acumulado: 95%', '642M de impresiones vs 680M de meta.'],
+    [AMBAR, 'Acumulado: 98%', '668M vs 680M de meta; septiembre 143M (119%).'],
     [VERDE, 'VTR en meta', 'Septiembre 53,8% de videos vistos a la mitad vs 50% de meta.'],
-    [VERDE, 'Clicks: 100%', '5,65M acumulados, igual a la meta.'],
+    [VERDE, 'Clicks: 106%', '6,0M acumulados vs 5,65M de meta.'],
   ] });
 
 slide({ titulo: 'Tráfico web: usuarios por mes',

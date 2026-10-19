@@ -1,5 +1,5 @@
 {
- "fuente": "getSeguimientoKpis(2026) + getSeguimientoObjetivos(2026), base de producción, 19-oct-2026",
+ "fuente": "getSeguimientoKpis(2026) + getSeguimientoObjetivos(2026), base de producción, 19-oct-2026 (sep con TikTok + Mercado Ads cargados)",
  "kpis": {
   "Inversión": {
    "plan": "Pauta Mkt",
@@ -14,7 +14,7 @@
     55696228.053,
     124295575.9204,
     338410067.3704,
-    156090898.828,
+    198043197.148,
     null,
     null,
     null
@@ -47,7 +47,7 @@
     14931804,
     50704081,
     53415635,
-    52167246,
+    61319331,
     null,
     null,
     null
@@ -80,7 +80,7 @@
     3.302683386414662,
     2.524926050824193,
     1.6459325439077903,
-    2.2474376546540333,
+    2.3265873693240393,
     null,
     null,
     null
@@ -113,7 +113,7 @@
     49315021,
     128024055,
     87918532,
-    117242633,
+    142664781,
     null,
     null,
     null
@@ -179,7 +179,7 @@
     576876,
     954839,
     740158,
-    1028260,
+    1374669,
     null,
     null,
     null
@@ -573,26 +573,26 @@
    89.31962372512233,
    92.31796825821208,
    94.2027428772051,
-   92.30152757279276,
+   92.90875734052945,
    null,
    null,
    null
   ],
-  "ytd": 96.50567971374124,
+  "ytd": 97.00199673069409,
   "porCategoria": [
    {
     "categoria": "Lavado",
-    "resultado": 40.11699130559437,
+    "resultado": 40.68403140445636,
     "meta": 43.625
    },
    {
     "categoria": "Refrigeración",
-    "resultado": 19.487345842597215,
+    "resultado": 19.522629869155157,
     "meta": 21.1
    },
    {
     "categoria": "Cocción",
-    "resultado": 13.182083824300747,
+    "resultado": 13.257082490904402,
     "meta": 13.875
    }
   ]
@@ -600,23 +600,23 @@
  "objetivos": [
   {
    "nombre": "TOM",
-   "cumplMes": 92.40732271963275,
-   "cumplYtd": 96.33774054295567
+   "cumplMes": 93.0328518763161,
+   "cumplYtd": 96.78819215867048
   },
   {
    "nombre": "SOM",
-   "cumplMes": 91.54259208454036,
-   "cumplYtd": 96.37436325438888
+   "cumplMes": 92.26003347455703,
+   "cumplYtd": 96.9743569171625
   },
   {
    "nombre": "Intención de Compra",
-   "cumplMes": 92.38989168671698,
-   "cumplYtd": 96.6202019199188
+   "cumplMes": 92.93627112873033,
+   "cumplYtd": 97.05533423602006
   },
   {
    "nombre": "Poder de Marca",
-   "cumplMes": 92.86630380028095,
-   "cumplYtd": 96.69041313770164
+   "cumplMes": 93.4058728825143,
+   "cumplYtd": 97.19010361092327
   }
  ]
 }
