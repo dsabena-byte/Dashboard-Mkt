@@ -414,7 +414,9 @@ reporte_existencia/cb_homologos).
   categoría×objetivo en `pauta_performance` (upsert por la clave única + borra lo que sobra; meses sin inversión en la API = se deja la carga
   manual) → todo el dash lo lee sin cambios (TikTok NO va en `API_MEDIOS`). Validado: API = planilla OMD al peso salvo mayo (manual $6,23M vs
   API $10,54M) y agosto (manual sin impresiones). Categoría por nombre de campaña; REACH=Awareness, resto=Consideración. La API rechaza
-  rangos >30 días con stat_time_day (se trocea). Miniaturas/videos: permisos aprobados 19-oct, el token pide reconectar en BIP (PENDIENTES D17).
+  rangos >30 días con stat_time_day (se trocea). **Piezas (19-oct):** el mismo cron arma `meta-thumbs/tiktok/index.json` (anuncio × mes +
+  portada espejada en `tiktok/<ad_id>.jpg`; Spark Ads → oEmbed del post) y /performance (Eficiencia Medios) lo muestra con PiezaGrid. Ojo al
+  reconectar en BIP: si el navegador tiene sesión de TikTok con el usuario de BIP, autoriza la cuenta "BIP_2ikwy4" y NO Mabe (pasó el 19-oct).
 - **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, ~~Impacto Campaña~~ sacado de la UI 28-sep; OMD sin cargar = rango;
   sep-26 $148M, cierre $163–385M vs meta $474M), fatiga creativa MENSUAL (`lib/pauta-fatiga.ts`, Eficiencia Medios; 2 banners DV360),
   MMM-lite en el Simulador ("dato insuficiente" hasta 12 meses), `adBelongsToBrand`. Sin conversiones de Google Ads en las tablas.

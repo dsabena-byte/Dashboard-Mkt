@@ -18,6 +18,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
 import { PiezaGrid, type PiezaCard } from "@/components/pauta/pieza-grid";
+import type { TikTokPiezaMes } from "@/lib/tiktok-piezas";
 import type { Dv360Thumb } from "@/lib/dv360-thumbs-shared";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import {
@@ -335,7 +336,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], pautaDiaria = null, dv360Thumbs = {}, initialTab, headerExtra, monedaSlot }: { /** Selector de moneda (server): va en la fila de pestañas, a la derecha. */ monedaSlot?: React.ReactNode; /** Miniaturas DV360 por nombre de creative (API DV360, cron dv360-thumbs). */ dv360Thumbs?: Record<string, Dv360Thumb>; /** Server: salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], pautaDiaria = null, dv360Thumbs = {}, tiktokPiezas = [], initialTab, headerExtra, monedaSlot }: { /** Piezas de TikTok por anuncio × mes (API vía app de BIP, manifiesto del cron tiktok-sync). */ tiktokPiezas?: TikTokPiezaMes[]; /** Selector de moneda (server): va en la fila de pestañas, a la derecha. */ monedaSlot?: React.ReactNode; /** Miniaturas DV360 por nombre de creative (API DV360, cron dv360-thumbs). */ dv360Thumbs?: Record<string, Dv360Thumb>; /** Server: salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
   // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
   // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
   // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
@@ -412,6 +413,27 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       ),
     [dv360, digitalOk, selMesesISO, selCats, selRoles, selPlats],
   );
+
+  // Piezas de TikTok (API): se suman los meses filtrados por anuncio. Mismos filtros que DV360.
+  const tiktokPieceCards = useMemo<PiezaCard[]>(() => {
+    if (!digitalOk || !platOk("TikTok")) return [];
+    const acc = new Map<string, TikTokPiezaMes>();
+    for (const p of tiktokPiezas) {
+      if (selMesesISO.size > 0 && !selMesesISO.has(p.mes)) continue;
+      if (selCats.length > 0 && !selCats.includes(p.categoria)) continue;
+      if (selRoles.length > 0 && !selRoles.includes(p.objetivo)) continue;
+      const a = acc.get(p.ad_id);
+      acc.set(p.ad_id, a ? { ...a, inv: a.inv + p.inv, impr: a.impr + p.impr, clicks: a.clicks + p.clicks, alcance: a.alcance + p.alcance,
+        views: a.views + p.views, p100: a.p100 + p.p100, likes: a.likes + p.likes, comments: a.comments + p.comments, shares: a.shares + p.shares } : { ...p });
+    }
+    return [...acc.values()].sort((a, b) => b.inv - a.inv).map((p) => ({
+      id: `tiktok-${p.ad_id}`, titulo: p.ad_name, categoria: p.categoria, badges: [p.objetivo], img: p.img, link: p.link,
+      inv: p.inv, impr: p.impr, alcance: p.alcance || null, frecuencia: p.alcance ? p.impr / p.alcance : null, clicks: p.clicks,
+      ctr: p.impr ? (p.clicks / p.impr) * 100 : null, cpm: p.impr ? (p.inv / p.impr) * 1000 : null,
+      viewsCompl: p.p100 || null, vtr: p.views ? (p.p100 / p.views) * 100 : null, activa: p.activa,
+      engagement: { reactions: p.likes, comments: p.comments, shares: p.shares },
+    }));
+  }, [tiktokPiezas, digitalOk, selMesesISO, selCats, selRoles, selPlats]);
 
   // ¿Hay piezas de esta plataforma bajo los filtros activos? Se usa para no
   // renderizar secciones "Piezas pautadas" vacías. Datos legacy (TikTok,
@@ -1796,7 +1818,18 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
             </>
           )}
 
-          {metaHas("tiktok") && (
+          {tiktokPieceCards.length > 0 && (
+            <>
+              <SectionTitle>Piezas pautadas · TikTok</SectionTitle>
+              <p className="mb-3 text-[10px] text-muted-foreground">
+                Ordenadas por inversión de los meses filtrados. <strong>Datos y portadas</strong> = API de TikTok Ads (app de BIP), se
+                actualizan 1 vez por día. VTR = vistas completas ÷ reproducciones. Filtra por mes, categoría y rol.
+              </p>
+              <PiezaGrid pieces={tiktokPieceCards} money={(n) => `$${formatNumber(Math.round(n))}`} />
+            </>
+          )}
+
+          {tiktokPieceCards.length === 0 && metaHas("tiktok") && (
             <>
               <SectionTitle>Piezas pautadas · TikTok</SectionTitle>
               <p className="mb-3 text-[10px] text-muted-foreground">
