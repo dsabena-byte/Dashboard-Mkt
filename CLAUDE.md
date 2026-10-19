@@ -409,6 +409,12 @@ reporte_existencia/cb_homologos).
   de un mes normal en ≤5 días (inicio de mes o ráfaga >2× el nivel previo), ritmo >1,5× en los primeros 10 días, o un día
   ≥20% del mes. Señal **`gasto_diario_anomalo_*`** (`lib/signals/pauta-diaria.ts`, urgente→alta → aviso diario de /alerts;
   keys por medio+mes). Data real: Meta ago-26 = 4 campañas `_Diario` de 3 días se llevaron $41,6M (66% del mes) → urgente.
+- **TikTok Ads vía la app de BIP (19-oct-2026):** cuenta "Mabe Argentina" (advertiser 7601141532934225927) conectada en BIP (tenant
+  bip-test, Nango `tiktok-ads`). `api/cron/tiktok-sync` toma el token de Nango de BIP (o `TIKTOK_ACCESS_TOKEN`) y escribe el MES por
+  categoría×objetivo en `pauta_performance` (upsert por la clave única + borra lo que sobra; meses sin inversión en la API = se deja la carga
+  manual) → todo el dash lo lee sin cambios (TikTok NO va en `API_MEDIOS`). Validado: API = planilla OMD al peso salvo mayo (manual $6,23M vs
+  API $10,54M) y agosto (manual sin impresiones). Categoría por nombre de campaña; REACH=Awareness, resto=Consideración. La API rechaza
+  rangos >30 días con stat_time_day (se trocea). Miniaturas/videos: permisos aprobados 19-oct, el token pide reconectar en BIP (PENDIENTES D17).
 - **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, ~~Impacto Campaña~~ sacado de la UI 28-sep; OMD sin cargar = rango;
   sep-26 $148M, cierre $163–385M vs meta $474M), fatiga creativa MENSUAL (`lib/pauta-fatiga.ts`, Eficiencia Medios; 2 banners DV360),
   MMM-lite en el Simulador ("dato insuficiente" hasta 12 meses), `adBelongsToBrand`. Sin conversiones de Google Ads en las tablas.
