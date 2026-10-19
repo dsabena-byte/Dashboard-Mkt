@@ -320,3 +320,8 @@ causa raíz · qué se hizo.
 - **#828 (BGT):** abierto; último aviso del watchdog 17-oct 10:46 ("sin actualizar hace 253h"). `bgt-sync` corre bien; la fuente data.json de SharePoint no se actualiza (ver 12-oct). Desde el 16-oct el presupuesto se carga desde el tablero (`/funnel/carga`), por lo que el vínculo con SharePoint puede darse de baja: **decisión humana** (cerrar #828 o retirar la vigilancia de `bgt-sync`).
 - **`tiktok-sync`:** sigue fallando a diario en ~7 s (último 17-oct, 39022166028); **sin verificar** (logs no leídos), probable falta de credenciales TikTok. No se re-disparó.
 - **Pendiente humano:** cargar saldo DataForSEO y re-disparar `seo-sync`/`trends-sync`; decidir sobre BGT/SharePoint.
+
+## 2026-10-19 (UTC) — sin cambios: #828 (BGT), DataForSEO sin saldo
+- **Detección:** 11 de 13 syncs en success (bgt-sync 19-oct 02:20, ga4, meta-*, ig-*, ugc-*, clasificar). `seo-sync` (7-oct) y `trends-sync` (12-oct) siguen en rojo → NO se re-dispararon (pagos, sin saldo DataForSEO).
+- **#828 (BGT):** abierto; último aviso del watchdog 19-oct 04:42 ("sin actualizar hace 294h"). `bgt-sync` corre bien; la fuente data.json de SharePoint no se actualiza.
+- **Pendiente humano:** cargar saldo DataForSEO y re-disparar `seo-sync`/`trends-sync`; decidir sobre BGT/SharePoint (cerrar #828 o retirar vigilancia).
