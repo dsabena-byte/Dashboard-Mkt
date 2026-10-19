@@ -5,6 +5,8 @@ import { LastUpdated } from "@/components/last-updated";
 import { MultiDropdown } from "@/components/multi-dropdown";
 import { KpiCard } from "@/components/kpi-card";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
+import { PiezaGrid } from "@/components/pauta/pieza-grid";
+import { tiktokCards, type TikTokPiezaMes } from "@/lib/tiktok-piezas";
 import { UgcTestingPanel } from "@/components/pauta/ugc-testing-panel";
 import { MEDIO_COLORS, extractMeses, type PautaRow } from "@/lib/pauta-data";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
@@ -34,7 +36,11 @@ function metaRowVideo(r: MetaPaidCreativeRow): { vbase: number; comp: number } {
   return comp > 0 && total > 0 ? { vbase: total, comp } : { vbase: 0, comp: 0 };
 }
 
-export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpdated = null }: { rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[]; lastUpdated?: string | null }) {
+const MES_N = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+/** "Agosto 2026" → "2026-08" (formato del manifiesto de TikTok). */
+const mesLabelYm = (l: string) => { const [n, y] = l.split(" "); return `${y}-${String(MES_N.indexOf(n ?? "") + 1).padStart(2, "0")}`; };
+
+export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpdated = null, tiktokUgc = [] }: { /** Piezas UGC de TikTok (API vía app de BIP, manifiesto del cron tiktok-sync). */ tiktokUgc?: TikTokPiezaMes[]; rows: PautaRow[]; ugcCreatives: MetaPaidCreativeRow[]; ugcAnalysis?: UgcPieceAnalysis[]; lastUpdated?: string | null }) {
   const meses = useMemo(() => extractMeses(rows), [rows]);
   const [selMeses, setSelMeses] = useState<string[]>([]);
 
@@ -42,6 +48,10 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpd
   const piecesF = useMemo(
     () => ugcCreatives.filter((r) => selMeses.length === 0 || selMeses.includes(r.mes)),
     [ugcCreatives, selMeses],
+  );
+  const tiktokUgcCards = useMemo(
+    () => tiktokCards(tiktokUgc, { meses: new Set(selMeses.map(mesLabelYm)) }),
+    [tiktokUgc, selMeses],
   );
 
   // KPIs (volumen OMD).
@@ -278,7 +288,8 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpd
           {/* Piezas pautadas primero, separadas por plataforma. */}
           {piecesF.length > 0 && (() => {
             const metaPieces = piecesF.filter((r) => r.plataforma === "meta");
-            const tiktokPieces = piecesF.filter((r) => r.plataforma === "tiktok");
+            // Con piezas de la API de TikTok, el bloque viejo (meta_paid_creatives, sin portada) no se muestra.
+            const tiktokPieces = tiktokUgcCards.length > 0 ? [] : piecesF.filter((r) => r.plataforma === "tiktok");
             const otherPieces = piecesF.filter((r) => r.plataforma !== "meta" && r.plataforma !== "tiktok");
             const blocks: Array<{ title: string; data: MetaPaidCreativeRow[] }> = [
               { title: "Piezas pautadas · UGC (Meta IG + FB)", data: metaPieces },
@@ -295,6 +306,18 @@ export function InfluenciaClient({ rows, ugcCreatives, ugcAnalysis = [], lastUpd
               </section>
             ));
           })()}
+
+          {tiktokUgcCards.length > 0 && (
+            <section className="space-y-3">
+              <div className="mt-2">
+                <h3 className="text-sm font-medium">Piezas pautadas · UGC (TikTok)</h3>
+                <p className="text-xs text-muted-foreground">
+                  Ordenadas por inversión. {tiktokUgcCards.length} piezas. Datos y portadas = API de TikTok Ads, se actualizan 1 vez por día.
+                </p>
+              </div>
+              <PiezaGrid pieces={tiktokUgcCards} money={(n) => formatCurrency(n)} />
+            </section>
+          )}
 
           {/* Testeo de creativos con validación desde comentarios (después de las piezas). */}
           <UgcTestingPanel creatives={piecesF} analysis={ugcAnalysis} />
