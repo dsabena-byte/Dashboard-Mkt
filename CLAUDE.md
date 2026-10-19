@@ -859,8 +859,9 @@ reporte_existencia/cb_homologos).
   `dataLabelPosition: 't'` propio — si hereda `outEnd`/`inEnd` del gráfico, PowerPoint lo da por dañado (LibreOffice y validate.py lo pasan). Arial, 16:9 wide. Contenido pedido: principales indicadores + evolución de los
   planes de acción de marketing con datos REALES del dash (el preview usa números de ejemplo). Build: en un dir con
   `npm i pptxgenjs`, `NODE_PATH=<dir>/node_modules SKILL=<skill pptx> node formato.js`. Hace falta sesión con
-  `SUPABASE_SERVICE_ROLE_KEY` de Drean (una sesión sin esa env no llega: el conector Supabase solo ve bip-platform y
-  el de Vercel da 403 en el team de Drean).
+  `SUPABASE_SERVICE_ROLE_KEY` de Drean. **19-oct-2026: el user YA cargó `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+  (proyecto principal) en el entorno de las sesiones cloud — NO volver a pedírselo** (verificado: REST 200). Si una sesión no las
+  ve, es que arrancó antes de cargarlas: abrir sesión nueva.
   **19-oct-2026: deck armado con data real** (`build.js` + snapshot `datos-2026-09.json`, 13 slides: Salud de Marca, objetivos,
   cumplimiento por KPI, inversión, alcance, impresiones, web, conversión, IG, CB, Floor Share, Share of Search). Datos = el código
   REAL del Seguimiento (`getSeguimientoKpis`/`getSeguimientoObjetivos`) corrido con tsx + shims (`server-only`, `react` cache,
