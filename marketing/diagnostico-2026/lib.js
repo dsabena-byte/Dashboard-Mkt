@@ -44,8 +44,9 @@ const AX = () => ({ catAxisLabelColor: P.muted, valAxisLabelColor: P.muted, catA
   dataLabelFontFace: '+mn-lt', dataLabelFontSize: 9, dataLabelColor: P.ink, valAxisMinVal: 0 });
 
 // Etiquetas de mes: un mes sin dato en TODAS las series 2026 lleva "*" (nota "* Sin datos" en la fuente).
-function etiquetasMes(series2026) {
-  return MESES.map((m, i) => (series2026.every((s) => s[i] == null) ? m + '*' : m));
+// Octubre (índice 9) con dato lleva "†" = mes parcial (corte 19-oct-2026).
+function etiquetasMes(series2026, parcial = 9) {
+  return MESES.map((m, i) => (series2026.every((s) => s[i] == null) ? m + '*' : i === parcial ? m + '†' : m));
 }
 
 let N = 0;
@@ -115,7 +116,8 @@ function tabla(ctx, s, { cols, filas, area = AREA, anchos, heat = [], fontSize =
       const mix = (a, b) => Math.round(a + (b - a) * t).toString(16).padStart(2, '0');
       fill = { color: (mix(255, 147) + mix(255, 197) + mix(255, 253)).toUpperCase() };
     }
-    const txt = typeof v === 'number' ? (f.__fmt?.[j] ? f.__fmt[j](v) : v.toLocaleString('es-AR')) : (v ?? '—');
+    // Emojis y letras "decoradas" de Unicode no se ven en PowerPoint/LibreOffice: se sacan del texto de la tabla.
+    const txt = typeof v === 'number' ? (f.__fmt?.[j] ? f.__fmt[j](v) : v.toLocaleString('es-AR')) : String(v ?? '—').replace(/[\u{1F000}-\u{1FFFF}\u{1D400}-\u{1D7FF}\u{2190}-\u{21FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
     return { text: String(txt), options: { fontSize, color: C.text1, fill, align: alinear?.[j] || (typeof v === 'number' ? 'right' : 'left'),
       border: [{ type: 'none' }, { type: 'none' }, { pt: 0.5, color: P.light }, { type: 'none' }] } };
   }));
@@ -145,4 +147,4 @@ function vinetas(ctx, s, items, area = { x: 0.5, y: 1.8, w: 12.3, h: 4.8 }, font
 
 async function guardar(ctx, file) { await ctx.pres.writeFile({ fileName: file }); await applyTheme(file, THEME); }
 
-module.exports = { nuevo, contenido, lectura, linea, barras, dispersion, tabla, kpis, vinetas, guardar, MESES, P, AREA };
+module.exports = { etiquetasMes, nuevo, contenido, lectura, linea, barras, dispersion, tabla, kpis, vinetas, guardar, MESES, P, AREA };
