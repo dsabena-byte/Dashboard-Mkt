@@ -4,6 +4,8 @@ import { PLATAFORMAS, claveFila, mergeConAnterior, sanearFilas, type FilaCanal }
 // Mkt Canal: la IA lee un reporte de un retailer (PDF, imagen o Excel/CSV) y devuelve filas de
 // `mkt_canal_acciones`; el usuario las revisa y recién ahí se guardan (upsert por cliente·acción·mes·plataforma).
 const MODEL = process.env.OPENAI_MKT_CANAL_MODEL || "gpt-4o-mini";
+// PDF/imágenes (slides con capturas): gpt-4o-mini se salteaba tablas (Naldo jul-26) → modelo más potente, ~US$0,05 por PDF.
+const MODEL_VISION = process.env.OPENAI_MKT_CANAL_VISION_MODEL || "gpt-4o";
 
 const PROMPT = `Sos analista de marketing de Drean (electrodomésticos, Argentina). Te paso el reporte de una acción de marketing
 con un retailer (Oncity, Cetrogar, Jumbo, Naldo, Megatone, La Anónima u otro). Extraé SOLO números que estén en el reporte; nunca inventes.
@@ -54,7 +56,7 @@ export async function extraerReporte(file: File, cliente?: string): Promise<{ fi
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: MODEL,
+      model: partes.some((p) => (p as { type?: string }).type !== "text") ? MODEL_VISION : MODEL,
       temperature: 0,
       max_tokens: 4000,
       response_format: { type: "json_object" },
