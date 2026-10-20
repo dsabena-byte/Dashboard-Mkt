@@ -295,6 +295,8 @@ const MES_NOM=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto'
 function mesLabel(m){ const [y,mm]=m.split('-'); return MES_NOM[parseInt(mm,10)-1]+' '+y; }
 const selMes = new Set(); // meses seleccionados; vacío = todos
 function getF(id){ return document.getElementById(id).value; }
+// Google reporta conversiones fraccionadas (modelo de atribución): con menos de 10 se muestran 2 decimales.
+const fConv=v=>v<10?v.toLocaleString('es-AR',{maximumFractionDigits:2}):v.toLocaleString('es-AR',{maximumFractionDigits:0});
 function filtered(){
   const c=getF('fCli'), a=getF('fAcc'), p=getF('fPlat');
   return DATA.filter(r=>(!c||r.cliente===c)&&(!a||r.accion===a)&&(!p||r.plataforma===p)&&(selMes.size===0||selMes.has(r.mes)));
@@ -347,7 +349,7 @@ function render(){
       <div class="kpi-label">CTR</div><div class="kpi-val">${ctr.toFixed(2)}<span class="unit">%</span></div>
       <div class="kpi-sub">Clics / Impresiones</div></div>
     <div class="kpi"><div class="kpi-icon">${ICONS.cart}</div>
-      <div class="kpi-label">Conversiones</div><div class="kpi-val">${conv?conv.toFixed(0):'—'}</div>
+      <div class="kpi-label">Conversiones</div><div class="kpi-val">${conv?fConv(conv):'—'}</div>
       <div class="kpi-sub">${entreg?nf(entreg)+' emails · '+(entreg>0?(aper/entreg*100).toFixed(1):'0')+'% apertura':'Reportadas en Google'}</div></div>
     <div class="kpi"><div class="kpi-icon">${ICONS.pct}</div>
       <div class="kpi-label">Sesiones</div><div class="kpi-val">${ses?nf(ses):'—'}</div>
@@ -425,7 +427,7 @@ function render(){
       <td class="num">${nf(r.clics)}</td>
       <td class="num">${ctrR}</td>
       <td class="num">${r.sesiones?nf(r.sesiones):'—'}</td>
-      <td class="num">${r.conversiones?r.conversiones.toFixed(0):'—'}</td>
+      <td class="num">${r.conversiones?fConv(r.conversiones):'—'}</td>
       <td class="num">${r.inversion?'$'+nf(r.inversion):'—'}</td>
       <td>${r.ev?`<a class="ev-link" href="${r.ev}" target="_blank" rel="noopener">Ver ↗</a>`:''}</td>
     </tr>`;
@@ -433,7 +435,7 @@ function render(){
   document.getElementById('tfoot').innerHTML=`<tr>
     <td class="label" colspan="4">Total</td>
     <td class="num">${nf(imp)}</td><td class="num">${nf(clk)}</td>
-    <td class="num">${ctr.toFixed(2)}%</td><td class="num">${ses?nf(ses):'—'}</td><td class="num">${conv?conv.toFixed(0):'—'}</td>
+    <td class="num">${ctr.toFixed(2)}%</td><td class="num">${ses?nf(ses):'—'}</td><td class="num">${conv?fConv(conv):'—'}</td>
     <td class="num">${inv>0?'$'+nf(inv):'—'}</td><td></td></tr>`;
 
   document.getElementById('note').textContent='Notas: la inversión se carga desde la planilla / reportes. Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics. Naldo: Meta (paid cobranding) + Email (newsletter) por mes; Marzo pendiente de OCR. Megatone está como evidencia (PPT).';
