@@ -32,3 +32,7 @@ assert.equal(p.filas[0]!.ingresos, 14244001.45);
 assert.equal(p.errores.length, 1);
 assert.equal(sanearFilas(p.filas).filas.length, 0); // el guardado exige completar
 console.log("mkt-canal parcial OK");
+const y = sanearFilas([{ cliente: "Oncity", accion: "Drean", mes: "2023-08", plataforma: "Meta" }], false, new Date("2026-10-20"));
+assert.equal(y.filas.length, 0);
+assert.match(y.errores[0]!, /2023 parece mal leído/);
+console.log("mkt-canal año OK");
