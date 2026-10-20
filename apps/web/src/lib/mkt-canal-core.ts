@@ -1,7 +1,7 @@
 // Mkt Canal: validación de las filas de `mkt_canal_acciones` que arma la IA al leer un reporte de un retailer
 // (puro, client-safe). La misma función valida lo que devuelve la IA y lo que el usuario confirma en la vista previa.
 
-export const PLATAFORMAS = ["Meta", "Google", "YouTube", "TikTok", "Email", "On-site", "Evidencia"] as const;
+export const PLATAFORMAS = ["Meta", "Google", "YouTube", "TikTok", "Email", "On-site", "Catálogo", "Evidencia"] as const;
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 export const NUMS = ["impresiones", "clics", "sesiones", "conversiones", "ingresos", "entregados", "aperturas", "inversion"] as const;
 
@@ -44,6 +44,7 @@ const plataformaDe = (p: unknown) => {
   if (/google|search|pmax|display/.test(s)) return "Google";
   if (/tiktok/.test(s)) return "TikTok";
   if (/mail|newsletter/.test(s)) return "Email";
+  if (/cat[aá]logo/.test(s)) return "Catálogo";
   if (/on.?site|banner|home|web|sitio/.test(s)) return "On-site";
   if (/evidencia/.test(s)) return "Evidencia";
   return null;

@@ -36,3 +36,5 @@ const y = sanearFilas([{ cliente: "Oncity", accion: "Drean", mes: "2023-08", pla
 assert.equal(y.filas.length, 0);
 assert.match(y.errores[0]!, /2023 parece mal leído/);
 console.log("mkt-canal año OK");
+assert.equal(sanearFilas([{ cliente: "Oncity", accion: "Drean", mes: "2026-08", plataforma: "Catálogo Digital On City" }]).filas[0]!.plataforma, "Catálogo");
+console.log("mkt-canal catálogo OK");
