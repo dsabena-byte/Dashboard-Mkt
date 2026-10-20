@@ -1,5 +1,6 @@
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { SubirReporte } from "@/components/mkt-canal/subir-reporte";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
@@ -12,6 +13,7 @@ export default function MktCanalPage() {
       </header>
       <HowToRead slug="mkt-canal" />
       <DashTabBar />
+      <SubirReporte />
       <div className="h-[calc(100vh-15rem)] min-h-[600px] overflow-hidden rounded-xl border bg-card">
         <iframe src="/mkt-canal/index.html" className="h-full w-full border-0" title="Mkt Canal Dashboard" />
       </div>
