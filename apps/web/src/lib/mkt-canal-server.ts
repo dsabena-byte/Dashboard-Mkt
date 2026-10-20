@@ -15,9 +15,10 @@ impresiones, clics, sesiones (visitas al sitio: "Session"/"Sesiones"), conversio
 Si un mismo mes y plataforma aparece varias veces para la misma acción, sumalos en una fila.
 Excel con varias hojas: leé TODAS las hojas; cada hoja suele ser una plataforma (el nombre de la hoja la indica: WEB/banner/home = On-site,
 GOOGLE = Google, META/FB/IG = Meta, MAIL = Email). Si una hoja no dice campaña ni fecha, usá la campaña y el período de las otras hojas del
-mismo archivo (o del nombre del archivo). Si el período cruza dos meses, asignalo al mes de inicio y avisalo en "notas".
+mismo archivo (o del nombre del archivo). Si el reporte no dice el año, usá ${new Date().getFullYear()}. Si el período cruza dos meses, asignalo al mes de inicio y avisalo en "notas".
 Columnas: "Views"/"Vistas"/"Impresiones" = impresiones; "Ingresos"/"Revenue" = ingresos. "Session"/"Sesiones" = sesiones. Columnas sin campo (CTR) se ignoran.
-Nunca dejes afuera una hoja con números: si falta un dato (cliente, acción o mes), devolvé la fila igual con ese campo vacío.`;
+Nunca dejes afuera una hoja con números: si falta un dato (cliente, acción o mes), devolvé la fila igual con ese campo vacío.
+Escribí el nombre del retailer bien (Oncity, no "Onctiy").`;
 
 async function contenido(file: File): Promise<unknown[]> {
   const buf = Buffer.from(await file.arrayBuffer());

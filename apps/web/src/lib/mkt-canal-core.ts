@@ -52,7 +52,8 @@ const plataformaDe = (p: unknown) => {
 /** Valida y normaliza. Devuelve las filas válidas y un error legible por cada fila descartada.
  *  `parcial` (vista previa): una fila con números pero sin cliente/acción/mes/plataforma NO se descarta: vuelve con el
  *  campo vacío para que el usuario lo complete (el guardado vuelve a validar sin `parcial`). */
-export function sanearFilas(raw: unknown, parcial = false): { filas: FilaCanal[]; errores: string[] } {
+export function sanearFilas(raw: unknown, parcial = false, hoy = new Date()): { filas: FilaCanal[]; errores: string[] } {
+  const anio = hoy.getFullYear();
   const filas: FilaCanal[] = [];
   const errores: string[] = [];
   const arr = Array.isArray(raw) ? raw.slice(0, 200) : [];
@@ -63,10 +64,12 @@ export function sanearFilas(raw: unknown, parcial = false): { filas: FilaCanal[]
     const accion = String(o.accion ?? "").trim().slice(0, 120);
     const mes = String(o.mes ?? "").trim().slice(0, 7);
     const plataforma = plataformaDe(o.plataforma);
-    const m = /^(20\d\d)-(0[1-9]|1[0-2])$/.exec(mes);
+    // Año fuera de [año anterior, año siguiente] = casi seguro mal leído (pasó: reportes sin año → 2023).
+    const m0 = /^(20\d\d)-(0[1-9]|1[0-2])$/.exec(mes);
+    const m = m0 && Math.abs(Number(m0[1]) - anio) <= 1 ? m0 : null;
     const completa = !!(cliente && accion && m && plataforma);
     if (!completa) {
-      errores.push(`Fila ${i + 1}: ${parcial ? "completá" : "falta"} ${!cliente ? "el cliente" : !accion ? "la acción" : !m ? "el mes (AAAA-MM)" : "una plataforma válida"}.`);
+      errores.push(`Fila ${i + 1}: ${parcial ? "completá" : "falta"} ${!cliente ? "el cliente" : !accion ? "la acción" : !m ? (m0 ? `el año (${m0[1]} parece mal leído)` : "el mes (AAAA-MM)") : "una plataforma válida"}.`);
       if (!parcial) return;
     }
     const k = `${cliente}|${accion}|${mes}|${plataforma}`;
