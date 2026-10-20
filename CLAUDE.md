@@ -417,6 +417,12 @@ reporte_existencia/cb_homologos).
   rangos >30 días con stat_time_day (se trocea). **Piezas (19-oct):** el mismo cron arma `meta-thumbs/tiktok/index.json` (anuncio × mes +
   portada espejada en `tiktok/<ad_id>.jpg`; Spark Ads → oEmbed del post) y /performance (Eficiencia Medios) lo muestra con PiezaGrid. Ojo al
   reconectar en BIP: si el navegador tiene sesión de TikTok con el usuario de BIP, autoriza la cuenta "BIP_2ikwy4" y NO Mabe (pasó el 19-oct).
+- **Mkt Canal · subir reporte (20-oct-2026, opción A del user):** arriba del iframe de `/mkt-canal`, "Subir el reporte de un retailer"
+  (`components/mkt-canal/subir-reporte.tsx`): PDF/imagen/Excel → `/api/mkt-canal` POST (gpt-4o-mini con visión/PDF, env
+  `OPENAI_MKT_CANAL_MODEL`; ~centavos por archivo) devuelve filas SIN escribir → el user corrige en la tabla → PUT upsert en
+  `mkt_canal_acciones` por cliente·acción·mes·plataforma (lo que el reporte no trae, ej. inversión, conserva lo guardado). Acceso =
+  sesión + `dashboard_access` a /mkt-canal. Núcleo puro `lib/mkt-canal-core.ts` (test `scripts/mkt-canal.test.ts`). **No probado contra
+  OpenAI** (primera prueba real = el primer reporte de Oncity que suba el user).
 - **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, ~~Impacto Campaña~~ sacado de la UI 28-sep; OMD sin cargar = rango;
   sep-26 $148M, cierre $163–385M vs meta $474M), fatiga creativa MENSUAL (`lib/pauta-fatiga.ts`, Eficiencia Medios; 2 banners DV360),
   MMM-lite en el Simulador ("dato insuficiente" hasta 12 meses), `adBelongsToBrand`. Sin conversiones de Google Ads en las tablas.
