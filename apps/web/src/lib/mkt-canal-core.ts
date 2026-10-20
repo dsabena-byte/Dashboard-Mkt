@@ -74,9 +74,16 @@ export function sanearFilas(raw: unknown, parcial = false, hoy = new Date()): { 
       if (!parcial) return;
     }
     const k = `${cliente}|${accion}|${mes}|${plataforma}`;
-    if (completa && vistas.has(k)) { errores.push(`Fila ${i + 1}: repite ${accion} · ${mes} · ${plataforma} (dejá una sola).`); return; }
-    vistas.add(k);
     const n = Object.fromEntries(NUMS.map((k) => [k, num(o[k])])) as Record<(typeof NUMS)[number], number | null>;
+    if (completa && vistas.has(k)) {
+      // Al leer un reporte (parcial), varias piezas del mismo mes y plataforma (ej. 3 newsletters) se suman en una fila.
+      const prev = parcial ? filas.find((f) => claveFila(f) === k) : undefined;
+      if (!prev) { errores.push(`Fila ${i + 1}: repite ${accion} · ${mes} · ${plataforma} (dejá una sola).`); return; }
+      for (const c of NUMS) if (n[c] != null) prev[c] = (prev[c] ?? 0) + n[c]!;
+      prev.impresiones = Math.round(prev.impresiones); prev.clics = Math.round(prev.clics);
+      return;
+    }
+    vistas.add(k);
     const url = String(o.evidencia_url ?? "").trim();
     filas.push({
       cliente, accion, mes: m ? mes : "", plataforma: plataforma ?? "",
