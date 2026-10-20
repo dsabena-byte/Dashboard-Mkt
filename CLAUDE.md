@@ -421,7 +421,7 @@ reporte_existencia/cb_homologos).
   (`components/mkt-canal/subir-reporte.tsx`): PDF/imagen/Excel → `/api/mkt-canal` POST (gpt-4o-mini con visión/PDF, env
   `OPENAI_MKT_CANAL_MODEL`; ~centavos por archivo) devuelve filas SIN escribir → el user corrige en la tabla → PUT upsert en
   `mkt_canal_acciones` por cliente·acción·mes·plataforma (lo que el reporte no trae, ej. inversión, conserva lo guardado). Acceso =
-  sesión + `dashboard_access` a /mkt-canal. **Sesiones (20-oct, pedido del user, para la tasa de conversión):** columna `sesiones` (**migración 0127**, sin ella se guarda sin sesiones y avisa); el tablero muestra Sesiones + tasa = conv ÷ sesiones SOLO de filas con ambos datos. Núcleo puro `lib/mkt-canal-core.ts` (test `scripts/mkt-canal.test.ts`). **No probado contra
+  sesión + `dashboard_access` a /mkt-canal. **Sesiones (20-oct, pedido del user, para la tasa de conversión):** columna `sesiones` (**migración 0127, corrida por el user 20-oct, verificado REST**); el tablero muestra Sesiones + tasa = conv ÷ sesiones SOLO de filas con ambos datos. Núcleo puro `lib/mkt-canal-core.ts` (test `scripts/mkt-canal.test.ts`). **No probado contra
   OpenAI** (primera prueba real = el primer reporte de Oncity que suba el user).
 - **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, ~~Impacto Campaña~~ sacado de la UI 28-sep; OMD sin cargar = rango;
   sep-26 $148M, cierre $163–385M vs meta $474M), fatiga creativa MENSUAL (`lib/pauta-fatiga.ts`, Eficiencia Medios; 2 banners DV360),
