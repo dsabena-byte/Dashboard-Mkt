@@ -151,6 +151,13 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
   </div>
   <div style="position:relative;height:260px"><canvas id="cInvMes"></canvas></div>
 </div>
+<div class="chart-box" style="margin-bottom:16px">
+  <div class="chart-title">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
+    Evolución mensual de la inversión por cliente <span id="invAnioCli" class="cell-muted" style="font-weight:400"></span>
+  </div>
+  <div style="position:relative;height:260px"><canvas id="cInvMesCli"></canvas></div>
+</div>
 
 <div class="chart-row">
   <div class="chart-box">
@@ -281,7 +288,7 @@ let DATA = [
 ];
 
 const PIE_COLORS = ['#0f172a','#2563eb','#06b6d4','#ef4444','#f59e0b','#a855f7','#10b981','#ec4899','#f97316','#84cc16'];
-let cPlat, cCli, cCliDon, cInvMes;
+let cPlat, cCli, cCliDon, cInvMes, cInvMesCli;
 
 function nf(v){ return Intl.NumberFormat('es-AR').format(Math.round(v)); }
 function fmtShort(v){
@@ -301,13 +308,14 @@ function uniq(k){ return [...new Set(DATA.map(r=>r[k]))]; }
 
 const MES_NOM=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 function mesLabel(m){ const [y,mm]=m.split('-'); return MES_NOM[parseInt(mm,10)-1]+' '+y; }
+const MES_HOY=new Date().toISOString().slice(0,7);
 const selMes = new Set(); // meses seleccionados; vacío = todos
 function getF(id){ return document.getElementById(id).value; }
 // Google reporta conversiones fraccionadas (modelo de atribución): con menos de 10 se muestran 2 decimales.
 const fConv=v=>v<10?v.toLocaleString('es-AR',{maximumFractionDigits:2}):v.toLocaleString('es-AR',{maximumFractionDigits:0});
 function filtered(){
   const c=getF('fCli'), a=getF('fAcc'), p=getF('fPlat');
-  return DATA.filter(r=>(!c||r.cliente===c)&&(!a||r.accion===a)&&(!p||r.plataforma===p)&&(selMes.size===0||selMes.has(r.mes)));
+  return DATA.filter(r=>(!c||r.cliente===c)&&(!a||r.accion===a)&&(!p||r.plataforma===p)&&(selMes.size===0?(r.mes||'')<=MES_HOY:selMes.has(r.mes)));
 }
 
 const ICONS={
@@ -429,19 +437,25 @@ function render(){
   const MESES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const c0=getF('fCli'), a0=getF('fAcc'), p0=getF('fPlat');
   const invRows=DATA.filter(r=>r.inversion>0&&(r.mes||'').startsWith(anio)&&(!c0||r.cliente===c0)&&(!a0||r.accion===a0)&&(!p0||r.plataforma===p0));
-  const invPlats=[...new Set(invRows.map(r=>r.plataforma))];
-  const mesInv=(m,p)=>sum(invRows.filter(r=>r.mes===anio+'-'+String(m+1).padStart(2,'0')&&(!p||r.plataforma===p)),'inversion');
   document.getElementById('invAnio').textContent='· '+anio;
+  document.getElementById('invAnioCli').textContent='· '+anio;
   if(cInvMes)cInvMes.destroy();
-  cInvMes=new Chart(document.getElementById('cInvMes'),{type:'bar',
-    data:{labels:MESES,datasets:invPlats.map((p,i)=>({label:p,data:MESES.map((_,m)=>mesInv(m,p)),backgroundColor:PIE_COLORS[i%PIE_COLORS.length],borderRadius:3,stack:'inv'}))},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true,font:{size:11}}},
-        datalabels:{display:c=>c.datasetIndex===c.chart.data.datasets.length-1&&mesInv(c.dataIndex)>0,anchor:'end',align:'end',color:'#0f172a',font:{size:10,weight:600},formatter:(_,c)=>'$'+fmtShort(mesInv(c.dataIndex))},
-        tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:6,callbacks:{label:c=>' '+c.dataset.label+': $'+nf(c.raw),footer:it=>'Total mes: $'+nf(mesInv(it[0].dataIndex))}}},
-      layout:{padding:{top:18}},
-      scales:{x:{stacked:true,ticks:{color:'#64748b',font:{size:11}},grid:{display:false}},
-        y:{stacked:true,ticks:{color:'#64748b',callback:v=>'$'+fmtShort(v),font:{size:10}},grid:{color:'rgba(15,23,42,0.06)'}}}}});
+  if(cInvMesCli)cInvMesCli.destroy();
+  cInvMes=invChart('cInvMes','plataforma');
+  cInvMesCli=invChart('cInvMesCli','cliente');
+  function invChart(id,key){
+    const grupos=[...new Set(invRows.map(r=>r[key]))];
+    const mesInv=(m,g)=>sum(invRows.filter(r=>r.mes===anio+'-'+String(m+1).padStart(2,'0')&&(!g||r[key]===g)),'inversion');
+    return new Chart(document.getElementById(id),{type:'bar',
+      data:{labels:MESES,datasets:grupos.map((g,i)=>({label:g,data:MESES.map((_,m)=>mesInv(m,g)),backgroundColor:PIE_COLORS[i%PIE_COLORS.length],borderRadius:3,stack:'inv'}))},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true,font:{size:11}}},
+          datalabels:{display:c=>c.datasetIndex===c.chart.data.datasets.length-1&&mesInv(c.dataIndex)>0,anchor:'end',align:'end',color:'#0f172a',font:{size:10,weight:600},formatter:(_,c)=>'$'+fmtShort(mesInv(c.dataIndex))},
+          tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:6,callbacks:{label:c=>' '+c.dataset.label+': $'+nf(c.raw),footer:it=>'Total mes: $'+nf(mesInv(it[0].dataIndex))}}},
+        layout:{padding:{top:18}},
+        scales:{x:{stacked:true,ticks:{color:'#64748b',font:{size:11}},grid:{display:false}},
+          y:{stacked:true,ticks:{color:'#64748b',callback:v=>'$'+fmtShort(v),font:{size:10}},grid:{color:'rgba(15,23,42,0.06)'}}}}});
+  }
 
   // Tabla detalle
   const tb=document.getElementById('tbody'); tb.innerHTML='';
