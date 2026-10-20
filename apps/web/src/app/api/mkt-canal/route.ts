@@ -13,6 +13,35 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 const MAX_BYTES = 10 * 1024 * 1024;
+// Vercel corta los bodies de >4,5 MB (413) → los archivos grandes suben directo a Storage (bucket privado) y se leen desde ahí.
+const BUCKET = "mkt-canal-uploads";
+const PATH_RE = /^[0-9a-f-]{36}\.[a-z0-9]{1,6}$/;
+
+async function storage(path: string, init: RequestInit = {}) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw Object.assign(new Error("Falta la configuración de Supabase."), { status: 503 });
+  return fetch(`${url}/storage/v1/${path}`, { ...init, headers: { apikey: key, Authorization: `Bearer ${key}`, ...init.headers } });
+}
+
+/** {sign: nombre} → URL firmada para subir; {path, nombre, cliente?} → archivo ya subido a Storage. */
+async function archivoDeStorage(body: { sign?: string; path?: string; nombre?: string }): Promise<Response | File> {
+  if (body.sign) {
+    await storage("bucket", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: BUCKET, name: BUCKET, public: false }) }).catch(() => null);
+    const ext = (body.sign.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 6) || "bin";
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const r = await storage(`object/upload/sign/${BUCKET}/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const d = (await r.json().catch(() => ({}))) as { url?: string };
+    if (!r.ok || !d.url) throw new Error(`No se pudo preparar la subida (Storage ${r.status}).`);
+    return NextResponse.json({ uploadUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1${d.url}`, path });
+  }
+  if (!body.path || !PATH_RE.test(body.path)) return NextResponse.json({ error: "Archivo inválido." }, { status: 400 });
+  const r = await storage(`object/${BUCKET}/${body.path}`);
+  if (!r.ok) return NextResponse.json({ error: `No se encontró el archivo subido (Storage ${r.status}).` }, { status: 400 });
+  const buf = await r.arrayBuffer();
+  await storage(`object/${BUCKET}/${body.path}`, { method: "DELETE" }).catch(() => null);
+  if (buf.byteLength > MAX_BYTES) return NextResponse.json({ error: "El archivo pesa más de 10 MB." }, { status: 400 });
+  return new File([buf], String(body.nombre ?? body.path).slice(0, 200), { type: r.headers.get("content-type") ?? "" });
+}
 
 async function usuario(): Promise<string | null> {
   try {
@@ -36,12 +65,22 @@ export async function POST(req: Request) {
   if (!u) return NextResponse.json({ error: "Tu usuario no tiene acceso a Mkt Canal." }, { status: 403 });
   const rl = checkRateLimit(`mkt-canal:${u}`);
   if (!rl.ok) return NextResponse.json({ error: `Demasiados archivos seguidos. Probá en ${rl.retryInSec} s.` }, { status: 429 });
-  const fd = await req.formData().catch(() => null);
-  const file = fd?.get("archivo");
+  let file: unknown, clienteIn: unknown;
+  if (req.headers.get("content-type")?.includes("application/json")) {
+    const body = await req.json().catch(() => ({}));
+    try {
+      const r = await archivoDeStorage(body);
+      if (r instanceof Response) return r;
+      file = r; clienteIn = body.cliente;
+    } catch (e) { return err(e); }
+  } else {
+    const fd = await req.formData().catch(() => null);
+    file = fd?.get("archivo"); clienteIn = fd?.get("cliente");
+  }
   if (!(file instanceof File)) return NextResponse.json({ error: "Elegí un archivo." }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "El archivo pesa más de 10 MB." }, { status: 400 });
   try {
-    const r = await extraerReporte(file, String(fd?.get("cliente") ?? "").trim().slice(0, 60) || undefined);
+    const r = await extraerReporte(file, String(clienteIn ?? "").trim().slice(0, 60) || undefined);
     const antes = await filasExistentes(r.filas);
     return NextResponse.json({ ...r, antes: Object.fromEntries(r.filas.filter((f) => antes.has(claveFila(f))).map((f) => [claveFila(f), antes.get(claveFila(f))])) });
   } catch (e) { return err(e); }
