@@ -14,8 +14,8 @@ export default function MktCanalPage() {
       <HowToRead slug="mkt-canal" />
       <DashTabBar />
       <SubirReporte />
-      <div className="h-[calc(100vh-15rem)] min-h-[600px] overflow-hidden rounded-xl border bg-card">
-        <iframe src="/mkt-canal/index.html" className="h-full w-full border-0" title="Mkt Canal Dashboard" />
+      <div className="overflow-hidden rounded-xl border bg-card">
+        <iframe src="/mkt-canal/index.html" className="block h-[600px] w-full border-0" scrolling="no" title="Mkt Canal Dashboard" />
       </div>
     </DashTabs>
   );
