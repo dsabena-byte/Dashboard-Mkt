@@ -37,11 +37,23 @@ export function SubirReporte() {
     for (const [n, archivo] of archivos.entries()) {
       setMsg({ ok: true, t: `Leyendo ${n + 1} de ${archivos.length}: ${archivo.name}…` });
       try {
-        const fd = new FormData();
-        fd.append("archivo", archivo);
-        if (cliente.trim()) fd.append("cliente", cliente.trim());
-        const r = await fetch("/api/mkt-canal", { method: "POST", body: fd });
-        const d = await r.json();
+        let r: Response;
+        if (archivo.size > 4 * 1024 * 1024) {
+          // Vercel no acepta bodies de >4,5 MB: el archivo va directo a Storage y el server lo lee de ahí.
+          const json = (b: object) => fetch("/api/mkt-canal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+          const s = await json({ sign: archivo.name });
+          const sd = await s.json();
+          if (!s.ok) throw new Error(sd.error ?? "No se pudo preparar la subida.");
+          const up = await fetch(sd.uploadUrl, { method: "PUT", headers: { "Content-Type": archivo.type || "application/octet-stream" }, body: archivo });
+          if (!up.ok) throw new Error(`No se pudo subir el archivo (${up.status}).`);
+          r = await json({ path: sd.path, nombre: archivo.name, cliente: cliente.trim() });
+        } else {
+          const fd = new FormData();
+          fd.append("archivo", archivo);
+          if (cliente.trim()) fd.append("cliente", cliente.trim());
+          r = await fetch("/api/mkt-canal", { method: "POST", body: fd });
+        }
+        const d = await r.json().catch(() => ({ error: r.status === 413 ? "El archivo es demasiado grande." : `Error ${r.status}` }));
         if (!r.ok) throw new Error(d.error ?? "No se pudo leer el archivo.");
         for (const f of d.filas as FilaCanal[]) porClave.set(claveFila(f), f);
         Object.assign(ant, d.antes ?? {});
