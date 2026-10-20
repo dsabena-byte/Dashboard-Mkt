@@ -193,7 +193,7 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
     <table>
       <thead><tr>
         <th>Cliente</th><th>Acción</th><th>Período</th><th>Plataforma</th>
-        <th class="num">Impresiones</th><th class="num">Clics</th><th class="num">CTR</th>
+        <th class="num">Impresiones</th><th class="num">Clics</th><th class="num">CTR</th><th class="num">Sesiones</th>
         <th class="num">Conv.</th><th class="num">Inversión</th><th>Evidencia</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
@@ -327,7 +327,9 @@ function donutOpts(){
 
 function render(){
   const rows=filtered();
-  const imp=sum(rows,'impresiones'), clk=sum(rows,'clics'), conv=sum(rows,'conversiones');
+  const imp=sum(rows,'impresiones'), clk=sum(rows,'clics'), conv=sum(rows,'conversiones'), ses=sum(rows,'sesiones');
+  // Tasa de conversión solo con las filas que traen sesiones Y conversiones (mismo origen del dato).
+  const rc=rows.filter(r=>r.sesiones>0&&r.conversiones>0), tconv=sum(rc,'sesiones')>0?sum(rc,'conversiones')/sum(rc,'sesiones')*100:null;
   const ctr=imp>0?(clk/imp*100):0;
   const entreg=sum(rows,'entregados'), aper=sum(rows,'aperturas');
   const inv=sum(rows,'inversion');
@@ -347,6 +349,9 @@ function render(){
     <div class="kpi"><div class="kpi-icon">${ICONS.cart}</div>
       <div class="kpi-label">Conversiones</div><div class="kpi-val">${conv?conv.toFixed(0):'—'}</div>
       <div class="kpi-sub">${entreg?nf(entreg)+' emails · '+(entreg>0?(aper/entreg*100).toFixed(1):'0')+'% apertura':'Reportadas en Google'}</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.pct}</div>
+      <div class="kpi-label">Sesiones</div><div class="kpi-val">${ses?nf(ses):'—'}</div>
+      <div class="kpi-sub">${tconv!==null?'Tasa de conversión '+tconv.toFixed(2)+'%':'Conv. ÷ sesiones: sin datos'}</div></div>
     <div class="kpi"><div class="kpi-icon">${ICONS.money}</div>
       <div class="kpi-label">Inversión</div><div class="kpi-val">${inv>0?'$'+fmtShort(inv):'—'}</div>
       <div class="kpi-sub">${inv>0?'Pauta del período':'Cargar en planilla'}</div></div>
@@ -419,6 +424,7 @@ function render(){
       <td class="num">${r.impresiones?nf(r.impresiones):'—'}</td>
       <td class="num">${nf(r.clics)}</td>
       <td class="num">${ctrR}</td>
+      <td class="num">${r.sesiones?nf(r.sesiones):'—'}</td>
       <td class="num">${r.conversiones?r.conversiones.toFixed(0):'—'}</td>
       <td class="num">${r.inversion?'$'+nf(r.inversion):'—'}</td>
       <td>${r.ev?`<a class="ev-link" href="${r.ev}" target="_blank" rel="noopener">Ver ↗</a>`:''}</td>
@@ -427,7 +433,7 @@ function render(){
   document.getElementById('tfoot').innerHTML=`<tr>
     <td class="label" colspan="4">Total</td>
     <td class="num">${nf(imp)}</td><td class="num">${nf(clk)}</td>
-    <td class="num">${ctr.toFixed(2)}%</td><td class="num">${conv?conv.toFixed(0):'—'}</td>
+    <td class="num">${ctr.toFixed(2)}%</td><td class="num">${ses?nf(ses):'—'}</td><td class="num">${conv?conv.toFixed(0):'—'}</td>
     <td class="num">${inv>0?'$'+nf(inv):'—'}</td><td></td></tr>`;
 
   document.getElementById('note').textContent='Notas: la inversión se carga desde la planilla / reportes. Email no genera impresiones; su peso en los gráficos por plataforma se mide por clics. Naldo: Meta (paid cobranding) + Email (newsletter) por mes; Marzo pendiente de OCR. Megatone está como evidencia (PPT).';
@@ -448,7 +454,7 @@ async function loadData(){
       DATA=rows.map(x=>({
         cliente:x.cliente, accion:x.accion, mes:x.mes, periodo:x.periodo, plataforma:x.plataforma,
         impresiones:Number(x.impresiones)||0, clics:Number(x.clics)||0,
-        conversiones:numOrNull(x.conversiones), ingresos:numOrNull(x.ingresos),
+        conversiones:numOrNull(x.conversiones), ingresos:numOrNull(x.ingresos), sesiones:numOrNull(x.sesiones),
         entregados:numOrNull(x.entregados), aperturas:numOrNull(x.aperturas),
         inversion:x.inversion==null?null:Number(x.inversion),
         ev:x.evidencia_url||undefined
