@@ -320,3 +320,8 @@ causa raíz · qué se hizo.
 - **#828 (BGT):** abierto; último aviso del watchdog 17-oct 10:46 ("sin actualizar hace 253h"). `bgt-sync` corre bien; la fuente data.json de SharePoint no se actualiza (ver 12-oct). Desde el 16-oct el presupuesto se carga desde el tablero (`/funnel/carga`), por lo que el vínculo con SharePoint puede darse de baja: **decisión humana** (cerrar #828 o retirar la vigilancia de `bgt-sync`).
 - **`tiktok-sync`:** sigue fallando a diario en ~7 s (último 17-oct, 39022166028); **sin verificar** (logs no leídos), probable falta de credenciales TikTok. No se re-disparó.
 - **Pendiente humano:** cargar saldo DataForSEO y re-disparar `seo-sync`/`trends-sync`; decidir sobre BGT/SharePoint.
+
+## 2026-10-20 (UTC) — sin cambios: #828 (BGT) y tiktok-sync (causa verificada)
+- **Detección:** último run de los syncs vigilados en success (bgt-sync 20-oct 02:34, ga4, meta-*, ig-*, ugc-*, clasificar, seo-sync, trends-sync). Único rojo: `tiktok-sync` (20-oct 10:26, run 39407971875).
+- **#828 (BGT):** abierto; último aviso 20-oct 11:39 ("sin actualizar hace 325h"). Log de `bgt-sync` (run 39359631347): HTTP 200, `sourceSyncedAt: 2026-10-06T22:16:01`, 2638 filas → el cron funciona, la fuente `Dashboard-BGT/data.json` no se actualiza desde el 6-oct. Re-disparar no sirve. **Pendiente humano:** renovar el link de SharePoint / actualizar data.json, o dar de baja la vigilancia de `bgt-sync` (el presupuesto ya se carga en `/funnel/carga`).
+- **`tiktok-sync`:** HTTP 500 `{"error":"Env var BIP_NANGO_HOST no configurada"}` (verificado en el log). No se re-disparó (fallaría igual). **Pendiente humano:** cargar `BIP_NANGO_HOST` (y credenciales Nango de BIP) en Vercel, proyecto Dashboard-Mkt.
