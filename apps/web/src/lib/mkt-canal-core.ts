@@ -3,7 +3,7 @@
 
 export const PLATAFORMAS = ["Meta", "Google", "YouTube", "TikTok", "Email", "On-site", "Evidencia"] as const;
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-export const NUMS = ["impresiones", "clics", "conversiones", "ingresos", "entregados", "aperturas", "inversion"] as const;
+export const NUMS = ["impresiones", "clics", "sesiones", "conversiones", "ingresos", "entregados", "aperturas", "inversion"] as const;
 
 export interface FilaCanal {
   cliente: string;
@@ -13,6 +13,7 @@ export interface FilaCanal {
   plataforma: string;
   impresiones: number;
   clics: number;
+  sesiones: number | null;
   conversiones: number | null;
   ingresos: number | null;
   entregados: number | null;
@@ -91,7 +92,7 @@ export const claveFila = (f: Pick<FilaCanal, "cliente" | "accion" | "mes" | "pla
 export function mergeConAnterior(nueva: FilaCanal, antes: Partial<FilaCanal> | undefined): FilaCanal {
   if (!antes) return nueva;
   const out = { ...nueva };
-  for (const k of ["conversiones", "ingresos", "entregados", "aperturas", "inversion", "evidencia_url"] as const) {
+  for (const k of ["sesiones", "conversiones", "ingresos", "entregados", "aperturas", "inversion", "evidencia_url"] as const) {
     if (out[k] == null && antes[k] != null) (out as Record<string, unknown>)[k] = antes[k];
   }
   return out;

@@ -8,7 +8,7 @@ const btnPri = "rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-
 const inp = "w-full rounded border bg-background px-1.5 py-1 text-xs";
 const COLS: { k: keyof FilaCanal; label: string; w: string }[] = [
   { k: "cliente", label: "Cliente", w: "w-24" }, { k: "accion", label: "Acción", w: "w-32" }, { k: "mes", label: "Mes", w: "w-20" },
-  { k: "plataforma", label: "Plataforma", w: "w-24" }, { k: "impresiones", label: "Impresiones", w: "w-24" }, { k: "clics", label: "Clics", w: "w-20" },
+  { k: "plataforma", label: "Plataforma", w: "w-24" }, { k: "impresiones", label: "Impresiones", w: "w-24" }, { k: "clics", label: "Clics", w: "w-20" }, { k: "sesiones", label: "Sesiones", w: "w-24" },
   { k: "conversiones", label: "Conv.", w: "w-16" }, { k: "ingresos", label: "Ingresos $", w: "w-24" }, { k: "entregados", label: "Mails entreg.", w: "w-20" },
   { k: "aperturas", label: "Aperturas", w: "w-20" }, { k: "inversion", label: "Inversión $", w: "w-24" },
 ];
@@ -62,7 +62,7 @@ export function SubirReporte() {
       const r = await fetch("/api/mkt-canal", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filas }) });
       const d = await r.json();
       if (!r.ok) { setErrores(d.errores ?? []); throw new Error(d.error ?? "No se pudo guardar."); }
-      setMsg({ ok: true, t: `Listo: ${d.nuevas} filas nuevas y ${d.actualizadas} actualizadas. El tablero ya las muestra.` });
+      setMsg({ ok: true, t: `Listo: ${d.nuevas} filas nuevas y ${d.actualizadas} actualizadas. El tablero ya las muestra.${d.sinSesiones ? " Las sesiones NO se guardaron: falta correr la migración 0127 en Supabase." : ""}` });
       setFilas(null); setArchivos([]);
       document.querySelector<HTMLIFrameElement>('iframe[title="Mkt Canal Dashboard"]')?.contentWindow?.location.reload();
     } catch (e) { setMsg({ ok: false, t: e instanceof Error ? e.message : "Error" }); }
