@@ -48,8 +48,10 @@ const plataformaDe = (p: unknown) => {
   return null;
 };
 
-/** Valida y normaliza. Devuelve las filas válidas y un error legible por cada fila descartada. */
-export function sanearFilas(raw: unknown): { filas: FilaCanal[]; errores: string[] } {
+/** Valida y normaliza. Devuelve las filas válidas y un error legible por cada fila descartada.
+ *  `parcial` (vista previa): una fila con números pero sin cliente/acción/mes/plataforma NO se descarta: vuelve con el
+ *  campo vacío para que el usuario lo complete (el guardado vuelve a validar sin `parcial`). */
+export function sanearFilas(raw: unknown, parcial = false): { filas: FilaCanal[]; errores: string[] } {
   const filas: FilaCanal[] = [];
   const errores: string[] = [];
   const arr = Array.isArray(raw) ? raw.slice(0, 200) : [];
@@ -61,18 +63,19 @@ export function sanearFilas(raw: unknown): { filas: FilaCanal[]; errores: string
     const mes = String(o.mes ?? "").trim().slice(0, 7);
     const plataforma = plataformaDe(o.plataforma);
     const m = /^(20\d\d)-(0[1-9]|1[0-2])$/.exec(mes);
-    if (!cliente || !accion || !m || !plataforma) {
-      errores.push(`Fila ${i + 1}: falta ${!cliente ? "el cliente" : !accion ? "la acción" : !m ? "el mes (AAAA-MM)" : "una plataforma válida"}.`);
-      return;
+    const completa = !!(cliente && accion && m && plataforma);
+    if (!completa) {
+      errores.push(`Fila ${i + 1}: ${parcial ? "completá" : "falta"} ${!cliente ? "el cliente" : !accion ? "la acción" : !m ? "el mes (AAAA-MM)" : "una plataforma válida"}.`);
+      if (!parcial) return;
     }
     const k = `${cliente}|${accion}|${mes}|${plataforma}`;
-    if (vistas.has(k)) { errores.push(`Fila ${i + 1}: repite ${accion} · ${mes} · ${plataforma} (dejá una sola).`); return; }
+    if (completa && vistas.has(k)) { errores.push(`Fila ${i + 1}: repite ${accion} · ${mes} · ${plataforma} (dejá una sola).`); return; }
     vistas.add(k);
     const n = Object.fromEntries(NUMS.map((k) => [k, num(o[k])])) as Record<(typeof NUMS)[number], number | null>;
     const url = String(o.evidencia_url ?? "").trim();
     filas.push({
-      cliente, accion, mes, plataforma,
-      periodo: `${MESES[Number(m[2]) - 1]} ${m[1]}`,
+      cliente, accion, mes: m ? mes : "", plataforma: plataforma ?? "",
+      periodo: m ? `${MESES[Number(m[2]) - 1]} ${m[1]}` : "",
       ...n,
       impresiones: Math.round(n.impresiones ?? 0),
       clics: Math.round(n.clics ?? 0),

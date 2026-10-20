@@ -25,3 +25,10 @@ const dup = sanearFilas([{ cliente: "A", accion: "B", mes: "2026-05", plataforma
 assert.equal(dup.filas.length, 1);
 assert.equal(dup.errores.length, 1);
 console.log("mkt-canal OK");
+const p = sanearFilas([{ cliente: "Oncity", accion: "", mes: "", plataforma: "GOOGLE", impresiones: 73989, conversiones: 28.1, ingresos: 14244001.45 }], true);
+assert.equal(p.filas.length, 1);
+assert.equal(p.filas[0]!.conversiones, 28.1);
+assert.equal(p.filas[0]!.ingresos, 14244001.45);
+assert.equal(p.errores.length, 1);
+assert.equal(sanearFilas(p.filas).filas.length, 0); // el guardado exige completar
+console.log("mkt-canal parcial OK");
