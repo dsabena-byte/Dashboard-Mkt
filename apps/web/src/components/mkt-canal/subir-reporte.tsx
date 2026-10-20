@@ -102,9 +102,9 @@ export function SubirReporte() {
                         {COLS.map((c) => (
                           <td key={c.k} className={`px-1 py-0.5 ${c.w}`}>
                             {c.k === "plataforma" ? (
-                              <select className={inp} value={f.plataforma} onChange={(e) => set(i, "plataforma", e.target.value)}>{PLATAFORMAS.map((p) => <option key={p}>{p}</option>)}</select>
+                              <select className={inp} value={f.plataforma} onChange={(e) => set(i, "plataforma", e.target.value)}><option value="">— elegí —</option>{PLATAFORMAS.map((p) => <option key={p}>{p}</option>)}</select>
                             ) : (
-                              <input className={inp} type={(NUMS as readonly string[]).includes(c.k) ? "number" : "text"} value={(f[c.k] as string | number | null) ?? ""} onChange={(e) => set(i, c.k, e.target.value)} />
+                              <input className={inp} type={(NUMS as readonly string[]).includes(c.k) ? "number" : "text"} step="any" value={(f[c.k] as string | number | null) ?? ""} onChange={(e) => set(i, c.k, e.target.value)} />
                             )}
                             {a && a[c.k] !== f[c.k] && (NUMS as readonly string[]).includes(c.k) && <div className="text-[10px] text-muted-foreground">antes: {fmt(a[c.k])}</div>}
                           </td>

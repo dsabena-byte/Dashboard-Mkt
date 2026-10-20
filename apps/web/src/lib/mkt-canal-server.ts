@@ -12,7 +12,12 @@ Cada fila = un cliente · una acción · un mes · una plataforma, con:
 cliente (nombre del retailer), accion (nombre de la campaña, ej "Hot Sale", "Drean Week", "Cobranding mensual"),
 mes ("AAAA-MM"), plataforma (una de: ${PLATAFORMAS.join(", ")}; Facebook/Instagram = Meta; banners/home del sitio = On-site; newsletter = Email),
 impresiones, clics, conversiones, ingresos, entregados (emails), aperturas (emails), inversion (pesos), todos números o null si el reporte no lo dice.
-Si un mismo mes y plataforma aparece varias veces para la misma acción, sumalos en una fila.`;
+Si un mismo mes y plataforma aparece varias veces para la misma acción, sumalos en una fila.
+Excel con varias hojas: leé TODAS las hojas; cada hoja suele ser una plataforma (el nombre de la hoja la indica: WEB/banner/home = On-site,
+GOOGLE = Google, META/FB/IG = Meta, MAIL = Email). Si una hoja no dice campaña ni fecha, usá la campaña y el período de las otras hojas del
+mismo archivo (o del nombre del archivo). Si el período cruza dos meses, asignalo al mes de inicio y avisalo en "notas".
+Columnas: "Views"/"Vistas"/"Impresiones" = impresiones; "Ingresos"/"Revenue" = ingresos. Columnas sin campo (CTR, Sesiones) se ignoran.
+Nunca dejes afuera una hoja con números: si falta un dato (cliente, acción o mes), devolvé la fila igual con ese campo vacío.`;
 
 async function contenido(file: File): Promise<unknown[]> {
   const buf = Buffer.from(await file.arrayBuffer());
@@ -20,8 +25,8 @@ async function contenido(file: File): Promise<unknown[]> {
   if (/\.(xlsx|xls|csv)$/.test(name)) {
     const XLSX = await import("xlsx");
     const wb = XLSX.read(buf, { type: "buffer", cellFormula: false });
-    const csv = wb.SheetNames.slice(0, 5).map((n) => `## Hoja ${n}\n${XLSX.utils.sheet_to_csv(wb.Sheets[n]!)}`).join("\n\n").slice(0, 60_000);
-    return [{ type: "text", text: `Archivo ${file.name}:\n${csv}` }];
+    const csv = wb.SheetNames.slice(0, 10).map((n) => `## Hoja ${n}\n${XLSX.utils.sheet_to_csv(wb.Sheets[n]!, { rawNumbers: true })}`).join("\n\n").slice(0, 60_000);
+    return [{ type: "text", text: `Archivo ${file.name} (${wb.SheetNames.length} hojas: ${wb.SheetNames.join(", ")}):\n${csv}` }];
   }
   const b64 = buf.toString("base64");
   if (/\.pdf$/.test(name) || file.type === "application/pdf") {
@@ -61,7 +66,7 @@ export async function extraerReporte(file: File, cliente?: string): Promise<{ fi
   const d = await res.json();
   let j: { filas?: unknown; notas?: unknown } = {};
   try { j = JSON.parse(String(d?.choices?.[0]?.message?.content ?? "{}")); } catch { /* respuesta no JSON → sin filas */ }
-  const r = sanearFilas(j.filas);
+  const r = sanearFilas(j.filas, true);
   return { ...r, notas: String(j.notas ?? "").slice(0, 1000) };
 }
 
