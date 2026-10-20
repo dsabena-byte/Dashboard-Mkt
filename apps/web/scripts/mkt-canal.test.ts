@@ -38,3 +38,10 @@ assert.match(y.errores[0]!, /2023 parece mal leído/);
 console.log("mkt-canal año OK");
 assert.equal(sanearFilas([{ cliente: "Oncity", accion: "Drean", mes: "2026-08", plataforma: "Catálogo Digital On City" }]).filas[0]!.plataforma, "Catálogo");
 console.log("mkt-canal catálogo OK");
+// Al leer un reporte, 3 newsletters del mismo mes se suman en una fila (al guardar sigue siendo error).
+const nl = [59303, 138936, 139177].map((e, i) => ({ cliente: "Naldo", accion: "Cobranding mensual", mes: "2026-07", plataforma: "Email", entregados: e, aperturas: [18406, 65523, 65683][i], clics: [717, 1390, 1007][i], impresiones: null }));
+const s = sanearFilas(nl, true);
+assert.equal(s.filas.length, 1); assert.equal(s.errores.length, 0);
+assert.equal(s.filas[0]!.entregados, 337416); assert.equal(s.filas[0]!.aperturas, 149612); assert.equal(s.filas[0]!.clics, 3114);
+assert.equal(sanearFilas(nl).errores.length, 2);
+console.log("mkt-canal suma OK");

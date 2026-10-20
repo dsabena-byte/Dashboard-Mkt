@@ -18,7 +18,13 @@ GOOGLE = Google, META/FB/IG = Meta, MAIL = Email). Si una hoja no dice campaña 
 mismo archivo (o del nombre del archivo). Si el reporte no dice el año, usá ${new Date().getFullYear()}. Si el período cruza dos meses, asignalo al mes de inicio y avisalo en "notas".
 Columnas: "Views"/"Vistas"/"Impresiones" = impresiones; "Ingresos"/"Revenue" = ingresos. "Session"/"Sesiones" = sesiones. Columnas sin campo (CTR) se ignoran.
 Nunca dejes afuera una hoja con números: si falta un dato (cliente, acción o mes), devolvé la fila igual con ese campo vacío.
-Escribí el nombre del retailer bien (Oncity, no "Onctiy").`;
+Escribí el nombre del retailer bien (Oncity, no "Onctiy").
+PDF de presentación (slides con capturas): leé TODAS las páginas y las capturas, no solo el texto. Tablas por plataforma (GENERAL/GOOGLE/META)
+con una fila por mes: tomá solo los meses con valores distintos de 0 (Inversión = inversion, Impresiones, Clicks = clics, Sesiones,
+Transacciones = conversiones, Revenue = ingresos). Si hay una tabla GENERAL y otra por plataforma con el mismo dato, usá la de la plataforma
+(no la sumes dos veces). Newsletter/mailing: "Total de emails enviados" = entregados, "Aperturas únicas" = aperturas, "Total clicks" = clics,
+impresiones = null; varios newsletters del mismo mes van como filas separadas (se suman solos). Si el reporte no nombra la campaña, usá
+accion = "Cobranding mensual".`;
 
 async function contenido(file: File): Promise<unknown[]> {
   const buf = Buffer.from(await file.arrayBuffer());
