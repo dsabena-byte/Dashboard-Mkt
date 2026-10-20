@@ -16,7 +16,7 @@ const fmt = (v: unknown) => (typeof v === "number" ? v.toLocaleString("es-AR") :
 
 export function SubirReporte() {
   const [abierto, setAbierto] = useState(false);
-  const [archivo, setArchivo] = useState<File | null>(null);
+  const [archivos, setArchivos] = useState<File[]>([]);
   const [cliente, setCliente] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
@@ -25,20 +25,34 @@ export function SubirReporte() {
   const [notas, setNotas] = useState("");
   const [errores, setErrores] = useState<string[]>([]);
 
+  // Un archivo por pedido (cada uno es una lectura de la IA); las filas se juntan y si dos archivos traen la
+  // misma acción·mes·plataforma queda la del último.
   async function leer() {
-    if (!archivo) return;
+    if (!archivos.length) return;
     setOcupado(true); setMsg(null); setFilas(null); setErrores([]);
-    try {
-      const fd = new FormData();
-      fd.append("archivo", archivo);
-      if (cliente.trim()) fd.append("cliente", cliente.trim());
-      const r = await fetch("/api/mkt-canal", { method: "POST", body: fd });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "No se pudo leer el archivo.");
-      setFilas(d.filas); setAntes(d.antes ?? {}); setNotas(d.notas ?? ""); setErrores(d.errores ?? []);
-      if (!d.filas.length) setMsg({ ok: false, t: "La IA no encontró datos para cargar en este archivo." });
-    } catch (e) { setMsg({ ok: false, t: e instanceof Error ? e.message : "Error" }); }
-    finally { setOcupado(false); }
+    const porClave = new Map<string, FilaCanal>();
+    const ant: Record<string, FilaCanal> = {};
+    const notasAll: string[] = [];
+    const errs: string[] = [];
+    for (const [n, archivo] of archivos.entries()) {
+      setMsg({ ok: true, t: `Leyendo ${n + 1} de ${archivos.length}: ${archivo.name}…` });
+      try {
+        const fd = new FormData();
+        fd.append("archivo", archivo);
+        if (cliente.trim()) fd.append("cliente", cliente.trim());
+        const r = await fetch("/api/mkt-canal", { method: "POST", body: fd });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error ?? "No se pudo leer el archivo.");
+        for (const f of d.filas as FilaCanal[]) porClave.set(claveFila(f), f);
+        Object.assign(ant, d.antes ?? {});
+        if (d.notas) notasAll.push(`${archivo.name}: ${d.notas}`);
+        for (const e of d.errores ?? []) errs.push(`${archivo.name} · ${e}`);
+        if (!d.filas.length) errs.push(`${archivo.name}: la IA no encontró datos para cargar.`);
+      } catch (e) { errs.push(`${archivo.name}: ${e instanceof Error ? e.message : "Error"}`); }
+    }
+    setFilas([...porClave.values()]); setAntes(ant); setNotas(notasAll.join(" · ")); setErrores(errs);
+    setMsg(null);
+    setOcupado(false);
   }
 
   async function guardar() {
@@ -49,7 +63,7 @@ export function SubirReporte() {
       const d = await r.json();
       if (!r.ok) { setErrores(d.errores ?? []); throw new Error(d.error ?? "No se pudo guardar."); }
       setMsg({ ok: true, t: `Listo: ${d.nuevas} filas nuevas y ${d.actualizadas} actualizadas. El tablero ya las muestra.` });
-      setFilas(null); setArchivo(null);
+      setFilas(null); setArchivos([]);
       document.querySelector<HTMLIFrameElement>('iframe[title="Mkt Canal Dashboard"]')?.contentWindow?.location.reload();
     } catch (e) { setMsg({ ok: false, t: e instanceof Error ? e.message : "Error" }); }
     finally { setOcupado(false); }
@@ -63,14 +77,14 @@ export function SubirReporte() {
       <summary className="cursor-pointer text-sm font-medium">Subir el reporte de un retailer</summary>
       <div className="mt-3 space-y-3 text-xs">
         <p className="text-muted-foreground">
-          Subí el PDF, la captura o el Excel que te mandó el retailer. La IA lo lee y te muestra lo que entendió; revisá los números,
+          Subí uno o varios PDF, capturas o Excel que te mandó el retailer (hasta 20 juntos). La IA lo lee y te muestra lo que entendió; revisá los números,
           corregí lo que haga falta y tocá <strong>Guardar</strong>. Si una acción ya estaba cargada, se actualiza (no se duplica) y lo que el
           reporte no trae, como la inversión, queda como estaba.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv" onChange={(e) => { setArchivo(e.target.files?.[0] ?? null); setFilas(null); setMsg(null); }} />
+          <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv" onChange={(e) => { setArchivos([...(e.target.files ?? [])].slice(0, 20)); setFilas(null); setMsg(null); }} />
           <input className="w-40 rounded border bg-background px-2 py-1" placeholder="Retailer (opcional)" value={cliente} onChange={(e) => setCliente(e.target.value)} />
-          <button type="button" className={btnPri} disabled={!archivo || ocupado} onClick={leer}>{ocupado && !filas ? "Leyendo… (hasta 1 min)" : "Leer archivo"}</button>
+          <button type="button" className={btnPri} disabled={!archivos.length || ocupado} onClick={leer}>{ocupado && !filas ? "Leyendo…" : archivos.length > 1 ? `Leer ${archivos.length} archivos` : "Leer archivo"}</button>
         </div>
         {msg && <p className={msg.ok ? "text-green-700" : "text-red-600"}>{msg.t}</p>}
         {errores.length > 0 && <ul className="list-disc pl-5 text-amber-700">{errores.map((e) => <li key={e}>{e}</li>)}</ul>}
