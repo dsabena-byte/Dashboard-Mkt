@@ -416,7 +416,7 @@ reporte_existencia/cb_homologos).
   API $10,54M) y agosto (manual sin impresiones). Categoría por nombre de campaña; REACH=Awareness, resto=Consideración. La API rechaza
   rangos >30 días con stat_time_day (se trocea). **Piezas (19-oct):** el mismo cron arma `meta-thumbs/tiktok/index.json` (anuncio × mes +
   portada espejada en `tiktok/<ad_id>.jpg`; Spark Ads → oEmbed del post) y /performance (Eficiencia Medios) lo muestra con PiezaGrid. Ojo al
-  reconectar en BIP: si el navegador tiene sesión de TikTok con el usuario de BIP, autoriza la cuenta "BIP_2ikwy4" y NO Mabe (pasó el 19-oct).
+  reconectar en BIP: si el navegador tiene sesión de TikTok con el usuario de BIP, autoriza la cuenta "BIP_2ikwy4" y NO Mabe (pasó el 19-oct). **21-oct-2026: el cron diario fallaba desde ≥11-oct (faltaban env en Vercel) → el user cargó en Vercel Drean `BIP_NANGO_HOST`, `BIP_NANGO_SECRET_KEY`, `TIKTOK_NANGO_CONNECTION_ID` y `TIKTOK_ADVERTISER_ID` y corrió la migración 0074 (`tiktok_creatives`, con grants). Validado: dry-run OK y backfill days=203 → 5.874 filas desde 2026-04-06 con cuartiles (video completo abr–jul 0,5–0,7%, ago 3,7%, sep 5,4%; 6 s: 1% → 9,5%). NO volver a pedírselo.**
 - **Mkt Canal · subir reporte (20-oct-2026, opción A del user):** arriba del iframe de `/mkt-canal`, "Subir el reporte de un retailer"
   (`components/mkt-canal/subir-reporte.tsx`): PDF/imagen/Excel → `/api/mkt-canal` POST (gpt-4o-mini con visión/PDF, env
   `OPENAI_MKT_CANAL_MODEL`; ~centavos por archivo; **PDF/imágenes = gpt-4o** (env `OPENAI_MKT_CANAL_VISION_MODEL`, ~US$0,05/PDF, 20-oct: mini se salteaba la tabla de Meta del PDF de Naldo); archivos >4 MB suben directo al bucket privado `mkt-canal-uploads`) devuelve filas SIN escribir → el user corrige en la tabla → PUT upsert en
