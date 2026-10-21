@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listAuditoria, listCatalogo, listFacturacion, listLineas, listTc, listVersiones, setCerrada } from "@/lib/presupuesto-server";
+import { listAuditoria, listCatalogo, listFacturacion, listInflacion, listLineas, listTc, listVersiones, setCerrada } from "@/lib/presupuesto-server";
 import { ANIO_MINIMO } from "@/lib/presupuesto-core";
 import { conUsuario, soloEditor } from "./_auth";
 
@@ -14,14 +14,15 @@ export async function GET(req: Request) {
     const sp = new URL(req.url).searchParams;
     const version = sp.get("version") ?? "";
     if (sp.get("historial")) return NextResponse.json({ movimientos: await listAuditoria({ version: version || undefined, limit: 300 }) });
-    const [todas, todosTc, catalogo, todaFact] = await Promise.all([listVersiones(), listTc(), listCatalogo(), listFacturacion()]);
+    const [todas, todosTc, catalogo, todaFact, todaInfl] = await Promise.all([listVersiones(), listTc(), listCatalogo(), listFacturacion(), listInflacion()]);
     const versiones = todas.filter((v) => v.anio >= ANIO_MINIMO);
     const tcs = todosTc.filter((t) => versiones.some((v) => v.nombre === t.version));
     const facturacion = todaFact.filter((f) => Number(f.mes.slice(0, 4)) >= ANIO_MINIMO);
+    const inflacion = todaInfl.filter((f) => Number(f.mes.slice(0, 4)) >= ANIO_MINIMO);
     const lineas = version && versiones.some((v) => v.nombre === version) ? await listLineas(version) : [];
     return NextResponse.json({
       usuario: { email: u.email, editor: u.editor, puedeReal: u.puedeReal },
-      versiones, tcs: tcs.map((t) => ({ ...t, tc: Number(t.tc) })), catalogo, lineas, facturacion,
+      versiones, tcs: tcs.map((t) => ({ ...t, tc: Number(t.tc) })), catalogo, lineas, facturacion, inflacion,
     });
   });
 }
