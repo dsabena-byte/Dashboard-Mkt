@@ -6,7 +6,7 @@ import { getPautaPerformance } from "@/lib/pauta-queries";
 import { getMetaPaidCreatives } from "@/lib/meta-paid-queries";
 import { getDv360Creatives, getDv360Reach } from "@/lib/dv360-queries";
 import { getGoogleAdsOmd } from "@/lib/google-ads-omd-queries";
-import { getFxRates } from "@/lib/fx-queries";
+import { getFxRates } from "@/lib/tc-finanzas";
 import { getDemandaGenerica } from "@/lib/competitive-queries";
 import { buildPautaMediosMensual } from "@/lib/pauta-medios-model";
 import { buildSimModel, simMonthsFromPauta, forecastDemand, type SimModel, type DemandPoint } from "@/lib/simulador";

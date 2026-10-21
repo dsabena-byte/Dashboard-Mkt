@@ -143,11 +143,11 @@ export const FUNC_KNOW: Record<string, KpiKnow> = {
   },
   moneda_montos: {
     name: "Moneda: $ o USD",
-    comoLeer: "<b>$</b> = los montos tal como los informó cada fuente; <b>USD</b> = cada monto dividido por el dólar oficial promedio de su mes (BCRA). Las metas en pesos se convierten igual, así real y meta quedan en la misma moneda.",
+    comoLeer: "<b>$</b> = los montos tal como los informó cada fuente; <b>USD</b> = cada monto dividido por el tipo de cambio REAL de su mes (el que carga finanzas en Inversión de Marketing). Las metas en pesos se convierten igual, así real y meta quedan en la misma moneda.",
     mejorPractica: "Usá $ para leer los montos reales tal cual y USD para compararlos con costos, benchmarks o presupuestos en dólares. Si falta el dólar de un mes se usa el último disponible y se avisa (nunca un cero silencioso). La elección queda en el link (?moneda=).",
     oportunidad: "Mirar la misma serie en $ y en USD ayuda a separar un cambio de inversión de un cambio del tipo de cambio.",
     marco: "Montos en valores reales ($, tal como se informaron) y, cuando hace falta, en dólares. Sin ajustes por inflación.",
-    formula: "USD = monto ÷ dólar oficial promedio del mes",
+    formula: "USD = monto ÷ tipo de cambio REAL del mes (finanzas)",
     funnel: "transversal",
     palancas: [{ accion: "Gobernar el presupuesto", modulo: "presupuesto-marketing" }],
     tipo: "funcion",

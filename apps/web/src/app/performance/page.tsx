@@ -3,7 +3,7 @@ import { getMetaPaidCreatives } from "@/lib/meta-paid-queries";
 import { getDv360Creatives, getDv360Reach } from "@/lib/dv360-queries";
 import { getDv360ThumbMap } from "@/lib/dv360-thumbs";
 import { getTikTokPiezas } from "@/lib/tiktok-piezas-server";
-import { getFxRates } from "@/lib/fx-queries";
+import { getFxRates } from "@/lib/tc-finanzas";
 import { getPlanningMedia } from "@/lib/planning-media-queries";
 import { getGoogleAdsOmd } from "@/lib/google-ads-omd-queries";
 import { getEcommerceInversionMensual } from "@/lib/ecommerce-queries";
@@ -100,7 +100,7 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     safe(maxUpdatedAt("ga4_google_ads_daily", "principal", "updated_at"), null),
     // Inversión ecommerce (Google Ads inhouse, rol Conversión) — componente del funnel.
     safe(getEcommerceInversionMensual(new Date().getFullYear()), Array.from({ length: 12 }, () => null) as (number | null)[]),
-    // Moneda (?moneda=usd; sin param = "$"; "constantes" de links viejos cae a "$"): dólar de indices_macro (0110), fail-safe.
+    // Moneda (?moneda=usd; sin param = "$"; "constantes" de links viejos cae a "$"): TC REAL de finanzas (bgt_tc), fail-safe.
     monedaContext(searchParams?.moneda),
   ]);
   // Conversión server-side ANTES del cliente (portado de BIP): corrientes = mismos objetos.

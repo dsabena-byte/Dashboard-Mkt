@@ -4,8 +4,8 @@
 // al tablero → el cliente (performance-client) NO cambia: recibe los montos ya convertidos y todo lo
 // derivado (CPM, CPC, costo por vista, cuatrimestres, metas) sale en la misma moneda.
 //  · Cada fila se convierte con el factor de SU mes ("Junio 2026" / "2026-06-01" / fecha).
-//  · DV360 viene en USD y el tablero lo pasa a ARS con fx_rates del mes: se aplica el mismo factor
-//    mensual a revenue_usd (el producto conmuta). En "usd": revenue_usd × fx ÷ dólar oficial ≈ USD.
+//  · DV360 viene en USD y el tablero lo pasa a ARS con el TC REAL de finanzas del mes: se aplica el mismo
+//    factor mensual a revenue_usd (el producto conmuta). En "usd": revenue_usd × TC ÷ TC = USD exacto.
 //  · Metas de Inversión (valores[12] del año) con el mismo factor → se comparan en la misma moneda.
 // Default (sin ?moneda) = "$" (corrientes) → devuelve los mismos objetos (cero cambio).
 // ============================================================================

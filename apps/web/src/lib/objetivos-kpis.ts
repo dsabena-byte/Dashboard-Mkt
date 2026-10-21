@@ -12,7 +12,7 @@ import { getPautaPerformance } from "./pauta-queries";
 import { getMetaPaidCreatives } from "./meta-paid-queries";
 import { getDv360Creatives, getDv360Reach } from "./dv360-queries";
 import { getGoogleAdsOmd } from "./google-ads-omd-queries";
-import { getFxRates } from "./fx-queries";
+import { getFxRates } from "./tc-finanzas";
 import { getAllMonthlyUsers } from "./web-queries";
 import { getIgOrganicSummary } from "./meta-ig-queries";
 import { generalPonderado } from "./categorias";

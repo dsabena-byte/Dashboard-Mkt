@@ -3,7 +3,7 @@ import { getPautaPerformance } from "@/lib/pauta-queries";
 import { getMetaPaidCreatives } from "@/lib/meta-paid-queries";
 import { getDv360Creatives } from "@/lib/dv360-queries";
 import { getGoogleAdsOmd } from "@/lib/google-ads-omd-queries";
-import { getFxRates } from "@/lib/fx-queries";
+import { getFxRates } from "@/lib/tc-finanzas";
 import { esMedioApi } from "@/lib/pauta-medios";
 import { labelKey, ymKey, hoyAR, keyIso } from "./util";
 

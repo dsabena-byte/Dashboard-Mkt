@@ -32,9 +32,10 @@ plan OMD ese mes**. Un medio cuenta como "presente" en el modelo si tiene `impre
 `pauta_performance`. OJO: si cargás un medio manual con inversión pero impresiones en 0, puede
 quedar fuera del "presente" y gap-fillearse dos veces — cargá también su performance.
 
-## fx ARS/USD por mes (para DV360)
-Abril 1390 · Mayo 1402 · Junio 1481,5 · Julio 1488 · Agosto 1512. (Confirmar contra `fx_rates` si
-hay un mes nuevo.)
+## Tipo de cambio (para DV360)
+Fuente ÚNICA: el TC REAL de finanzas (`bgt_tc`, versión "REAL <año>", se carga en /funnel → Cargar datos →
+Tipos de cambio). 2026: ene 1444,5 · feb 1408 · mar 1398 · abr 1391,5 · may 1410 · jun 1481,5 · jul 1488 ·
+ago 1512 · sep 1519,5. Mes nuevo sin TC → pedirle a finanzas/user que lo cargue; no usar otra fuente.
 
 ## OOH = dato fijo
 OOH gran formato **no cambia**: es el mismo valor mensual (ej. $10M jun / $35,5M jul). **No lo

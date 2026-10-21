@@ -33,13 +33,13 @@ async function main() {
     rest("dv360_creatives?select=mes,canal,categoria,rol,creative,impresiones,clicks,starts,q50,revenue_usd"),
     rest("dv360_reach?select=mes,canal,line_item,impresiones,reach"),
     rest("ga4_google_ads_daily?select=fecha,campaign_name,campaign_type,cost,impressions,clicks&campaign_name=not.ilike.inhouse*"),
-    rest("fx_rates?select=mes,usd_ars"),
+    rest("bgt_tc?select=version,mes,tc&version=like.REAL*"),
     rest(`kpi_meta_valores?select=mes,valor&plan=eq.${encodeURIComponent("Pauta Mkt")}&kpi=eq.${encodeURIComponent("Inversión")}&categoria=eq.__general__&anio=eq.${anio}`),
     rest(`bgt_marketing?select=presupuesto,mes,ars&cuenta=eq.${encodeURIComponent(BGT_PAUTA_CUENTA)}&anio=eq.${anio}`),
     rest(`ga4_ads_cost_daily?utm_campaign=ilike.inhouse*&fecha=gte.${anio}-01-01&select=fecha,cost`),
     rest("meta_paid_creatives?select=fetched_at&order=fetched_at.desc&limit=1"),
   ]);
-  const fxRates = Object.fromEntries(fx.map((r: any) => [r.mes, Number(r.usd_ars)]));
+  const fxRates = Object.fromEntries(fx.map((r: any) => [`${r.version.slice(5)}-${String(r.mes).padStart(2, "0")}-01`, Number(r.tc)]));
   const canalDe = (t: string | null) => { const s = (t ?? "").toLowerCase(); return s.includes("demand") ? "Google Demand Gen" : s.includes("search") ? "Google Search" : s.includes("performance") ? "Google PMax" : `Google ${t}`; };
   const gagg = new Map<string, any>();
   for (const r of gads) { const k = `${lbl(r.fecha)}|${canalDe(r.campaign_type)}`; const a = gagg.get(k) ?? { mes: lbl(r.fecha), canal: canalDe(r.campaign_type), costo: 0, impresiones: 0, clicks: 0 }; a.costo += Number(r.cost) || 0; a.impresiones += Number(r.impressions) || 0; a.clicks += Number(r.clicks) || 0; gagg.set(k, a); }

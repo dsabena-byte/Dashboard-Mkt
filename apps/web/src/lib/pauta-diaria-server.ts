@@ -8,9 +8,10 @@ import "server-only";
 //    meta_paid_creatives (gasto del mes a la fecha de la última sync). Los totales por mes de Meta salen
 //    SIEMPRE de meta_paid_creatives (fuente de verdad de Pauta Mkt) y alimentan la referencia mensual y la
 //    concentración por campaña (días activos por campaña).
-//  · DV360 (YouTube / Programmatic): SOLO mensual (dv360_creatives.mes); USD→ARS con el fx del mes.
+//  · DV360 (YouTube / Programmatic): SOLO mensual (dv360_creatives.mes); USD→ARS con el TC REAL de finanzas del mes.
 // Todo en $ (la detección compara al medio consigo mismo, no depende de la moneda).
 // ============================================================================
+import { getTcReal } from "@/lib/tc-finanzas";
 import { addDias, mesMas, type SerieMedio, type CampaniaMes, type PautaDiariaData } from "@/lib/pauta-diaria";
 export type { PautaDiariaData } from "@/lib/pauta-diaria";
 
@@ -59,7 +60,8 @@ export async function getPautaDiaria(now = new Date()): Promise<PautaDiariaData>
       `meta_paid_creatives?select=mes,campaign_name,spend,dias_activos,fetched_at&limit=20000`),
     rest<{ mes: string; canal: string; revenue_usd: number | string | null; updated_at: string | null }>(
       `dv360_creatives?select=mes,canal,revenue_usd,updated_at&mes=gte.${desdeRef}&limit=20000`),
-    rest<{ mes: string; usd_ars: number | string }>(`fx_rates?select=mes,usd_ars&order=mes.asc`),
+    // TC REAL de finanzas (bgt_tc), misma fuente que el resto de los tableros.
+    getTcReal().then((rows) => ({ ok: true, rows: rows.filter((r) => r.tc).map((r) => ({ mes: r.mes, usd_ars: r.tc! })) })),
     // Desde cuándo hay dato diario (para la nota de la UI).
     rest<{ fecha: string }>(`google_ads_creatives?select=fecha&campaign_type=in.(SEARCH,DEMAND_GEN)&order=fecha.asc&limit=1`),
     rest<{ fecha: string }>(`meta_paid_daily?select=fecha&order=fecha.asc&limit=1`),
