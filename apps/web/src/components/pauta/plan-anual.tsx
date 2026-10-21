@@ -44,9 +44,9 @@ function Tabla({ titulo, filas, total, pie }: { titulo: string; filas: [string, 
   );
 }
 
-export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, inflOrigen, editor, metasActuales }: {
+export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, inflOrigen, editor, email, metasActuales }: {
   anio: number; inicial: PlanConfig; guardado: { at: string; por: string | null } | null; sinTabla: boolean;
-  refMeses: (PautaMesMedios | null)[]; infl: InflacionMes; inflOrigen: Record<string, string>; editor: boolean; metasActuales: Record<string, (number | null)[]>;
+  refMeses: (PautaMesMedios | null)[]; infl: InflacionMes; inflOrigen: Record<string, string>; editor: boolean; email: string | null; metasActuales: Record<string, (number | null)[]>;
 }) {
   const router = useRouter();
   const [cfg, setCfg] = useState(inicial);
@@ -85,12 +85,12 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
         <div className="flex-1">
           <b>Plan {anio}</b> · {guardado ? `guardado ${new Date(guardado.at).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}${guardado.por ? ` por ${guardado.por}` : ""}` : "todavía no guardado (arranca con el Excel aprobado)"}
           {sucio && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">cambios sin guardar</span>}
-          {ro && <div className="text-xs text-muted-foreground">Solo lectura: lo editan los editores del presupuesto.</div>}
+          {ro && <div className="text-xs text-amber-800">Solo lectura: lo editan los editores del presupuesto{email ? ` (entraste como ${email}, que no está en la lista)` : ""}.</div>}
           {sinTabla && <div className="text-xs text-red-600">Falta la tabla plan_medios_anual: corré 0129_plan_medios_anual.sql en el SQL Editor de Supabase.</div>}
         </div>
         {editor && <>
           <button type="button" disabled={!sucio || ocupado} onClick={() => { setCfg(JSON.parse(base) as PlanConfig); setMsg(null); }} className="rounded-md border px-3 py-1.5 text-xs disabled:opacity-50">Descartar cambios</button>
-          <button type="button" disabled={!sucio || ocupado} onClick={() => void enviar("PUT")} className="rounded-md bg-[#1e40af] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">Guardar plan</button>
+          <button type="button" disabled={(!sucio && !!guardado) || ocupado} title={!sucio && guardado ? "No hay cambios para guardar" : undefined} onClick={() => void enviar("PUT")} className="rounded-md bg-[#1e40af] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">{ocupado ? "Guardando…" : "Guardar plan"}</button>
         </>}
       </div>
       {msg && <p className={`text-sm ${msg.ok ? "text-emerald-700" : "text-red-600"}`}>{msg.t}</p>}
@@ -109,7 +109,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
               {cfg.bgt.map((v, i) => <td key={i} className="px-1 py-1"><Num v={v / 1e6} disabled={ro} on={(n) => setCfg((c) => ({ ...c, bgt: setArr(c.bgt, i, n * 1e6) }))} /></td>)}
               <td className={`${td} font-semibold`}>{M(cfg.bgt.reduce((s, v) => s + v, 0))}</td>
             </tr>
-            <tr className="border-t text-muted-foreground"><td className="px-2 py-1">Inflación % (usada)</td>{MES.map((_, i) => { const k = `${anio}-${String(i + 1).padStart(2, "0")}`; return <td key={k} className={td} title={inflOrigen[k] ?? "sin dato"}>{infl[k] != null ? infl[k]!.toLocaleString("es-AR") : "—"}<div className="text-[9px]">{inflOrigen[k]?.split(" ")[0] ?? ""}</div></td>; })}<td /></tr></tbody>
+            <tr className="border-t text-muted-foreground"><td className="px-2 py-1">Inflación % (usada)</td>{MES.map((_, i) => { const k = `${anio}-${String(i + 1).padStart(2, "0")}`; return <td key={k} className={td} title={inflOrigen[k] ?? "sin dato"}>{infl[k] != null ? infl[k]!.toLocaleString("es-AR") : "—"}<div className="text-[9px]">{inflOrigen[k]?.split(" ")[0] ?? ""}</div></td>; })}<td className={td} title="Acumulada del año (compuesta)">{(() => { const v = MES.map((_, i) => infl[`${anio}-${String(i + 1).padStart(2, "0")}`]); return v.every((x) => x == null) ? "—" : `${((v.reduce<number>((f, x) => f * (1 + (x ?? 0) / 100), 1) - 1) * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}% acum.`; })()}</td></tr></tbody>
           </table>
         </div>
         <p className="text-[11px] text-muted-foreground">Inflación: la REAL (INDEC) si ya salió; si no, la del presupuesto más reciente del año (8+4, 4+8 o BGT). Se carga en Inversión de Marketing → Cargar datos → Inflación.</p>
@@ -184,6 +184,13 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
                   </Fragment>
                 );
               })}
+              <tr className="border-t bg-muted/30 font-semibold">
+                <td className="px-2 py-1">Total</td><td />
+                <td className={td} title="Σ pesos de los digitales · Σ % anual de las olas">{(() => { const c = cfg.medios.filter((m) => m.reparto === "curva").reduce((t, m) => t + m.peso, 0), o = cfg.medios.filter((m) => m.reparto === "olas").reduce((t, m) => t + m.peso, 0); return `${c.toLocaleString("es-AR")} · ${o.toLocaleString("es-AR")}%`; })()}</td>
+                <td className={td}>{M(cfg.medios.filter((m) => m.reparto === "fijo").reduce((t, m) => t + m.costoEnero, 0))}</td>
+                {PLAN_ROLES.map((x) => <td key={x} className={td} title="% del plan anual">{pct((r.inversion.objetivos[x] ?? []).reduce((a, b) => a + b, 0), tAnual)}</td>)}
+                <td /><td className={td}>{M(tAnual)}</td><td className={td}>100%</td><td />
+              </tr>
             </tbody>
           </table>
         </div>
@@ -201,14 +208,16 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
         <h3 className="text-base font-semibold">3. Mix por categoría (% del mes, para los medios en &ldquo;mix&rdquo;)</h3>
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[900px] text-xs" data-noexcel>
-            <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Categoría</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}</tr></thead>
+            <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Categoría</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th} title="Promedio simple de los 12 meses">Prom.</th><th className={th} title="% del plan total en la categoría (con OOH, TV y radio)">% plan</th></tr></thead>
             <tbody>
               {PLAN_CATS.map((c) => (
                 <tr key={c} className="border-t"><td className="px-2 py-1">{c}</td>
                   {(cfg.mix[c] ?? []).map((v, i) => <td key={i} className="px-1 py-1"><Num v={v} disabled={ro} on={(n) => setCfg((x) => ({ ...x, mix: { ...x.mix, [c]: setArr(x.mix[c] ?? Array(12).fill(0), i, n) } }))} /></td>)}
+                  <td className={td}>{((cfg.mix[c] ?? []).reduce((a, b) => a + b, 0) / 12).toFixed(1)}%</td>
+                  <td className={`${td} font-medium`}>{pct((r.inversion.categorias[c] ?? []).reduce((a, b) => a + b, 0), tAnual)}</td>
                 </tr>
               ))}
-              <tr className="border-t bg-muted/30"><td className="px-2 py-1 font-medium">Suma</td>{MES.map((_, i) => { const s = PLAN_CATS.reduce((t, c) => t + (cfg.mix[c]?.[i] ?? 0), 0); return <td key={i} className={`${td} ${Math.abs(s - 100) > 0.5 ? "text-red-600" : ""}`}>{s.toFixed(0)}%</td>; })}</tr>
+              <tr className="border-t bg-muted/30"><td className="px-2 py-1 font-medium">Suma</td>{MES.map((_, i) => { const s = PLAN_CATS.reduce((t, c) => t + (cfg.mix[c]?.[i] ?? 0), 0); return <td key={i} className={`${td} ${Math.abs(s - 100) > 0.5 ? "text-red-600" : ""}`}>{s.toFixed(0)}%</td>; })}<td className={td}>{(PLAN_CATS.reduce((t, c) => t + (cfg.mix[c] ?? []).reduce((a, b) => a + b, 0), 0) / 12).toFixed(0)}%</td><td className={td}>100%</td></tr>
             </tbody>
           </table>
         </div>
@@ -254,19 +263,34 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
                   </tr>
                 );
               })}
+              {(() => {
+                const t = r.impactos.total.reduce((a, x) => ({ impr: a.impr + x.impr, alc: a.alc + x.alc, clic: a.clic + x.clic, v50: a.v50 + x.v50, vbase: a.vbase + x.vbase }), { impr: 0, alc: 0, clic: 0, v50: 0, vbase: 0 });
+                const invMedido = cfg.medios.filter((m) => r.impactos.porMedio[m.medio]).reduce((s, m) => s + (r.inversion.montos[m.medio] ?? []).reduce((a, b) => a + b, 0), 0);
+                return (
+                  <tr className="border-t bg-muted/30 font-semibold"><td className="px-2 py-1">Total</td><td className={td}>{M(tAnual)}</td><td className={td}>{cant(t.impr)}</td><td className={td}>{cant(t.alc)}</td><td className={td}>{cant(t.clic)}</td><td className={td}>{cant(t.v50)}</td>
+                    <td className={td}>{t.vbase > 0 ? `${((t.v50 / t.vbase) * 100).toFixed(1)}%` : "—"}</td>
+                    <td className={td} title="Solo la inversión de los medios con medición">{t.impr > 0 ? `$${Math.round((invMedido / t.impr) * 1000).toLocaleString("es-AR")}` : "—"}</td>
+                    <td className="px-2 py-1 text-[10px] font-normal text-muted-foreground">frec. {t.alc > 0 ? (t.impr / t.alc).toFixed(1) : "—"}</td></tr>
+                );
+              })()}
             </tbody>
           </table>
         </div>
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[900px] text-xs">
-            <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">KPI · plan vs meta cargada hoy</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}</tr></thead>
+            <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">KPI · plan vs meta cargada hoy</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th} title="Volúmenes: suma del año · Frecuencia y VTR: promedio de los meses con dato">Año</th></tr></thead>
             <tbody>
-              {PLAN_META_KPIS.map((k) => (
-                <Fragment key={k}>
-                  <tr className="border-t"><td className="px-2 py-1 font-medium">{k} · plan</td>{r.metas[k].map((v, i) => <td key={i} className={td}>{k === "Inversión" ? (v ? M(v) : "—") : k === "Frecuencia" ? (v ?? "—") : k === "VTR (≥50%)" ? (v != null ? `${v}%` : "—") : cant(v)}</td>)}</tr>
-                  <tr className="text-muted-foreground"><td className="px-2 pb-1 pl-4">meta actual</td>{(metasActuales[k] ?? []).map((v, i) => <td key={i} className={`${td} pb-1`}>{k === "Inversión" ? (v ? M(v) : "—") : k === "Frecuencia" ? (v ?? "—") : k === "VTR (≥50%)" ? (v != null ? `${v}%` : "—") : cant(v)}</td>)}</tr>
-                </Fragment>
-              ))}
+              {PLAN_META_KPIS.map((k) => {
+                const f = (v: number | null | undefined) => (k === "Inversión" ? (v ? M(v) : "—") : k === "Frecuencia" ? (v != null ? v.toLocaleString("es-AR", { maximumFractionDigits: 1 }) : "—") : k === "VTR (≥50%)" ? (v != null ? `${v.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%` : "—") : cant(v));
+                const tasa = k === "Frecuencia" || k === "VTR (≥50%)";
+                const anual = (a: (number | null)[]) => { const v = a.filter((x): x is number => x != null); return !v.length ? null : tasa ? v.reduce((s, x) => s + x, 0) / v.length : v.reduce((s, x) => s + x, 0); };
+                return (
+                  <Fragment key={k}>
+                    <tr className="border-t"><td className="px-2 py-1 font-medium">{k} · plan</td>{r.metas[k].map((v, i) => <td key={i} className={td}>{f(v)}</td>)}<td className={`${td} font-semibold`}>{f(anual(r.metas[k]))}</td></tr>
+                    <tr className="text-muted-foreground"><td className="px-2 pb-1 pl-4">meta actual</td>{(metasActuales[k] ?? []).map((v, i) => <td key={i} className={`${td} pb-1`}>{f(v)}</td>)}<td className={`${td} pb-1`}>{f(anual(metasActuales[k] ?? []))}</td></tr>
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
