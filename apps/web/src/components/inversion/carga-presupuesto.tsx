@@ -102,6 +102,7 @@ export function CargaPresupuesto() {
         <PorVersion datos={datosUI} onCambio={recargar} endpoint="/api/presupuesto/tc" campo="tc" tipos={["BGT", "4+8", "8+4"]}
           valores={datosUI.tcs.map((t) => ({ version: t.version, mes: t.mes, v: t.tc }))}
           fmt={(n) => n.toLocaleString("es-AR", { maximumFractionDigits: 2 })} parse={parseMonto} valido={(v) => v > 0} ejemplo="1.522,50"
+          resumen={{ label: "Prom.", calc: (v) => v.reduce((a, b) => a + b, 0) / v.length }}
           intro="Pesos por dólar de cada presupuesto y mes (los pasa finanzas). Los dólares = pesos ÷ este valor." />
       )}
       {seccion === "facturacion" && (
@@ -114,6 +115,7 @@ export function CargaPresupuesto() {
         <PorVersion datos={datosUI} onCambio={recargar} endpoint="/api/presupuesto/inflacion" campo="pct" tipos={["BGT", "4+8", "8+4", "REAL"]}
           valores={(datosUI.inflacion ?? []).map((f) => ({ version: f.version, mes: f.mes, v: f.pct }))}
           fmt={(n) => `${n.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`} parse={parsePct} valido={(v) => v > -50 && v < 100} ejemplo="2,0"
+          resumen={{ label: "Acum.", calc: (v) => (v.reduce((f, x) => f * (1 + x / 100), 1) - 1) * 100 }}
           intro="Inflación mensual en % de cada presupuesto (BGT, 4+8, 8+4) y la REAL, para compararlas. La REAL la carga sola el INDEC cuando publica (IPC nivel general nacional). Sirve para planificar (ej. ajustes de OOH en el Plan de Medios anual); no corrige montos de los tableros." />
       )}
       {seccion === "historial" && <Historial versiones={datos.versiones} />}
@@ -551,9 +553,10 @@ function CargarPresupuesto({ datos, onCambio }: { datos: Datos; onCambio: () => 
 
 // ======================================================================= Tipos de cambio
 /** Grilla presupuesto × mes de un valor por versión (tipo de cambio, inflación). Solo editores, con historial. */
-function PorVersion({ datos, onCambio, endpoint, campo, tipos, valores, fmt: fmtV, parse, valido, ejemplo, intro }: {
+function PorVersion({ datos, onCambio, endpoint, campo, tipos, valores, fmt: fmtV, parse, valido, ejemplo, intro, resumen }: {
   datos: Datos; onCambio: () => Promise<void>; endpoint: string; campo: string; tipos: string[]; valores: { version: string; mes: number; v: number }[];
   fmt: (n: number) => string; parse: (t: string) => number | null; valido: (v: number) => boolean; ejemplo: string; intro: string;
+  resumen: { label: string; calc: (v: number[]) => number }; // columna final del año (prom. del TC, inflación acumulada)
 }) {
   const editor = datos.usuario.editor;
   const base = useMemo(() => new Map(valores.map((t) => [`${t.version}|${t.mes}`, t.v])), [valores]);
@@ -621,11 +624,12 @@ function PorVersion({ datos, onCambio, endpoint, campo, tipos, valores, fmt: fmt
       )}
       <div className="rounded-lg border">
         <table className="w-full table-fixed text-xs">
-          <colgroup><col style={{ width: "12%" }} />{MESES.map((m) => <col key={m} />)}{editor && <col style={{ width: "9%" }} />}</colgroup>
+          <colgroup><col style={{ width: "12%" }} />{MESES.map((m) => <col key={m} />)}<col style={{ width: "7%" }} />{editor && <col style={{ width: "9%" }} />}</colgroup>
           <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-2 py-2 text-left">Presupuesto</th>
               {MES_CAP.map((m) => <th key={m} className="px-1 py-2 text-center">{m.slice(0, 3)}</th>)}
+              <th className="px-1 py-2 text-center">{resumen.label}</th>
               {editor && <th />}
             </tr>
           </thead>
@@ -642,6 +646,7 @@ function PorVersion({ datos, onCambio, endpoint, campo, tipos, valores, fmt: fmt
                         : <span className={base.get(`${n}|${i + 1}`) == null ? "text-muted-foreground/50" : ""}>{fmt(base.get(`${n}|${i + 1}`))}</span>}
                     </td>
                   ))}
+                  <td className="px-1 py-1.5 text-center font-semibold tabular-nums">{(() => { const v = MESES.map((_, i) => base.get(`${n}|${i + 1}`)).filter((x): x is number => x != null); return v.length ? fmt(resumen.calc(v)) : "—"; })()}</td>
                   {editor && (
                     <td className="whitespace-nowrap px-1 py-1.5 text-right">
                       {enEdicion ? (

@@ -62,6 +62,7 @@ export default async function PlanAnualPage({ searchParams }: { searchParams?: {
         infl={infl}
         inflOrigen={origen}
         editor={!!usuario?.editor}
+        email={usuario?.email ?? null}
         metasActuales={Object.fromEntries(PLAN_META_KPIS.map((k, i) => [k, metasActuales[i]!]))}
       />
       <MetaPanel
