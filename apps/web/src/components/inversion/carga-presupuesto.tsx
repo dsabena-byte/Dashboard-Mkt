@@ -10,8 +10,8 @@ import {
 // Cargar presupuesto (BGT/4+8/8+4 entero por planilla, solo editores) · Tipos de cambio · Historial. Todo pasa por
 // /api/presupuesto y queda en el historial.
 
-type Seccion = "real" | "presupuesto" | "tc" | "facturacion" | "historial";
-interface Datos { usuario: { email: string; editor: boolean; puedeReal: boolean }; versiones: Version[]; tcs: Tc[]; catalogo: ItemCatalogo[]; lineas: Linea[]; facturacion?: { mes: string; facturacion: number }[] }
+type Seccion = "real" | "presupuesto" | "tc" | "facturacion" | "inflacion" | "historial";
+interface Datos { usuario: { email: string; editor: boolean; puedeReal: boolean }; versiones: Version[]; tcs: Tc[]; catalogo: ItemCatalogo[]; lineas: Linea[]; facturacion?: { mes: string; facturacion: number }[]; inflacion?: { mes: string; pct: number }[] }
 interface Movimiento { id: number; at: string; usuario: string | null; entidad: string; accion: string; version: string | null; clave: string | null; antes: Record<string, unknown> | null; despues: Record<string, unknown> | null }
 
 const selectCls = "rounded-lg border bg-card px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30";
@@ -75,6 +75,7 @@ export function CargaPresupuesto() {
     ...(editor ? [{ key: "presupuesto" as const, label: "Cargar presupuesto" }] : []),
     { key: "tc", label: "Tipos de cambio" },
     { key: "facturacion", label: "Facturación" },
+    { key: "inflacion", label: "Inflación" },
     { key: "historial", label: "Historial de cambios" },
   ];
 
@@ -98,7 +99,18 @@ export function CargaPresupuesto() {
       )}
       {seccion === "presupuesto" && editor && <CargarPresupuesto datos={datosUI} onCambio={recargar} />}
       {seccion === "tc" && <TiposDeCambio datos={datosUI} onCambio={recargar} />}
-      {seccion === "facturacion" && <FacturacionMensual datos={datosUI} onCambio={recargar} />}
+      {seccion === "facturacion" && (
+        <GrillaMensual editor={datosUI.usuario.editor} onCambio={recargar} endpoint="/api/presupuesto/facturacion" campo="facturacion"
+          valores={(datosUI.facturacion ?? []).map((f) => ({ mes: f.mes, v: f.facturacion }))} etiquetaAnio="Año (USD)" vacio="Todavía no hay facturación cargada."
+          fmt={(n) => Math.round(n).toLocaleString("es-AR")} parse={parseMonto} valido={(v) => v > 0} ejemplo="17.603.000"
+          intro={<>Facturación real de la empresa por mes, en <b>dólares</b>. La usa el indicador Inversión / Facturación del tablero.</>} />
+      )}
+      {seccion === "inflacion" && (
+        <GrillaMensual editor={datosUI.usuario.editor} onCambio={recargar} endpoint="/api/presupuesto/inflacion" campo="pct"
+          valores={(datosUI.inflacion ?? []).map((f) => ({ mes: f.mes, v: f.pct }))} etiquetaAnio="Año (%)" vacio="Todavía no hay inflación cargada."
+          fmt={(n) => `${n.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`} parse={parsePct} valido={(v) => v > -50 && v < 100} ejemplo="2,0"
+          intro={<>Inflación mensual en <b>%</b> (ej. 2,0). Sirve para planificar el presupuesto, por ejemplo los ajustes de tarifas de OOH. No se usa para corregir montos de los tableros.</>} />
+      )}
       {seccion === "historial" && <Historial versiones={datos.versiones} />}
     </div>
   );
@@ -649,11 +661,14 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
   );
 }
 
-// ======================================================================= Facturación
-/** Facturación mensual de la empresa en USD (tabla facturacion_mensual): la usa el indicador Inv/Fact del tablero. Misma grilla que TC. */
-function FacturacionMensual({ datos, onCambio }: { datos: Datos; onCambio: () => Promise<void> }) {
-  const editor = datos.usuario.editor;
-  const base = useMemo(() => new Map((datos.facturacion ?? []).map((f) => [f.mes.slice(0, 7), f.facturacion])), [datos.facturacion]);
+// ======================================================================= Facturación / Inflación
+/** Grilla año × mes de un valor mensual (facturación USD, inflación %). Misma grilla que TC; solo editores, con historial. */
+const parsePct = (t: string): number | null => { const v = Number(t.replace("%", "").trim().replace(",", ".")); return Number.isFinite(v) ? v : null; };
+function GrillaMensual({ editor, onCambio, endpoint, campo, valores, etiquetaAnio, vacio, fmt: fmtV, parse, valido, ejemplo, intro }: {
+  editor: boolean; onCambio: () => Promise<void>; endpoint: string; campo: string; valores: { mes: string; v: number }[];
+  etiquetaAnio: string; vacio: string; fmt: (n: number) => string; parse: (t: string) => number | null; valido: (v: number) => boolean; ejemplo: string; intro: React.ReactNode;
+}) {
+  const base = useMemo(() => new Map(valores.map((f) => [f.mes.slice(0, 7), f.v])), [valores]);
   const hoy = new Date().getFullYear();
   const [extra, setExtra] = useState<number[]>([]);
   const [nuevoAnio, setNuevoAnio] = useState(hoy);
@@ -663,7 +678,7 @@ function FacturacionMensual({ datos, onCambio }: { datos: Datos; onCambio: () =>
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const k = (a: number, m: number) => `${a}-${String(m).padStart(2, "0")}`;
-  const fmt = (n: number | undefined) => (n == null ? "—" : Math.round(n).toLocaleString("es-AR"));
+  const fmt = (n: number | undefined) => (n == null ? "—" : fmtV(n));
 
   function editar(a: number) {
     setFila(a); setMsg(null);
@@ -673,12 +688,12 @@ function FacturacionMensual({ datos, onCambio }: { datos: Datos; onCambio: () =>
     if (fila == null) return;
     const cambios = MESES.map((_, i) => {
       const t = (edit[i + 1] ?? "").trim();
-      const v = t ? parseMonto(t) : null;
-      return { mes: `${k(fila, i + 1)}-01`, facturacion: v, invalido: t !== "" && (v == null || v <= 0) };
+      const v = t ? parse(t) : null;
+      return { mes: `${k(fila, i + 1)}-01`, [campo]: v, invalido: t !== "" && (v == null || !valido(v)) };
     });
-    if (cambios.some((c) => c.invalido)) { setMsg("Hay valores que no son números válidos (ej. 17.603.000)."); return; }
+    if (cambios.some((c) => c.invalido)) { setMsg(`Hay valores que no son números válidos (ej. ${ejemplo}).`); return; }
     setGuardando(true); setMsg(null);
-    const r = await api("/api/presupuesto/facturacion", { method: "PUT", body: JSON.stringify({ cambios: cambios.map(({ invalido: _i, ...c }) => c) }) });
+    const r = await api(endpoint, { method: "PUT", body: JSON.stringify({ cambios: cambios.map(({ invalido: _i, ...c }) => c) }) });
     setGuardando(false);
     if (!r.ok) { setMsg(r.data.error ?? "No se pudo guardar."); return; }
     setFila(null);
@@ -688,7 +703,7 @@ function FacturacionMensual({ datos, onCambio }: { datos: Datos; onCambio: () =>
   return (
     <section className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Facturación real de la empresa por mes, en <b>dólares</b>. La usa el indicador Inversión / Facturación del tablero.
+        {intro}
         {editor ? " Para cargar o cambiar, tocá ✎ al final de la fila." : " Solo los editores del presupuesto pueden cambiarla."}
       </p>
       {editor && (
@@ -707,7 +722,7 @@ function FacturacionMensual({ datos, onCambio }: { datos: Datos; onCambio: () =>
           <colgroup><col style={{ width: "8%" }} />{MESES.map((m) => <col key={m} />)}{editor && <col style={{ width: "7%" }} />}</colgroup>
           <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-2 py-2 text-left">Año (USD)</th>
+              <th className="px-2 py-2 text-left">{etiquetaAnio}</th>
               {MES_CAP.map((m) => <th key={m} className="px-1 py-2 text-center">{m.slice(0, 3)}</th>)}
               {editor && <th />}
             </tr>
@@ -740,7 +755,7 @@ function FacturacionMensual({ datos, onCambio }: { datos: Datos; onCambio: () =>
                 </tr>
               );
             })}
-            {!anios.length && <tr><td colSpan={14} className="px-2 py-6 text-center text-muted-foreground">Todavía no hay facturación cargada.</td></tr>}
+            {!anios.length && <tr><td colSpan={14} className="px-2 py-6 text-center text-muted-foreground">{vacio}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -753,13 +768,13 @@ function FacturacionMensual({ datos, onCambio }: { datos: Datos; onCambio: () =>
 const CAMPO_TXT: Record<string, string> = {
   version: "presupuesto", mes: "mes", ceco: "CECO", cuenta: "cuenta", nombre_cta: "nombre cta", concepto: "concepto", nro_proveedor: "nro proveedor",
   proveedor: "proveedor", detalle: "detalle", solped: "Solped", oc: "OC", nro_recepcion: "recepción", nro_doc_contable: "doc. contable",
-  fecha_contabilizacion: "fecha contab.", factura: "factura", provision: "provisión", ars: "$", tc: "tipo de cambio", facturacion: "facturación US$", cerrada: "cerrada",
+  fecha_contabilizacion: "fecha contab.", factura: "factura", provision: "provisión", ars: "$", tc: "tipo de cambio", facturacion: "facturación US$", inflacion: "inflación %", cerrada: "cerrada",
   total_ars: "total $", renglones: "renglones", tipo: "tipo", anio: "año",
 };
 const valTxt = (k: string, v: unknown) => (v == null || v === "" ? "—" : k === "ars" || k === "total_ars" ? ars(Number(v)) : k === "mes" ? MES_CAP[Number(v) - 1] ?? String(v) : String(v));
 
 function describir(m: Movimiento): string {
-  const que = m.entidad === "linea" ? "renglón" : m.entidad === "facturacion" ? `facturación ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "tc" ? `tipo de cambio ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "importacion" ? "importación de la planilla" : "presupuesto";
+  const que = m.entidad === "linea" ? "renglón" : m.entidad === "facturacion" ? `facturación ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "inflacion" ? `inflación ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "tc" ? `tipo de cambio ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "importacion" ? "importación de la planilla" : "presupuesto";
   const acc: Record<string, string> = { alta: "Alta de", cambio: "Cambio en", baja: "Baja de", importacion: "", cierre: "Cierre del", apertura: "Reapertura del" };
   return `${acc[m.accion] ?? m.accion} ${que}`.trim();
 }

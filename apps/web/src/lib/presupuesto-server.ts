@@ -156,6 +156,34 @@ export async function guardarFacturacion(cambios: { mes: string; facturacion: nu
   return reales.length;
 }
 
+// ---------- inflación mensual (tabla inflacion_mensual, migración 0128; % del mes) ----------
+const MIGRACION_INFLACION = "Falta la tabla inflacion_mensual: corré 0128_inflacion_mensual.sql en el SQL Editor de Supabase";
+export interface Inflacion { mes: string; pct: number } // mes = YYYY-MM-01
+export async function listInflacion(): Promise<Inflacion[]> {
+  const res = await sbAdmin("inflacion_mensual?select=mes,pct&order=mes.asc", { method: "GET" });
+  if (!res.ok) return []; // sin la migración 0128
+  return ((await res.json()) as Inflacion[]).map((f) => ({ mes: f.mes.slice(0, 10), pct: Number(f.pct) }));
+}
+/** Guarda (o borra, con pct null) la inflación de cada mes. Cada cambio queda en el historial. */
+export async function guardarInflacion(cambios: { mes: string; pct: number | null }[], usuario: string): Promise<number> {
+  const antes = new Map((await listInflacion()).map((f) => [f.mes, f.pct]));
+  const reales = cambios.filter((c) => (antes.get(c.mes) ?? null) !== c.pct);
+  const upserts = reales.filter((c) => c.pct != null).map((c) => ({ mes: c.mes, pct: c.pct, fuente: `tablero (${usuario})`, updated_at: new Date().toISOString() }));
+  if (upserts.length) {
+    const res = await sbAdmin("inflacion_mensual?on_conflict=mes", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(upserts) });
+    if (!res.ok) await err(res, "No se pudo guardar la inflación", MIGRACION_INFLACION);
+  }
+  for (const c of reales.filter((x) => x.pct == null)) {
+    const res = await sbAdmin(`inflacion_mensual?mes=eq.${c.mes}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    if (!res.ok) await err(res, "No se pudo borrar la inflación", MIGRACION_INFLACION);
+  }
+  await auditar(reales.map((c) => {
+    const a = antes.get(c.mes) ?? null;
+    return { usuario, entidad: "inflacion", accion: a == null ? "alta" : c.pct == null ? "baja" : "cambio", version: `Inflación ${c.mes.slice(0, 4)}`, clave: String(Number(c.mes.slice(5, 7))), antes: a == null ? null : { inflacion: a }, despues: c.pct == null ? null : { inflacion: c.pct } };
+  }));
+  return reales.length;
+}
+
 // ---------- tipos de cambio ----------
 /** Guarda (o borra, con tc null) tipos de cambio. Cada cambio queda en el historial. */
 export async function guardarTcs(cambios: { version: string; mes: number; tc: number | null }[], usuario: string): Promise<number> {

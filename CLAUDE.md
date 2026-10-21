@@ -521,6 +521,7 @@ reporte_existencia/cb_homologos).
 - **Facturación mensual en Cargar datos (16-oct):** pestaña **Facturación** = misma grilla que Tipos de cambio (fila = año, USD, ✎ por
   fila, solo editores, auditada entidad `facturacion`). Escribe `facturacion_mensual` (0049 + **0126**, que crea la tabla/columnas si faltan) vía `/api/presupuesto/facturacion`. La grilla
   muestra lo mismo que el tablero (tabla + `FACTURACION_FALLBACK` del código); guardar una fila pasa a la tabla los meses del fallback.
+- **Inflación mensual (21-oct-2026, pedido del user):** pestaña **Inflación** en `/funnel/carga` (misma grilla que Facturación: fila = año, % por mes, ✎, solo editores, auditada entidad `inflacion`) → tabla `inflacion_mensual` (**migración 0128**, con grants) vía `/api/presupuesto/inflacion`. Componente compartido `GrillaMensual` (facturación + inflación). Es SOLO para planificar el presupuesto (ej. ajuste trimestral de OOH); la regla "sin inflación en los tableros" sigue: NO se usa para deflactar montos.
 - **Sin 2023 (16-oct, user: "info muy vieja"):** `ANIO_MINIMO = 2024` (presupuesto-core) filtra años anteriores en `getBgtData` (tablero,
   chat, señales) y en `/api/presupuesto` (versiones, TC, facturación de la carga). Los datos NO se borran de la base.
 ## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026
