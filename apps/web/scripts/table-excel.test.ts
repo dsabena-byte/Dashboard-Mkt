@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import { valorCelda } from "../src/lib/table-excel";
+
+const n = (s: string) => valorCelda(s)?.n ?? null;
+assert.equal(n("$ 235.832.840"), 235832840);
+assert.equal(n("424.330.094"), 424330094);
+assert.equal(n("1.8"), 1.8);
+assert.equal(n("38.0"), 38);
+assert.equal(n("$ 1.234,5"), 1234.5);
+assert.equal(n("11%"), 0.11);
+assert.equal(n("0.58%"), 0.0058);
+assert.equal(valorCelda("5.98%")?.z, "0.0%");
+assert.equal(n("-12,5%"), -0.125);
+assert.equal(n("(1.000)"), -1000);
+assert.equal(n("2.4x"), 2.4);
+assert.equal(n("—"), null);
+assert.equal(n("Meta"), null);
+assert.equal(n("Ene 2026"), null);
+assert.equal(n(""), null);
+console.log("table-excel OK");
