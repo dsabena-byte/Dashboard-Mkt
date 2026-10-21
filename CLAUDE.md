@@ -875,7 +875,13 @@ reporte_existencia/cb_homologos).
   backup previo de las 19 filas de sep): Diarios Online (La Nación/Clarín/Infobae/iProfesional/El Cronista) $46,59M · Streaming (HBO/Seedtag/EXTE CTV+LG/
   Adsmovil CTV/PML banner) $49,69M · Medios directos (Artear/Adsmovil video/PML rich/EXTE ACE) $24,96M · Geo Mobile (Tap Tap) $5,75M. Reporte vs API sep:
   Meta $62,15M = API al peso; Google Search $9,27M + Demand Gen $9,71M = API al peso; TikTok $16,55M = cargado; DV360 impresiones/clics iguales,
-  plata: API US$26.093 × fx → el dash usa el fx de ago (1512, `fx_rates` sin sep) = $39,45M vs OMD $37,71M (+4,6%; OMD implica ~1445).
+  plata: API US$26.093 × fx → el dash usa el fx de ago (1512, `fx_rates` sin sep) = $39,45M vs OMD $37,71M (+4,6%; OMD implica ~1445). **21-oct (cont.): OOH abr–ago con la performance fija (7.529.150 impr · alcance 1.075.892 · frec 7; regla del user: no cambia nunca);
+  mayo y agosto de medios manuales reemplazados con el reporte OMD (Excel `HISTORICOS TABLA ORIG`, agosto validado contra `Drean_Report_Agosto.pdf`: total
+  digital $253.874.013 = Excel al peso; el PDF trae 2 typos: La Nación $12,285M → es $12,825M, Adsmovil $8,85M → es $8,55M). Mayo: Geo Mobile $8,34M + Mercado
+  Ads $12,42M. Agosto: Mercado Ads $32,90M (incl. Streaming en MELI $19,23M, Brand), Streaming $47,55M (HBO/Seedtag/EXTE+LG/Adsmovil CTV/PML), Diarios Online
+  $22,80M (La Nación/Clarín/Grupo Atlántida), Medios directos $18,05M (Artear/Adsmovil), Geo Mobile $1,90M; se borró la fila Streaming $80,16M sin performance
+  (origen no verificado; backup en el scratchpad de la sesión). Sin tocar: Radio $17M (el PDF dice PNT radio $16M), TV $16M (= PNT TV), PNT YouTube $8M e Infobae
+  PNT $6M (en el PDF, no cargados). Julio Tap Tap queda $9,19M (decisión previa).
 - **Diagnóstico integral de Marketing 2026 (19-oct-2026, `marketing/diagnostico-2026/`):** deck de 84 slides estilo consultora (título conclusivo →
   gráfico → panel "Qué significa / Qué decisión habilita" + confianza), resumen ejecutivo (.md → docx) y anexo Excel (`build-anexo.py`). Reglas del user:
   SOLO resultados reales (sin metas), SIN salud de marca/TOM/SOM/intención/CB/FS, ene–dic en todo gráfico mensual (`*` sin dato, `†` oct parcial),
