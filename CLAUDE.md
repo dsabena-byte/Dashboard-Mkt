@@ -884,7 +884,8 @@ reporte_existencia/cb_homologos).
   PNT $6M (en el PDF, no cargados). Julio Tap Tap queda $9,19M (decisión previa). **21-oct (decisiones del user):** mayo Google = API (se borraron las 6 filas OMD de Google de mayo; API $10,93M = reporte al peso);
   mayo DV360 = detalle del reporte en `pauta_performance` (YouTube $43,52M + Programmatic $12,32M = $55,84M; la API de mayo está truncada en US$1.104);
   Radio ago = $16M (PDF). **Tipo de cambio:** Plan de Medios convierte DV360 con `fx_rates` (abr 1390 · may 1402 · jun 1481,5 · jul 1488 · ago 1512, sin sep) —
-  NO con los TC de /funnel (`bgt_tc`, REAL 2026 sep 1519,5) ni con `indices_macro` (BCRA promedio, sep 1513,77).
+  NO con los TC de /funnel (`bgt_tc`, REAL 2026 sep 1519,5) ni con `indices_macro` (BCRA promedio, sep 1513,77). **21-oct: `fx_rates` alineada a REAL 2026 de finanzas** (abr 1391,5 · may 1410 · sep 1519,5; pedido del user) → al cargar un mes nuevo, usar el
+  TC REAL de `bgt_tc`. Agosto: sumados PNT YouTube $8M (medio TV, tipo_compra "PNT YouTube") e Infobae PNT $6M (Diarios Online Brand, "PNT"), del PDF de agosto.
 - **Diagnóstico integral de Marketing 2026 (19-oct-2026, `marketing/diagnostico-2026/`):** deck de 84 slides estilo consultora (título conclusivo →
   gráfico → panel "Qué significa / Qué decisión habilita" + confianza), resumen ejecutivo (.md → docx) y anexo Excel (`build-anexo.py`). Reglas del user:
   SOLO resultados reales (sin metas), SIN salud de marca/TOM/SOM/intención/CB/FS, ene–dic en todo gráfico mensual (`*` sin dato, `†` oct parcial),
