@@ -774,8 +774,8 @@ const CAMPO_TXT: Record<string, string> = {
 const valTxt = (k: string, v: unknown) => (v == null || v === "" ? "—" : k === "ars" || k === "total_ars" ? ars(Number(v)) : k === "mes" ? MES_CAP[Number(v) - 1] ?? String(v) : String(v));
 
 function describir(m: Movimiento): string {
-  const que = m.entidad === "linea" ? "renglón" : m.entidad === "facturacion" ? `facturación ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "inflacion" ? `inflación ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "tc" ? `tipo de cambio ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "importacion" ? "importación de la planilla" : "presupuesto";
-  const acc: Record<string, string> = { alta: "Alta de", cambio: "Cambio en", baja: "Baja de", importacion: "", cierre: "Cierre del", apertura: "Reapertura del" };
+  const que = m.entidad === "linea" ? "renglón" : m.entidad === "facturacion" ? `facturación ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "inflacion" ? `inflación ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "tc" ? `tipo de cambio ${MES_CAP[Number(m.clave) - 1] ?? ""}` : m.entidad === "importacion" ? "importación de la planilla" : m.entidad === "plan_medios" ? "plan de medios" : "presupuesto";
+  const acc: Record<string, string> = { alta: "Alta de", cambio: "Cambio en", baja: "Baja de", importacion: "", cierre: "Cierre del", apertura: "Reapertura del", metas: "Metas Pauta Mkt desde el" };
   return `${acc[m.accion] ?? m.accion} ${que}`.trim();
 }
 

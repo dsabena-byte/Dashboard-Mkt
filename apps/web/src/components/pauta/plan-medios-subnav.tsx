@@ -3,7 +3,7 @@ import type { Route } from "next";
 
 // Pestañas de Plan de Medios (mismo renglón y estilo que los tabs del Tablero, ámbar = activa):
 // Impacto Campaña · Eficiencia Medios · Diagnóstico e Inteligencia (vistas de /performance, ?tab=) ·
-// Pauta Competencia · Simulador de Presupuesto (rutas propias). El sidebar y `isPathAllowed` matchean
+// Pauta Competencia · Simulador de Presupuesto · Plan anual (rutas propias). El sidebar y `isPathAllowed` matchean
 // por prefijo → quien ve /performance ve las sub-rutas.
 export const PLAN_MEDIOS_TABS = [
   { href: "/performance?tab=impacto", label: "Impacto Campaña" },
@@ -11,9 +11,10 @@ export const PLAN_MEDIOS_TABS = [
   { href: "/performance?tab=diagnostico", label: "Diagnóstico e Inteligencia" },
   { href: "/performance/competencia", label: "Pauta Competencia" },
   { href: "/performance/simulador", label: "Simulador de Presupuesto" },
+  { href: "/performance/plan", label: "Plan anual" },
 ] as const;
 
-export function PlanMediosSubnav({ current }: { current: "/performance/simulador" | "/performance/competencia" }) {
+export function PlanMediosSubnav({ current }: { current: "/performance/simulador" | "/performance/competencia" | "/performance/plan" }) {
   return (
     <nav aria-label="Vistas del Plan de Medios" className="flex flex-wrap gap-1 border-b">
       {PLAN_MEDIOS_TABS.map((t) => {
