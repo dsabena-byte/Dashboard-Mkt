@@ -14,7 +14,7 @@ import { getPautaPerformance } from "@/lib/pauta-queries";
 import { getMetaPaidCreatives, getMetaUgcCreatives } from "@/lib/meta-paid-queries";
 import { getDv360Creatives, getDv360Reach } from "@/lib/dv360-queries";
 import { getGoogleAdsOmd } from "@/lib/google-ads-omd-queries";
-import { getFxRates } from "@/lib/fx-queries";
+import { getFxRates } from "@/lib/tc-finanzas";
 import { getIgOrganicSummary } from "@/lib/meta-ig-queries";
 import { getFbOrganicSummary } from "@/lib/meta-fb-queries";
 import { getSocialPosts, getSocialFollowers, OWN_BRAND, BRAND_LABELS } from "@/lib/social-posts-queries";

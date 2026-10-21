@@ -382,16 +382,15 @@ reporte_existencia/cb_homologos).
 
 ## Mejoras portadas de BIP (27-sep-2026, 5 frentes, PRs #739–#743)
 > Migraciones **0110, 0115–0120** (bundle único idempotente; el user las corre en el SQL Editor). Todo es fail-safe sin ellas
-> (aviso en la UI). Workflows nuevos: `sync-macro.yml` (días 2/16; backfill `desde=2023-01-01`), `competencia-ig.yml` (diario),
+> (aviso en la UI). Workflows nuevos: ~~`sync-macro.yml`~~ (borrado 21-oct, ver "Tipo de cambio"), `competencia-ig.yml` (diario),
 > `seo-audit.yml` (lunes); `llmo-sync` pasa a semanal; `web-cat-agg` suma el paso web-calidad; `alertas.yml` suma tableros-envio.
 - **Estadística + confianza (#742):** `lib/stats/*` (pronóstico, P(meta) 2.000 sims, Shapley, sugerir, validación; mmm/prng) +
   `lib/objetivos-pronostico.ts` → /overview: cierre proyectado + probabilidad por KPI/objetivo/Salud de Marca y "qué explica
   el resultado" (Shapley). `histM` solo pronostica con ≥10 meses (`histParaPronostico`; GA4 2025 tiene hueco jun–oct).
   "Sugerir metas" en MetaPanel (`/api/metas/historia`), "Validar con mis datos" en el Mapa (vs share GfK), marca vs activación
-  60:40 en Eficiencia Medios. **Moneda = solo "$" y "USD" (BCRA). REGLA: SIN inflación/IPC en NINGÚN lado** (28-sep-2026, user: "solo
+  60:40 en Eficiencia Medios. **Moneda = solo "$" y "USD" (TC REAL de finanzas, ver "Tipo de cambio"). REGLA: SIN inflación/IPC en NINGÚN lado** (28-sep-2026, user: "solo
   valores reales en $ y luego USD, nada más, inflación no suma") → no hay pesos constantes ni deflactor: "Validar con mis datos" y
-  el MMM-lite usan $ nominales tal cual. `indices_macro` (0110; columna `ipc` sin uso, NO borrar) + cron `sync-macro` solo bajan el
-  dólar. /performance convierte server-side (`?moneda=usd`; `constantes` de links viejos cae a "$"); /funnel tiene su propio $/USD
+  el MMM-lite usan $ nominales tal cual. `indices_macro` (0110) quedó SIN USO desde el 21-oct (no borrar la tabla). /performance convierte server-side (`?moneda=usd`; `constantes` de links viejos cae a "$"); /funnel tiene su propio $/USD
   (columnas de `bgt_marketing`). Guía 🎓 `moneda_montos`. "Qué hacer ahora" (`lib/recomendacion.ts`) arriba
   del Diagnóstico. `metricas.ts` = catálogo con nombres EXACTOS del Seguimiento. Salud de los datos (`components/data-health.tsx`)
   bajo el título de 6 tableros, misma regla que /monitoreo (cadencias deben coincidir: test `data-health`); NO usar `web_traffic`.
@@ -460,6 +459,17 @@ reporte_existencia/cb_homologos).
   (sumar casos al agregar tools). Pendiente menor: la receta CPM de "Armame el tablero" usa inversión total.
 - **Worktrees de agentes:** usar symlinks a los `node_modules` del checkout principal (con `cp -al` tsc da errores falsos); NO
   commitear el symlink `apps/web/node_modules` (se coló una vez).
+
+## Tipo de cambio = UNA sola fuente: el TC REAL de finanzas (21-oct-2026, pedido del user: "todo tiene que usar la info del TC que cargo yo")
+- **Fuente única:** `bgt_tc` versión **"REAL <año>"** (pesos por dólar por mes), que carga finanzas en `/funnel` → Cargar datos → Tipos de
+  cambio. Lector único `lib/tc-finanzas.ts` (`getTcReal` → `IndiceMes[]`; `getFxRates` → `{"YYYY-MM-01": tc}`), parseo puro
+  `indicesDesdeTc` en `lib/moneda.ts` (test `scripts/moneda.test.ts`). Los TC de BGT/4+8/8+4 son de cada presupuesto y solo los usa /funnel.
+- **Dónde se usa:** (1) DV360 (YouTube + Programmatic) viene en USD de la API → $ con el TC REAL del mes, en Plan de Medios, Seguimiento,
+  señales, simulador, copiloto, "Mis tableros" e inversión diaria; (2) selector **$ / USD** de Plan de Medios: USD = monto ÷ TC REAL del mes;
+  (3) /funnel (cada presupuesto con su TC). Mes sin TC → se usa el último cargado y se avisa en pantalla.
+- **Se borró:** cron/workflow `sync-macro` (dólar BCRA + MEP) y `lib/macro-sync.ts`; `fx_rates` e `indices_macro` quedan en la base SIN USO
+  (no borrarlas). En /monitoreo el proceso "Tipo de cambio REAL (finanzas)" (`bgt_tc`, carga manual, ~1x/mes) reemplazó a "Índices macro".
+- OMD factura DV360 con su propio cambio (sep-26 implícito ~1445) → DV360 en el tablero puede diferir ±5% del reporte OMD; es esperable.
 
 ## Presupuesto cargado desde el tablero (16-oct-2026, pedido del user: "dejar el Excel de SharePoint")
 - **Reglas del user:** todo gasto es en **pesos**; los USD NO se cargan ni se toman de la planilla: **USD = $ ÷ tipo de cambio de
@@ -883,9 +893,7 @@ reporte_existencia/cb_homologos).
   (origen no verificado; backup en el scratchpad de la sesión). Sin tocar: Radio $17M (el PDF dice PNT radio $16M), TV $16M (= PNT TV), PNT YouTube $8M e Infobae
   PNT $6M (en el PDF, no cargados). Julio Tap Tap queda $9,19M (decisión previa). **21-oct (decisiones del user):** mayo Google = API (se borraron las 6 filas OMD de Google de mayo; API $10,93M = reporte al peso);
   mayo DV360 = detalle del reporte en `pauta_performance` (YouTube $43,52M + Programmatic $12,32M = $55,84M; la API de mayo está truncada en US$1.104);
-  Radio ago = $16M (PDF). **Tipo de cambio:** Plan de Medios convierte DV360 con `fx_rates` (abr 1390 · may 1402 · jun 1481,5 · jul 1488 · ago 1512, sin sep) —
-  NO con los TC de /funnel (`bgt_tc`, REAL 2026 sep 1519,5) ni con `indices_macro` (BCRA promedio, sep 1513,77). **21-oct: `fx_rates` alineada a REAL 2026 de finanzas** (abr 1391,5 · may 1410 · sep 1519,5; pedido del user) → al cargar un mes nuevo, usar el
-  TC REAL de `bgt_tc`. Agosto: sumados PNT YouTube $8M (medio TV, tipo_compra "PNT YouTube") e Infobae PNT $6M (Diarios Online Brand, "PNT"), del PDF de agosto.
+  Radio ago = $16M (PDF). Agosto: sumados PNT YouTube $8M (medio TV, tipo_compra "PNT YouTube") e Infobae PNT $6M (Diarios Online Brand, "PNT"), del PDF de agosto.
 - **Diagnóstico integral de Marketing 2026 (19-oct-2026, `marketing/diagnostico-2026/`):** deck de 84 slides estilo consultora (título conclusivo →
   gráfico → panel "Qué significa / Qué decisión habilita" + confianza), resumen ejecutivo (.md → docx) y anexo Excel (`build-anexo.py`). Reglas del user:
   SOLO resultados reales (sin metas), SIN salud de marca/TOM/SOM/intención/CB/FS, ene–dic en todo gráfico mensual (`*` sin dato, `†` oct parcial),

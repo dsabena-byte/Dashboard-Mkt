@@ -1,11 +1,8 @@
-// Test de moneda (lib/moneda.ts + lib/moneda-pauta.ts; portado de BIP sep-2026, pauta adaptada a Drean): parsers del dólar con
-// FIXTURES SINTÉTICAS (mismo formato que las APIs; los números son inventados, no son datos reales),
+// Test de moneda (lib/moneda.ts + lib/moneda-pauta.ts; portado de BIP sep-2026, pauta adaptada a Drean): TC REAL de finanzas,
 // conversión $/USD (sin ajuste por inflación desde 28-sep-2026), fallback al último dólar disponible y metas.
 // Correr: cd apps/web && npx tsx scripts/moneda.test.ts   (sin red ni Supabase)
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import {
-  parseMoneda, parseBcraCotizaciones, parseArgentinaDatos, promedioMensual, mergeIndices,
+  parseMoneda, indicesDesdeTc,
   buildIndices, resolverContexto, convertir, convertirSerie12, factorPeriodo, mesesEntre, avisoFaltantes, mesLabel, monedaLabel, normMes,
 } from "../src/lib/moneda";
 import { mesDeLabel, convertirFilas, convertir12, convertirPorMes, factorFila, type ConvCollector } from "../src/lib/moneda-pauta";
@@ -13,7 +10,6 @@ import { mesDeLabel, convertirFilas, convertir12, convertirPorMes, factorFila, t
 let pass = 0, fail = 0;
 function ok(cond: unknown, msg: string) { if (cond) pass++; else { fail++; console.error("  ✗", msg); } }
 const near = (a: number | null | undefined, b: number, eps = 1e-6) => a != null && Math.abs(a - b) <= eps * Math.max(1, Math.abs(b));
-const fx = (f: string) => JSON.parse(readFileSync(join(__dirname, "fixtures", f), "utf8"));
 
 // ── parseMoneda / helpers ──
 ok(parseMoneda(undefined) === "corrientes", "default corrientes");
@@ -22,25 +18,19 @@ ok(normMes("2026-08-01") === "2026-08" && normMes("2026-13") === null && normMes
 ok(mesLabel("2026-08") === "ago-2026", "mesLabel");
 ok(mesesEntre("2025-11-15", "2026-02-03").join() === "2025-11,2025-12,2026-01,2026-02", "mesesEntre cruza año");
 
-// ── Parsers ──
-const bcra = parseBcraCotizaciones(fx("macro-bcra-usd.json"));
-ok(bcra.length === 3 && bcra[2].valor === 1050, "BCRA: toma USD entre varias monedas, ignora vacíos/fecha mala");
-ok(parseBcraCotizaciones({ status: 400, errorMessages: ["x"] }).length === 0, "BCRA: error → []");
-const usdM = promedioMensual(bcra);
-ok(usdM.length === 2 && near(usdM[0].valor, 1005) && usdM[0].dias === 2 && near(usdM[1].valor, 1050), "promedio mensual del dólar");
-const mep = promedioMensual(parseArgentinaDatos(fx("macro-argentinadatos.json")));
-ok(mep.length === 2 && near(mep[0].valor, 1110), "argentinadatos: venta, ignora nulls");
-ok(parseArgentinaDatos({ error: 1 }).length === 0, "argentinadatos: no-array → []");
-const rows = mergeIndices(usdM, mep);
-ok(rows.length === 2 && rows.find((r) => r.mes === "2026-01")?.usd_mep === 1110 && near(rows.find((r) => r.mes === "2026-01")?.usd_oficial, 1005), "mergeIndices");
-ok(mergeIndices([], [{ mes: "2026-06", valor: 5 }])[0]?.usd_oficial === null, "mergeIndices: mes solo con MEP → oficial null");
+// ── TC REAL de finanzas (bgt_tc) ──
+const tcRows = indicesDesdeTc([
+  { version: "REAL 2026", mes: 9, tc: "1519.5" }, { version: "REAL 2026", mes: 1, tc: 1444.5 },
+  { version: "BGT 2026", mes: 9, tc: 1639.68 }, { version: "REAL 2026", mes: 13, tc: 1 }, { version: "REAL 2025", mes: 12, tc: 0 },
+]);
+ok(tcRows.length === 3 && tcRows[0]!.mes === "2025-12" && tcRows[0]!.tc === null && tcRows[2]!.mes === "2026-09" && tcRows[2]!.tc === 1519.5, "indicesDesdeTc: solo REAL, mes válido, ordenado");
 
 // ── Contexto y conversión ──
 const idxRows = [
-  { mes: "2026-01", usd_oficial: 1000 },
-  { mes: "2026-02", usd_oficial: 1100 },
-  { mes: "2026-03-01", usd_oficial: null },
-  { mes: "2026-04", usd_oficial: 1300 },
+  { mes: "2026-01", tc: 1000 },
+  { mes: "2026-02", tc: 1100 },
+  { mes: "2026-03-01", tc: null },
+  { mes: "2026-04", tc: 1300 },
 ];
 const idx = buildIndices(idxRows);
 ok(idx.ultimoUsd === "2026-04" && idx.meses.join() === "2026-01,2026-02,2026-04", "último mes con dólar");
@@ -55,12 +45,12 @@ const cor = resolverContexto("corrientes", idxRows).ctx;
 ok(convertir(cor, 123, "2026-01").valor === 123 && !convertir(cor, 1, "2026-09").faltante, "corrientes = identidad");
 const sinIdx = resolverContexto("usd", []);
 ok(sinIdx.ctx.moneda === "corrientes" && !!sinIdx.aviso, "sin dólar → $ con aviso");
-ok(resolverContexto("usd", [{ mes: "2026-01", usd_oficial: null }]).ctx.moneda === "corrientes", "dólar vacío → $");
+ok(resolverContexto("usd", [{ mes: "2026-01", tc: null }]).ctx.moneda === "corrientes", "dólar vacío → $");
 ok(monedaLabel(usd).startsWith("USD") && monedaLabel(cor) === "$", "labels");
 
 const s12 = convertirSerie12(usd, 2026, [1000, 2200, 1100, null, 2600, ...Array(7).fill(null)]);
 ok(near(s12.valores[0], 1) && near(s12.valores[1], 2) && near(s12.valores[2], 1) && s12.valores[3] === null && near(s12.valores[4], 2) && s12.faltantes.join() === "2026-03,2026-05", "serie 12 meses + faltantes");
-ok((avisoFaltantes(usd, s12.faltantes) ?? "").includes("mar-2026") && (avisoFaltantes(usd, s12.faltantes) ?? "").includes("dólar") && avisoFaltantes(cor, ["2026-04"]) === null, "aviso de faltantes");
+ok((avisoFaltantes(usd, s12.faltantes) ?? "").includes("mar-2026") && (avisoFaltantes(usd, s12.faltantes) ?? "").includes("tipo de cambio REAL") && avisoFaltantes(cor, ["2026-04"]) === null, "aviso de faltantes");
 ok(near(factorPeriodo(usd, ["2026-01", "2026-04"]), (1 / 1000 + 1 / 1300) / 2), "factor período simple");
 ok(near(factorPeriodo(usd, ["2026-01", "2026-04"], [3, 1]), (3 / 1000 + 1 / 1300) / 4), "factor período ponderado");
 ok(factorPeriodo(cor, ["2026-01"]) === 1, "factor corrientes = 1");

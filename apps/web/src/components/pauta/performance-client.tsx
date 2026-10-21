@@ -462,7 +462,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
     );
     return { ...a, count: vids.length };
   }, [metaPaidF]);
-  // DV360: si hay cotización (fx_rates) mostramos en pesos (BCRA prom. mensual),
+  // DV360: si hay TC REAL de finanzas (bgt_tc) mostramos en pesos,
   // convirtiendo el costo USD por el rate del mes de cada fila. Si no, en USD.
   const arsMode = Object.keys(fxRates).length > 0;
   const fxVals = Object.values(fxRates);
@@ -1392,7 +1392,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
                 <div className="rounded-xl border bg-card p-3">
                   <div className="text-[11px] text-muted-foreground">CPCV (costo/view completo)</div>
                   <div className="mt-0.5 text-lg font-bold tabular-nums">{videoQuality.cpcv > 0 ? dvMoney(videoQuality.cpcv) : "—"}</div>
-                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.cpcv > 0 ? "costo real por mensaje visto" : "requiere fx_rates"}</div>
+                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.cpcv > 0 ? "costo real por mensaje visto" : "requiere el TC REAL de finanzas"}</div>
                 </div>
                 <div className="rounded-xl border bg-card p-3">
                   <div className="text-[11px] text-muted-foreground">Impresiones desperdiciadas</div>
@@ -1660,7 +1660,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
                 <div className="rounded-xl border bg-card p-3">
                   <div className="text-[11px] text-muted-foreground">CPCV (costo/view completo)</div>
                   <div className="mt-0.5 text-lg font-bold tabular-nums">{videoQuality.cpcv > 0 ? dvMoney(videoQuality.cpcv) : "—"}</div>
-                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.cpcv > 0 ? "costo real por mensaje visto" : "requiere fx_rates (DV360 en ARS)"}</div>
+                  <div className="text-[10px] text-muted-foreground/70">{videoQuality.cpcv > 0 ? "costo real por mensaje visto" : "requiere el TC REAL de finanzas (DV360 en ARS)"}</div>
                 </div>
                 <div className="rounded-xl border bg-card p-3">
                   <div className="text-[11px] text-muted-foreground">Impresiones desperdiciadas</div>

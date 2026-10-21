@@ -13,7 +13,7 @@ import { getPautaPerformance } from "@/lib/pauta-queries";
 import { getMetaPaidCreatives } from "@/lib/meta-paid-queries";
 import { getDv360Creatives, getDv360Reach } from "@/lib/dv360-queries";
 import { getGoogleAdsOmd } from "@/lib/google-ads-omd-queries";
-import { getFxRates } from "@/lib/fx-queries";
+import { getFxRates } from "@/lib/tc-finanzas";
 import { buildPautaMediosMensual } from "@/lib/pauta-medios-model";
 import { getSeguimientoKpis } from "@/lib/objetivos-kpis";
 import { isPathAllowed } from "@/lib/dashboard-access";

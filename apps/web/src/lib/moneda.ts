@@ -4,10 +4,11 @@
 // Solo DOS formas de leer un monto (decisión del user, 28-sep-2026: "solo valores reales en $ y luego
 // USD, nada más, inflación no suma" → no hay pesos constantes ni ajuste por IPC en NINGÚN cálculo):
 //   · "corrientes"  → "$": tal cual lo informó la plataforma (default).
-//   · "usd"         → monto ÷ dólar oficial del mes (promedio de los días hábiles del mes).
+//   · "usd"         → monto ÷ tipo de cambio REAL del mes.
 // `?moneda=constantes` de links viejos cae a "$".
-// Fuente del dólar: tabla `indices_macro` (mes, usd_oficial, usd_mep; la columna `ipc` quedó sin uso)
-// que llena el cron `sync-macro` (API del BCRA; fallback argentinadatos.com).
+// Fuente ÚNICA del tipo de cambio (decisión del user, 21-oct-2026): el TC REAL que carga finanzas en
+// /funnel → Cargar datos → Tipos de cambio (tabla `bgt_tc`, versión "REAL <año>"). Lo lee
+// `lib/tc-finanzas.ts`. No hay sync del BCRA ni ninguna otra fuente de dólar.
 // Si falta el dólar de un mes se usa el ÚLTIMO disponible anterior (o el primero posterior si no
 // hay anterior) y se AVISA (nunca un cero silencioso). Las metas en pesos se convierten con la
 // misma función → se comparan en la misma moneda que el real.
@@ -17,8 +18,8 @@
 export type Moneda = "corrientes" | "usd";
 export const MONEDAS: Moneda[] = ["corrientes", "usd"];
 
-/** Fila de `indices_macro`. mes = "YYYY-MM" (se acepta "YYYY-MM-DD" y se recorta). */
-export interface IndiceMes { mes: string; usd_oficial: number | null; usd_mep?: number | null }
+/** Tipo de cambio de un mes (pesos por dólar). mes = "YYYY-MM" (se acepta "YYYY-MM-DD" y se recorta). */
+export interface IndiceMes { mes: string; tc: number | null }
 
 export interface IndicesMacro {
   usd: Map<string, number>;
@@ -59,7 +60,7 @@ export function buildIndices(rows: IndiceMes[] | null | undefined): IndicesMacro
   const usd = new Map<string, number>();
   for (const r of rows ?? []) {
     const k = normMes(r.mes);
-    const u = pos(r.usd_oficial);
+    const u = pos(r.tc);
     if (k && u != null) usd.set(k, u);
   }
   const meses = [...usd.keys()].sort();
@@ -136,7 +137,7 @@ export function mesesEntre(desde: string, hasta: string): string[] {
 /** Contexto listo para usar: si se pidió usd y no hay dólar cargado, vuelve a "$" y lo avisa. */
 export function resolverContexto(moneda: Moneda, rows: IndiceMes[] | null | undefined): { ctx: ConvContext; aviso: string | null } {
   const idx = buildIndices(rows);
-  if (moneda === "usd" && !idx.usd.size) return { ctx: { moneda: "corrientes", idx }, aviso: "Todavía no tenemos la serie del dólar oficial: se muestran en $." };
+  if (moneda === "usd" && !idx.usd.size) return { ctx: { moneda: "corrientes", idx }, aviso: "Todavía no hay tipo de cambio REAL cargado (Inversión de Marketing → Cargar datos → Tipos de cambio): se muestran en $." };
   return { ctx: { moneda, idx }, aviso: null };
 }
 
@@ -145,62 +146,25 @@ export function avisoFaltantes(ctx: ConvContext, faltantes: string[]): string | 
   if (ctx.moneda === "corrientes") return null;
   const u = [...new Set(faltantes)].sort();
   if (!u.length) return null;
-  return `Sin dólar oficial publicado para ${u.map(mesLabel).join(", ")}: se usó el último disponible (${mesLabel(ctx.idx.ultimoUsd)}).`;
+  return `Sin tipo de cambio REAL cargado para ${u.map(mesLabel).join(", ")}: se usó el último disponible (${mesLabel(ctx.idx.ultimoUsd)}).`;
 }
 
 export function monedaLabel(ctx: Pick<ConvContext, "moneda">): string {
-  return ctx.moneda === "usd" ? "USD (dólar oficial del mes)" : "$";
+  return ctx.moneda === "usd" ? "USD (tipo de cambio REAL del mes)" : "$";
 }
 
 /** Código de moneda para los formateadores ("ARS" / "USD"). */
 export const monedaCode = (ctx: Pick<ConvContext, "moneda">, original: string | null = "ARS"): string | null => (ctx.moneda === "usd" ? "USD" : original);
 
-// ── Parsers de las fuentes (robustos: ignoran filas inválidas, nunca tiran) ──────────────────
-
-/** API del BCRA "Estadísticas Cambiarias v1.0" /Cotizaciones/USD → diario [{fecha, valor}]. */
-export function parseBcraCotizaciones(json: unknown, codigo = "USD"): { fecha: string; valor: number }[] {
-  const res = (json as { results?: unknown })?.results;
-  if (!Array.isArray(res)) return [];
-  const out: { fecha: string; valor: number }[] = [];
-  for (const r of res as { fecha?: string; detalle?: { codigoMoneda?: string; tipoCotizacion?: unknown }[] }[]) {
-    const fecha = String(r?.fecha ?? "").slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !Array.isArray(r.detalle)) continue;
-    const d = r.detalle.find((x) => String(x?.codigoMoneda ?? "").toUpperCase() === codigo);
-    const v = pos(d?.tipoCotizacion);
-    if (v != null) out.push({ fecha, valor: v });
+/** Filas de `bgt_tc` → tipo de cambio por mes. Solo versiones "REAL <año>" (lo ejecutado; los TC de BGT/4+8/8+4
+ *  son de cada presupuesto y no se usan para convertir lo real). */
+export function indicesDesdeTc(rows: { version: string; mes: number; tc: number | string | null }[] | null | undefined): IndiceMes[] {
+  const out: IndiceMes[] = [];
+  for (const r of rows ?? []) {
+    const a = /^REAL (\d{4})$/.exec(String(r?.version ?? "").trim());
+    const m = Number(r?.mes);
+    if (!a || !(m >= 1 && m <= 12)) continue;
+    out.push({ mes: mesKey(Number(a[1]), m - 1), tc: pos(r.tc) });
   }
-  return out;
-}
-
-/** API de argentinadatos.com /v1/cotizaciones/dolares/<casa> → diario [{fecha, valor}] (venta). */
-export function parseArgentinaDatos(json: unknown): { fecha: string; valor: number }[] {
-  if (!Array.isArray(json)) return [];
-  const out: { fecha: string; valor: number }[] = [];
-  for (const r of json as { fecha?: string; venta?: unknown; compra?: unknown }[]) {
-    const fecha = String(r?.fecha ?? "").slice(0, 10);
-    const v = pos(r?.venta) ?? pos(r?.compra);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(fecha) && v != null) out.push({ fecha, valor: v });
-  }
-  return out;
-}
-
-/** Promedio mensual de una serie diaria (días con dato). */
-export function promedioMensual(diario: { fecha: string; valor: number }[]): { mes: string; valor: number; dias: number }[] {
-  const acc = new Map<string, { s: number; n: number }>();
-  for (const d of diario) {
-    const k = normMes(d.fecha);
-    if (!k || !(d.valor > 0)) continue;
-    const a = acc.get(k) ?? { s: 0, n: 0 };
-    a.s += d.valor; a.n++; acc.set(k, a);
-  }
-  return [...acc.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([mes, a]) => ({ mes, valor: Math.round((a.s / a.n) * 10000) / 10000, dias: a.n }));
-}
-
-/** Une oficial + MEP en filas de `indices_macro` (un mes aparece si tiene al menos un dato). */
-export function mergeIndices(oficial: { mes: string; valor: number }[], mep: { mes: string; valor: number }[] = []): IndiceMes[] {
-  const m = new Map<string, IndiceMes>();
-  const get = (mes: string) => m.get(mes) ?? { mes, usd_oficial: null, usd_mep: null };
-  for (const r of oficial) m.set(r.mes, { ...get(r.mes), usd_oficial: r.valor });
-  for (const r of mep) m.set(r.mes, { ...get(r.mes), usd_mep: r.valor });
-  return [...m.values()].sort((a, b) => a.mes.localeCompare(b.mes));
+  return out.sort((x, y) => x.mes.localeCompare(y.mes));
 }

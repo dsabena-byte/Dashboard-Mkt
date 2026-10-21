@@ -7,7 +7,7 @@ import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Selector "$ / USD" para montos (portado de BIP, sep-2026; "$ constantes" se sacó a pedido del
 // user). Persiste en la URL (?moneda=) → el server component convierte y el link se comparte tal
-// cual. Default (sin param) = "$". Sin dólar cargado (migración 0110 + cron sync-macro) USD queda
+// cual. Default (sin param) = "$". Sin TC REAL de finanzas cargado (bgt_tc) USD queda
 // deshabilitado con el motivo.
 export function MonedaSelector({ actual, disponible, notas = [] }: {
   actual: Moneda;
@@ -18,10 +18,10 @@ export function MonedaSelector({ actual, disponible, notas = [] }: {
   const pathname = usePathname();
   const sp = useSearchParams();
   const [pending, start] = useTransition();
-  const sinIdx = "Todavía no hay cotizaciones del dólar cargadas (migración 0110 + cron sync-macro)";
+  const sinIdx = "Todavía no hay tipo de cambio REAL cargado (Inversión de Marketing → Cargar datos → Tipos de cambio)";
   const opts: { v: Moneda; label: string; title: string; ok: boolean }[] = [
     { v: "corrientes", label: "$", title: "Montos en pesos, tal como los informó cada fuente", ok: true },
-    { v: "usd", label: "USD", title: disponible.usd ? "Montos en dólares al tipo de cambio oficial promedio de cada mes (BCRA)" : sinIdx, ok: disponible.usd },
+    { v: "usd", label: "USD", title: disponible.usd ? "Montos en dólares al tipo de cambio REAL de cada mes (el que carga finanzas)" : sinIdx, ok: disponible.usd },
   ];
   const go = (v: Moneda) => {
     const q = new URLSearchParams(sp.toString());
