@@ -44,9 +44,9 @@ function Tabla({ titulo, filas, total, pie }: { titulo: string; filas: [string, 
   );
 }
 
-export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, editor, metasActuales }: {
+export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, inflOrigen, editor, metasActuales }: {
   anio: number; inicial: PlanConfig; guardado: { at: string; por: string | null } | null; sinTabla: boolean;
-  refMeses: (PautaMesMedios | null)[]; infl: InflacionMes; editor: boolean; metasActuales: Record<string, (number | null)[]>;
+  refMeses: (PautaMesMedios | null)[]; infl: InflacionMes; inflOrigen: Record<string, string>; editor: boolean; metasActuales: Record<string, (number | null)[]>;
 }) {
   const router = useRouter();
   const [cfg, setCfg] = useState(inicial);
@@ -109,10 +109,10 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, e
               {cfg.bgt.map((v, i) => <td key={i} className="px-1 py-1"><Num v={v / 1e6} disabled={ro} on={(n) => setCfg((c) => ({ ...c, bgt: setArr(c.bgt, i, n * 1e6) }))} /></td>)}
               <td className={`${td} font-semibold`}>{M(cfg.bgt.reduce((s, v) => s + v, 0))}</td>
             </tr>
-            <tr className="border-t text-muted-foreground"><td className="px-2 py-1">Inflación %</td>{MES.map((_, i) => { const k = `${anio}-${String(i + 1).padStart(2, "0")}`; return <td key={k} className={td}>{infl[k] != null ? infl[k]!.toLocaleString("es-AR") : "—"}</td>; })}<td /></tr></tbody>
+            <tr className="border-t text-muted-foreground"><td className="px-2 py-1">Inflación % (usada)</td>{MES.map((_, i) => { const k = `${anio}-${String(i + 1).padStart(2, "0")}`; return <td key={k} className={td} title={inflOrigen[k] ?? "sin dato"}>{infl[k] != null ? infl[k]!.toLocaleString("es-AR") : "—"}<div className="text-[9px]">{inflOrigen[k]?.split(" ")[0] ?? ""}</div></td>; })}<td /></tr></tbody>
           </table>
         </div>
-        <p className="text-[11px] text-muted-foreground">La inflación se carga en Inversión de Marketing → Cargar datos → Inflación.</p>
+        <p className="text-[11px] text-muted-foreground">Inflación: la REAL (INDEC) si ya salió; si no, la del presupuesto más reciente del año (8+4, 4+8 o BGT). Se carga en Inversión de Marketing → Cargar datos → Inflación.</p>
       </section>
 
       {/* 2. Medios */}

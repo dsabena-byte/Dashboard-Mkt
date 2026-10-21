@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const anio = b.anio as number;
     const plan = await getPlanAnual(anio);
     if (!plan.guardado) return NextResponse.json({ error: "Guardá el plan antes de usarlo como metas." }, { status: 400 });
-    const [refMeses, infl] = await Promise.all([getRefMeses(), getInflacionMes()]);
+    const [refMeses, { infl }] = await Promise.all([getRefMeses(), getInflacionMes()]);
     const { metas } = calcPlan(plan.config, refMeses, infl);
     const now = new Date().toISOString();
     const valores = PLAN_META_KPIS.flatMap((kpi) => metas[kpi].map((valor, i) => ({ plan: "Pauta Mkt", kpi, categoria: CAT_GENERAL, anio, mes: i + 1, valor, updated_at: now })));

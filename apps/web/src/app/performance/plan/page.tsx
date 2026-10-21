@@ -23,7 +23,7 @@ export default async function PlanAnualPage({ searchParams }: { searchParams?: {
   const hoy = new Date().getFullYear();
   const pedido = Number(searchParams?.anio);
   const anio = pedido >= hoy - 1 && pedido <= hoy + 2 ? pedido : hoy + 1;
-  const [plan, refMeses, infl, usuario, metasActuales] = await Promise.all([
+  const [plan, refMeses, { infl, origen }, usuario, metasActuales] = await Promise.all([
     getPlanAnual(anio),
     safe(getRefMeses(), []),
     getInflacionMes(),
@@ -41,7 +41,7 @@ export default async function PlanAnualPage({ searchParams }: { searchParams?: {
         items={[
           { titulo: "Para qué sirve", texto: <>Reemplaza el Excel del BGT de medios: cambiás el BGT del mes, el peso de un medio, una ola o el mix por categoría y se recalcula todo (medio × mes, objetivo, categoría y medio × categoría).</> },
           { titulo: "Cómo se reparte cada medio", texto: <><b>Costo fijo</b> (OOH): el costo de enero se ajusta en abril, julio y octubre por la inflación del trimestre anterior. <b>Olas</b> (TV, radio, DOOH): un % del BGT anual repartido en los meses de la ola. <b>Curva</b> (digital): lo que queda del mes se reparte según el peso de cada medio.</> },
-          { titulo: "De dónde salen los impactos", texto: <>De lo que rindió cada medio en los meses cerrados del Tablero (Meta y TikTok: los 2 últimos meses, con las piezas nuevas; el resto, todo el año). La plata del plan se lleva a pesos de esa referencia con la inflación cargada en Inversión de Marketing → Cargar datos → Inflación, y pasa por la curva del Simulador (cada peso extra rinde un poco menos). TV, radio y DOOH no tienen medición: suman inversión pero no impactos.</> },
+          { titulo: "De dónde salen los impactos", texto: <>De lo que rindió cada medio en los meses cerrados del Tablero (Meta y TikTok: los 2 últimos meses, con las piezas nuevas; el resto, todo el año). La plata del plan se lleva a pesos de esa referencia con la inflación cargada en Inversión de Marketing → Cargar datos → Inflación, (la REAL de INDEC si ya salió; si no, la del presupuesto más reciente: 8+4, 4+8 o BGT) y pasa por la curva del Simulador (cada peso extra rinde un poco menos). TV, radio y DOOH no tienen medición: suman inversión pero no impactos.</> },
           { titulo: "Metas", texto: <>Guardá el plan y tocá <b>Usar como metas</b>: carga las metas mensuales de Inversión, Alcance, Frecuencia, Impresiones, VTR y Clicks de Pauta Mkt para ese año. Después las podés ajustar a mano en el panel de abajo.</> },
           { titulo: "Quién edita", texto: <>Los editores del presupuesto (los mismos que cargan el BGT). Cada cambio queda en el Historial de Inversión de Marketing → Cargar datos.</> },
         ]}
@@ -60,6 +60,7 @@ export default async function PlanAnualPage({ searchParams }: { searchParams?: {
         sinTabla={plan.sinTabla}
         refMeses={refMeses}
         infl={infl}
+        inflOrigen={origen}
         editor={!!usuario?.editor}
         metasActuales={Object.fromEntries(PLAN_META_KPIS.map((k, i) => [k, metasActuales[i]!]))}
       />

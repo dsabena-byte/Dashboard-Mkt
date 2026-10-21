@@ -35,8 +35,23 @@ export async function guardarPlanAnual(cfg: PlanConfig, usuario: string): Promis
   await auditar([{ usuario, entidad: "plan_medios", accion: antes.guardado ? "cambio" : "alta", version: `Plan de Medios ${cfg.anio}`, clave: null, ...d }]).catch(() => undefined);
 }
 
-export async function getInflacionMes(): Promise<InflacionMes> {
-  try { return Object.fromEntries((await listInflacion()).map((f) => [f.mes.slice(0, 7), f.pct])); } catch { return {}; }
+/** Inflación de cada mes para el cálculo: la REAL (INDEC) si ya salió; si no, la del presupuesto más reciente del año
+ *  (8+4 → 4+8 → BGT). `origen` dice de qué versión salió cada mes (se muestra en la pantalla). */
+export async function getInflacionMes(): Promise<{ infl: InflacionMes; origen: Record<string, string> }> {
+  try {
+    const rank = (v: string) => ["REAL", "8+4", "4+8", "BGT"].findIndex((t) => v.startsWith(`${t} `));
+    const elegido: Record<string, { pct: number; version: string; r: number }> = {};
+    for (const f of await listInflacion()) {
+      const r = rank(f.version), anio = f.version.slice(-4);
+      if (r < 0 || !/^\d{4}$/.test(anio)) continue;
+      const k = `${anio}-${String(f.mes).padStart(2, "0")}`;
+      if (!elegido[k] || r < elegido[k]!.r) elegido[k] = { pct: f.pct, version: f.version, r };
+    }
+    return {
+      infl: Object.fromEntries(Object.entries(elegido).map(([k, e]) => [k, e.pct])),
+      origen: Object.fromEntries(Object.entries(elegido).map(([k, e]) => [k, e.version])),
+    };
+  } catch { return { infl: {}, origen: {} }; }
 }
 
 /** Meses de referencia (año en curso + anterior, meses cerrados) para los impactos. */
