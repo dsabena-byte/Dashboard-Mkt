@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/sidebar";
 import { GlobalDataChat } from "@/components/global-data-chat";
 import { KnowledgePanel } from "@/components/knowledge/knowledge-panel";
 import { PasswordChangedNotice } from "@/components/auth/password-changed-notice";
+import { TableExcelExport } from "@/components/table-excel-export";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { allowedFromRows } from "@/lib/dashboard-access";
 import "./globals.css";
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <GlobalDataChat />
         <KnowledgePanel />
         <PasswordChangedNotice />
+        <TableExcelExport />
       </body>
     </html>
   );

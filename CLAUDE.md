@@ -457,6 +457,7 @@ reporte_existencia/cb_homologos).
   medios con impresiones); compartir por link firmado (`/compartido/[token]`) + envío programado (solo dominios del equipo +
   `SHARE_ALLOWED_DOMAINS`); copiloto 👍/👎 + respuestas verificadas (0120) + `/copiloto` "Calidad del copiloto" (**29-sep-2026: fuera del menú** — pedido del user: es interno, no va en un tablero comercial; la página sigue solo por URL directa; en BIP vive en el CRM de staff `/consultor/copiloto`); eval-set
   (sumar casos al agregar tools). Pendiente menor: la receta CPM de "Armame el tablero" usa inversión total.
+- **Botón "⬇ Excel" en TODAS las tablas (21-oct-2026, pedido del user):** `components/table-excel-export.tsx` montado UNA vez en el layout: observa el DOM y pone el botón arriba de cada `<table>` dentro de `<main>` (≥2 filas). Exporta la tabla tal cual se ve (respeta filtros) con `xlsx` (import dinámico); los textos es-AR ("$ 1.234", "11%") pasan a números/porcentajes (`lib/table-excel.ts`, test `scripts/table-excel.test.ts`); el archivo toma el título anterior a la tabla. Excluir una tabla: `data-noexcel`. NO cubre `.bip-viz` (Mis tableros ya tiene su menú), iframes (Mkt Canal) ni grillas de divs.
 - **Worktrees de agentes:** usar symlinks a los `node_modules` del checkout principal (con `cp -al` tsc da errores falsos); NO
   commitear el symlink `apps/web/node_modules` (se coló una vez).
 
