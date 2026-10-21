@@ -11,7 +11,7 @@ import {
 // /api/presupuesto y queda en el historial.
 
 type Seccion = "real" | "presupuesto" | "tc" | "facturacion" | "inflacion" | "historial";
-interface Datos { usuario: { email: string; editor: boolean; puedeReal: boolean }; versiones: Version[]; tcs: Tc[]; catalogo: ItemCatalogo[]; lineas: Linea[]; facturacion?: { mes: string; facturacion: number }[]; inflacion?: { mes: string; pct: number }[] }
+interface Datos { usuario: { email: string; editor: boolean; puedeReal: boolean }; versiones: Version[]; tcs: Tc[]; catalogo: ItemCatalogo[]; lineas: Linea[]; facturacion?: { mes: string; facturacion: number }[]; inflacion?: { version: string; mes: number; pct: number; fuente: string | null }[] }
 interface Movimiento { id: number; at: string; usuario: string | null; entidad: string; accion: string; version: string | null; clave: string | null; antes: Record<string, unknown> | null; despues: Record<string, unknown> | null }
 
 const selectCls = "rounded-lg border bg-card px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30";
@@ -98,7 +98,12 @@ export function CargaPresupuesto() {
           onVersion={(v) => { setVersion(v); void cargar(v); }} onCambio={recargar} />
       )}
       {seccion === "presupuesto" && editor && <CargarPresupuesto datos={datosUI} onCambio={recargar} />}
-      {seccion === "tc" && <TiposDeCambio datos={datosUI} onCambio={recargar} />}
+      {seccion === "tc" && (
+        <PorVersion datos={datosUI} onCambio={recargar} endpoint="/api/presupuesto/tc" campo="tc" tipos={["BGT", "4+8", "8+4"]}
+          valores={datosUI.tcs.map((t) => ({ version: t.version, mes: t.mes, v: t.tc }))}
+          fmt={(n) => n.toLocaleString("es-AR", { maximumFractionDigits: 2 })} parse={parseMonto} valido={(v) => v > 0} ejemplo="1.522,50"
+          intro="Pesos por dólar de cada presupuesto y mes (los pasa finanzas). Los dólares = pesos ÷ este valor." />
+      )}
       {seccion === "facturacion" && (
         <GrillaMensual editor={datosUI.usuario.editor} onCambio={recargar} endpoint="/api/presupuesto/facturacion" campo="facturacion"
           valores={(datosUI.facturacion ?? []).map((f) => ({ mes: f.mes, v: f.facturacion }))} etiquetaAnio="Año (USD)" vacio="Todavía no hay facturación cargada."
@@ -106,10 +111,10 @@ export function CargaPresupuesto() {
           intro={<>Facturación real de la empresa por mes, en <b>dólares</b>. La usa el indicador Inversión / Facturación del tablero.</>} />
       )}
       {seccion === "inflacion" && (
-        <GrillaMensual editor={datosUI.usuario.editor} onCambio={recargar} endpoint="/api/presupuesto/inflacion" campo="pct"
-          valores={(datosUI.inflacion ?? []).map((f) => ({ mes: f.mes, v: f.pct }))} etiquetaAnio="Año (%)" vacio="Todavía no hay inflación cargada."
+        <PorVersion datos={datosUI} onCambio={recargar} endpoint="/api/presupuesto/inflacion" campo="pct" tipos={["BGT", "4+8", "8+4", "REAL"]}
+          valores={(datosUI.inflacion ?? []).map((f) => ({ version: f.version, mes: f.mes, v: f.pct }))}
           fmt={(n) => `${n.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`} parse={parsePct} valido={(v) => v > -50 && v < 100} ejemplo="2,0"
-          intro={<>Inflación mensual en <b>%</b> (ej. 2,0). Sirve para planificar el presupuesto, por ejemplo los ajustes de tarifas de OOH. No se usa para corregir montos de los tableros.</>} />
+          intro="Inflación mensual en % de cada presupuesto (BGT, 4+8, 8+4) y la REAL, para compararlas. La REAL la carga sola el INDEC cuando publica (IPC nivel general nacional). Sirve para planificar (ej. ajustes de OOH en el Plan de Medios anual); no corrige montos de los tableros." />
       )}
       {seccion === "historial" && <Historial versiones={datos.versiones} />}
     </div>
@@ -545,20 +550,24 @@ function CargarPresupuesto({ datos, onCambio }: { datos: Datos; onCambio: () => 
 }
 
 // ======================================================================= Tipos de cambio
-function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Promise<void> }) {
+/** Grilla presupuesto × mes de un valor por versión (tipo de cambio, inflación). Solo editores, con historial. */
+function PorVersion({ datos, onCambio, endpoint, campo, tipos, valores, fmt: fmtV, parse, valido, ejemplo, intro }: {
+  datos: Datos; onCambio: () => Promise<void>; endpoint: string; campo: string; tipos: string[]; valores: { version: string; mes: number; v: number }[];
+  fmt: (n: number) => string; parse: (t: string) => number | null; valido: (v: number) => boolean; ejemplo: string; intro: string;
+}) {
   const editor = datos.usuario.editor;
-  const base = useMemo(() => new Map(datos.tcs.map((t) => [`${t.version}|${t.mes}`, t.tc])), [datos.tcs]);
+  const base = useMemo(() => new Map(valores.map((t) => [`${t.version}|${t.mes}`, t.v])), [valores]);
   const [fila, setFila] = useState<string | null>(null); // presupuesto en edición
   const [edit, setEdit] = useState<Record<number, string>>({});
   const [nuevas, setNuevas] = useState<string[]>([]);
   const hoy = new Date().getFullYear();
-  const [nuevoTipo, setNuevoTipo] = useState<"BGT" | "4+8" | "8+4">("BGT");
+  const [nuevoTipo, setNuevoTipo] = useState(tipos[0]!);
   const [nuevoAnio, setNuevoAnio] = useState(hoy + 1);
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const versiones = [...datos.versiones.map((v) => v.nombre), ...nuevas.filter((n) => !datos.versiones.some((v) => v.nombre === n))];
   const cerrada = (n: string) => datos.versiones.find((v) => v.nombre === n)?.cerrada ?? false;
-  const fmt = (n: number | undefined) => (n == null ? "—" : n.toLocaleString("es-AR", { maximumFractionDigits: 2 }));
+  const fmt = (n: number | undefined) => (n == null ? "—" : fmtV(n));
   const nuevoNombre = `${nuevoTipo} ${nuevoAnio}`;
   const yaExiste = versiones.includes(nuevoNombre);
 
@@ -569,13 +578,13 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
   async function guardar() {
     if (!fila) return;
     const cambios = Object.entries(edit).flatMap(([m, txt]) => {
-      const tc = txt.trim() ? parseMonto(txt) : null;
-      return tc === (base.get(`${fila}|${m}`) ?? null) ? [] : [{ version: fila, mes: Number(m), tc, invalido: txt.trim() !== "" && (tc == null || tc <= 0) }];
+      const v = txt.trim() ? parse(txt) : null;
+      return v === (base.get(`${fila}|${m}`) ?? null) ? [] : [{ version: fila, mes: Number(m), [campo]: v, invalido: txt.trim() !== "" && (v == null || !valido(v)) }];
     });
-    if (cambios.some((c) => c.invalido)) { setMsg("Hay valores que no son números válidos (ej. 1.522,50)."); return; }
+    if (cambios.some((c) => c.invalido)) { setMsg(`Hay valores que no son números válidos (ej. ${ejemplo}).`); return; }
     if (!cambios.length) { setFila(null); return; }
     setGuardando(true); setMsg(null);
-    const r = await api("/api/presupuesto/tc", { method: "PUT", body: JSON.stringify({ cambios: cambios.map(({ invalido: _i, ...c }) => c) }) });
+    const r = await api(endpoint, { method: "PUT", body: JSON.stringify({ cambios: cambios.map(({ invalido: _i, ...c }) => c) }) });
     setGuardando(false);
     if (!r.ok) { setMsg(r.data.error ?? "No se pudo guardar."); return; }
     setFila(null); setNuevas((p) => p.filter((x) => x !== fila));
@@ -593,14 +602,14 @@ function TiposDeCambio({ datos, onCambio }: { datos: Datos; onCambio: () => Prom
   return (
     <section className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Pesos por dólar de cada presupuesto y mes (los pasa finanzas). Los dólares = pesos ÷ este valor.
+        {intro}
         {editor ? " Para cargar o cambiar, tocá ✎ al final de la fila." : " Solo los editores del presupuesto pueden cambiarlos."}
       </p>
       {editor && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">Agregar presupuesto:</span>
-          <select className={selectCls} value={nuevoTipo} onChange={(e) => setNuevoTipo(e.target.value as typeof nuevoTipo)}>
-            {(["BGT", "4+8", "8+4"] as const).map((t) => <option key={t} value={t}>{t}</option>)}
+          <select className={selectCls} value={nuevoTipo} onChange={(e) => setNuevoTipo(e.target.value)}>
+            {tipos.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <select className={selectCls} value={nuevoAnio} onChange={(e) => setNuevoAnio(Number(e.target.value))}>
             {[hoy + 1, hoy, hoy - 1].map((a) => <option key={a} value={a}>{a}</option>)}

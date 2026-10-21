@@ -156,58 +156,56 @@ export async function guardarFacturacion(cambios: { mes: string; facturacion: nu
   return reales.length;
 }
 
-// ---------- inflación mensual (tabla inflacion_mensual, migración 0128; % del mes) ----------
-const MIGRACION_INFLACION = "Falta la tabla inflacion_mensual: corré 0128_inflacion_mensual.sql en el SQL Editor de Supabase";
-export interface Inflacion { mes: string; pct: number } // mes = YYYY-MM-01
-export async function listInflacion(): Promise<Inflacion[]> {
-  const res = await sbAdmin("inflacion_mensual?select=mes,pct&order=mes.asc", { method: "GET" });
-  if (!res.ok) return []; // sin la migración 0128
-  return ((await res.json()) as Inflacion[]).map((f) => ({ mes: f.mes.slice(0, 10), pct: Number(f.pct) }));
+// ---------- tipos de cambio e inflación: un valor por (versión, mes) ----------
+const MIGRACION_INFLACION = "Falta la tabla bgt_inflacion: corré 0130_bgt_inflacion.sql en el SQL Editor de Supabase";
+export interface InflacionV { version: string; mes: number; pct: number; fuente: string | null }
+export async function listInflacion(): Promise<InflacionV[]> {
+  const res = await sbAdmin("bgt_inflacion?select=version,mes,pct,fuente&order=version.asc,mes.asc", { method: "GET" });
+  if (!res.ok) return []; // sin la migración 0130
+  return ((await res.json()) as InflacionV[]).map((f) => ({ ...f, mes: Number(f.mes), pct: Number(f.pct) }));
 }
-/** Guarda (o borra, con pct null) la inflación de cada mes. Cada cambio queda en el historial. */
-export async function guardarInflacion(cambios: { mes: string; pct: number | null }[], usuario: string): Promise<number> {
-  const antes = new Map((await listInflacion()).map((f) => [f.mes, f.pct]));
-  const reales = cambios.filter((c) => (antes.get(c.mes) ?? null) !== c.pct);
-  const upserts = reales.filter((c) => c.pct != null).map((c) => ({ mes: c.mes, pct: c.pct, fuente: `tablero (${usuario})`, updated_at: new Date().toISOString() }));
+
+/** Guarda (o borra, con valor null) un valor por versión y mes. Cada cambio queda en el historial. */
+async function guardarPorVersion(o: {
+  tabla: "bgt_tc" | "bgt_inflacion"; campo: "tc" | "pct"; entidad: "tc" | "inflacion"; que: string; migracion?: string;
+  antes: Map<string, number>; cambios: { version: string; mes: number; valor: number | null }[]; usuario: string;
+  fuente?: string; ignorarCierre?: boolean;
+}): Promise<number> {
+  if (!o.cambios.length) return 0;
+  await asegurarVersiones(o.cambios.map((c) => c.version), o.usuario);
+  const cerradas = o.ignorarCierre ? new Set<string>() : new Set((await listVersiones()).filter((v) => v.cerrada).map((v) => v.nombre));
+  const reales = o.cambios.filter((c) => (o.antes.get(`${c.version}|${c.mes}`) ?? null) !== c.valor);
+  const bloqueada = reales.find((c) => cerradas.has(c.version));
+  if (bloqueada) throw new PresupuestoError(`${bloqueada.version} está cerrada: no se pueden cambiar sus ${o.que}.`, 409);
+  const upserts = reales.filter((c) => c.valor != null).map((c) => ({
+    version: c.version, mes: c.mes, [o.campo]: c.valor, ...(o.fuente !== undefined ? { fuente: o.fuente } : {}), updated_by: o.usuario, updated_at: new Date().toISOString(),
+  }));
   if (upserts.length) {
-    const res = await sbAdmin("inflacion_mensual?on_conflict=mes", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(upserts) });
-    if (!res.ok) await err(res, "No se pudo guardar la inflación", MIGRACION_INFLACION);
+    const res = await sbAdmin(`${o.tabla}?on_conflict=version,mes`, { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(upserts) });
+    if (!res.ok) await err(res, `No se pudieron guardar ${o.que}`, o.migracion);
   }
-  for (const c of reales.filter((x) => x.pct == null)) {
-    const res = await sbAdmin(`inflacion_mensual?mes=eq.${c.mes}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
-    if (!res.ok) await err(res, "No se pudo borrar la inflación", MIGRACION_INFLACION);
+  for (const c of reales.filter((x) => x.valor == null)) {
+    const res = await sbAdmin(`${o.tabla}?version=eq.${encodeURIComponent(c.version)}&mes=eq.${c.mes}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    if (!res.ok) await err(res, `No se pudo borrar ${o.que}`, o.migracion);
   }
   await auditar(reales.map((c) => {
-    const a = antes.get(c.mes) ?? null;
-    return { usuario, entidad: "inflacion", accion: a == null ? "alta" : c.pct == null ? "baja" : "cambio", version: `Inflación ${c.mes.slice(0, 4)}`, clave: String(Number(c.mes.slice(5, 7))), antes: a == null ? null : { inflacion: a }, despues: c.pct == null ? null : { inflacion: c.pct } };
+    const a = o.antes.get(`${c.version}|${c.mes}`) ?? null;
+    return { usuario: o.usuario, entidad: o.entidad, accion: a == null ? "alta" : c.valor == null ? "baja" : "cambio", version: c.version, clave: String(c.mes), antes: a == null ? null : { [o.entidad]: a }, despues: c.valor == null ? null : { [o.entidad]: c.valor } };
   }));
   return reales.length;
 }
 
-// ---------- tipos de cambio ----------
-/** Guarda (o borra, con tc null) tipos de cambio. Cada cambio queda en el historial. */
 export async function guardarTcs(cambios: { version: string; mes: number; tc: number | null }[], usuario: string): Promise<number> {
-  if (!cambios.length) return 0;
-  await asegurarVersiones(cambios.map((c) => c.version), usuario);
   const antes = new Map((await listTc()).map((t) => [`${t.version}|${t.mes}`, Number(t.tc)]));
-  const cerradas = new Set((await listVersiones()).filter((v) => v.cerrada).map((v) => v.nombre));
-  const reales = cambios.filter((c) => (antes.get(`${c.version}|${c.mes}`) ?? null) !== c.tc);
-  const bloqueada = reales.find((c) => cerradas.has(c.version));
-  if (bloqueada) throw new PresupuestoError(`${bloqueada.version} está cerrada: no se pueden cambiar sus tipos de cambio.`, 409);
-  const upserts = reales.filter((c) => c.tc != null).map((c) => ({ version: c.version, mes: c.mes, tc: c.tc, updated_by: usuario, updated_at: new Date().toISOString() }));
-  if (upserts.length) {
-    const res = await sbAdmin("bgt_tc?on_conflict=version,mes", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(upserts) });
-    if (!res.ok) await err(res, "No se pudieron guardar los tipos de cambio");
-  }
-  for (const c of reales.filter((x) => x.tc == null)) {
-    const res = await sbAdmin(`bgt_tc?version=eq.${encodeURIComponent(c.version)}&mes=eq.${c.mes}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
-    if (!res.ok) await err(res, "No se pudo borrar el tipo de cambio");
-  }
-  await auditar(reales.map((c) => {
-    const a = antes.get(`${c.version}|${c.mes}`) ?? null;
-    return { usuario, entidad: "tc", accion: a == null ? "alta" : c.tc == null ? "baja" : "cambio", version: c.version, clave: String(c.mes), antes: a == null ? null : { tc: a }, despues: c.tc == null ? null : { tc: c.tc } };
-  }));
-  return reales.length;
+  return guardarPorVersion({ tabla: "bgt_tc", campo: "tc", entidad: "tc", que: "los tipos de cambio", antes, usuario, cambios: cambios.map((c) => ({ version: c.version, mes: c.mes, valor: c.tc })) });
+}
+
+/** Inflación % por versión y mes. `fuente` = "INDEC" desde el cron (REAL), "tablero" desde la carga. */
+export async function guardarInflaciones(cambios: { version: string; mes: number; pct: number | null }[], usuario: string, opts: { fuente?: string; ignorarCierre?: boolean } = {}): Promise<number> {
+  const res = await sbAdmin("bgt_inflacion?select=version,mes,pct&limit=1", { method: "GET" });
+  if (!res.ok) await err(res, "No se pudo leer la inflación", MIGRACION_INFLACION);
+  const antes = new Map((await listInflacion()).map((f) => [`${f.version}|${f.mes}`, f.pct]));
+  return guardarPorVersion({ tabla: "bgt_inflacion", campo: "pct", entidad: "inflacion", que: "la inflación", migracion: MIGRACION_INFLACION, antes, usuario, fuente: opts.fuente ?? "tablero", ignorarCierre: opts.ignorarCierre, cambios: cambios.map((c) => ({ version: c.version, mes: c.mes, valor: c.pct })) });
 }
 
 // ---------- renglones ----------

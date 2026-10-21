@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     const versiones = todas.filter((v) => v.anio >= ANIO_MINIMO);
     const tcs = todosTc.filter((t) => versiones.some((v) => v.nombre === t.version));
     const facturacion = todaFact.filter((f) => Number(f.mes.slice(0, 4)) >= ANIO_MINIMO);
-    const inflacion = todaInfl.filter((f) => Number(f.mes.slice(0, 4)) >= ANIO_MINIMO);
+    const inflacion = todaInfl.filter((f) => versiones.some((v) => v.nombre === f.version));
     const lineas = version && versiones.some((v) => v.nombre === version) ? await listLineas(version) : [];
     return NextResponse.json({
       usuario: { email: u.email, editor: u.editor, puedeReal: u.puedeReal },

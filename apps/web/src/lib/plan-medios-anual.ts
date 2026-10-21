@@ -7,7 +7,7 @@
 //
 // Reglas (las del Excel aprobado por el user):
 //  · "fijo" (OOH): costo mensual de enero, se ajusta en abr/jul/oct por la inflación acumulada del
-//    trimestre anterior (tabla inflacion_mensual).
+//    trimestre anterior (bgt_inflacion: REAL si salió, si no el presupuesto más reciente).
 //  · "olas" (TV/Radio/DOOH): `peso` = % del BGT ANUAL del medio, repartido por los pesos de `olas`.
 //  · "curva" (digital): lo que queda del mes se reparte por `peso` relativo.
 //  · Categoría: `cat[m]` fija (TV/Radio → Brand; OOH ene–mar → Lavado, abr–dic → Brand) o null = mix
