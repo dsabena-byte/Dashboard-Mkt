@@ -881,7 +881,10 @@ reporte_existencia/cb_homologos).
   Ads $12,42M. Agosto: Mercado Ads $32,90M (incl. Streaming en MELI $19,23M, Brand), Streaming $47,55M (HBO/Seedtag/EXTE+LG/Adsmovil CTV/PML), Diarios Online
   $22,80M (La Nación/Clarín/Grupo Atlántida), Medios directos $18,05M (Artear/Adsmovil), Geo Mobile $1,90M; se borró la fila Streaming $80,16M sin performance
   (origen no verificado; backup en el scratchpad de la sesión). Sin tocar: Radio $17M (el PDF dice PNT radio $16M), TV $16M (= PNT TV), PNT YouTube $8M e Infobae
-  PNT $6M (en el PDF, no cargados). Julio Tap Tap queda $9,19M (decisión previa).
+  PNT $6M (en el PDF, no cargados). Julio Tap Tap queda $9,19M (decisión previa). **21-oct (decisiones del user):** mayo Google = API (se borraron las 6 filas OMD de Google de mayo; API $10,93M = reporte al peso);
+  mayo DV360 = detalle del reporte en `pauta_performance` (YouTube $43,52M + Programmatic $12,32M = $55,84M; la API de mayo está truncada en US$1.104);
+  Radio ago = $16M (PDF). **Tipo de cambio:** Plan de Medios convierte DV360 con `fx_rates` (abr 1390 · may 1402 · jun 1481,5 · jul 1488 · ago 1512, sin sep) —
+  NO con los TC de /funnel (`bgt_tc`, REAL 2026 sep 1519,5) ni con `indices_macro` (BCRA promedio, sep 1513,77).
 - **Diagnóstico integral de Marketing 2026 (19-oct-2026, `marketing/diagnostico-2026/`):** deck de 84 slides estilo consultora (título conclusivo →
   gráfico → panel "Qué significa / Qué decisión habilita" + confianza), resumen ejecutivo (.md → docx) y anexo Excel (`build-anexo.py`). Reglas del user:
   SOLO resultados reales (sin metas), SIN salud de marca/TOM/SOM/intención/CB/FS, ene–dic en todo gráfico mensual (`*` sin dato, `†` oct parcial),
