@@ -87,7 +87,7 @@ export async function listAuditoria(opts: { version?: string; limit?: number } =
 }
 
 // ---------- auditoría ----------
-async function auditar(rows: Omit<Movimiento, "id" | "at">[]): Promise<void> {
+export async function auditar(rows: Omit<Movimiento, "id" | "at">[]): Promise<void> {
   for (let i = 0; i < rows.length; i += 500) {
     const res = await sbAdmin("bgt_auditoria", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(rows.slice(i, i + 500)) });
     if (!res.ok) await err(res, "No se pudo registrar el historial");

@@ -35,6 +35,30 @@ async function getUsuariosMensuales(): Promise<Record<string, number>> {
   } catch { return {}; }
 }
 
+type PautaFuentes = Omit<Parameters<typeof buildPautaMediosMensual>[0], "anio" | "currentMonth" | "googleAdsOmd"> & { gads: Awaited<ReturnType<typeof getGoogleAdsOmd>> };
+function pautaMeses(f: PautaFuentes, now: Date) {
+  const anio = now.getUTCFullYear();
+  const base = { ...f, googleAdsOmd: f.gads.filter((r) => !isPmax(r.canal)) }; // Performance Max fuera de Pauta Mkt
+  return {
+    cur: buildPautaMediosMensual({ ...base, anio, currentMonth: now.getUTCMonth() + 1 }),
+    prev: buildPautaMediosMensual({ ...base, anio: anio - 1, currentMonth: 13 }),
+  };
+}
+
+/** Meses cerrados por medio (año en curso + anterior), mismo modelo que el Tablero. Lo usa el Plan anual. */
+export async function getPautaMesesRecientes(now = new Date()) {
+  const [pauta, metaPaid, dv360, dv360Reach, gads, fxRates] = await Promise.all([
+    safe(getPautaPerformance(true), []),
+    safe(getMetaPaidCreatives(true), []),
+    safe(getDv360Creatives(), []),
+    safe(getDv360Reach(), []),
+    safe(getGoogleAdsOmd(), []),
+    safe(getFxRates(), {} as Record<string, number>),
+  ]);
+  const { cur, prev } = pautaMeses({ pauta, metaPaid, dv360, dv360Reach, gads, fxRates }, now);
+  return [...prev, ...cur];
+}
+
 export async function getSimuladorData(now = new Date()): Promise<SimuladorData> {
   const anioActual = now.getUTCFullYear();
   const [pauta, metaPaid, dv360, dv360Reach, gads, fxRates, dem, usuarios, ecoCur, ecoPrev] = await Promise.all([
@@ -51,10 +75,7 @@ export async function getSimuladorData(now = new Date()): Promise<SimuladorData>
     safe(getEcommerceMensual(anioActual - 1), null),
   ]);
   const anio = now.getUTCFullYear();
-  const googleAdsOmd = gads.filter((r) => !isPmax(r.canal)); // Performance Max fuera de Pauta Mkt
-  const base = { pauta, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates };
-  const cur = buildPautaMediosMensual({ ...base, anio, currentMonth: now.getUTCMonth() + 1 });
-  const prev = buildPautaMediosMensual({ ...base, anio: anio - 1, currentMonth: 13 });
+  const { cur, prev } = pautaMeses({ pauta, metaPaid, dv360, dv360Reach, gads, fxRates }, now);
   const simMeses = simMonthsFromPauta(prev, cur);
   const model = buildSimModel(simMeses);
 

@@ -63,6 +63,7 @@ const TABS = ["Impacto Campaña", "Eficiencia Medios", "Diagnóstico e Inteligen
 const TAB_LINKS = [
   { label: "Pauta Competencia", href: "/performance/competencia" },
   { label: "Simulador de Presupuesto", href: "/performance/simulador" },
+  { label: "Plan anual", href: "/performance/plan" },
 ] as const;
 const TAB_PARAM: Record<string, Tab> = { impacto: "Impacto Campaña", eficiencia: "Eficiencia Medios", diagnostico: "Diagnóstico e Inteligencia" };
 type Tab = (typeof TABS)[number];
