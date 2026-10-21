@@ -60,3 +60,7 @@ create policy "tiktok_creatives_public_read"
   on tiktok_creatives for select
   to anon, authenticated
   using (true);
+
+-- Grants explícitos: desde el 30-oct-2026 Supabase deja de darlos solo a las tablas nuevas del schema public.
+grant select on public.tiktok_creatives to anon, authenticated;
+grant select, insert, update, delete on public.tiktok_creatives to service_role;

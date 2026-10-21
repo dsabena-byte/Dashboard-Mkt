@@ -71,6 +71,7 @@ reporte_existencia/cb_homologos).
   trends/search volume. Meta/GA4/DV360 tokens en los crons.
 - **Deploy:** push a `main` → Vercel deploya solo. (Rama designada por sesión: pushear con
   `git push origin HEAD:main`, rebasar si `main` avanzó.)
+- **Migraciones nuevas = GRANT explícito (desde 30-oct-2026, aviso de Supabase):** toda tabla nueva en `public` lleva en la MISMA migración `grant select … to anon, authenticated` (si la lee el front) y `grant select, insert, update, delete … to service_role`; sin eso la API REST da "permission denied". Las tablas existentes no cambian. Aplica también a bip-platform.
 - **Sandbox:** `node_modules` se instala con `pnpm install`. Typecheck real:
   `cd apps/web && pnpm exec tsc --noEmit` (el `tsc` sin deps da miles de errores de entorno —
   no sirve). Acceso directo a la DB solo por REST con la service key (sin conexión DDL: las
