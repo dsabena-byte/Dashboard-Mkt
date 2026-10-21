@@ -325,3 +325,8 @@ causa raíz · qué se hizo.
 - **Detección:** último run de los syncs vigilados en success (bgt-sync 20-oct 02:34, ga4, meta-*, ig-*, ugc-*, clasificar, seo-sync, trends-sync). Único rojo: `tiktok-sync` (20-oct 10:26, run 39407971875).
 - **#828 (BGT):** abierto; último aviso 20-oct 11:39 ("sin actualizar hace 325h"). Log de `bgt-sync` (run 39359631347): HTTP 200, `sourceSyncedAt: 2026-10-06T22:16:01`, 2638 filas → el cron funciona, la fuente `Dashboard-BGT/data.json` no se actualiza desde el 6-oct. Re-disparar no sirve. **Pendiente humano:** renovar el link de SharePoint / actualizar data.json, o dar de baja la vigilancia de `bgt-sync` (el presupuesto ya se carga en `/funnel/carga`).
 - **`tiktok-sync`:** HTTP 500 `{"error":"Env var BIP_NANGO_HOST no configurada"}` (verificado en el log). No se re-disparó (fallaría igual). **Pendiente humano:** cargar `BIP_NANGO_HOST` (y credenciales Nango de BIP) en Vercel, proyecto Dashboard-Mkt.
+
+## 2026-10-21 (UTC) — sin cambios: #828 (BGT), DataForSEO sin saldo, tiktok-sync
+- **Detección:** último run en success: ga4, bgt-sync (21-oct 02:28), meta-paid, organic-insights, meta-fb, ig-sync-6h, ig-sentiment, ugc-comments-graph/analysis, clasificar. Rojos: `seo-sync` (7-oct) y `trends-sync` (12-oct) por DataForSEO sin saldo (verificado 11 y 13-oct) → NO se re-dispararon (pagos). `tiktok-sync` (21-oct 10:37, run 39585898795) sigue en failure; causa verificada el 20-oct (`BIP_NANGO_HOST` sin configurar), no se re-disparó.
+- **#828 (BGT):** abierto; la fuente data.json no se actualiza desde el 6-oct (ver 12 y 20-oct). `bgt-sync` corre bien.
+- **Pendiente humano:** cargar saldo DataForSEO; `BIP_NANGO_HOST` en Vercel; decidir sobre la vigilancia de BGT/SharePoint.
