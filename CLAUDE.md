@@ -871,7 +871,11 @@ reporte_existencia/cb_homologos).
   **19-oct-2026: deck armado con data real** (`build.js` + snapshot `datos-2026-09.json`, 13 slides: Salud de Marca, objetivos,
   cumplimiento por KPI, inversión, alcance, impresiones, web, conversión, IG, CB, Floor Share, Share of Search). Datos = el código
   REAL del Seguimiento (`getSeguimientoKpis`/`getSeguimientoObjetivos`) corrido con tsx + shims (`server-only`, `react` cache,
-  `next/headers`, `next/cache`, `@dashboard/db` → cliente service key; no commiteado). Sep-26: OMD solo cargó OOH → **19-oct cargados TikTok ($16,55M) + Mercado Ads ($25,40M) desde la planilla del user** (`pauta_performance` ids 3715–3723; productos Mickey/Casa FOA/Marcelino/Streaming → Brand) → Pauta sep $198M; siguen faltando offline (radio/TV/streaming/diarios) si los hubo.
+  `next/headers`, `next/cache`, `@dashboard/db` → cliente service key; no commiteado). Sep-26: OMD solo cargó OOH → **19-oct cargados TikTok ($16,55M) + Mercado Ads ($25,40M) desde la planilla del user** (`pauta_performance` ids 3715–3723; productos Mickey/Casa FOA/Marcelino/Streaming → Brand) → Pauta sep $198M; siguen faltando offline (radio/TV/streaming/diarios) si los hubo. **21-oct: cargados los medios directos de sep desde `Drean_REPORTE_SEPTIEMBRE_1.xlsx` (hoja HISTORICOS, $126,98M, 11 filas,
+  backup previo de las 19 filas de sep): Diarios Online (La Nación/Clarín/Infobae/iProfesional/El Cronista) $46,59M · Streaming (HBO/Seedtag/EXTE CTV+LG/
+  Adsmovil CTV/PML banner) $49,69M · Medios directos (Artear/Adsmovil video/PML rich/EXTE ACE) $24,96M · Geo Mobile (Tap Tap) $5,75M. Reporte vs API sep:
+  Meta $62,15M = API al peso; Google Search $9,27M + Demand Gen $9,71M = API al peso; TikTok $16,55M = cargado; DV360 impresiones/clics iguales,
+  plata: API US$26.093 × fx → el dash usa el fx de ago (1512, `fx_rates` sin sep) = $39,45M vs OMD $37,71M (+4,6%; OMD implica ~1445).
 - **Diagnóstico integral de Marketing 2026 (19-oct-2026, `marketing/diagnostico-2026/`):** deck de 84 slides estilo consultora (título conclusivo →
   gráfico → panel "Qué significa / Qué decisión habilita" + confianza), resumen ejecutivo (.md → docx) y anexo Excel (`build-anexo.py`). Reglas del user:
   SOLO resultados reales (sin metas), SIN salud de marca/TOM/SOM/intención/CB/FS, ene–dic en todo gráfico mensual (`*` sin dato, `†` oct parcial),
