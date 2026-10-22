@@ -36,6 +36,24 @@ export function ApiladoMensual({ series, pct, colores, moneda = true, alto = 260
   );
 }
 
+/** Líneas por serie (tasas por categoría: no se apilan). */
+export function LineasMensual({ series, unidad = "" }: { series: [string, number[]][]; unidad?: string }) {
+  const data = MES.map((mes, i) => Object.fromEntries([["mes", mes], ...series.map(([n, a]) => [n, a[i] ?? null])]));
+  const f = (v: number) => `${v.toLocaleString("es-AR", { maximumFractionDigits: 1 })}${unidad === "%" ? "%" : ""}`;
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <ComposedChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+        <XAxis dataKey="mes" fontSize={11} tickLine={false} stroke="hsl(var(--muted-foreground))" />
+        <YAxis width={56} fontSize={11} tickLine={false} stroke="hsl(var(--muted-foreground))" tickFormatter={f} />
+        <Tooltip content={<ChartTooltip format={(v) => f(v)} />} />
+        <Legend {...legend} />
+        {series.map(([n], k) => <Line key={n} type="monotone" dataKey={n} stroke={RAMPA[k % RAMPA.length]} strokeWidth={2} dot={{ r: 2 }} connectNulls />)}
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
 /** Ranking horizontal: % del plan por medio. */
 export function RankingMedios({ items }: { items: [string, number][] }) {
   const tot = items.reduce((s, [, v]) => s + v, 0);

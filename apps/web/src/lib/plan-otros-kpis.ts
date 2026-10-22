@@ -44,8 +44,13 @@ export const EFECTOS_DEFAULT: Record<TipoCampana, Efecto> = {
 /** Tipos cuyo efecto sale de un dato real (el resto es supuesto editable). */
 export const EFECTO_CALIBRADO: Partial<Record<TipoCampana, string>> = { evento: "sorteo Casa FOA sep-2026 (alcance e interacciones)" };
 
+/** Categorías del negocio para planes y metas (Brand / Institucional cierra el total). */
+export const CATS_PLAN = ["Lavado", "Refrigeración", "Cocción", "Brand"] as const;
+
 export interface OtrosConfig {
   gantt: Record<TipoCampana, number[]>; // 12 meses, 0–3 (sin / baja / media / alta)
+  /** Categoría a la que apunta la campaña de ese mes; null = todas. */
+  ganttCat: Record<TipoCampana, (string | null)[]>;
   efectos: Record<TipoCampana, Efecto>;
   amb: { web: number; fb: number; seo: number }; // % de mejora sobre la base
 }
@@ -54,7 +59,8 @@ export function otrosDefault(): OtrosConfig {
   const gantt = Object.fromEntries(TIPOS_CAMPANA.map((t) => [t.id, Array(N).fill(0)])) as Record<TipoCampana, number[]>;
   gantt.promo[4] = 2; // Hot Sale (mayo)
   gantt.promo[10] = 2; // Cyber Monday + Black Friday (noviembre)
-  return { gantt, efectos: structuredClone(EFECTOS_DEFAULT), amb: { web: 10, fb: 0, seo: 0 } };
+  const ganttCat = Object.fromEntries(TIPOS_CAMPANA.map((t) => [t.id, Array(N).fill(null)])) as Record<TipoCampana, (string | null)[]>;
+  return { gantt, ganttCat, efectos: structuredClone(EFECTOS_DEFAULT), amb: { web: 10, fb: 0, seo: 0 } };
 }
 
 const num = (v: unknown, min: number, max: number, def = 0) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def; };
@@ -65,6 +71,8 @@ export function sanearOtros(raw: unknown): OtrosConfig {
   for (const t of TIPOS_CAMPANA) {
     const g = (r.gantt as Record<string, unknown> | undefined)?.[t.id];
     if (Array.isArray(g)) d.gantt[t.id] = Array.from({ length: N }, (_, i) => Math.round(num(g[i], 0, 3)));
+    const gc = (r.ganttCat as Record<string, unknown> | undefined)?.[t.id];
+    if (Array.isArray(gc)) d.ganttCat[t.id] = Array.from({ length: N }, (_, i) => ((CATS_PLAN as readonly string[]).includes(gc[i] as string) ? (gc[i] as string) : null));
     const e = (r.efectos as Record<string, Partial<Efecto>> | undefined)?.[t.id];
     if (e) d.efectos[t.id] = { alc: num(e.alc, -100, 1000, d.efectos[t.id].alc), int: num(e.int, -100, 1000, d.efectos[t.id].int), seg: num(e.seg, -1e6, 1e6, d.efectos[t.id].seg) };
   }
@@ -79,11 +87,19 @@ export interface HistOtros {
   /** "plan|kpi" → 12 meses del año base (solo meses cerrados; null = sin dato / por cerrar). */
   series: Record<string, Serie>;
   seguidores: { ultimo: number | null; fecha: string | null; porMes: number };
+  /** "plan|kpi" → participación de cada categoría (CATS_PLAN, suma 1) en los últimos meses cerrados. */
+  shares?: Record<string, Record<string, number>>;
+  /** "plan|kpi" → serie por categoría (KPIs de tasa con dato propio por categoría: SEO / mercado). */
+  seriesCat?: Record<string, Record<string, Serie>>;
+  /** Mezcla típica de las interacciones de IG por tipo (suma 1). */
+  igMix?: { likes: number; comentarios: number; guardados: number } | null;
 }
 
 export interface KpiProyectado {
   plan: string; kpi: string; unidad: string; direccion: "up" | "down"; tipo: "sum" | "rate";
   valores: number[]; base: number[]; metodo: string;
+  /** Proyección por categoría (solo KPIs con dato por categoría). */
+  porCat?: Record<string, number[]>;
 }
 
 export const PLANES_OTROS = [
@@ -137,11 +153,14 @@ const redondear = (v: number, tipo: "sum" | "rate", unidad: string) => {
 };
 
 /** Efecto de las campañas en el mes i (fracción): {alc, int, seg absoluto}. */
-export function efectoMes(cfg: OtrosConfig, i: number): Efecto {
+/** Con `cat`, solo cuentan las campañas de esa categoría o de todas. */
+export function efectoMes(cfg: OtrosConfig, i: number, cat?: string): Efecto {
   const o = { alc: 0, int: 0, seg: 0 };
   for (const t of TIPOS_CAMPANA) {
     const f = FACTOR_INT[cfg.gantt[t.id]?.[i] ?? 0] ?? 0;
     if (!f) continue;
+    const ct = cfg.ganttCat?.[t.id]?.[i] ?? null;
+    if (cat && ct && ct !== cat) continue;
     const e = cfg.efectos[t.id];
     o.alc += (f * e.alc) / 100; o.int += (f * e.int) / 100; o.seg += f * e.seg;
   }
@@ -176,11 +195,25 @@ export function proyectarOtros(cfg: OtrosConfig, h: HistOtros, anio: number, inv
   // Instagram: mes normal + campañas del Gantt.
   const igAlc = mediana(ultimos(h.series["Redes Sociales|Alcance orgánico"] ?? [], 6));
   const igInt = mediana(ultimos(h.series["Redes Sociales|Interacciones"] ?? [], 6));
-  if (igAlc != null) push("Redes Sociales", mk("Redes Sociales", "Alcance orgánico", Array(N).fill(igAlc), (i) => 1 + efectoMes(cfg, i).alc, "mes normal (mediana 6 meses) + campañas"));
-  if (igInt != null) push("Redes Sociales", mk("Redes Sociales", "Interacciones", Array(N).fill(igInt), (i) => 1 + efectoMes(cfg, i).int, "mes normal (mediana 6 meses) + campañas"));
-  if (igAlc && igInt != null) {
-    const er = (igInt / igAlc) * 100;
-    push("Redes Sociales", mk("Redes Sociales", "Engagement rate", Array(N).fill(er), (i) => { const e = efectoMes(cfg, i); return (1 + e.int) / (1 + e.alc); }, "interacciones ÷ alcance proyectados"));
+  // Con participación por categoría, cada categoría recibe solo sus campañas y el total es la suma.
+  const igSh = h.shares?.["Redes Sociales|Alcance orgánico"];
+  const igKpi = (kpi: string, base: number, campo: "alc" | "int") => {
+    const k = mk("Redes Sociales", kpi, Array(N).fill(base), (i) => 1 + efectoMes(cfg, i)[campo], "mes normal (mediana 6 meses) + campañas");
+    if (k && igSh) {
+      k.porCat = Object.fromEntries(CATS_PLAN.map((c) => [c, Array.from({ length: N }, (_, i) => Math.round(base * (igSh[c] ?? 0) * (1 + efectoMes(cfg, i, c)[campo])))]));
+      k.valores = Array.from({ length: N }, (_, i) => redondear(CATS_PLAN.reduce((t, c) => t + k.porCat![c]![i]!, 0), "sum", ""));
+      k.metodo += " · por categoría con la participación del alcance";
+    }
+    push("Redes Sociales", k);
+    return k;
+  };
+  const kAlc = igAlc != null ? igKpi("Alcance orgánico", igAlc, "alc") : null;
+  const kInt = igInt != null ? igKpi("Interacciones", igInt, "int") : null;
+  if (kAlc && kInt && igAlc) {
+    const er = (igInt! / igAlc) * 100;
+    const k = mk("Redes Sociales", "Engagement rate", Array(N).fill(er), () => 1, "interacciones ÷ alcance proyectados");
+    if (k) k.valores = kAlc.valores.map((a, i) => redondear(a > 0 ? (kInt.valores[i]! / a) * 100 : 0, "rate", "%"));
+    push("Redes Sociales", k);
   }
   const s = h.seguidores;
   if (s.ultimo != null && s.fecha) {
@@ -197,6 +230,11 @@ export function proyectarOtros(cfg: OtrosConfig, h: HistOtros, anio: number, inv
   const sent = promedio(ultimos(h.series["Redes Sociales|Sentiment"] ?? [], 6));
   if (sent != null) push("Redes Sociales", mk("Redes Sociales", "Sentiment", Array(N).fill(sent), () => 1, "promedio 6 meses (continuidad)"));
 
+  // Web: usuarios por categoría con la participación de los últimos meses (las metas por categoría suman el total).
+  const webSh = h.shares?.["Web / Ecommerce|Tráfico web (usuarios)"];
+  const kUs = out["Web / Ecommerce"]?.find((k) => k.kpi === "Tráfico web (usuarios)");
+  if (kUs && webSh) kUs.porCat = Object.fromEntries(CATS_PLAN.map((c) => [c, kUs.valores.map((v) => redondear(v * (webSh[c] ?? 0), "sum", ""))]));
+
   // Facebook: mes normal × (1 + ambición).
   for (const kpi of ["Alcance orgánico", "Engagement rate"]) {
     const v = mediana(ultimos(h.series[`Facebook|${kpi}`] ?? [], 6));
@@ -206,11 +244,19 @@ export function proyectarOtros(cfg: OtrosConfig, h: HistOtros, anio: number, inv
   // SEO / mercado: continuidad.
   const ambTxt = cfg.amb.seo ? ` ${cfg.amb.seo > 0 ? "+" : ""}${cfg.amb.seo}%` : "";
   for (const k of MERCADO_KPIS) {
-    const s0 = h.series[`Mercado y competencia|${k.key}`] ?? [];
-    const [base, como] = k.key === "Share of Search" ? [baseMismoMes(s0).base, `${h.anioBase} mismo mes`]
+    const regla = (s0: Serie): [(number | null)[], string] => k.key === "Share of Search" ? [baseMismoMes(s0).base, `${h.anioBase} mismo mes`]
       : k.key === "Share of engagement" ? [Array(N).fill(mediana(ultimos(s0, 6))), "mediana 6 meses"]
       : [Array(N).fill(ultimos(s0, 1)[0] ?? null), "último relevamiento"];
-    push("Mercado y competencia", mk("Mercado y competencia", k.key, base, ambF(cfg.amb.seo, k.direccion), `continuidad: ${como}${ambTxt}`));
+    const [base, como] = regla(h.series[`Mercado y competencia|${k.key}`] ?? []);
+    const km = mk("Mercado y competencia", k.key, base, ambF(cfg.amb.seo, k.direccion), `continuidad: ${como}${ambTxt}`);
+    const sc = h.seriesCat?.[`Mercado y competencia|${k.key}`];
+    if (km && sc) {
+      const f = ambF(cfg.amb.seo, k.direccion)();
+      const pc: Record<string, number[]> = {};
+      for (const c of CATS_PLAN) { const b = regla(sc[c] ?? [])[0]; if (b.some(ok)) pc[c] = b.map((v) => redondear((v ?? 0) * f, "rate", k.unidad)); }
+      if (Object.keys(pc).length) km.porCat = pc;
+    }
+    push("Mercado y competencia", km);
   }
   return out;
 }
@@ -220,7 +266,7 @@ const MES3 = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oc
 export function otrosPlano(c: OtrosConfig): Record<string, string | number> {
   const o: Record<string, string | number> = {};
   for (const t of TIPOS_CAMPANA) {
-    c.gantt[t.id].forEach((v, i) => { o[`Campaña ${t.label} ${MES3[i]}`] = INTENSIDADES[v] ?? "—"; });
+    c.gantt[t.id].forEach((v, i) => { o[`Campaña ${t.label} ${MES3[i]}`] = `${INTENSIDADES[v] ?? "—"}${v && c.ganttCat?.[t.id]?.[i] ? ` · ${c.ganttCat[t.id]![i]}` : ""}`; });
     const e = c.efectos[t.id];
     o[`Efecto ${t.label} alcance %`] = e.alc; o[`Efecto ${t.label} interacciones %`] = e.int; o[`Efecto ${t.label} seguidores`] = e.seg;
   }

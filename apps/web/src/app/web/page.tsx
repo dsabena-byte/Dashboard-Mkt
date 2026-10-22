@@ -92,7 +92,7 @@ export default async function WebPage({ searchParams }: PageProps) {
           <p className="text-sm text-muted-foreground">Metas proyectadas del año que viene.</p>
         </header>
         <HowToRead slug="web" />
-        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/web" }, planTab]} active="plan" />
+        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/web" }]} after={[planTab]} active="plan" />
         <PlanOtrosDash area="web" />
       </DashTabs>
     );
@@ -517,7 +517,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       </header>
       <DataHealth dash="web" className="-mt-2" />
       <HowToRead slug="web" />
-      <DashTabBar items={[{ key: "tablero", label: "Tablero" }, planTab]} />
+      <DashTabBar items={[{ key: "tablero", label: "Tablero" }]} after={[planTab]} />
 
       {!hasData && (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">

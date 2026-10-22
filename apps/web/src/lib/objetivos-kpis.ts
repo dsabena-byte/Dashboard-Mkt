@@ -52,7 +52,7 @@ export interface KpiSeguimiento {
 const CATS4 = ["Brand", "Lavado", "Refrigeración", "Cocción"] as const;
 // Normaliza el valor de categoría de la data cruda a una de CATS4 (o null = ignorar).
 // Cocinas = Cocción; Promoción/UGC/Home se doblan a Brand; Lavavajillas/Otros/null se ignoran.
-function normCat(raw: string | null | undefined): (typeof CATS4)[number] | null {
+export function normCat(raw: string | null | undefined): (typeof CATS4)[number] | null {
   const c = (raw ?? "").toLowerCase();
   if (c.includes("lavado")) return "Lavado";
   if (c.includes("refri")) return "Refrigeración";
