@@ -67,7 +67,6 @@ export function PlanCanal({ anio, inicial, editor, email }: { anio: number; inic
   const sucio = JSON.stringify(canal) !== base;
   const ro = !editor;
   const totC = totalMes(canal.clientes), totE = totalMes(canal.eventos);
-  const anual = [...totC, ...totE].reduce((a, b) => a + b, 0);
 
   async function guardar() {
     setOcupado(true); setMsg(null);
@@ -83,7 +82,7 @@ export function PlanCanal({ anio, inicial, editor, email }: { anio: number; inic
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3 text-sm">
         <div className="flex-1">
-          <b>Plan anual {anio}</b> · total {M(anual)} (clientes {M(totC.reduce((a, b) => a + b, 0))} · eventos {M(totE.reduce((a, b) => a + b, 0))})
+          <b>Plan anual {anio}</b> · Publicidad por cliente {M(totC.reduce((a, b) => a + b, 0))} · Eventos Canal + Consumidores {M(totE.reduce((a, b) => a + b, 0))}
           {sucio && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">cambios sin guardar</span>}
           {ro && <div className="text-xs text-amber-800">Solo lectura: lo editan los editores del presupuesto{email ? ` (entraste como ${email}, que no está en la lista)` : ""}.</div>}
         </div>
@@ -93,13 +92,8 @@ export function PlanCanal({ anio, inicial, editor, email }: { anio: number; inic
         </>}
       </div>
       {msg && <p className={`text-sm ${msg.ok ? "text-emerald-700" : "text-red-600"}`}>{msg.t}</p>}
-      {anual > 0 && (
-        <div className="rounded-lg border p-2"><div className="text-xs font-semibold">Mkt Canal {anio} · clientes vs eventos por mes</div>
-          <ApiladoMensual series={[["Publicidad de clientes", totC], ["Eventos", totE]]} colores={["#1e40af", "#94a3b8"]} />
-        </div>
-      )}
-      <Grilla titulo="Publicidad por cliente" ayuda="Plan de publicidad de cada cliente, mes a mes, en millones de pesos." lineas={canal.clientes} onChange={(clientes) => setCanal((c) => ({ ...c, clientes }))} ro={ro} nuevaEtiqueta="Nuevo cliente" />
-      <Grilla titulo="Eventos" ayuda="Eventos de grupos de compra y otros eventos, mes a mes, en millones de pesos. Podés agregar más líneas." lineas={canal.eventos} onChange={(eventos) => setCanal((c) => ({ ...c, eventos }))} ro={ro} nuevaEtiqueta="Nuevo evento" />
+      <Grilla titulo="Publicidad por cliente" ayuda="Plan de publicidad de cada cliente (cuenta contable propia), mes a mes, en millones de pesos." lineas={canal.clientes} onChange={(clientes) => setCanal((c) => ({ ...c, clientes }))} ro={ro} nuevaEtiqueta="Nuevo cliente" />
+      <Grilla titulo="Eventos Canal + Consumidores" ayuda="Eventos de grupos de compra (canal) y eventos para consumidores, mes a mes, en millones de pesos. Podés agregar más líneas." lineas={canal.eventos} onChange={(eventos) => setCanal((c) => ({ ...c, eventos }))} ro={ro} nuevaEtiqueta="Nuevo evento" />
     </div>
   );
 }
