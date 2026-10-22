@@ -6,6 +6,8 @@ import {
   type InflacionMes, type PlanConfig, type PlanMedio, type Reparto,
 } from "@/lib/plan-medios-anual";
 import type { PautaMesMedios } from "@/lib/pauta-medios-model";
+import { ApiladoMensual, BGT_COLORES, CpmMedios, ImpactosMensual, RankingMedios, calor } from "@/components/pauta/plan-anual-charts";
+import { MetaEvolChart } from "@/components/pauta/meta-evol-chart";
 
 // Editor del Plan de Medios anual (/performance/plan). Todo se recalcula en el navegador con el mismo
 // cálculo puro que usa la API al cargar las metas.
@@ -23,11 +25,12 @@ function Num({ v, on, disabled, step = "any" }: { v: number; on: (n: number) => 
   return <input type="number" step={step} className={inputCls} value={Number.isFinite(v) ? v : 0} disabled={disabled} onChange={(e) => on(Number(e.target.value) || 0)} />;
 }
 
-function Tabla({ titulo, filas, total, pie }: { titulo: string; filas: [string, number[]][]; total: number[]; pie?: string }) {
+function Tabla({ titulo, filas, total, pie, grafico }: { titulo: string; filas: [string, number[]][]; total: number[]; pie?: string; grafico?: React.ReactNode }) {
   const tAnual = total.reduce((s, v) => s + v, 0);
   return (
     <div className="space-y-1">
       <h4 className="text-sm font-semibold">{titulo}</h4>
+      {grafico}
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[900px] text-xs">
           <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">$ M</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th}>Total</th><th className={th}>%</th></tr></thead>
@@ -77,13 +80,19 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
   const medioFilas = cfg.medios.map((m) => [m.medio, r.inversion.montos[m.medio] ?? []] as [string, number[]]);
   const avisos = [...r.inversion.avisos, ...r.impactos.avisos];
   const tAnual = r.inversion.total.reduce((s, v) => s + v, 0);
+  // Gráfico por medio: los 6 de más inversión + "Otros".
+  const ordenados = [...medioFilas].sort((x, y) => y[1].reduce((a, b) => a + b, 0) - x[1].reduce((a, b) => a + b, 0));
+  const topMedios: [string, number[]][] = ordenados.length > 7
+    ? [...ordenados.slice(0, 6), ["Otros", MES.map((_, i) => ordenados.slice(6).reduce((t, f) => t + (f[1][i] ?? 0), 0))]]
+    : ordenados;
+  const maxMedioCat = Math.max(0, ...Object.values(r.inversion.medioCat).flatMap((mc) => Object.values(mc)));
 
   return (
     <div className="space-y-6">
       {/* Estado + acciones */}
       <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3 text-sm">
         <div className="flex-1">
-          <b>Plan {anio}</b> · {guardado ? `guardado ${new Date(guardado.at).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}${guardado.por ? ` por ${guardado.por}` : ""}` : "todavía no guardado (arranca con el Excel aprobado)"}
+          <b>Plan {anio}</b> · {guardado ? `guardado ${new Date(guardado.at).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" })}${guardado.por ? ` por ${guardado.por}` : ""}` : "todavía no guardado (arranca con el Excel aprobado)"}
           {sucio && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">cambios sin guardar</span>}
           {ro && <div className="text-xs text-amber-800">Solo lectura: lo editan los editores del presupuesto{email ? ` (entraste como ${email}, que no está en la lista)` : ""}.</div>}
           {sinTabla && <div className="text-xs text-red-600">Falta la tabla plan_medios_anual: corré 0129_plan_medios_anual.sql en el SQL Editor de Supabase.</div>}
@@ -101,6 +110,10 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
       {/* 1. BGT */}
       <section className="space-y-2">
         <h3 className="text-base font-semibold">1. BGT de medios por mes ($ M)</h3>
+        <ApiladoMensual colores={BGT_COLORES} series={[
+          ["Digital", MES.map((_, i) => cfg.medios.filter((m) => !m.offline).reduce((t, m) => t + (r.inversion.montos[m.medio]?.[i] ?? 0), 0))],
+          ["Offline (OOH, TV, radio, DOOH)", MES.map((_, i) => cfg.medios.filter((m) => m.offline).reduce((t, m) => t + (r.inversion.montos[m.medio]?.[i] ?? 0), 0))],
+        ]} />
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[900px] text-xs" data-noexcel>
             <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium" />{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th}>Total</th></tr></thead>
@@ -118,6 +131,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
       {/* 2. Medios */}
       <section className="space-y-2">
         <h3 className="text-base font-semibold">2. Medios: reparto, rol y categoría</h3>
+        <RankingMedios items={cfg.medios.map((m) => [m.medio, (r.inversion.montos[m.medio] ?? []).reduce((a, b) => a + b, 0)])} />
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[980px] text-xs" data-noexcel>
             <thead className="bg-muted/50 text-muted-foreground">
@@ -206,6 +220,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
       {/* 3. Mix por categoría */}
       <section className="space-y-2">
         <h3 className="text-base font-semibold">3. Mix por categoría (% del mes, para los medios en &ldquo;mix&rdquo;)</h3>
+        <ApiladoMensual pct series={PLAN_CATS.map((c) => [c, cfg.mix[c] ?? []])} />
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[900px] text-xs" data-noexcel>
             <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Categoría</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th} title="Promedio simple de los 12 meses">Prom.</th><th className={th} title="% del plan total en la categoría (con OOH, TV y radio)">% plan</th></tr></thead>
@@ -226,9 +241,9 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
       {/* 4. Resultado: inversión */}
       <section className="space-y-4">
         <h3 className="text-base font-semibold">4. Inversión del plan</h3>
-        <Tabla titulo="Por medio" filas={medioFilas} total={r.inversion.total} pie={`Disponible para digital por mes ($ M): ${r.inversion.digitalDisponible.map(M).join(" · ")}`} />
-        <Tabla titulo="Por objetivo" filas={PLAN_ROLES.map((x) => [x, r.inversion.objetivos[x] ?? []])} total={r.inversion.total} />
-        <Tabla titulo="Por categoría" filas={PLAN_CATS.map((x) => [x, r.inversion.categorias[x] ?? []])} total={r.inversion.total} />
+        <Tabla titulo="Por medio" grafico={<ApiladoMensual series={topMedios} />} filas={medioFilas} total={r.inversion.total} pie={`Disponible para digital por mes ($ M): ${r.inversion.digitalDisponible.map(M).join(" · ")}`} />
+        <Tabla titulo="Por objetivo" grafico={<ApiladoMensual pct colores={["#1e3a8a", "#3b82f6", "#93c5fd"]} series={PLAN_ROLES.map((x) => [x, r.inversion.objetivos[x] ?? []])} />} filas={PLAN_ROLES.map((x) => [x, r.inversion.objetivos[x] ?? []])} total={r.inversion.total} />
+        <Tabla titulo="Por categoría" grafico={<ApiladoMensual series={PLAN_CATS.map((x) => [x, r.inversion.categorias[x] ?? []])} />} filas={PLAN_CATS.map((x) => [x, r.inversion.categorias[x] ?? []])} total={r.inversion.total} />
         <div className="space-y-1">
           <h4 className="text-sm font-semibold">Medio × categoría (anual, $ M)</h4>
           <div className="overflow-x-auto rounded-lg border">
@@ -236,7 +251,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
               <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Medio</th>{PLAN_CATS.map((c) => <th key={c} className={th}>{c}</th>)}<th className={th}>Total</th></tr></thead>
               <tbody>
                 {cfg.medios.map((m) => { const mc = r.inversion.medioCat[m.medio] ?? {}; return (
-                  <tr key={m.medio} className="border-t"><td className="px-2 py-1">{m.medio}</td>{PLAN_CATS.map((c) => <td key={c} className={td}>{mc[c] ? M(mc[c]!) : "—"}</td>)}<td className={`${td} font-medium`}>{M(Object.values(mc).reduce((s, v) => s + v, 0))}</td></tr>
+                  <tr key={m.medio} className="border-t"><td className="px-2 py-1">{m.medio}</td>{PLAN_CATS.map((c) => <td key={c} className={td} style={calor(mc[c] ?? 0, maxMedioCat)}>{mc[c] ? M(mc[c]!) : "—"}</td>)}<td className={`${td} font-medium`}>{M(Object.values(mc).reduce((s, v) => s + v, 0))}</td></tr>
                 ); })}
                 <tr className="border-t bg-muted/30 font-semibold"><td className="px-2 py-1">Total</td>{PLAN_CATS.map((c) => <td key={c} className={td}>{M((r.inversion.categorias[c] ?? []).reduce((s, v) => s + v, 0))}</td>)}<td className={td}>{M(tAnual)}</td></tr>
               </tbody>
@@ -248,6 +263,11 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
       {/* 5. Impactos */}
       <section className="space-y-4">
         <h3 className="text-base font-semibold">5. Impactos esperados</h3>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div><h4 className="text-sm font-semibold">Impresiones, alcance y frecuencia por mes</h4><ImpactosMensual total={r.impactos.total} /></div>
+          <div><h4 className="text-sm font-semibold">Inversión vs CPM por medio (burbuja = impresiones)</h4>
+            <CpmMedios items={cfg.medios.flatMap((m) => { const a = r.impactos.porMedio[m.medio]; if (!a) return []; const inv = (r.inversion.montos[m.medio] ?? []).reduce((x, y) => x + y, 0), impr = a.reduce((x, y) => x + y.impr, 0); return impr > 0 ? [{ medio: m.medio, inv, impr, cpm: (inv / impr) * 1000 }] : []; })} /></div>
+        </div>
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[900px] text-xs">
             <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Medio (anual)</th><th className={th}>Inversión $ M</th><th className={th}>Impresiones</th><th className={th}>Alcance</th><th className={th}>Clicks</th><th className={th}>Views ≥50%</th><th className={th}>VTR ≥50%</th><th className={th}>CPM plan</th><th className="px-2 py-1.5 text-left font-medium">Confianza</th></tr></thead>
@@ -275,6 +295,15 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
               })()}
             </tbody>
           </table>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {PLAN_META_KPIS.map((k) => (
+            <div key={k} className="rounded-lg border p-2">
+              <div className="text-xs font-semibold">{k}</div>
+              <MetaEvolChart mode={k === "Frecuencia" || k === "VTR (≥50%)" ? "line" : "bar"} unidad={k === "Inversión" ? "$" : k === "Frecuencia" ? "x" : k === "VTR (≥50%)" ? "%" : ""}
+                realName="Plan" metaName="Meta actual" data={MES.map((mes, i) => ({ mes, real: r.metas[k][i] ?? null, meta: metasActuales[k]?.[i] ?? null }))} />
+            </div>
+          ))}
         </div>
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[900px] text-xs">
