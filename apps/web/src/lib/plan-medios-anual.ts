@@ -19,6 +19,7 @@
 // ============================================================================
 import { fitCurve } from "./simulador";
 import type { PautaMesMedios } from "./pauta-medios-model";
+import { otrosDefault, otrosPlano, sanearOtros, type OtrosConfig } from "./plan-otros-kpis";
 
 export const PLAN_CATS = ["Lavado", "Refrigeración", "Cocción", "Brand", "Promo / UGC"] as const;
 export const PLAN_ROLES = ["Awareness", "Consideración", "Conversión"] as const;
@@ -38,7 +39,8 @@ export interface PlanMedio {
   cat: (string | null)[];      // 12: categoría fija del mes, null = según mix
   ref: RefPeriodo;
 }
-export interface PlanConfig { anio: number; bgt: number[]; medios: PlanMedio[]; mix: Record<string, number[]> }
+/** `otros` = calendario de campañas y ambición de Web/Redes/SEO (sección 6, lib/plan-otros-kpis.ts). */
+export interface PlanConfig { anio: number; bgt: number[]; medios: PlanMedio[]; mix: Record<string, number[]>; otros: OtrosConfig }
 
 const OLAS = [0, 0, 0, 15, 20, 0, 0, 0, 20, 25, 20, 0];
 const mixCat = () => Array.from({ length: N }, () => null);
@@ -77,6 +79,7 @@ export function planDefault(anio: number): PlanConfig {
       Brand: [20, 20, 20, 22, 22, 22, 27, 27, 27, 27, 20, 20],
       "Promo / UGC": [0, 0, 0, 3, 3, 3, 3, 3, 0, 0, 3, 3],
     },
+    otros: otrosDefault(),
   };
 }
 
@@ -101,7 +104,7 @@ export function sanearPlan(raw: unknown, anio: number): PlanConfig {
   }).filter((m) => m.medio);
   const mix: Record<string, number[]> = {};
   for (const c of PLAN_CATS) mix[c] = arr12((r.mix as Record<string, unknown> | undefined)?.[c], 0, 100);
-  return { anio, bgt: arr12(r.bgt), medios, mix };
+  return { anio, bgt: arr12(r.bgt), medios, mix, otros: sanearOtros(r.otros) };
 }
 
 // ── Inflación ───────────────────────────────────────────────────────────────
@@ -302,7 +305,7 @@ function planano(c: PlanConfig): Record<string, string | number> {
     m.cat.forEach((v, i) => { o[`${p} categoría ${MES3[i]}`] = v ?? "mix"; });
   }
   for (const c0 of PLAN_CATS) (c.mix[c0] ?? []).forEach((v, i) => { o[`Mix ${c0} ${MES3[i]}`] = v; });
-  return o;
+  return { ...o, ...otrosPlano(c.otros) };
 }
 export function difPlan(a: PlanConfig, b: PlanConfig): { antes: Record<string, string | number | null>; despues: Record<string, string | number | null> } {
   const A = planano(a), B = planano(b);
