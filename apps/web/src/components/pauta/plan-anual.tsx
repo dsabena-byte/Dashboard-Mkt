@@ -8,8 +8,6 @@ import {
 import type { PautaMesMedios } from "@/lib/pauta-medios-model";
 import { ApiladoMensual, BGT_COLORES, CpmMedios, ImpactosMensual, RankingMedios, calor } from "@/components/pauta/plan-anual-charts";
 import { MetaEvolChart } from "@/components/pauta/meta-evol-chart";
-import { PlanOtros } from "@/components/pauta/plan-otros";
-import type { HistOtros } from "@/lib/plan-otros-kpis";
 
 // Editor del Plan de Medios anual (/performance/plan). Todo se recalcula en el navegador con el mismo
 // cálculo puro que usa la API al cargar las metas.
@@ -49,10 +47,9 @@ function Tabla({ titulo, filas, total, pie, grafico }: { titulo: string; filas: 
   );
 }
 
-export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, inflOrigen, editor, email, metasActuales, hist, metasOtros }: {
+export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, inflOrigen, editor, email, metasActuales }: {
   anio: number; inicial: PlanConfig; guardado: { at: string; por: string | null } | null; sinTabla: boolean;
   refMeses: (PautaMesMedios | null)[]; infl: InflacionMes; inflOrigen: Record<string, string>; editor: boolean; email: string | null; metasActuales: Record<string, (number | null)[]>;
-  hist: HistOtros; metasOtros: Record<string, (number | null)[]>;
 }) {
   const router = useRouter();
   const [cfg, setCfg] = useState(inicial);
@@ -68,14 +65,14 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
   const setMedio = (i: number, patch: Partial<PlanMedio>) => setCfg((c) => ({ ...c, medios: c.medios.map((m, k) => (k === i ? { ...m, ...patch } : m)) }));
   const setArr = (a: number[], i: number, v: number) => a.map((x, k) => (k === i ? v : x));
 
-  async function enviar(method: "PUT" | "POST", plan?: string) {
+  async function enviar(method: "PUT" | "POST") {
     setOcupado(true); setMsg(null);
     try {
-      const res = await fetch("/api/plan-medios", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(method === "PUT" ? { anio, config: cfg } : { anio, plan }) });
+      const res = await fetch("/api/plan-medios", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(method === "PUT" ? { anio, config: cfg } : { anio }) });
       const d = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) { setMsg({ ok: false, t: d.error ?? "No se pudo." }); return; }
       if (method === "PUT") { setBase(JSON.stringify(cfg)); setMsg({ ok: true, t: "Plan guardado." }); }
-      else setMsg({ ok: true, t: plan ? `Metas ${anio} de ${plan} cargadas desde la proyección. Se ajustan en el panel de metas de ese tablero.` : `Metas ${anio} de Pauta Mkt cargadas desde el plan. Podés ajustarlas abajo.` });
+      else setMsg({ ok: true, t: `Metas ${anio} de Pauta Mkt cargadas desde el plan. Podés ajustarlas abajo.` });
       router.refresh();
     } finally { setOcupado(false); }
   }
@@ -336,10 +333,6 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
           </div>
         )}
       </section>
-
-      {/* 6. Campañas + metas de Web, Redes y SEO */}
-      <PlanOtros anio={anio} otros={cfg.otros} onChange={(o) => setCfg((c) => ({ ...c, otros: o }))} hist={hist} invPlan={r.inversion.total} ro={ro}
-        puedeMetas={!sucio && !!guardado} ocupado={ocupado} onMetas={(p) => void enviar("POST", p)} metasActuales={metasOtros} />
     </div>
   );
 }

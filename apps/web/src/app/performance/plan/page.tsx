@@ -8,8 +8,6 @@ import { getInflacionMes, getPlanAnual, getRefMeses } from "@/lib/plan-medios-an
 import { getMetaValoresMensuales } from "@/lib/metas-server";
 import { usuarioPresupuesto } from "@/lib/presupuesto-server";
 import { PLAN_META_KPIS } from "@/lib/plan-medios-anual";
-import { KPIS_OTROS, type HistOtros } from "@/lib/plan-otros-kpis";
-import { getHistOtros } from "@/lib/plan-otros-kpis-server";
 
 // Plan de Medios ANUAL (oct-2026, reemplaza el Excel del BGT): se edita el plan, se recalculan la
 // inversión por medio/objetivo/categoría y los impactos esperados, y con un botón se cargan como metas
@@ -25,16 +23,12 @@ export default async function PlanAnualPage({ searchParams }: { searchParams?: {
   const hoy = new Date().getFullYear();
   const pedido = Number(searchParams?.anio);
   const anio = pedido >= hoy - 1 && pedido <= hoy + 2 ? pedido : hoy + 1;
-  const otrosKeys = Object.entries(KPIS_OTROS).flatMap(([p, ks]) => ks.map(([k]) => [p, k] as const));
-  const vacio = (): (number | null)[] => Array.from({ length: 12 }, () => null);
-  const [plan, refMeses, { infl, origen }, usuario, metasActuales, hist, metasOtros] = await Promise.all([
+  const [plan, refMeses, { infl, origen }, usuario, metasActuales] = await Promise.all([
     getPlanAnual(anio),
     safe(getRefMeses(), []),
     getInflacionMes(),
     safe(usuarioPresupuesto(), null),
     Promise.all(PLAN_META_KPIS.map((k) => safe(getMetaValoresMensuales("Pauta Mkt", k, anio), Array.from({ length: 12 }, () => null)))),
-    safe<HistOtros>(getHistOtros(anio), { anioBase: anio - 1, series: {}, seguidores: { ultimo: null, fecha: null, porMes: 0 } }),
-    Promise.all(otrosKeys.map(([p, k]) => safe(getMetaValoresMensuales(p, k, anio), vacio()))),
   ]);
   return (
     <div className="space-y-4">
@@ -49,7 +43,7 @@ export default async function PlanAnualPage({ searchParams }: { searchParams?: {
           { titulo: "Cómo se reparte cada medio", texto: <><b>Costo fijo</b> (OOH): el costo de enero se ajusta en abril, julio y octubre por la inflación del trimestre anterior. <b>Olas</b> (TV, radio, DOOH): un % del BGT anual repartido en los meses de la ola. <b>Curva</b> (digital): lo que queda del mes se reparte según el peso de cada medio.</> },
           { titulo: "De dónde salen los impactos", texto: <>De lo que rindió cada medio en los meses cerrados del Tablero (Meta y TikTok: los 2 últimos meses, con las piezas nuevas; el resto, todo el año). La plata del plan se lleva a pesos de esa referencia con la inflación cargada en Inversión de Marketing → Cargar datos → Inflación, (la REAL de INDEC si ya salió; si no, la del presupuesto más reciente: 8+4, 4+8 o BGT) y pasa por la curva del Simulador (cada peso extra rinde un poco menos). TV, radio y DOOH no tienen medición: suman inversión pero no impactos.</> },
           { titulo: "Metas", texto: <>Guardá el plan y tocá <b>Usar como metas</b>: carga las metas mensuales de Inversión, Alcance, Frecuencia, Impresiones, VTR y Clicks de Pauta Mkt para ese año. Después las podés ajustar a mano en el panel de abajo.</> },
-          { titulo: "Metas de Web, Redes y SEO", texto: <>En la sección 6 armás el calendario de campañas de Redes (tipo × mes × intensidad) y la ambición de Web, Facebook y SEO. Instagram = un mes normal + el efecto de cada campaña (el sorteo está calibrado con Casa FOA sep-2026; el resto son supuestos editables). Web = mismo mes del año anterior + la ambición. SEO = continuidad. Cada tablero tiene su botón <b>Usar como metas</b>.</> },
+          { titulo: "Metas de Web, Redes y SEO", texto: <>Viven en la pestaña <b>Plan anual</b> de cada tablero (Redes Sociales: calendario de campañas; Web; SEO). Usan la inversión de este plan (el ROAS de Web).</> },
           { titulo: "Quién edita", texto: <>Los editores del presupuesto (los mismos que cargan el BGT). Cada cambio queda en el Historial de Inversión de Marketing → Cargar datos.</> },
         ]}
       />
@@ -71,8 +65,6 @@ export default async function PlanAnualPage({ searchParams }: { searchParams?: {
         editor={!!usuario?.editor}
         email={usuario?.email ?? null}
         metasActuales={Object.fromEntries(PLAN_META_KPIS.map((k, i) => [k, metasActuales[i]!]))}
-        hist={hist}
-        metasOtros={Object.fromEntries(otrosKeys.map(([p, k], i) => [`${p}|${k}`, metasOtros[i]!]))}
       />
       <MetaPanel
         plan="Pauta Mkt"

@@ -8,6 +8,7 @@ import { MercadoMetasSection } from "@/components/seo-search/mercado-metas-secti
 import { SearchConsoleSection } from "@/components/seo-search/search-console-section";
 import { getMercadoSeries, getMercadoMetas } from "@/lib/mercado-kpis-server";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { PlanOtrosDash, anioPlan } from "@/components/pauta/plan-otros-dash";
 import { MarcaDigitalSection, LlmoIcSection, KwEvolucionSection, ScAvanzadoSection, AuditoriaSection } from "@/components/seo-search/seo-avanzado-section";
 import { loadSeoAvanzado } from "@/lib/seo-avanzado-server";
 import { DataHealth } from "@/components/data-health";
@@ -29,7 +30,21 @@ function Fresh({ label, date }: { label: string; date: string | null }) {
   );
 }
 
-export default async function SeoSearchPage() {
+export default async function SeoSearchPage({ searchParams }: { searchParams?: { tab?: string } }) {
+  const planTab = { key: "plan", label: `Plan anual ${anioPlan()}`, href: "/seo-search?tab=plan" };
+  if (searchParams?.tab === "plan") {
+    return (
+      <DashTabs dash="seo-search" className="mx-auto max-w-7xl space-y-5 p-4 md:p-6">
+        <header>
+          <h1 className="text-xl font-bold">Análisis SEO / Search</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Metas proyectadas del año que viene.</p>
+        </header>
+        <HowToRead slug="seo-search" />
+        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/seo-search" }, planTab]} active="plan" />
+        <PlanOtrosDash area="seo" />
+      </DashTabs>
+    );
+  }
   // Precarga (React cache por request): los KPIs de mercado arrancan EN PARALELO con el resto,
   // y MercadoMetasSection reusa la misma promesa.
   const anio = new Date().getFullYear();
@@ -69,7 +84,7 @@ export default async function SeoSearchPage() {
       </header>
       <DataHealth dash="seo-search" className="-mt-2" />
       <HowToRead slug="seo-search" />
-      <DashTabBar />
+      <DashTabBar items={[{ key: "tablero", label: "Tablero" }, planTab]} />
 
       {/* KPIs de mercado vs meta (plan "Mercado y competencia" del Mapa) — máxima jerarquía */}
       <MercadoMetasSection />

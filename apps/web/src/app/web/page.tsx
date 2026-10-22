@@ -41,6 +41,7 @@ import { getEcommerceMensual } from "@/lib/ecommerce-queries";
 import { getPautaInversionTotalMensual } from "@/lib/objetivos-kpis";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { PlanOtrosDash, anioPlan } from "@/components/pauta/plan-otros-dash";
 import { getWebCalidadSnapshot, type WebCalidadEstado } from "@/lib/web-calidad-server";
 import { cierreDeMes } from "@/lib/web-forecast";
 import { chequeoConsent } from "@/lib/web-consent";
@@ -82,6 +83,20 @@ function formatDelta(delta: number | null): string {
 }
 
 export default async function WebPage({ searchParams }: PageProps) {
+  const planTab = { key: "plan", label: `Plan anual ${anioPlan()}`, href: "/web?tab=plan" };
+  if (searchParams.tab === "plan") {
+    return (
+      <DashTabs dash="web" className="space-y-6">
+        <header>
+          <h2 className="text-2xl font-semibold tracking-tight">Web · Drean</h2>
+          <p className="text-sm text-muted-foreground">Metas proyectadas del año que viene.</p>
+        </header>
+        <HowToRead slug="web" />
+        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/web" }, planTab]} active="plan" />
+        <PlanOtrosDash area="web" />
+      </DashTabs>
+    );
+  }
   // Default = último mes cerrado (ej: hoy 15-may → Abril 1 a Abril 30).
   const range = parseDateRange(searchParams, lastClosedMonthRange());
   const prev = previousRange(range.from, range.to);
@@ -502,7 +517,7 @@ export default async function WebPage({ searchParams }: PageProps) {
       </header>
       <DataHealth dash="web" className="-mt-2" />
       <HowToRead slug="web" />
-      <DashTabBar />
+      <DashTabBar items={[{ key: "tablero", label: "Tablero" }, planTab]} />
 
       {!hasData && (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">

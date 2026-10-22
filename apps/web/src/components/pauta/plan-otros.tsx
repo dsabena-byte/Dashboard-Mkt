@@ -6,7 +6,7 @@ import {
 } from "@/lib/plan-otros-kpis";
 import { MetaEvolChart } from "@/components/pauta/meta-evol-chart";
 
-// Sección 6 del Plan anual: calendario de campañas de Redes + metas proyectadas de Web, Redes (IG/FB) y SEO.
+// Pestaña "Plan anual" de Redes, Web y SEO: calendario de campañas (Redes) + metas proyectadas del tablero (`area`).
 // Mismo cálculo puro que usa la API al cargar las metas (lib/plan-otros-kpis.ts).
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const CELDA = ["", "bg-[#bfdbfe] text-[#1e3a8a]", "bg-[#3b82f6] text-white", "bg-[#1e3a8a] text-white"];
@@ -29,8 +29,17 @@ const anual = (k: KpiProyectado, a: (number | null)[]) => {
   return k.tipo === "sum" ? v.reduce((s, x) => s + x, 0) : v.reduce((s, x) => s + x, 0) / v.length;
 };
 
-export function PlanOtros({ anio, otros, onChange, hist, invPlan, ro, puedeMetas, ocupado, onMetas, metasActuales }: {
-  anio: number; otros: OtrosConfig; onChange: (o: OtrosConfig) => void; hist: HistOtros; invPlan: number[]; ro: boolean;
+export type AreaPlan = "redes" | "web" | "seo";
+const AREA_PLANES: Record<AreaPlan, string[]> = { redes: ["redes", "fb"], web: ["web"], seo: ["seo"] };
+const AREA_AMB: Record<AreaPlan, [keyof OtrosConfig["amb"], string][]> = { redes: [["fb", "Facebook"]], web: [["web", "Web / Ecommerce"]], seo: [["seo", "SEO / mercado"]] };
+const AREA_TXT: Record<AreaPlan, (b: number) => string> = {
+  redes: () => "Instagram: un mes normal (mediana de los últimos 6 meses cerrados) más el efecto de las campañas del calendario. Facebook: mes normal × ambición.",
+  web: (b) => `Mismo mes de ${b} mejorado por la ambición (los meses que todavía no cerraron se pronostican). ROAS = ingresos ÷ inversión del Plan de Medios.`,
+  seo: (b) => `Continuidad de ${b}: misma actividad, sin acciones nuevas (la ambición en 0 = sostener).`,
+};
+
+export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, puedeMetas, ocupado, onMetas, metasActuales }: {
+  area: AreaPlan; anio: number; otros: OtrosConfig; onChange: (o: OtrosConfig) => void; hist: HistOtros; invPlan: number[]; ro: boolean;
   puedeMetas: boolean; ocupado: boolean; onMetas: (plan: string) => void; metasActuales: Record<string, (number | null)[]>;
 }) {
   const proy = useMemo(() => proyectarOtros(otros, hist, anio, invPlan), [otros, hist, anio, invPlan]);
@@ -41,15 +50,10 @@ export function PlanOtros({ anio, otros, onChange, hist, invPlan, ro, puedeMetas
 
   return (
     <section className="space-y-4">
-      <h3 className="text-base font-semibold">6. Calendario de campañas y metas de Web, Redes y SEO</h3>
-      <p className="text-xs text-muted-foreground">
-        Web: mismo mes de {hist.anioBase} mejorado por la ambición (los meses que todavía no cerraron se pronostican). Instagram: un mes normal
-        (mediana de los últimos 6 meses cerrados) más el efecto de las campañas del calendario. Facebook: mes normal × ambición. SEO y mercado:
-        continuidad de {hist.anioBase}.
-      </p>
+      <p className="text-xs text-muted-foreground">{AREA_TXT[area](hist.anioBase)}</p>
 
       {/* Gantt */}
-      <div className="overflow-x-auto rounded-lg border">
+      {area === "redes" && <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[820px] text-xs">
           <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Campañas de Redes · tocá un mes para cambiar la intensidad</th>{MES.map((m) => <th key={m} className="px-1 py-1.5 text-center font-medium">{m}</th>)}</tr></thead>
           <tbody>
@@ -66,11 +70,11 @@ export function PlanOtros({ anio, otros, onChange, hist, invPlan, ro, puedeMetas
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {/* Efectos + ambición */}
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="overflow-x-auto rounded-lg border">
+      <div className={area === "redes" ? "grid gap-4 lg:grid-cols-[2fr_1fr]" : "max-w-sm"}>
+        {area === "redes" && <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-xs">
             <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Efecto de un mes de intensidad media</th><th className={th}>Alcance %</th><th className={th}>Interacciones %</th><th className={th}>Seguidores</th><th className="px-2 py-1.5 text-left font-medium">De dónde sale</th></tr></thead>
             <tbody>
@@ -86,18 +90,18 @@ export function PlanOtros({ anio, otros, onChange, hist, invPlan, ro, puedeMetas
             </tbody>
           </table>
           <p className="px-2 py-1.5 text-[10px] text-muted-foreground">Baja = la mitad, alta = 1,5 veces. Si en un mes hay varias campañas, los efectos se suman.</p>
-        </div>
+        </div>}
         <div className="space-y-2 rounded-lg border p-3 text-xs">
           <div className="font-semibold">Ambición sobre la base (%)</div>
-          {([["web", "Web / Ecommerce"], ["fb", "Facebook"], ["seo", "SEO / mercado"]] as const).map(([k, l]) => (
+          {AREA_AMB[area].map(([k, l]) => (
             <label key={k} className="flex items-center justify-between gap-2">{l}<input type="number" className={inputCls} disabled={ro} value={otros.amb[k]} onChange={(e) => setAmb(k, num(e.target.value))} /></label>
           ))}
-          <p className="text-[10px] text-muted-foreground">0 = sostener lo que ya se hizo. En Instagram la ambición la ponen las campañas del calendario.</p>
+          <p className="text-[10px] text-muted-foreground">0 = sostener lo que ya se hizo.{area === "redes" ? " En Instagram la ambición la ponen las campañas del calendario." : ""}</p>
         </div>
       </div>
 
       {/* Proyección por tablero */}
-      {PLANES_OTROS.map(({ plan, titulo }) => {
+      {PLANES_OTROS.filter((p) => AREA_PLANES[area].includes(p.area)).map(({ plan, titulo }) => {
         const kpis = proy[plan] ?? [];
         return (
           <div key={plan} className="space-y-2">
@@ -142,7 +146,7 @@ export function PlanOtros({ anio, otros, onChange, hist, invPlan, ro, puedeMetas
           </div>
         );
       })}
-      {!ro && !puedeMetas && <p className="text-xs text-muted-foreground">Guardá el plan antes de usar la proyección como metas.</p>}
+      {!ro && !puedeMetas && <p className="text-xs text-muted-foreground">Guardá los cambios antes de usar la proyección como metas.</p>}
     </section>
   );
 }

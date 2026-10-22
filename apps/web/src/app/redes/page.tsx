@@ -42,6 +42,7 @@ import { ShareEngagementSection } from "@/components/social/share-engagement";
 import { getMercadoSeries } from "@/lib/mercado-kpis-server";
 import { lastIdx } from "@/lib/mercado-kpis";
 import { HowToRead } from "@/components/knowledge/how-to-read";
+import { PlanOtrosDash, anioPlan } from "@/components/pauta/plan-otros-dash";
 import { DataHealth } from "@/components/data-health";
 import { IgStoriesResumen } from "@/components/social/ig-stories-resumen";
 import { RedesContenidoPanel } from "@/components/social/redes-contenido-panel";
@@ -78,6 +79,20 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const marca = getParam(searchParams, "marca", "all");
   const red = getParam(searchParams, "red", "all");
   const tab = getParam(searchParams, "tab", "analitica");
+  const planTab = { key: "plan", label: `Plan anual ${anioPlan()}`, href: "/redes?tab=plan" };
+  if (tab === "plan") {
+    return (
+      <DashTabs dash="redes" className="space-y-4">
+        <header>
+          <h2 className="text-2xl font-semibold tracking-tight">Redes Sociales</h2>
+          <p className="text-sm text-muted-foreground">Calendario de campañas y metas proyectadas del año que viene.</p>
+        </header>
+        <HowToRead slug="redes" />
+        <DashTabBar items={[{ key: "analitica", label: "Analítica", href: "/redes" }, planTab]} active="plan" />
+        <PlanOtrosDash area="redes" />
+      </DashTabs>
+    );
+  }
   const currentYear = new Date().getFullYear();
   const ytdRange = { from: `${currentYear}-01-01`, to: new Date().toISOString().slice(0, 10) };
   const range = parseDateRange(searchParams, ytdRange);
@@ -252,7 +267,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <DataHealth dash="redes" className="-mt-2" />
       <HowToRead slug="redes" />
 
-      <DashTabBar items={[{ key: "analitica", label: "Analítica" }]} />
+      <DashTabBar items={[{ key: "analitica", label: "Analítica" }, planTab]} />
 
       {(
         <>
