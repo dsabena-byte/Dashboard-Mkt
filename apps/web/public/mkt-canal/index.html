@@ -124,6 +124,23 @@ tfoot td.label{font-size:11px;letter-spacing:0.03em;text-transform:uppercase;col
   <div class="sub">Performance de medios de Drean en los canales · <b id="nAcc">—</b> acciones · <b id="nCli">—</b> clientes</div>
 </header>
 
+<div class="section-title">Inversión · acuerdos comerciales (AACC)</div>
+<div class="kpi-grid" id="aaccKpis"></div>
+<div class="chart-box" style="margin-bottom:16px">
+  <div class="chart-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
+    Inversión mensual por cliente <span id="aaccAnio" class="cell-muted" style="font-weight:400"></span>
+  </div>
+  <div id="aaccMsg" class="cell-muted" style="font-size:12px" hidden></div>
+  <div style="position:relative;height:280px"><canvas id="cAacc"></canvas></div>
+</div>
+<div class="table-card">
+  <div class="chart-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="14"/></svg> Inversión por cliente y mes</div>
+  <div class="cell-muted" style="font-size:12px;padding:6px 20px 10px">Celda azul = ese mes el cliente tiene reporte de acciones (medios y performance) en la sección de abajo. El resto de la inversión todavía no es trazable.</div>
+  <div class="table-wrap"><table><thead id="aaccHead"></thead><tbody id="aaccBody"></tbody><tfoot id="aaccFoot"></tfoot></table></div>
+</div>
+
+<div class="section-title" style="margin-top:24px">Acciones con trazabilidad · inversión por medio y performance</div>
+
 <div class="filters-card">
   <div class="fg"><label>Cliente / Canal</label><select id="fCli"><option value="">Todos</option></select></div>
   <div class="fg"><label>Acción / Campaña</label><select id="fAcc"><option value="">Todas</option></select></div>
@@ -556,7 +573,61 @@ function init(){
   });
   render();
 }
-loadData().then(init);
+loadData().then(()=>{init();loadAacc();});
+
+// ====== Inversión = AACC (tabla mkt_canal_aacc, aparte de las acciones; no entra al CPC/CPM) ======
+let cAacc=null;
+const AACC_COLORS=[...PIE_COLORS,'#64748b','#0891b2','#be123c','#4d7c0f'];
+async function loadAacc(){
+  const msg=document.getElementById('aaccMsg');
+  let rows=[];
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/mkt_canal_aacc?select=cliente,mes,aacc&order=mes`,
+      {headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    rows=(await r.json()).map(x=>({cliente:x.cliente,mes:x.mes,aacc:Number(x.aacc)||0}));
+  }catch(e){ msg.hidden=false; msg.textContent='Sin datos de AACC todavía (falta correr la migración 0131).'; return; }
+  const anio=(rows.map(r=>r.mes).sort().pop()||String(new Date().getFullYear())).slice(0,4);
+  rows=rows.filter(r=>r.mes.startsWith(anio));
+  const MES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const tot={}; rows.forEach(r=>tot[r.cliente]=(tot[r.cliente]||0)+r.aacc);
+  const clis=Object.keys(tot).sort((a,b)=>tot[b]-tot[a]);
+  const v=(c,m)=>rows.filter(r=>(!c||r.cliente===c)&&r.mes===anio+'-'+String(m+1).padStart(2,'0')).reduce((a,r)=>a+r.aacc,0);
+  const total=rows.reduce((a,r)=>a+r.aacc,0);
+  const nrm=x=>(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const ALIAS={oncity:['oncity','megatone'],'cencosud (jumbo)':['jumbo'],'cencosud (easy)':['easy']};
+  const conAcc=new Set(DATA.filter(r=>r.plataforma!=='Evidencia'&&(r.impresiones>0||r.clics>0)).map(r=>nrm(r.cliente)+'|'+r.mes));
+  const traz=(c,m)=>(ALIAS[nrm(c)]||[nrm(c)]).some(a=>conAcc.has(a+'|'+anio+'-'+String(m+1).padStart(2,'0')));
+  const totTraz=clis.reduce((a,c)=>a+MES.reduce((b,_,m)=>b+(traz(c,m)?v(c,m):0),0),0);
+  const conDato=MES.map((_,m)=>v(null,m)).filter(x=>x>0);
+  const ult=MES.map((_,m)=>m).filter(m=>v(null,m)>0).pop();
+  document.getElementById('aaccAnio').textContent='· '+anio;
+  document.getElementById('aaccKpis').innerHTML=`
+    <div class="kpi"><div class="kpi-icon">${ICONS.money}</div><div class="kpi-label">Inversión YTD</div>
+      <div class="kpi-val">$${fmtShort(total)}</div><div class="kpi-sub">AACC ${MES[0]}–${ult!=null?MES[ult]:''} ${anio}</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.money}</div><div class="kpi-label">Promedio mensual</div>
+      <div class="kpi-val">$${fmtShort(conDato.length?total/conDato.length:0)}</div><div class="kpi-sub">${conDato.length} meses con dato</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.money}</div><div class="kpi-label">Último mes</div>
+      <div class="kpi-val">$${fmtShort(ult!=null?v(null,ult):0)}</div><div class="kpi-sub">${ult!=null?MES[ult]+' '+anio:'—'}</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.pct}</div><div class="kpi-label">Con trazabilidad</div>
+      <div class="kpi-val">${total>0?Math.round(totTraz/total*100):0}<span class="unit">%</span></div><div class="kpi-sub">$${fmtShort(totTraz)} con reporte de acciones por medio</div></div>
+    <div class="kpi"><div class="kpi-icon">${ICONS.money}</div><div class="kpi-label">Clientes</div>
+      <div class="kpi-val">${clis.length}</div><div class="kpi-sub">${clis[0]?'Mayor: '+clis[0]+' ('+Math.round(tot[clis[0]]/total*100)+'%)':''}</div></div>`;
+  if(cAacc)cAacc.destroy();
+  cAacc=new Chart(document.getElementById('cAacc'),{type:'bar',
+    data:{labels:MES,datasets:clis.map((c,i)=>({label:c,data:MES.map((_,m)=>v(c,m)),backgroundColor:AACC_COLORS[i%AACC_COLORS.length],borderRadius:3,stack:'a'}))},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:18}},
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true,font:{size:11}}},
+        datalabels:{display:c=>c.datasetIndex===c.chart.data.datasets.length-1&&v(null,c.dataIndex)>0,anchor:'end',align:'end',color:'#0f172a',font:{size:10,weight:600},formatter:(_,c)=>'$'+fmtShort(v(null,c.dataIndex))},
+        tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:6,callbacks:{label:c=>' '+c.dataset.label+': $'+nf(c.raw),footer:it=>'Total mes: $'+nf(v(null,it[0].dataIndex))}}},
+      scales:{x:{stacked:true,ticks:{color:'#64748b',font:{size:11}},grid:{display:false}},
+        y:{stacked:true,ticks:{color:'#64748b',callback:x=>'$'+fmtShort(x),font:{size:10}},grid:{color:'rgba(15,23,42,0.06)'}}}}});
+  const cell=(x,t)=>`<td class="num"${t&&x>0?' style="background:#eff6ff" title="Con reporte de acciones (medios y performance)"':''}>${x>0?'$'+nf(x):'—'}</td>`;
+  document.getElementById('aaccHead').innerHTML=`<tr><th>Cliente</th>${MES.map(m=>`<th class="num">${m}</th>`).join('')}<th class="num">Total</th></tr>`;
+  document.getElementById('aaccBody').innerHTML=clis.map(c=>`<tr><td>${c}</td>${MES.map((_,m)=>cell(v(c,m),traz(c,m))).join('')}${cell(tot[c])}</tr>`).join('');
+  document.getElementById('aaccFoot').innerHTML=`<tr><td class="label">Total</td>${MES.map((_,m)=>`<td class="num">${v(null,m)>0?'$'+nf(v(null,m)):'—'}</td>`).join('')}<td class="num">$${nf(total)}</td></tr>`;
+}
+
 </script>
 <script>
 // Embebido en el tablero (mismo origen): el iframe toma el alto del contenido → un solo scroll, el de la página.
