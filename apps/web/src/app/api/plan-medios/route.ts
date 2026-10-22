@@ -5,12 +5,13 @@ import { auditar } from "@/lib/presupuesto-server";
 import { calcInversion, calcPlan, PLAN_META_KPIS, sanearPlan } from "@/lib/plan-medios-anual";
 import { getInflacionMes, getPlanAnual, getRefMeses, guardarPlanAnual } from "@/lib/plan-medios-anual-server";
 import { PLANES_OTROS, proyectarOtros, sanearOtros } from "@/lib/plan-otros-kpis";
+import { sanearCanal } from "@/lib/plan-canal";
 import { getHistOtros } from "@/lib/plan-otros-kpis-server";
 import { conUsuario, soloEditor } from "../presupuesto/_auth";
 
 // Plan de Medios anual. Solo los editores del presupuesto (bgt_editores).
 //  PUT  {anio, config} → guarda el plan (sin tocar `otros`: eso se edita en las pestañas "Plan anual" de cada tablero).
-//  PATCH {anio, otros}  → guarda solo el calendario de campañas y la ambición de Web / Redes / SEO.
+//  PATCH {anio, otros?, canal?} → guarda solo el calendario/ambición de Web, Redes y SEO y/o el plan de Mkt Canal.
 //  POST {anio}         → escribe las metas mensuales "Pauta Mkt" de ese año calculadas desde el plan GUARDADO
 //                        (se recalcula acá: no se confía en números del navegador).
 //  POST {anio, plan}   → idem para Web / Redes Sociales / Facebook / Mercado y competencia (sección 6 del plan).
@@ -27,7 +28,9 @@ export async function PUT(req: Request) {
     const b = (await req.json().catch(() => ({}))) as { anio?: unknown; config?: unknown };
     if (!anioOk(b.anio)) return NextResponse.json({ error: "Año inválido" }, { status: 400 });
     const cfg = sanearPlan(b.config, b.anio as number);
-    cfg.otros = (await getPlanAnual(b.anio as number)).config.otros;
+    const guardado = (await getPlanAnual(b.anio as number)).config;
+    cfg.otros = guardado.otros;
+    cfg.canal = guardado.canal;
     await guardarPlanAnual(cfg, u.email);
     return NextResponse.json({ ok: true });
   });
@@ -37,10 +40,14 @@ export async function PATCH(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
-    const b = (await req.json().catch(() => ({}))) as { anio?: unknown; otros?: unknown };
+    const b = (await req.json().catch(() => ({}))) as { anio?: unknown; otros?: unknown; canal?: unknown };
     if (!anioOk(b.anio)) return NextResponse.json({ error: "Año inválido" }, { status: 400 });
     const plan = await getPlanAnual(b.anio as number);
-    await guardarPlanAnual({ ...plan.config, otros: sanearOtros(b.otros) }, u.email);
+    await guardarPlanAnual({
+      ...plan.config,
+      ...(b.otros !== undefined ? { otros: sanearOtros(b.otros) } : {}),
+      ...(b.canal !== undefined ? { canal: sanearCanal(b.canal) } : {}),
+    }, u.email);
     return NextResponse.json({ ok: true });
   });
 }
