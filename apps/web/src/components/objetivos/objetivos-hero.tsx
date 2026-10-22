@@ -6,7 +6,7 @@
 // Presentacional (client-safe): lo usan el tab "Estado" (server) y el selector por
 // categoría (client). Sin dependencias server-only.
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
 import { generalPonderado } from "@/lib/categorias";
@@ -95,6 +95,7 @@ function ObjetivoCard({ o, refMes }: { o: ObjetivoRollup; refMes: string }) {
   const res = resultadoAcum(o.metaNegMes, o.cumplYtd);
   const colorRes = SEMAFORO_COLOR[semOf(o.cumplYtd)];
   const aportes = o.aportes.filter((a) => a.peso > 0);
+  const [verTodos, setVerTodos] = useState(false);
   const primeros = aportes.slice(0, TOP_APORTES);
   const resto = aportes.slice(TOP_APORTES);
   return (
@@ -133,16 +134,11 @@ function ObjetivoCard({ o, refMes }: { o: ObjetivoRollup; refMes: string }) {
         <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70">Aporte de KPIs · peso × cumpl</div>
         <div className="space-y-1">
           {primeros.map((a) => <AporteRow key={a.kpi} a={a} />)}
+          {verTodos && resto.map((a) => <AporteRow key={a.kpi} a={a} />)}
           {resto.length > 0 && (
-            <details className="group">
-              <summary className="cursor-pointer list-none text-[10px] font-medium text-primary marker:content-none hover:underline">
-                <span className="group-open:hidden">+ Ver {resto.length} más</span>
-                <span className="hidden group-open:inline">Ver menos</span>
-              </summary>
-              <div className="mt-1 space-y-1">
-                {resto.map((a) => <AporteRow key={a.kpi} a={a} />)}
-              </div>
-            </details>
+            <button type="button" onClick={() => setVerTodos((v) => !v)} className="text-[10px] font-medium text-primary hover:underline">
+              {verTodos ? "Ver menos" : `+ Ver ${resto.length} más`}
+            </button>
           )}
         </div>
       </div>
