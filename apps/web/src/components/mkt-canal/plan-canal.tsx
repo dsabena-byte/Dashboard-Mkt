@@ -7,8 +7,8 @@ import { ApiladoMensual, RankingMedios } from "@/components/pauta/plan-anual-cha
 // Pestaña "Plan anual" de Mkt Canal: publicidad por cliente y eventos, mes a mes. Se carga en $ M (se guarda en pesos).
 // Guarda con PATCH /api/plan-medios.
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const th = "px-2 py-1.5 text-right font-medium";
-const td = "px-1 py-1 text-right tabular-nums";
+const th = "whitespace-nowrap px-2 py-1.5 text-right font-medium";
+const td = "whitespace-nowrap px-1 py-1 text-right tabular-nums";
 const M = (v: number) => (v ? `$${(v / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 1 })} M` : "—");
 const inputCls = "w-full min-w-[64px] rounded border bg-background px-1 py-0.5 text-right tabular-nums text-xs disabled:opacity-60";
 
