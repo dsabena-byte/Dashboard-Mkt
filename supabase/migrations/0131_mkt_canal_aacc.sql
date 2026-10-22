@@ -6,7 +6,7 @@
 -- =============================================================================
 create table if not exists mkt_canal_aacc (
   id           bigint generated always as identity primary key,
-  cliente      text not null,          -- nombre en el tablero (EMSA = Oncity, INC = Carrefour, Dorinka = Changomás, S.A. Imp. y Exp. = La Anónima, Bazar Avenida = Avenida, Bosan = Rodo; user 22-oct)
+  cliente      text not null,          -- nombre en el tablero (EMSA = Oncity, INC = Carrefour, Dorinka = Changomás, S.A. Imp. y Exp. = La Anónima, Bosan = Rodo; user 22-oct)
   razon_social text not null,          -- como viene en la planilla
   categoria    text,                   -- Drean | Lavado - Secarropas | Refrigeración | Cocinas | Lavado - Lavajillas
   mes          text not null,          -- 'YYYY-MM'
@@ -56,7 +56,7 @@ insert into mkt_canal_aacc (cliente, razon_social, categoria, mes, aacc) values
   ('Cetrogar', 'CETROGAR SA', 'Drean', '2026-05', 28558113),
   ('Naldo', 'NALDO LOMBARDI S A', 'Lavado - Lavajillas', '2026-05', 12330393),
   ('Rodo', 'BOSAN (RODO)', 'Drean', '2026-05', 600000),
-  ('Avenida', 'BAZAR AVENIDA SA', 'Drean', '2026-05', 4411500),
+  ('Bazar Avenida', 'BAZAR AVENIDA SA', 'Drean', '2026-05', 4411500),
   ('Oncity', 'EMSA -ELECTRONICA MEGATONE SA', 'Drean', '2026-05', 5091250),
   ('Coto', 'COTO', 'Drean', '2026-05', 2500000),
   ('La Anónima', 'S A IMPORTADORA Y EXPORTADORA', 'Drean', '2026-05', 6500000),
