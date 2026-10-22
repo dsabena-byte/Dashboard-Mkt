@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     const plan = await getPlanAnual(anio);
     if (!plan.guardado) return NextResponse.json({ error: "Guardá el plan antes de usarlo como metas." }, { status: 400 });
     let metaPlan = "Pauta Mkt";
-    let filas: { kpi: string; unidad: string | null; direccion: string; valores: (number | null)[] }[];
+    let filas: { kpi: string; unidad: string | null; direccion: string; valores: (number | null)[]; porCat?: Record<string, number[]> }[];
     if (b.plan != null) {
       if (!PLANES_OTROS.some((p) => p.plan === b.plan)) return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
       metaPlan = b.plan as string;
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       const invPlan = calcInversion(plan.config, infl).total;
       const proy = proyectarOtros(plan.config.otros, await getHistOtros(anio), anio, invPlan)[metaPlan] ?? [];
       if (!proy.length) return NextResponse.json({ error: "No hay datos reales para proyectar este tablero." }, { status: 400 });
-      filas = proy.map((k) => ({ kpi: k.kpi, unidad: k.unidad || null, direccion: k.direccion, valores: k.valores }));
+      filas = proy.map((k) => ({ kpi: k.kpi, unidad: k.unidad || null, direccion: k.direccion, valores: k.valores, porCat: k.porCat }));
     } else {
       const [refMeses, { infl }] = await Promise.all([getRefMeses(), getInflacionMes()]);
       const { metas } = calcPlan(plan.config, refMeses, infl);
@@ -71,7 +71,9 @@ export async function POST(req: Request) {
     }
     const metas = Object.fromEntries(filas.map((f) => [f.kpi, f.valores]));
     const now = new Date().toISOString();
-    const valores = filas.flatMap((f) => f.valores.map((valor, i) => ({ plan: metaPlan, kpi: f.kpi, categoria: CAT_GENERAL, anio, mes: i + 1, valor, updated_at: now })));
+    // Total + una fila por categoría (Lavado / Refrigeración / Cocción / Brand) en los KPIs que la tienen.
+    const valores = filas.flatMap((f) => [[CAT_GENERAL, f.valores] as const, ...Object.entries(f.porCat ?? {})].flatMap(([categoria, vs]) =>
+      vs.map((valor, i) => ({ plan: metaPlan, kpi: f.kpi, categoria, anio, mes: i + 1, valor, updated_at: now }))));
     // Config solo para los KPIs que no la tienen (no pisa dirección/umbrales que el user ya ajustó).
     const cfgRes = await sbAdmin(`kpi_meta_config?plan=eq.${encodeURIComponent(metaPlan)}&categoria=eq.${CAT_GENERAL}&select=kpi`, { method: "GET" });
     const conCfg = new Set(cfgRes.ok ? ((await cfgRes.json()) as { kpi: string }[]).map((r) => r.kpi) : []);

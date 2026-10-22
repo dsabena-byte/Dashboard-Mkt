@@ -1,10 +1,19 @@
 "use client";
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
-  EFECTO_CALIBRADO, INTENSIDADES, PLANES_OTROS, TIPOS_CAMPANA, proyectarOtros,
+  CATS_PLAN, EFECTO_CALIBRADO, INTENSIDADES, PLANES_OTROS, TIPOS_CAMPANA, proyectarOtros,
   type HistOtros, type KpiProyectado, type OtrosConfig, type TipoCampana,
 } from "@/lib/plan-otros-kpis";
 import { MetaEvolChart } from "@/components/pauta/meta-evol-chart";
+import { ApiladoMensual, LineasMensual } from "@/components/pauta/plan-anual-charts";
+import { SocialEngagementChart, ENG_COLORS } from "@/components/social/social-engagement-chart";
+
+const ENG_COMP = [
+  { key: "likes", name: "Likes", color: ENG_COLORS[0]! },
+  { key: "comentarios", name: "Comentarios", color: ENG_COLORS[1]! },
+  { key: "guardados", name: "Guardados", color: ENG_COLORS[2]! },
+];
+const CORTO: Record<string, string> = { Lavado: "Lav", "Refrigeración": "Refri", "Cocción": "Cocc", Brand: "Brand" };
 
 // Pestaña "Plan anual" de Redes, Web y SEO: calendario de campañas (Redes) + metas proyectadas del tablero (`area`).
 // Mismo cálculo puro que usa la API al cargar las metas (lib/plan-otros-kpis.ts).
@@ -43,7 +52,13 @@ export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, pued
   puedeMetas: boolean; ocupado: boolean; onMetas: (plan: string) => void; metasActuales: Record<string, (number | null)[]>;
 }) {
   const proy = useMemo(() => proyectarOtros(otros, hist, anio, invPlan), [otros, hist, anio, invPlan]);
-  const setGantt = (t: TipoCampana, i: number) => onChange({ ...otros, gantt: { ...otros.gantt, [t]: otros.gantt[t].map((v, k) => (k === i ? (v + 1) % 4 : v)) } });
+  const [catSel, setCatSel] = useState<string | null>(null);
+  // Al marcar un mes vacío la campaña toma la categoría elegida arriba; al volver a "—" se limpia.
+  const setGantt = (t: TipoCampana, i: number) => {
+    const nv = (otros.gantt[t][i]! + 1) % 4;
+    const cats = otros.ganttCat?.[t] ?? Array(12).fill(null);
+    onChange({ ...otros, gantt: { ...otros.gantt, [t]: otros.gantt[t].map((v, k) => (k === i ? nv : v)) }, ganttCat: { ...otros.ganttCat, [t]: cats.map((c, k) => (k === i ? (nv === 0 ? null : otros.gantt[t][i] === 0 ? catSel : c) : c)) } });
+  };
   const setEf = (t: TipoCampana, campo: "alc" | "int" | "seg", v: number) => onChange({ ...otros, efectos: { ...otros.efectos, [t]: { ...otros.efectos[t], [campo]: v } } });
   const setAmb = (campo: keyof OtrosConfig["amb"], v: number) => onChange({ ...otros, amb: { ...otros.amb, [campo]: v } });
   const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -53,6 +68,14 @@ export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, pued
       <p className="text-xs text-muted-foreground">{AREA_TXT[area](hist.anioBase)}</p>
 
       {/* Gantt */}
+      {area === "redes" && !ro && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted-foreground">Al marcar un mes, la campaña es de:</span>
+          {[null, ...CATS_PLAN].map((c) => (
+            <button key={c ?? "todas"} type="button" onClick={() => setCatSel(c)} className={`rounded-full border px-2.5 py-0.5 ${catSel === c ? "border-[#1e40af] bg-[#1e40af] text-white" : ""}`}>{c ?? "Todas las categorías"}</button>
+          ))}
+        </div>
+      )}
       {area === "redes" && <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[820px] text-xs">
           <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Campañas de Redes · tocá un mes para cambiar la intensidad</th>{MES.map((m) => <th key={m} className="px-1 py-1.5 text-center font-medium">{m}</th>)}</tr></thead>
@@ -63,7 +86,7 @@ export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, pued
                 {otros.gantt[t.id].map((v, i) => (
                   <td key={i} className="px-0.5 py-1 text-center">
                     <button type="button" disabled={ro} onClick={() => setGantt(t.id, i)} aria-label={`${t.label} ${MES[i]}: ${INTENSIDADES[v]}`}
-                      className={`h-7 w-full min-w-[44px] rounded border text-[10px] ${CELDA[v]} disabled:cursor-default`}>{v ? INTENSIDADES[v] : ""}</button>
+                      className={`h-9 w-full min-w-[48px] rounded border text-[10px] leading-tight ${CELDA[v]} disabled:cursor-default`}>{v ? <>{INTENSIDADES[v]}{otros.ganttCat?.[t.id]?.[i] && <span className="block text-[9px] opacity-90">{CORTO[otros.ganttCat[t.id]![i]!]}</span>}</> : ""}</button>
                   </td>
                 ))}
               </tr>
@@ -115,16 +138,37 @@ export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, pued
             </div>
             {!kpis.length ? <p className="text-xs text-muted-foreground">Sin datos reales de {hist.anioBase} para proyectar.</p> : (
               <>
-                {plan === "Redes Sociales" && (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {kpis.filter((k) => k.kpi === "Alcance orgánico" || k.kpi === "Interacciones").map((k) => (
-                      <div key={k.kpi} className="rounded-lg border p-2">
-                        <div className="text-xs font-semibold">{k.kpi} · proyección vs mes normal</div>
-                        <MetaEvolChart mode="bar" unidad="" realName="Proyección" metaName="Mes normal" data={MES.map((mes, i) => ({ mes, real: k.valores[i] ?? null, meta: k.base[i] ?? null }))} />
+                {plan === "Redes Sociales" && hist.igMix && (() => {
+                  const it = kpis.find((k) => k.kpi === "Interacciones"), er = kpis.find((k) => k.kpi === "Engagement rate");
+                  if (!it || !er) return null;
+                  const meta = metasActuales["Redes Sociales|Engagement rate"] ?? [];
+                  const mix = hist.igMix;
+                  return (
+                    <div className="rounded-lg border p-3">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Engagement % (plan vs meta) e interacciones mensuales por tipo · {anio}</div>
+                      <SocialEngagementChart components={ENG_COMP} data={MES.map((mes, i) => ({ mes, likes: Math.round(it.valores[i]! * mix.likes), comentarios: Math.round(it.valores[i]! * mix.comentarios), guardados: Math.round(it.valores[i]! * mix.guardados), engPct: er.valores[i] ?? null, metaEngPct: meta[i] ?? null }))} />
+                      <p className="text-[10px] text-muted-foreground">Interacciones por tipo = total proyectado × la mezcla típica de {hist.anioBase} (likes {Math.round(mix.likes * 100)}% · comentarios {Math.round(mix.comentarios * 100)}% · guardados {Math.round(mix.guardados * 100)}%). La línea punteada es la meta cargada hoy.</p>
+                    </div>
+                  );
+                })()}
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {kpis.filter((k) => !(plan === "Redes Sociales" && (k.kpi === "Interacciones" || k.kpi === "Engagement rate") && hist.igMix)).map((k) => (
+                    <div key={k.kpi} className="rounded-lg border p-2">
+                      <div className="text-xs font-semibold">{k.kpi} · plan vs meta cargada hoy</div>
+                      <MetaEvolChart mode={k.tipo === "sum" ? "bar" : "line"} unidad={k.unidad === "%" ? "%" : k.unidad === "$" ? "$" : ""} realName="Plan" metaName="Meta actual"
+                        data={MES.map((mes, i) => ({ mes, real: k.valores[i] ?? null, meta: metasActuales[`${plan}|${k.kpi}`]?.[i] ?? null }))} />
+                    </div>
+                  ))}
+                  {kpis.filter((k) => k.porCat).map((k) => {
+                    const series = Object.entries(k.porCat!) as [string, number[]][];
+                    return (
+                      <div key={`${k.kpi}-cat`} className="rounded-lg border p-2">
+                        <div className="text-xs font-semibold">{k.kpi} · por categoría</div>
+                        {k.tipo === "sum" ? <ApiladoMensual series={series} moneda={false} alto={220} /> : <LineasMensual series={series} unidad={k.unidad} />}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
                 <div className="overflow-x-auto rounded-lg border">
                   <table className="w-full min-w-[980px] text-xs">
                     <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">KPI · proyección vs meta cargada hoy</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th} title="Volúmenes: suma · tasas: promedio · seguidores: diciembre">Año</th></tr></thead>
@@ -134,6 +178,9 @@ export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, pued
                         return (
                           <Fragment key={k.kpi}>
                             <tr className="border-t"><td className="px-2 py-1"><span className="font-medium">{k.kpi}</span><div className="text-[10px] text-muted-foreground">{k.metodo}</div></td>{k.valores.map((v, i) => <td key={i} className={td}>{f(v)}</td>)}<td className={`${td} font-semibold`}>{f(anual(k, k.valores))}</td></tr>
+                            {k.porCat && Object.entries(k.porCat).map(([c, v]) => (
+                              <tr key={c} className="text-[11px]"><td className="px-2 py-0.5 pl-4">· {c}</td>{v.map((x, i) => <td key={i} className={`${td} py-0.5`}>{f(x)}</td>)}<td className={`${td} py-0.5`}>{f(anual(k, v))}</td></tr>
+                            ))}
                             <tr className="text-muted-foreground"><td className="px-2 pb-1 pl-4">meta actual</td>{MES.map((_, i) => <td key={i} className={`${td} pb-1`}>{f(actual[i])}</td>)}<td className={`${td} pb-1`}>{f(anual(k, actual))}</td></tr>
                           </Fragment>
                         );

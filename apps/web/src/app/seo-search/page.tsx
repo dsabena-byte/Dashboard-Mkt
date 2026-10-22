@@ -40,7 +40,7 @@ export default async function SeoSearchPage({ searchParams }: { searchParams?: {
           <p className="mt-1 text-sm text-muted-foreground">Metas proyectadas del año que viene.</p>
         </header>
         <HowToRead slug="seo-search" />
-        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/seo-search" }, planTab]} active="plan" />
+        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/seo-search" }]} after={[planTab]} active="plan" />
         <PlanOtrosDash area="seo" />
       </DashTabs>
     );
@@ -84,7 +84,7 @@ export default async function SeoSearchPage({ searchParams }: { searchParams?: {
       </header>
       <DataHealth dash="seo-search" className="-mt-2" />
       <HowToRead slug="seo-search" />
-      <DashTabBar items={[{ key: "tablero", label: "Tablero" }, planTab]} />
+      <DashTabBar items={[{ key: "tablero", label: "Tablero" }]} after={[planTab]} />
 
       {/* KPIs de mercado vs meta (plan "Mercado y competencia" del Mapa) — máxima jerarquía */}
       <MercadoMetasSection />

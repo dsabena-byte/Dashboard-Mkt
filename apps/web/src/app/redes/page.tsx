@@ -88,7 +88,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
           <p className="text-sm text-muted-foreground">Calendario de campañas y metas proyectadas del año que viene.</p>
         </header>
         <HowToRead slug="redes" />
-        <DashTabBar items={[{ key: "analitica", label: "Analítica", href: "/redes" }, planTab]} active="plan" />
+        <DashTabBar items={[{ key: "analitica", label: "Analítica", href: "/redes" }]} after={[planTab]} active="plan" />
         <PlanOtrosDash area="redes" />
       </DashTabs>
     );
@@ -267,7 +267,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
       <DataHealth dash="redes" className="-mt-2" />
       <HowToRead slug="redes" />
 
-      <DashTabBar items={[{ key: "analitica", label: "Analítica" }, planTab]} />
+      <DashTabBar items={[{ key: "analitica", label: "Analítica" }]} after={[planTab]} />
 
       {(
         <>
