@@ -527,7 +527,7 @@ reporte_existencia/cb_homologos).
   `/mkt-canal` una sección propia (KPIs, barras por cliente×mes, tabla cliente×mes) que lee **`mkt_canal_aacc`** (**migración 0131, corrida por el user 22-oct; verificado REST con la anon key: 62 filas, $726,3 M**, trae el
   seed ene–sep 2026 de la planilla del user, 62 filas, $726,3 M; anon select). Va APARTE de las acciones (`mkt_canal_acciones`, medios y
   performance) → no entra al CPC/CPM. Nombres (user 22-oct): EMSA = Oncity, INC = Carrefour, Dorinka = Changomás, S.A. Imp. y Exp. = La
-  Anónima, Bazar Avenida = Avenida, Bosan = Rodo. "Con trazabilidad" = % del AACC cuyo cliente·mes tiene acciones reportadas (EMSA cubre
+  Anónima, Bazar Avenida = Bazar Avenida (user 22-oct), Bosan = Rodo. "Con trazabilidad" = % del AACC cuyo cliente·mes tiene acciones reportadas (EMSA cubre
   Oncity y Megatone; Cencosud (Jumbo) = Jumbo). Objetivo del user: que TODA esa inversión sea trazable por medio y performance (hoy ~36%).
   **Naldo (22-oct, aprobado por el user):** la inversión de los reportes de Naldo (~$99 mil/mes = solo su pauta en Meta) se BORRÓ de
   `mkt_canal_acciones` ene–jun: la inversión de Naldo es el AACC. AON = "Cobranding mensual"; stories orgánicas de Naldo = plataforma
