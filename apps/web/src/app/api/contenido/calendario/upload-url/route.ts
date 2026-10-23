@@ -8,6 +8,8 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 const BUCKET = "contenido-uploads";
+const EXT_IMAGEN = ["jpg", "jpeg", "png", "webp", "gif"];
+const EXT_VIDEO = ["mp4", "mov", "webm", "m4v"];
 
 function env(k: string): string {
   const v = process.env[k];
@@ -28,7 +30,8 @@ async function ensureBucket(url: string, key: string) {
 export async function POST(request: Request) {
   try {
     const { id, kind, filename } = (await request.json()) as { id?: string; kind?: string; filename?: string };
-    if (!id) return NextResponse.json({ ok: false, error: "Falta id." }, { status: 400 });
+    // El id va en el path del bucket público: solo letras, números y guiones (uuid de la pieza o "pauta-video").
+    if (!id || !/^[a-z0-9-]{1,64}$/i.test(id)) return NextResponse.json({ ok: false, error: "Falta id válido." }, { status: 400 });
     const esVideo = kind === "video";
 
     const url = env("NEXT_PUBLIC_SUPABASE_URL");
@@ -36,6 +39,8 @@ export async function POST(request: Request) {
     await ensureBucket(url, key);
 
     const ext = ((filename ?? "").split(".").pop() || (esVideo ? "mp4" : "jpg")).toLowerCase().replace(/[^a-z0-9]/g, "") || (esVideo ? "mp4" : "jpg");
+    // Bucket público: solo imágenes y videos (nada de .html/.svg/.js servidos desde nuestro dominio de Storage).
+    if (!(esVideo ? EXT_VIDEO : EXT_IMAGEN).includes(ext)) return NextResponse.json({ ok: false, error: `Formato .${ext} no permitido.` }, { status: 400 });
     const path = `${id}/${crypto.randomUUID()}.${ext}`;
 
     // URL firmada de subida (createSignedUploadUrl vía REST).
