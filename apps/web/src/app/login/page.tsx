@@ -10,6 +10,7 @@ interface PageProps {
 
 const ERRORS: Record<string, string> = {
   link: "El link venció o ya se usó. Pedí uno nuevo desde “¿Olvidaste tu contraseña?”.",
+  acceso: "Tu cuenta no tiene acceso al tablero. Pedíselo al administrador.",
 };
 
 export default function LoginPage({ searchParams }: PageProps) {

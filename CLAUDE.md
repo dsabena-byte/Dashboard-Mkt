@@ -885,6 +885,11 @@ reporte_existencia/cb_homologos).
   TCP proxy público; logs sin accesos raros (solo 16 pedidos sin credencial rechazados por Nango el 20-oct 21:28 UTC); Evolution: 1 instancia, 0
   mensajes. Vercel Drean (token de 1 día cargado en Network secrets para `api.vercel.com`): 100 deploys 19→23-oct todos por git del repo o
   redeploys del user; las 29 env las editó Daniel (últimas = TikTok/Nango 21-oct); no hay `EVO_*` en Vercel. Rotar claves = decisión del user (no hecho).
+- **Auditoría de seguridad (23-oct-2026; informes fuera del repo porque es PÚBLICO):** el registro de Supabase Auth de Drean está
+  ABIERTO (`disable_signup:false`; pendiente que el user lo cierre). Mitigación en código: `usuarioHabilitado` (`lib/auth/safe-next.ts`)
+  en el middleware → solo emails confirmados `@mabe.com.ar` o cuentas creadas antes de `CORTE_ALTAS` (23-oct 20:00 UTC); el resto = 403 en
+  `/api` y `/login?error=acceso`. Crons fail-closed (`if (!secret || …)`). Abiertos: 77 tablas legibles con la clave pública (migración
+  0061 `rls_anon_read`), rutas que escriben/gastan sin rol, Next 14.2.10 con avisos críticos, rotar `FAL_KEY` y el token de Meta.
 ## Assets de marketing
 - **PPT de indicadores de marketing (18-oct-2026, formato APROBADO por el user):** generador de referencia
   `marketing/ppt-indicadores/formato.js` (pptxgenjs, skill pptx) + `formato-preview.jpg`. Formato FIJO por slide: título
