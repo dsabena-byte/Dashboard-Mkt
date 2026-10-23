@@ -880,6 +880,11 @@ reporte_existencia/cb_homologos).
   el valor vive en Vercel (proyecto Dashboard-Mkt) + GitHub Actions secrets + el entorno
   programado, y deben coincidir. Config del environment: claude.ai/code → environment del Routine.
 
+- **Incidente de seguridad de Railway (21–23-oct-2026), revisión solo lectura 23-oct:** en Railway (cuenta bip-explore) NO hay claves de Drean;
+  están Nango de BIP (`ravishing-flow`) y Evolution/WhatsApp (`reasonable-perception`, el user SÍ lo va a usar: no borrar). Postgres/Redis sin
+  TCP proxy público; logs sin accesos raros (solo 16 pedidos sin credencial rechazados por Nango el 20-oct 21:28 UTC); Evolution: 1 instancia, 0
+  mensajes. Vercel Drean (token de 1 día cargado en Network secrets para `api.vercel.com`): 100 deploys 19→23-oct todos por git del repo o
+  redeploys del user; las 29 env las editó Daniel (últimas = TikTok/Nango 21-oct); no hay `EVO_*` en Vercel. Rotar claves = decisión del user (no hecho).
 ## Assets de marketing
 - **PPT de indicadores de marketing (18-oct-2026, formato APROBADO por el user):** generador de referencia
   `marketing/ppt-indicadores/formato.js` (pptxgenjs, skill pptx) + `formato-preview.jpg`. Formato FIJO por slide: título
