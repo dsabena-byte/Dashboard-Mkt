@@ -888,7 +888,8 @@ reporte_existencia/cb_homologos).
 - **Auditoría de seguridad (23-oct-2026; informes fuera del repo porque es PÚBLICO):** el registro de Supabase Auth de Drean está
   ABIERTO (`disable_signup:false`; pendiente que el user lo cierre). Mitigación en código: `usuarioHabilitado` (`lib/auth/safe-next.ts`)
   en el middleware → solo emails confirmados `@mabe.com.ar` o cuentas creadas antes de `CORTE_ALTAS` (23-oct 20:00 UTC); el resto = 403 en
-  `/api` y `/login?error=acceso`. Crons fail-closed (`if (!secret || …)`). Abiertos: 77 tablas legibles con la clave pública (migración
+  `/api` y `/login?error=acceso`. Las 8 cuentas existentes son del equipo (la única no `@mabe.com.ar`, una Gmail del 19-ago, la confirmó el
+  user el 23-oct; entra por ser previa al corte). Crons fail-closed (`if (!secret || …)`). Abiertos: 77 tablas legibles con la clave pública (migración
   0061 `rls_anon_read`), rutas que escriben/gastan sin rol, Next 14.2.10 con avisos críticos, rotar `FAL_KEY` y el token de Meta.
 ## Assets de marketing
 - **PPT de indicadores de marketing (18-oct-2026, formato APROBADO por el user):** generador de referencia
