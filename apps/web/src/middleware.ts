@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
-import { AUTH_CALLBACK_PATH, PASSWORD_PATH, PUBLIC_AUTH_PATHS } from "@/lib/auth/safe-next";
+import { AUTH_CALLBACK_PATH, PASSWORD_PATH, PUBLIC_AUTH_PATHS, usuarioHabilitado } from "@/lib/auth/safe-next";
 
 // Rutas públicas (no requieren login): /login y /login/recuperar. OJO: /login/nueva-clave NO es
 // pública (requiere sesión) pero tampoco pasa por dashboard_access.
@@ -63,6 +63,13 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     if (pathname !== "/") loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Cuenta logueada pero no habilitada (registro abierto en Supabase): sin acceso a páginas ni a /api.
+  if (user && !usuarioHabilitado(user)) {
+    if (isPublic(pathname)) return response;
+    if (pathname.startsWith("/api")) return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+    return NextResponse.redirect(new URL("/login?error=acceso", request.url));
   }
 
   if (user && isPublic(pathname)) {

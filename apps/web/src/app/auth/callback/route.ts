@@ -109,6 +109,6 @@ button{width:100%;padding:10px;border:0;border-radius:6px;background:#0f172a;col
 <input type="hidden" name="token_hash" value="${esc(tokenHash)}"><input type="hidden" name="type" value="${esc(type)}">
 <input type="hidden" name="next" value="${esc(next)}"><button type="submit">Continuar</button></form></div></body></html>`;
   return new NextResponse(html, {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer" },
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "same-origin" },
   });
 }
