@@ -1044,8 +1044,9 @@ reporte_existencia/cb_homologos).
   cuya fecha/hora llegó). **Permisos Meta validados sep-2026:** token system-user sin vencimiento; Página
   **Drean** + IG **@dreanargentina** vinculados; scopes `pages_manage_posts` + `instagram_content_publish`
   OK → **publicar a IG+FB funciona**. **Falta `instagram_manage_contents`** → borrar de IG por API NO
-  (FB sí; IG se borra a mano). **OJO seguridad:** el diag `api/diag/meta-publish-access` devuelve un Page
-  token real — no compartirlo. **Adaptación de piezas** (reframe IA, `lib/pauta-formatos.ts`): imagen
+  (FB sí; IG se borra a mano). **23-oct-2026: se BORRARON las 12 rutas `api/diag/*`** (auditoría:
+  cualquier usuario logueado obtenía el Page token o la `FAL_KEY`); `retirar` borra solo el id guardado en la fila y
+  `publicar` acepta `imageUrl` solo del bucket `contenido-uploads`. NO volver a crear diags que devuelvan tokens. **Adaptación de piezas** (reframe IA, `lib/pauta-formatos.ts`): imagen
   1:1/4:5/9:16/1.91:1, video 9:16/1:1/16:9 (Meta, Demand Gen, YouTube/DV360, TikTok). Detalle completo en
   `docs/calendario-publicacion-meta.md`.
 
