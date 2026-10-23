@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const TABLE = "contenido_calendario";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// La imagen compuesta del navegador solo puede venir de nuestro bucket (si no, se publicaría cualquier URL).
+const IMG_PROPIA = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/contenido-uploads/`;
 
 interface Row {
   imagen_final_url: string | null;
@@ -22,6 +25,8 @@ export async function POST(request: Request) {
   try {
     const { id, red, imageUrl } = (await request.json()) as { id?: string; red?: string; imageUrl?: string };
     if (!id || !red) return NextResponse.json({ ok: false, error: "Falta id o red." }, { status: 400 });
+    if (!UUID.test(id) || (red !== "instagram" && red !== "facebook")) return NextResponse.json({ ok: false, error: "id o red inválidos." }, { status: 400 });
+    if (imageUrl && !imageUrl.startsWith(IMG_PROPIA)) return NextResponse.json({ ok: false, error: "Imagen no permitida." }, { status: 400 });
 
     const rowRes = await sbAdmin(`${TABLE}?id=eq.${id}&select=imagen_final_url,imagen_url,video_url,caption,hashtags`, { method: "GET" });
     if (!rowRes.ok) return NextResponse.json({ ok: false, error: `read ${rowRes.status}` }, { status: 500 });

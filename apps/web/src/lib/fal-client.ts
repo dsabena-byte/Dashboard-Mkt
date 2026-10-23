@@ -107,6 +107,8 @@ export function extractVideoUrl(d: FalVideoResp): string | null {
 export async function falQueueVideoStatus(statusUrl: string, responseUrl: string): Promise<{ status: string; video_url: string | null; raw?: unknown }> {
   const key = process.env.FAL_KEY;
   if (!key) throw new Error("FAL_KEY no configurada.");
+  // Las URLs vienen del navegador: solo la cola de fal, si no la key viaja a cualquier host (y SSRF).
+  if (!statusUrl.startsWith("https://queue.fal.run/") || !responseUrl.startsWith("https://queue.fal.run/")) throw new Error("URL de estado inválida.");
   const headers = { Authorization: `Key ${key}`, "Content-Type": "application/json" };
   const st = await fetch(statusUrl, { headers, cache: "no-store" });
   if (!st.ok) return { status: "PENDING", video_url: null };

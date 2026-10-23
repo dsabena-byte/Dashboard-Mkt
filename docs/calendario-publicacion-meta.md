@@ -53,13 +53,9 @@ Instagram"; Facebook sí se puede borrar. Para habilitar el borrado de IG hay qu
 por **App Review** de la app en el Business Manager y re-asignar el token del system user con el
 permiso. Es **opcional**.
 
-> **Seguridad:** el diag `api/diag/meta-publish-access` devuelve un **Page access token real** en su
-> respuesta — tratar esa salida como sensible (no compartir/pegar en público) y rotar el token si se
-> expuso. Nunca commitear tokens.
-
-## Diagnóstico
-- `api/diag/meta-publish-access` (login) — verifica scopes/Page token/IG vinculado (NO publica).
-- `api/diag/meta-publish-test?go=1` — publica una prueba real a IG/FB (sin `go`, dry-run).
+> **Seguridad (23-oct-2026):** se borraron los diag `api/diag/meta-publish-access` (devolvía el Page token a
+> cualquier usuario logueado) y `api/diag/meta-publish-test` (publicaba por GET). Diagnosticar desde un cron con
+> `CRON_SECRET` y sin devolver tokens. Nunca commitear tokens.
 
 ## Adaptación de piezas a formatos de pauta (`lib/pauta-formatos.ts`)
 Reframe generativo (outpainting IA, fal) que **extiende el encuadre** al ratio destino sin deformar el foco.
