@@ -330,3 +330,9 @@ causa raíz · qué se hizo.
 - **Detección:** último run en success: ga4, bgt-sync, meta-*, ig-*, ugc-*, clasificar, tiktok-sync (23-oct 10:32). Rojos: `seo-sync` (último 7-oct) y `trends-sync` (12-oct), por DataForSEO sin saldo → NO se re-dispararon (pagos). (Corrección: el log del 20-oct los marcó en success; `gh run list` muestra que siguen en failure.)
 - **#828 (BGT):** abierto, watchdog lo actualizó 23-oct 11:41; la fuente data.json de SharePoint no se actualiza desde el 6-oct. Re-disparar `bgt-sync` no sirve.
 - **Pendiente humano:** cargar saldo DataForSEO y re-disparar `seo-sync`/`trends-sync`; decidir sobre BGT/SharePoint (el presupuesto ya se carga en `/funnel/carga`).
+
+## 2026-10-25 (UTC) — google-ads-sync en rojo (400 INVALID_ARGUMENT); #828 (BGT) sin cambios
+- **Proceso:** `google-ads-sync` (GitHub Action). Último run (25-oct 10:08, run 40183510383) = failure. Log (verificado por MCP): `searchStream Search 400` y `searchStream Cocción 400` `INVALID_ARGUMENT` ("Request contains an invalid argument", GoogleAdsFailure v22); el detalle del error está truncado en el log → causa exacta **sin verificar**.
+- **Acción:** re-trigger (`rerun_failed_jobs`, run 40183510383). Si vuelve a fallar con 400 es un problema de la consulta GAQL/API v22 (código), no transitorio → investigar `api/cron/google-ads-sync`.
+- **#828 (BGT):** abierto (watchdog 25-oct 11:33: "sin actualizar hace 445h"). `bgt-sync` en success (25-oct 02:15); la fuente data.json de SharePoint no se actualiza desde el 6-oct. No hay nada que re-disparar. **Pendiente humano:** renovar SharePoint o dar de baja la vigilancia de `bgt-sync` (el presupuesto ya se carga en `/funnel/carga`).
+- Resto de syncs vigilados en success.
