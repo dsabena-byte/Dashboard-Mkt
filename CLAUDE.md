@@ -895,7 +895,7 @@ reporte_existencia/cb_homologos).
   ABIERTO; **el user lo cerró el 26-oct-2026** (verificado: `disable_signup:true`). Mitigación en código: `usuarioHabilitado` (`lib/auth/safe-next.ts`)
   en el middleware → solo emails confirmados `@mabe.com.ar` o cuentas creadas antes de `CORTE_ALTAS` (23-oct 20:00 UTC); el resto = 403 en
   `/api` y `/login?error=acceso`. Las 8 cuentas existentes son del equipo (la única no `@mabe.com.ar`, una Gmail del 19-ago, la confirmó el
-  user el 23-oct; entra por ser previa al corte). Crons fail-closed (`if (!secret || …)`). Abiertos: 77 tablas legibles con la clave pública (migración
+  user el 23-oct; entra por ser previa al corte). Crons fail-closed (`if (!secret || …)`). **26-oct: 23 tablas SIN RLS aceptaban escritura anónima (metas, Mapa, facturación, mirrors CB) → migración `0132` (RLS + policy solo SELECT; la corrió el user en el SQL Editor porque la confirmación del conector admin no llega a la sesión cloud). Verificado: insert anónimo → 42501, lecturas iguales, `trade-agg` escribe OK.** Abiertos: 77 tablas legibles con la clave pública (migración
   0061 `rls_anon_read`), rutas que escriben/gastan sin rol, Next 14.2.10 con avisos críticos, rotar `FAL_KEY` y el token de Meta.
 ## Assets de marketing
 - **PPT de indicadores de marketing (18-oct-2026, formato APROBADO por el user):** generador de referencia
