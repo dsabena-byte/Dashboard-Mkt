@@ -1,0 +1,52 @@
+name: Trade · migrar del proyecto CB a las tablas tr_* (una vez)
+
+# Copia TODO el histórico del proyecto Supabase CB (CB semanal, Floor Share, Existencias U3, contactos, alias) a las
+# tablas tr_* del proyecto principal (migración 0138). Idempotente: se puede volver a correr. Solo manual.
+# Antes: correr supabase/migrations/0138_trade.sql en el SQL Editor del proyecto principal.
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "1 = solo calcular (no escribe)"
+        required: false
+        default: "0"
+      anio:
+        description: "Año del CB semanal (el proyecto CB no guarda el año)"
+        required: false
+        default: "2026"
+
+permissions:
+  contents: read
+
+jobs:
+  migrar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      BASE: https://dashboard-mkt-seven.vercel.app/api/cron/trade-migrar
+      DRY: ${{ inputs.dry }}
+      ANIO: ${{ inputs.anio }}
+    steps:
+      - name: Migrar por partes y verificar
+        run: |
+          set -euo pipefail
+          call() {
+            local q="$1"
+            echo "::group::GET ?$q"
+            local code
+            code=$(curl -s -o r.json -w "%{http_code}" --max-time 310 -H "Authorization: Bearer ${CRON_SECRET:-}" "$BASE?$q&dry=$DRY&anio=$ANIO")
+            cat r.json; echo
+            echo "::endgroup::"
+            if [ "$code" != "200" ] || grep -q '"ok":false' r.json; then echo "::error::?$q → HTTP $code"; return 1; fi
+          }
+          call "parte=maestros"
+          call "parte=cb"
+          call "parte=u3"
+          call "parte=fs_periodos"
+          PERIODOS=$(python3 -c 'import json;print(" ".join(json.load(open("r.json"))["resultado"]["periodos"]))')
+          for p in $PERIODOS; do call "parte=fs&periodo=$p"; done
+          if [ "$DRY" != "1" ]; then
+            call "parte=derivados"
+            for q in cb fs u3; do call "parte=verificar&que=$q"; done
+          fi

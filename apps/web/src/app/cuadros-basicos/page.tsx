@@ -8,18 +8,17 @@ import { CbCategoryChart } from "@/components/cb/cb-category-chart";
 import { CbSuggestionsTab } from "@/components/cb/cb-suggestions-tab";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import {
-  computeTotals,
-  computeWeeklyEvolution,
-  computeByDivision,
-  computeByDim,
-  computeByTienda,
   getCbBaselineMedidas,
   getCbSuggestions,
   getCbSuggestionsDetail,
-  isoWeekToMes,
   type CbFilter,
-  type CbRow,
 } from "@/lib/cb-queries";
+import { computeCbView, isCbDefault, type CbView } from "@/lib/cb-view";
+import { getTrPrecalc, trEstado } from "@/lib/trade-db";
+import { puedeEditarActual } from "@/lib/usuarios-server";
+import { TradeCruceTab } from "@/components/trade/cruce-tab";
+import { CargaDatos } from "@/components/trade/carga-datos";
+import { MaestrosTrade } from "@/components/trade/maestros";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
@@ -55,8 +54,62 @@ function cellBg(pct: number | null): string {
   return "bg-rose-50 text-rose-600 font-semibold";
 }
 
+const TABS = [
+  { key: "overview", label: "Overview", href: "/cuadros-basicos" },
+  { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" },
+  { key: "cruce", label: "CB × Floor Share", href: "/cuadros-basicos?tab=cruce" },
+];
+// Solo quien puede editar Trade (exigirEdicion("trade")) ve la carga y los maestros.
+const TABS_EDITOR = [
+  { key: "carga", label: "Cargar datos", href: "/cuadros-basicos?tab=carga" },
+  { key: "tiendas", label: "Tiendas", href: "/cuadros-basicos?tab=tiendas" },
+  { key: "cadenas", label: "Cadenas", href: "/cuadros-basicos?tab=cadenas" },
+  { key: "skus", label: "SKUs", href: "/cuadros-basicos?tab=skus" },
+  { key: "objetivos", label: "Objetivos FS", href: "/cuadros-basicos?tab=objetivos" },
+];
+function TabBar({ tab, editor }: { tab: string; editor: boolean }) {
+  return <DashTabBar items={TABS} active={tab} after={editor ? TABS_EDITOR : []} />;
+}
+
+function Encabezado({ tab, editor, lastUpdated }: { tab: string; editor: boolean; lastUpdated?: string | null }) {
+  return (
+    <>
+      <header>
+        <h2 className="text-2xl font-semibold tracking-tight">Cuadros Básicos</h2>
+        <p className="text-sm text-muted-foreground">
+          Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
+        </p>
+        {lastUpdated !== undefined && <LastUpdated date={lastUpdated} className="mt-1" />}
+      </header>
+      <HowToRead slug="cuadros-basicos" />
+      <TabBar tab={tab} editor={editor} />
+    </>
+  );
+}
+
 export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const tab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
+  const editor = await puedeEditarActual("trade");
+
+  // Pestañas que cargan su propia data recién al abrirlas (no pagan el overview).
+  if (tab === "cruce") {
+    return (
+      <DashTabs dash="cuadros-basicos" className="space-y-4">
+        <Encabezado tab={tab} editor={editor} />
+        <TradeCruceTab />
+      </DashTabs>
+    );
+  }
+  if (["carga", "tiendas", "cadenas", "skus", "objetivos"].includes(tab)) {
+    return (
+      <DashTabs dash="cuadros-basicos" className="space-y-4">
+        <Encabezado tab={tab} editor={editor} />
+        {!editor ? (
+          <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">No tenés permiso para editar Trade. Pedíselo al administrador.</div>
+        ) : tab === "carga" ? <CargaDatos /> : <MaestrosTrade entidad={tab as "tiendas" | "cadenas" | "skus" | "objetivos"} />}
+      </DashTabs>
+    );
+  }
 
   // Tab "sugerencias": render aislado, no toca la lógica del overview existente
   if (tab === "sugerencias") {
@@ -78,14 +131,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
     }
     return (
       <DashTabs dash="cuadros-basicos" className="space-y-4">
-        <header>
-          <h2 className="text-2xl font-semibold tracking-tight">Cuadros Básicos</h2>
-          <p className="text-sm text-muted-foreground">
-            Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
-          </p>
-        </header>
-        <HowToRead slug="cuadros-basicos" />
-        <DashTabBar items={[{ key: "overview", label: "Overview", href: "/cuadros-basicos" }, { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" }]} active={tab} />
+        <Encabezado tab={tab} editor={editor} />
         {sugError && (
           <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">
             <strong>Error cargando sugerencias:</strong> <code>{sugError}</code>
@@ -110,67 +156,23 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
     tiendas: paramArr(searchParams, "tiendas"),
   };
 
-  // Trae TODO una sola vez y filtra en JS. La tabla es chica (~6K rows)
-  // y nos permite armar filtros encadenados (elegir Cliente acota Tienda)
-  // sin múltiples queries.
-  let allRows: CbRow[] = [];
+  // Vista DEFAULT (sin filtros) → precalculada en cada carga (tr_precalc 'cb_default', una fila). Con filtros
+  // (o sin tablas tr_*) → se computa sobre el CB agregado sin SKU (vw_tr_cb_agg) o el mirror.
+  let view: CbView | null = null;
   let fetchError: string | null = null;
-  let totalTiendasRelevadas = 0;
   try {
-    // Lee el mirror en el principal (rápido); universo de tiendas = distinct del set.
-    allRows = await getCbRowsFast();
-    totalTiendasRelevadas = new Set(allRows.map((r) => r.tienda)).size;
+    if (isCbDefault(filter) && (await trEstado()).cb != null) view = await getTrPrecalc<CbView>("cb_default");
+    if (!view) view = computeCbView(await getCbRowsFast(), filter);
   } catch (err) {
     fetchError = err instanceof Error ? err.message : String(err);
   }
-
-  function applyFilter(rs: CbRow[], f: CbFilter): CbRow[] {
-    return rs.filter((r) =>
-      (!f.meses || f.meses.length === 0 || f.meses.includes(isoWeekToMes(r.semana))) &&
-      (!f.semanas || f.semanas.length === 0 || f.semanas.includes(r.semana)) &&
-      (!f.divisiones || f.divisiones.length === 0 || f.divisiones.includes(r.division)) &&
-      (!f.clientes || f.clientes.length === 0 || f.clientes.includes(r.cliente)) &&
-      (!f.tiendas || f.tiendas.length === 0 || f.tiendas.includes(r.tienda))
-    );
-  }
-
-  const rows = applyFilter(allRows, filter);
-
-  // Opciones: cada dropdown muestra valores válidos según el resto de los filtros
-  const uniq = <T,>(arr: (T | null | undefined)[]): T[] =>
-    [...new Set(arr.filter((x): x is T => x != null))];
-
-  const MES_ORDER = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-  const options = {
-    meses: uniq(applyFilter(allRows, { ...filter, meses: [] }).map((r) => isoWeekToMes(r.semana)))
-      .sort((a, b) => MES_ORDER.indexOf(a) - MES_ORDER.indexOf(b)),
-    semanas: uniq(applyFilter(allRows, { ...filter, semanas: [] }).map((r) => r.semana)).sort((a, b) => a - b),
-    divisiones: uniq(applyFilter(allRows, { ...filter, divisiones: [] }).map((r) => r.division)).sort(),
-    clientes: uniq(applyFilter(allRows, { ...filter, clientes: [] }).map((r) => r.cliente)).sort(),
-    tiendas: uniq(applyFilter(allRows, { ...filter, tiendas: [] }).map((r) => r.tienda)).sort(),
-  };
-
-  const totals = computeTotals(rows);
-  const weekly = computeWeeklyEvolution(rows);
-  const byDiv = computeByDivision(rows);
-  const byCliente = computeByDim(rows, "cliente");
-  const byTienda = computeByTienda(rows);
-
-  const hasData = rows.length > 0;
+  const v: CbView = view ?? computeCbView([], filter);
+  const { options, totals, weekly, byDiv, byCliente, byTienda, totalTiendasRelevadas, hasData } = v;
   const lastUpdated = await maxUpdatedAt("cuadro_basico_semanal", "cb").catch(() => null);
 
   return (
     <DashTabs dash="cuadros-basicos" className="space-y-4">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Cuadros Básicos</h2>
-        <p className="text-sm text-muted-foreground">
-          Cumplimiento de cuadro básico, infaltables y estratégico por tienda. Objetivo: 80%.
-        </p>
-        <LastUpdated date={lastUpdated} className="mt-1" />
-      </header>
-      <HowToRead slug="cuadros-basicos" />
-
-      <DashTabBar items={[{ key: "overview", label: "Overview", href: "/cuadros-basicos" }, { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" }]} active={tab} />
+      <Encabezado tab={tab} editor={editor} lastUpdated={lastUpdated} />
 
       <MetaPanel
         plan="Cuadros Básicos"

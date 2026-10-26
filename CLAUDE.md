@@ -540,6 +540,24 @@ reporte_existencia/cb_homologos).
   `Stories IG` (impresiones redondeadas, el reporte las da en "k"). Mayo y junio corregidos a mano (el lector cruzó columnas del email).
   Contraste 22-oct: la fila EMSA jun–sep = inversión de Oncity cargada × 1,05 exacto (la planilla incluye el fee 5%).
 - **Mkt Canal · Plan anual (22-oct-2026, pedido del user):** pestaña "Plan anual <año+1>" al final del renglón de `/mkt-canal` (`?tab=plan`): publicidad por cliente (arranca con los clientes de `mkt_canal_acciones` + Frávega) y eventos (lista del user: Red Acero, Red Interior, Red Integrados, Red Futura Oct, Cetrogar, Casa FOA Rosario/Bs As, Para Ti, Deli&Wine, Premios Deco, Premios Puro Diseño, Otros eventos, Armados eventos grupo compra, Armados otros eventos; se agregan/quitan líneas), mes a mes en **$ M** (se guarda en pesos), totales y gráficos. **Dos bloques SEPARADOS, sin total combinado (user 22-oct):** "Publicidad por cliente" (cuenta contable propia) y "Eventos Canal + Consumidores", cada uno con sus gráficos. Se guarda en `PlanConfig.canal` (mismo jsonb `plan_medios_anual`, sin migración; PATCH `/api/plan-medios` {anio, canal}; solo editores; auditado). Puro `lib/plan-canal.ts` (test `scripts/plan-canal.test.ts`), UI `components/mkt-canal/plan-canal.tsx`.
+- **Trade en Drean (26-oct-2026, migración `0138_trade.sql`, PR `claude/trade-en-drean`):** CB de Trade, Floor Share y Existencias U3
+  pasan del proyecto Supabase CB + Drive/Apps Script a tablas `tr_*` del PRINCIPAL. Maestros `tr_cadenas` (clave normalizada + `alias`
+  + `cliente` SAP; absorbe `cb_cadena_alias`), `tr_tiendas` (identidad = cadena + número), `tr_personas` + `tr_tienda_asignacion`
+  (desde/hasta), `tr_skus`, `tr_config` (objetivos FS); cargas `tr_cb_semanal`/`tr_floor_share`/`tr_existencias` con log `tr_cargas`
+  (+ staging `tr_carga_filas`), `tr_auditoria`, `tr_precalc`. **Reemplazo atómico** por RPC `tr_confirmar_carga` (backup en
+  `tr_cargas.anterior` → delete semana(+cat) → insert) y `tr_deshacer_carga`. Lectores: `lib/trade-db.ts`; `lib/cb-mirror.ts` usa
+  `tr_*` si tienen datos (`trEstado()`), si no el mirror / proyecto CB (fail-safe). **Velocidad:** vista default de /cuadros-basicos =
+  1 fila `tr_precalc.cb_default` (24 KB; antes bajaba 24.820 filas/5 MB del mirror en cada visita, 1,9–4 s); con filtros =
+  `vw_tr_cb_agg` (sin SKU, mismos totales, verificado con data real); FS default sigue en `fs_precomputed`; el cruce se precalcula
+  (`tr_precalc.cruce`). Todo se recalcula en `refrescarDerivados()` (`lib/trade-derivados.ts`) al confirmar/deshacer cargas.
+  `trade_monthly` ya no mete las cargas mensuales viejas de FS (semana null) en "Dic". Pestañas de /cuadros-basicos: Overview ·
+  Sugerencias · CB × Floor Share | (editores `exigirEdicion("trade")`) Cargar datos · Tiendas · Cadenas · SKUs · Objetivos FS.
+  Carga: el navegador parsea (`lib/trade-carga-core.ts`, mismas reglas que el Apps Script, test `scripts/trade-carga.test.ts`),
+  detecta el tipo POR CONTENIDO (rechaza un CB subido como FS, caso 42-Coccion) y sube por partes a `/api/trade/carga`; maestros
+  por `/api/trade/maestros` (auditado). Migración del histórico: `/api/cron/trade-migrar` + workflow `trade-migrar.yml` (manual,
+  idempotente, `?parte=verificar` compara origen vs destino). `cb-mirror` = no-op con datos en `tr_*`. Sugerencias
+  (`lib/trade-sugerencias*.ts`) = port de las vistas del proyecto CB; el catálogo/homólogos se sigue leyendo de `cb_homologos` (CB).
+  Pasos y pendientes: PENDIENTES D24.
 - **Sin 2023 (16-oct, user: "info muy vieja"):** `ANIO_MINIMO = 2024` (presupuesto-core) filtra años anteriores en `getBgtData` (tablero,
   chat, señales) y en `/api/presupuesto` (versiones, TC, facturación de la carga). Los datos NO se borran de la base.
 ## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026
