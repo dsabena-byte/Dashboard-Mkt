@@ -72,9 +72,9 @@ eq("columna PGRST204", esColumnaInexistente({ code: "PGRST204", message: "x" }),
 eq("otro error no es columna", esColumnaInexistente({ code: "42501", message: "permission denied" }), false);
 
 // estado
-eq("activo", estadoDe({ activo: true, ultimo_acceso: "2026-10-01" }), "activo");
-eq("invitado", estadoDe({ activo: true, ultimo_acceso: null }), "invitado");
-eq("desactivado", estadoDe({ activo: false, ultimo_acceso: "2026-10-01" }), "desactivado");
+eq("activo", estadoDe({ activo: true, cuenta: true }), "activo");
+eq("sin cuenta", estadoDe({ activo: true, cuenta: false }), "sin_cuenta");
+eq("desactivado", estadoDe({ activo: false, cuenta: true }), "desactivado");
 
 // CSV
 const csv = parseCsvUsuarios("email;nombre;rol;vendedor\nA@x.com;Ana;VENDEDOR;V12\nb@x.com;Beto;all;\nmalo;X;;\na@x.com;Ana;;\n\nc@x.com,Caro,vendedor,V3");

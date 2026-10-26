@@ -91,10 +91,11 @@ export const ADMIN_LEGACY = (process.env.ADMIN_LEGACY_EMAIL ?? "").toLowerCase()
 
 export const emailValido = (e: string) => /^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/.test(e);
 
-export type EstadoUsuario = "activo" | "invitado" | "desactivado";
-export function estadoDe(u: Pick<UsuarioRow, "activo" | "ultimo_acceso">): EstadoUsuario {
+// "sin_cuenta" = está en la lista pero todavía no tiene usuario en el tablero (hoy usa la app vieja de CB Ventas).
+export type EstadoUsuario = "activo" | "sin_cuenta" | "desactivado";
+export function estadoDe(u: Pick<UsuarioRow, "activo"> & { cuenta?: boolean }): EstadoUsuario {
   if (!u.activo) return "desactivado";
-  return u.ultimo_acceso ? "activo" : "invitado";
+  return u.cuenta ? "activo" : "sin_cuenta";
 }
 
 export interface FilaImport { email: string; nombre: string | null; grupos: Grupo[]; vendedor: string | null }
