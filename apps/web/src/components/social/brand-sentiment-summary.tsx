@@ -53,9 +53,11 @@ export function BrandSentimentSummary({
       const results: SummaryData[] = [];
       for (const marca of marcas) {
         try {
-          const res = await fetch(
-            `/api/summarize-sentiment?marca=${encodeURIComponent(marca)}&from=${from}&to=${to}`,
-          );
+          const res = await fetch("/api/summarize-sentiment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ marca, from, to }),
+          });
           const data = await res.json();
           if (data.ok && data.resumen) {
             results.push({ marca, resumen: data.resumen, posts: data.posts });

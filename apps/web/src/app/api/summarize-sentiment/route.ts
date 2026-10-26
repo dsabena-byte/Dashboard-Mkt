@@ -13,15 +13,17 @@ interface PostResumen {
   resumen_sentimiento: string | null;
 }
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const marca = url.searchParams.get("marca");
-  const from = url.searchParams.get("from");
-  const to = url.searchParams.get("to");
-
-  if (!marca || !from || !to) {
-    return NextResponse.json({ error: "Params: marca, from, to" }, { status: 400 });
+// POST (no GET): genera con OpenAI; un link no debe poder gastar (auditoría D-14).
+export async function POST(request: Request) {
+  const b = (await request.json().catch(() => ({}))) as { marca?: unknown; from?: unknown; to?: unknown };
+  const fecha = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  const marca = typeof b.marca === "string" ? b.marca.trim() : "";
+  const from = fecha(b.from);
+  const to = fecha(b.to);
+  if (!marca || marca.length > 80 || !from || !to) {
+    return NextResponse.json({ error: "Params: marca, from, to (YYYY-MM-DD)" }, { status: 400 });
   }
+  const marcaQ = encodeURIComponent(marca); // va dentro de la query REST con la service key
 
   const supabaseUrl = env("NEXT_PUBLIC_SUPABASE_URL");
   const supabaseKey = env("SUPABASE_SERVICE_ROLE_KEY");
@@ -30,7 +32,7 @@ export async function GET(request: Request) {
   try {
     // 1. Buscar si ya existe un resumen para este combo
     const cacheRes = await fetch(
-      `${supabaseUrl}/rest/v1/social_brand_sentiment_summary?marca=eq.${marca}&periodo_from=eq.${from}&periodo_to=eq.${to}&limit=1`,
+      `${supabaseUrl}/rest/v1/social_brand_sentiment_summary?marca=eq.${marcaQ}&periodo_from=eq.${from}&periodo_to=eq.${to}&limit=1`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
     );
     const cached = (await cacheRes.json()) as Array<{ resumen: string; posts_analizados: number }>;
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
 
     // 2. Traer todos los resúmenes individuales del período
     const postsRes = await fetch(
-      `${supabaseUrl}/rest/v1/social_posts?select=marca,positivo,negativo,resumen_sentimiento&marca=eq.${marca}&red_social=eq.INSTAGRAM&resumen_sentimiento=not.is.null&fecha=gte.${from}&fecha=lte.${to}&limit=200`,
+      `${supabaseUrl}/rest/v1/social_posts?select=marca,positivo,negativo,resumen_sentimiento&marca=eq.${marcaQ}&red_social=eq.INSTAGRAM&resumen_sentimiento=not.is.null&fecha=gte.${from}&fecha=lte.${to}&limit=200`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
     );
     const posts = (await postsRes.json()) as PostResumen[];

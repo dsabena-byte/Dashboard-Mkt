@@ -36,6 +36,19 @@ export function cleanRecipients(list: unknown): string[] {
   return [...new Set(arr.map((x) => String(x).trim().toLowerCase()).filter((x) => EMAIL_RE.test(x)))].slice(0, 20);
 }
 
+/** Dominios a los que se pueden mandar alertas, reportes y tableros (auditoría D-09): FIJOS, no salen de lo que
+ *  cargue un usuario. El de la empresa + los del env `SHARE_ALLOWED_DOMAINS` (CSV). */
+export function dominiosEnvio(extra = ""): string[] {
+  return [...new Set(["mabe.com.ar", ...extra.split(/[,;\s]+/)].map((d) => d.trim().toLowerCase().replace(/^@/, "")).filter(Boolean))];
+}
+
+export function soloDominiosEnvio(list: string[], dominios: string[]): { ok: string[]; rejected: string[] } {
+  const doms = new Set(dominios);
+  const ok: string[] = [], rejected: string[] = [];
+  for (const e of list) (doms.has(e.split("@")[1] ?? "") ? ok : rejected).push(e);
+  return { ok, rejected };
+}
+
 /** Qué email toca HOY según la frecuencia (lunes = semanal; resto = diario). Hora AR (UTC-3). */
 export function modoDelDia(frec: Frecuencia, now = new Date()): "semanal" | "diaria" | null {
   if (frec === "off") return null;

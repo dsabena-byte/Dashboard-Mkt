@@ -1,7 +1,8 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { appUrl, sendEmail } from "@/lib/notify";
-import { getAlertPrefs, envRecipients, logSent } from "@/lib/alerts";
+import { logSent } from "@/lib/alerts";
+import { dominiosEnvio, soloDominiosEnvio } from "@/lib/alerts-shared";
 import { getTenant } from "@/lib/tenant/current";
 import { getDashboardConfig, getReservedConfig, saveReservedConfig } from "@/lib/tableros-server";
 import {
@@ -58,12 +59,9 @@ export async function resolveShareToken(token: string): Promise<SharePayload | n
   return isActive(await getShareState(), p) ? p : null;
 }
 
-/** Dominios permitidos para el envío: el de quien lo programa + los de las alertas + SHARE_ALLOWED_DOMAINS. */
-export async function allowedDomains(userEmail: string | null): Promise<string[]> {
-  const prefs = await getAlertPrefs().catch(() => null);
-  const mails = [userEmail ?? "", ...(prefs?.destinatarios ?? []), ...envRecipients()];
-  const env = (process.env.SHARE_ALLOWED_DOMAINS ?? "").split(/[,;\s]+/);
-  return [...new Set([...mails.map((m) => m.split("@")[1] ?? ""), ...env].map((d) => d.trim().toLowerCase()).filter(Boolean))];
+/** Dominios permitidos para el envío: FIJOS (empresa + SHARE_ALLOWED_DOMAINS), no los deriva de lo cargado (D-09). */
+export async function allowedDomains(_userEmail?: string | null): Promise<string[]> {
+  return dominiosEnvio(process.env.SHARE_ALLOWED_DOMAINS);
 }
 
 export async function validRecipients(list: string[], userEmail: string | null): Promise<{ ok: string[]; rejected: string[] }> {
@@ -112,7 +110,9 @@ export async function runEnviosTableros(opts: { force?: boolean; dry?: boolean; 
     if (opts.dry) { out.push({ slug, enviado: false, motivo: "dry-run", to: e.destinatarios.length }); continue; }
     const url = appUrl(`/compartido/${signShare({ s: slug, e: link.exp, n: link.nonce }, secret)}`);
     const { subject, html } = renderEnvioEmail(marca, cfg.title || "Tablero", url, e.frecuencia, link.exp);
-    const sent = await sendEmail(e.destinatarios, subject, html);
+    const to = soloDominiosEnvio(e.destinatarios, await allowedDomains()).ok; // lo guardado antes de la regla tampoco sale
+    if (!to.length) { out.push({ slug, enviado: false, motivo: "sin destinatarios de dominios permitidos" }); continue; }
+    const sent = await sendEmail(to, subject, html);
     if (sent.ok) { st.envios[slug] = { ...e, ultimo: new Date().toISOString() }; changed = true; await logSent([`tablero:${slug}:${new Date().toISOString().slice(0, 10)}`], "tablero"); }
     out.push({ slug, enviado: sent.ok, to: e.destinatarios.length, motivo: sent.ok ? undefined : sent.error ?? "falló el envío (Resend)" });
   }
