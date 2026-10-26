@@ -9,6 +9,7 @@ import type { ChartSpec, TableSpec, PostCard, ChatStep, ToolCtx } from "@/lib/ch
 import { validateArgs, errorDeArgs, toOpenAiStrict, type JsonSchema } from "@/lib/chat/schema";
 import { elegirVerificadas, bloqueVerificadas } from "@/lib/chat/verified";
 import { verificadasActivas } from "@/lib/chat/feedback-server";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // ============================================================================
 // Motor del copiloto "Preguntale a tus datos" (v2, portado de BIP). Loop de
@@ -54,6 +55,8 @@ export async function POST(req: Request) {
   const rl = checkRateLimit(user.id);
   if (!rl.ok) return NextResponse.json({ error: `Llegaste al límite de consultas por un rato. Probá de nuevo en ${Math.ceil(rl.retryInSec / 60)} min.` }, { status: 429 });
 
+  const cuota = await aiQuotaGate("chat"); // tope diario persistido (D-10)
+  if (cuota) return cuota;
   const body = (await req.json().catch(() => ({}))) as ChatRequest;
   const pathname = typeof body.pathname === "string" ? body.pathname.slice(0, 200) : typeof body.dashboard === "string" ? `/${body.dashboard}` : "/";
   const dash = contextoDe(pathname) ?? GENERAL;

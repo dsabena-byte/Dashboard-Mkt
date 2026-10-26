@@ -4,6 +4,7 @@ import { getServerSupabase } from "@/lib/supabase-server";
 import { canUseTableros, currentAllowed } from "@/lib/tableros-server";
 import { runNl } from "@/lib/tableros-nl";
 import { CHART_TYPES, sanitizeWidget, type AiDataset, type Prepared } from "@/lib/viz";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // IA de Mis tableros (portado de BIP; modelo OPENAI_INSIGHTS_MODEL, default gpt-4o-mini; respuesta JSON):
 //   mode "widgets"   → arma gráficos a partir de un pedido ("¿Qué querés ver?")
@@ -76,6 +77,8 @@ export async function POST(req: Request) {
   const rl = checkRateLimit(`tableros:${userKey}`);
   if (!rl.ok) return NextResponse.json({ error: `Muchas consultas seguidas. Probá de nuevo en ${Math.ceil(rl.retryInSec / 60)} min.` }, { status: 429 });
 
+  const cuota = await aiQuotaGate("tableros"); // tope diario persistido (D-10)
+  if (cuota) return cuota;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const mode = body.mode === "narrativa" ? "narrativa" : body.mode === "tablero" ? "tablero" : body.mode === "nl" ? "nl" : "widgets";
   if (mode === "nl") {

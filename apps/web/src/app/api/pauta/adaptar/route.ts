@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { falImage } from "@/lib/fal-client";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // Adapta una imagen de referencia a otro ratio/tamaño con outpainting generativo
 // (Ideogram v3 Reframe en fal). Devuelve la URL de la imagen adaptada.
@@ -13,6 +14,8 @@ export async function POST(request: Request) {
     const { image_url, width, height } = (await request.json()) as { image_url?: string; width?: number; height?: number };
     if (!image_url) return NextResponse.json({ ok: false, error: "Falta la imagen de referencia." }, { status: 400 });
     if (!width || !height) return NextResponse.json({ ok: false, error: "Falta el tamaño destino." }, { status: 400 });
+    const cuota = await aiQuotaGate("imagen"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     const img = await falImage("fal-ai/ideogram/v3/reframe", {
       image_url,
       image_size: { width, height },

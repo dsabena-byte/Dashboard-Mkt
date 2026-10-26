@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sbAdmin } from "@/lib/supabase-admin";
 import { generarPiezas } from "@/lib/contenido-generar";
 import type { FalSizeKey } from "@/lib/fal-client";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -37,6 +38,8 @@ export async function POST(request: Request) {
 
     // 2) Generar una pieza con los parámetros de la entrada.
     const esCreativo = row.tipo_contenido === "creativo";
+    const cuota = await aiQuotaGate("imagen"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     const result = await generarPiezas({
       pilar: row.pilar ?? undefined,
       categoria: row.categoria ?? undefined,

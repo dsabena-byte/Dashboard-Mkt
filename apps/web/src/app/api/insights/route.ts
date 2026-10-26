@@ -8,6 +8,7 @@ import { loadDash, buildDataPack, signalsForPrompt } from "@/lib/insights/datapa
 import { getLatestReport, saveReport, listReports, getReport } from "@/lib/insights/store";
 import { debeReusarDiagnostico, GUARD_HORAS } from "@/lib/insights/guard";
 import { isDiagDash, EMPTY_INSIGHTS, type Insights, type InsItem, type InsHallazgo, type InsCorr, type InsPlanAccion, type InsOportunidad } from "@/lib/insights/types";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // ============================================================================
 // DIAGNÓSTICO IA por tablero (portado de BIP, sep-2026). Correlaciona indicadores con metas,
@@ -128,6 +129,8 @@ export async function POST(req: Request) {
   if (guard.reusar && ultimo?.insights) {
     return NextResponse.json({ dash, insights: ultimo.insights, model: ultimo.model, id: ultimo.id, createdAt: ultimo.createdAt, reused: true, edadMs: guard.edadMs, guardHoras: GUARD_HORAS });
   }
+  const cuota = await aiQuotaGate("insights"); // tope diario persistido (D-10)
+  if (cuota) return cuota;
   const f = FOCO[dash]!;
   const model = process.env.OPENAI_INSIGHTS_MODEL || "gpt-4o-mini";
   const year = new Date().getFullYear();

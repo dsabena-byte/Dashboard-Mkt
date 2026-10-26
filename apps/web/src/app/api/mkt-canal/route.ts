@@ -4,6 +4,7 @@ import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
 import { checkRateLimit } from "@/lib/chat/rate-limit";
 import { claveFila, sanearFilas } from "@/lib/mkt-canal-core";
 import { extraerReporte, filasExistentes, guardarFilas } from "@/lib/mkt-canal-server";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // Mkt Canal · subir reporte de un retailer.
 //   POST multipart {archivo, cliente?} → la IA lee el archivo → { filas, antes, errores, notas } (NO escribe).
@@ -93,6 +94,8 @@ export async function POST(req: Request) {
   }
   if (!(file instanceof File)) return NextResponse.json({ error: "Elegí un archivo." }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "El archivo pesa más de 10 MB." }, { status: 400 });
+  const cuota = await aiQuotaGate("mkt_canal"); // tope diario persistido (D-10)
+  if (cuota) return cuota;
   try {
     const r = await extraerReporte(file, String(clienteIn ?? "").trim().slice(0, 60) || undefined);
     const antes = await filasExistentes(r.filas);

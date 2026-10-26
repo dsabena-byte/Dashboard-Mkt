@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generarGuionUgc } from "@/lib/ugc";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -7,6 +8,8 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     const b = (await request.json()) as { perfil?: string; tema?: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; duracion?: number; atributos?: string[]; cta?: string };
+    const cuota = await aiQuotaGate("texto"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     const guion = await generarGuionUgc({ perfil: b.perfil ?? "usuario", tema: b.tema ?? "", pilar: b.pilar, formato: b.formato, detalles: b.detalles, modelo: b.modelo, duracion: b.duracion, atributos: b.atributos, cta: b.cta });
     return NextResponse.json({ ok: true, guion });
   } catch (err) {

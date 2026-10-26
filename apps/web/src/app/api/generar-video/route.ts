@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { falVideoQueue } from "@/lib/fal-client";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // Image-to-video: anima una pieza ya generada. Clips MUY cortos (~5s). Corre en
 // la cola async de fal (lento: ~1-3 min). Selector Kling / Veo para comparar.
@@ -46,6 +47,8 @@ export async function POST(request: Request) {
     const ar = aspectRatio(body.aspecto);
 
     const input = modelo.buildInput(imageUrl, prompt, ar);
+    const cuota = await aiQuotaGate("video"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     const out = await falVideoQueue(modelo.id, input, { timeoutMs: 280000, pollMs: 5000 });
 
     if (!out.video_url) return NextResponse.json({ ok: false, error: "El modelo no devolvió video." }, { status: 502 });

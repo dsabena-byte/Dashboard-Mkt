@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 function env(key: string): string {
   const v = process.env[key];
@@ -51,6 +52,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, source: "empty", marca, resumen: "Sin análisis disponible para este período.", posts: 0 });
     }
 
+    const cuota = await aiQuotaGate("sentimiento"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     // 3. Agrupar resúmenes
     const resumenes = posts
       .map((p) => p.resumen_sentimiento)
