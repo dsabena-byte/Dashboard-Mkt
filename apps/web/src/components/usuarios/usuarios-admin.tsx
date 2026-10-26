@@ -10,7 +10,7 @@ const btnPri = "rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-
 const btn = "rounded border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50";
 const ESTADO: Record<EstadoUsuario, { label: string; cls: string }> = {
   activo: { label: "Activo", cls: "bg-emerald-50 text-emerald-800" },
-  invitado: { label: "Invitado, sin entrar", cls: "bg-amber-50 text-amber-800" },
+  sin_cuenta: { label: "Sin cuenta en Drean", cls: "bg-slate-100 text-slate-600" },
   desactivado: { label: "Desactivado", cls: "bg-slate-100 text-slate-600" },
 };
 const labelGrupo = (g: string) => GRUPOS.find((x) => x.id === g)?.label ?? g;
@@ -31,7 +31,7 @@ interface Form { email: string; nombre: string; grupos: Grupo[]; es_editor: bool
 const VACIO: Form = { email: "", nombre: "", grupos: [], es_editor: false, es_admin: false, vendedor: "", gerencia: "", nuevo: true };
 
 export function UsuariosAdmin({ yo }: { yo: string }) {
-  const [usuarios, setUsuarios] = useState<UsuarioRow[] | null>(null);
+  const [usuarios, setUsuarios] = useState<(UsuarioRow & { cuenta?: boolean })[] | null>(null);
   const [legacy, setLegacy] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; txt: string } | null>(null);
   const [form, setForm] = useState<Form | null>(null);
@@ -41,7 +41,7 @@ export function UsuariosAdmin({ yo }: { yo: string }) {
   const [importar, setImportar] = useState(false);
 
   const cargar = useCallback(async () => {
-    const r = await api<{ legacy: boolean; usuarios: UsuarioRow[] }>();
+    const r = await api<{ legacy: boolean; usuarios: (UsuarioRow & { cuenta?: boolean })[] }>();
     if (!r.ok) { setAviso({ ok: false, txt: r.data.error ?? "No se pudo cargar." }); return; }
     setLegacy(r.data.legacy);
     setUsuarios(r.data.usuarios);
@@ -110,7 +110,7 @@ export function UsuariosAdmin({ yo }: { yo: string }) {
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
                       <button type="button" title="Editar" aria-label={`Editar ${u.email}`} className="px-1 text-base text-primary hover:opacity-70" onClick={() => { setForm({ email: u.email, nombre: u.nombre ?? "", grupos: u.grupos as Grupo[], es_editor: u.es_editor, es_admin: u.es_admin, vendedor: u.vendedor ?? "", gerencia: u.gerencia ?? "", nuevo: false }); setImportar(false); }}>✎</button>
-                      {u.activo && <button type="button" className={btn} disabled={ocupado} onClick={() => void accion({ accion: est === "invitado" ? "invitar" : "resetear", email: u.email }, `Le mandamos el mail a ${u.email}.`)}>{est === "invitado" ? "Enviar invitación" : "Resetear clave"}</button>}
+                      {u.activo && <button type="button" className={btn} disabled={ocupado} title="Le manda un mail con un link para elegir clave (por ejemplo, si se la olvidó)" onClick={() => { if (!confirm(`¿Mandarle a ${u.email} un mail para elegir clave?`)) return; void accion({ accion: est === "sin_cuenta" ? "invitar" : "resetear", email: u.email }, `Le mandamos el mail a ${u.email}.`); }}>Mail para elegir clave</button>}
                       {u.email !== yo && <button type="button" className={btn} disabled={ocupado} onClick={() => { if (u.activo && !confirm(`¿Desactivar a ${u.email}? No va a poder entrar más hasta que lo reactives.`)) return; void accion({ accion: "activo", email: u.email, activo: !u.activo }, u.activo ? "Usuario desactivado." : "Usuario reactivado."); }}>{u.activo ? "Desactivar" : "Reactivar"}</button>}
                     </div>
                   </td>
@@ -121,7 +121,7 @@ export function UsuariosAdmin({ yo }: { yo: string }) {
           </tbody>
         </table>
       </div>
-      <p className="text-[11px] text-muted-foreground">Cada cambio queda registrado (quién, cuándo, antes y después). Las invitaciones nunca salen solas: se mandan desde acá.</p>
+      <p className="text-[11px] text-muted-foreground">Cada cambio queda registrado (quién, cuándo, antes y después). Nunca se manda ningún mail solo: únicamente cuando tocás “Mail para elegir clave”. “Sin cuenta en Drean” = hoy usa la app vieja; su cuenta se crea con su misma clave al mudar su tablero.</p>
     </div>
   );
 }

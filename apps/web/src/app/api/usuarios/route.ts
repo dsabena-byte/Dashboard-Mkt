@@ -69,7 +69,20 @@ export async function GET() {
     console.error("[usuarios] GET:", error.message);
     return err("No se pudo leer la lista de usuarios.", 500);
   }
-  return NextResponse.json({ legacy: false, usuarios: data ?? [] });
+  // Estado y último acceso reales: salen de las cuentas de Auth (quién tiene cuenta y cuándo entró).
+  const cuentas = new Map<string, string | null>();
+  for (let page = 1; page <= 20; page++) {
+    const { data: au, error: e } = await svc.auth.admin.listUsers({ page, perPage: 1000 });
+    if (e) { console.error("[usuarios] listUsers:", e.message); break; }
+    for (const u of au.users) if (u.email) cuentas.set(u.email.toLowerCase(), u.last_sign_in_at ?? null);
+    if (au.users.length < 1000) break;
+  }
+  const usuarios = ((data ?? []) as UsuarioRow[]).map((u) => ({
+    ...u,
+    cuenta: cuentas.has(u.email),
+    ultimo_acceso: cuentas.get(u.email) ?? u.ultimo_acceso,
+  }));
+  return NextResponse.json({ legacy: false, usuarios });
 }
 
 export async function POST(req: Request) {
