@@ -20,6 +20,9 @@ const csp = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Sin optimizador de imágenes (/_next/image): next 14 tiene RCE críticos ahí (AVIF/SVG, arreglados recién en
+  // 15.5.28) y solo se usaba para el logo local. Los <Image> se sirven tal cual.
+  images: { unoptimized: true },
   transpilePackages: ["@dashboard/db", "@dashboard/shared"],
   experimental: {
     typedRoutes: true,
