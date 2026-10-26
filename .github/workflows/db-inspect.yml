@@ -31,5 +31,29 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${DB_URL:-}" ]; then echo "::error::Falta el secret SUPABASE_DB_URL"; exit 1; fi
-          printf 'BEGIN TRANSACTION READ ONLY;\n%s\nROLLBACK;\n' "$SQL" \
-            | psql "$DB_URL" -v ON_ERROR_STOP=1 -P pager=off
+          # Una sola sentencia, sin control de transacción ni SET: un input tipo
+          # "COMMIT; delete ..." salía del BEGIN READ ONLY. El arreglo de fondo es
+          # que SUPABASE_DB_URL use un usuario de DB de solo lectura.
+          CLEAN_SQL=$(python3 -I - <<'PY'
+          import os, re, sys
+          raw = os.environ["SQL"]
+          body = re.sub(r"[\s;]+$", "", raw)          # se tolera un ';' final
+          nocom = re.sub(r"/\*.*?\*/", " ", body, flags=re.S)
+          nocom = re.sub(r"--[^\n]*", " ", nocom)
+          bad = r"\b(commit|rollback|begin|start|abort|end\s+(transaction|work)|savepoint|release|set|reset|set_config|prepare|do|copy|call)\b"
+          if ";" in body:
+              sys.exit("::error::Solo se permite UNA sentencia (sin ';' intermedios).")
+          if "\\" in body:
+              sys.exit("::error::No se permiten meta-comandos de psql (\\).")
+          for txt in (body, nocom):
+              m = re.search(bad, txt, re.I)
+              if m:
+                  sys.exit(f"::error::Palabra no permitida: {m.group(0)}")
+          print(body)
+          PY
+          )
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -P pager=off \
+            -c "SET default_transaction_read_only = on" \
+            -c "BEGIN TRANSACTION READ ONLY" \
+            -c "$CLEAN_SQL" \
+            -c "ROLLBACK"
