@@ -31,7 +31,7 @@ for (const [slug, d] of Object.entries(DASH_KNOW)) {
 }
 for (const [k, v] of Object.entries(KPI_KNOW))
   for (const p of v.palancas ?? []) if (p.modulo) check(ids.has(p.modulo), `KPI_KNOW.${k}: palanca a módulo inexistente ${p.modulo}`);
-const validRoutes = new Set(["/mapa-estrategico", "/overview", "/performance", "/performance-conversion", "/redes", "/influencia", "/mkt-canal", "/web", "/seo-search", "/cuadros-basicos", "/floor-share", "/salud-marca", "/mercado", "/funnel", "/contenido", "/monitoreo"]);
+const validRoutes = new Set(["/mapa-estrategico", "/overview", "/performance", "/performance-conversion", "/redes", "/influencia", "/mkt-canal", "/web", "/seo-search", "/cuadros-basicos", "/floor-share", "/cb-ventas", "/salud-marca", "/mercado", "/funnel", "/contenido", "/monitoreo"]);
 for (const [s, d] of Object.entries(DASH_HREF)) check(validRoutes.has(d.href), `DASH_HREF.${s}: ruta inexistente ${d.href}`);
 
 // Títulos reales de las cards de Drean → guía

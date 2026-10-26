@@ -33,6 +33,8 @@ export const EVAL_SET: EvalCase[] = [
   { id: "trade-3", q: "¿Qué cadenas tienen peor cumplimiento de cuadro básico?", dash: "/cuadros-basicos", tools: ["get_cb_cumplimiento"], args: { nivel: "cliente", orden: "peores", top: 10 } },
   { id: "trade-4", q: "¿Cuál es el baseline de tiendas medidas en las últimas semanas?", dash: "/cuadros-basicos", tools: ["get_cb_baseline"] },
   { id: "trade-5", q: "¿Qué tiendas no medidas conviene sumar al programa de cuadro básico?", dash: "/cuadros-basicos", tools: ["get_cb_sugerencias"], args: { top: 10 } },
+  { id: "cbv-1", q: "¿Qué clientes están más lejos del 80% del cuadro básico de ventas?", dash: "/cb-ventas", tools: ["get_cb_ventas"], args: { nivel: "cliente" } },
+  { id: "cbv-2", q: "¿Qué modelos faltan en las compras de mis clientes (facturas y back order)?", dash: "/cb-ventas", tools: ["get_cb_ventas"], args: { nivel: "faltantes" } },
   { id: "trade-6", q: "¿Qué marcas tienen más exhibición en góndola?", dash: "/floor-share", tools: ["get_floor_share"], args: { nivel: "marcas" } },
   // ── Plan de Medios ──
   { id: "pauta-1", q: "¿Cuánto invertimos en pauta por medio este año y con qué CPM?", dash: "/performance", tools: ["get_pauta_performance"], args: { nivel: "medio", desde: "2026-01" } },
