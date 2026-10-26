@@ -45,7 +45,7 @@ export async function esAdminActual(): Promise<{ email: string; legacy: boolean 
   const p = await getMiPerfil().catch(() => null);
   const email = p?.user?.email?.toLowerCase();
   if (!p || !email) return null;
-  if (p.estado === "legacy") return email === ADMIN_LEGACY ? { email, legacy: true } : null;
+  if (p.estado === "legacy") return ADMIN_LEGACY && email === ADMIN_LEGACY ? { email, legacy: true } : null;
   return p.estado === "ok" && p.row?.activo && p.row.es_admin ? { email, legacy: false } : null;
 }
 
