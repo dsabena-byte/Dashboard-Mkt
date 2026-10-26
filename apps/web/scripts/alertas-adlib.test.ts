@@ -1,6 +1,6 @@
 // Test de las partes PURAS de Alertas (lib/alerts-shared) y Pauta de la competencia
 // (lib/ad-library-shared). Correr: cd apps/web && npx tsx scripts/alertas-adlib.test.ts
-import { modoDelDia, selectDigest, isFirstBusinessDay, cleanRecipients, sortItems, type AlertItem } from "../src/lib/alerts-shared";
+import { modoDelDia, selectDigest, isFirstBusinessDay, cleanRecipients, dominiosEnvio, soloDominiosEnvio, sortItems, type AlertItem } from "../src/lib/alerts-shared";
 import { matchesBrand, parseAdItem, adLibraryBrands, brandSummary, isNewSince, MAX_COMPETIDORES } from "../src/lib/ad-library-shared";
 
 let fails = 0;
@@ -23,6 +23,8 @@ ok(d.length === 2 && d[0]!.key === "d" && d[1]!.key === "b", "diaria: altas nuev
 const s = selectDigest(items, new Set(["a"]), "semanal");
 ok(s.map((x) => x.key).join() === "d,b,a" && s[2]!.nueva === false, "semanal: nuevas primero, después las abiertas; sin 'baja'");
 ok(cleanRecipients("A@x.com, b@y.com;nope, a@x.com").join() === "a@x.com,b@y.com", "destinatarios: limpia, valida y dedup");
+{ const d = dominiosEnvio(" @Socio.com, "); ok(d.join() === "mabe.com.ar,socio.com", "dominios de envío: fijos + env");
+  const r = soloDominiosEnvio(["a@mabe.com.ar", "x@gmail.com", "b@socio.com"], d); ok(r.ok.join() === "a@mabe.com.ar,b@socio.com" && r.rejected.join() === "x@gmail.com", "dominios de envío: rechaza los de afuera"); }
 
 console.log("3 · Ad Library");
 const brands = adLibraryBrands();

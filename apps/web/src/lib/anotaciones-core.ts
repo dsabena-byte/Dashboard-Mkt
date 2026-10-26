@@ -49,5 +49,6 @@ export function marcasEnEje(notas: Anotacion[], xKeys: { key: string; label: str
 /** Bloque de texto para el prompt del Diagnóstico IA (más recientes primero, con tope). */
 export function anotacionesParaPrompt(notas: Anotacion[], max = 30): string {
   return [...notas].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, max)
-    .map((n) => `- ${n.fecha}${n.tablero ? ` [${n.tablero}]` : ""}: ${n.texto.slice(0, MAX_TEXTO)}`).join("\n");
+    // Una línea por nota y sin "===": el texto del usuario no puede cerrar el bloque ni simular instrucciones (D-13).
+    .map((n) => `- ${n.fecha}${n.tablero ? ` [${n.tablero}]` : ""}: ${n.texto.slice(0, MAX_TEXTO).replace(/\s+/g, " ").replace(/={2,}/g, "=")}`).join("\n");
 }

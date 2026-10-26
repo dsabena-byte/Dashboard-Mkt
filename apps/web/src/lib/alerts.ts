@@ -27,7 +27,7 @@ import { cleanUmbrales, evaluarUmbrales, seriesDesdeNativos, UMBRAL_METRICAS, ty
 import { getNativeDataset } from "@/lib/native-datasets";
 import { whatsappStatus, sendWhatsAppMany, logWhatsappHeartbeat } from "@/lib/whatsapp";
 import { cleanPhones, buildAlertsWhatsApp, formatReporteWhatsApp, type ReporteWaData } from "@/lib/whatsapp-shared";
-import { cleanRecipients, modoDelDia, isFirstBusinessDay, selectDigest, sortItems, FRECUENCIAS, type AlertItem, type AlertPrefs, type Frecuencia } from "@/lib/alerts-shared";
+import { cleanRecipients, dominiosEnvio, soloDominiosEnvio, modoDelDia, isFirstBusinessDay, selectDigest, sortItems, FRECUENCIAS, type AlertItem, type AlertPrefs, type Frecuencia } from "@/lib/alerts-shared";
 
 export type { AlertItem, AlertPrefs, Frecuencia } from "@/lib/alerts-shared";
 
@@ -106,7 +106,10 @@ export async function saveAlertPrefs(p: Omit<AlertPrefs, "migrated" | "whatsappM
 
 /** Destinatarios de env (fallback): ALERT_RECIPIENTS = "a@x.com,b@y.com". */
 export function envRecipients(): string[] { return cleanRecipients(process.env.ALERT_RECIPIENTS ?? ""); }
-export function resolveRecipients(prefs: AlertPrefs): string[] { return prefs.destinatarios.length ? prefs.destinatarios : envRecipients(); }
+// Al enviar también se filtra por dominio: lo guardado antes de la regla no puede salir de la empresa.
+export function resolveRecipients(prefs: AlertPrefs): string[] {
+  return soloDominiosEnvio(prefs.destinatarios.length ? prefs.destinatarios : envRecipients(), dominiosEnvio(process.env.SHARE_ALLOWED_DOMAINS)).ok;
+}
 
 // ── Umbrales propios (columna alert_prefs.umbrales, migración 0119; sin ella: lista vacía) ──
 export async function getUmbrales(): Promise<{ umbrales: Umbral[]; migrated: boolean }> {
