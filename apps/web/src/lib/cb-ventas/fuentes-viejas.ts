@@ -8,10 +8,36 @@ import { createSign } from "node:crypto";
 
 const DRIVE = "https://www.googleapis.com/drive/v3/files";
 
+type ServiceAccount = { client_email: string; private_key: string; token_uri?: string };
+
+// El JSON suele llegar roto por copiar/pegar (comillas tipográficas, espacios invisibles, saltos de línea reales dentro
+// del private_key). Se limpia eso; si igual falla, el error dice QUÉ caracteres hay cerca (letras/números tapados con x)
+// para poder corregirlo sin exponer la clave.
+export function parseServiceAccount(raw: string): ServiceAccount {
+  const limpio = raw.trim()
+    .replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, " ");
+  try {
+    return JSON.parse(limpio) as ServiceAccount;
+  } catch (e) {
+    // Saltos de línea reales dentro de los strings → \n escapado.
+    const conEscapes = limpio.replace(/"(?:[^"\\]|\\.)*"/gs, (m) => m.replace(/\r?\n/g, "\\n"));
+    try {
+      return JSON.parse(conEscapes) as ServiceAccount;
+    } catch {
+      const pos = Number(/position (\d+)/.exec(e instanceof Error ? e.message : "")?.[1] ?? -1);
+      const cerca = pos >= 0
+        ? Array.from(limpio.slice(Math.max(0, pos - 6), pos + 6)).map((c) => (/[A-Za-z0-9+/=]/.test(c) ? "x" : `U+${c.codePointAt(0)!.toString(16).padStart(4, "0")}`)).join(" ")
+        : "";
+      throw new Error(`GOOGLE_SERVICE_ACCOUNT_JSON no es un JSON válido (largo ${limpio.length}, empieza con ${JSON.stringify(limpio.slice(0, 1))}, termina con ${JSON.stringify(limpio.slice(-1))}; cerca del error: ${cerca})`);
+    }
+  }
+}
+
 async function driveToken(): Promise<string> {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw) throw new Error("Falta GOOGLE_SERVICE_ACCOUNT_JSON");
-  const sa = JSON.parse(raw) as { client_email: string; private_key: string; token_uri?: string };
+  const sa = parseServiceAccount(raw);
   const now = Math.floor(Date.now() / 1000);
   const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const unsigned = `${b64({ alg: "RS256", typ: "JWT" })}.${b64({
