@@ -72,6 +72,12 @@ reporte_existencia/cb_homologos).
 - **Deploy:** push a `main` → Vercel deploya solo. (Rama designada por sesión: pushear con
   `git push origin HEAD:main`, rebasar si `main` avanzó.)
 - **Migraciones nuevas = GRANT explícito (desde 30-oct-2026, aviso de Supabase):** toda tabla nueva en `public` lleva en la MISMA migración `grant select … to anon, authenticated` (si la lee el front) y `grant select, insert, update, delete … to service_role`; sin eso la API REST da "permission denied". Las tablas existentes no cambian. Aplica también a bip-platform.
+- **Conectores de las sesiones (26-oct-2026, hecho por el user — NO volver a pedirlo):** Vercel = cuenta `dsabena@gmail.com` con los
+  2 equipos autorizados (Drean `daniels-projects`: dashboard-mkt, cuadros-basicos, dashboard-bgt…; BIP `bip9`: bip-platform, crm-whatsapp,
+  bip-app). Supabase: `Supabase Drean` (principal) y `Supabase Drean CB` = conectores propios de SOLO LECTURA
+  (`mcp.supabase.com/mcp?project_ref=…&read_only=true`, usuario `supabase_read_only_user`); el conector `Supabase` original = BIP.
+  GitHub: la app de Claude ya tiene push en los 9 repos (incl. Dashboard-BGT, Cuadros-basicos, bip-knowledge). Plan unificado de
+  seguridad + arquitectura: etapas 0–8 (fuera del repo, que es público); próximo = rotar FAL_KEY/Meta y etapa 2 (datos de Drean).
 - **Sandbox:** `node_modules` se instala con `pnpm install`. Typecheck real:
   `cd apps/web && pnpm exec tsc --noEmit` (el `tsc` sin deps da miles de errores de entorno —
   no sirve). Acceso directo a la DB solo por REST con la service key (sin conexión DDL: las
@@ -885,8 +891,8 @@ reporte_existencia/cb_homologos).
   TCP proxy público; logs sin accesos raros (solo 16 pedidos sin credencial rechazados por Nango el 20-oct 21:28 UTC); Evolution: 1 instancia, 0
   mensajes. Vercel Drean (token de 1 día cargado en Network secrets para `api.vercel.com`): 100 deploys 19→23-oct todos por git del repo o
   redeploys del user; las 29 env las editó Daniel (últimas = TikTok/Nango 21-oct); no hay `EVO_*` en Vercel. Rotar claves = decisión del user (no hecho).
-- **Auditoría de seguridad (23-oct-2026; informes fuera del repo porque es PÚBLICO):** el registro de Supabase Auth de Drean está
-  ABIERTO (`disable_signup:false`; pendiente que el user lo cierre). Mitigación en código: `usuarioHabilitado` (`lib/auth/safe-next.ts`)
+- **Auditoría de seguridad (23-oct-2026; informes fuera del repo porque es PÚBLICO):** el registro de Supabase Auth de Drean estaba
+  ABIERTO; **el user lo cerró el 26-oct-2026** (verificado: `disable_signup:true`). Mitigación en código: `usuarioHabilitado` (`lib/auth/safe-next.ts`)
   en el middleware → solo emails confirmados `@mabe.com.ar` o cuentas creadas antes de `CORTE_ALTAS` (23-oct 20:00 UTC); el resto = 403 en
   `/api` y `/login?error=acceso`. Las 8 cuentas existentes son del equipo (la única no `@mabe.com.ar`, una Gmail del 19-ago, la confirmó el
   user el 23-oct; entra por ser previa al corte). Crons fail-closed (`if (!secret || …)`). Abiertos: 77 tablas legibles con la clave pública (migración
