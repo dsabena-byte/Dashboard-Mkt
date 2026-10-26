@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { falVideoQueue } from "@/lib/fal-client";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Image-to-video: anima una pieza ya generada. Clips MUY cortos (~5s). Corre en
 // la cola async de fal (lento: ~1-3 min). Selector Kling / Veo para comparar.
@@ -30,6 +31,8 @@ function aspectRatio(aspecto: string | undefined): string {
 }
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const body = (await request.json()) as {
       image_url?: string;

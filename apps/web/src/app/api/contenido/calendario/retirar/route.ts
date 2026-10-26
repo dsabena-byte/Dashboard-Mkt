@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sbAdmin } from "@/lib/supabase-admin";
 import { getPageToken, borrarPublicacion } from "@/lib/meta-publish";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Retira (borra) una publicación ya hecha en IG o FB. Toma el id de la publicación
 // SOLO de la fila (lo guarda /publicar). Borra vía Graph API y limpia la columna.
@@ -12,6 +13,8 @@ const TABLE = "contenido_calendario";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const { id, red } = (await request.json()) as { id?: string; red?: string };
     if (!red || (red !== "instagram" && red !== "facebook")) return NextResponse.json({ ok: false, error: "Falta red válida." }, { status: 400 });

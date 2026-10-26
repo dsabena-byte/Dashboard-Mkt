@@ -23,6 +23,8 @@ export interface UsuarioRow {
   grupos: string[];
   es_admin: boolean;
   es_editor: boolean;
+  /** 0137: edita los tableros de Marketing (todo salvo CB / Floor Share / CB Ventas). */
+  edita_marketing?: boolean;
   vendedor: string | null;
   gerencia: string | null;
   activo: boolean;
@@ -55,6 +57,27 @@ export function apiPermitida(pathname: string, rutas: string[] | null): boolean 
   if (!rutas.length) return false;
   return API_PERMITIDAS_RESTRINGIDOS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
+
+/** Área de edición: "trade" = Cuadros Básicos, Floor Share y CB Ventas; "marketing" = todo lo demás. */
+export type AreaEdicion = "marketing" | "trade";
+
+/** Tableros del área trade (el resto es marketing). */
+export const DASH_TRADE = ["cuadros-basicos", "floor-share", "cb-ventas"];
+export const areaDeDash = (dash: string): AreaEdicion => (DASH_TRADE.includes(dash) ? "trade" : "marketing");
+
+/** Puede editar el área: admin → todo; marketing → edita_marketing; trade → es_editor. Inactivo → nada. */
+export function puedeEditar(
+  perfil: Pick<UsuarioRow, "activo" | "es_admin" | "es_editor" | "edita_marketing"> | null | undefined,
+  area: AreaEdicion,
+): boolean {
+  if (!perfil?.activo) return false;
+  if (perfil.es_admin) return true;
+  return area === "marketing" ? perfil.edita_marketing === true : perfil.es_editor === true;
+}
+
+/** La columna pedida no existe (falta una migración) → PostgREST 42703 / PGRST204. */
+export const esColumnaInexistente = (err: { code?: string | null; message?: string | null } | null | undefined) =>
+  !!err && (err.code === "42703" || err.code === "PGRST204" || /column .* does not exist/i.test(err.message ?? ""));
 
 /** La tabla todavía no existe (no se corrió 0136) → modo legacy (regla vieja). */
 export function esTablaInexistente(err: { code?: string | null; message?: string | null } | null | undefined, status?: number): boolean {

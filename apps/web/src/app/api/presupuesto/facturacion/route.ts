@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { guardarFacturacion } from "@/lib/presupuesto-server";
 import { conUsuario, soloEditor } from "../_auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Facturación mensual de la empresa (USD). PUT {cambios: [{mes: "YYYY-MM-01", facturacion|null}]}. Solo editores.
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export async function PUT(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { cambios?: { mes?: string; facturacion?: number | null }[] };
     const cambios = (b.cambios ?? []).slice(0, 120);
     for (const c of cambios) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getUmbrales, saveUmbrales } from "@/lib/alerts";
 import { alertasUser } from "../_lib/auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Umbrales propios de alertas ("avisame si el CPM supera $X o las sesiones caen 20%") — columna
 // alert_prefs.umbrales (migración 0119). Se validan con cleanUmbrales (máx. 10, métricas conocidas).
@@ -16,6 +17,8 @@ export async function GET() {
 export async function POST(req: Request) {
   const u = await alertasUser();
   if (!u.ok) return NextResponse.json({ error: u.error }, { status: u.status });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const b = (await req.json().catch(() => ({}))) as { umbrales?: unknown };
   try {
     return NextResponse.json({ ok: true, umbrales: await saveUmbrales(b.umbrales, u.email) });

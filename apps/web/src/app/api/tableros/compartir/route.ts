@@ -4,6 +4,7 @@ import { canUseTableros, getDashboardConfig, TablerosMissingError } from "@/lib/
 import { emailEnabled } from "@/lib/notify";
 import { clampDias, cleanDest } from "@/lib/tablero-share";
 import { allowedDomains, createLink, getShareState, linkUrl, revokeLink, saveShareState, shareSecret, validRecipients } from "@/lib/tablero-share-server";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Links de SOLO LECTURA de un tablero de Mis tableros + envío programado por mail (portado de BIP).
 //   GET ?slug=                                   → { link: { url, exp } | null, envio, dominios, ... }
@@ -46,6 +47,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await canUseTableros())) return denied();
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const body = (await req.json().catch(() => ({}))) as { slug?: string; action?: string; dias?: number; frecuencia?: string; destinatarios?: unknown };
   const slug = String(body.slug ?? "");
   if (!(await tableroOk(slug))) return NextResponse.json({ error: "Ese tablero no existe o todavía no tiene gráficos (guardalo primero)." }, { status: 400 });
@@ -71,6 +74,8 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   if (!(await canUseTableros())) return denied();
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const { slug, what } = (await req.json().catch(() => ({}))) as { slug?: string; what?: string };
   if (!slug || !SLUG_RE.test(slug)) return NextResponse.json({ error: "tablero inválido" }, { status: 400 });
   try {

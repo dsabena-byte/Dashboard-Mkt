@@ -8,6 +8,7 @@ import { PLANES_OTROS, proyectarOtros, sanearOtros } from "@/lib/plan-otros-kpis
 import { sanearCanal } from "@/lib/plan-canal";
 import { getHistOtros } from "@/lib/plan-otros-kpis-server";
 import { conUsuario, soloEditor } from "../presupuesto/_auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Plan de Medios anual. Solo los editores del presupuesto (bgt_editores).
 //  PUT  {anio, config} → guarda el plan (sin tocar `otros`: eso se edita en las pestañas "Plan anual" de cada tablero).
@@ -25,6 +26,8 @@ export async function PUT(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { anio?: unknown; config?: unknown };
     if (!anioOk(b.anio)) return NextResponse.json({ error: "Año inválido" }, { status: 400 });
     const cfg = sanearPlan(b.config, b.anio as number);
@@ -40,6 +43,8 @@ export async function PATCH(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { anio?: unknown; otros?: unknown; canal?: unknown };
     if (!anioOk(b.anio)) return NextResponse.json({ error: "Año inválido" }, { status: 400 });
     const plan = await getPlanAnual(b.anio as number);
@@ -56,6 +61,8 @@ export async function POST(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { anio?: unknown; plan?: unknown };
     if (!anioOk(b.anio)) return NextResponse.json({ error: "Año inválido" }, { status: 400 });
     const anio = b.anio as number;

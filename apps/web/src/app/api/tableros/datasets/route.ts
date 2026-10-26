@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { canUseTableros, insertDataset, listDatasets, MAX_DATASET_ROWS, parseSpreadsheet, removeDataset, TablerosMissingError } from "@/lib/tableros-server";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Planillas de Mis tableros.
 //   GET                → lista (id, nombre, filas)
@@ -22,6 +23,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!(await canUseTableros())) return denied();
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "falta el archivo" }, { status: 400 });
@@ -41,6 +44,8 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   if (!(await canUseTableros())) return denied();
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const { id } = (await req.json().catch(() => ({}))) as { id?: string };
   if (!id) return NextResponse.json({ error: "falta id" }, { status: 400 });
   try {

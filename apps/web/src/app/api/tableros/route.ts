@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { canUseTableros, customSlug, deleteDashboard, listDashboards, renameDashboard, saveDashboardConfig, TablerosMissingError } from "@/lib/tableros-server";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Mis tableros (motor v2 de BIP) — CRUD de tableros.
 //   GET                                          → lista
@@ -25,6 +26,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!(await canUseTableros())) return denied();
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
   if (body.action === "create") {
@@ -46,6 +49,8 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   if (!(await canUseTableros())) return denied();
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const { slug, title } = (await req.json().catch(() => ({}))) as { slug?: string; title?: string };
   if (!slug || !SLUG_RE.test(slug) || !title?.trim()) return NextResponse.json({ error: "datos inválidos" }, { status: 400 });
   try { await renameDashboard(slug, title.trim().slice(0, 120)); return NextResponse.json({ ok: true }); } catch (e) { return errRes(e); }
@@ -53,6 +58,8 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   if (!(await canUseTableros())) return denied();
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const { slug } = (await req.json().catch(() => ({}))) as { slug?: string };
   if (!slug || !SLUG_RE.test(slug)) return NextResponse.json({ error: "datos inválidos" }, { status: 400 });
   try { await deleteDashboard(slug); return NextResponse.json({ ok: true }); } catch (e) { return errRes(e); }

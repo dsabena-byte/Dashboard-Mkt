@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { isPathAllowed } from "@/lib/dashboard-access";
-import { getAllowedPaths } from "@/lib/usuarios-server";
+import { exigirEdicion, getAllowedPaths } from "@/lib/usuarios-server";
+import { areaDeDash } from "@/lib/usuarios-core";
 import { DIAG_DASHES } from "@/lib/insights/types";
 import { sanearAccion } from "@/lib/recomendacion-seguimiento";
 import { guardarSeguimiento, listSeguimiento, SeguimientoNoDisponible, MIGRACION_SEGUIMIENTO } from "@/lib/recomendacion-seguimiento-server";
@@ -41,6 +42,8 @@ export async function POST(req: Request) {
   const c = sanearAccion(await req.json().catch(() => null), DIAG_DASHES);
   if (!c.ok) return NextResponse.json({ error: c.error }, { status: 400 });
   if (!puedeVer(c.value.dash, u.allowed)) return NextResponse.json({ error: "Tu usuario no tiene acceso a ese tablero." }, { status: 403 });
+  const sinPermiso = await exigirEdicion(areaDeDash(c.value.dash));
+  if (sinPermiso) return sinPermiso;
   try {
     const item = await guardarSeguimiento(c.value, u.email);
     return NextResponse.json({ ok: true, item });

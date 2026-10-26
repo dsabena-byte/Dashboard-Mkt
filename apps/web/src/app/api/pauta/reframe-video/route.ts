@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { falQueueSubmit } from "@/lib/fal-client";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Reframe de VIDEO a otro ratio con outpainting generativo (Luma Ray 2 Flash
 // Reframe en fal). El modelo extiende el encuadre al ratio destino sin deformar
@@ -13,6 +14,8 @@ const MODEL = "fal-ai/luma-dream-machine/ray-2-flash/reframe";
 const RATIOS = new Set(["9:16", "1:1", "16:9"]);
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const { video_url, aspect_ratio } = (await request.json()) as { video_url?: string; aspect_ratio?: string };
     if (!video_url) return NextResponse.json({ ok: false, error: "Falta el video de referencia." }, { status: 400 });

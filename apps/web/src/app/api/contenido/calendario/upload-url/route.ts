@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Genera una URL FIRMADA de subida para que el navegador suba el archivo DIRECTO
 // a Supabase Storage (sin pasar por Vercel → sin límite de 4,5MB). Devuelve la
@@ -28,6 +29,8 @@ async function ensureBucket(url: string, key: string) {
 }
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const { id, kind, filename } = (await request.json()) as { id?: string; kind?: string; filename?: string };
     // El id va en el path del bucket público: solo letras, números y guiones (uuid de la pieza o "pauta-video").

@@ -3,6 +3,7 @@ import { getAlertPrefs, saveAlertPrefs } from "@/lib/alerts";
 import { cleanRecipients, dominiosEnvio, soloDominiosEnvio, FRECUENCIAS, type Frecuencia } from "@/lib/alerts-shared";
 import { cleanPhones } from "@/lib/whatsapp-shared";
 import { alertasUser } from "./_lib/auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Preferencias de alertas por email y WhatsApp (singleton alert_prefs, migraciones 0108 + 0123).
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ export async function GET() {
 export async function POST(req: Request) {
   const u = await alertasUser();
   if (!u.ok) return NextResponse.json({ error: u.error }, { status: u.status });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const b = (await req.json().catch(() => ({}))) as { emailOn?: boolean; frecuencia?: string; destinatarios?: unknown; reporteOn?: boolean; whatsappOn?: boolean; whatsappDestinatarios?: unknown };
   const frecuencia = (FRECUENCIAS.includes(String(b.frecuencia) as Frecuencia) ? b.frecuencia : "auto") as Frecuencia;
   const { ok: destinatarios, rejected } = soloDominiosEnvio(cleanRecipients(b.destinatarios), dominiosEnvio(process.env.SHARE_ALLOWED_DOMAINS));

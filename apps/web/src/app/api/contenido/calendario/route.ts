@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sbAdmin } from "@/lib/supabase-admin";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export async function GET(request: Request) {
 
 // POST /api/contenido/calendario  → crea (sin id) o actualiza (con id) una entrada.
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const id = typeof body.id === "string" ? body.id : null;
@@ -74,6 +77,8 @@ export async function POST(request: Request) {
 
 // DELETE /api/contenido/calendario?id=UUID
 export async function DELETE(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const id = new URL(request.url).searchParams.get("id");
     if (!id) return NextResponse.json({ ok: false, error: "Falta id." }, { status: 400 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sbAdmin } from "@/lib/supabase-admin";
 import { retocarImagen } from "@/lib/contenido-generar";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -19,6 +20,8 @@ interface CalRow {
 // iterativo con nano-banana/edit), apilando la versión previa en
 // imagen_versiones para poder revertir.
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const { id, instruccion } = (await request.json()) as { id?: string; instruccion?: string };
     if (!id) return NextResponse.json({ ok: false, error: "Falta id." }, { status: 400 });

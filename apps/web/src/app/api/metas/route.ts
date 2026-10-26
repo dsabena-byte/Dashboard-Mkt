@@ -5,10 +5,11 @@ import {
   type MetaValor,
   type MetasPayload,
 } from "@/lib/metas";
-import { getAllowedPaths } from "@/lib/usuarios-server";
+import { exigirEdicion, getAllowedPaths } from "@/lib/usuarios-server";
 import { isPathAllowed } from "@/lib/dashboard-access";
 
 // Plan de metas → tablero que lo muestra. Un usuario restringido (Trade/Ventas) solo toca los planes de sus tableros.
+// Estos planes son del área "trade" (editan es_editor/admin); el resto, "marketing" (edita_marketing/admin).
 const PLAN_TABLERO: Record<string, string> = { "Cuadros Básicos": "/cuadros-basicos", "Floor Share": "/floor-share" };
 async function puedePlan(plan: string): Promise<boolean> {
   const allowed = await getAllowedPaths();
@@ -129,6 +130,8 @@ export async function POST(request: Request) {
 
   for (const plan of new Set([...cfgRows, ...valRows].map((r) => String(r.plan ?? "")))) {
     if (!(await puedePlan(plan))) return NextResponse.json({ error: "Sin acceso a ese plan" }, { status: 403 });
+    const sinPermiso = await exigirEdicion(plan in PLAN_TABLERO ? "trade" : "marketing");
+    if (sinPermiso) return sinPermiso;
   }
 
   const errCfg = await upsert("kpi_meta_config", cfgRows);

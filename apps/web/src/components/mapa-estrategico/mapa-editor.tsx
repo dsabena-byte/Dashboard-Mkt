@@ -88,6 +88,7 @@ export function MapaEditor({ initial }: { initial: MapaConfig | null }) {
       if (res.ok) { setDirty(false); setSavedAt(Date.now()); }
       else {
         const txt = await res.text();
+        if (res.status === 403) { setSaveError((JSON.parse(txt) as { error?: string }).error ?? "No tenés permiso para editar esto."); return; }
         setSaveError(/relation .* does not exist|PGRST205|could not find the table/i.test(txt)
           ? "No se pudo guardar: falta correr la migración 0100 (tabla mapa_estrategico). Tu config quedó guardada en este navegador; corré la migración y volvé a Guardar."
           : `No se pudo guardar: ${txt.slice(0, 140)}`);

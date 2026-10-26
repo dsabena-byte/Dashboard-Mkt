@@ -3,6 +3,7 @@ import { sbAdmin } from "@/lib/supabase-admin";
 import { generarPiezas } from "@/lib/contenido-generar";
 import type { FalSizeKey } from "@/lib/fal-client";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -25,6 +26,8 @@ interface CalRow {
 
 // POST /api/contenido/calendario/generar { id } → genera la pieza y la guarda.
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const { id } = (await request.json()) as { id?: string };
     if (!id) return NextResponse.json({ ok: false, error: "Falta id." }, { status: 400 });

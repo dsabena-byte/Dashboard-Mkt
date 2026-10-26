@@ -5,6 +5,7 @@ import { getTenant } from "@/lib/tenant/current";
 import { whatsappStatus, sendWhatsAppMany, lastWhatsappHeartbeat } from "@/lib/whatsapp";
 import { cleanPhones, formatTestWhatsApp } from "@/lib/whatsapp-shared";
 import { alertasUser } from "../_lib/auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // WhatsApp de Alertas (Evolution API, docs/whatsapp-evolution-railway.md). Mismo permiso que editar las
 // preferencias (alertasUser).
@@ -24,6 +25,8 @@ export async function GET() {
 export async function POST(req: Request) {
   const u = await alertasUser();
   if (!u.ok) return NextResponse.json({ error: u.error }, { status: u.status });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const b = (await req.json().catch(() => ({}))) as { numeros?: unknown };
   const fromBody = cleanPhones(b.numeros ?? []);
   const to = fromBody.length ? fromBody : (await getAlertPrefs()).whatsappDestinatarios;

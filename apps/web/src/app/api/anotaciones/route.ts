@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { getAllowedPaths } from "@/lib/usuarios-server";
+import { exigirEdicion, getAllowedPaths } from "@/lib/usuarios-server";
+import { areaDeDash } from "@/lib/usuarios-core";
 import { addAnotacion, getAnotacion, listAnotaciones, MIGRACION_ANOTACIONES, puedeAnotar, removeAnotacion } from "@/lib/anotaciones";
 import { cleanAnotacion } from "@/lib/anotaciones-core";
 
@@ -35,6 +36,8 @@ export async function POST(req: Request) {
   const c = cleanAnotacion(body);
   if (!c.ok) return NextResponse.json({ error: c.error }, { status: 400 });
   if (!puedeAnotar(c.value.tablero, u.allowed)) return NextResponse.json({ error: c.value.tablero == null ? "Solo un usuario con acceso a todo el dashboard puede anotar para todos los tableros." : "Tu usuario no tiene acceso a ese tablero." }, { status: 403 });
+  const sinPermiso = await exigirEdicion(areaDeDash(c.value.tablero ?? ""));
+  if (sinPermiso) return sinPermiso;
   try {
     return NextResponse.json({ nota: await addAnotacion({ ...c.value, autor: u.email }) });
   } catch (e) {
@@ -51,6 +54,8 @@ export async function DELETE(req: Request) {
   const nota = await getAnotacion(id);
   if (!nota) return NextResponse.json({ ok: true });
   if (!puedeAnotar(nota.tablero, u.allowed)) return NextResponse.json({ error: "Tu usuario no puede borrar esa anotación." }, { status: 403 });
+  const sinPermiso = await exigirEdicion(areaDeDash(nota.tablero ?? ""));
+  if (sinPermiso) return sinPermiso;
   try { await removeAnotacion(id); return NextResponse.json({ ok: true }); }
   catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: 500 }); }
 }

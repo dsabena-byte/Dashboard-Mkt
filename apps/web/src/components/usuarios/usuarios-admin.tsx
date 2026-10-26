@@ -27,8 +27,8 @@ async function api<T>(body?: unknown): Promise<{ ok: boolean; data: T & { error?
   }
 }
 
-interface Form { email: string; nombre: string; grupos: Grupo[]; es_editor: boolean; es_admin: boolean; vendedor: string; gerencia: string; nuevo: boolean }
-const VACIO: Form = { email: "", nombre: "", grupos: [], es_editor: false, es_admin: false, vendedor: "", gerencia: "", nuevo: true };
+interface Form { email: string; nombre: string; grupos: Grupo[]; es_editor: boolean; edita_marketing: boolean; es_admin: boolean; vendedor: string; gerencia: string; nuevo: boolean }
+const VACIO: Form = { email: "", nombre: "", grupos: [], es_editor: false, edita_marketing: false, es_admin: false, vendedor: "", gerencia: "", nuevo: true };
 
 export function UsuariosAdmin({ yo }: { yo: string }) {
   const [usuarios, setUsuarios] = useState<(UsuarioRow & { cuenta?: boolean })[] | null>(null);
@@ -103,13 +103,13 @@ export function UsuariosAdmin({ yo }: { yo: string }) {
                   <td className="px-3 py-2">{u.nombre ?? "—"}</td>
                   <td className="px-3 py-2">{u.email}</td>
                   <td className="px-3 py-2">{u.grupos.length ? u.grupos.map((g) => <span key={g} className="mr-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-900">{labelGrupo(g)}</span>) : <span className="text-xs text-muted-foreground">Sin grupo</span>}</td>
-                  <td className="px-3 py-2 text-xs">{[u.es_admin && "Admin", u.es_editor && "Editor"].filter(Boolean).join(" · ") || "—"}</td>
+                  <td className="px-3 py-2 text-xs">{u.es_admin ? "Admin" : [u.edita_marketing && "Edita Marketing", u.es_editor && "Edita CB-FS-Ventas"].filter(Boolean).join(" · ") || "Solo ve"}</td>
                   <td className="px-3 py-2 text-xs">{[u.vendedor, u.gerencia].filter(Boolean).join(" · ") || "—"}</td>
                   <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs ${ESTADO[est].cls}`}>{ESTADO[est].label}</span></td>
                   <td className="px-3 py-2 text-xs">{fecha(u.ultimo_acceso)}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
-                      <button type="button" title="Editar" aria-label={`Editar ${u.email}`} className="px-1 text-base text-primary hover:opacity-70" onClick={() => { setForm({ email: u.email, nombre: u.nombre ?? "", grupos: u.grupos as Grupo[], es_editor: u.es_editor, es_admin: u.es_admin, vendedor: u.vendedor ?? "", gerencia: u.gerencia ?? "", nuevo: false }); setImportar(false); }}>✎</button>
+                      <button type="button" title="Editar" aria-label={`Editar ${u.email}`} className="px-1 text-base text-primary hover:opacity-70" onClick={() => { setForm({ email: u.email, nombre: u.nombre ?? "", grupos: u.grupos as Grupo[], es_editor: u.es_editor, edita_marketing: u.edita_marketing === true, es_admin: u.es_admin, vendedor: u.vendedor ?? "", gerencia: u.gerencia ?? "", nuevo: false }); setImportar(false); }}>✎</button>
                       {u.activo && <button type="button" className={btn} disabled={ocupado} title="Le manda un mail con un link para elegir clave (por ejemplo, si se la olvidó)" onClick={() => { if (!confirm(`¿Mandarle a ${u.email} un mail para elegir clave?`)) return; void accion({ accion: est === "sin_cuenta" ? "invitar" : "resetear", email: u.email }, `Le mandamos el mail a ${u.email}.`); }}>Mail para elegir clave</button>}
                       {u.email !== yo && <button type="button" className={btn} disabled={ocupado} onClick={() => { if (u.activo && !confirm(`¿Desactivar a ${u.email}? No va a poder entrar más hasta que lo reactives.`)) return; void accion({ accion: "activo", email: u.email, activo: !u.activo }, u.activo ? "Usuario desactivado." : "Usuario reactivado."); }}>{u.activo ? "Desactivar" : "Reactivar"}</button>}
                     </div>
@@ -150,9 +150,11 @@ function Editor({ form, setForm, yo, ocupado, onGuardar }: { form: Form; setForm
         </div>
       )}
       <div className="flex flex-wrap gap-4 text-sm">
-        <label className="flex items-center gap-1"><input type="checkbox" checked={form.es_editor} onChange={(e) => set({ es_editor: e.target.checked })} />Editor (puede cambiar los maestros de Trade y Ventas)</label>
-        <label className="flex items-center gap-1"><input type="checkbox" checked={form.es_admin} disabled={form.email === yo} onChange={(e) => set({ es_admin: e.target.checked })} />Administrador (maneja esta pantalla)</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={form.edita_marketing} onChange={(e) => set({ edita_marketing: e.target.checked })} />Edita Marketing (metas, Mapa, presupuesto, contenido… todo salvo CB, Floor Share y CB Ventas)</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={form.es_editor} onChange={(e) => set({ es_editor: e.target.checked })} />Edita CB, Floor Share y CB Ventas</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={form.es_admin} disabled={form.email === yo} onChange={(e) => set({ es_admin: e.target.checked })} />Administrador (edita todo y maneja esta pantalla)</label>
       </div>
+      <p className="text-xs text-muted-foreground">Sin ningún permiso de edición, el usuario solo ve (puede usar el copiloto y dar 👍/👎).</p>
       {!form.grupos.length && !form.es_admin && <p className="text-xs text-amber-800">Sin grupo no ve ningún tablero.</p>}
       <div className="flex gap-2">
         <button type="submit" className={btnPri} disabled={ocupado}>Guardar</button>
