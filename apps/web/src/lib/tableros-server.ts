@@ -1,7 +1,8 @@
 import "server-only";
 import { sbAdmin } from "@/lib/supabase-admin";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
+import { isPathAllowed } from "@/lib/dashboard-access";
+import { getAllowedPaths } from "@/lib/usuarios-server";
 import { upgradeDashboard, sanitizeDashboard, type DashboardV2, type Dataset } from "@/lib/viz";
 import { getNativeDataset, isNativeId, listNativeDatasets } from "@/lib/native-datasets";
 
@@ -40,7 +41,7 @@ async function get<T>(path: string): Promise<T> {
 // ── Acceso ──────────────────────────────────────────────────────────────────
 /**
  * El usuario logueado puede usar Mis tableros si no tiene restricción de dashboards o si
- * `/tableros` está entre sus permitidos (tabla dashboard_access). El middleware ya exige login.
+ * `/tableros` está entre sus permitidos (tabla usuarios, por grupo). El middleware ya exige login.
  */
 /** Dashboards permitidos del usuario logueado (null = sin restricción; sin sesión = []). */
 export async function currentAllowed(): Promise<string[] | null> {
@@ -48,8 +49,7 @@ export async function currentAllowed(): Promise<string[] | null> {
     const supabase = getServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
-    const { data } = await supabase.from("dashboard_access").select("dashboard_path");
-    return allowedFromRows(data as { dashboard_path: string }[] | null);
+    return await getAllowedPaths();
   } catch {
     return [];
   }
@@ -60,8 +60,7 @@ export async function canUseTableros(path = "/tableros"): Promise<boolean> {
     const supabase = getServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-    const { data } = await supabase.from("dashboard_access").select("dashboard_path");
-    return isPathAllowed(path, allowedFromRows(data as { dashboard_path: string }[] | null));
+    return isPathAllowed(path, await getAllowedPaths());
   } catch {
     return false;
   }
@@ -150,7 +149,7 @@ export interface DatasetListItem { id: string; name: string; row_count: number; 
 
 /**
  * Planilla por id. Los ids "nat:*" son fuentes nativas del dashboard (solo lectura, lib/native-datasets):
- * se devuelven solo si `allowed` (dashboard_access del usuario; null = sin restricción) incluye su tablero.
+ * se devuelven solo si `allowed` (acceso por grupo (usuarios) del usuario; null = sin restricción) incluye su tablero.
  */
 export async function getDataset(id: string, allowed: string[] | null = null): Promise<Dataset | null> {
   if (isNativeId(id)) return getNativeDataset(id, allowed).catch(() => null);

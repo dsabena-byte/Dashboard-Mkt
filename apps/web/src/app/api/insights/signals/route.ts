@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { computeSignalsDetailed, isSignalScope } from "@/lib/signals";
+import { getAllowedPaths, puedeVerTablero } from "@/lib/usuarios-server";
 
 // Señales determinísticas de un tablero (motor de reglas, sin IA): se calculan al vuelo sobre
 // fuentes precalculadas/baratas. Las pide el cliente al abrir la sección "Diagnóstico" (no en el
@@ -15,6 +16,8 @@ export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const dash = sp.get("dash") ?? "";
   if (dash && !isSignalScope(dash)) return NextResponse.json({ signals: [], skipped: [] });
+  // Restringido por grupo: solo las señales de su tablero (sin dash = todos → solo sin restricción).
+  if (dash ? !(await puedeVerTablero(dash)) : (await getAllowedPaths()) !== null) return NextResponse.json({ error: "sin acceso a ese tablero" }, { status: 403 });
   const fresh = sp.get("fresh") === "1";
   try {
     const r = await computeSignalsDetailed(dash && isSignalScope(dash) ? dash : undefined, { fresh });

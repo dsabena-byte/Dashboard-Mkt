@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { allowedFromRows } from "@/lib/dashboard-access";
+import { getAllowedPaths } from "@/lib/usuarios-server";
 import { addAnotacion, getAnotacion, listAnotaciones, MIGRACION_ANOTACIONES, puedeAnotar, removeAnotacion } from "@/lib/anotaciones";
 import { cleanAnotacion } from "@/lib/anotaciones-core";
 
 // Anotaciones en gráficos (migración 0119): GET ?tablero= lista (las del tablero + las de todo el
-// dashboard) · POST alta · DELETE baja. Acceso = dashboard_access del tablero ("t-…" = /tableros);
+// dashboard) · POST alta · DELETE baja. Acceso = acceso por grupo (usuarios) del tablero ("t-…" = /tableros);
 // las de "todo el dashboard" (tablero null) solo las crea/borra un usuario sin restricción.
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,9 +15,7 @@ async function usuario(): Promise<{ email: string | null; allowed: string[] | nu
     const supabase = getServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    let allowed: string[] | null = null;
-    try { const { data } = await supabase.from("dashboard_access").select("dashboard_path"); allowed = allowedFromRows(data as { dashboard_path: string }[] | null); } catch { allowed = null; }
-    return { email: user.email ?? null, allowed };
+    return { email: user.email ?? null, allowed: await getAllowedPaths() };
   } catch { return null; }
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
+import { isPathAllowed } from "@/lib/dashboard-access";
+import { getAllowedPaths } from "@/lib/usuarios-server";
 import { DIAG_DASHES } from "@/lib/insights/types";
 import { sanearAccion } from "@/lib/recomendacion-seguimiento";
 import { guardarSeguimiento, listSeguimiento, SeguimientoNoDisponible, MIGRACION_SEGUIMIENTO } from "@/lib/recomendacion-seguimiento-server";
@@ -8,7 +9,7 @@ import { guardarSeguimiento, listSeguimiento, SeguimientoNoDisponible, MIGRACION
 // "Mis acciones" (migración 0122): seguimiento de las tarjetas de "Qué hacer ahora".
 //   GET  ?dash=<tablero>                                   → { disponible, items }
 //   POST { id, dash, estado, titulo, snapshot }             → { ok, item } (upsert por id)
-// Exige sesión (se guarda el email del autor) y acceso al tablero (dashboard_access).
+// Exige sesión (se guarda el email del autor) y acceso al tablero (acceso por grupo (usuarios)).
 // La tabla se lee/escribe SOLO acá, con la service key (RLS sin policies).
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -19,9 +20,7 @@ async function usuario(): Promise<{ email: string | null; allowed: string[] | nu
     const supabase = getServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    let allowed: string[] | null = null;
-    try { const { data } = await supabase.from("dashboard_access").select("dashboard_path"); allowed = allowedFromRows(data as { dashboard_path: string }[] | null); } catch { allowed = null; }
-    return { email: user.email ?? null, allowed };
+    return { email: user.email ?? null, allowed: await getAllowedPaths() };
   } catch { return null; }
 }
 

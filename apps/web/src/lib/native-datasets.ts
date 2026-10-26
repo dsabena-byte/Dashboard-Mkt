@@ -7,7 +7,7 @@ import "server-only";
 //  · Web: vw_drean_web_monthly + ga4_monthly_users + web_monthly_by_channel (precalculada; fallback a la vista).
 //  · Redes: meta_posts de Instagram (año actual + anterior, solo columnas numéricas).
 //  · Seguimiento: getSeguimientoKpis (React cache por request).
-// Acceso: cada dataset se ofrece solo si el usuario puede ver el dashboard de origen (dashboard_access).
+// Acceso: cada dataset se ofrece solo si el usuario puede ver el dashboard de origen (acceso por grupo (usuarios)).
 // ============================================================================
 import { getPautaPerformance } from "@/lib/pauta-queries";
 import { getMetaPaidCreatives } from "@/lib/meta-paid-queries";
@@ -38,7 +38,7 @@ async function rest<T>(query: string): Promise<T[]> {
   } catch { return []; }
 }
 
-/** Fuentes nativas que el usuario puede ver (allowed = dashboard_access; null = sin restricción). */
+/** Fuentes nativas que el usuario puede ver (allowed = acceso por grupo (usuarios); null = sin restricción). */
 export function nativeDefsFor(allowed: string[] | null): NativeDef[] {
   return NATIVE_DEFS.filter((d) => isPathAllowed(d.dash, allowed));
 }

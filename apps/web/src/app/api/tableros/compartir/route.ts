@@ -10,7 +10,7 @@ import { allowedDomains, createLink, getShareState, linkUrl, revokeLink, saveSha
 //   POST { slug, action: "link", dias }          → crea/rota el link (los anteriores dejan de andar)
 //   POST { slug, action: "envio", frecuencia, destinatarios } → programa el envío (lunes / día 1)
 //   DELETE { slug, what: "link" | "envio" }      → revoca el link / desactiva el envío
-// Acceso: quien puede usar Mis tableros (dashboard_access). Destinatarios: solo dominios conocidos.
+// Acceso: quien puede usar Mis tableros (acceso por grupo (usuarios)). Destinatarios: solo dominios conocidos.
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 

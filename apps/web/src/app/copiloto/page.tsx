@@ -4,7 +4,7 @@ import { CopilotoCalidad } from "@/components/copiloto/copiloto-calidad";
 import { LearnButton } from "@/components/knowledge/learn-button";
 
 // Calidad del copiloto (portado de BIP, sep-2026; en Drean no hay staff: la revisa quien tiene acceso a
-// /copiloto por dashboard_access — el middleware ya redirige a los restringidos). Muestra los 👍/👎 de
+// /copiloto por acceso por grupo (usuarios) — el middleware ya redirige a los restringidos). Muestra los 👍/👎 de
 // "Preguntale a tus datos" (últimos 90 días), las PEORES respuestas primero (sin revisar, "dato
 // incorrecto" y con comentario arriba) y las respuestas VERIFICADAS que el copiloto reusa como ejemplo
 // de método en preguntas parecidas (lib/chat/verified.ts). Tablas: migración 0120.

@@ -9,7 +9,7 @@ const MISSING_RE = /relation|does not exist|schema cache|PGRST205|42P01|Could no
 export const MIGRACION_ANOTACIONES = "Falta correr la migración 0119_anotaciones_umbrales.sql en el SQL Editor de Supabase.";
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
-/** Ruta de acceso de un tablero (dashboard_access): "t-…" = Mis tableros; el resto = /<slug>. */
+/** Ruta de acceso de un tablero (acceso por grupo (usuarios)): "t-…" = Mis tableros; el resto = /<slug>. */
 export const pathDeTablero = (tablero: string) => (tablero.startsWith("t-") ? "/tableros" : `/${tablero}`);
 
 /** ¿El usuario puede ver/escribir anotaciones de ese tablero? null (todo el dashboard) = solo sin restricción. */

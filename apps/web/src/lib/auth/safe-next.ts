@@ -31,7 +31,7 @@ export function validateNewPassword(password: string, confirm: string): string |
 // ── Rutas de auth (las usa el middleware) ──
 /** Callback de links de email (recuperación/invitación): siempre accesible, con o sin sesión. */
 export const AUTH_CALLBACK_PATH = "/auth/callback";
-/** Requiere sesión pero NO se somete a dashboard_access (cambiar la contraseña). */
+/** Requiere sesión pero NO se somete a acceso por grupo (usuarios) (cambiar la contraseña). */
 export const PASSWORD_PATH = "/login/nueva-clave";
 /** Públicas (sin sesión); a un usuario logueado que entra se lo manda a "/". */
 export const PUBLIC_AUTH_PATHS = ["/login", "/login/recuperar"];
@@ -39,7 +39,7 @@ export const PUBLIC_AUTH_PATHS = ["/login", "/login/recuperar"];
 /** Cookie "flash" (no httpOnly, 60s) para avisar en la app que la contraseña se cambió. */
 export const PASSWORD_OK_COOKIE = "clave_ok";
 
-// Quién puede usar el tablero (auditoría 23-oct-2026): el registro de Supabase está abierto, así que una cuenta
+// LEGACY (solo mientras no se corre la migración 0136 usuarios). Quién puede usar el tablero (auditoría 23-oct-2026): el registro de Supabase está abierto, así que una cuenta
 // nueva NO alcanza. Pasan los emails confirmados del dominio de la empresa y las cuentas que ya existían antes del
 // corte (no se deja a nadie del equipo afuera). shortcut: dominio fijo en código; si se suman usuarios externos,
 // pasar a una tabla de usuarios habilitados.

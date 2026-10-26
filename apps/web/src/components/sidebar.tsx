@@ -94,7 +94,7 @@ function ancestorsOf(nodes: NavNode[], path: string, trail: string[] = []): stri
   return null;
 }
 
-export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
+export function Sidebar({ allowed = null, esAdmin = false }: { allowed?: string[] | null; esAdmin?: boolean }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Grupos abiertos: Plan de Medios y Trade Mkt vienen abiertos (para que sus
@@ -218,6 +218,7 @@ export function Sidebar({ allowed = null }: { allowed?: string[] | null }) {
       <div className="sn-foot">
         <LogoutButton />
         <Link href={{ pathname: "/login/nueva-clave" }} className="sn-pass">Cambiar contraseña</Link>
+        {esAdmin && <Link href={{ pathname: "/usuarios" }} className="sn-pass">Usuarios</Link>}
       </div>
       <div className="sn-ver">v0.1.0 · Fase 1</div>
     </>

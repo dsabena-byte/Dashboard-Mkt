@@ -5,6 +5,15 @@ import { redirect } from "next/navigation";
 import { getAuthSupabase, getClientIp, getSiteOrigin } from "@/lib/auth/supabase-auth";
 import { PASSWORD_OK_COOKIE, PASSWORD_PATH, safeNext, validateNewPassword } from "@/lib/auth/safe-next";
 import { checkRateLimit } from "@/lib/chat/rate-limit";
+import { sbAdmin } from "@/lib/supabase-admin";
+
+/** Último acceso (tabla usuarios, 0136). Best-effort: sin la tabla o con error, el login sigue igual. */
+async function marcarAcceso(email: string): Promise<void> {
+  await sbAdmin(`usuarios?email=eq.${encodeURIComponent(email.toLowerCase())}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ultimo_acceso: new Date().toISOString() }),
+  }).catch(() => null);
+}
 
 export async function loginAction(formData: FormData): Promise<{ error?: string }> {
   const email = String(formData.get("email") ?? "").trim();
@@ -21,6 +30,8 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
   if (error) {
     return { error: error.message };
   }
+
+  await marcarAcceso(email);
 
   redirect(redirectTo);
 }
@@ -84,6 +95,8 @@ export async function updatePasswordAction(formData: FormData): Promise<{ error?
     return { error: msg };
   }
 
-  cookies().set(PASSWORD_OK_COOKIE, "1", { maxAge: 60, path: "/", sameSite: "lax", httpOnly: false });
+  if (user.email) await marcarAcceso(user.email);
+
+  cookies().set(PASSWORD_OK_COOKIE, "1",{ maxAge: 60, path: "/", sameSite: "lax", httpOnly: false });
   redirect("/");
 }
