@@ -5,6 +5,9 @@ on:
     - cron: "50 6 * * *"  # 1x/día (06:50 UTC ≈ 03:50 ART) — sin intervención manual
   workflow_dispatch:      # + manual para backfill puntual tras cargar un reporte nuevo
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest

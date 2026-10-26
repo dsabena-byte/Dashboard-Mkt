@@ -14,6 +14,9 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest
@@ -22,8 +25,8 @@ jobs:
       - name: Trigger /api/cron/tiktok-sync
         run: |
           set -euo pipefail
-          DAYS="${{ github.event.inputs.days || '30' }}"
-          DRY="${{ github.event.inputs.dry || '' }}"
+          DAYS="${DAYS_INPUT:-30}"
+          DRY="${DRY_INPUT:-}"
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/tiktok-sync?days=${DAYS}"
           if [ -n "$DRY" ]; then URL="${URL}&dry=1"; fi
           echo "GET $URL"
@@ -43,4 +46,6 @@ jobs:
             exit 1
           fi
         env:
+          DAYS_INPUT: ${{ github.event.inputs.days }}
+          DRY_INPUT: ${{ github.event.inputs.dry }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

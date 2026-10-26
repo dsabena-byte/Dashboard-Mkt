@@ -12,6 +12,9 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest
@@ -20,7 +23,7 @@ jobs:
       - name: Trigger /api/cron/publicar-contenido
         run: |
           set -euo pipefail
-          DRY="${{ github.event.inputs.dry || '' }}"
+          DRY="${DRY_INPUT:-}"
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/publicar-contenido"
           if [ -n "$DRY" ]; then URL="${URL}?dry=1"; fi
           echo "GET $URL"
@@ -32,4 +35,5 @@ jobs:
           if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
           if grep -q '"error"' response.json; then echo "::error::cron devolvió error"; exit 1; fi
         env:
+          DRY_INPUT: ${{ github.event.inputs.dry }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

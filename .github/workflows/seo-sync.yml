@@ -18,6 +18,9 @@ on:
         required: false
         default: "50"
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest
@@ -27,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://dashboard-mkt-seven.vercel.app/api/cron/seo-sync"
-          LIMIT="${{ github.event.inputs.limit || '50' }}"
+          LIMIT="${LIMIT_INPUT:-50}"
           OFFSET=0
           for i in $(seq 1 30); do
             URL="${BASE}?offset=${OFFSET}&limit=${LIMIT}"
@@ -43,6 +46,7 @@ jobs:
             if [ "$RESTO" -le 0 ]; then echo "Completo."; break; fi
           done
         env:
+          LIMIT_INPUT: ${{ github.event.inputs.limit }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
       - name: Snapshot mensual del índice de posición
         run: |

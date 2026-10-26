@@ -22,6 +22,9 @@ on:
         required: false
         default: "daily"
 
+permissions:
+  contents: read
+
 jobs:
   competencia-ig:
     runs-on: ubuntu-latest

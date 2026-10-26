@@ -5,6 +5,9 @@ on:
     - cron: "45 6 * * *"  # 1x/día (06:45 UTC ≈ 03:45 ART) — la distribución web por categoría cambia lento
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest

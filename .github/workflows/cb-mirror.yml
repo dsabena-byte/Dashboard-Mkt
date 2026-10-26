@@ -5,6 +5,9 @@ on:
     - cron: "40 6 * * *"  # 1x/día (06:40 UTC ≈ 03:40 ART) — la data CB se carga semanal
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest

@@ -10,6 +10,9 @@ on:
         required: false
         default: "3"
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest
@@ -18,7 +21,7 @@ jobs:
       - name: Trigger /api/cron/ga4-web-traffic
         run: |
           set -euo pipefail
-          DAYS="${{ github.event.inputs.days || '3' }}"
+          DAYS="${DAYS_INPUT:-3}"
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/ga4-web-traffic?days=${DAYS}"
           echo "GET $URL"
           # Capturamos status code Y body para diagnosticar errores
@@ -38,4 +41,5 @@ jobs:
             exit 1
           fi
         env:
+          DAYS_INPUT: ${{ github.event.inputs.days }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
