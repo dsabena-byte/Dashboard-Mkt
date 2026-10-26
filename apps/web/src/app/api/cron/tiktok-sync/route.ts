@@ -8,6 +8,7 @@ import { TIKTOK_MANIFEST_KEY, chunks, piezaDe, type TikTokManifest, type TikTokP
 //
 // Token: TIKTOK_ACCESS_TOKEN, o la conexión "tiktok-ads" de la app de BIP en Nango (BIP_NANGO_HOST +
 // BIP_NANGO_SECRET_KEY + TIKTOK_NANGO_CONNECTION_ID): así sobrevive a una reconexión desde BIP.
+// Preferido: BIP_PARTNER_URL + PARTNER_TIKTOK_SECRET (endpoint de BIP que entrega solo este token).
 // Además del detalle por anuncio (`tiktok_creatives`, opcional: si la tabla no existe se saltea), escribe
 // el MES por categoría × objetivo en `pauta_performance` (medio "TikTok"), que es lo que leen /performance,
 // el Seguimiento, el chat y las señales: la API reemplaza la carga manual de OMD en los meses con inversión.
@@ -193,6 +194,17 @@ async function upsert(rows: TikTokRow[]): Promise<string> {
 // ---- Token -------------------------------------------------------------------------------------------
 async function getToken(): Promise<string> {
   if (process.env.TIKTOK_ACCESS_TOKEN) return process.env.TIKTOK_ACCESS_TOKEN;
+  // Preferido (X-01): BIP entrega SOLO este token con un secreto propio; Drean no necesita la clave maestra de Nango.
+  if (process.env.BIP_PARTNER_URL && process.env.PARTNER_TIKTOK_SECRET) {
+    const r = await fetch(`${process.env.BIP_PARTNER_URL.replace(/\/$/, "")}/api/partner/tiktok-token`, {
+      headers: { Authorization: `Bearer ${process.env.PARTNER_TIKTOK_SECRET}` },
+      cache: "no-store",
+    });
+    if (!r.ok) throw new Error(`BIP partner ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    const t = ((await r.json()) as { access_token?: string }).access_token;
+    if (!t) throw new Error("BIP partner no devolvió access_token");
+    return t;
+  }
   const res = await fetch(`${env("BIP_NANGO_HOST")}/connection/${env("TIKTOK_NANGO_CONNECTION_ID")}?provider_config_key=tiktok-ads`, {
     headers: { Authorization: `Bearer ${env("BIP_NANGO_SECRET_KEY")}` },
     cache: "no-store",
