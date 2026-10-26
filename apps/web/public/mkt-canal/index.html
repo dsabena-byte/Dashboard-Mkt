@@ -502,14 +502,12 @@ function render(){
 }
 
 // ====== Fuente de datos: Supabase (fallback al array de arriba) ======
-// anon/publishable key: es pública por diseño (se envía al browser).
-const SUPABASE_URL='https://vtcrhyyirqexczycuwhe.supabase.co';
-const SUPABASE_ANON_KEY='sb_publishable_xhiUCHj00Qh5WO3qjZ9G8g_7T7DBpvy';
+// Lee por la API del tablero (sesión + acceso a /mkt-canal); la base ya no es legible sin login.
+const API_DATOS='/api/mkt-canal?tabla=';
 const numOrNull=v=>v==null?undefined:Number(v);
 async function loadData(){
   try{
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/mkt_canal_acciones?select=*&order=id`,
-      {headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    const r=await fetch(API_DATOS+'acciones',{credentials:'same-origin'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const rows=await r.json();
     if(Array.isArray(rows) && rows.length){
@@ -584,8 +582,7 @@ async function loadAacc(){
   const msg=document.getElementById('aaccMsg');
   let rows=[];
   try{
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/mkt_canal_aacc?select=cliente,mes,aacc&order=mes`,
-      {headers:{apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    const r=await fetch(API_DATOS+'aacc',{credentials:'same-origin'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     rows=(await r.json()).map(x=>({cliente:x.cliente,mes:x.mes,aacc:Number(x.aacc)||0}));
   }catch(e){ msg.hidden=false; msg.textContent='Sin datos de AACC todavía (falta correr la migración 0131).'; return; }

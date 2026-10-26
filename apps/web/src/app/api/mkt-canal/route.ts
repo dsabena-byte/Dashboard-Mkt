@@ -59,6 +59,20 @@ const err = (e: unknown) => {
   return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status });
 };
 
+// GET ?tabla=acciones|aacc → filas para el iframe del tablero (antes las leía con la clave pública).
+const TABLAS: Record<string, string> = { acciones: "mkt_canal_acciones?select=*&order=id", aacc: "mkt_canal_aacc?select=cliente,mes,aacc&order=mes" };
+export async function GET(req: Request) {
+  const q = TABLAS[new URL(req.url).searchParams.get("tabla") ?? ""];
+  if (!q) return NextResponse.json({ error: "Tabla inválida." }, { status: 400 });
+  const u = await usuario();
+  if (u === null) return NextResponse.json({ error: "Sin sesión." }, { status: 401 });
+  if (!u) return NextResponse.json({ error: "Sin acceso a Mkt Canal." }, { status: 403 });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return NextResponse.json({ error: "Falta la configuración de Supabase." }, { status: 503 });
+  const r = await fetch(`${url}/rest/v1/${q}`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" });
+  return NextResponse.json(r.ok ? await r.json() : { error: `Supabase ${r.status}` }, { status: r.ok ? 200 : 502 });
+}
+
 export async function POST(req: Request) {
   const u = await usuario();
   if (u === null) return NextResponse.json({ error: "no autenticado" }, { status: 401 });

@@ -4,6 +4,7 @@ import { resolveShareToken } from "@/lib/tablero-share-server";
 import { getDashboardConfig, getDatasetsFor } from "@/lib/tableros-server";
 import { listAnotaciones } from "@/lib/anotaciones";
 import { getTenant } from "@/lib/tenant/current";
+import { comoSistema } from "@/lib/supabase-server";
 import { DashboardRuntime } from "@/components/viz-builder/runtime";
 
 // Vista PÚBLICA de solo lectura de un tablero de Mis tableros (link firmado con vencimiento; ver
@@ -16,10 +17,11 @@ export const metadata: Metadata = { title: "Tablero compartido", robots: { index
 export default async function Compartido({ params }: { params: { token: string } }) {
   const p = await resolveShareToken(decodeURIComponent(params.token));
   if (!p) notFound();
-  const cfg = await getDashboardConfig(p.s).catch(() => null);
+  // Link ya validado: sin sesión, lee como sistema (anon no tiene acceso a la base).
+  const cfg = await comoSistema(() => getDashboardConfig(p.s)).catch(() => null);
   if (!cfg || !cfg.widgets.length) notFound();
   // Sin restricción de fuentes: quien creó el link podía ver el tablero completo.
-  const [datasets, notas] = await Promise.all([getDatasetsFor(cfg, null), listAnotaciones({ tablero: p.s }).catch(() => ({ notas: [] }))]);
+  const [datasets, notas] = await comoSistema(() => Promise.all([getDatasetsFor(cfg, null), listAnotaciones({ tablero: p.s }).catch(() => ({ notas: [] }))]));
   const marca = getTenant().displayName;
   const hoy = new Date().toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
   const vence = new Date(p.e * 1000).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
