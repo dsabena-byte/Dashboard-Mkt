@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       ruta:
-        description: "migrar | cuentas"
+        description: "migrar | cuentas | comparar"
         required: true
         default: "migrar"
       dry:
@@ -30,7 +30,7 @@ jobs:
       - name: Llamar a la ruta
         run: |
           set -euo pipefail
-          case "$RUTA" in migrar|cuentas) ;; *) echo "::error::ruta inválida"; exit 1;; esac
+          case "$RUTA" in migrar|cuentas|comparar) ;; *) echo "::error::ruta inválida"; exit 1;; esac
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/cb-ventas-${RUTA}?dry=${DRY}&${EXTRA}"
           HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 120 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
           echo "HTTP $HTTP_CODE"
