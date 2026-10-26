@@ -63,7 +63,8 @@ export function esTablaInexistente(err: { code?: string | null; message?: string
 }
 
 /** Único admin mientras no se corre 0136 (ya figura en la memoria pública del repo). */
-export const ADMIN_LEGACY = "dsabena@gmail.com";
+// Admin cuando la tabla `usuarios` todavía no existe (modo legacy). Va por env para no versionar emails (repo público).
+export const ADMIN_LEGACY = (process.env.ADMIN_LEGACY_EMAIL ?? "").toLowerCase();
 
 export const emailValido = (e: string) => /^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/.test(e);
 

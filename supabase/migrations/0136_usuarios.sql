@@ -55,4 +55,4 @@ where u.email is not null
 on conflict (email) do nothing;
 
 -- Primer administrador.
-update public.usuarios set es_admin = true, es_editor = true where email = 'dsabena@gmail.com';
+-- Primer admin: se marca a mano (es_admin = true) sobre la cuenta real del tablero. No se versionan emails (repo público).
