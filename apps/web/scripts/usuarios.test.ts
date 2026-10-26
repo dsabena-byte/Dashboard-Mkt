@@ -52,9 +52,9 @@ eq("permiso no es legacy", esTablaInexistente({ code: "42501", message: "permiss
 eq("sin error", esTablaInexistente(null), false);
 
 // estado
-eq("activo", estadoDe({ activo: true, ultimo_acceso: "2026-10-01" }), "activo");
-eq("invitado", estadoDe({ activo: true, ultimo_acceso: null }), "invitado");
-eq("desactivado", estadoDe({ activo: false, ultimo_acceso: "2026-10-01" }), "desactivado");
+eq("activo", estadoDe({ activo: true, cuenta: true }), "activo");
+eq("sin cuenta", estadoDe({ activo: true, cuenta: false }), "sin_cuenta");
+eq("desactivado", estadoDe({ activo: false, cuenta: true }), "desactivado");
 
 // CSV
 const csv = parseCsvUsuarios("email;nombre;rol;vendedor\nA@x.com;Ana;VENDEDOR;V12\nb@x.com;Beto;all;\nmalo;X;;\na@x.com;Ana;;\n\nc@x.com,Caro,vendedor,V3");
