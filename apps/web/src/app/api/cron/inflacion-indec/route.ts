@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { comoSistema } from "@/lib/supabase-server";
 import { guardarInflaciones } from "@/lib/presupuesto-server";
 import { INDEC_IPC_URL, parseIpcIndec } from "@/lib/indec-ipc";
 
@@ -8,7 +9,7 @@ import { INDEC_IPC_URL, parseIpcIndec } from "@/lib/indec-ipc";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-export async function GET(request: Request) {
+async function handler(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,3 +29,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
+
+// Sin sesión: lee con service role solo después de validar CRON_SECRET (dentro de handler).
+export const GET = (req: Request) => comoSistema(() => handler(req));
