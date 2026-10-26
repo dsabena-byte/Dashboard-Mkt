@@ -9,6 +9,9 @@ on:
     - cron: "0 */6 * * *"  # 00:00, 06:00, 12:00, 18:00 UTC (= 21:00, 03:00, 09:00, 15:00 ART)
   workflow_dispatch:        # Permite disparar manualmente desde el UI de Actions
 
+permissions:
+  contents: read
+
 jobs:
   trigger-ig-sync:
     runs-on: ubuntu-latest

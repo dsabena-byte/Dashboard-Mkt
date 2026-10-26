@@ -10,6 +10,9 @@ on:
         type: string
         default: "70"
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest

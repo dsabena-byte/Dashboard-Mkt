@@ -9,6 +9,9 @@ on:
     - cron: "0 7 * * *"  # 07:00 UTC = 04:00 ART (después de los syncs de IG/FB)
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest

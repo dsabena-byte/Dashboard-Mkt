@@ -10,6 +10,9 @@ on:
     - cron: "30 6 * * 1"  # lunes 06:30 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest

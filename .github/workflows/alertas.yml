@@ -23,6 +23,9 @@ on:
         required: false
         default: "0"
 
+permissions:
+  contents: read
+
 jobs:
   alertas:
     runs-on: ubuntu-latest

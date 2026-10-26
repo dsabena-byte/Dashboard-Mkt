@@ -13,6 +13,9 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest
@@ -21,7 +24,7 @@ jobs:
       - name: Trigger /api/cron/trends-sync
         run: |
           set -euo pipefail
-          ONLY="${{ github.event.inputs.only || '' }}"
+          ONLY="${ONLY_INPUT:-}"
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/trends-sync"
           if [ -n "$ONLY" ]; then URL="${URL}?only=${ONLY}"; fi
           echo "GET $URL"
@@ -37,4 +40,5 @@ jobs:
           print(f"OK: search_volume={d.get('search_volume_filas')} trends={d.get('trends_filas')}")
           PY
         env:
+          ONLY_INPUT: ${{ github.event.inputs.only }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

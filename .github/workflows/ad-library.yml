@@ -15,6 +15,9 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   ad-library:
     runs-on: ubuntu-latest

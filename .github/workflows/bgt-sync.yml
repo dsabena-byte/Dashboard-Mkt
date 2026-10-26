@@ -5,6 +5,9 @@ on:
     - cron: "0 */12 * * *"  # 00:00, 12:00 UTC — presupuesto de mkt, cambia lento; 2×/día alcanza
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest

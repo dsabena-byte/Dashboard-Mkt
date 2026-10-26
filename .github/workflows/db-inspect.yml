@@ -14,6 +14,9 @@ on:
         required: true
         default: "select 1 as ok;"
 
+permissions:
+  contents: read
+
 jobs:
   query:
     runs-on: ubuntu-latest
