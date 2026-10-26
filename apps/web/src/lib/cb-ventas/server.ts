@@ -49,7 +49,7 @@ export async function leerCuadroBasico(s = svc()): Promise<{ cuadroBasico: Cuadr
   return { cuadroBasico: expandirCatalogo(catalogo, clasificacion), clasificacion };
 }
 
-async function leerVentas(s: SupabaseClient): Promise<VentasFile> {
+export async function leerVentas(s: SupabaseClient): Promise<VentasFile> {
   const [rows, ing] = await Promise.all([
     todas<VentaDb>((a, b) => s.from("vt_ventas").select("documento,cliente,sku,tipo,unidades,fecha,mes,vendedor,fecha_factura,canal").order("id").range(a, b)),
     s.from("vt_ingestas").select("generated_at").order("id", { ascending: false }).limit(1).maybeSingle(),
