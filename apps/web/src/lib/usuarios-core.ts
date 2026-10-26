@@ -47,10 +47,11 @@ export function rutasPermitidas(row: Pick<UsuarioRow, "grupos" | "es_admin">): s
 
 /**
  * APIs que puede llamar un usuario RESTRINGIDO (lo que usan las pantallas de Trade/Ventas: copiloto,
- * Diagnóstico, anotaciones, Mis acciones y metas del MetaPanel). Cada una vuelve a chequear el tablero.
+ * Diagnóstico, anotaciones, Mis acciones, metas del MetaPanel y /api/trade: carga y maestros de Trade). Cada una vuelve
+ * a chequear el tablero (y la escritura, exigirEdicion).
  * El resto de /api → 403.
  */
-export const API_PERMITIDAS_RESTRINGIDOS = ["/api/chat", "/api/insights", "/api/anotaciones", "/api/recomendaciones", "/api/metas", "/api/cb-ventas"];
+export const API_PERMITIDAS_RESTRINGIDOS = ["/api/chat", "/api/insights", "/api/anotaciones", "/api/recomendaciones", "/api/metas", "/api/trade", "/api/cb-ventas"];
 
 export function apiPermitida(pathname: string, rutas: string[] | null): boolean {
   if (rutas === null) return true;

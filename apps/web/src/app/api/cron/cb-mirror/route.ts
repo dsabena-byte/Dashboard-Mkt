@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { getCbRows } from "@/lib/cb-queries";
 import { getFloorShareRows, getTiendaClienteMap } from "@/lib/floor-share-queries";
 import { computeFsView, type FsEnrichedRow } from "@/lib/fs-view";
+import { trEstado } from "@/lib/trade-db";
 
 // Copia la data del proyecto CB (lento) a tablas mirror en el PRINCIPAL (rápido),
 // para que /cuadros-basicos y /floor-share lean el mirror al instante. Clean-replace
 // (DELETE + INSERT) en cada corrida. Paga acá, en background, la lentitud del proyecto CB.
+// NO-OP desde que las tablas tr_* (0138) tienen datos: Trade se carga desde el tablero ("Cargar datos") y los
+// precálculos se refrescan en cada carga (lib/trade-derivados.ts). Se deja el código hasta apagar el proyecto CB.
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -44,6 +47,9 @@ export async function GET(request: Request) {
   }
 
   try {
+    if ((await trEstado()).cb != null) {
+      return NextResponse.json({ ok: true, skipped: "Trade ya vive en las tablas tr_* del principal (0138): el mirror no se usa." });
+    }
     const url = env("NEXT_PUBLIC_SUPABASE_URL");
     const key = env("SUPABASE_SERVICE_ROLE_KEY");
 

@@ -1,5 +1,6 @@
 import "server-only";
 import { getCbSupabase } from "./supabase-cb";
+import { getSugerenciasTr } from "./trade-sugerencias";
 
 // ============================================================================
 // Cuadros Básicos — queries contra el proyecto Supabase de CB
@@ -469,7 +470,12 @@ const EMPTY_BASELINE: CbBaselineMedidas = {
   cb_ok_total: 0, cb_target_total: 0, infalt_ok_total: 0, infalt_target_total: 0,
 };
 
+// Con datos en tr_* (0138) se calcula desde el principal (trade-sugerencias.ts); si no, vistas del proyecto CB.
+const sugTr = () => getSugerenciasTr().catch((e) => { console.error("[cb-queries] sugerencias tr:", e instanceof Error ? e.message : e); return null; });
+
 export async function getCbBaselineMedidas(): Promise<CbBaselineMedidas> {
+  const tr = await sugTr();
+  if (tr) return tr.baseline;
   const supabase = getCbSupabase();
   const { data, error } = await supabase
     .from("vw_cb_baseline_medidas")
@@ -499,6 +505,8 @@ export interface CbSuggestion {
 }
 
 export async function getCbSuggestions(): Promise<CbSuggestion[]> {
+  const tr = await sugTr();
+  if (tr) return tr.suggestions;
   const supabase = getCbSupabase();
   const all: CbSuggestion[] = [];
   let from = 0;
@@ -560,6 +568,8 @@ export interface CbSuggestionDetail {
 }
 
 export async function getCbSuggestionsDetail(): Promise<CbSuggestionDetail[]> {
+  const tr = await sugTr();
+  if (tr) return tr.details;
   const supabase = getCbSupabase();
   const all: CbSuggestionDetail[] = [];
   let from = 0;

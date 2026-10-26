@@ -1,13 +1,13 @@
 import "server-only";
 
 // Resultado mensual de Trade (CB + Floor Share) para el Seguimiento Objetivos.
-// - computeTradeMonthlyFromCb: LENTO (pagina la tabla CB entera del proyecto CB,
-//   ~26s). Solo lo usa el cron trade-agg, en background.
+// - computeTradeMonthlyFromCb: LENTO (lee CB + FS del año). Solo cron trade-agg y cargas de Trade.
 // - getTradeMonthly: RÁPIDO (~300ms). Lee la tabla precalculada trade_monthly del
 //   proyecto PRINCIPAL. Lo usa el render del dash → nunca paga los 26s.
 
-import { getCbRows, computeTotals, isoWeekToMes } from "./cb-queries";
-import { getFloorShareRows, computeOverall } from "./floor-share-queries";
+import { getCbRows, computeTotals, isoWeekToMes, type CbRow } from "./cb-queries";
+import { getFloorShareRows, computeOverall, type FloorShareRow } from "./floor-share-queries";
+import { trEstado, getTrCbRows, getTrFsRows } from "./trade-db";
 import { generalPonderado } from "./categorias";
 
 const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -26,17 +26,13 @@ export function emptyTradeMonthly(): TradeMonthly {
   };
 }
 
-// LENTO — pagina las tablas CB completas y agrega por mes. Solo para el cron.
-export async function computeTradeMonthlyFromCb(anio: number): Promise<TradeMonthly> {
-  const [cbRows, fsRows] = await Promise.all([
-    getCbRows({}).catch(() => [] as Awaited<ReturnType<typeof getCbRows>>),
-    getFloorShareRows({}).catch(() => [] as Awaited<ReturnType<typeof getFloorShareRows>>),
-  ]);
+// Agrega por mes (puro). Solo filas SEMANALES de FS (las cargas mensuales viejas, semana null, caían en "Dic").
+export function tradeMonthlyDeFilas(cbRows: CbRow[], fsRows: FloorShareRow[], anio: number): TradeMonthly {
   const out = emptyTradeMonthly();
   MES_SHORT.forEach((short, i) => {
     const cbM = cbRows.filter((r) => isoWeekToMes(r.semana, anio) === short);
     if (cbM.length) out.cb[i] = computeTotals(cbM).cb_pct;
-    const fsM = fsRows.filter((r) => isoWeekToMes(r.semana, anio) === short);
+    const fsM = fsRows.filter((r) => r.semana != null && isoWeekToMes(r.semana, anio) === short);
     if (fsM.length) {
       const o = computeOverall(fsM);
       out.fsGeneral[i] = generalPonderado({ Lavado: o.lavado.share, Refrigeración: o.refri.share, Cocción: o.coccion.share });
@@ -44,6 +40,20 @@ export async function computeTradeMonthlyFromCb(anio: number): Promise<TradeMont
     }
   });
   return out;
+}
+
+// LENTO — solo cron/cargas. Lee las tablas tr_* del principal (0138) y, si están vacías, el proyecto CB.
+export async function computeTradeMonthlyFromCb(anio: number): Promise<TradeMonthly> {
+  const est = await trEstado();
+  if (est.cb != null) {
+    const [cbRows, fsRows] = await Promise.all([getTrCbRows(anio), est.fs != null ? getTrFsRows(anio, []) : Promise.resolve([])]);
+    return tradeMonthlyDeFilas(cbRows, fsRows, anio);
+  }
+  const [cbRows, fsRows] = await Promise.all([
+    getCbRows({}).catch(() => [] as CbRow[]),
+    getFloorShareRows({}).catch(() => [] as FloorShareRow[]),
+  ]);
+  return tradeMonthlyDeFilas(cbRows, fsRows, anio);
 }
 
 // RÁPIDO — lee la tabla precalculada del proyecto principal. Para el render.

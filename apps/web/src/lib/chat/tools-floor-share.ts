@@ -1,7 +1,8 @@
 import "server-only";
 import { getFsPrecomputed, getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast } from "@/lib/cb-mirror";
 import { computeFsView, type FsView, type FsEnrichedRow } from "@/lib/fs-view";
-import { FS_OBJ_PCT, type CategoryBlock } from "@/lib/floor-share-queries";
+import { type CategoryBlock } from "@/lib/floor-share-queries";
+import { getFsObjetivos } from "@/lib/trade-db";
 import { rd, topN, oneOf } from "./util";
 import type { ChatTool } from "./types";
 
@@ -50,7 +51,7 @@ export const floorShareTools: ChatTool[] = [
         lavado_pct: blk(v.overall.lavado),
         refrigeracion_pct: blk(v.overall.refri),
         coccion_pct: blk(v.overall.coccion),
-        objetivos_pct: { lavado: FS_OBJ_PCT.lavado, refrigeracion: FS_OBJ_PCT.refri, coccion: FS_OBJ_PCT.coccion },
+        objetivos_pct: await getFsObjetivos(),
         tiendas: v.overall.tiendas,
         semanas: v.options.semanas.length ? `${v.options.semanas[0]}–${v.options.semanas[v.options.semanas.length - 1]}` : null,
       };

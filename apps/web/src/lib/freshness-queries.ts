@@ -1,6 +1,10 @@
 import "server-only";
 import { getServerSupabase } from "./supabase-server";
 import { getCbSupabase } from "./supabase-cb";
+import { trEstado } from "./trade-db";
+
+// Trade pasó al principal (0138): con datos en tr_*, la frescura se mide ahí (no en el proyecto CB, que deja de cargarse).
+const TR_EQUIV: Record<string, string> = { cuadro_basico_semanal: "tr_cb_semanal", floor_share: "tr_floor_share" };
 
 // Última fecha de actualización de una tabla (max de una columna timestamp).
 // Sirve para mostrar en cada dashboard "Datos actualizados al ...", así se
@@ -11,6 +15,7 @@ export async function maxUpdatedAt(
   col = "updated_at",
   filter?: { col: string; val: string },
 ): Promise<string | null> {
+  if (db === "cb" && TR_EQUIV[table] && (await trEstado()).cb != null) return maxUpdatedAtService(TR_EQUIV[table]!, col, filter);
   // Cliente tipado con string dinámico → relajamos el tipo del builder.
   type LooseB = {
     select: (c: string) => LooseB;

@@ -5,7 +5,6 @@ import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { colorForBrand } from "@/lib/floor-share-colors";
 import {
   computeOverall,
-  FS_OBJ_PCT,
   normalizeCategoria,
   OWN_BRAND_FS,
   type CategoryBlock,
@@ -14,6 +13,9 @@ import {
 import { getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast, getFsPrecomputed } from "@/lib/cb-mirror";
 import { computeFsView, isFsDefault, type FsView, type FsEnrichedRow } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
+import { getFsObjetivos } from "@/lib/trade-db";
+
+type Obj = { lavado: number; refri: number; coccion: number };
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
@@ -70,6 +72,9 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
 }
 
 async function renderFloorShare(searchParams: PageProps["searchParams"]) {
+  // Objetivos por categoría: editables en Cuadros Básicos → Objetivos FS (tr_config); default 32 / 25 / 23.
+  const o = await getFsObjetivos();
+  const OBJ: Obj = { lavado: o.lavado, refri: o.refrigeracion, coccion: o.coccion };
   const filter: FloorShareFilter = {
     meses: paramArr(searchParams, "meses"),
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
@@ -115,7 +120,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const genObj = (() => {
     const p = CATEGORIA_PESOS as Record<string, number>;
     const items: Array<[number, number]> = [
-      [FS_OBJ_PCT.lavado, p.Lavado ?? 0], [FS_OBJ_PCT.refri, p["Refrigeración"] ?? 0], [FS_OBJ_PCT.coccion, p["Cocción"] ?? 0],
+      [OBJ.lavado, p.Lavado ?? 0], [OBJ.refri, p["Refrigeración"] ?? 0], [OBJ.coccion, p["Cocción"] ?? 0],
     ];
     const wsum = items.reduce((s, [, w]) => s + w, 0) || 1;
     return items.reduce((s, [o, w]) => s + o * w, 0) / wsum;
@@ -160,11 +165,11 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               title="Floor Share — general" medida="Drean · todas las categorías" value={overall.total.share} obj={Number(genObj.toFixed(1))}
               contexto={`${overall.total.drean_units.toLocaleString()} / ${overall.total.total_units.toLocaleString()} · ${totalTiendasRelevadas} tiendas`}
             />
-            <KpiObjCard title="Lavado" medida="Share Drean góndola" value={overall.lavado.share} obj={FS_OBJ_PCT.lavado}
+            <KpiObjCard title="Lavado" medida="Share Drean góndola" value={overall.lavado.share} obj={OBJ.lavado}
               contexto={`${overall.lavado.drean_units.toLocaleString()} / ${overall.lavado.total_units.toLocaleString()}`} />
-            <KpiObjCard title="Refrigeración" medida="Share Drean góndola" value={overall.refri.share} obj={FS_OBJ_PCT.refri}
+            <KpiObjCard title="Refrigeración" medida="Share Drean góndola" value={overall.refri.share} obj={OBJ.refri}
               contexto={`${overall.refri.drean_units.toLocaleString()} / ${overall.refri.total_units.toLocaleString()}`} />
-            <KpiObjCard title="Cocción" medida="Share Drean góndola" value={overall.coccion.share} obj={FS_OBJ_PCT.coccion}
+            <KpiObjCard title="Cocción" medida="Share Drean góndola" value={overall.coccion.share} obj={OBJ.coccion}
               contexto={`${overall.coccion.drean_units.toLocaleString()} / ${overall.coccion.total_units.toLocaleString()}`} />
           </section>
 
@@ -223,8 +228,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
             </div>
           </section>
 
-          <ClienteTable rows={byCliente} />
-          <TiendaTable rows={byTienda} />
+          <ClienteTable rows={byCliente} OBJ={OBJ} />
+          <TiendaTable rows={byTienda} OBJ={OBJ} />
         </>
       )}
     </DashTabs>
@@ -263,7 +268,7 @@ function CategoriaCols({ block, obj }: { block: CategoryBlock; obj: number }) {
   );
 }
 
-function ClienteTable({ rows }: { rows: import("@/lib/floor-share-queries").ClienteShare[] }) {
+function ClienteTable({ rows, OBJ }: { rows: import("@/lib/floor-share-queries").ClienteShare[]; OBJ: Obj }) {
   return (
     <section className="rounded-xl border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
@@ -292,18 +297,18 @@ function ClienteTable({ rows }: { rows: import("@/lib/floor-share-queries").Clie
             {rows.map((r) => (
               <tr key={r.cliente} className="border-b last:border-0">
                 <td className="px-3 py-1.5 font-medium">{r.cliente}</td>
-                <CategoriaCols block={r.lavado} obj={FS_OBJ_PCT.lavado} />
-                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.refri.share, FS_OBJ_PCT.refri)}`}>
+                <CategoriaCols block={r.lavado} obj={OBJ.lavado} />
+                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.refri.share, OBJ.refri)}`}>
                   {r.refri.total_units > 0 ? `${r.refri.share.toFixed(0)}%` : "—"}
                 </td>
-                <td className={`hidden border-r border-border px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.refri.share - FS_OBJ_PCT.refri)}`}>
-                  {r.refri.total_units > 0 ? deltaPpFs(r.refri.share, FS_OBJ_PCT.refri) : ""}
+                <td className={`hidden border-r border-border px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.refri.share - OBJ.refri)}`}>
+                  {r.refri.total_units > 0 ? deltaPpFs(r.refri.share, OBJ.refri) : ""}
                 </td>
-                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.coccion.share, FS_OBJ_PCT.coccion)}`}>
+                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.coccion.share, OBJ.coccion)}`}>
                   {r.coccion.total_units > 0 ? `${r.coccion.share.toFixed(0)}%` : "—"}
                 </td>
-                <td className={`hidden px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.coccion.share - FS_OBJ_PCT.coccion)}`}>
-                  {r.coccion.total_units > 0 ? deltaPpFs(r.coccion.share, FS_OBJ_PCT.coccion) : ""}
+                <td className={`hidden px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.coccion.share - OBJ.coccion)}`}>
+                  {r.coccion.total_units > 0 ? deltaPpFs(r.coccion.share, OBJ.coccion) : ""}
                 </td>
               </tr>
             ))}
@@ -314,7 +319,7 @@ function ClienteTable({ rows }: { rows: import("@/lib/floor-share-queries").Clie
   );
 }
 
-function TiendaTable({ rows }: { rows: import("@/lib/floor-share-queries").TiendaShare[] }) {
+function TiendaTable({ rows, OBJ }: { rows: import("@/lib/floor-share-queries").TiendaShare[]; OBJ: Obj }) {
   return (
     <section className="rounded-xl border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
@@ -347,18 +352,18 @@ function TiendaTable({ rows }: { rows: import("@/lib/floor-share-queries").Tiend
                   {" — "}
                   <span className="font-medium">{r.numero_tienda} - {r.nombre_tienda}</span>
                 </td>
-                <CategoriaCols block={r.lavado} obj={FS_OBJ_PCT.lavado} />
-                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.refri.share, FS_OBJ_PCT.refri)}`}>
+                <CategoriaCols block={r.lavado} obj={OBJ.lavado} />
+                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.refri.share, OBJ.refri)}`}>
                   {r.refri.total_units > 0 ? `${r.refri.share.toFixed(0)}%` : "—"}
                 </td>
-                <td className={`hidden border-r border-border px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.refri.share - FS_OBJ_PCT.refri)}`}>
-                  {r.refri.total_units > 0 ? deltaPpFs(r.refri.share, FS_OBJ_PCT.refri) : ""}
+                <td className={`hidden border-r border-border px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.refri.share - OBJ.refri)}`}>
+                  {r.refri.total_units > 0 ? deltaPpFs(r.refri.share, OBJ.refri) : ""}
                 </td>
-                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.coccion.share, FS_OBJ_PCT.coccion)}`}>
+                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.coccion.share, OBJ.coccion)}`}>
                   {r.coccion.total_units > 0 ? `${r.coccion.share.toFixed(0)}%` : "—"}
                 </td>
-                <td className={`hidden px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.coccion.share - FS_OBJ_PCT.coccion)}`}>
-                  {r.coccion.total_units > 0 ? deltaPpFs(r.coccion.share, FS_OBJ_PCT.coccion) : ""}
+                <td className={`hidden px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.coccion.share - OBJ.coccion)}`}>
+                  {r.coccion.total_units > 0 ? deltaPpFs(r.coccion.share, OBJ.coccion) : ""}
                 </td>
               </tr>
             ))}

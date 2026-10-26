@@ -1,12 +1,14 @@
 import "server-only";
 
-// Lectura RÁPIDA de la data CB desde el mirror en el proyecto PRINCIPAL (lo llena
-// el cron cb-mirror). Reemplaza a getCbRows/getFloorShareRows (proyecto CB lento)
-// en el render de los dashboards. Fallback al proyecto CB si el mirror está vacío.
+// Lectura RÁPIDA de Trade para el render de los dashboards. Orden de fuentes:
+//  1) tablas tr_* del principal (0138, cargadas desde "Cargar datos" / migración trade-migrar);
+//  2) mirror del principal (cron cb-mirror) si tr_* está vacío o 0138 no corrió;
+//  3) proyecto CB (lento) si el mirror también está vacío.
 
 import { getCbRows, type CbRow } from "./cb-queries";
 import { getFloorShareRows, type FloorShareRow } from "./floor-share-queries";
 import type { FsView } from "./fs-view";
+import { trEstado, getTrCbRows, getTrFsRows, getTrMaxSemanaFs, getTrTiendaCliente } from "./trade-db";
 
 // El principal (rápido) devuelve hasta 10k filas por request → páginas grandes para
 // leer floor_share_mirror (~135k filas) en pocas idas. Con PAGE=1000 eran 136 páginas.
@@ -45,12 +47,16 @@ const CB_SEL = "semana,tienda,sku,cliente,division,target_cb,real_cb,target_inf,
 const FS_SEL = "periodo,semana,categoria,numero_tienda,nombre_tienda,marca,unidades,pct_raw";
 
 export async function getCbRowsFast(): Promise<CbRow[]> {
+  const est = await trEstado();
+  if (est.cb != null) return getTrCbRows(est.cb); // agregado sin SKU (sku = ""): mismos totales
   const rows = await fetchAllPrincipal<CbRow>(`cb_semanal_mirror?select=${CB_SEL}`);
   if (rows.length > 0) return rows;
   return getCbRows({}); // fallback: proyecto CB (lento) si el mirror está vacío
 }
 
 export async function getFloorShareRowsFast(semanas: number[]): Promise<FloorShareRow[]> {
+  const est = await trEstado();
+  if (est.fs != null) return getTrFsRows(est.fs, semanas);
   const filt = semanas.length > 0 ? `&semana=in.(${semanas.join(",")})` : "";
   const rows = await fetchAllPrincipal<FloorShareRow>(`floor_share_mirror?select=${FS_SEL}${filt}`);
   if (rows.length > 0) return rows;
@@ -62,6 +68,13 @@ export async function getAvailableWeeksFast(): Promise<{ weeks: number[]; debug:
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return { weeks: [], debug: "no-env" };
+  const est = await trEstado();
+  if (est.fs != null) {
+    const maxSem = await getTrMaxSemanaFs(est.fs).catch(() => null);
+    const weeks: number[] = [];
+    for (let i = 0; maxSem != null && i < 26 && maxSem - i > 0; i++) weeks.push(maxSem - i);
+    return { weeks, debug: `tr max=${maxSem}` };
+  }
   try {
     const res = await fetch(`${url}/rest/v1/floor_share_mirror?select=semana&order=semana.desc&limit=1`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store",
@@ -79,6 +92,7 @@ export async function getAvailableWeeksFast(): Promise<{ weeks: number[]; debug:
 }
 
 export async function getTiendaClienteMapFast(): Promise<Map<string, string>> {
+  if ((await trEstado()).cb != null) return getTrTiendaCliente();
   const rows = await fetchAllPrincipal<{ numero_tienda: string; cliente: string }>(`cb_tienda_cliente_mirror?select=numero_tienda,cliente`);
   return new Map(rows.map((r) => [r.numero_tienda, r.cliente]));
 }
