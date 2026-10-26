@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { previewEscenaImagen } from "@/lib/ugc";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // Preview BARATO de la escena como imagen fija (fal image), para verla antes de
 // gastar en video. Devuelve { image_url }.
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
     const { genero, escenario, edad, vestimenta, perfil } = (await request.json()) as {
       genero?: string; escenario?: string; edad?: string; vestimenta?: string; perfil?: string;
     };
+    const cuota = await aiQuotaGate("imagen"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     const image_url = await previewEscenaImagen({ genero, escenario, edad, vestimenta, perfil });
     return NextResponse.json({ ok: true, image_url });
   } catch (err) {

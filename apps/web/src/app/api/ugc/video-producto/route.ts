@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generarVideoUgcProductoSubmit } from "@/lib/ugc";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // Encola un talking-head UGC CON el producto Drean real en la escena, usando el
 // endpoint reference-to-video de Seedance 2.0 (el packshot va como @Image1 y se
@@ -15,6 +16,8 @@ export async function POST(request: Request) {
     };
     if (!guion?.trim()) return NextResponse.json({ ok: false, error: "Falta el guion." }, { status: 400 });
     if (!sku?.trim()) return NextResponse.json({ ok: false, error: "Elegí un producto (modelo) para meterlo en la escena." }, { status: 400 });
+    const cuota = await aiQuotaGate("video"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     const h = await generarVideoUgcProductoSubmit(sku, guion, genero, escenario, duracion, edad, vestimenta, perfil, detalles);
     return NextResponse.json({ ok: true, ...h });
   } catch (err) {

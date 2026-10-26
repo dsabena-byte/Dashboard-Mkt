@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sbAdmin } from "@/lib/supabase-admin";
 import { retocarImagen } from "@/lib/contenido-generar";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
     if (!row.imagen_url) return NextResponse.json({ ok: false, error: "No hay imagen para retocar (generá o subí una primero)." }, { status: 400 });
 
     // 2) Editar la imagen actual.
+    const cuota = await aiQuotaGate("imagen"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     const nueva = await retocarImagen(row.imagen_url, instruccion);
 
     // 3) Guardar: nueva imagen + versión previa apilada.

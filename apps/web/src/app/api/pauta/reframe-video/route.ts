@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { falQueueSubmit } from "@/lib/fal-client";
+import { aiQuotaGate } from "@/lib/ai-quota";
 
 // Reframe de VIDEO a otro ratio con outpainting generativo (Luma Ray 2 Flash
 // Reframe en fal). El modelo extiende el encuadre al ratio destino sin deformar
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
     const { video_url, aspect_ratio } = (await request.json()) as { video_url?: string; aspect_ratio?: string };
     if (!video_url) return NextResponse.json({ ok: false, error: "Falta el video de referencia." }, { status: 400 });
     if (!aspect_ratio || !RATIOS.has(aspect_ratio)) return NextResponse.json({ ok: false, error: "Ratio no soportado (9:16, 1:1, 16:9)." }, { status: 400 });
+    const cuota = await aiQuotaGate("video"); // tope diario persistido (D-10)
+    if (cuota) return cuota;
     const h = await falQueueSubmit(MODEL, { video_url, aspect_ratio });
     return NextResponse.json({ ok: true, requestId: h.requestId, statusUrl: h.statusUrl, responseUrl: h.responseUrl });
   } catch (err) {
