@@ -7,7 +7,7 @@
 
 export interface DashContexto {
   key: string; // clave del set de tools (lib/chat/registry.ts) y de la ruta
-  path: string; // ruta del dashboard (para dashboard_access)
+  path: string; // ruta del dashboard (para acceso por grupo (usuarios))
   label: string;
   foco: string; // guía para el modelo
   sugerencias: string[];

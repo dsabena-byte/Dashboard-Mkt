@@ -3,15 +3,9 @@
 //
 // Convención: `allowed === null` significa "sin restricción" (ve todos los
 // dashboards). Un array significa "restringido solo a esos paths".
+// Las rutas salen del grupo del usuario (lib/usuarios-core.ts, tabla usuarios 0136); dashboard_access (0065) quedó superada.
 
-export function allowedFromRows(
-  rows: { dashboard_path: string }[] | null | undefined,
-): string[] | null {
-  if (!rows || rows.length === 0) return null; // sin filas → ve todo
-  return rows.map((r) => r.dashboard_path);
-}
-
-// Rutas de contenido abiertas a TODO usuario logueado, aunque tenga dashboard_access restringido
+// Rutas de contenido abiertas a TODO usuario logueado, aunque esté restringido por grupo
 // (no exponen datos: /guia = Proceso Estratégico, capa de aprendizaje estática).
 export const ALWAYS_ALLOWED_PATHS = ["/guia"];
 

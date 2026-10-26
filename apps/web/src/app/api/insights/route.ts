@@ -9,6 +9,7 @@ import { getLatestReport, saveReport, listReports, getReport } from "@/lib/insig
 import { debeReusarDiagnostico, GUARD_HORAS } from "@/lib/insights/guard";
 import { isDiagDash, EMPTY_INSIGHTS, type Insights, type InsItem, type InsHallazgo, type InsCorr, type InsPlanAccion, type InsOportunidad } from "@/lib/insights/types";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { puedeVerTablero } from "@/lib/usuarios-server";
 
 // ============================================================================
 // DIAGNÓSTICO IA por tablero (portado de BIP, sep-2026). Correlaciona indicadores con metas,
@@ -108,6 +109,7 @@ export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const dash = sp.get("dash") ?? "";
   if (!isDiagDash(dash)) return NextResponse.json({ error: "tablero desconocido" }, { status: 400 });
+  if (!(await puedeVerTablero(dash))) return NextResponse.json({ error: "sin acceso a ese tablero" }, { status: 403 });
   if (sp.get("list") === "1") return NextResponse.json({ versiones: await listReports(dash) });
   const v = sp.get("version");
   const rep = v ? await getReport(dash, Number(v)) : await getLatestReport(dash);
@@ -121,6 +123,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { dash?: string; force?: unknown };
   const dash = String(body.dash ?? "");
   if (!isDiagDash(dash)) return NextResponse.json({ error: "tablero desconocido" }, { status: 400 });
+  if (!(await puedeVerTablero(dash))) return NextResponse.json({ error: "sin acceso a ese tablero" }, { status: 403 });
   const force = body.force === true;
   // Guarda: si hay un diagnóstico de hace menos de GUARD_HORAS y no viene force, se devuelve el
   // guardado sin llamar a OpenAI (el cliente pregunta "¿Generar otro?" y reenvía con force).

@@ -2,7 +2,8 @@ import "server-only";
 import { sbAdmin } from "@/lib/supabase-admin";
 import { FACTURACION_FALLBACK } from "@/lib/facturacion-queries";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
+import { isPathAllowed } from "@/lib/dashboard-access";
+import { getAllowedPaths } from "@/lib/usuarios-server";
 import {
   CATALOGO_BASE, CUENTA_CONCEPTOS, agregarParaTablero, camposCambiados, tipoDeVersion,
   type FilaAgregada, type ItemCatalogo, type Linea, type LineaIn, type Tc, type Version,
@@ -48,8 +49,7 @@ export async function usuarioPresupuesto(): Promise<UsuarioPpto | null> {
   const supabase = getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) return null;
-  let allowed: string[] | null = null;
-  try { const { data } = await supabase.from("dashboard_access").select("dashboard_path"); allowed = allowedFromRows(data as { dashboard_path: string }[] | null); } catch { allowed = null; }
+  const allowed = await getAllowedPaths();
   let editor = false;
   try {
     const res = await sbAdmin(`bgt_editores?select=email&email=eq.${encodeURIComponent(user.email.toLowerCase())}`, { method: "GET" });

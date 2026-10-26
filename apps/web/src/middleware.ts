@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
+import { isPathAllowed } from "@/lib/dashboard-access";
 import { AUTH_CALLBACK_PATH, PASSWORD_PATH, PUBLIC_AUTH_PATHS, usuarioHabilitado } from "@/lib/auth/safe-next";
+import { apiPermitida, esTablaInexistente, rutasPermitidas, type UsuarioRow } from "@/lib/usuarios-core";
 
 // Rutas públicas (no requieren login): /login y /login/recuperar. OJO: /login/nueva-clave NO es
-// pública (requiere sesión) pero tampoco pasa por dashboard_access.
+// pública (requiere sesión) pero tampoco pasa por el control de tableros.
 const PUBLIC_PATHS = PUBLIC_AUTH_PATHS;
 
 // Rutas que tienen su propia auth (no aplicar middleware)
@@ -65,8 +66,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Cuenta logueada pero no habilitada (registro abierto en Supabase): sin acceso a páginas ni a /api.
-  if (user && !usuarioHabilitado(user)) {
+  // Acceso por usuario y grupo (tabla usuarios, 0136). Sin la tabla (legacy) = regla vieja de dominio + ve todo.
+  // Cualquier otra falla al leerla = sin acceso (fail closed).
+  let allowed: string[] | null = null;
+  let habilitado = true;
+  if (user) {
+    const { data, error, status } = await supabase
+      .from("usuarios")
+      .select("grupos,es_admin,activo")
+      .eq("email", (user.email ?? "").toLowerCase())
+      .maybeSingle();
+    if (error && esTablaInexistente(error, status)) {
+      habilitado = usuarioHabilitado(user);
+    } else if (error) {
+      console.error("[middleware] usuarios:", status, error.message);
+      habilitado = false;
+    } else {
+      const row = data as Pick<UsuarioRow, "grupos" | "es_admin" | "activo"> | null;
+      habilitado = !!row?.activo;
+      allowed = row ? rutasPermitidas(row) : [];
+    }
+    if (habilitado && allowed && allowed.length === 0) habilitado = false; // sin grupos = sin tableros
+  }
+
+  // Cuenta logueada pero no habilitada: sin acceso a páginas ni a /api.
+  if (user && !habilitado) {
     if (isPublic(pathname)) return response;
     if (pathname.startsWith("/api")) return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
     return NextResponse.redirect(new URL("/login?error=acceso", request.url));
@@ -76,21 +100,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Control de acceso por dashboard (tabla dashboard_access). Si el usuario tiene
-  // filas, queda restringido a esos paths; si no, ve todo. No aplica a /api.
+  // Usuario restringido (Trade / Ventas): solo sus tableros y las APIs que esas pantallas usan.
   // /login/nueva-clave (cambiar contraseña) queda afuera: cualquier usuario logueado debe poder usarla.
-  if (user && !pathname.startsWith("/api") && pathname !== PASSWORD_PATH) {
-    try {
-      const { data } = await supabase.from("dashboard_access").select("dashboard_path");
-      const allowed = allowedFromRows(data as { dashboard_path: string }[] | null);
-      if (allowed && !isPathAllowed(pathname, allowed)) {
-        const target = allowed[0] ?? "/login";
-        if (pathname !== target) {
-          return NextResponse.redirect(new URL(target, request.url));
-        }
-      }
-    } catch {
-      // Tabla inexistente o error de consulta → no restringir (ve todo).
+  if (user && allowed) {
+    if (pathname.startsWith("/api")) {
+      if (!apiPermitida(pathname, allowed)) return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+    } else if (pathname !== PASSWORD_PATH && !isPathAllowed(pathname, allowed)) {
+      return NextResponse.redirect(new URL(allowed[0]!, request.url));
     }
   }
 

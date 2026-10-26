@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
+import { isPathAllowed } from "@/lib/dashboard-access";
+import { getAllowedPaths } from "@/lib/usuarios-server";
 import { checkRateLimit } from "@/lib/chat/rate-limit";
 import { claveFila, sanearFilas } from "@/lib/mkt-canal-core";
 import { extraerReporte, filasExistentes, guardarFilas } from "@/lib/mkt-canal-server";
@@ -9,7 +10,7 @@ import { aiQuotaGate } from "@/lib/ai-quota";
 // Mkt Canal · subir reporte de un retailer.
 //   POST multipart {archivo, cliente?} → la IA lee el archivo → { filas, antes, errores, notas } (NO escribe).
 //   PUT  { filas }                     → valida y guarda (upsert por cliente·acción·mes·plataforma).
-// Exige sesión y acceso a /mkt-canal (dashboard_access).
+// Exige sesión y acceso a /mkt-canal (acceso por grupo (usuarios)).
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -49,8 +50,7 @@ async function usuario(): Promise<string | null> {
     const supabase = getServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const { data } = await supabase.from("dashboard_access").select("dashboard_path");
-    return isPathAllowed("/mkt-canal", allowedFromRows(data as { dashboard_path: string }[] | null)) ? (user.email ?? user.id) : "";
+    return isPathAllowed("/mkt-canal", await getAllowedPaths()) ? (user.email ?? user.id) : "";
   } catch { return null; }
 }
 

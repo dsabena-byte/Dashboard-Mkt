@@ -23,7 +23,7 @@ import type { ChatTool, ToolCtx } from "./types";
 
 // ============================================================================
 // Registro de sets de tools por dashboard. Copiloto v2 = CROSS-DASHBOARD: en cualquier
-// página el modelo ve TODOS los sets que el usuario tiene permitidos (dashboard_access),
+// página el modelo ve TODOS los sets que el usuario tiene permitidos (acceso por grupo (usuarios)),
 // con el set de la página primero. Agregar un dashboard = un tools-<dash>.ts + una
 // entrada acá + su contexto en contexto.ts. El motor (/api/chat) y la UI no cambian.
 // ============================================================================

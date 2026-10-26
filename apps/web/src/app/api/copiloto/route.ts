@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { allowedFromRows, isPathAllowed } from "@/lib/dashboard-access";
+import { isPathAllowed } from "@/lib/dashboard-access";
+import { getAllowedPaths } from "@/lib/usuarios-server";
 import { verificarRespuesta, marcarRevisado, desactivarVerificada } from "@/lib/chat/feedback-server";
 
-// Calidad del copiloto (/copiloto; portado de la vista de staff de BIP). Acceso = dashboard_access de
-// /copiloto (sin filas = ve todo). Drean no tiene roles de staff: quien puede ver la página revisa.
+// Calidad del copiloto (/copiloto; portado de la vista de staff de BIP). Acceso = grupo del usuario con
+// /copiloto (tabla usuarios). Drean no tiene roles de staff: quien puede ver la página revisa.
 //   action "verificar"   → guarda la respuesta (corregida o tal cual) como VERIFICADA; el copiloto la
 //                          reusa como ejemplo de método en preguntas parecidas.
 //   action "revisado"    → marca un 👎 como revisado (baja en la lista de "peores").
@@ -19,9 +20,7 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "no autenticado" }, { status: 401 });
     email = user.email ?? null;
-    let allowed: string[] | null = null;
-    try { const { data } = await supabase.from("dashboard_access").select("dashboard_path"); allowed = allowedFromRows(data as { dashboard_path: string }[] | null); } catch { allowed = null; }
-    if (!isPathAllowed("/copiloto", allowed)) return NextResponse.json({ error: "Tu usuario no tiene acceso a Calidad del copiloto." }, { status: 403 });
+    if (!isPathAllowed("/copiloto", await getAllowedPaths())) return NextResponse.json({ error: "Tu usuario no tiene acceso a Calidad del copiloto." }, { status: 403 });
   } catch { return NextResponse.json({ error: "no autenticado" }, { status: 401 }); }
 
   const b = ((await req.json().catch(() => ({}))) ?? {}) as Record<string, unknown>;
