@@ -54,7 +54,7 @@ function mailHtml(nombre: string | null, grupos: string, link: string, reset: bo
   return `<div style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;line-height:1.5;max-width:520px">
 <p>${saludo}</p><p>${cuerpo}</p>
 <p style="margin:24px 0"><a href="${link}" style="background:#1e40af;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Elegir mi clave</a></p>
-<p style="color:#64748b;font-size:13px">El link vence en 24 horas. Si vence, pedile otro al administrador.</p>
+<p style="color:#64748b;font-size:13px">El link vence pronto y sirve una sola vez. Si no te anda, pedile otro al administrador.</p>
 <p>¡Gracias y que lo disfrutes!</p></div>`;
 }
 

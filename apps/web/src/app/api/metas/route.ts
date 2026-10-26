@@ -5,6 +5,17 @@ import {
   type MetaValor,
   type MetasPayload,
 } from "@/lib/metas";
+import { getAllowedPaths } from "@/lib/usuarios-server";
+import { isPathAllowed } from "@/lib/dashboard-access";
+
+// Plan de metas → tablero que lo muestra. Un usuario restringido (Trade/Ventas) solo toca los planes de sus tableros.
+const PLAN_TABLERO: Record<string, string> = { "Cuadros Básicos": "/cuadros-basicos", "Floor Share": "/floor-share" };
+async function puedePlan(plan: string): Promise<boolean> {
+  const allowed = await getAllowedPaths();
+  if (allowed === null) return true;
+  const ruta = PLAN_TABLERO[plan];
+  return !!ruta && isPathAllowed(ruta, allowed);
+}
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -42,6 +53,7 @@ const oneOf = <T extends string>(v: string, allowed: readonly T[], fallback: T):
 export async function GET(request: Request) {
   const plan = new URL(request.url).searchParams.get("plan");
   if (!plan) return NextResponse.json({ error: "Falta ?plan=" }, { status: 400 });
+  if (!(await puedePlan(plan))) return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
 
   const filter = `plan=eq.${encodeURIComponent(plan)}&select=*`;
   const cfgReq = rest(`kpi_meta_config?${filter}`);
@@ -114,6 +126,10 @@ export async function POST(request: Request) {
     plan: v.plan, kpi: v.kpi, categoria: v.categoria || CAT_GENERAL,
     anio: v.anio, mes: v.mes, valor: v.valor, updated_at: now,
   }));
+
+  for (const plan of new Set([...cfgRows, ...valRows].map((r) => String(r.plan ?? "")))) {
+    if (!(await puedePlan(plan))) return NextResponse.json({ error: "Sin acceso a ese plan" }, { status: 403 });
+  }
 
   const errCfg = await upsert("kpi_meta_config", cfgRows);
   if (errCfg) return NextResponse.json({ error: errCfg }, { status: 500 });
