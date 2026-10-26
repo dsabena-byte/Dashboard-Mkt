@@ -3,6 +3,7 @@ import { redesTools } from "./tools-redes";
 import { overviewTools } from "./tools-overview";
 import { cuadrosBasicosTools } from "./tools-cuadros-basicos";
 import { floorShareTools } from "./tools-floor-share";
+import { cbVentasTools } from "./tools-cb-ventas";
 import { webTools } from "./tools-web";
 import { seoSearchTools } from "./tools-seo-search";
 import { performanceTools } from "./tools-performance";
@@ -43,6 +44,7 @@ const SETS: Record<string, Factory> = {
   "seo-search": fijo(seoSearchTools),
   "cuadros-basicos": fijo(cuadrosBasicosTools),
   "floor-share": fijo(floorShareTools),
+  "cb-ventas": fijo(cbVentasTools),
   "salud-marca": fijo(saludMarcaTools),
   mercado: fijo([...mercadoTools, overviewTools.find((t) => t.name === "get_facturacion_mensual")!]),
   funnel: fijo(inversionTools),

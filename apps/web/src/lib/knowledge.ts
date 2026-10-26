@@ -171,6 +171,22 @@ export const DASH_KNOW: Record<string, DashKnow> = {
       { nombre: "Tendencia semanal, no la foto", detalle: "una semana mala es ruido; tres semanas de caída en la misma división son un problema de abastecimiento o de negociación." },
     ],
   },
+  "cb-ventas": {
+    etapa: "optimizar",
+    funnel: ["conversion"],
+    modulos: ["trade-marketing"],
+    title: "Cómo leer el Cuadro Básico de Ventas",
+    intro: "Mide si cada cliente (razón social) <b>compró</b> los modelos de su cuadro básico: un modelo cuenta como cumplido si tiene factura (FC) o pedido pendiente (BO) de ese modelo o de un <b>homólogo</b>. El objetivo es <b>80%</b>.",
+    bullets: [
+      "<b>Qué compras cuentan:</b> facturas de los últimos meses cerrados (2 meses para Top 10, Grandes Cuentas Resto e Hipermercados; 3 para Small Retailers) y todos los pedidos pendientes. Si elegís meses en el filtro, manda el filtro.",
+      "<b>Infaltables y Estratégicos:</b> cada modelo del cuadro es de un tipo; el % se ve total y por tipo.",
+      "<b>Quién ve qué:</b> un vendedor ve solo sus clientes; el resto, todos (o su gerencia si tiene una asignada).",
+    ],
+    practicas: [
+      { nombre: "Empezá por Mayor impacto", detalle: "en Análisis, los clientes y vendedores que más modelos le faltan para llegar al 80% son los que más mueven el total." },
+      { nombre: "Abrí el cliente", detalle: "tocá un cliente en la tabla para ver modelo por modelo qué se facturó, qué está pendiente y qué falta." },
+    ],
+  },
   "floor-share": {
     etapa: "optimizar",
     funnel: ["conversion"],

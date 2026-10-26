@@ -56,6 +56,7 @@ const TREE: NavNode[] = [
         children: [
           { type: "link", href: "/cuadros-basicos", label: "Cuadros Básicos" },
           { type: "link", href: "/floor-share", label: "Floor Share" },
+          { type: "link", href: "/cb-ventas", label: "CB Ventas" },
         ],
       },
     ],

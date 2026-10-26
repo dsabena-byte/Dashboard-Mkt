@@ -120,6 +120,15 @@ const CTX: DashContexto[] = [
     ],
   },
   {
+    key: "cb-ventas", path: "/cb-ventas", label: "CB Ventas",
+    foco: "Cumplimiento del cuadro básico de ventas por cliente (compras FC + BO, homólogos), objetivo 80%, por vendedor, gerencia, categoría y tipología.",
+    sugerencias: [
+      "¿Cómo viene el cumplimiento del cuadro básico de ventas?",
+      "¿Qué clientes están más lejos del 80%?",
+      "¿Qué modelos le faltan a mis clientes?",
+    ],
+  },
+  {
     key: "salud-marca", path: "/salud-marca", label: "Salud de Marca",
     foco: "Kantar: TOM, SOM, Intención y Poder de marca por categoría y ola; proyección nov-26 del modelo share→equity; comparativo con la competencia.",
     sugerencias: [
@@ -184,6 +193,7 @@ export const TOOL_LABELS: Record<string, string> = {
   get_cb_baseline: "Baseline CB",
   get_cb_sugerencias: "Tiendas sugeridas CB",
   get_floor_share: "Floor Share",
+  get_cb_ventas: "CB Ventas",
   get_web_kpis: "Web / GA4",
   get_web_mensual: "Web mensual",
   get_web_detalle: "Web: detalle",

@@ -51,7 +51,7 @@ export function rutasPermitidas(row: Pick<UsuarioRow, "grupos" | "es_admin">): s
  * a chequear el tablero (y la escritura, exigirEdicion).
  * El resto de /api → 403.
  */
-export const API_PERMITIDAS_RESTRINGIDOS = ["/api/chat", "/api/insights", "/api/anotaciones", "/api/recomendaciones", "/api/metas", "/api/trade"];
+export const API_PERMITIDAS_RESTRINGIDOS = ["/api/chat", "/api/insights", "/api/anotaciones", "/api/recomendaciones", "/api/metas", "/api/trade", "/api/cb-ventas"];
 
 export function apiPermitida(pathname: string, rutas: string[] | null): boolean {
   if (rutas === null) return true;

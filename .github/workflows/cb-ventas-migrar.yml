@@ -1,0 +1,43 @@
+name: CB Ventas · migración desde la app vieja (manual)
+
+# Solo manual. "migrar" = siembra clientes y cuadro básico desde los CSV de Drive; "cuentas" = crea las cuentas
+# de los usuarios de /ventas con su misma clave. Empezar SIEMPRE con dry=1 (solo cuenta, no escribe).
+# Las respuestas traen solo conteos (sin emails ni claves): el repo es público y este log también.
+on:
+  workflow_dispatch:
+    inputs:
+      ruta:
+        description: "migrar | cuentas"
+        required: true
+        default: "migrar"
+      dry:
+        description: "1 = solo contar (no escribe)"
+        required: true
+        default: "1"
+      extra:
+        description: "parámetros extra (ej. sin_overrides=1)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Llamar a la ruta
+        run: |
+          set -euo pipefail
+          case "$RUTA" in migrar|cuentas) ;; *) echo "::error::ruta inválida"; exit 1;; esac
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/cb-ventas-${RUTA}?dry=${DRY}&${EXTRA}"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 120 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+          echo "HTTP $HTTP_CODE"
+          cat response.json; echo ""
+          [ "$HTTP_CODE" = "200" ] || { echo "::error::HTTP $HTTP_CODE"; exit 1; }
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          RUTA: ${{ inputs.ruta }}
+          DRY: ${{ inputs.dry }}
+          EXTRA: ${{ inputs.extra }}
