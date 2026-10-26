@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generarVideoUgcProductoSubmit } from "@/lib/ugc";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Encola un talking-head UGC CON el producto Drean real en la escena, usando el
 // endpoint reference-to-video de Seedance 2.0 (el packshot va como @Image1 y se
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const { sku, guion, genero, escenario, duracion, edad, vestimenta, perfil, detalles } = (await request.json()) as {
       sku?: string; guion?: string; genero?: string; escenario?: string; duracion?: number; edad?: string; vestimenta?: string; perfil?: string; detalles?: string;

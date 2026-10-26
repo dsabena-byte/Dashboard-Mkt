@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { canUseTableros, insertDataset, TablerosMissingError } from "@/lib/tableros-server";
 import { getSheetsAccess, readGoogleSheet, spreadsheetIdFrom } from "@/lib/google-sheets";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Google Sheets → planilla de Mis tableros (copia de la 1ª hoja).
 //   GET          → { state: "ok" | "no_scope" | "no_env" | "error" } (¿el token tiene scope de Sheets?)
@@ -16,6 +17,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!(await canUseTableros())) return NextResponse.json({ error: "sin acceso" }, { status: 403 });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const { url, name } = (await req.json().catch(() => ({}))) as { url?: string; name?: string };
   const id = spreadsheetIdFrom(String(url ?? ""));
   if (!id) return NextResponse.json({ error: "Pegá el link completo de la planilla de Google Sheets." }, { status: 400 });

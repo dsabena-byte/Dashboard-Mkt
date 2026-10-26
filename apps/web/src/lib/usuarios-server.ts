@@ -1,9 +1,18 @@
 import "server-only";
 import { cache } from "react";
+import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { isPathAllowed } from "@/lib/dashboard-access";
-import { ADMIN_LEGACY, esTablaInexistente, rutasPermitidas, type UsuarioRow } from "@/lib/usuarios-core";
+import {
+  ADMIN_LEGACY,
+  esColumnaInexistente,
+  esTablaInexistente,
+  puedeEditar,
+  rutasPermitidas,
+  type AreaEdicion,
+  type UsuarioRow,
+} from "@/lib/usuarios-core";
 
 // Perfil del usuario logueado (tabla usuarios, 0136). Se lee con la sesión (RLS: solo su fila).
 //   legacy = la tabla no existe todavía → se mantiene lo de antes (regla de dominio + ve todo).
@@ -13,11 +22,25 @@ export interface MiPerfil { user: User | null; estado: EstadoPerfil; row: Usuari
 
 export const COLS_USUARIO = "email,nombre,grupos,es_admin,es_editor,vendedor,gerencia,activo,ultimo_acceso,creado_por,created_at,updated_at";
 
+type Res = { data: unknown; error: { code?: string; message: string } | null; status: number };
+let avisoSin0137 = false;
+/**
+ * Corre el select con `edita_marketing` (0137); si la columna todavía no existe, repite sin ella
+ * (edita_marketing queda false) para no romper las lecturas. Avisa una vez en el log.
+ */
+export async function selectUsuarios<T extends Res>(run: (cols: string) => PromiseLike<T>): Promise<T> {
+  const r = await run(`${COLS_USUARIO},edita_marketing`);
+  if (!esColumnaInexistente(r.error)) return r;
+  if (!avisoSin0137) { avisoSin0137 = true; console.warn("[usuarios] falta la migración 0137 (edita_marketing): nadie edita Marketing salvo los admins."); }
+  return run(COLS_USUARIO);
+}
+
 export const getMiPerfil = cache(async (): Promise<MiPerfil> => {
   const supabase = getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) return { user: user ?? null, estado: "ok", row: null };
-  const { data, error, status } = await supabase.from("usuarios").select(COLS_USUARIO).eq("email", user.email.toLowerCase()).maybeSingle();
+  const email = user.email.toLowerCase();
+  const { data, error, status } = await selectUsuarios((cols) => supabase.from("usuarios").select(cols).eq("email", email).maybeSingle());
   if (error) {
     if (esTablaInexistente(error, status)) return { user, estado: "legacy", row: null };
     console.error("[usuarios] no se pudo leer el perfil:", status, error.message);
@@ -52,4 +75,22 @@ export async function esAdminActual(): Promise<{ email: string; legacy: boolean 
 /** Para las APIs que reciben el tablero por parámetro (Diagnóstico, señales): `dash` = slug de la ruta. */
 export async function puedeVerTablero(dash: string): Promise<boolean> {
   return isPathAllowed("/" + dash, await getAllowedPaths());
+}
+
+export const SIN_PERMISO_EDICION = "No tenés permiso para editar esto. Pedíselo al administrador.";
+
+/** ¿El usuario logueado puede editar el área? Legacy (sin la tabla 0136) → sí, como antes. */
+export async function puedeEditarActual(area: AreaEdicion): Promise<boolean> {
+  const p = await getMiPerfil().catch(() => null);
+  if (!p?.user) return false;
+  if (p.estado === "legacy") return true;
+  return p.estado === "ok" && puedeEditar(p.row, area);
+}
+
+/**
+ * Para route handlers que ESCRIBEN o gastan: null si puede, si no la respuesta 403 lista para devolver.
+ * Uso: `const no = await exigirEdicion("marketing"); if (no) return no;`
+ */
+export async function exigirEdicion(area: AreaEdicion): Promise<NextResponse | null> {
+  return (await puedeEditarActual(area)) ? null : NextResponse.json({ error: SIN_PERMISO_EDICION }, { status: 403 });
 }

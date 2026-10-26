@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { generarGuionUgc } from "@/lib/ugc";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const b = (await request.json()) as { perfil?: string; tema?: string; pilar?: string; formato?: string; detalles?: string; modelo?: string; duracion?: number; atributos?: string[]; cta?: string };
     const cuota = await aiQuotaGate("texto"); // tope diario persistido (D-10)

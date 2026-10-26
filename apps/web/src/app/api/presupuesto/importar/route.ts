@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { guardarTcs, importarPlanilla, resumenVersion } from "@/lib/presupuesto-server";
 import { armarCatalogo, normalizarCuentas, parsePlanilla, parsePresupuesto, parseTcPlantilla, tipoDeVersion, totalesPorVersion } from "@/lib/presupuesto-core";
 import { conUsuario, soloEditor } from "../_auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Importación (solo editores), en dos pasos: sin `confirmar` devuelve la vista previa (totales por versión,
 // errores) sin escribir nada; con `confirmar=1` guarda. tipo=planilla → hoja "Planilla carga BGT - Facturas"
@@ -22,6 +23,8 @@ export async function POST(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const fd = await req.formData().catch(() => null);
     const file = fd?.get("archivo");
     const tipo = String(fd?.get("tipo") ?? "");

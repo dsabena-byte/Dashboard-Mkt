@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { MAPA_CONFIG_SEED, type MapaConfig, type Objetivo, type Plan } from "@/lib/mapa-estrategico-config";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -39,6 +40,8 @@ export async function GET() {
 
 // POST /api/mapa-estrategico → upsert de la config (singleton id=1).
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   let body: Partial<MapaConfig>;
   try {
     body = (await request.json()) as Partial<MapaConfig>;

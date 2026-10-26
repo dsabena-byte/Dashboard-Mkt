@@ -4,12 +4,12 @@ import { createServiceClient } from "@dashboard/db";
 import { getSiteOrigin } from "@/lib/auth/supabase-auth";
 import { PASSWORD_PATH } from "@/lib/auth/safe-next";
 import { sendEmail } from "@/lib/notify";
-import { COLS_USUARIO, esAdminActual } from "@/lib/usuarios-server";
-import { emailValido, esGrupo, esTablaInexistente, GRUPOS, parseCsvUsuarios, type UsuarioRow } from "@/lib/usuarios-core";
+import { esAdminActual, selectUsuarios } from "@/lib/usuarios-server";
+import { emailValido, esColumnaInexistente, esGrupo, esTablaInexistente, GRUPOS, parseCsvUsuarios, type UsuarioRow } from "@/lib/usuarios-core";
 
 // Administración de usuarios (/usuarios, migración 0136). Solo admins (sin la tabla: solo el admin inicial).
 //   GET                                   → { legacy, usuarios }
-//   POST { accion: "guardar", ... }       → alta o edición (email, nombre, grupos, es_editor, es_admin, vendedor, gerencia)
+//   POST { accion: "guardar", ... }       → alta o edición (email, nombre, grupos, es_editor, edita_marketing, es_admin, vendedor, gerencia)
 //   POST { accion: "invitar" | "resetear", email } → manda el link para elegir la clave (nunca automático)
 //   POST { accion: "activo", email, activo }       → desactivar / reactivar (también bloquea el login)
 //   POST { accion: "importar", csv, confirmar? }   → vista previa o alta de los nuevos (sin invitar)
@@ -21,6 +21,7 @@ export const runtime = "nodejs";
 type Svc = SupabaseClient;
 const err = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const SIN_TABLA = "Falta correr la migración 0136_usuarios.sql en el SQL Editor de Supabase.";
+const SIN_0137 = "Para dar el permiso «Edita Marketing» falta correr la migración 0137_usuarios_edicion.sql en el SQL Editor de Supabase.";
 
 async function auditar(svc: Svc, actor: string, email: string, accion: string, antes: unknown, despues: unknown) {
   const { error } = await svc.from("usuarios_auditoria").insert({ actor_email: actor, email, accion, antes, despues });
@@ -28,7 +29,7 @@ async function auditar(svc: Svc, actor: string, email: string, accion: string, a
 }
 
 async function leer(svc: Svc, email: string): Promise<UsuarioRow | null> {
-  const { data } = await svc.from("usuarios").select(COLS_USUARIO).eq("email", email).maybeSingle();
+  const { data } = await selectUsuarios((cols) => svc.from("usuarios").select(cols).eq("email", email).maybeSingle());
   return (data as UsuarioRow | null) ?? null;
 }
 
@@ -63,7 +64,7 @@ export async function GET() {
   if (!admin) return err("No encontrado", 404);
   if (admin.legacy) return NextResponse.json({ legacy: true, usuarios: [] });
   const svc = createServiceClient() as unknown as Svc;
-  const { data, error, status } = await svc.from("usuarios").select(COLS_USUARIO).order("email");
+  const { data, error, status } = await selectUsuarios((cols) => svc.from("usuarios").select(cols).order("email"));
   if (error) {
     if (esTablaInexistente(error, status)) return NextResponse.json({ legacy: true, usuarios: [] });
     console.error("[usuarios] GET:", error.message);
@@ -118,12 +119,18 @@ export async function POST(req: Request) {
       grupos: [...new Set(grupos)],
       es_admin: esAdmin,
       es_editor: b.es_editor === true,
+      edita_marketing: b.edita_marketing === true,
       vendedor: ventas ? txt(b.vendedor) : null,
       gerencia: ventas ? txt(b.gerencia) : null,
       updated_at: new Date().toISOString(),
       ...(antes ? {} : { creado_por: actor, activo: true }),
     };
-    const { error } = await svc.from("usuarios").upsert(fila, { onConflict: "email" });
+    let { error } = await svc.from("usuarios").upsert(fila, { onConflict: "email" });
+    if (esColumnaInexistente(error)) {
+      if (fila.edita_marketing) return err(SIN_0137, 409);
+      const { edita_marketing: _sin0137, ...resto } = fila; // sin 0137: se guarda el resto igual
+      ({ error } = await svc.from("usuarios").upsert(resto, { onConflict: "email" }));
+    }
     if (error) { console.error("[usuarios] guardar:", error.message); return err("No se pudo guardar.", 500); }
     await auditar(svc, actor, email, antes ? "editar" : "alta", antes, fila);
     return NextResponse.json({ ok: true });

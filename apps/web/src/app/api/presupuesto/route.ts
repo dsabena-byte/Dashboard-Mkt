@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listAuditoria, listCatalogo, listFacturacion, listInflacion, listLineas, listTc, listVersiones, setCerrada } from "@/lib/presupuesto-server";
 import { ANIO_MINIMO } from "@/lib/presupuesto-core";
 import { conUsuario, soloEditor } from "./_auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Presupuesto cargado desde el tablero (migración 0125).
 // GET ?version=REAL 2026 → versiones, TC, catálogo, renglones de esa versión y permisos del usuario.
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { accion?: string; version?: string };
     if (!b.version || (b.accion !== "cerrar" && b.accion !== "abrir")) return NextResponse.json({ error: "pedido inválido" }, { status: 400 });
     await setCerrada(b.version, b.accion === "cerrar", u.email);

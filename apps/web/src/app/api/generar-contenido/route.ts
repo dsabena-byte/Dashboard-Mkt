@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { generarPiezas, type GenerarParams } from "@/lib/contenido-generar";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const body = (await request.json()) as GenerarParams;
     const cuota = await aiQuotaGate("imagen"); // tope diario persistido (D-10)

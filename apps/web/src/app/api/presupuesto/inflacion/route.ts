@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { guardarInflaciones } from "@/lib/presupuesto-server";
 import { tipoDeVersion } from "@/lib/presupuesto-core";
 import { conUsuario, soloEditor } from "../_auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Inflación % por versión (BGT / 4+8 / 8+4 / REAL) y mes, como el tipo de cambio. PUT {cambios: [{version, mes, pct|null}]}.
 // Solo editores. La REAL la trae sola el cron inflacion-indec; acá se puede corregir.
@@ -12,6 +13,8 @@ export async function PUT(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { cambios?: { version?: string; mes?: number; pct?: number | null }[] };
     const cambios = (b.cambios ?? []).slice(0, 500);
     for (const c of cambios) {

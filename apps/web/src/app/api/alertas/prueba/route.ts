@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runDigest, runExecutiveReport, getAlertPrefs, resolveRecipients } from "@/lib/alerts";
 import { emailEnabled } from "@/lib/notify";
 import { alertasUser } from "../_lib/auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // "Enviar una prueba ahora": manda el email de alertas (o el reporte ejecutivo) con los datos de HOY a
 // los destinatarios configurados (o al usuario si no hay). No afecta el dedupe de los envíos automáticos.
@@ -12,6 +13,8 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const u = await alertasUser();
   if (!u.ok) return NextResponse.json({ error: u.error }, { status: u.status });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   if (!emailEnabled()) return NextResponse.json({ error: "El envío de emails no está configurado (falta RESEND_API_KEY en Vercel)." }, { status: 503 });
   const b = (await req.json().catch(() => ({}))) as { tipo?: "alertas" | "reporte" };
   const prefs = await getAlertPrefs();

@@ -3,6 +3,7 @@ import { canUseTableros, deleteReservedConfig, getDataset, saveReservedConfig, T
 import { buildKantarOverlay, KANTAR_CFG_SLUG, sanitizeKantarConfig } from "@/lib/kantar-sheet-core";
 import { missingFields } from "@/lib/research-core";
 import { KANTAR_CONST } from "@/lib/kantar-sheet";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Kantar por planilla (opcional) → /salud-marca.
 //   POST { datasetId, mapping, catMap } → guarda la config (fila reservada `cfg-kantar` de `tableros`)
@@ -16,6 +17,8 @@ function errRes(e: unknown) {
 
 export async function POST(req: Request) {
   if (!(await canUseTableros())) return NextResponse.json({ error: "sin acceso" }, { status: 403 });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const cfg = sanitizeKantarConfig(await req.json().catch(() => null));
   if (!cfg) return NextResponse.json({ error: "config inválida" }, { status: 400 });
   const faltan = missingFields("salud", cfg.mapping);
@@ -32,5 +35,7 @@ export async function POST(req: Request) {
 
 export async function DELETE() {
   if (!(await canUseTableros())) return NextResponse.json({ error: "sin acceso" }, { status: 403 });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try { await deleteReservedConfig(KANTAR_CFG_SLUG); return NextResponse.json({ ok: true }); } catch (e) { return errRes(e); }
 }

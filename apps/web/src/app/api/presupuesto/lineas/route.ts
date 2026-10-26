@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { agregarAlCatalogo, asegurarVersiones, borrarLinea, crearLineas, editarLinea, listCatalogo, listLineas, listVersiones } from "@/lib/presupuesto-server";
 import { claveDuplicado, normalizarCuentas, parseFecha, tipoDeVersion, validarLinea, type ItemCatalogo, type LineaIn } from "@/lib/presupuesto-core";
 import { conUsuario, puedeVersion } from "../_auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Renglones: POST {lineas, force?} alta (una o varias, ej. pegado desde Excel) · PATCH {id, patch} · DELETE {id}.
 // REAL = cualquiera con acceso a /funnel; BGT/4+8/8+4 = editores. Todo queda en el historial.
@@ -34,6 +35,8 @@ function limpiar(l: Partial<LineaIn>): Partial<LineaIn> {
 
 export async function POST(req: Request) {
   return conUsuario(async (u) => {
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { lineas?: Partial<LineaIn>[]; force?: boolean };
     const entrada = (b.lineas ?? []).slice(0, MAX + 1);
     if (!entrada.length) return NextResponse.json({ error: "No hay renglones para guardar." }, { status: 400 });
@@ -82,6 +85,8 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   return conUsuario(async (u) => {
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { id?: string; patch?: Partial<LineaIn> };
     if (!b.id || !b.patch) return NextResponse.json({ error: "pedido inválido" }, { status: 400 });
     const patch = limpiar(b.patch);
@@ -94,6 +99,8 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   return conUsuario(async (u) => {
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { id?: string };
     if (!b.id) return NextResponse.json({ error: "pedido inválido" }, { status: 400 });
     await borrarLinea(b.id, u.email, puedeVersion(u));

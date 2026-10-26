@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { isPathAllowed } from "@/lib/dashboard-access";
-import { getAllowedPaths } from "@/lib/usuarios-server";
+import { getAllowedPaths, exigirEdicion } from "@/lib/usuarios-server";
 import { checkRateLimit } from "@/lib/chat/rate-limit";
 import { claveFila, sanearFilas } from "@/lib/mkt-canal-core";
 import { extraerReporte, filasExistentes, guardarFilas } from "@/lib/mkt-canal-server";
@@ -78,6 +78,8 @@ export async function POST(req: Request) {
   const u = await usuario();
   if (u === null) return NextResponse.json({ error: "no autenticado" }, { status: 401 });
   if (!u) return NextResponse.json({ error: "Tu usuario no tiene acceso a Mkt Canal." }, { status: 403 });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const rl = checkRateLimit(`mkt-canal:${u}`);
   if (!rl.ok) return NextResponse.json({ error: `Demasiados archivos seguidos. Probá en ${rl.retryInSec} s.` }, { status: 429 });
   let file: unknown, clienteIn: unknown;
@@ -107,6 +109,8 @@ export async function PUT(req: Request) {
   const u = await usuario();
   if (u === null) return NextResponse.json({ error: "no autenticado" }, { status: 401 });
   if (!u) return NextResponse.json({ error: "Tu usuario no tiene acceso a Mkt Canal." }, { status: 403 });
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   const body = await req.json().catch(() => null);
   const { filas, errores } = sanearFilas(body?.filas);
   if (errores.length) return NextResponse.json({ error: "Corregí las filas marcadas antes de guardar.", errores }, { status: 400 });

@@ -9,7 +9,8 @@ import { getLatestReport, saveReport, listReports, getReport } from "@/lib/insig
 import { debeReusarDiagnostico, GUARD_HORAS } from "@/lib/insights/guard";
 import { isDiagDash, EMPTY_INSIGHTS, type Insights, type InsItem, type InsHallazgo, type InsCorr, type InsPlanAccion, type InsOportunidad } from "@/lib/insights/types";
 import { aiQuotaGate } from "@/lib/ai-quota";
-import { puedeVerTablero } from "@/lib/usuarios-server";
+import { exigirEdicion, puedeVerTablero } from "@/lib/usuarios-server";
+import { areaDeDash } from "@/lib/usuarios-core";
 
 // ============================================================================
 // DIAGNÓSTICO IA por tablero (portado de BIP, sep-2026). Correlaciona indicadores con metas,
@@ -124,6 +125,9 @@ export async function POST(req: Request) {
   const dash = String(body.dash ?? "");
   if (!isDiagDash(dash)) return NextResponse.json({ error: "tablero desconocido" }, { status: 400 });
   if (!(await puedeVerTablero(dash))) return NextResponse.json({ error: "sin acceso a ese tablero" }, { status: 403 });
+  // Generar el Diagnóstico IA gasta → solo quien edita el área de ese tablero.
+  const sinPermiso = await exigirEdicion(areaDeDash(dash));
+  if (sinPermiso) return sinPermiso;
   const force = body.force === true;
   // Guarda: si hay un diagnóstico de hace menos de GUARD_HORAS y no viene force, se devuelve el
   // guardado sin llamar a OpenAI (el cliente pregunta "¿Generar otro?" y reenvía con force).

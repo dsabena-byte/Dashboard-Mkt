@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sbAdmin } from "@/lib/supabase-admin";
 import { getPageToken, publicarImagenIG, publicarReelIG, publicarImagenFB, publicarVideoFB } from "@/lib/meta-publish";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Publica UNA pieza del calendario en la red indicada, AHORA (a mano, botón de
 // prueba). No cambia el estado ni depende del cron: sólo publica y devuelve el id.
@@ -22,6 +23,8 @@ interface Row {
 }
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const { id, red, imageUrl } = (await request.json()) as { id?: string; red?: string; imageUrl?: string };
     if (!id || !red) return NextResponse.json({ ok: false, error: "Falta id o red." }, { status: 400 });

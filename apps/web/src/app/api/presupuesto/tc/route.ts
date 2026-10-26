@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { guardarTcs } from "@/lib/presupuesto-server";
 import { tipoDeVersion } from "@/lib/presupuesto-core";
 import { conUsuario, soloEditor } from "../_auth";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Tipos de cambio por versión y mes (los pasa finanzas). PUT {cambios: [{version, mes, tc|null}]}. Solo editores.
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ export async function PUT(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
+    const sinPermiso = await exigirEdicion("marketing");
+    if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { cambios?: { version?: string; mes?: number; tc?: number | null }[] };
     const cambios = (b.cambios ?? []).slice(0, 500);
     for (const c of cambios) {

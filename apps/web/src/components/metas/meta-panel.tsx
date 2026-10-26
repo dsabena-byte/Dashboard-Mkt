@@ -82,6 +82,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -162,6 +163,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
 
   async function save() {
     setSaving(true);
+    setSaveErr(null);
     try {
       const config: MetaConfig[] = [...touchedCfg].map((k) => cfgMap[k]).filter(Boolean) as MetaConfig[];
       const valores: MetaValor[] = [...touchedVal].map((k) => {
@@ -186,6 +188,10 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
         // Re-renderiza los server components (gráficos/cards) para que tomen la meta nueva.
         // En el editor del Mapa (skipRefresh) NO: el refresh remontaría el editor cliente.
         if (!skipRefresh) router.refresh();
+      } else {
+        // Ej. 403 sin permiso de edición: se muestra el mensaje del server.
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        setSaveErr(j.error ?? "No se pudo guardar.");
       }
     } finally {
       setSaving(false);
@@ -208,6 +214,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
         </button>
         {!collapsed && (
           <div className="flex items-center gap-2">
+            {saveErr && <span className="text-[11px] text-red-600">{saveErr}</span>}
             {savedAt && !dirty && <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600"><Check className="h-3.5 w-3.5" />Guardado</span>}
             <button
               type="button"

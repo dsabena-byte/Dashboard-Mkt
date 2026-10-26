@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { previewEscenaImagen } from "@/lib/ugc";
 import { aiQuotaGate } from "@/lib/ai-quota";
+import { exigirEdicion } from "@/lib/usuarios-server";
 
 // Preview BARATO de la escena como imagen fija (fal image), para verla antes de
 // gastar en video. Devuelve { image_url }.
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const sinPermiso = await exigirEdicion("marketing");
+  if (sinPermiso) return sinPermiso;
   try {
     const { genero, escenario, edad, vestimenta, perfil } = (await request.json()) as {
       genero?: string; escenario?: string; edad?: string; vestimenta?: string; perfil?: string;
