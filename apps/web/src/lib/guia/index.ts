@@ -57,6 +57,7 @@ export const DASH_HREF: Record<string, { href: string; label: string }> = {
   "seo-search": { href: "/seo-search", label: "Optimización SEO" },
   "cuadros-basicos": { href: "/cuadros-basicos", label: "Cuadros Básicos" },
   "floor-share": { href: "/floor-share", label: "Floor Share" },
+  "cb-ventas": { href: "/cb-ventas", label: "CB Ventas" },
   "salud-marca": { href: "/salud-marca", label: "Salud de Marca" },
   mercado: { href: "/mercado", label: "Resultados Comerciales" },
   resultados: { href: "/mercado", label: "Resultados Comerciales" },

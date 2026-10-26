@@ -12,14 +12,17 @@ const PUBLIC_PATHS = PUBLIC_AUTH_PATHS;
 // "/bip" = landing comercial pública (public/bip.html + public/bip/*), sin login.
 // "/compartido" = vista pública de solo lectura de un tablero (link firmado con vencimiento; la página
 // valida firma + vencimiento + revocación y responde 404 si no vale).
+// "/api/cb-ventas/ingesta" y "/pares" = Office Script del Excel de Ventas: se autentican con su propio secreto
+// (lib/cb-ventas/ingesta-auth.ts, fail closed); solo esas dos rutas exactas, el resto de /api/cb-ventas pasa por sesión.
 const BYPASS_PATHS = ["/api/cron", "/bip", "/compartido/"];
+const BYPASS_EXACT = ["/api/cb-ventas/ingesta", "/api/cb-ventas/pares"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname === `${p}/`);
 }
 
 function isBypass(pathname: string): boolean {
-  return BYPASS_PATHS.some((p) => pathname.startsWith(p));
+  return BYPASS_EXACT.includes(pathname) || BYPASS_PATHS.some((p) => pathname.startsWith(p));
 }
 
 export async function middleware(request: NextRequest) {
