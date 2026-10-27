@@ -57,7 +57,7 @@ function SkusDetalle({ skus, hideCliente }: { skus?: SkuFaltante[]; hideCliente?
     (a, b) => a.cliente.localeCompare(b.cliente) || a.categoria.localeCompare(b.categoria) || rank(a.tipo) - rank(b.tipo),
   );
   return (
-    <div className="mt-1 mb-1 rounded border border-slate-200 bg-slate-50 max-h-56 overflow-auto">
+    <div className="mt-1 mb-1 rounded border border-slate-200 bg-slate-50 overflow-x-auto">
       <div className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400 px-2 py-1 border-b border-slate-200">{skus.length} SKUs pendientes</div>
       <table className="w-full text-[11px]">
         <tbody>
