@@ -132,9 +132,10 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
   const cliDeTienda = new Map(tiendasCad.map((t) => [String(t.id), cliDeCadena.get(normN(t.cadena)) ?? null]));
   const ponerSellIn = (p: MapaPunto, cli: string | null | undefined) => {
     const v = cli ? sellIn?.get(normN(cli)) : undefined;
-    if (cli && v) { v.forEach((x, i) => { p.vals[i] = x; }); p.cuenta = normN(cli); p.detalle = [{ label: "Cliente (CB Sell In)", valor: cli }, ...(p.detalle ?? [])]; }
+    if (cli && v) { v.forEach((x, i) => { p.vals[i] = x; }); p.cuenta = normN(cli); p.cliente = cli; p.detalle = [{ label: "Cliente (CB Sell In)", valor: cli }, ...(p.detalle ?? [])]; }
   };
-  for (const p of puntos) { const id = idDe(p.zona); if (id) ponerSellIn(p, cliDeTienda.get(id)); }
+  const cadDeTienda = new Map(tiendasCad.map((t) => [String(t.id), t.cadena]));
+  for (const p of puntos) { const id = idDe(p.zona); if (id) { ponerSellIn(p, cliDeTienda.get(id)); p.cliente ??= cadDeTienda.get(id); } }
   for (const p of puntos) {
     const id = idDe(p.zona);
     if (!id) continue; // burbujas de zona: sin dato de exhibición
@@ -151,6 +152,7 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
       vals[10] = [1, 1];
       const p: MapaPunto = { zona: `${e.cliente ?? ""} — ${e.direccion ?? e.ciudad ?? ""} (fuera del relevamiento)@x${e.id}|${e.lat}|${e.lon}|`, tiendas: 1, vals, detalle: detalle([e]) };
       ponerSellIn(p, e.tienda_id != null ? cliDeTienda.get(String(e.tienda_id)) : (cliDeCadena.get(normN(e.cliente ?? "")) ?? clienteDeNombre(e.cliente, nomSellIn)));
+      p.cliente ??= (e.tienda_id != null ? cadDeTienda.get(String(e.tienda_id)) : null) ?? e.cliente ?? undefined;
       puntos.push(p);
     }
   }
