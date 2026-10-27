@@ -16,6 +16,7 @@ import {
 import { computeCbView, isCbDefault, applyCbFilter, computeSkuDetalle, type CbView, type CbSkuDet } from "@/lib/cb-view";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
 import { MapaZonas } from "@/components/trade/mapa-zonas";
+import { mapaTrade } from "@/lib/trade-mapa";
 import { CbDetalleTienda } from "@/components/cb/cb-detalle-tienda";
 import { getTrPrecalc, trEstado, getTrCbSkuRows } from "@/lib/trade-db";
 import { puedeEditarActual } from "@/lib/usuarios-server";
@@ -162,6 +163,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const totVals = [totals.cb_pct, totals.infalt_pct, totals.estrat_pct];
   const seleccion = [...(filter.tiendas ?? []), ...(filter.clientes ?? [])].join(", ");
   const lastUpdated = await maxUpdatedAt("cuadro_basico_semanal", "cb").catch(() => null);
+  const mapa = tab === "mapa" && hasData ? await mapaTrade({ cb: v, cbFilter: filter }) : null;
 
   return (
     <div className="space-y-4">
@@ -186,12 +188,8 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
           Sin datos para los filtros seleccionados.
         </div>
-      ) : tab === "mapa" ? (
-        <MapaZonas
-          titulo="Cuadro Básico por tienda"
-          metricas={[{ label: "% CB", obj: OBJ_PCT }, { label: "% Infaltables", obj: OBJ_PCT }, { label: "% Estratégico", obj: OBJ_PCT }]}
-          puntos={(v.byZona ?? []).map((z) => ({ zona: z.zona, tiendas: z.tiendas, vals: [z.cb, z.inf, z.est] }))}
-        />
+      ) : mapa ? (
+        <MapaZonas titulo="Cuadro Básico y Floor Share por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} />
       ) : (
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

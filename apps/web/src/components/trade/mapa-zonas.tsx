@@ -1,7 +1,7 @@
 "use client";
 
 // Mapa de Argentina de CB Trade / Floor Share. Cada tienda con dirección geocodificada (master de tiendas, `zona` =
-// "N - tienda@lat|lon|provincia") es un punto propio; las que no tienen dirección quedan agrupadas en una burbuja por
+// "N - tienda@id|lat|lon|provincia") es un punto propio; las que no tienen dirección quedan agrupadas en una burbuja por
 // ZONA del maestro (CABA, AMBA Norte/Sur/Oeste, Rosario…) en su ciudad de referencia. Cada provincia toma el color de lo suyo. Zoom con rueda/botones y arrastre; el panel
 // suma SOLO lo que entra en la vista (Σ cumplidos ÷ Σ objetivo, no promedio de porcentajes).
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
@@ -32,10 +32,10 @@ const ZONAS: Record<string, { lat: number; lon: number; prov: string }> = {
 const canon = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 const PROV = new Map(AR_PROVINCES.map((p) => [canon(p.name), p.name]));
 const provMapa = (s: string) => (canon(s).includes("autonoma") ? "Capital Federal" : PROV.get(canon(s)) ?? "");
-/** Punto propio de una tienda geocodificada ("N - tienda@lat|lon|provincia") o null (= zona). */
+/** Punto propio de una tienda geocodificada ("N - tienda@id|lat|lon|provincia") o null (= zona). */
 function tiendaGeo(z: string) {
   const i = z.lastIndexOf("@"); if (i < 0) return null;
-  const [lat, lon, prov] = z.slice(i + 1).split("|");
+  const [, lat, lon, prov] = z.slice(i + 1).split("|");
   return Number.isFinite(Number(lat)) && Number.isFinite(Number(lon)) ? { label: z.slice(0, i), lat: Number(lat), lon: Number(lon), prov: provMapa(prov ?? "") } : null;
 }
 // Proyección de los paths de lib/argentina-provinces (lineal; ajustada con los bordes de 8 provincias, error < 3 px).
@@ -60,11 +60,14 @@ const tinte = (v: number | null, obj: number) => (v == null ? "#f1f5f9" : v - ob
 const pct = ([n, d]: [number, number]) => (d > 0 ? (n / d) * 100 : null);
 const suma = (xs: Array<[number, number]>): [number, number] => xs.reduce<[number, number]>((a, [n, d]) => [a[0] + n, a[1] + d], [0, 0]);
 
-export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos: MapaPunto[]; metricas: MapaMetrica[] }) {
+export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
+  titulo: string; puntos: MapaPunto[]; metricas: MapaMetrica[]; nota?: string | null; inicial?: number;
+}) {
   // Vista = centro + ancho; el alto sale de la proporción REAL del recuadro (así lo que se ve = lo que suma el panel).
   const [cam, setCam] = useState({ cx: ZONAS_CAJA.x + ZONAS_CAJA.w / 2, cy: ZONAS_CAJA.y + ZONAS_CAJA.h / 2, w: 0 });
   const [asp, setAsp] = useState(1.5);
-  const [m, setM] = useState(0);
+  const [m, setM] = useState(inicial);
+  const [sel, setSel] = useState<string | null>(null); // ficha: todas las métricas de un punto
   const [hover, setHover] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; cam: typeof cam } | null>(null);
@@ -92,7 +95,9 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
     return new Map([...out].map(([k, v]) => [k, pct(suma(v))]));
   }, [ubicados, m]);
 
-  const enVista = ubicados.filter((p) => p.x >= vb.x && p.x <= vb.x + vb.w && p.y >= vb.y && p.y <= vb.y + vb.h);
+  const enVistaTodos = ubicados.filter((p) => p.x >= vb.x && p.x <= vb.x + vb.w && p.y >= vb.y && p.y <= vb.y + vb.h);
+  // Solo los puntos con dato en la métrica elegida (un punto puede tener CB y no Floor Share, o al revés).
+  const enVista = enVistaTodos.filter((p) => (p.vals[m]?.[1] ?? 0) > 0);
   const escala = Math.min(1, vb.w / FULL.w); // las burbujas no crecen al hacer zoom
   const maxT = Math.max(1, ...ubicados.map((p) => p.tiendas));
 
@@ -148,7 +153,7 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
               const v = pct(p.vals[m]!);
               const r = (p.tienda ? 3.5 : 4 + 14 * Math.sqrt(p.tiendas / maxT)) * escala;
               return (
-                <g key={p.zona} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)}>
+                <g key={p.zona} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)} className="cursor-pointer">
                   <circle cx={p.x} cy={p.y} r={r} fill={color(v, metrica.obj)} fillOpacity={0.75} stroke="#fff" strokeWidth={1.2 * escala} />
                   {(hover === p.zona || (p.tienda ? escala < 0.06 : escala < 0.45)) && (
                     <text x={p.x + r + 2 * escala} y={p.y + 3 * escala} fontSize={9 * escala} fontWeight={600} fill="#0f172a">
@@ -161,10 +166,36 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
           </svg>
           <p className="mt-1 text-[11px] text-muted-foreground">
             Rueda del mouse o +/− para hacer zoom, arrastrá para moverte. Punto = tienda ({nTiendas} con dirección); burbuja grande = tiendas sin dirección agrupadas por zona. Color = vs objetivo.
-            {sinUbicar > 0 ? ` ${sinUbicar} tiendas sin zona cargada no aparecen en el mapa.` : ""}
+            {sinUbicar > 0 ? ` ${sinUbicar} tiendas sin zona cargada no aparecen en el mapa.` : ""} Tocá un punto para ver su ficha.{nota ? ` ${nota}` : ""}
           </p>
         </div>
         <div className="space-y-2 text-xs">
+          {(() => {
+            const p = ubicados.find((u) => u.zona === sel);
+            if (!p) return null;
+            return (
+              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                <div className="mb-1 flex items-start justify-between gap-2">
+                  <div className="font-semibold">{p.label}</div>
+                  <button onClick={() => setSel(null)} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar ficha">✕</button>
+                </div>
+                <table className="w-full">
+                  <tbody>
+                    {metricas.map((x, i) => {
+                      const v = pct(p.vals[i]!);
+                      return (
+                        <tr key={x.label} className="border-t border-blue-100">
+                          <td className="py-0.5">{x.label}</td>
+                          <td className="text-right font-semibold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "sin dato" : `${v.toFixed(0)}%`}</td>
+                          <td className="w-12 text-right text-muted-foreground tabular-nums">obj {x.obj}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
           <div className="rounded-lg border p-3">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">En la vista</div>
             <div className="mt-1 text-2xl font-bold" style={{ color: color(pct(tot), metrica.obj) }}>{pct(tot) == null ? "—" : `${pct(tot)!.toFixed(1)}%`}</div>
@@ -176,7 +207,7 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
               {[...enVista].sort((a, b) => (pct(a.vals[m]!) ?? -1) - (pct(b.vals[m]!) ?? -1)).slice(0, 40).map((p) => {
                 const v = pct(p.vals[m]!);
                 return (
-                  <tr key={p.zona} className={`border-t ${hover === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)}>
+                  <tr key={p.zona} className={`cursor-pointer border-t ${hover === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)}>
                     <td className="py-1">{p.label}</td>
                     <td className="text-right tabular-nums">{p.tiendas}</td>
                     <td className="text-right font-semibold tabular-nums" style={{ color: color(v, metrica.obj) }}>{v == null ? "—" : `${v.toFixed(0)}%`}</td>
