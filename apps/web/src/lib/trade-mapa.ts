@@ -6,7 +6,10 @@ import "server-only";
 import { getCbRowsFast, enriquecerCb, getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-mirror";
 import { computeCbView, isCbDefault, type CbView } from "@/lib/cb-view";
 import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
-import { getTrPrecalc, trEstado, getTrExhibiciones, getTrContactos } from "@/lib/trade-db";
+import { getTrPrecalc, trEstado, getTrExhibiciones, getTrContactos, trAll } from "@/lib/trade-db";
+import { getCbVentasDatos } from "@/lib/cb-ventas/server";
+import { calcularPorcentajes, OBJETIVO_SELLIN } from "@/lib/cb-ventas/metrics";
+import { hoyAR, vigenteEnFecha } from "@/lib/cb-ventas/vigencia";
 import { crearEnriquecedorFs } from "@/lib/fs-enrich";
 import type { ExhibicionTienda } from "@/components/trade/exhibicion-fotos";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS } from "@/lib/fs-objetivos";
@@ -16,6 +19,23 @@ import type { FloorShareFilter } from "@/lib/floor-share-queries";
 import type { MapaMetrica, MapaPunto } from "@/components/trade/mapa-zonas";
 
 const OBJ_CB = 80;
+const N_MET = 9; // CB Trade ×3 · FS ×4 · exhibición especial · CB Sell In
+const normN = (s: string | null | undefined) =>
+  (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+
+/** CB Sell In (CB Ventas, compras FC + BO) por cliente/razón social, con las mismas fórmulas y alcance del tablero /cb-ventas.
+ *  null = el usuario no ve CB Ventas o no hay datos. */
+async function cbSellInPorCliente(): Promise<Map<string, [number, number]> | null> {
+  const d = await getCbVentasDatos().catch(() => null);
+  if (d?.estado !== "ok" || !d.cuadroBasico.length) return null;
+  const hoy = hoyAR();
+  const ctx = { hayFiltroMes: false, mesEnCurso: Number(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", month: "numeric" }).format(new Date(d.ventas.generatedAt))) };
+  const porCli = new Map<string, typeof d.cuadroBasico>();
+  for (const i of d.cuadroBasico) if (vigenteEnFecha(i, hoy)) porCli.set(i.cliente, [...(porCli.get(i.cliente) ?? []), i]);
+  const out = new Map<string, [number, number]>();
+  for (const [cli, its] of porCli) { const p = calcularPorcentajes(its, d.ventas.rows, ctx); out.set(normN(cli), [p.cumplidosCB, p.totalCB]); }
+  return out;
+}
 
 export async function cargarCbView(filter: CbFilter): Promise<CbView> {
   let view: CbView | null = null;
@@ -64,7 +84,7 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
   const out = new Map<string, MapaPunto>();
   const poner = (zona: string, tiendas: number, desde: number, vals: Array<[number, number]>) => {
     const k = idDe(zona) ?? `zona:${zona}`;
-    const p = out.get(k) ?? { zona, tiendas: 0, vals: Array.from({ length: 8 }, () => vacio) };
+    const p = out.get(k) ?? { zona, tiendas: 0, vals: Array.from({ length: N_MET }, () => vacio) };
     p.tiendas = Math.max(p.tiendas, tiendas);
     vals.forEach((v, i) => { p.vals[desde + i] = v; });
     out.set(k, p);
@@ -85,19 +105,34 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
     ...(e.fotos?.length ? [{ label: "Fotos", valor: "", fotos: e.fotos }]
       : e.link_fotos?.startsWith("http") ? [{ label: "Fotos", valor: "ver en Drive", href: e.link_fotos }] : []),
   ]);
+  // CB Sell In: tienda → cadena → cliente SAP (tr_cadenas.cliente) → % CB Ventas de ese cliente (el mismo para todas sus tiendas).
+  const [sellIn, tiendasCad, cadenas] = await Promise.all([
+    cbSellInPorCliente(),
+    trAll<{ id: number; cadena: string }>("tr_tiendas?select=id,cadena").catch(() => []),
+    trAll<{ clave: string; cliente: string | null }>("tr_cadenas?select=clave,cliente", "clave").catch(() => []),
+  ]);
+  const cliDeCadena = new Map(cadenas.filter((c) => c.cliente).map((c) => [c.clave, c.cliente!]));
+  const cliDeTienda = new Map(tiendasCad.map((t) => [String(t.id), cliDeCadena.get(t.cadena) ?? null]));
+  for (const p of puntos) {
+    const id = idDe(p.zona);
+    if (!id) continue;
+    const cli = cliDeTienda.get(id);
+    const v = cli ? sellIn?.get(normN(cli)) : undefined;
+    if (cli && v) { p.vals[8] = v; p.cuenta = cli; p.detalle = [{ label: "Cliente (CB Sell In)", valor: cli }, ...(p.detalle ?? [])]; }
+  }
   for (const p of puntos) {
     const id = idDe(p.zona);
     if (!id) continue; // burbujas de zona: sin dato de exhibición
     const es = porTienda.get(id) ?? [];
     p.vals[7] = [es.length ? 1 : 0, 1];
-    if (es.length) p.detalle = detalle(es);
+    if (es.length) p.detalle = [...(p.detalle ?? []), ...detalle(es)];
   }
   const filtraTiendas = recorte || ("cb" in base ? base.cbFilter : base.fsFilter).promotores?.length || ("cb" in base ? base.cbFilter : base.fsFilter).supervisores?.length;
   if (!filtraTiendas) {
     const enMapa = new Set(puntos.map((p) => idDe(p.zona)));
     for (const e of exh) {
       if (e.lat == null || e.lon == null || (e.tienda_id != null && enMapa.has(String(e.tienda_id)))) continue;
-      const vals: Array<[number, number]> = Array.from({ length: 8 }, () => vacio);
+      const vals: Array<[number, number]> = Array.from({ length: N_MET }, () => vacio);
       vals[7] = [1, 1];
       puntos.push({ zona: `${e.cliente ?? ""} — ${e.direccion ?? e.ciudad ?? ""} (fuera del relevamiento)@x${e.id}|${e.lat}|${e.lon}|`, tiendas: 1, vals, detalle: detalle([e]) });
     }
@@ -106,12 +141,17 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
   return {
     puntos,
     metricas: [
-      { label: "CB", obj: OBJ_CB }, { label: "CB Infaltables", obj: OBJ_CB }, { label: "CB Estratégico", obj: OBJ_CB },
+      { label: "CB Trade", obj: OBJ_CB }, { label: "CB Trade Infaltables", obj: OBJ_CB }, { label: "CB Trade Estratégico", obj: OBJ_CB },
       { label: "FS general", obj: r1(obj?.general ?? 0) }, { label: "FS Lavado", obj: obj?.lavado ?? 0 },
       { label: "FS Refrigeración", obj: obj?.refri ?? 0 }, { label: "FS Cocción", obj: obj?.coccion ?? 0 },
       { label: "Exhibición especial", obj: 100, binaria: true },
+      { label: "CB Sell In (ventas)", obj: OBJETIVO_SELLIN, porCuenta: true },
     ],
-    nota: !fs ? "Floor Share no disponible." : !cb ? "Cuadro Básico no disponible." : obj ? `Meta FS de ${MESES_FS[obj.mesIdx]} ${obj.anio}.` : null,
+    nota: [
+      !fs ? "Floor Share no disponible." : !cb ? "Cuadro Básico no disponible." : obj ? `Meta FS de ${MESES_FS[obj.mesIdx]} ${obj.anio}.` : null,
+      "CB Trade = presencia del SKU en la góndola de cada tienda (relevamiento). CB Sell In = compras del cliente (facturas + pedidos, CB Ventas): es por cliente, cada tienda muestra el de su cliente.",
+      sellIn ? null : "CB Sell In no disponible (sin acceso a CB Ventas o sin datos).",
+    ].filter(Boolean).join(" "),
   };
 }
 
