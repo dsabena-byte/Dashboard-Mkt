@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 // Edición puntual de los maestros de Trade: Tiendas (alta/baja, datos, promotor/supervisor con fecha y sugerencias
-// del último U3), Cadenas (cliente SAP, unir duplicadas), SKUs y Objetivos de Floor Share. Cada cambio se audita.
+// del último U3), Cadenas (cliente SAP, unir duplicadas), SKUs. Cada cambio se audita.
 
-type Entidad = "tiendas" | "cadenas" | "skus" | "objetivos";
+type Entidad = "tiendas" | "cadenas" | "skus";
 type Fila = Record<string, unknown>;
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -40,7 +40,6 @@ export function MaestrosTrade({ entidad }: { entidad: Entidad }) {
       {entidad === "tiendas" && <Tiendas data={data} hacer={hacer} />}
       {entidad === "cadenas" && <Cadenas filas={(data.cadenas as Fila[]) ?? []} hacer={hacer} />}
       {entidad === "skus" && <Skus filas={(data.skus as Fila[]) ?? []} hacer={hacer} />}
-      {entidad === "objetivos" && <Objetivos data={data.objetivos as { valor: Record<string, number> } | null} hacer={hacer} />}
     </div>
   );
 }
@@ -203,23 +202,5 @@ function Skus({ filas, hacer }: { filas: Fila[]; hacer: Hacer }) {
       </div>
       {mas}
     </>
-  );
-}
-
-function Objetivos({ data, hacer }: { data: { valor: Record<string, number> } | null; hacer: Hacer }) {
-  const [v, setV] = useState({ lavado: 32, refrigeracion: 25, coccion: 23, ...(data?.valor ?? {}) });
-  return (
-    <section className="space-y-3 rounded-xl border bg-card p-4 text-sm">
-      <p className="text-xs text-muted-foreground">Objetivo de share de góndola de Drean por categoría. Se usa en Floor Share (tarjetas y semáforos) y en el cruce CB × Floor Share.</p>
-      <div className="flex flex-wrap gap-4">
-        {(["lavado", "refrigeracion", "coccion"] as const).map((k) => (
-          <label key={k} className="flex flex-col text-xs capitalize">{k === "refrigeracion" ? "Refrigeración" : k === "coccion" ? "Cocción" : "Lavado"} (%)
-            <input type="number" step="0.5" className="w-24 rounded border px-2 py-1" value={v[k]} onChange={(e) => setV({ ...v, [k]: Number(e.target.value) })} />
-          </label>
-        ))}
-      </div>
-      <button className="rounded bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white" onClick={() => void hacer({ entidad: "objetivos", valor: v }, "Objetivos guardados.")}>Guardar</button>
-      <p className="text-[11px] text-muted-foreground">El calendario (semana → mes) sigue siendo el de semanas ISO de todo el tablero; no se edita acá.</p>
-    </section>
   );
 }

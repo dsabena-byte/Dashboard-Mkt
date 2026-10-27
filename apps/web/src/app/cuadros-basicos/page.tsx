@@ -16,10 +16,9 @@ import {
 import { computeCbView, isCbDefault, type CbView } from "@/lib/cb-view";
 import { getTrPrecalc, trEstado } from "@/lib/trade-db";
 import { puedeEditarActual } from "@/lib/usuarios-server";
-import { TradeCruceTab } from "@/components/trade/cruce-tab";
 import { CargaDatos } from "@/components/trade/carga-datos";
 import { MaestrosTrade } from "@/components/trade/maestros";
-import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
+import { DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -55,9 +54,8 @@ function cellBg(pct: number | null): string {
 }
 
 const TABS = [
-  { key: "overview", label: "Overview", href: "/cuadros-basicos" },
+  { key: "overview", label: "Cuadro Básico Trade", href: "/cuadros-basicos" },
   { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" },
-  { key: "cruce", label: "CB × Floor Share", href: "/cuadros-basicos?tab=cruce" },
 ];
 // Solo quien puede editar Trade (exigirEdicion("trade")) ve la carga y los maestros.
 const TABS_EDITOR = [
@@ -65,7 +63,6 @@ const TABS_EDITOR = [
   { key: "tiendas", label: "Tiendas", href: "/cuadros-basicos?tab=tiendas" },
   { key: "cadenas", label: "Cadenas", href: "/cuadros-basicos?tab=cadenas" },
   { key: "skus", label: "SKUs", href: "/cuadros-basicos?tab=skus" },
-  { key: "objetivos", label: "Objetivos FS", href: "/cuadros-basicos?tab=objetivos" },
 ];
 function TabBar({ tab, editor }: { tab: string; editor: boolean }) {
   return <DashTabBar items={TABS} active={tab} after={editor ? TABS_EDITOR : []} />;
@@ -91,23 +88,16 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const tab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
   const editor = await puedeEditarActual("trade");
 
-  // Pestañas que cargan su propia data recién al abrirlas (no pagan el overview).
-  if (tab === "cruce") {
+  // Pestañas que cargan su propia data recién al abrirlas (no pagan el overview). Sin pestaña Diagnóstico (pedido del user):
+  // por eso NO se envuelve en <DashTabs> (sin ese contexto, <DashTabBar> no agrega "Diagnóstico e Inteligencia").
+  if (["carga", "tiendas", "cadenas", "skus"].includes(tab)) {
     return (
-      <DashTabs dash="cuadros-basicos" className="space-y-4">
-        <Encabezado tab={tab} editor={editor} />
-        <TradeCruceTab />
-      </DashTabs>
-    );
-  }
-  if (["carga", "tiendas", "cadenas", "skus", "objetivos"].includes(tab)) {
-    return (
-      <DashTabs dash="cuadros-basicos" className="space-y-4">
+      <div className="space-y-4">
         <Encabezado tab={tab} editor={editor} />
         {!editor ? (
           <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">No tenés permiso para editar Trade. Pedíselo al administrador.</div>
-        ) : tab === "carga" ? <CargaDatos /> : <MaestrosTrade entidad={tab as "tiendas" | "cadenas" | "skus" | "objetivos"} />}
-      </DashTabs>
+        ) : tab === "carga" ? <CargaDatos /> : <MaestrosTrade entidad={tab as "tiendas" | "cadenas" | "skus"} />}
+      </div>
     );
   }
 
@@ -130,7 +120,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       sugError = err instanceof Error ? err.message : String(err);
     }
     return (
-      <DashTabs dash="cuadros-basicos" className="space-y-4">
+      <div className="space-y-4">
         <Encabezado tab={tab} editor={editor} />
         {sugError && (
           <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">
@@ -143,7 +133,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           </div>
         )}
         <CbSuggestionsTab baseline={baseline} suggestions={suggestions} details={details} />
-      </DashTabs>
+      </div>
     );
   }
 
@@ -171,7 +161,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const lastUpdated = await maxUpdatedAt("cuadro_basico_semanal", "cb").catch(() => null);
 
   return (
-    <DashTabs dash="cuadros-basicos" className="space-y-4">
+    <div className="space-y-4">
       <Encabezado tab={tab} editor={editor} lastUpdated={lastUpdated} />
 
       <MetaPanel
@@ -208,15 +198,10 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
               title="Estratégico" medida="% Estratégicos presentes" value={totals.estrat_pct} obj={OBJ_PCT}
               contexto={`${totals.estrat_ok.toLocaleString()} / ${totals.estrat_target.toLocaleString()}`}
             />
-            <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tiendas relevadas</div>
-              <div className="mt-0.5 text-[10px] text-muted-foreground/70">Según filtros aplicados</div>
-              <div className="mt-2 text-3xl font-bold tabular-nums tracking-tight">{totals.tiendas}</div>
-              <div className="mt-3 flex items-center justify-between border-t pt-2 text-[11px]">
-                <span className="text-muted-foreground">Universo histórico</span>
-                <span className="rounded-full bg-muted px-2 py-0.5 font-semibold tabular-nums text-foreground">{totalTiendasRelevadas}</span>
-              </div>
-            </div>
+            <KpiObjCard
+              title="Tiendas relevadas" medida="Según filtros aplicados" value={totals.tiendas} obj={null} unit="" decimals={0}
+              contexto={`Universo histórico: ${totalTiendasRelevadas}`}
+            />
           </section>
 
           {weekly.length > 1 && (
@@ -323,7 +308,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           </section>
         </>
       )}
-    </DashTabs>
+    </div>
   );
 }
 

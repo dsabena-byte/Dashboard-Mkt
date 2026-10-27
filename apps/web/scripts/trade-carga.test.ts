@@ -1,11 +1,10 @@
-// Test de "Cargar datos" de Trade (parseo, detección por contenido, validación, qué falta), del cruce CB × FS y de
+// Test de "Cargar datos" de Trade (parseo, detección por contenido, validación, qué falta) y de
 // las Sugerencias. Fixtures SINTÉTICAS (sin datos reales). Correr: cd apps/web && npx tsx scripts/trade-carga.test.ts
 import assert from "node:assert/strict";
 import {
   decodificar, parseCsv, detectarTipo, infoDesdeNombre, parseCb, parseFs, parseU3, parseTiendas, validarFila, faltantes,
   resumir, normClave, splitTienda, esMarcaBasura,
 } from "../src/lib/trade-carga-core";
-import { construirCruce } from "../src/lib/trade-cruce";
 import { calcularSugerencias } from "../src/lib/trade-sugerencias-core";
 
 let n = 0;
@@ -129,24 +128,6 @@ eq(f, [
   { anio: 2026, semana: 38, falta: ["Floor Share Refrigeración", "Floor Share Cocción"] },
   { anio: 2026, semana: 37, falta: ["Cuadro Básico"] },
 ], "qué falta: CB 37 y FS de la 38");
-
-// ── Cruce CB × Floor Share ──
-const cbRows = [
-  { semana: 40, tienda: "1 - A", numero_tienda: "1", sku: "S1", cliente: "C1", division: "LAVADO Y SECADO", target_cb: 1, real_cb: 0, target_inf: 1, real_inf: 0, tipo_sku: "Infaltable" },
-  { semana: 41, tienda: "1 - A", numero_tienda: "1", sku: "S1", cliente: "C1", division: "LAVADO Y SECADO", target_cb: 1, real_cb: 1, target_inf: 1, real_inf: 1, tipo_sku: "Infaltable" },
-  { semana: 41, tienda: "1 - A", numero_tienda: "1", sku: "S2", cliente: "C1", division: "LAVADO Y SECADO", target_cb: 1, real_cb: 0, target_inf: 0, real_inf: 0, tipo_sku: "Estratégico" },
-];
-const fsRows = [
-  { semana: 41, categoria: "lavado", numero_tienda: "1", nombre_tienda: "A", marca: "Drean", unidades: 2 },
-  { semana: 41, categoria: "lavado", numero_tienda: "1", nombre_tienda: "A", marca: "Otra", unidades: 8 },
-];
-const cr = construirCruce(cbRows, fsRows, { lavado: 32 }, { cadena: new Map(), promotor: new Map([["1", "P"]]), supervisor: new Map() });
-const t1 = cr.tiendas[0]!;
-eq([t1.pctCB, t1.fsShare, t1.fsTarget, t1.cuadrante], [50, 20, 32, "surtido"], "cruce: última semana por SKU, share = Drean ÷ Σ marcas");
-// 1 SKU presente con 2 u. Drean → reponer 1 faltante suma 2 u.: (2+2)/(10+2) = 33,3% → +13,3 pp
-eq([t1.upliftPp, t1.fsShareProyectado], [13.3, 33.3], "cruce: uplift estimado");
-eq(cr.promotores.map((p) => p.nombre), ["P"], "cruce: rollup por promotor");
-eq(cr.matriz.surtido, 1, "cruce: matriz");
 
 // ── Sugerencias (port de las vistas del proyecto CB) ──
 const sug = calcularSugerencias(

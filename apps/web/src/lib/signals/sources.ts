@@ -46,6 +46,7 @@ import { getWebMonthlyByChannelRows } from "@/lib/web-monthly-channel";
 import type { WebCalidadSnapshot } from "@/lib/web-calidad-shared";
 import type { DiaWeb } from "@/lib/web-forecast";
 import type { SeoAvanzadoInput } from "./seo-avanzado";
+import { FS_OBJETIVOS_DEFAULT } from "@/lib/fs-objetivos";
 import type { CbSignalInput, FsSignalInput, UgcSignalInput, MercadoRowLite, SaludSignalInput, MktCanalRowLite, ConvSignalInput, CuatriLite } from "./drean";
 
 const safe = async <T>(p: Promise<T>): Promise<T | null> => { try { return await p; } catch { return null; } };
@@ -290,7 +291,8 @@ export function loadCruces(ctx: LoadCtx): Promise<CrucesInput | null> {
 }
 
 // ── Trade ──
-const FS_OBJ: Record<string, number> = { Lavado: 32, "Refrigeración": 25, "Cocción": 23 }; // = FS_OBJ_PCT (floor-share-queries)
+// Respaldo para meses sin meta (la meta mensual por categoría manda: metaCat).
+const FS_OBJ: Record<string, number> = { Lavado: FS_OBJETIVOS_DEFAULT.lavado, "Refrigeración": FS_OBJETIVOS_DEFAULT.refrigeracion, "Cocción": FS_OBJETIVOS_DEFAULT.coccion };
 export function loadCb(ctx: LoadCtx): Promise<CbSignalInput | null> {
   return ctx.once("cb", async () => {
     const y = year(), now = new Date();

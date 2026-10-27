@@ -194,7 +194,7 @@ export const DASH_KNOW: Record<string, DashKnow> = {
     title: "Cómo leer el Floor Share (share de góndola)",
     intro: "El Floor Share es la participación de Drean en el espacio de exhibición de cada categoría frente a la competencia. Es el share que se juega en la tienda: <b>la presencia física es disponibilidad mental en el momento de compra</b>, y se lee contra el share de ventas para detectar oportunidades de negociación.",
     bullets: [
-      "<b>Diseño de la estrategia:</b> objetivos por categoría: <b>Lavado 32% · Refrigeración 25% · Cocción 23%</b>. Cada categoría compite con marcas distintas: el ranking de marcas muestra contra quién se gana o se pierde espacio.",
+      "<b>Diseño de la estrategia:</b> objetivos por categoría y por mes (metas mensuales que se editan en el propio tablero; sin meta cargada: <b>Lavado 32% · Refrigeración 25% · Cocción 23%</b>). Cada categoría compite con marcas distintas: el ranking de marcas muestra contra quién se gana o se pierde espacio.",
       "<b>Despliegue y ejecución:</b> priorizá la negociación de exhibición donde el share de ventas (GfK) supera al de góndola: ahí el retorno por punto de espacio ganado es mayor.",
       "<b>Impacto en el negocio:</b> la regla del share justo dice que el floor share debería ser al menos igual al share de ventas; por debajo, la marca subexpone lo que el mercado ya elige.",
     ],

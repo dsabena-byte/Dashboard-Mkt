@@ -5,8 +5,7 @@ import "server-only";
 //   tr_precalc 'cb_default' (vista de /cuadros-basicos sin filtros), fs_precomputed id=1 (vista default de
 //   /floor-share, 26 semanas) y trade_monthly (Seguimiento).
 
-import { trEstado, trInvalidarEstado, getTrCbRows, getTrCbDetalle, getTrFsRows, getTrTiendaCliente, getFsObjetivos, setTrPrecalc, trUpsert, trAll } from "./trade-db";
-import { construirCruce } from "./trade-cruce";
+import { trEstado, trInvalidarEstado, getTrCbRows, getTrFsRows, getTrTiendaCliente, setTrPrecalc, trUpsert } from "./trade-db";
 import { computeCbView } from "./cb-view";
 import { computeFsView, type FsEnrichedRow } from "./fs-view";
 import { tradeMonthlyDeFilas } from "./trade-monthly";
@@ -37,25 +36,6 @@ export async function refrescarDerivados(): Promise<Record<string, string>> {
       .map((r) => ({ ...r, cliente: cliente.get(r.numero_tienda) ?? "Sin cliente" }));
     await trUpsert("fs_precomputed", [{ id: 1, data: computeFsView(enriched, {}), updated_at: new Date().toISOString() }], "id");
     out.fs_default = `${enriched.length} filas, semanas ${Math.min(...semanas)}–${Math.max(...semanas)}`;
-  }
-
-  if (cbRows.length) {
-    // Cruce CB × Floor Share (pestaña de /cuadros-basicos): estado actual por tienda, con SKU.
-    const [det, obj, tiendas, asig] = await Promise.all([
-      getTrCbDetalle(est.cb!), getFsObjetivos(),
-      trAll<{ id: number; numero: string }>("tr_tiendas?select=id,numero"),
-      trAll<{ tienda_id: number; promotor: string | null; supervisor: string | null }>("tr_tienda_asignacion?select=tienda_id,promotor,supervisor&hasta=is.null"),
-    ]);
-    const numDe = new Map(tiendas.map((t) => [t.id, t.numero]));
-    const promotor = new Map<string, string>(), supervisor = new Map<string, string>();
-    for (const a of asig) {
-      const n = numDe.get(a.tienda_id); if (!n) continue; // shortcut: el número no es único entre cadenas; gana la primera asignación
-      if (a.promotor && !promotor.has(n)) promotor.set(n, a.promotor);
-      if (a.supervisor && !supervisor.has(n)) supervisor.set(n, a.supervisor);
-    }
-    const cruce = construirCruce(det, fsAll, { ...obj }, { cadena: new Map(), promotor, supervisor });
-    await setTrPrecalc("cruce", { ...cruce, calculado: new Date().toISOString() });
-    out.cruce = `${cruce.tiendas.length} tiendas`;
   }
 
   const t = tradeMonthlyDeFilas(cbRows, fsAll, anio);
