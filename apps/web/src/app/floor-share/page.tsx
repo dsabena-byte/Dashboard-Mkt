@@ -12,7 +12,8 @@ import { getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-
 import { isoWeekToMes } from "@/lib/cb-queries";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
 import { MapaZonas } from "@/components/trade/mapa-zonas";
-import { mapaTrade } from "@/lib/trade-mapa";
+import { mapaTrade, exhibicionesDeTiendas } from "@/lib/trade-mapa";
+import { ExhibicionesTienda } from "@/components/trade/exhibicion-fotos";
 import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
@@ -107,6 +108,10 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const sub = `${periodo ? `${periodo} · ` : ""}Δ vs objetivo`;
 
   const esMapa = searchParams.tab === "mapa";
+  // Al filtrar tiendas: sus exhibiciones especiales con fotos (clave de tienda FS = "número|nombre").
+  const exhib = !esMapa && filter.tiendas?.length
+    ? await exhibicionesDeTiendas(filter.tiendas.map((k) => { const [numero = "", nombre = ""] = k.split("|"); return { numero, nombre, label: `${numero} - ${nombre}` }; })).catch(() => [])
+    : [];
   const mapa = esMapa && hasData ? await mapaTrade({ fs: v, fsFilter: filter }) : null;
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
 
@@ -190,6 +195,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
             <KpiObjCard title="Cocción" medida="Share Drean góndola" value={overall.coccion.share} obj={OBJ.coccion} objLabel={objLabel(OBJ.coccion)}
               contexto={`${overall.coccion.drean_units.toLocaleString()} / ${overall.coccion.total_units.toLocaleString()}`} />
           </section>
+
+          <ExhibicionesTienda items={exhib} />
 
           {/* Como la app vieja: ranking + evolución · cliente + promotor · tienda. */}
           <section className="grid gap-4 lg:grid-cols-2">
