@@ -7,8 +7,9 @@ import "server-only";
 
 import { getCbRows, type CbRow } from "./cb-queries";
 import { getFloorShareRows, type FloorShareRow } from "./floor-share-queries";
-import type { FsView } from "./fs-view";
-import { trEstado, getTrCbRows, getTrFsRows, getTrMaxSemanaFs, getTrTiendaCliente } from "./trade-db";
+import type { FsView, FsEnrichedRow } from "./fs-view";
+import { crearEnriquecedorFs } from "./fs-enrich";
+import { trEstado, getTrCbRows, getTrFsRows, getTrMaxSemanaFs, getTrTiendaCliente, getTrContactos } from "./trade-db";
 
 // El principal (rápido) devuelve hasta 10k filas por request → páginas grandes para
 // leer floor_share_mirror (~135k filas) en pocas idas. Con PAGE=1000 eran 136 páginas.
@@ -95,6 +96,19 @@ export async function getTiendaClienteMapFast(): Promise<Map<string, string>> {
   if ((await trEstado()).cb != null) return getTrTiendaCliente();
   const rows = await fetchAllPrincipal<{ numero_tienda: string; cliente: string }>(`cb_tienda_cliente_mirror?select=numero_tienda,cliente`);
   return new Map(rows.map((r) => [r.numero_tienda, r.cliente]));
+}
+
+/** Filas de Floor Share listas para la vista: cliente/promotor/supervisor como la app vieja; sin tiendas excluidas. */
+export async function enriquecerFs(raw: FloorShareRow[]): Promise<FsEnrichedRow[]> {
+  const contactos = (await trEstado()).fs != null ? await getTrContactos().catch(() => []) : [];
+  const enr = crearEnriquecedorFs(contactos);
+  const out: FsEnrichedRow[] = [];
+  for (const r of raw) {
+    if (r.marca == null || r.categoria == null || r.numero_tienda == null || r.semana == null || !(r.unidades > 0)) continue;
+    const p = enr(r.numero_tienda, r.nombre_tienda ?? "");
+    if (p) out.push({ ...r, ...p });
+  }
+  return out;
 }
 
 // Vista default de Floor Share PRECALCULADA (la llena el cron). null si no existe.

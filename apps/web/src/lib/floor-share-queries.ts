@@ -38,6 +38,8 @@ export interface FloorShareFilter {
   categorias?: string[];
   tiendas?: string[];
   clientes?: string[];
+  supervisores?: string[];
+  promotores?: string[];
   marcas?: string[];
 }
 
@@ -368,7 +370,8 @@ export interface TiendaShare {
 export function shareByTienda<T extends FloorShareRow & { cliente: string }>(rows: T[]): TiendaShare[] {
   const map = new Map<string, TiendaShare>();
   for (const r of rows) {
-    let acc = map.get(r.numero_tienda);
+    const tk = `${r.numero_tienda}|${r.nombre_tienda ?? ""}`; // el número solo se repite entre cadenas
+    let acc = map.get(tk);
     if (!acc) {
       acc = {
         numero_tienda: r.numero_tienda,
@@ -379,7 +382,7 @@ export function shareByTienda<T extends FloorShareRow & { cliente: string }>(row
         refri: emptyBlock(),
         coccion: emptyBlock(),
       };
-      map.set(r.numero_tienda, acc);
+      map.set(tk, acc);
     }
     const u = r.unidades ?? 0;
     acc.total.total_units += u;

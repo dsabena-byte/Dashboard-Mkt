@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     const defWeeks = new Set(allWeeks.slice(0, 26));
     const enriched: FsEnrichedRow[] = fsRows
       .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null && defWeeks.has(r.semana))
-      .map((r) => ({ ...r, cliente: tiendaCliente.get(r.numero_tienda) ?? "Sin cliente" }));
+      .map((r) => ({ ...r, cliente: tiendaCliente.get(r.numero_tienda) ?? "Sin cliente", promotor: "Sin asignar", supervisor: "Sin asignar" }));
     const view = computeFsView(enriched, {});
     const fsViewRes = await fetch(`${url}/rest/v1/fs_precomputed?on_conflict=id`, {
       method: "POST",

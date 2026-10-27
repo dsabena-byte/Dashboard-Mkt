@@ -2,16 +2,15 @@ import { FloorShareFilters } from "@/components/floor-share/floor-share-filters"
 import { FloorShareBrandRanking, FloorShareWeeklyChart } from "@/components/floor-share/floor-share-charts";
 import { LastUpdated } from "@/components/last-updated";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
-import { colorForBrand } from "@/lib/floor-share-colors";
 import {
   computeOverall,
-  normalizeCategoria,
   OWN_BRAND_FS,
   type CategoryBlock,
   type FloorShareFilter,
 } from "@/lib/floor-share-queries";
-import { getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast, getFsPrecomputed } from "@/lib/cb-mirror";
-import { computeFsView, isFsDefault, type FsView, type FsEnrichedRow } from "@/lib/fs-view";
+import { getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-mirror";
+import { isoWeekToMes } from "@/lib/cb-queries";
+import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { MetaEvolChart } from "@/components/pauta/meta-evol-chart";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
@@ -38,12 +37,6 @@ function paramArr(searchParams: PageProps["searchParams"], key: string): string[
   return Array.isArray(v) ? v : [v];
 }
 
-function cellBg(pct: number | null): string {
-  if (pct == null) return "text-muted-foreground";
-  if (pct >= 30) return "bg-emerald-50 text-emerald-700 font-semibold";
-  if (pct >= 15) return "bg-amber-50 text-amber-700 font-semibold";
-  return "bg-rose-50 text-rose-600 font-semibold";
-}
 
 export default async function FloorSharePage({ searchParams }: PageProps) {
   try {
@@ -80,6 +73,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
     categorias: paramArr(searchParams, "categorias"),
     clientes: paramArr(searchParams, "clientes"),
+    supervisores: paramArr(searchParams, "supervisores"),
+    promotores: paramArr(searchParams, "promotores"),
     tiendas: paramArr(searchParams, "tiendas"),
   };
 
@@ -89,30 +84,25 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   let fetchError: string | null = null;
 
   if (isFsDefault(filter)) view = await getFsPrecomputed();
+  if (view && !view.byPromotor) view = null; // precálculo viejo (antes de promotor/supervisor) → se recalcula
 
   if (!view) {
     try {
-      let semanas = filter.semanas ?? [];
-      if (semanas.length === 0) {
-        const { weeks } = await getAvailableWeeksFast();
-        semanas = weeks.slice(0, 26);
-      }
-      const [rawRows, clienteMap] = await Promise.all([getFloorShareRowsFast(semanas), getTiendaClienteMapFast()]);
-      const enriched: FsEnrichedRow[] = rawRows
-        .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null)
-        .map((r) => ({ ...r, cliente: clienteMap.get(r.numero_tienda) ?? "Sin cliente" }));
-      view = computeFsView(enriched, filter);
+      // Todas las semanas del año (= app vieja); los filtros se aplican en computeFsView.
+      view = computeFsView(await enriquecerFs(await getFloorShareRowsFast([])), filter);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
     }
   }
 
   const v: FsView = view ?? {
-    options: { meses: [], semanas: [], categorias: [], clientes: [], tiendas: [] },
-    totalRanking: [], catBrand: [], cats: [], byTienda: [], byCliente: [],
-    overall: computeOverall([]), top5: [], weekly: [], totalTiendasRelevadas: 0, hasData: false,
+    options: { meses: [], semanas: [], categorias: [], clientes: [], supervisores: [], promotores: [], tiendas: [] },
+    totalRanking: [], catBrand: [], cats: [], byTienda: [], byCliente: [], byPromotor: [],
+    overall: computeOverall([]), topMarcas: [], weekly: [], totalTiendasRelevadas: 0, semanaDesde: null, semanaHasta: null, hasData: false,
   };
-  const { options, totalRanking, catBrand, cats, byTienda, byCliente, overall, top5, weekly, totalTiendasRelevadas, hasData } = v;
+  const { options, totalRanking, byTienda, byCliente, byPromotor, overall, topMarcas, weekly, totalTiendasRelevadas, hasData } = v;
+  const periodo = v.semanaDesde != null && v.semanaHasta != null
+    ? `${mesLargo(v.semanaDesde)} — ${mesLargo(v.semanaHasta)}` : "";
 
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
 
@@ -214,201 +204,110 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           {/* Estructura estándar: cards → evolución real vs meta (+ metas) → contenido. */}
           {metasBloque}
 
-          {/* Estructura estándar: cards → evolución → contenido. */}
-          {weekly.length > 1 && (
-            <section className="rounded-xl border bg-card p-4">
-              <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal — Top 5 marcas</h3>
-              <FloorShareWeeklyChart data={weekly} marcas={top5} />
-            </section>
-          )}
-
+          {/* Como la app vieja: ranking + evolución · cliente + promotor · tienda. */}
           <section className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-3 text-sm font-bold">🏆 Ranking de marcas (share total)</h3>
-              <FloorShareBrandRanking data={totalRanking.slice(0, 12)} highlight={OWN_BRAND_FS} />
+              <h3 className="mb-3 text-sm font-bold">📊 Ranking de marcas</h3>
+              <FloorShareBrandRanking data={totalRanking.filter((r) => !["otros", "total"].includes(r.marca.toLowerCase())).slice(0, 10)} highlight={OWN_BRAND_FS} />
             </div>
-            <div className="rounded-xl border bg-card overflow-hidden">
-              <div className="px-4 py-3">
-                <h3 className="text-sm font-bold">📊 Share por categoría</h3>
-                <p className="text-[11px] text-muted-foreground">Top 5 marcas en cada categoría.</p>
+            {weekly.length > 1 && (
+              <div className="rounded-xl border bg-card p-4">
+                <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal — Drean vs Top marcas</h3>
+                <FloorShareWeeklyChart data={weekly} marcas={topMarcas} />
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b bg-muted/40 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      <th className="px-3 py-2 text-left">Categoría</th>
-                      <th className="px-3 py-2 text-left">Marca</th>
-                      <th className="px-3 py-2 text-right">Share</th>
-                      <th className="px-3 py-2 text-right">Unidades</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cats.flatMap((cat) => {
-                      const items = catBrand.filter((r) => normalizeCategoria(r.categoria) === cat).slice(0, 5);
-                      return items.map((r, i) => (
-                        <tr key={`${cat}-${r.marca}`} className="border-b last:border-0">
-                          {i === 0 ? (
-                            <td rowSpan={items.length} className="px-3 py-1.5 font-semibold align-top bg-muted/30">{cat}</td>
-                          ) : null}
-                          <td className="px-3 py-1.5">
-                            <span
-                              className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
-                              style={{ backgroundColor: colorForBrand(r.marca) }}
-                            />
-                            {r.marca}
-                            {r.marca === OWN_BRAND_FS && <span className="ml-1 text-rose-500">★</span>}
-                          </td>
-                          <td className={`px-3 py-1.5 text-right tabular-nums ${cellBg(r.share)}`}>{r.share.toFixed(1)}%</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{r.unidades.toLocaleString()}</td>
-                        </tr>
-                      ));
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            )}
           </section>
 
-          <ClienteTable rows={byCliente} OBJ={OBJ} />
-          <TiendaTable rows={byTienda} OBJ={OBJ} />
+          <section className="grid gap-4 lg:grid-cols-2">
+            <AggTable titulo="🏢 Performance por cliente" columna="Cliente" totalLabel="FLOORSHARE TOTAL" periodo={periodo}
+              filas={byCliente.map((r) => ({ key: r.cliente, nombre: r.cliente, b: r }))} total={overall} OBJ={OBJ} />
+            <AggTable titulo="👥 Performance por promotor" columna="Promotor" totalLabel="FLOORSHARE TOTAL EQUIPO" periodo={periodo}
+              filas={byPromotor.map((r) => ({ key: r.cliente, nombre: r.cliente, b: r }))} total={overall} OBJ={OBJ} />
+          </section>
+
+          <AggTable titulo="📋 Performance por tienda" columna="Tienda" totalLabel="FLOORSHARE TOTAL TIENDAS" periodo={periodo}
+            filas={byTienda.map((r) => ({
+              key: `${r.numero_tienda}|${r.nombre_tienda}`, b: r,
+              nombre: `${["Sin asignar", "Sin cliente"].includes(r.cliente) ? "" : `${r.cliente} — `}${r.numero_tienda} - ${r.nombre_tienda}`,
+            }))} total={overall} OBJ={OBJ} />
         </>
       )}
     </div>
   );
 }
 
-// ===== Helpers de render =====
+// ===== Helpers de render (= app vieja) =====
 
-function pctCellBg(pct: number | null, obj: number): string {
-  if (pct == null || pct === 0) return "bg-muted/30 text-muted-foreground";
-  if (pct >= obj) return "bg-emerald-50 text-emerald-700 font-semibold";
-  if (pct >= obj - 5) return "bg-amber-50 text-amber-700 font-semibold";
-  return "bg-rose-50 text-rose-600 font-semibold";
+const MESES_LARGOS: Record<string, string> = { Ene: "Enero", Feb: "Febrero", Mar: "Marzo", Abr: "Abril", May: "Mayo", Jun: "Junio", Jul: "Julio", Ago: "Agosto", Sep: "Septiembre", Oct: "Octubre", Nov: "Noviembre", Dic: "Diciembre" };
+const mesLargo = (sem: number) => { const m = isoWeekToMes(sem); return `${MESES_LARGOS[m] ?? m} ${new Date().getUTCFullYear()}`; };
+
+// Semáforo de la app vieja: verde hasta −2 pp del objetivo, amarillo hasta −6, rojo debajo.
+function celda(share: number, obj: number): string {
+  const d = share - obj;
+  if (d >= -2) return "bg-[#c6f6d5] text-[#064e3b]";
+  if (d >= -6) return "bg-[#fef3c7] text-[#78350f]";
+  return "bg-[#fecaca] text-[#7f1d1d]";
 }
 
-function deltaClassFs(value: number): string {
-  return value >= 0 ? "text-emerald-600" : "text-rose-500";
-}
+type Bloques = { lavado: CategoryBlock; refri: CategoryBlock; coccion: CategoryBlock };
+const CATS = [["lavado", "FS LAVADO"], ["refri", "FS REFRI"], ["coccion", "FS COCCION"]] as const;
 
-function deltaPpFs(value: number, obj: number): string {
-  const diff = value - obj;
-  const arrow = diff >= 0 ? "↑" : "↓";
-  return `${diff >= 0 ? "+" : ""}${diff.toFixed(0)} pp ${arrow}`;
-}
-
-function CategoriaCols({ block, obj }: { block: CategoryBlock; obj: number }) {
+function Celdas({ b, OBJ, total = false }: { b: Bloques; OBJ: Obj; total?: boolean }) {
   return (
     <>
-      <td className={`px-3 py-1.5 text-center tabular-nums ${pctCellBg(block.share, obj)}`}>
-        {block.total_units > 0 ? `${block.share.toFixed(0)}%` : "—"}
-      </td>
-      <td className={`px-3 py-1.5 text-right tabular-nums ${deltaClassFs(block.share - obj)}`}>
-        {block.total_units > 0 ? deltaPpFs(block.share, obj) : ""}
-      </td>
+      {CATS.map(([k]) => {
+        const blk = b[k];
+        if (blk.total_units <= 0) return [
+          <td key={`${k}p`} className="border border-slate-200 bg-slate-100 px-2 py-1.5 text-center text-slate-400">—</td>,
+          <td key={`${k}d`} className="border border-slate-200 px-2 py-1.5" />,
+        ];
+        const d = Math.round(blk.share - OBJ[k]);
+        return [
+          <td key={`${k}p`} className={`border px-2 py-1.5 text-center font-bold tabular-nums ${total ? "border-[#1e3a8a]" : `border-slate-200 ${celda(blk.share, OBJ[k])}`}`}>{blk.share.toFixed(0)}%</td>,
+          <td key={`${k}d`} className={`whitespace-nowrap border px-2 py-1.5 text-center tabular-nums ${total ? "border-[#1e3a8a] text-white/85" : "border-slate-200"}`}>
+            {d > 0 ? "+" : ""}{d} pp <span className={d >= 0 ? "font-bold text-green-600" : "font-bold text-red-600"}>{d >= 0 ? "↑" : "↓"}</span>
+          </td>,
+        ];
+      })}
     </>
   );
 }
 
-function ClienteTable({ rows, OBJ }: { rows: import("@/lib/floor-share-queries").ClienteShare[]; OBJ: Obj }) {
+function AggTable({ titulo, columna, totalLabel, periodo, filas, total, OBJ }: {
+  titulo: string; columna: string; totalLabel: string; periodo: string;
+  filas: Array<{ key: string; nombre: string; b: Bloques }>; total: Bloques; OBJ: Obj;
+}) {
+  if (filas.length === 0) return null;
   return (
-    <section className="rounded-xl border bg-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3">
-        <h3 className="text-sm font-bold">🏢 Performance por cliente</h3>
-        <span className="text-[11px] text-muted-foreground">Δ vs objetivo</span>
+    <section className="rounded-xl border bg-card p-4">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-bold">{titulo}</h3>
+        <span className="text-[11px] text-muted-foreground">{periodo ? `${periodo} · ` : ""}Δ vs objetivo</span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="border-b bg-muted/40 text-muted-foreground">
+      <div className="max-h-[440px] overflow-auto">
+        <table className="w-full border-collapse text-xs">
+          <thead className="sticky top-0 z-10">
             <tr>
-              <th rowSpan={2} className="border-r border-border px-3 py-2 text-left align-bottom">Cliente</th>
-              <th colSpan={2} className="border-r border-border px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS Lavado</th>
-              <th colSpan={2} className="hidden border-r border-border px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Refri</th>
-              <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Cocción</th>
-            </tr>
-            <tr className="text-[10px] uppercase tracking-wide">
-              <th className="px-2 py-1 text-center">%</th>
-              <th className="border-r border-border px-2 py-1 text-right">Δ</th>
-              <th className="hidden px-2 py-1 text-center md:table-cell">%</th>
-              <th className="hidden border-r border-border px-2 py-1 text-right md:table-cell">Δ</th>
-              <th className="hidden px-2 py-1 text-center md:table-cell">%</th>
-              <th className="hidden px-2 py-1 text-right md:table-cell">Δ</th>
+              <th className="border border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-bold text-slate-800">{columna}</th>
+              {CATS.map(([k, label]) => (
+                <th key={k} colSpan={2} className="border border-[#1e3a8a] bg-[#1e3a8a] px-2 py-1.5 text-center text-[11px] font-bold tracking-wide text-white">{label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.cliente} className="border-b last:border-0">
-                <td className="px-3 py-1.5 font-medium">{r.cliente}</td>
-                <CategoriaCols block={r.lavado} obj={OBJ.lavado} />
-                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.refri.share, OBJ.refri)}`}>
-                  {r.refri.total_units > 0 ? `${r.refri.share.toFixed(0)}%` : "—"}
-                </td>
-                <td className={`hidden border-r border-border px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.refri.share - OBJ.refri)}`}>
-                  {r.refri.total_units > 0 ? deltaPpFs(r.refri.share, OBJ.refri) : ""}
-                </td>
-                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.coccion.share, OBJ.coccion)}`}>
-                  {r.coccion.total_units > 0 ? `${r.coccion.share.toFixed(0)}%` : "—"}
-                </td>
-                <td className={`hidden px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.coccion.share - OBJ.coccion)}`}>
-                  {r.coccion.total_units > 0 ? deltaPpFs(r.coccion.share, OBJ.coccion) : ""}
-                </td>
+            {filas.map((f) => (
+              <tr key={f.key}>
+                <td className="whitespace-nowrap border border-slate-200 px-2 py-1.5 text-slate-800">{f.nombre}</td>
+                <Celdas b={f.b} OBJ={OBJ} />
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function TiendaTable({ rows, OBJ }: { rows: import("@/lib/floor-share-queries").TiendaShare[]; OBJ: Obj }) {
-  return (
-    <section className="rounded-xl border bg-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3">
-        <h3 className="text-sm font-bold">📋 Performance por tienda</h3>
-        <span className="text-[11px] text-muted-foreground">Δ vs objetivo</span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="border-b bg-muted/40 text-muted-foreground">
-            <tr>
-              <th rowSpan={2} className="border-r border-border px-3 py-2 text-left align-bottom">Tienda</th>
-              <th colSpan={2} className="border-r border-border px-3 py-1 text-center text-[11px] uppercase tracking-wide">FS Lavado</th>
-              <th colSpan={2} className="hidden border-r border-border px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Refri</th>
-              <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] uppercase tracking-wide md:table-cell">FS Cocción</th>
+          <tfoot className="sticky bottom-0">
+            <tr className="bg-[#1e3a8a] font-extrabold text-white">
+              <td className="whitespace-nowrap border border-[#1e3a8a] px-2 py-1.5">{totalLabel}</td>
+              <Celdas b={total} OBJ={OBJ} total />
             </tr>
-            <tr className="text-[10px] uppercase tracking-wide">
-              <th className="px-2 py-1 text-center">%</th>
-              <th className="border-r border-border px-2 py-1 text-right">Δ</th>
-              <th className="hidden px-2 py-1 text-center md:table-cell">%</th>
-              <th className="hidden border-r border-border px-2 py-1 text-right md:table-cell">Δ</th>
-              <th className="hidden px-2 py-1 text-center md:table-cell">%</th>
-              <th className="hidden px-2 py-1 text-right md:table-cell">Δ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.numero_tienda} className="border-b last:border-0">
-                <td className="px-3 py-1.5">
-                  <span className="text-muted-foreground">{r.cliente}</span>
-                  {" — "}
-                  <span className="font-medium">{r.numero_tienda} - {r.nombre_tienda}</span>
-                </td>
-                <CategoriaCols block={r.lavado} obj={OBJ.lavado} />
-                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.refri.share, OBJ.refri)}`}>
-                  {r.refri.total_units > 0 ? `${r.refri.share.toFixed(0)}%` : "—"}
-                </td>
-                <td className={`hidden border-r border-border px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.refri.share - OBJ.refri)}`}>
-                  {r.refri.total_units > 0 ? deltaPpFs(r.refri.share, OBJ.refri) : ""}
-                </td>
-                <td className={`hidden px-3 py-1.5 text-center tabular-nums md:table-cell ${pctCellBg(r.coccion.share, OBJ.coccion)}`}>
-                  {r.coccion.total_units > 0 ? `${r.coccion.share.toFixed(0)}%` : "—"}
-                </td>
-                <td className={`hidden px-3 py-1.5 text-right tabular-nums md:table-cell ${deltaClassFs(r.coccion.share - OBJ.coccion)}`}>
-                  {r.coccion.total_units > 0 ? deltaPpFs(r.coccion.share, OBJ.coccion) : ""}
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          </tfoot>
         </table>
       </div>
     </section>

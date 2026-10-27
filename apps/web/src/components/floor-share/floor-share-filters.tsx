@@ -9,6 +9,8 @@ interface Props {
     semanas?: number[];
     categorias?: string[];
     clientes?: string[];
+    supervisores?: string[];
+    promotores?: string[];
     tiendas?: string[];
   };
   options: {
@@ -16,6 +18,8 @@ interface Props {
     semanas: number[];
     categorias: string[];
     clientes: string[];
+    supervisores?: string[];
+    promotores?: string[];
     tiendas: { value: string; label: string }[];
   };
 }
@@ -39,10 +43,12 @@ export function FloorShareFilters({ current, options }: Props) {
     (current.semanas?.length ?? 0) > 0 ||
     (current.categorias?.length ?? 0) > 0 ||
     (current.clientes?.length ?? 0) > 0 ||
+    (current.supervisores?.length ?? 0) > 0 ||
+    (current.promotores?.length ?? 0) > 0 ||
     (current.tiendas?.length ?? 0) > 0;
 
   return (
-    <div className="grid grid-cols-2 items-end gap-3 rounded-xl border bg-card p-4 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 items-end gap-3 rounded-xl border bg-card p-4 sm:grid-cols-3 lg:grid-cols-8">
       <MultiDropdown
         label="Mes"
         placeholder="Todos"
@@ -63,6 +69,20 @@ export function FloorShareFilters({ current, options }: Props) {
         selected={current.categorias ?? []}
         options={options.categorias.map((c) => ({ value: c, label: c }))}
         onChange={(v) => update("categorias", v)}
+      />
+      <MultiDropdown
+        label="Supervisor"
+        placeholder="Todos"
+        selected={current.supervisores ?? []}
+        options={(options.supervisores ?? []).map((c) => ({ value: c, label: c }))}
+        onChange={(v) => update("supervisores", v)}
+      />
+      <MultiDropdown
+        label="Promotor"
+        placeholder="Todos"
+        selected={current.promotores ?? []}
+        options={(options.promotores ?? []).map((c) => ({ value: c, label: c }))}
+        onChange={(v) => update("promotores", v)}
       />
       <MultiDropdown
         label="Cliente / Cadena"
