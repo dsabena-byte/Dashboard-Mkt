@@ -606,7 +606,7 @@ reporte_existencia/cb_homologos).
   Por grupo (cliente de tr_cb_semanal, o tipología vía tr_cadenas.cliente → vt_clientes, fallback razón social del reporte): SKUs fuera
   del CB exhibidos → % CB si es HOMÓLOGO de un SKU del CB (solo mismo segmento o mismo tipo con otra capacidad: no carga superior por
   frontal, ni cíclica por no frost) y si se SUMA al CB. Validado con sem 40–43 reales: 189 tiendas del CB en el reporte; 422 faltantes,
-  137 con un SKU del mismo segmento exhibido. **Cargadas sem 40–43 (27-oct, 23.701 filas, cargas 7–10, usuario "carga inicial (Claude)").** GOTCHA: los archivos de las
+  137 con un SKU del mismo segmento exhibido. **SOLO CB de Trade (27-oct, user: "no mezcles CB de Trade con Ventas"):** la base de comparación es `tr_cb_semanal`; NO usar `cb_homologos` (= catálogo de CB Ventas, igual a `vt_cb_catalogo`). Se probó y se revirtió (#962). Trade no tiene lista de homólogos en la base. **Cargadas sem 40–43 (27-oct, 23.701 filas, cargas 7–10, usuario "carga inicial (Claude)").** GOTCHA: los archivos de las
   sem 40–42 guardan acentos como entidades (`C&#xD3;DIGO`, xml `us-ascii`) y SheetJS 0.18 los convierte en «�» → `xlsxSinEntidades`
   (`lib/leer-planilla.ts`) reescribe el XML a UTF-8 antes de leer (aplica a TODAS las cargas en Excel). Segmento = subcategoría sin color (`segmento`, `tipoProducto`), base para el FS por
   ancho/tipo que pidió el user después.
