@@ -147,11 +147,11 @@ export function detectarTipo(grid: string[][]): { tipo: TipoCarga | null; motivo
 /** Semana / categoría / período desde el nombre del archivo (solo para prellenar; el usuario confirma). */
 export function infoDesdeNombre(nombre: string): { semana: number | null; categoria: CategoriaFs | null; anio: number | null; mes: number | null } {
   const base = nombre.replace(/^.*[\\/]/, "");
-  const m1 = base.match(/^(\d{4})-(\d{2})[_-](.+?)\.csv$/i);
+  const m1 = base.match(/^(\d{4})-(\d{2})[_-](.+?)\.(?:csv|xlsx|xlsm|xls)$/i);
   if (m1) return { semana: null, categoria: normCategoria(m1[3]!), anio: Number(m1[1]), mes: Number(m1[2]) };
-  const m2 = base.match(/^(\d{1,2})\s*[-_]\s*(.+?)\.csv$/i);
+  const m2 = base.match(/^(\d{1,2})\s*[-_]\s*(.+?)\.(?:csv|xlsx|xlsm|xls)$/i);
   if (m2) return { semana: Number(m2[1]), categoria: normCategoria(m2[2]!), anio: null, mes: null };
-  const m3 = base.match(/^(\d{1,2})\.csv$/i);
+  const m3 = base.match(/^(\d{1,2})\.(?:csv|xlsx|xlsm|xls)$/i);
   if (m3) return { semana: Number(m3[1]), categoria: null, anio: null, mes: null };
   return { semana: null, categoria: null, anio: null, mes: null };
 }

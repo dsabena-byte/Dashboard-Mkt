@@ -1,4 +1,5 @@
 "use client";
+import { leerComoCsv } from "@/lib/leer-planilla";
 import { useCallback, useEffect, useState } from "react";
 import { GRUPOS, estadoDe, type EstadoUsuario, type FilaImport, type Grupo, type UsuarioRow } from "@/lib/usuarios-core";
 
@@ -180,8 +181,8 @@ function Importar({ onListo }: { onListo: (n: number) => void }) {
   return (
     <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
       <div className="text-sm font-semibold">Importar usuarios</div>
-      <p className="text-xs text-muted-foreground">Pegá o subí un CSV con las columnas <b>email;nombre;rol;vendedor</b> (el formato del usuarios.csv viejo). Rol VENDEDOR entra al grupo Ventas con su vendedor; el resto queda sin grupo para que lo asignes. Los que ya están no se tocan y no se manda ninguna invitación.</p>
-      <input type="file" accept=".csv,text/csv,text/plain" className="text-xs" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setCsv(await f.text()); setPrev(null); } }} />
+      <p className="text-xs text-muted-foreground">Pegá o subí un CSV o Excel con las columnas <b>email;nombre;rol;vendedor</b> (el formato del usuarios.csv viejo). Rol VENDEDOR entra al grupo Ventas con su vendedor; el resto queda sin grupo para que lo asignes. Los que ya están no se tocan y no se manda ninguna invitación.</p>
+      <input type="file" accept=".csv,text/csv,text/plain,.xlsx,.xlsm,.xls" className="text-xs" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setCsv(await leerComoCsv(f)); setPrev(null); } }} />
       <textarea className={`${inputCls} h-32 font-mono text-xs`} value={csv} onChange={(e) => { setCsv(e.target.value); setPrev(null); }} placeholder="email;nombre;rol;vendedor" />
       {error && <p className="text-xs text-amber-800">{error}</p>}
       {prev && (
