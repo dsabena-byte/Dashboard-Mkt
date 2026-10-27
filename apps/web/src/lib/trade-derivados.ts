@@ -8,7 +8,7 @@ import "server-only";
 import { trEstado, trInvalidarEstado, getTrCbRows, getTrFsRows, setTrPrecalc, trUpsert } from "./trade-db";
 import { computeCbView } from "./cb-view";
 import { computeFsView } from "./fs-view";
-import { enriquecerFs } from "./cb-mirror";
+import { enriquecerFs, enriquecerCb } from "./cb-mirror";
 import { tradeMonthlyDeFilas } from "./trade-monthly";
 
 export async function refrescarDerivados(): Promise<Record<string, string>> {
@@ -24,7 +24,7 @@ export async function refrescarDerivados(): Promise<Record<string, string>> {
   ]);
 
   if (cbRows.length) {
-    await setTrPrecalc("cb_default", computeCbView(cbRows, {}));
+    await setTrPrecalc("cb_default", computeCbView(await enriquecerCb(cbRows), {}));
     out.cb_default = `${cbRows.length} filas agregadas`;
   }
 

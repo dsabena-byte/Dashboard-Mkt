@@ -10,6 +10,7 @@ import {
 } from "@/lib/floor-share-queries";
 import { getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-mirror";
 import { isoWeekToMes } from "@/lib/cb-queries";
+import { AggTable, type AggCol } from "@/components/trade/agg-table";
 import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { MetaEvolChart } from "@/components/pauta/meta-evol-chart";
@@ -103,6 +104,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const { options, totalRanking, byTienda, byCliente, byPromotor, overall, topMarcas, weekly, totalTiendasRelevadas, hasData } = v;
   const periodo = v.semanaDesde != null && v.semanaHasta != null
     ? `${mesLargo(v.semanaDesde)} — ${mesLargo(v.semanaHasta)}` : "";
+  const sub = `${periodo ? `${periodo} · ` : ""}Δ vs objetivo`;
 
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
 
@@ -219,17 +221,17 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
-            <AggTable titulo="🏢 Performance por cliente" columna="Cliente" totalLabel="FLOORSHARE TOTAL" periodo={periodo}
-              filas={byCliente.map((r) => ({ key: r.cliente, nombre: r.cliente, b: r }))} total={overall} OBJ={OBJ} />
-            <AggTable titulo="👥 Performance por promotor" columna="Promotor" totalLabel="FLOORSHARE TOTAL EQUIPO" periodo={periodo}
-              filas={byPromotor.map((r) => ({ key: r.cliente, nombre: r.cliente, b: r }))} total={overall} OBJ={OBJ} />
+            <AggTable titulo="🏢 Performance por cliente" columna="Cliente" totalLabel="FLOORSHARE TOTAL" subtitulo={sub} cols={fsCols(OBJ)}
+              filas={byCliente.map((r) => ({ key: r.cliente, nombre: r.cliente, vals: fsVals(r) }))} total={fsVals(overall)} />
+            <AggTable titulo="👥 Performance por promotor" columna="Promotor" totalLabel="FLOORSHARE TOTAL EQUIPO" subtitulo={sub} cols={fsCols(OBJ)}
+              filas={byPromotor.map((r) => ({ key: r.cliente, nombre: r.cliente, vals: fsVals(r) }))} total={fsVals(overall)} />
           </section>
 
-          <AggTable titulo="📋 Performance por tienda" columna="Tienda" totalLabel="FLOORSHARE TOTAL TIENDAS" periodo={periodo}
+          <AggTable titulo="📋 Performance por tienda" columna="Tienda" totalLabel="FLOORSHARE TOTAL TIENDAS" subtitulo={sub} cols={fsCols(OBJ)}
             filas={byTienda.map((r) => ({
-              key: `${r.numero_tienda}|${r.nombre_tienda}`, b: r,
+              key: `${r.numero_tienda}|${r.nombre_tienda}`, vals: fsVals(r),
               nombre: `${["Sin asignar", "Sin cliente"].includes(r.cliente) ? "" : `${r.cliente} — `}${r.numero_tienda} - ${r.nombre_tienda}`,
-            }))} total={overall} OBJ={OBJ} />
+            }))} total={fsVals(overall)} />
         </>
       )}
     </div>
@@ -241,75 +243,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
 const MESES_LARGOS: Record<string, string> = { Ene: "Enero", Feb: "Febrero", Mar: "Marzo", Abr: "Abril", May: "Mayo", Jun: "Junio", Jul: "Julio", Ago: "Agosto", Sep: "Septiembre", Oct: "Octubre", Nov: "Noviembre", Dic: "Diciembre" };
 const mesLargo = (sem: number) => { const m = isoWeekToMes(sem); return `${MESES_LARGOS[m] ?? m} ${new Date().getUTCFullYear()}`; };
 
-// Semáforo de la app vieja: verde hasta −2 pp del objetivo, amarillo hasta −6, rojo debajo.
-function celda(share: number, obj: number): string {
-  const d = share - obj;
-  if (d >= -2) return "bg-[#c6f6d5] text-[#064e3b]";
-  if (d >= -6) return "bg-[#fef3c7] text-[#78350f]";
-  return "bg-[#fecaca] text-[#7f1d1d]";
-}
-
 type Bloques = { lavado: CategoryBlock; refri: CategoryBlock; coccion: CategoryBlock };
-const CATS = [["lavado", "FS LAVADO"], ["refri", "FS REFRI"], ["coccion", "FS COCCION"]] as const;
-
-function Celdas({ b, OBJ, total = false }: { b: Bloques; OBJ: Obj; total?: boolean }) {
-  return (
-    <>
-      {CATS.map(([k]) => {
-        const blk = b[k];
-        if (blk.total_units <= 0) return [
-          <td key={`${k}p`} className="border border-slate-200 bg-slate-100 px-2 py-1.5 text-center text-slate-400">—</td>,
-          <td key={`${k}d`} className="border border-slate-200 px-2 py-1.5" />,
-        ];
-        const d = Math.round(blk.share - OBJ[k]);
-        return [
-          <td key={`${k}p`} className={`border px-2 py-1.5 text-center font-bold tabular-nums ${total ? "border-[#1e3a8a]" : `border-slate-200 ${celda(blk.share, OBJ[k])}`}`}>{blk.share.toFixed(0)}%</td>,
-          <td key={`${k}d`} className={`whitespace-nowrap border px-2 py-1.5 text-center tabular-nums ${total ? "border-[#1e3a8a] text-white/85" : "border-slate-200"}`}>
-            {d > 0 ? "+" : ""}{d} pp <span className={d >= 0 ? "font-bold text-green-600" : "font-bold text-red-600"}>{d >= 0 ? "↑" : "↓"}</span>
-          </td>,
-        ];
-      })}
-    </>
-  );
-}
-
-function AggTable({ titulo, columna, totalLabel, periodo, filas, total, OBJ }: {
-  titulo: string; columna: string; totalLabel: string; periodo: string;
-  filas: Array<{ key: string; nombre: string; b: Bloques }>; total: Bloques; OBJ: Obj;
-}) {
-  if (filas.length === 0) return null;
-  return (
-    <section className="rounded-xl border bg-card p-4">
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-bold">{titulo}</h3>
-        <span className="text-[11px] text-muted-foreground">{periodo ? `${periodo} · ` : ""}Δ vs objetivo</span>
-      </div>
-      <div className="max-h-[440px] overflow-auto">
-        <table className="w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-10">
-            <tr>
-              <th className="border border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-bold text-slate-800">{columna}</th>
-              {CATS.map(([k, label]) => (
-                <th key={k} colSpan={2} className="border border-[#1e3a8a] bg-[#1e3a8a] px-2 py-1.5 text-center text-[11px] font-bold tracking-wide text-white">{label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((f) => (
-              <tr key={f.key}>
-                <td className="whitespace-nowrap border border-slate-200 px-2 py-1.5 text-slate-800">{f.nombre}</td>
-                <Celdas b={f.b} OBJ={OBJ} />
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="sticky bottom-0">
-            <tr className="bg-[#1e3a8a] font-extrabold text-white">
-              <td className="whitespace-nowrap border border-[#1e3a8a] px-2 py-1.5">{totalLabel}</td>
-              <Celdas b={total} OBJ={OBJ} total />
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </section>
-  );
-}
+const fsVals = (b: Bloques) => (["lavado", "refri", "coccion"] as const).map((k) => (b[k].total_units > 0 ? b[k].share : null));
+const fsCols = (OBJ: Obj): AggCol[] => [{ label: "FS Lavado", obj: OBJ.lavado }, { label: "FS Refri", obj: OBJ.refri }, { label: "FS Coccion", obj: OBJ.coccion }];

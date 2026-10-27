@@ -8,7 +8,7 @@ import "server-only";
 import { getCbRows, type CbRow } from "./cb-queries";
 import { getFloorShareRows, type FloorShareRow } from "./floor-share-queries";
 import type { FsView, FsEnrichedRow } from "./fs-view";
-import { crearEnriquecedorFs } from "./fs-enrich";
+import { crearEnriquecedorFs, PROMOTOR_NO_MAPEO } from "./fs-enrich";
 import { trEstado, getTrCbRows, getTrFsRows, getTrMaxSemanaFs, getTrTiendaCliente, getTrContactos } from "./trade-db";
 
 // El principal (rápido) devuelve hasta 10k filas por request → páginas grandes para
@@ -109,6 +109,17 @@ export async function enriquecerFs(raw: FloorShareRow[]): Promise<FsEnrichedRow[
     if (p) out.push({ ...r, ...p });
   }
   return out;
+}
+
+/** Promotor/supervisor de cada fila de CB (tienda "557 - ON CITY…" → maestro de tiendas), = app vieja. */
+export async function enriquecerCb(rows: CbRow[]): Promise<CbRow[]> {
+  const contactos = (await trEstado()).cb != null ? await getTrContactos().catch(() => []) : [];
+  const enr = crearEnriquecedorFs(contactos);
+  return rows.map((r) => {
+    const m = (r.tienda ?? "").trim().match(/^(\d+)\s*[-–]\s*(.+)$/);
+    const p = enr(m?.[1] ?? "", m?.[2] ?? r.tienda ?? "");
+    return { ...r, promotor: p?.promotor ?? PROMOTOR_NO_MAPEO, supervisor: p?.supervisor ?? PROMOTOR_NO_MAPEO };
+  });
 }
 
 // Vista default de Floor Share PRECALCULADA (la llena el cron). null si no existe.

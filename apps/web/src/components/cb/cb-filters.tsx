@@ -9,6 +9,8 @@ interface CbFiltersBarProps {
     semanas?: number[];
     divisiones?: string[];
     clientes?: string[];
+    supervisores?: string[];
+    promotores?: string[];
     tiendas?: string[];
   };
   options: {
@@ -16,6 +18,8 @@ interface CbFiltersBarProps {
     semanas: number[];
     divisiones: string[];
     clientes: string[];
+    supervisores?: string[];
+    promotores?: string[];
     tiendas: string[];
   };
 }
@@ -39,6 +43,8 @@ export function CbFiltersBar({ current, options }: CbFiltersBarProps) {
     (current.semanas?.length ?? 0) > 0 ||
     (current.divisiones?.length ?? 0) > 0 ||
     (current.clientes?.length ?? 0) > 0 ||
+    (current.supervisores?.length ?? 0) > 0 ||
+    (current.promotores?.length ?? 0) > 0 ||
     (current.tiendas?.length ?? 0) > 0;
 
   return (
@@ -63,6 +69,20 @@ export function CbFiltersBar({ current, options }: CbFiltersBarProps) {
         selected={current.divisiones ?? []}
         options={options.divisiones.map((d) => ({ value: d, label: d }))}
         onChange={(v) => update("divisiones", v)}
+      />
+      <MultiDropdown
+        label="Supervisor"
+        placeholder="Todos"
+        selected={current.supervisores ?? []}
+        options={(options.supervisores ?? []).map((c) => ({ value: c, label: c }))}
+        onChange={(v) => update("supervisores", v)}
+      />
+      <MultiDropdown
+        label="Promotor"
+        placeholder="Todos"
+        selected={current.promotores ?? []}
+        options={(options.promotores ?? []).map((c) => ({ value: c, label: c }))}
+        onChange={(v) => update("promotores", v)}
       />
       <MultiDropdown
         label="Cliente / Cadena"
