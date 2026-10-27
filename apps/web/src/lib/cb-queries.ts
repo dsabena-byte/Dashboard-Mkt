@@ -229,6 +229,7 @@ export interface CbByDivision {
 export function computeByDivision(rows: CbRow[]): CbByDivision[] {
   const map = new Map<string, { cb_t: number; cb_o: number; i_t: number; i_o: number; e_t: number; e_o: number }>();
   for (const r of rows) {
+    if (!r.division?.trim()) continue; // sin división: cuenta en los totales, no es una categoría
     const acc = map.get(r.division) ?? { cb_t: 0, cb_o: 0, i_t: 0, i_o: 0, e_t: 0, e_o: 0 };
     acc.cb_t += r.target_cb ?? 0; acc.cb_o += r.real_cb ?? 0;
     acc.i_t += r.target_inf ?? 0; acc.i_o += r.real_inf ?? 0;

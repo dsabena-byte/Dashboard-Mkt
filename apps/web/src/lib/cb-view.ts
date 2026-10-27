@@ -43,7 +43,7 @@ export function computeCbView(allRows: CbRow[], filter: CbFilter): CbView {
   const options = {
     meses: uniq(applyCbFilter(allRows, { ...filter, meses: [] }).map((r) => isoWeekToMes(r.semana))).sort((a, b) => MES_ORDER.indexOf(a) - MES_ORDER.indexOf(b)),
     semanas: uniq(applyCbFilter(allRows, { ...filter, semanas: [] }).map((r) => r.semana)).sort((a, b) => a - b),
-    divisiones: uniq(applyCbFilter(allRows, { ...filter, divisiones: [] }).map((r) => r.division)).sort(),
+    divisiones: uniq(applyCbFilter(allRows, { ...filter, divisiones: [] }).map((r) => r.division || null)).sort(),
     supervisores: uniq(applyCbFilter(allRows, { ...filter, supervisores: [] }).map((r) => r.supervisor)).sort(),
     promotores: uniq(applyCbFilter(allRows, { ...filter, promotores: [] }).map((r) => r.promotor)).sort(),
     clientes: uniq(applyCbFilter(allRows, { ...filter, clientes: [] }).map((r) => r.cliente)).sort(),
