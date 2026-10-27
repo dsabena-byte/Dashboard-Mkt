@@ -41,7 +41,8 @@ export interface PlanMedio {
   ref: RefPeriodo;
 }
 /** `otros` = calendario de campañas y ambición de Web/Redes/SEO (sección 6, lib/plan-otros-kpis.ts). */
-export interface PlanConfig { anio: number; bgt: number[]; medios: PlanMedio[]; mix: Record<string, number[]>; otros: OtrosConfig; canal: CanalConfig }
+/** `offPct` = % del BGT de cada mes que va a OFFLINE (todo 0 = no se usa: cada medio con su ola, como el Excel). */
+export interface PlanConfig { anio: number; bgt: number[]; offPct: number[]; medios: PlanMedio[]; mix: Record<string, number[]>; otros: OtrosConfig; canal: CanalConfig }
 
 const OLAS = [0, 0, 0, 15, 20, 0, 0, 0, 20, 25, 20, 0];
 const mixCat = () => Array.from({ length: N }, () => null);
@@ -56,6 +57,7 @@ export function planDefault(anio: number): PlanConfig {
   return {
     anio,
     bgt: [50, 70, 130, 160, 215, 200, 270, 375, 425, 495, 310, 70].map((v) => v * 1e6),
+    offPct: z12(),
     medios: [
       dig("Meta", 20, [45, 55, 0], "recientes"),
       dig("YouTube", 20, [50, 50, 0]),
@@ -106,7 +108,7 @@ export function sanearPlan(raw: unknown, anio: number): PlanConfig {
   }).filter((m) => m.medio);
   const mix: Record<string, number[]> = {};
   for (const c of PLAN_CATS) mix[c] = arr12((r.mix as Record<string, unknown> | undefined)?.[c], 0, 100);
-  return { anio, bgt: arr12(r.bgt), medios, mix, otros: sanearOtros(r.otros), canal: sanearCanal(r.canal) };
+  return { anio, bgt: arr12(r.bgt), offPct: arr12(r.offPct, 0, 100), medios, mix, otros: sanearOtros(r.otros), canal: sanearCanal(r.canal) };
 }
 
 // ── Inflación ───────────────────────────────────────────────────────────────
@@ -157,6 +159,17 @@ export function calcInversion(cfg: PlanConfig, infl: InflacionMes): PlanInversio
       const so = m.olas.reduce((s, v) => s + v, 0);
       montos[m.medio] = m.olas.map((w) => (so > 0 ? anual * (m.peso / 100) * (w / so) : 0));
     }
+  }
+  // Olas de inversión offline (pedido del user, 27-oct-2026): con % offline por mes, el offline del mes = BGT × %; los de costo
+  // fijo (OOH) se respetan y el resto se reparte entre los medios "olas" según su peso (= participación dentro del offline).
+  if (cfg.offPct.some((v) => v > 0)) {
+    const olasM = cfg.medios.filter((m) => m.reparto === "olas");
+    const so = olasM.reduce((s, m) => s + m.peso, 0);
+    const fijos = (i: number) => cfg.medios.filter((m) => m.reparto === "fijo").reduce((s, m) => s + (montos[m.medio]?.[i] ?? 0), 0);
+    const resto = cfg.bgt.map((b, i) => (b * cfg.offPct[i]!) / 100 - fijos(i));
+    resto.forEach((r, i) => { if (cfg.offPct[i]! > 0 && r < 0) avisos.push(`Mes ${i + 1}: el ${cfg.offPct[i]}% offline no alcanza ni para los medios de costo fijo (faltan $${Math.round(-r).toLocaleString("es-AR")}).`); });
+    if (so <= 0 && olasM.length) avisos.push("Los medios offline por olas tienen peso 0: no reciben el % offline.");
+    for (const m of olasM) montos[m.medio] = resto.map((r) => (r > 0 && so > 0 ? (r * m.peso) / so : 0));
   }
   const digitalDisponible = cfg.bgt.map((b, i) => b - Object.values(montos).reduce((s, a) => s + a[i]!, 0));
   const curvas = cfg.medios.filter((m) => m.reparto === "curva");
@@ -298,6 +311,7 @@ const MES3 = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oc
 function planano(c: PlanConfig): Record<string, string | number> {
   const o: Record<string, string | number> = {};
   c.bgt.forEach((v, i) => { o[`BGT ${MES3[i]}`] = v; });
+  (c.offPct ?? []).forEach((v, i) => { o[`% offline ${MES3[i]}`] = v; });
   for (const m of c.medios) {
     const p = `${m.medio} ·`;
     o[`${p} reparto`] = m.reparto; o[`${p} peso`] = m.peso; o[`${p} referencia`] = m.ref;
