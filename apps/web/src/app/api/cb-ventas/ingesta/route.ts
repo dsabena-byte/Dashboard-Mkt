@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     return json({ error: "El payload tiene que tener arrays `fc` y `bo`" }, 400);
   }
   try {
-    const { cuadroBasico } = await leerCuadroBasico();
+    const { cuadroBasico } = await leerCuadroBasico(undefined, { todos: true });
     if (cuadroBasico.length === 0) return json({ error: "El cuadro básico está vacío: cargalo antes de mandar ventas." }, 409);
     const r = procesarPayload(payload, cuadroBasico);
     if (r.rows.length === 0 && r.matchedCB.fc + r.matchedCB.bo > 0) {

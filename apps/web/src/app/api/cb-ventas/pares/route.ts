@@ -12,7 +12,7 @@ export const OPTIONS = () => preflight();
 export async function GET(request: Request) {
   if (!secretoOk(request)) return noAutorizado();
   try {
-    const { cuadroBasico } = await leerCuadroBasico();
+    const { cuadroBasico } = await leerCuadroBasico(undefined, { todos: true });
     const pairs = paresCB(cuadroBasico);
     return cors(NextResponse.json({ ok: true, count: pairs.length, pairs }));
   } catch (e) {

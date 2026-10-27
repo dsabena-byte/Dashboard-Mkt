@@ -2,6 +2,7 @@ import "server-only";
 import { getCbVentasDatos } from "@/lib/cb-ventas/server";
 import { calcularPorcentajes, mapasClasificacion, OBJETIVO_SELLIN } from "@/lib/cb-ventas/metrics";
 import type { CuadroBasicoItem } from "@/lib/cb-ventas/types";
+import { hoyAR, vigenteEnFecha } from "@/lib/cb-ventas/vigencia";
 import { oneOf, topN, TZ_AR } from "./util";
 import type { ChatTool } from "./types";
 
@@ -34,7 +35,8 @@ export const cbVentasTools: ChatTool[] = [
       const n = topN(args.top, 12, 40);
       const cli = typeof args.cliente === "string" ? args.cliente.toLowerCase() : "";
       const ven = typeof args.vendedor === "string" ? args.vendedor.toLowerCase() : "";
-      const items = d.cuadroBasico.filter((i) =>
+      const hoy = hoyAR();
+      const items = d.cuadroBasico.filter((i) => vigenteEnFecha(i, hoy) &&
         (!cli || i.cliente.toLowerCase().includes(cli)) && (!ven || (vendedorPorCliente.get(i.cliente) ?? "").toLowerCase().includes(ven)));
       const ctx = { hayFiltroMes: false, mesEnCurso: mesAR(d.ventas.generatedAt) };
       const pct = (its: CuadroBasicoItem[]) => {

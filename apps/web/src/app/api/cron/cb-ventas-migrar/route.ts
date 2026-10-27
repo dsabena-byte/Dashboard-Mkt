@@ -42,6 +42,12 @@ export async function GET(request: Request) {
       .filter((c) => c.cliente && !vistos.has(c.cliente) && vistos.add(c.cliente))
       .map((c, i) => ({ cliente: c.cliente, id_sap: c.id || null, tipologia: c.tipologia, vendedor: c.vendedor, gerencia: c.gerente, peso: c.pesoFacturacion, orden: i, updated_at: now, updated_by: "migracion" }));
     const [antesCl, antesCat] = await Promise.all([leerClientes(s), leerCatalogo(s)]);
+    // El catálogo ya se edita desde el tablero (con vigencia, 0140): re-sembrar desde el CSV borraría esas ediciones y la
+    // historia. Solo con ?forzar=1.
+    const editado = await s.from("vt_cb_catalogo").select("id").neq("updated_by", "migracion").limit(1);
+    if (editado.data?.length && new URL(request.url).searchParams.get("forzar") !== "1") {
+      return NextResponse.json({ ok: false, error: "El cuadro básico ya se editó desde el tablero: re-sembrar desde Drive borraría esas ediciones y su historia. Usá ?forzar=1 solo si es a propósito." }, { status: 409 });
+    }
     const up = await s.from("vt_clientes").upsert(rows, { onConflict: "cliente" });
     if (up.error) throw new Error(up.error.message);
     const salen = antesCl.filter((a) => !vistos.has(a.cliente)).map((a) => a.cliente);

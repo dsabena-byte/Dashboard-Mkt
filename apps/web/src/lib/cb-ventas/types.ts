@@ -19,6 +19,9 @@ export type CuadroBasicoItem = {
   // de color, etc.). Si el cliente compró cualquiera de estos, cumple el CB.
   // Opcional para compat con el JSON estático en data/cuadro-basico.json.
   skuAliases?: string[];
+  // Vigencia del renglón (migración 0140; ISO, hasta null = vigente). Sin fechas = vale siempre.
+  desde?: string | null;
+  hasta?: string | null;
 };
 
 export type ClasificacionCliente = {

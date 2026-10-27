@@ -6,6 +6,7 @@ import type {
   VentaRow,
 } from "./types";
 import { matchesCB } from "./match";
+import { vigenteEnMes } from "./vigencia";
 
 // ============================================================================
 // Métricas de cumplimiento de CB Sell-in (dashboard /ventas).
@@ -181,11 +182,15 @@ export function evolucionMensualCB(
   opts: { generatedAt: string; vendedor?: string | null; vendedorPorCliente?: Map<string, string> },
 ): PuntoEvolucion[] {
   const mesActual = mesEnCursoDe(opts.generatedAt);
+  const anio = new Date(opts.generatedAt).getFullYear();
+  const todos = items;
   const vendedor = opts.vendedor ?? null;
   const vendedorPorCliente = opts.vendedorPorCliente ?? null;
   const out: PuntoEvolucion[] = [];
 
   for (let mes = 1; mes <= mesActual; mes++) {
+    // Cada mes usa el cuadro básico que valía EN ese mes (vigencia 0140): editar hoy no cambia los meses pasados.
+    const items = todos.filter((i) => vigenteEnMes(i, anio, mes));
     const mesDesde = Math.max(1, mes - 1);
     const comprasVentana = ventasRows.filter((c) => {
       const mesEfectivo = Math.min(c.mes, mesActual);

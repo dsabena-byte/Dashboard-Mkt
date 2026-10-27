@@ -4,6 +4,7 @@ import { createServiceClient } from "@dashboard/db";
 import { getMiPerfil, puedeVerTablero } from "@/lib/usuarios-server";
 import { esTablaInexistente } from "@/lib/usuarios-core";
 import { aplicarAlcance, expandirCatalogo, type Alcance, type CatalogoRow } from "./core";
+import { hoyAR, vigenteEnFecha } from "./vigencia";
 import type { ClasificacionCliente, CuadroBasicoItem, VentaRow, VentasFile } from "./types";
 
 // CB Ventas · lectura de la base (migración 0139). Service role SOLO después de validar sesión/tablero;
@@ -37,16 +38,30 @@ export async function leerClientes(s = svc()): Promise<ClienteDb[]> {
   return todas<ClienteDb>((a, b) => s.from("vt_clientes").select("*").order("orden").order("cliente").range(a, b));
 }
 
+const COLS_CAT = "id,tipologia,cliente,tipo,categoria,modelo,homologos,orden";
+
+/** TODOS los renglones (vigentes y cerrados). Sin la migración 0140 (columna inexistente, 42703) = sin fechas: valen siempre. */
 export async function leerCatalogo(s = svc()): Promise<CatalogoRow[]> {
-  return todas<CatalogoRow>((a, b) =>
-    s.from("vt_cb_catalogo").select("id,tipologia,cliente,tipo,categoria,modelo,homologos,orden").order("orden").order("id").range(a, b));
+  const q = (cols: string) => todas<CatalogoRow>((a, b) => s.from("vt_cb_catalogo").select(cols).returns<CatalogoRow[]>().order("orden").order("id").range(a, b));
+  try {
+    return await q(`${COLS_CAT},vigente_desde,vigente_hasta`);
+  } catch (e) {
+    if ((e as { code?: string }).code !== "42703") throw e;
+    return q(COLS_CAT);
+  }
 }
 
-/** Cuadro básico por cliente (lo usan el tablero, la ingesta y los pares del Office Script). */
-export async function leerCuadroBasico(s = svc()): Promise<{ cuadroBasico: CuadroBasicoItem[]; clasificacion: ClasificacionCliente[] }> {
+/**
+ * Cuadro básico por cliente. Por defecto SOLO lo vigente hoy (el cron que compara con la app vieja y el copiloto);
+ * `todos: true` = toda la historia (tablero: cada mes usa lo que valía; ingesta/pares: no perder ventas de modelos
+ * que salieron del cuadro, porque cuentan en los meses en que estaban).
+ */
+export async function leerCuadroBasico(s = svc(), opts: { todos?: boolean } = {}): Promise<{ cuadroBasico: CuadroBasicoItem[]; clasificacion: ClasificacionCliente[] }> {
   const [clientes, catalogo] = await Promise.all([leerClientes(s), leerCatalogo(s)]);
   const clasificacion = clientes.map(aClasificacion);
-  return { cuadroBasico: expandirCatalogo(catalogo, clasificacion), clasificacion };
+  const hoy = hoyAR();
+  const cat = opts.todos ? catalogo : catalogo.filter((r) => vigenteEnFecha({ desde: r.vigente_desde, hasta: r.vigente_hasta }, hoy));
+  return { cuadroBasico: expandirCatalogo(cat, clasificacion), clasificacion };
 }
 
 export async function leerVentas(s: SupabaseClient): Promise<VentasFile> {
@@ -82,6 +97,7 @@ export async function alcanceActual(): Promise<Alcance> {
 }
 
 export type CbVentasDatos =
+  // cuadroBasico = TODA la historia (con vigencia): quien muestre "hoy" filtra con vigenteEnFecha(…, hoyAR()).
   | { estado: "ok"; cuadroBasico: CuadroBasicoItem[]; clasificacion: ClasificacionCliente[]; ventas: VentasFile; alcance: Alcance }
   | { estado: "sin_tabla" | "sin_acceso" | "error"; mensaje: string };
 
@@ -90,7 +106,7 @@ export async function getCbVentasDatos(): Promise<CbVentasDatos> {
   if (!(await puedeVerTablero("cb-ventas"))) return { estado: "sin_acceso", mensaje: "No tenés acceso a CB Ventas." };
   try {
     const s = svc();
-    const [{ cuadroBasico, clasificacion }, ventas, alcance] = await Promise.all([leerCuadroBasico(s), leerVentas(s), alcanceActual()]);
+    const [{ cuadroBasico, clasificacion }, ventas, alcance] = await Promise.all([leerCuadroBasico(s, { todos: true }), leerVentas(s), alcanceActual()]);
     return { estado: "ok", ...aplicarAlcance({ cuadroBasico, clasificacion, ventas }, alcance), alcance };
   } catch (e) {
     const err = e as { code?: string; message?: string; status?: number };
