@@ -1,9 +1,8 @@
 // "Sugerencias de SKUs" del CB de Trade (27-oct-2026, pedido del user): con la exhibición semanal de SKUs por tienda
 // (tr_exhibicion_sku, mínimo 4 semanas = un mes) busca SKUs que NO están en el cuadro básico del grupo (cliente o
-// tipología) pero sí están exhibidos en sus tiendas, y estima cuánto subiría el % CB:
-//   • como homólogo de un SKU del CB de la misma categoría (cuenta en las tiendas donde ese SKU falta y el sugerido está);
-//   • como SKU nuevo del CB (suma una posición por tienda y la cumple donde ya está exhibido).
-// Cada fila se estima por separado (no se suman: dos sugeridos pueden cubrir el mismo faltante). PURO, sin I/O.
+// tipología) pero sí están exhibidos en sus tiendas, y estima cuánto subiría el % CB si se SUMAN al CB (una posición
+// más por tienda, cumplida donde ya está exhibido). Solo agregar, nunca reemplazar: el CB de Trade no tiene homólogos.
+// `acumPct` = % CB sumando ese SKU y todos los de arriba en la lista (orden de mayor a menor aporte). PURO, sin I/O.
 // Test: `npx tsx scripts/trade-carga.test.ts`.
 
 export type ExhSkuRow = {
@@ -16,9 +15,8 @@ export type SkuSugerido = {
   sku: string; descripcion: string; categoria: string; segmento: string;
   /** tiendas del grupo donde está exhibido (≥ la mitad de las semanas relevadas) / tiendas del grupo */
   tiendasExh: number; tiendas: number;
-  /** Solo del mismo segmento o del mismo tipo con otra capacidad (no carga superior por frontal, cíclica por no frost…). */
-  homologo: { de: string; mismoSegmento: boolean; recupera: number; deltaPp: number } | null;
-  nuevoDeltaPp: number;
+  /** % CB del grupo sumando solo este SKU, y sumando este y todos los anteriores de la lista. */
+  pct: number; acumPct: number;
 };
 export type GrupoSku = { grupo: string; tiendas: number; target: number; real: number; pct: number; sugerencias: SkuSugerido[] };
 
@@ -79,28 +77,17 @@ export function calcularSugerenciasSku(
     const cand = new Map<string, number>();
     for (const k of ks) for (const s of exT.get(k)!.keys()) if (!cbSet.has(s) && presente(k, s)) cand.set(s, (cand.get(s) ?? 0) + 1);
     const N = ks.length, pct = R / T;
+    // Sumar un SKU sube el % solo si está exhibido en una proporción de tiendas mayor al % que hay: de mayor a menor
+    // exhibición, se agregan mientras sigan subiendo el % acumulado (después de eso lo bajarían).
     const sugerencias: SkuSugerido[] = [];
-    for (const [c, n] of cand) {
+    let r = R, t = T;
+    for (const [c, n] of [...cand].sort((a, b) => b[1] - a[1])) {
+      if (n / N <= r / t || sugerencias.length >= (opts.top ?? 40)) break;
+      r += n; t += N;
       const ic = info.get(c)!;
-      let homologo: SkuSugerido["homologo"] = null;
-      for (const s of cbSet) {
-        const is = info.get(s);
-        if (!is || is.cat !== ic.cat) continue;
-        const mismo = !!ic.seg && ic.seg === is.seg;
-        if (!mismo && (!ic.seg || tipoProducto(ic.seg) !== tipoProducto(is.seg))) continue;
-        let rec = 0;
-        for (const k of ks) { const v = cbT.get(k)!.skus.get(s); if (v && v.r < v.t && presente(k, c)) rec += v.t - v.r; }
-        if (!rec) continue;
-        if (!homologo || (mismo && !homologo.mismoSegmento) || (mismo === homologo.mismoSegmento && rec > homologo.recupera))
-          homologo = { de: s, mismoSegmento: mismo, recupera: rec, deltaPp: (rec / T) * 100 };
-      }
-      const nuevoDeltaPp = Math.max(0, ((R + n) / (T + N) - pct) * 100);
-      if (!homologo && nuevoDeltaPp < 0.05) continue;
-      sugerencias.push({ sku: c, descripcion: ic.desc, categoria: ic.cat, segmento: ic.seg, tiendasExh: n, tiendas: N, homologo, nuevoDeltaPp });
+      sugerencias.push({ sku: c, descripcion: ic.desc, categoria: ic.cat, segmento: ic.seg, tiendasExh: n, tiendas: N, pct: ((R + n) / (T + N)) * 100, acumPct: (r / t) * 100 });
     }
-    const mejor = (s: SkuSugerido) => Math.max(s.homologo?.deltaPp ?? 0, s.nuevoDeltaPp);
-    sugerencias.sort((a, b) => mejor(b) - mejor(a) || b.tiendasExh - a.tiendasExh);
-    out.push({ grupo, tiendas: N, target: T, real: R, pct: pct * 100, sugerencias: sugerencias.slice(0, opts.top ?? 40) });
+    out.push({ grupo, tiendas: N, target: T, real: R, pct: pct * 100, sugerencias });
   }
   return out.sort((a, b) => a.pct - b.pct);
 }
