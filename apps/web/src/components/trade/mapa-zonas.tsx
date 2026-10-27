@@ -74,6 +74,12 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const [sel, setSel] = useState<string | null>(null);
   const [todas, setTodas] = useState(false); // ficha: todas las métricas de un punto
   const [hover, setHover] = useState<string | null>(null);
+  // Orden de la tabla: columna (-1 = tienda/zona, si no índice de métrica) y sentido; clic en el mismo encabezado lo invierte.
+  const [ord, setOrd] = useState<{ col: number; asc: boolean }>({ col: inicial, asc: true });
+  const ordenar = (col: number) => {
+    setOrd((o) => (o.col === col ? { col, asc: !o.asc } : { col, asc: true }));
+    if (col >= 0) setM(col);
+  };
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; cam: typeof cam } | null>(null);
   const encuadrar = (c: Caja, a = asp) => ({ cx: c.x + c.w / 2, cy: c.y + c.h / 2, w: Math.max(c.w, c.h * a) });
@@ -237,14 +243,23 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b text-left text-muted-foreground">
-              <th className="py-1.5 pr-2">Tienda / zona · {enVistaTodos.length} en la vista</th>
+              <th onClick={() => ordenar(-1)} className={`cursor-pointer py-1.5 pr-2 ${ord.col === -1 ? "text-blue-700" : ""}`}>
+                Tienda / zona · {enVistaTodos.length} en la vista{ord.col === -1 ? (ord.asc ? " ▲" : " ▼") : ""}
+              </th>
               {metricas.map((x, i) => (
-                <th key={x.label} onClick={() => setM(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${i === m ? "text-blue-700" : ""}`}>{x.label}{i === m ? " ▲" : ""}</th>
+                <th key={x.label} onClick={() => ordenar(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${i === ord.col ? "text-blue-700" : ""}`}>
+                  {x.label}{i === ord.col ? (ord.asc ? " ▲" : " ▼") : ""}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {[...enVistaTodos].sort((a, b) => (pct(a.vals[m]!) ?? 1e9) - (pct(b.vals[m]!) ?? 1e9)).slice(0, todas ? undefined : 30).map((p) => (
+            {[...enVistaTodos].sort((a, b) => {
+              if (ord.col < 0) return (ord.asc ? 1 : -1) * a.label.localeCompare(b.label, "es", { numeric: true });
+              const va = pct(a.vals[ord.col]!), vb = pct(b.vals[ord.col]!);
+              if (va == null || vb == null) return va == null ? (vb == null ? 0 : 1) : -1; // sin dato siempre al final
+              return ord.asc ? va - vb : vb - va;
+            }).slice(0, todas ? undefined : 30).map((p) => (
               <tr key={p.zona} className={`cursor-pointer border-b ${hover === p.zona || sel === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)}>
                 <td className="py-1 pr-2">{p.label}</td>
                 {metricas.map((x, i) => {
