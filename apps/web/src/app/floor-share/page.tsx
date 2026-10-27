@@ -154,8 +154,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
       <HowToRead slug="floor-share" />
-      {/* Sin pestaña Diagnóstico (pedido del user): sin <DashTabs>, el renglón queda Tablero · Mapa por zona. */}
-      <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/floor-share" }, { key: "mapa", label: "Mapa por zona", href: "/floor-share?tab=mapa" }]} active={esMapa ? "mapa" : "tablero"} />
+      {/* Sin pestaña Diagnóstico (pedido del user): sin <DashTabs>, el renglón queda Tablero · Mapa. */}
+      <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/floor-share" }, { key: "mapa", label: "Mapa", href: "/floor-share?tab=mapa" }]} active={esMapa ? "mapa" : "tablero"} />
 
       <FloorShareFilters current={filter} options={options} />
 
@@ -174,7 +174,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         </>
       ) : esMapa ? (
         <MapaZonas
-          titulo="Floor Share por zona"
+          titulo="Floor Share por tienda"
           metricas={[{ label: "General", obj: Number(genObj.toFixed(1)) }, { label: "Lavado", obj: OBJ.lavado }, { label: "Refrigeración", obj: OBJ.refri }, { label: "Cocción", obj: OBJ.coccion }]}
           puntos={(v.byZona ?? []).map((z) => ({
             zona: z.cliente, tiendas: z.tiendas,

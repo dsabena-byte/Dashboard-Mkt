@@ -44,7 +44,7 @@ const OBJ_PCT = 80;
 
 const TABS = [
   { key: "overview", label: "Cuadro Básico Trade", href: "/cuadros-basicos" },
-  { key: "mapa", label: "Mapa por zona", href: "/cuadros-basicos?tab=mapa" },
+  { key: "mapa", label: "Mapa", href: "/cuadros-basicos?tab=mapa" },
   { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" },
 ];
 // Solo quien puede editar Trade (exigirEdicion("trade")) ve la carga y los maestros.
@@ -188,7 +188,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         </div>
       ) : tab === "mapa" ? (
         <MapaZonas
-          titulo="Cuadro Básico por zona"
+          titulo="Cuadro Básico por tienda"
           metricas={[{ label: "% CB", obj: OBJ_PCT }, { label: "% Infaltables", obj: OBJ_PCT }, { label: "% Estratégico", obj: OBJ_PCT }]}
           puntos={(v.byZona ?? []).map((z) => ({ zona: z.zona, tiendas: z.tiendas, vals: [z.cb, z.inf, z.est] }))}
         />

@@ -71,7 +71,7 @@ export type CbZona = { zona: string; tiendas: number; cb: [number, number]; inf:
 export function computeCbZonas(rows: CbRow[]): CbZona[] {
   const m = new Map<string, { t: Set<string>; cb: [number, number]; inf: [number, number] }>();
   for (const r of rows) {
-    const z = r.zona || "Sin zona";
+    const z = r.geo ? `${r.tienda}@${r.geo}` : r.zona || "Sin zona"; // tienda geocodificada = su propio punto
     const e = m.get(z) ?? { t: new Set<string>(), cb: [0, 0], inf: [0, 0] };
     e.t.add(r.tienda); e.cb[0] += r.real_cb ?? 0; e.cb[1] += r.target_cb ?? 0; e.inf[0] += r.real_inf ?? 0; e.inf[1] += r.target_inf ?? 0;
     m.set(z, e);

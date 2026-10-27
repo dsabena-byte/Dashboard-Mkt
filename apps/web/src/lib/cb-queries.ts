@@ -59,6 +59,8 @@ export interface CbRow {
   promotor?: string;
   supervisor?: string;
   zona?: string;
+  /** "lat|lon|provincia" si la tienda tiene dirección geocodificada (mapa). */
+  geo?: string;
 }
 
 export interface CbTotals {

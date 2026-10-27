@@ -573,12 +573,15 @@ reporte_existencia/cb_homologos).
   ordenable y Detalle de SKUs al elegir tienda/cliente (`tr_cb_semanal`). Tabla común `components/trade/agg-table.tsx`. Vista default FS =
   todas las semanas del año. Las 18 tiendas de `MANUAL_CONTACTOS` de la app vieja NO están en `tr_tiendas` (salen "Tienda sin mapeo").
   **Cargas en CSV o Excel** (`lib/leer-planilla.ts`, primera hoja; también "Importar usuarios").
-  **Mapa por zona (27-oct, `components/trade/mapa-zonas.tsx`, en /cuadros-basicos y /floor-share):** el maestro NO tiene direcciones; la
-  ubicación más fina es la ZONA = `tr_tiendas.localidad` (16: CABA, AMBA Norte/Sur/Oeste, Mar del Plata, Córdoba…; `provincia` = región,
-  8), cargadas el 27-oct desde `Tienda-promotor-supervisor.csv` del Drive (557/574; 17 con otro nombre). Burbuja por zona en su ciudad de
-  referencia (`ZONAS` en el componente; proyección lineal de `lib/argentina-provinces`: x=26.08·lon+1918.77, y=−33.34·lat−728.1), zoom/
-  arrastre, panel = Σ cumplidos ÷ Σ objetivo de lo que entra en la vista. CB Ventas NO va en el mapa (es por cuenta, sin ubicación). Con
-  direcciones (el user las puede conseguir) → geocodificar a lat/lon por tienda (servicio pago = pedir aprobación del gasto antes).
+  **Mapa (27-oct, pestaña "Mapa" de /cuadros-basicos y /floor-share, `components/trade/mapa-zonas.tsx`):** un PUNTO por tienda con
+  dirección: master de tiendas del user (Excel, 1.626 filas) cruzado por número + nombre → 614/631 tiendas; columnas nuevas de `tr_tiendas`
+  (migración **0141**, aplicada): `direccion, codigo_postal, municipio, estado` (= provincia real; `provincia` sigue = región) y `lat, lon,
+  geo_precision` ('direccion' | 'localidad'). Geocodificado GRATIS: Georef (apis.datos.gob.ar, bulk POST) + Nominatim/OSM para lo que no
+  encontró → 550 por dirección, 50 al centro de su localidad, 14 sin ubicar (el master trae localidades erróneas en Tucumán: "Leales" con
+  CP 4000). Vía: `getTrContactos` → `geo` "lat|lon|provincia" → la clave del punto es "N - tienda@lat|lon|prov" (`byZona` de cb/fs-view);
+  sin geo cae en la burbuja de su ZONA (`tr_tiendas.localidad`, `ZONAS` en el componente; proyección x=26.08·lon+1918.77,
+  y=−33.34·lat−728.1). Panel = Σ cumplidos ÷ Σ objetivo de lo que entra en la vista. CB Ventas NO va en el mapa (es por cuenta).
+  `tr_tiendas` tiene ~19 tiendas DUPLICADAS (ids 576–594, nombre en mayúsculas y cadena equivocada; misma dirección que el original).
   FS sin "Evolución mensual real vs meta" (27-oct, user: no estaba en la app vieja); el editor de objetivos queda al pie (solo editores).
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
   ni en el proyecto CB viejo (hueco de origen); se cargó el 27-oct.

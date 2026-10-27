@@ -1,8 +1,8 @@
 "use client";
 
-// Mapa de Argentina por ZONA del maestro de tiendas (CB Trade / Floor Share). El maestro no tiene direcciones: la
-// ubicación más fina es la zona (CABA, AMBA Norte/Sur/Oeste, Rosario…), así que cada zona es una burbuja en su
-// ciudad de referencia y cada provincia toma el color de sus zonas. Zoom con rueda/botones y arrastre; el panel
+// Mapa de Argentina de CB Trade / Floor Share. Cada tienda con dirección geocodificada (master de tiendas, `zona` =
+// "N - tienda@lat|lon|provincia") es un punto propio; las que no tienen dirección quedan agrupadas en una burbuja por
+// ZONA del maestro (CABA, AMBA Norte/Sur/Oeste, Rosario…) en su ciudad de referencia. Cada provincia toma el color de lo suyo. Zoom con rueda/botones y arrastre; el panel
 // suma SOLO lo que entra en la vista (Σ cumplidos ÷ Σ objetivo, no promedio de porcentajes).
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 import { AR_PROVINCES } from "@/lib/argentina-provinces";
@@ -30,6 +30,14 @@ const ZONAS: Record<string, { lat: number; lon: number; prov: string }> = {
   "lujan de cuyo": { lat: -33.04, lon: -68.88, prov: "Mendoza" },
 };
 const canon = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+const PROV = new Map(AR_PROVINCES.map((p) => [canon(p.name), p.name]));
+const provMapa = (s: string) => (canon(s).includes("autonoma") ? "Capital Federal" : PROV.get(canon(s)) ?? "");
+/** Punto propio de una tienda geocodificada ("N - tienda@lat|lon|provincia") o null (= zona). */
+function tiendaGeo(z: string) {
+  const i = z.lastIndexOf("@"); if (i < 0) return null;
+  const [lat, lon, prov] = z.slice(i + 1).split("|");
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lon)) ? { label: z.slice(0, i), lat: Number(lat), lon: Number(lon), prov: provMapa(prov ?? "") } : null;
+}
 // Proyección de los paths de lib/argentina-provinces (lineal; ajustada con los bordes de 8 provincias, error < 3 px).
 const px = (lon: number) => 26.08 * lon + 1918.77;
 const py = (lat: number) => -33.34 * lat - 728.1;
@@ -38,7 +46,7 @@ type Caja = { x: number; y: number; w: number; h: number };
 const FULL: Caja = { x: 0, y: 0, w: 520, h: 1107 };
 const ZONAS_CAJA: Caja = { x: 110, y: 20, w: 400, h: 540 }; // de Jujuy a Mar del Plata: donde hay tiendas
 const VISTAS: Array<{ label: string; v: Caja }> = [
-  { label: "Zonas", v: ZONAS_CAJA },
+  { label: "Inicio", v: ZONAS_CAJA },
   { label: "País", v: FULL },
   { label: "AMBA", v: { x: 380, y: 410, w: 50, h: 60 } },
   { label: "Centro", v: { x: 230, y: 280, w: 230, h: 300 } },
@@ -71,10 +79,13 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
   const vb: Caja = { x: cam.cx - w / 2, y: cam.cy - h / 2, w, h };
 
   const ubicados = useMemo(() => puntos.flatMap((p) => {
+    const t = tiendaGeo(p.zona);
+    if (t) return [{ ...p, ...t, tienda: true, x: px(t.lon), y: py(t.lat) }];
     const z = ZONAS[canon(p.zona)];
-    return z ? [{ ...p, ...z, x: px(z.lon), y: py(z.lat) }] : [];
+    return z ? [{ ...p, ...z, label: `Zona ${p.zona} (sin dirección)`, tienda: false, x: px(z.lon), y: py(z.lat) }] : [];
   }), [puntos]);
-  const sinUbicar = puntos.filter((p) => !ZONAS[canon(p.zona)]).reduce((s, p) => s + p.tiendas, 0);
+  const sinUbicar = puntos.filter((p) => !tiendaGeo(p.zona) && !ZONAS[canon(p.zona)]).reduce((s, p) => s + p.tiendas, 0);
+  const nTiendas = ubicados.filter((p) => p.tienda).length;
   const porProv = useMemo(() => {
     const out = new Map<string, Array<[number, number]>>();
     for (const p of ubicados) out.set(p.prov, [...(out.get(p.prov) ?? []), p.vals[m]!]);
@@ -135,13 +146,13 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
             ))}
             {ubicados.map((p) => {
               const v = pct(p.vals[m]!);
-              const r = (4 + 14 * Math.sqrt(p.tiendas / maxT)) * escala;
+              const r = (p.tienda ? 3.5 : 4 + 14 * Math.sqrt(p.tiendas / maxT)) * escala;
               return (
                 <g key={p.zona} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)}>
                   <circle cx={p.x} cy={p.y} r={r} fill={color(v, metrica.obj)} fillOpacity={0.75} stroke="#fff" strokeWidth={1.2 * escala} />
-                  {(escala < 0.45 || hover === p.zona) && (
+                  {(hover === p.zona || (p.tienda ? escala < 0.06 : escala < 0.45)) && (
                     <text x={p.x + r + 2 * escala} y={p.y + 3 * escala} fontSize={9 * escala} fontWeight={600} fill="#0f172a">
-                      {p.zona} · {v == null ? "—" : `${v.toFixed(0)}%`}
+                      {p.label} · {v == null ? "—" : `${v.toFixed(0)}%`}
                     </text>
                   )}
                 </g>
@@ -149,7 +160,7 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
             })}
           </svg>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Rueda del mouse o +/− para hacer zoom, arrastrá para moverte. Burbuja = zona del maestro de tiendas (tamaño = cantidad de tiendas, color = vs objetivo).
+            Rueda del mouse o +/− para hacer zoom, arrastrá para moverte. Punto = tienda ({nTiendas} con dirección); burbuja grande = tiendas sin dirección agrupadas por zona. Color = vs objetivo.
             {sinUbicar > 0 ? ` ${sinUbicar} tiendas sin zona cargada no aparecen en el mapa.` : ""}
           </p>
         </div>
@@ -157,16 +168,16 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
           <div className="rounded-lg border p-3">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">En la vista</div>
             <div className="mt-1 text-2xl font-bold" style={{ color: color(pct(tot), metrica.obj) }}>{pct(tot) == null ? "—" : `${pct(tot)!.toFixed(1)}%`}</div>
-            <div className="text-muted-foreground">{metrica.label} · objetivo {metrica.obj}% · {enVista.length} zonas · {enVista.reduce((s, p) => s + p.tiendas, 0)} tiendas</div>
+            <div className="text-muted-foreground">{metrica.label} · objetivo {metrica.obj}% · {enVista.reduce((s, p) => s + p.tiendas, 0)} tiendas</div>
           </div>
           <table className="w-full">
-            <thead><tr className="text-left text-muted-foreground"><th className="py-1">Zona</th><th className="text-right">Tiendas</th><th className="text-right">{metrica.label}</th></tr></thead>
+            <thead><tr className="text-left text-muted-foreground"><th className="py-1">Tienda / zona</th><th className="text-right">Tiendas</th><th className="text-right">{metrica.label}</th></tr></thead>
             <tbody>
-              {[...enVista].sort((a, b) => (pct(a.vals[m]!) ?? -1) - (pct(b.vals[m]!) ?? -1)).map((p) => {
+              {[...enVista].sort((a, b) => (pct(a.vals[m]!) ?? -1) - (pct(b.vals[m]!) ?? -1)).slice(0, 40).map((p) => {
                 const v = pct(p.vals[m]!);
                 return (
                   <tr key={p.zona} className={`border-t ${hover === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)}>
-                    <td className="py-1">{p.zona}</td>
+                    <td className="py-1">{p.label}</td>
                     <td className="text-right tabular-nums">{p.tiendas}</td>
                     <td className="text-right font-semibold tabular-nums" style={{ color: color(v, metrica.obj) }}>{v == null ? "—" : `${v.toFixed(0)}%`}</td>
                   </tr>
@@ -174,6 +185,7 @@ export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos
               })}
             </tbody>
           </table>
+          {enVista.length > 40 && <p className="text-[11px] text-muted-foreground">Se ven las 40 peores de {enVista.length}; hacé zoom para ver el resto.</p>}
         </div>
       </div>
     </section>
