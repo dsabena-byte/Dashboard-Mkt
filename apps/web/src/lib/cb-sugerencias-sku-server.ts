@@ -6,6 +6,8 @@ import { trAll } from "@/lib/trade-db";
 import { calcularSugerenciasSku, claveTienda, equivalencias, type CbSkuRow, type ExhSkuRow, type GrupoSku } from "@/lib/cb-sugerencias-sku";
 
 export const MIN_SEMANAS = 4; // un mes
+/** tr_config: SKUs que el usuario sacó de las sugerencias, { "cliente|<grupo>" | "tipologia|<grupo>": [sku] }. */
+export const SKU_DESCARTES = "sku_sug_descartados";
 export type SugerenciasSku = {
   semanas: number[]; desde: number | null; hasta: number | null; anio: number;
   porCliente: GrupoSku[]; porTipologia: GrupoSku[]; error: string | null;
@@ -29,15 +31,20 @@ export async function getSugerenciasSku(desdeQ?: number, hastaQ?: number): Promi
   const hasta = hastaQ && semanas.includes(hastaQ) ? hastaQ : semanas[semanas.length - 1]!;
   const desde = desdeQ && desdeQ <= hasta ? desdeQ : semanas.filter((s) => s <= hasta).slice(-MIN_SEMANAS)[0]!;
 
-  const [exh, cb, cadenas, clientes, catVentas] = await Promise.all([
+  const [exh, cb, cadenas, clientes, catVentas, skus, config] = await Promise.all([
     trAll<ExhSkuRow & { formato: string | null }>(
       `tr_exhibicion_sku?select=id,semana,tienda,sku,division,categoria,subcategoria,descripcion,estatus_pdv,formato&anio=eq.${anio}&semana=gte.${desde}&semana=lte.${hasta}`),
-    trAll<CbSkuRow>(`tr_cb_semanal?select=id,semana,tienda,cliente,sku,target_cb,real_cb&anio=eq.${anio}&semana=gte.${desde}&semana=lte.${hasta}`),
+    trAll<CbSkuRow>(`tr_cb_semanal?select=id,semana,tienda,cliente,sku,target_cb,real_cb,division&anio=eq.${anio}&semana=gte.${desde}&semana=lte.${hasta}`),
     trAll<{ clave: string; nombre: string | null; cliente: string | null; alias: string[] | null }>("tr_cadenas?select=clave,nombre,cliente,alias", "clave"),
     trAll<{ cliente: string; tipologia: string | null }>("vt_clientes?select=cliente,tipologia", "cliente").catch(() => []),
     // Homólogos: el CB de Trade no los tiene; se toman del catálogo vigente de CB Ventas (equivalencia de producto).
     trAll<{ modelo: string; homologos: string[] | null }>("vt_cb_catalogo?select=id,modelo,homologos&vigente_hasta=is.null").catch(() => null),
+    trAll<{ sku: string; descripcion: string | null }>("tr_skus?select=sku,descripcion", "sku").catch(() => []),
+    trAll<{ valor: Record<string, string[]> }>(`tr_config?select=clave,valor&clave=eq.${SKU_DESCARTES}`, "clave").catch(() => []),
   ]);
+  const nombres = new Map(skus.filter((x) => x.descripcion).map((x) => [x.sku, x.descripcion!]));
+  const desc = config[0]?.valor ?? {};
+  const descartados = (modo: string) => (g: string) => new Set(desc[`${modo}|${g}`] ?? []);
   const equivalentes = equivalencias(catVentas ?? []);
 
   const tipoDeCliente = new Map(clientes.map((c) => [norm(c.cliente), c.tipologia ?? ""]));
@@ -52,7 +59,7 @@ export async function getSugerenciasSku(desdeQ?: number, hastaQ?: number): Promi
   return {
     anio, semanas, desde, hasta,
     error: catVentas ? null : "No se pudo leer el catálogo de homólogos de CB Ventas: las sugerencias pueden incluir homólogos de SKUs del CB.",
-    porCliente: calcularSugerenciasSku(exh, cb, (_t, c) => c || "Sin cliente", { equivalentes }),
-    porTipologia: calcularSugerenciasSku(exh, cb, tipologia, { equivalentes }),
+    porCliente: calcularSugerenciasSku(exh, cb, (_t, c) => c || "Sin cliente", { equivalentes, nombres, descartados: descartados("cliente") }),
+    porTipologia: calcularSugerenciasSku(exh, cb, tipologia, { equivalentes, nombres, descartados: descartados("tipologia") }),
   };
 }

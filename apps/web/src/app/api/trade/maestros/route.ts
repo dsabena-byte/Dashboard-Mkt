@@ -4,11 +4,13 @@ import { norm, normalizeStoreNumber } from "@/lib/fs-enrich";
 import { exigirEdicion, getMiPerfil, puedeVerTablero } from "@/lib/usuarios-server";
 import { auditar, esFaltaTabla, trAll, trJson, trRest, trUpsert } from "@/lib/trade-db";
 import { normClave } from "@/lib/trade-carga-core";
+import { SKU_DESCARTES } from "@/lib/cb-sugerencias-sku-server";
 
 // Edición puntual de los maestros de Trade (pestañas de /cuadros-basicos). Todo cambio queda en tr_auditoria.
 //   GET ?entidad=tiendas|cadenas|skus
 //   PATCH {entidad:"tienda", id, cambios} · {entidad:"tienda_alta", ...} · {entidad:"asignacion", tienda_id, promotor, supervisor, desde}
 //         {entidad:"cadena", clave, cambios} · {entidad:"cadena_unir", de, a} · {entidad:"sku", sku, cambios}
+//         {entidad:"sku_descarte", modo:"cliente"|"tipologia", grupo, sku, sacar:boolean} (Sugerencias de SKUs)
 // (Los objetivos de Floor Share ya NO van acá: son las metas mensuales por categoría de /floor-share.)
 export const dynamic = "force-dynamic";
 
@@ -161,6 +163,22 @@ export async function PATCH(req: Request) {
         await trRest(`tr_cadenas?clave=eq.${encodeURIComponent(de)}`, { method: "PATCH", prefer: "return=minimal", body: JSON.stringify({ activa: false, alias: [], updated_at: now() }) });
         await auditar(usuario, "cadena_unir", `${de} → ${a}`, { de, tiendas: td.length }, { a, movidas: mover.length, quedaron: td.length - mover.length });
         return NextResponse.json({ ok: true, movidas: mover.length, quedaron: td.length - mover.length });
+      }
+      case "sku_descarte": {
+        const modo = b.modo === "tipologia" ? "tipologia" : b.modo === "cliente" ? "cliente" : null;
+        const grupo = typeof b.grupo === "string" ? b.grupo.slice(0, 200) : "";
+        const sku = typeof b.sku === "string" ? b.sku.trim().slice(0, 80) : "";
+        if (!modo || !grupo || !sku || typeof b.sacar !== "boolean") return bad("Pedido inválido");
+        const [fila] = await trJson<{ valor: Record<string, string[]> }[]>(`tr_config?clave=eq.${SKU_DESCARTES}&select=valor`);
+        const valor = { ...(fila?.valor ?? {}) };
+        const k = `${modo}|${grupo}`;
+        const antes = valor[k] ?? [];
+        const set = new Set(antes);
+        if (b.sacar) set.add(sku); else set.delete(sku);
+        if (set.size) valor[k] = [...set]; else delete valor[k];
+        await trUpsert("tr_config", [{ clave: SKU_DESCARTES, valor, updated_at: now(), updated_by: usuario }], "clave");
+        await auditar(usuario, "sku_descarte", k, antes, [...set]);
+        return NextResponse.json({ ok: true });
       }
       case "sku": {
         const sku = String(b.sku ?? "");

@@ -34,16 +34,68 @@ function StatCard({ label, value, hint, pill }: { label: string; value: string; 
   );
 }
 
-function Detalle({ g }: { g: GrupoSku }) {
+const AREAS = ["Lavado", "Refrigeración", "Cocción", "Otros"];
+
+function Detalle({ g, modo, editor }: { g: GrupoSku; modo: string; editor: boolean }) {
+  const router = useRouter();
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const cambiar = async (sku: string, sacar: boolean) => {
+    setOcupado(sku); setError(null);
+    const r = await fetch("/api/trade/maestros", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entidad: "sku_descarte", modo, grupo: g.grupo, sku, sacar }),
+    }).catch(() => null);
+    if (!r?.ok) { setError((await r?.json().catch(() => null))?.error ?? "No se pudo guardar"); setOcupado(null); return; }
+    router.refresh(); // recalcula sugerencias e indicadores en el server
+    setOcupado(null);
+  };
+  const orden = new Map(g.sugerencias.map((s, i) => [s.sku, i + 1]));
   return (
-    <div className="space-y-2 bg-slate-50 p-4">
-      <div className="text-xs font-semibold">🔍 SKUs para sumar al CB — {g.grupo}</div>
+    <div className="space-y-3 bg-slate-50 p-4">
+      <div className="text-xs font-semibold">🔍 {g.grupo}: CB actual y dónde sumaría cada SKU</div>
+      {error && <p className="rounded bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
+      <div className="grid gap-3 lg:grid-cols-3">
+        {AREAS.filter((a) => g.cb.some((c) => c.area === a) || g.sugerencias.some((s) => s.area === a)).map((a) => {
+          const cb = g.cb.filter((c) => c.area === a), sug = g.sugerencias.filter((s) => s.area === a);
+          const t = cb.reduce((x, c) => x + c.total, 0), r = cb.reduce((x, c) => x + c.cumple, 0);
+          return (
+            <div key={a} className="rounded-lg border bg-white">
+              <div className="flex items-center justify-between border-b px-3 py-2 text-xs">
+                <span className="font-semibold">{a}</span>
+                <span className="text-muted-foreground">CB actual {cb.length} SKU · {t ? f1((r / t) * 100) : "—"}</span>
+              </div>
+              <div className="divide-y text-xs">
+                {cb.map((c) => (
+                  <div key={c.sku} className="flex items-center justify-between gap-2 px-3 py-1.5">
+                    <div><div className="font-semibold">{c.sku}</div><div className="text-[10px] text-muted-foreground">{c.descripcion}</div></div>
+                    <span className="whitespace-nowrap tabular-nums text-muted-foreground">{c.cumple}/{c.total} tiendas</span>
+                  </div>
+                ))}
+                {sug.map((s) => (
+                  <div key={s.sku} className="flex items-center justify-between gap-2 bg-emerald-50/60 px-3 py-1.5">
+                    <div>
+                      <div className="font-semibold text-emerald-800">＋ {s.sku} <span className="font-normal text-muted-foreground">(sugerido #{orden.get(s.sku)})</span></div>
+                      <div className="text-[10px] text-muted-foreground">{s.descripcion} · {s.segmento || s.categoria} · exhibido en {s.tiendasExh}/{s.tiendas}</div>
+                    </div>
+                    {editor && (
+                      <button disabled={!!ocupado} onClick={() => cambiar(s.sku, true)} className="whitespace-nowrap rounded border border-rose-200 bg-white px-2 py-0.5 text-[11px] text-rose-700 hover:bg-rose-50 disabled:opacity-50">
+                        {ocupado === s.sku ? "…" : "✕ Sacar"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <table className="w-full rounded-lg border bg-white text-xs">
         <thead>
           <tr className="border-b text-left text-muted-foreground">
             <th className="px-3 py-1.5">#</th>
-            <th className="px-3">SKU</th>
-            <th className="px-3">Categoría · segmento</th>
+            <th className="px-3">SKU a sumar</th>
+            <th className="px-3">Categoría</th>
             <th className="px-3 text-right">Exhibido en</th>
             <th className="px-3 text-right">% CB sumando solo este</th>
             <th className="px-3 text-right">% CB acumulado</th>
@@ -54,7 +106,7 @@ function Detalle({ g }: { g: GrupoSku }) {
             <tr key={s.sku} className="border-b last:border-0 align-top">
               <td className="px-3 py-1.5 text-muted-foreground">{i + 1}</td>
               <td className="px-3 py-1.5"><div className="font-semibold">{s.sku}</div><div className="text-muted-foreground">{s.descripcion}</div></td>
-              <td className="px-3 py-1.5">{s.categoria}<div className="text-muted-foreground">{s.segmento || "—"}</div></td>
+              <td className="px-3 py-1.5">{s.area}<div className="text-muted-foreground">{s.segmento || s.categoria}</div></td>
               <td className="px-3 py-1.5 text-right tabular-nums">{s.tiendasExh}/{s.tiendas} tiendas</td>
               <td className="px-3 py-1.5 text-right tabular-nums">{f1(s.pct)} <span className="text-emerald-700">+{(s.pct - g.pct).toFixed(1)} pp</span></td>
               <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{f1(s.acumPct)} <span className="text-emerald-700">+{(s.acumPct - g.pct).toFixed(1)} pp</span></td>
@@ -62,9 +114,20 @@ function Detalle({ g }: { g: GrupoSku }) {
           ))}
         </tbody>
       </table>
+      {g.descartados.length > 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          Sacados por el equipo (no se sugieren):{" "}
+          {g.descartados.map((sku) => (
+            <span key={sku} className="mr-2 inline-flex items-center gap-1 rounded bg-white px-1.5 py-0.5 ring-1 ring-slate-200">
+              {sku}
+              {editor && <button disabled={!!ocupado} onClick={() => cambiar(sku, false)} className="text-blue-700 hover:underline disabled:opacity-50">volver a sugerir</button>}
+            </span>
+          ))}
+        </p>
+      )}
       {g.homologosExcluidos.length > 0 && (
         <p className="text-[11px] text-muted-foreground">
-          No se sugieren porque ya están en el CB como homólogos (según el catálogo de CB Ventas):{" "}
+          No se sugieren porque ya están en el CB como homólogos:{" "}
           {g.homologosExcluidos.map((h) => `${h.sku} (de ${h.de})`).join(" · ")}
         </p>
       )}
@@ -94,7 +157,7 @@ function Fila({ g, i, abierto, onClick }: { g: GrupoSku; i: number; abierto: boo
   );
 }
 
-function Tabla({ titulo, nota, grupos, expandible }: { titulo: string; nota: string; grupos: GrupoSku[]; expandible: boolean }) {
+function Tabla({ titulo, nota, grupos, expandible, modo, editor }: { titulo: string; nota: string; grupos: GrupoSku[]; expandible: boolean; modo: string; editor: boolean }) {
   const [abierto, setAbierto] = useState<string | null>(null);
   return (
     <section className="overflow-hidden rounded-xl border bg-card">
@@ -125,7 +188,7 @@ function Tabla({ titulo, nota, grupos, expandible }: { titulo: string; nota: str
               <Fragment key={g.grupo}>
                 <Fila g={g} i={i} abierto={abierto === g.grupo} onClick={expandible ? () => setAbierto(abierto === g.grupo ? null : g.grupo) : undefined} />
                 {abierto === g.grupo && (
-                  <tr className="border-b"><td colSpan={8} className="p-0"><Detalle g={g} /></td></tr>
+                  <tr className="border-b"><td colSpan={8} className="p-0"><Detalle g={g} modo={modo} editor={editor} /></td></tr>
                 )}
               </Fragment>
             ))}
@@ -136,8 +199,8 @@ function Tabla({ titulo, nota, grupos, expandible }: { titulo: string; nota: str
   );
 }
 
-export function CbSugerenciasSku({ porCliente, porTipologia, semanas, desde, hasta, minSemanas }: {
-  porCliente: GrupoSku[]; porTipologia: GrupoSku[]; semanas: number[]; desde: number | null; hasta: number | null; minSemanas: number;
+export function CbSugerenciasSku({ porCliente, porTipologia, semanas, desde, hasta, minSemanas, editor }: {
+  porCliente: GrupoSku[]; porTipologia: GrupoSku[]; semanas: number[]; desde: number | null; hasta: number | null; minSemanas: number; editor: boolean;
 }) {
   const router = useRouter();
   const [modo, setModo] = useState<"cliente" | "tipologia">("cliente");
@@ -211,9 +274,9 @@ export function CbSugerenciasSku({ porCliente, porTipologia, semanas, desde, has
         <StatCard label="➖ Sin SKUs que sumen" value={String(sinSug.length)} hint="Ningún SKU fuera del CB supera su %" />
       </section>
 
-      <Tabla titulo={`✅ ${etiqueta[0]!.toUpperCase()}${etiqueta.slice(1)} con SKUs para sumar al CB`} nota="ordenados por mejora · click para detalle" grupos={conSug} expandible />
+      <Tabla titulo={`✅ ${etiqueta[0]!.toUpperCase()}${etiqueta.slice(1)} con SKUs para sumar al CB`} nota="ordenados por mejora · click para detalle" grupos={conSug} expandible modo={modo} editor={editor} />
       {sinSug.length > 0 && (
-        <Tabla titulo={`➖ ${etiqueta[0]!.toUpperCase()}${etiqueta.slice(1)} sin SKUs que suban el %`} nota="ningún SKU exhibido fuera del CB supera su % actual" grupos={sinSug} expandible={false} />
+        <Tabla titulo={`➖ ${etiqueta[0]!.toUpperCase()}${etiqueta.slice(1)} sin SKUs que suban el %`} nota="ningún SKU exhibido fuera del CB supera su % actual · click para ver su CB" grupos={sinSug} expandible modo={modo} editor={editor} />
       )}
     </div>
   );

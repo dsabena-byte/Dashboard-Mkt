@@ -11,10 +11,16 @@ export type ExhSkuRow = {
   semana: number; tienda: string; sku: string; division: string | null; categoria: string | null;
   subcategoria: string | null; descripcion: string | null; estatus_pdv: string | null;
 };
-export type CbSkuRow = { semana: number; tienda: string; cliente: string | null; sku: string; target_cb: number; real_cb: number };
+export type CbSkuRow = { semana: number; tienda: string; cliente: string | null; sku: string; target_cb: number; real_cb: number; division?: string | null };
+
+/** Categoría del tablero desde la división (LAVADO Y SECADO / REFRIGERACIÓN / COCCIÓN). */
+export const areaDe = (div: string | null | undefined) => {
+  const d = (div ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  return d.startsWith("LAVADO") ? "Lavado" : d.startsWith("REFRIG") ? "Refrigeración" : d.startsWith("COCC") ? "Cocción" : "Otros";
+};
 
 export type SkuSugerido = {
-  sku: string; descripcion: string; categoria: string; segmento: string;
+  sku: string; descripcion: string; area: string; categoria: string; segmento: string;
   /** tiendas del grupo donde está exhibido (≥ la mitad de las semanas relevadas) / tiendas del grupo */
   tiendasExh: number; tiendas: number;
   /** % CB del grupo sumando solo este SKU, y sumando este y todos los anteriores de la lista. */
@@ -24,6 +30,10 @@ export type GrupoSku = {
   grupo: string; tiendas: number; target: number; real: number; pct: number; sugerencias: SkuSugerido[];
   /** SKUs exhibidos fuera del CB que no se sugieren porque son homólogos de uno que ya está (`de`). */
   homologosExcluidos: { sku: string; de: string }[];
+  /** CB actual del grupo (última semana del período): por SKU, posiciones cumplidas / total. */
+  cb: { sku: string; descripcion: string; area: string; cumple: number; total: number }[];
+  /** SKUs que el usuario sacó de las sugerencias de este grupo (no se vuelven a sugerir). */
+  descartados: string[];
 };
 
 /** Clave para comparar códigos: sin ceros a la izquierda, mayúsculas, "·" = ".", sin espacios de más. */
@@ -70,16 +80,16 @@ export const tipoProducto = (seg: string) =>
   seg.split(" - ").filter((p) => !/^\d+([.,]\d+)?\s*(kg|cm|l|lts|litros)?$/i.test(p.trim())).join(" - ");
 
 export function calcularSugerenciasSku(
-  exh: ExhSkuRow[], cb: CbSkuRow[], grupoDe: (tienda: string, cliente: string | null) => string, opts: { top?: number; equivalentes?: Map<string, Set<string>> } = {},
+  exh: ExhSkuRow[], cb: CbSkuRow[], grupoDe: (tienda: string, cliente: string | null) => string, opts: { top?: number; equivalentes?: Map<string, Set<string>>; descartados?: (grupo: string) => Set<string>; nombres?: Map<string, string> } = {},
 ): GrupoSku[] {
   // Exhibición: semanas relevadas por tienda y semanas en que cada SKU estuvo exhibido (no "Retirada").
   const semT = new Map<string, Set<number>>(), exT = new Map<string, Map<string, Set<number>>>();
-  const info = new Map<string, { desc: string; cat: string; seg: string }>();
+  const info = new Map<string, { desc: string; cat: string; seg: string; area: string }>();
   for (const r of exh) {
     const k = claveTienda(r.tienda);
     if (!semT.has(k)) { semT.set(k, new Set()); exT.set(k, new Map()); }
     semT.get(k)!.add(r.semana);
-    if (!info.has(r.sku)) info.set(r.sku, { desc: r.descripcion ?? r.sku, cat: r.categoria ?? r.division ?? "", seg: segmento(r.subcategoria) });
+    if (!info.has(r.sku)) info.set(r.sku, { desc: r.descripcion ?? r.sku, cat: r.categoria ?? r.division ?? "", seg: segmento(r.subcategoria), area: areaDe(r.division) });
     if (/retirad/i.test(r.estatus_pdv ?? "")) continue;
     const m = exT.get(k)!;
     if (!m.has(r.sku)) m.set(r.sku, new Set());
@@ -91,11 +101,13 @@ export function calcularSugerenciasSku(
   const ult = new Map<string, number>();
   for (const r of cb) { const k = claveTienda(r.tienda); ult.set(k, Math.max(ult.get(k) ?? 0, r.semana)); }
   const cbT = new Map<string, { label: string; cliente: string | null; skus: Map<string, { t: number; r: number }> }>();
+  const divCb = new Map<string, string | null | undefined>();
   for (const r of cb) {
     const k = claveTienda(r.tienda);
     if (r.semana !== ult.get(k) || !(r.target_cb > 0) || !semT.has(k)) continue; // sin exhibición no se puede sugerir
     if (!cbT.has(k)) cbT.set(k, { label: r.tienda, cliente: r.cliente, skus: new Map() });
     cbT.get(k)!.skus.set(r.sku, { t: r.target_cb, r: Math.min(r.real_cb, r.target_cb) });
+    if (!divCb.get(r.sku)) divCb.set(r.sku, r.division);
   }
 
   const grupos = new Map<string, string[]>();
@@ -104,8 +116,11 @@ export function calcularSugerenciasSku(
   const out: GrupoSku[] = [];
   for (const [grupo, ks] of grupos) {
     let T = 0, R = 0;
-    const cbSet = new Set<string>();
-    for (const k of ks) for (const [s, v] of cbT.get(k)!.skus) { T += v.t; R += v.r; cbSet.add(s); }
+    const cbSet = new Set<string>(), porSku = new Map<string, { t: number; r: number }>();
+    for (const k of ks) for (const [s, v] of cbT.get(k)!.skus) {
+      T += v.t; R += v.r; cbSet.add(s);
+      const a = porSku.get(s) ?? { t: 0, r: 0 }; a.t += v.t; a.r += v.r; porSku.set(s, a);
+    }
     if (!T) continue;
     // SKU del CB por clave; un candidato equivalente (homólogo) a alguno ya está cubierto.
     const enCb = new Map<string, string>();
@@ -118,9 +133,10 @@ export function calcularSugerenciasSku(
       for (const e of opts.equivalentes?.get(claveSku(c)) ?? []) { const s = enCb.get(e); if (s) return s; }
       return null;
     };
+    const fuera = opts.descartados?.(grupo) ?? new Set<string>();
     const cand = new Map<string, number>(), excl = new Map<string, string>();
     for (const k of ks) for (const s of exT.get(k)!.keys()) {
-      if (cbSet.has(s) || enCb.has(claveSku(s)) || !presente(k, s)) continue;
+      if (cbSet.has(s) || enCb.has(claveSku(s)) || fuera.has(s) || !presente(k, s)) continue;
       const de = homDe(s);
       if (de) excl.set(s, de); else cand.set(s, (cand.get(s) ?? 0) + 1);
     }
@@ -133,9 +149,16 @@ export function calcularSugerenciasSku(
       if (n / N <= r / t || sugerencias.length >= (opts.top ?? 40)) break;
       r += n; t += N;
       const ic = info.get(c)!;
-      sugerencias.push({ sku: c, descripcion: ic.desc, categoria: ic.cat, segmento: ic.seg, tiendasExh: n, tiendas: N, pct: ((R + n) / (T + N)) * 100, acumPct: (r / t) * 100 });
+      sugerencias.push({ sku: c, descripcion: ic.desc, area: ic.area, categoria: ic.cat, segmento: ic.seg, tiendasExh: n, tiendas: N, pct: ((R + n) / (T + N)) * 100, acumPct: (r / t) * 100 });
     }
-    out.push({ grupo, tiendas: N, target: T, real: R, pct: pct * 100, sugerencias, homologosExcluidos: [...excl].map(([sku, de]) => ({ sku, de })) });
+    const cbAct = [...porSku].map(([sku, v]) => ({
+      sku, descripcion: opts.nombres?.get(sku) ?? info.get(sku)?.desc ?? sku,
+      area: divCb.get(sku) ? areaDe(divCb.get(sku)) : info.get(sku)?.area ?? "Otros", cumple: v.r, total: v.t,
+    })).sort((a, b) => a.area.localeCompare(b.area) || a.sku.localeCompare(b.sku));
+    out.push({
+      grupo, tiendas: N, target: T, real: R, pct: pct * 100, sugerencias, cb: cbAct, descartados: [...fuera],
+      homologosExcluidos: [...excl].map(([sku, de]) => ({ sku, de })),
+    });
   }
   return out.sort((a, b) => a.pct - b.pct);
 }
