@@ -3,8 +3,8 @@
 -- por "Cargar datos" (tipo 'exh'): reemplaza la semana entera, con backup y deshacer como CB/FS.
 create table if not exists public.tr_exhibicion_sku (
   id bigserial primary key,
-  anio int not null,
-  semana int not null,
+  anio smallint not null,       -- smallint como tr_cb_semanal (la vista vw_tr_cargado une las tres)
+  semana smallint not null,
   tienda text,                -- "325 - FAVA MAR DEL PLATA AV. LURO" (mismo formato que tr_cb_semanal.tienda)
   numero_tienda text,
   cadena text,
