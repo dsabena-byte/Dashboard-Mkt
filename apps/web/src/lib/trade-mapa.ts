@@ -155,6 +155,16 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
       p.cliente ??= (e.tienda_id != null ? cadDeTienda.get(String(e.tienda_id)) : null) ?? e.cliente ?? undefined;
       puntos.push(p);
     }
+    // Clientes de CB Ventas sin tiendas ni exhibiciones ubicadas: un punto en su ciudad (tr_config `cbv_ubicaciones`, listado del
+    // user 27-oct, geocodificado con Georef; sin ciudad = centro de la provincia). Solo CB Sell In.
+    const conPunto = new Set(puntos.map((p) => p.cuenta).filter(Boolean));
+    const ubic = await trAll<{ valor: Array<{ cliente: string; ciudad: string | null; provincia: string; lat: number; lon: number }> }>("tr_config?select=valor&clave=eq.cbv_ubicaciones", "clave").catch(() => []);
+    (ubic[0]?.valor ?? []).forEach((u, i) => {
+      if (conPunto.has(normN(u.cliente))) return;
+      const p: MapaPunto = { zona: `${u.cliente} — ${u.ciudad ?? u.provincia} (sin tiendas relevadas)@v${i}|${u.lat}|${u.lon}|`, tiendas: 0, vals: Array.from({ length: N_MET }, () => vacio) };
+      ponerSellIn(p, u.cliente);
+      if (p.cuenta) { if (!u.ciudad) p.detalle = [...(p.detalle ?? []), { label: "Ubicación", valor: `${u.provincia} (sin ciudad: centro de la provincia)` }]; puntos.push(p); }
+    });
   }
   const r1 = (x: number) => Number(x.toFixed(1));
   return {
