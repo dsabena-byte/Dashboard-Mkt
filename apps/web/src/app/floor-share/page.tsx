@@ -162,7 +162,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       </header>
       <HowToRead slug="floor-share" />
       {/* Sin pestaña Diagnóstico (pedido del user): sin <DashTabs>, el renglón queda Tablero · Mapa. */}
-      <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/floor-share" }, { key: "mapa", label: "Mapa", href: "/floor-share?tab=mapa" }]} active={esMapa ? "mapa" : "tablero"} />
+      <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/floor-share" }, { key: "mapa", label: "Heat Map", href: "/floor-share?tab=mapa" }]} active={esMapa ? "mapa" : "tablero"} />
 
       <FloorShareFilters current={filter} options={options} />
 
