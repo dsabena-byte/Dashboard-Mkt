@@ -181,7 +181,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         </>
       ) : mapa ? (
         <>
-          <MapaZonas titulo="Floor Share y Cuadro Básico por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} inicial={3} />
+          <MapaZonas titulo="Floor Share y Cuadro Básico por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} inicial={6} />
           <ExhibicionesTienda items={exhib} />
         </>
       ) : (

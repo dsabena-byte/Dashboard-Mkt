@@ -9,7 +9,8 @@ import { AR_PROVINCES } from "@/lib/argentina-provinces";
 import { FotosGaleria } from "@/components/trade/exhibicion-fotos";
 
 /** `binaria` = sí/no por tienda (ej. exhibición especial): el % de la vista = tiendas con ÷ tiendas con dato. */
-export type MapaMetrica = { label: string; obj: number; binaria?: boolean; porCuenta?: boolean };
+export type MapaMetrica = { label: string; obj: number; binaria?: boolean; porCuenta?: boolean; grupo?: string; corto?: string };
+// `grupo` = bloque (CB Sell In · CB Trade · Floor Share · Exhibición): se muestra separado; `corto` = nombre dentro del bloque.
 // `porCuenta` = el dato es del cliente (CB Sell In): cada tienda muestra el de su cliente y los totales cuentan una vez por cliente.
 /** `detalle` = líneas extra de la ficha (ej. exhibición especial con link a las fotos). */
 export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]>; cuenta?: string | null; detalle?: Array<{ label: string; valor: string; href?: string; fotos?: string[] }> };
@@ -137,13 +138,19 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const setVista = (c: Caja) => setCam(encuadrar(c));
 
   const metrica = metricas[m]!;
+  const inicio = (i: number) => i === 0 || metricas[i - 1]!.grupo !== metricas[i]!.grupo;
+  const corto = (x: MapaMetrica) => (x.grupo ? x.corto ?? x.label : x.label);
+  const cabGrupo = (i: number, cols: number, cls: string) => inicio(i) && metricas[i]!.grupo ? <tr key={`g${i}`}><td colSpan={cols} className={cls}>{metricas[i]!.grupo}</td></tr> : null;
   return (
     <section className="rounded-xl border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold">🗺️ {titulo}</h3>
-        <div className="flex flex-wrap gap-1 text-xs">
+        <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap text-xs">
           {metricas.map((x, i) => (
-            <button key={x.label} onClick={() => setM(i)} className={`rounded-full border px-2.5 py-1 ${i === m ? "border-blue-700 bg-blue-700 text-white" : "hover:bg-muted"}`}>{x.label}</button>
+            <span key={x.label} className={`flex items-center gap-1 ${inicio(i) && i > 0 ? "ml-1 border-l pl-2" : ""}`}>
+              {inicio(i) && x.grupo ? <span className="font-semibold text-muted-foreground">{x.grupo}</span> : null}
+              <button onClick={() => setM(i)} className={`rounded-full border px-2.5 py-1 ${i === m ? "border-blue-700 bg-blue-700 text-white" : "hover:bg-muted"}`}>{x.grupo ? x.corto ?? x.label : x.label}</button>
+            </span>
           ))}
         </div>
       </div>
@@ -199,19 +206,18 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                   <tbody>
                     {metricas.map((x, i) => {
                       const v = pct(p.vals[i]!);
-                      if (x.binaria) return (
-                        <tr key={x.label} className="border-t border-blue-100">
-                          <td className="py-0.5">{x.label}</td>
+                      const g = cabGrupo(i, 3, "whitespace-nowrap pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground");
+                      if (x.binaria) return [g,
+                        <tr key={x.label} className="whitespace-nowrap border-t border-blue-100">
+                          <td className="py-0.5">{corto(x)}</td>
                           <td colSpan={2} className="text-right font-semibold" style={{ color: v == null ? undefined : color(v, x.obj) }}>{v == null ? "sin dato" : v > 0 ? "Sí" : "No"}</td>
-                        </tr>
-                      );
-                      return (
-                        <tr key={x.label} className="border-t border-blue-100">
-                          <td className="py-0.5">{x.label}</td>
+                        </tr>];
+                      return [g,
+                        <tr key={x.label} className="whitespace-nowrap border-t border-blue-100">
+                          <td className="py-0.5">{corto(x)}</td>
                           <td className="text-right font-semibold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "sin dato" : `${v.toFixed(0)}%`}</td>
                           <td className="w-12 text-right text-muted-foreground tabular-nums">obj {x.obj}%</td>
-                        </tr>
-                      );
+                        </tr>];
                     })}
                   </tbody>
                 </table>
@@ -233,13 +239,12 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                 {metricas.map((x, i) => {
                   const con = enVistaTodos.filter((p) => (p.vals[i]?.[1] ?? 0) > 0);
                   const v = pct(sumaMetrica(con, i, x));
-                  return (
-                    <tr key={x.label} onClick={() => setM(i)} className={`cursor-pointer border-t ${i === m ? "bg-blue-50" : "hover:bg-muted"}`}>
-                      <td className="py-1">{x.label}</td>
+                  return [cabGrupo(i, 3, "whitespace-nowrap pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"),
+                    <tr key={x.label} onClick={() => setM(i)} className={`cursor-pointer whitespace-nowrap border-t ${i === m ? "bg-blue-50" : "hover:bg-muted"}`}>
+                      <td className="py-1">{corto(x)}</td>
                       <td className="text-right text-base font-bold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "—" : `${v.toFixed(1)}%`}</td>
-                      <td className="pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : x.porCuenta ? `${new Set(con.map((p) => p.cuenta)).size} clientes · obj ${x.obj}%` : `obj ${x.obj}%`}</td>
-                    </tr>
-                  );
+                      <td className="pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : x.porCuenta ? `${new Set(con.map((p) => p.cuenta)).size} cl. · obj ${x.obj}%` : `obj ${x.obj}%`}</td>
+                    </tr>];
                 })}
               </tbody>
             </table>
@@ -250,13 +255,20 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
+            <tr className="text-muted-foreground">
+              <th />
+              {metricas.map((x, i) => inicio(i) ? (
+                <th key={`g${i}`} colSpan={metricas.filter((y) => y.grupo === x.grupo).length}
+                  className={`whitespace-nowrap px-2 pt-1 text-center text-[10px] font-semibold uppercase tracking-wide ${i > 0 ? "border-l" : ""}`}>{x.grupo ?? ""}</th>
+              ) : null)}
+            </tr>
             <tr className="border-b text-left text-muted-foreground">
-              <th onClick={() => ordenar(-1)} className={`cursor-pointer py-1.5 pr-2 ${ord.col === -1 ? "text-blue-700" : ""}`}>
+              <th onClick={() => ordenar(-1)} className={`cursor-pointer whitespace-nowrap py-1.5 pr-2 ${ord.col === -1 ? "text-blue-700" : ""}`}>
                 Tienda / zona · {enVistaTodos.length} en la vista{ord.col === -1 ? (ord.asc ? " ▲" : " ▼") : ""}
               </th>
               {metricas.map((x, i) => (
-                <th key={x.label} onClick={() => ordenar(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${i === ord.col ? "text-blue-700" : ""}`}>
-                  {x.label}{i === ord.col ? (ord.asc ? " ▲" : " ▼") : ""}
+                <th key={x.label} onClick={() => ordenar(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${inicio(i) && i > 0 ? "border-l" : ""} ${i === ord.col ? "text-blue-700" : ""}`}>
+                  {corto(x)}{i === ord.col ? (ord.asc ? " ▲" : " ▼") : ""}
                 </th>
               ))}
             </tr>
@@ -269,10 +281,10 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
               return ord.asc ? va - vb : vb - va;
             }).slice(0, todas ? undefined : 30).map((p) => (
               <tr key={p.zona} className={`cursor-pointer border-b ${hover === p.zona || sel === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)}>
-                <td className="py-1 pr-2">{p.label}</td>
+                <td className="whitespace-nowrap py-1 pr-2">{p.label}</td>
                 {metricas.map((x, i) => {
                   const v = pct(p.vals[i]!);
-                  return <td key={x.label} className="px-2 text-right font-semibold tabular-nums" style={{ color: v == null ? "#94a3b8" : color(v, x.obj) }}>{fmt(v, x)}</td>;
+                  return <td key={x.label} className={`px-2 text-right font-semibold tabular-nums ${inicio(i) && i > 0 ? "border-l" : ""}`} style={{ color: v == null ? "#94a3b8" : color(v, x.obj) }}>{fmt(v, x)}</td>;
                 })}
               </tr>
             ))}
