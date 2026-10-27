@@ -62,6 +62,12 @@ function Detalle({ g }: { g: GrupoSku }) {
           ))}
         </tbody>
       </table>
+      {g.homologosExcluidos.length > 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          No se sugieren porque ya están en el CB como homólogos (según el catálogo de CB Ventas):{" "}
+          {g.homologosExcluidos.map((h) => `${h.sku} (de ${h.de})`).join(" · ")}
+        </p>
+      )}
     </div>
   );
 }
@@ -162,7 +168,7 @@ export function CbSugerenciasSku({ porCliente, porTipologia, semanas, desde, has
     <div className="space-y-4">
       <header className="rounded-xl border bg-sky-50 p-4 text-xs text-sky-900">
         <strong>¿Cómo funciona?</strong> Se analiza la <code>exhibición de SKUs por tienda</code> (archivos semanales) contra el CB de Trade de
-        cada {modo === "cliente" ? "cliente" : "tipología"}. Un SKU que <strong>no está en su CB</strong> pero ya está exhibido en
+        cada {modo === "cliente" ? "cliente" : "tipología"}. Un SKU que <strong>no está en su CB</strong> (ni es homólogo de uno que está, según el catálogo de CB Ventas) pero ya está exhibido en
         más tiendas que su % actual <strong>sube el indicador si se agrega al CB</strong> (no reemplaza a ninguno). Exhibido = apareció sin
         «Retirada» en al menos la mitad de las semanas relevadas; el % CB es el de la última semana del período.{" "}
         <strong>Click en cualquier {modo === "cliente" ? "cliente" : "tipología"}</strong> para ver qué SKUs sumar.

@@ -5,7 +5,7 @@ import {
   decodificar, parseCsv, detectarTipo, infoDesdeNombre, parseCb, parseFs, parseU3, parseTiendas, validarFila, faltantes,
   resumir, normClave, splitTienda, esMarcaBasura, parseExh,
 } from "../src/lib/trade-carga-core";
-import { calcularSugerenciasSku, segmento, tipoProducto } from "../src/lib/cb-sugerencias-sku";
+import { calcularSugerenciasSku, claveSku, equivalencias, segmento, tipoProducto } from "../src/lib/cb-sugerencias-sku";
 import { calcularSugerencias } from "../src/lib/trade-sugerencias-core";
 
 let n = 0;
@@ -179,5 +179,10 @@ const cbRows2 = cbRows.map((r) => ({ ...r, real_cb: r.tienda === "1 - UNO" ? 1 :
 const [g2] = calcularSugerenciasSku(exhRows, cbRows2, () => "C");
 eq(g2!.sugerencias.map((s) => [s.sku, s.tiendasExh, Math.round(s.pct), Math.round(s.acumPct)]),
   [["NUEVO", 2, 50, 50], ["TOP", 2, 50, 56]], "sumar al CB: % con cada SKU y acumulado (1+2+2)/(3+3+3)");
+// Homólogo según CB Ventas: NUEVO equivale a CB1 → no se sugiere (TOP sí).
+const eqv = equivalencias([{ modelo: "cb1", homologos: ["00NUEVO", "OTRO"] }]);
+const [g3] = calcularSugerenciasSku(exhRows, cbRows2, () => "C", { equivalentes: eqv });
+eq([g3!.sugerencias.map((s) => s.sku), g3!.homologosExcluidos], [["TOP"], [{ sku: "NUEVO", de: "CB1" }]], "homólogo del CB (catálogo de Ventas) no se sugiere");
+eq(claveSku("NEXT 6·09 ECO"), claveSku("next 6.09  eco"), "clave de SKU: · = . y mayúsculas");
 
 console.log(`trade-carga: ${n} checks OK`);
