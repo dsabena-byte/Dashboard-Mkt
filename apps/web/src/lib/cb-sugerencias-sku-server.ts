@@ -3,6 +3,7 @@ import "server-only";
 // la última semana del período por tienda (tr_cb_semanal) y la tipología de cada cadena (tr_cadenas.cliente → razón
 // social de CB Ventas → vt_clientes.tipologia; si la cadena no tiene cliente SAP, por la razón social del reporte).
 import { trAll } from "@/lib/trade-db";
+import { leerHomologos } from "@/lib/trade-sugerencias";
 import { calcularSugerenciasSku, claveTienda, type CbSkuRow, type ExhSkuRow, type GrupoSku } from "@/lib/cb-sugerencias-sku";
 
 export const MIN_SEMANAS = 4; // un mes
@@ -29,12 +30,13 @@ export async function getSugerenciasSku(desdeQ?: number, hastaQ?: number): Promi
   const hasta = hastaQ && semanas.includes(hastaQ) ? hastaQ : semanas[semanas.length - 1]!;
   const desde = desdeQ && desdeQ <= hasta ? desdeQ : semanas.filter((s) => s <= hasta).slice(-MIN_SEMANAS)[0]!;
 
-  const [exh, cb, cadenas, clientes] = await Promise.all([
+  const [exh, cb, cadenas, clientes, hom] = await Promise.all([
     trAll<ExhSkuRow & { formato: string | null }>(
       `tr_exhibicion_sku?select=id,semana,tienda,sku,division,categoria,subcategoria,descripcion,estatus_pdv,formato&anio=eq.${anio}&semana=gte.${desde}&semana=lte.${hasta}`),
     trAll<CbSkuRow>(`tr_cb_semanal?select=id,semana,tienda,cliente,sku,target_cb,real_cb&anio=eq.${anio}&semana=gte.${desde}&semana=lte.${hasta}`),
     trAll<{ clave: string; nombre: string | null; cliente: string | null; alias: string[] | null }>("tr_cadenas?select=clave,nombre,cliente,alias", "clave"),
     trAll<{ cliente: string; tipologia: string | null }>("vt_clientes?select=cliente,tipologia", "cliente").catch(() => []),
+    leerHomologos().catch(() => null), // catálogo del CB de Trade por cliente SAP (modelos + homólogos)
   ]);
 
   const tipoDeCliente = new Map(clientes.map((c) => [norm(c.cliente), c.tipologia ?? ""]));
@@ -46,9 +48,15 @@ export async function getSugerenciasSku(desdeQ?: number, hastaQ?: number): Promi
     return (sap && tipoDeCliente.get(norm(sap))) || tipoDeCliente.get(norm(formatoDeTienda.get(claveTienda(tienda)))) || "Sin tipología";
   };
 
+  // Igual que las Sugerencias de tiendas: cadena sin cliente SAP = catálogo de SMALL RETAILERS.
+  const catDe = new Map<string, Set<string>>();
+  for (const h of hom ?? []) { const k = norm(h.cliente); if (!catDe.has(k)) catDe.set(k, new Set()); catDe.get(k)!.add(h.modelo).add(h.sku); }
+  const catalogo = (_t: string, cliente: string | null) => catDe.get(norm(sapDeCadena.get(norm(cliente)) ?? "SMALL RETAILERS")) ?? [];
+
   return {
-    anio, semanas, desde, hasta, error: null,
-    porCliente: calcularSugerenciasSku(exh, cb, (_t, c) => c || "Sin cliente"),
-    porTipologia: calcularSugerenciasSku(exh, cb, tipologia),
+    anio, semanas, desde, hasta,
+    error: hom ? null : "No se pudo leer el catálogo de homólogos del CB: las sugerencias pueden incluir SKUs que ya son homólogos.",
+    porCliente: calcularSugerenciasSku(exh, cb, (_t, c) => c || "Sin cliente", { catalogo }),
+    porTipologia: calcularSugerenciasSku(exh, cb, tipologia, { catalogo }),
   };
 }

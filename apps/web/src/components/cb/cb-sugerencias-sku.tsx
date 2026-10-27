@@ -60,7 +60,7 @@ export function CbSugerenciasSku({ porCliente, porTipologia, semanas, desde, has
         )}
         <p className="mt-2 text-muted-foreground">
           Un SKU cuenta como exhibido en una tienda si apareció (sin «Retirada») en al menos la mitad de las semanas relevadas del período.
-          El % CB es el de la última semana del período. Cada sugerencia se estima por separado: no se suman.
+          No se sugieren SKUs que ya están en el catálogo del CB del cliente (como modelo o como homólogo). El % CB es el de la última semana del período. Cada sugerencia se estima por separado: no se suman.
         </p>
       </section>
 
