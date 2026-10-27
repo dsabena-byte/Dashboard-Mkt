@@ -212,7 +212,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         </div>
       ) : mapa ? (
         <>
-          <MapaZonas titulo="Cuadro Básico y Floor Share por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} />
+          <MapaZonas titulo="Cuadro Básico y Floor Share por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} inicial={3} />
           <ExhibicionesTienda items={exhib} />
         </>
       ) : (
