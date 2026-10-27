@@ -588,6 +588,13 @@ reporte_existencia/cb_homologos).
   el otro toma período + equipo; con filtro de cliente/tienda/categoría se recorta a las tiendas del base. Clic en un punto = ficha con
   todo. Validado: 186 tiendas con CB y FS, 316 solo FS. PRÓXIMO (pedido del user): exhibición especial/mobiliario con foto por tienda
   (el user manda los datos) y, por cliente, CB Ventas (`vt_clientes` ↔ `tr_cadenas.cliente`).
+  **Exhibición especial (27-oct, migración 0142 aplicada, `tr_exhibiciones`):** planilla "Activaciones WOW - 2026" (345 activaciones
+  2023–26, mueble + link a carpeta de fotos en Drive) cruzada con tr_tiendas: dirección (calle + altura ±100, MISMA cadena: un shopping
+  tiene varias cadenas en la misma dirección) → nombre (palabras distintivas, misma provincia, sin chocar altura) → cadena+ciudad única;
+  161 asignadas (96 por dirección), 184 fuera del relevamiento ubicadas por su dirección/ciudad (Georef). Alias de cadenas en el script
+  (MUSIMUNDO (EMSA) → On City/Megatone, BLAS MARTINUCCI → Novogar, 5 H → Cravero…). El mapa suma la 8ª variable (sí/no por tienda +
+  ficha con mueble y fotos) y muestra TODAS las variables a la vez (resumen de la vista + tabla con una columna por variable; pedido
+  del user). Inactiva = RETIRADO / PDV CERRADO. PRÓXIMO: CB Ventas por cliente (`vt_clientes` ↔ `tr_cadenas.cliente`).
   `tr_tiendas` tiene ~19 tiendas DUPLICADAS (ids 576–594, nombre en mayúsculas y cadena equivocada; misma dirección que el original).
   FS sin "Evolución mensual real vs meta" (27-oct, user: no estaba en la app vieja); el editor de objetivos queda al pie (solo editores).
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
