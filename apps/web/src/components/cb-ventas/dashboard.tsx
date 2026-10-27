@@ -710,7 +710,10 @@ export default function CbVentasDashboard({ cuadroBasico: cuadroBasicoTodo, clas
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <TablaCumplimiento title="Cumplimiento por Vendedor" icon={<Trophy className="w-4 h-4 text-amber-500" />} columnHeader="Vendedor" rows={cumplPorVendedor} />
-              <TablaCumplimiento title="Cumplimiento por Cliente / Cadena" icon={<Building2 className="w-4 h-4 text-blue-600" />} columnHeader="Cliente / Cadena" rows={cumplPorCliente} onRowClick={(cli) => setClienteSeleccionado(cli)} />
+              {/* Mismo alto que la de vendedores; scroll interno (pedido del user). */}
+              <div className="relative lg:min-h-[320px]">
+                <TablaCumplimiento ajustar title="Cumplimiento por Cliente / Cadena" icon={<Building2 className="w-4 h-4 text-blue-600" />} columnHeader="Cliente / Cadena" rows={cumplPorCliente} onRowClick={(cli) => setClienteSeleccionado(cli)} />
+              </div>
             </div>
 
             {clienteSeleccionado && (
@@ -766,8 +769,9 @@ type FilaCumpl = {
 };
 
 function TablaCumplimiento({
-  title, icon, columnHeader, rows, onRowClick,
+  title, icon, columnHeader, rows, onRowClick, ajustar,
 }: {
+  ajustar?: boolean;
   title: string;
   icon: React.ReactNode;
   columnHeader: string;
@@ -775,7 +779,7 @@ function TablaCumplimiento({
   onRowClick?: (nombre: string) => void;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div className={`bg-white rounded-lg border border-slate-200 overflow-hidden ${ajustar ? "flex max-h-[70vh] flex-col lg:absolute lg:inset-0 lg:max-h-none" : ""}`}>
       <div className="flex items-center justify-between p-4 border-b border-slate-200">
         <div className="flex items-center gap-2">
           {icon}
@@ -783,7 +787,7 @@ function TablaCumplimiento({
         </div>
         <span className="text-xs text-slate-500">Δ vs objetivo {OBJETIVO}%</span>
       </div>
-      <div className="overflow-x-auto">
+      <div className={ajustar ? "min-h-0 flex-1 overflow-auto" : "overflow-x-auto"}>
         <table className="w-full text-xs">
           <thead className="sticky top-0 z-[1]">
             <tr>
@@ -983,6 +987,59 @@ function TablaSKUs({ rows, mostrarClientes, comprasFiltradas, cbClientesPorSku }
   cbClientesPorSku: Map<string, Set<string>>;
 }) {
   const [expandedSku, setExpandedSku] = useState<string | null>(null);
+  // Primero tipo → categoría (cerradas); al tocar una categoría se ven sus SKUs (pedido del user: la lista era muy larga).
+  const [catsAbiertas, setCatsAbiertas] = useState<Set<string>>(new Set());
+  const toggleCat = (k: string) => setCatsAbiertas((cur) => {
+    const n = new Set(cur);
+    if (n.has(k)) n.delete(k); else n.add(k);
+    return n;
+  });
+  const porCategoria = (pref: string, lista: typeof rows) => {
+    const orden = ["LAVADO", "REFRIGERACION", "COCCION"];
+    const norm = (c: string) => c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const cats = Array.from(new Set(lista.map((r) => r.categoria))).sort((a, b) => {
+      const ia = orden.indexOf(norm(a)), ib = orden.indexOf(norm(b));
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "es");
+    });
+    return cats.map((cat) => {
+      const k = `${pref}-${cat}`;
+      const items = lista.filter((r) => r.categoria === cat);
+      const abierta = catsAbiertas.has(k);
+      const en = items.reduce((a, x) => a + x.clientesEnCB, 0);
+      const cu = items.reduce((a, x) => a + x.clientesCumplidos, 0);
+      const fc = items.reduce((a, x) => a + x.fcUnits, 0);
+      const bo = items.reduce((a, x) => a + x.boUnits, 0);
+      const pct = en > 0 ? Math.round((cu / en) * 100) : 0;
+      const pctBg = pct >= 80 ? "bg-green-100 text-green-800" : pct >= 70 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
+      const u = (n: number) => (n > 0 ? `${n.toLocaleString("es-AR")}u` : "—");
+      return [
+        <tr key={k} className="cursor-pointer border-b border-slate-200 bg-slate-50/60 hover:bg-blue-50" onClick={() => toggleCat(k)}>
+          <td className="p-3 font-semibold text-slate-800">
+            <ChevronDown className={`mr-1 inline h-3.5 w-3.5 text-slate-500 transition-transform ${abierta ? "rotate-180" : "-rotate-90"}`} />
+            {cat}
+          </td>
+          <td className="p-3 text-xs text-slate-500">{items.length} SKU{items.length !== 1 ? "s" : ""} · {abierta ? "ocultar" : "ver"}</td>
+          {mostrarClientes && <td className="p-3 text-right font-mono text-xs text-slate-600">{cu}/{en}</td>}
+          <td className="p-3 text-right font-semibold text-green-700">{u(fc)}</td>
+          <td className="p-3 text-right font-semibold text-amber-700">{u(bo)}</td>
+          <td className="p-3 text-right font-bold text-slate-900">{u(fc + bo)}</td>
+          <td className={`p-3 text-right font-bold ${pctBg}`}>{pct}%</td>
+        </tr>,
+        ...(abierta ? items.map((r) => (
+          <FilaSKU
+            key={`${pref}-${r.sku}`}
+            r={r}
+            mostrarClientes={mostrarClientes}
+            totalCols={totalCols}
+            expanded={expandedSku === `${pref}-${r.sku}`}
+            onToggle={r.fcUnits > 0 ? () => setExpandedSku((c) => c === `${pref}-${r.sku}` ? null : `${pref}-${r.sku}`) : undefined}
+            comprasFiltradas={comprasFiltradas}
+            clientesScope={cbClientesPorSku.get(r.sku)}
+          />
+        )) : []),
+      ];
+    });
+  };
   const totalPorTipo = (tipo: "INFALTABLE" | "ESTRATEGICO") => {
     const r = rows.filter((x) => x.tipo === tipo);
     const en = r.reduce((a, x) => a + x.clientesEnCB, 0);
@@ -1040,18 +1097,7 @@ function TablaSKUs({ rows, mostrarClientes, comprasFiltradas, cbClientesPorSku }
               <td colSpan={totalCols} className="px-3 py-1.5 text-xs font-bold text-violet-800 uppercase tracking-wider">Infaltables</td>
             </tr>
           )}
-          {infRows.map((r) => (
-            <FilaSKU
-              key={`inf-${r.sku}`}
-              r={r}
-              mostrarClientes={mostrarClientes}
-              totalCols={totalCols}
-              expanded={expandedSku === `inf-${r.sku}`}
-              onToggle={r.fcUnits > 0 ? () => setExpandedSku((cur) => cur === `inf-${r.sku}` ? null : `inf-${r.sku}`) : undefined}
-              comprasFiltradas={comprasFiltradas}
-              clientesScope={cbClientesPorSku.get(r.sku)}
-            />
-          ))}
+          {porCategoria("inf", infRows)}
           {infRows.length > 0 && <FilaTotal r={totInf} accent="violet" labelSpan={labelSpan} />}
 
           {estRows.length > 0 && (
@@ -1059,18 +1105,7 @@ function TablaSKUs({ rows, mostrarClientes, comprasFiltradas, cbClientesPorSku }
               <td colSpan={totalCols} className="px-3 py-1.5 text-xs font-bold text-pink-800 uppercase tracking-wider">Estratégico</td>
             </tr>
           )}
-          {estRows.map((r) => (
-            <FilaSKU
-              key={`est-${r.sku}`}
-              r={r}
-              mostrarClientes={mostrarClientes}
-              totalCols={totalCols}
-              expanded={expandedSku === `est-${r.sku}`}
-              onToggle={r.fcUnits > 0 ? () => setExpandedSku((cur) => cur === `est-${r.sku}` ? null : `est-${r.sku}`) : undefined}
-              comprasFiltradas={comprasFiltradas}
-              clientesScope={cbClientesPorSku.get(r.sku)}
-            />
-          ))}
+          {porCategoria("est", estRows)}
           {estRows.length > 0 && <FilaTotal r={totEst} accent="pink" labelSpan={labelSpan} />}
 
           {(infRows.length > 0 || estRows.length > 0) && <FilaTotal r={totGen} accent="slate" labelSpan={labelSpan} grand />}

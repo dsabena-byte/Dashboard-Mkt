@@ -44,6 +44,7 @@ const OBJ_PCT = 80;
 
 const TABS = [
   { key: "overview", label: "Cuadro Básico Trade", href: "/cuadros-basicos" },
+  { key: "mapa", label: "Mapa por zona", href: "/cuadros-basicos?tab=mapa" },
   { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" },
 ];
 // Solo quien puede editar Trade (exigirEdicion("trade")) ve la carga y los maestros.
@@ -166,12 +167,12 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
     <div className="space-y-4">
       <Encabezado tab={tab} editor={editor} lastUpdated={lastUpdated} />
 
-      <MetaPanel
+      {tab !== "mapa" && <MetaPanel
         plan="Cuadros Básicos"
         titulo="Metas de Cuadros Básicos"
         subtitulo="Cargá la meta mensual de % Cumplimiento CB. Alimenta el rollup de objetivos del Seguimiento."
         kpis={[{ nombre: "% Cumplimiento CB", unidad: "%", actual: totals.cb_pct }]}
-      />
+      />}
 
       <CbFiltersBar current={filter} options={options} />
 
@@ -185,6 +186,12 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
           Sin datos para los filtros seleccionados.
         </div>
+      ) : tab === "mapa" ? (
+        <MapaZonas
+          titulo="Cuadro Básico por zona"
+          metricas={[{ label: "% CB", obj: OBJ_PCT }, { label: "% Infaltables", obj: OBJ_PCT }, { label: "% Estratégico", obj: OBJ_PCT }]}
+          puntos={(v.byZona ?? []).map((z) => ({ zona: z.zona, tiendas: z.tiendas, vals: [z.cb, z.inf, z.est] }))}
+        />
       ) : (
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -217,12 +224,6 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
             <h3 className="mb-3 text-sm font-bold">📊 Cumplimiento por Categoría</h3>
             <CbCategoryChart data={byDiv} />
           </section>
-
-          <MapaZonas
-            titulo="Cuadro Básico por zona"
-            metricas={[{ label: "% CB", obj: OBJ_PCT }, { label: "% Infaltables", obj: OBJ_PCT }, { label: "% Estratégico", obj: OBJ_PCT }]}
-            puntos={(v.byZona ?? []).map((z) => ({ zona: z.zona, tiendas: z.tiendas, vals: [z.cb, z.inf, z.est] }))}
-          />
 
           {/* Como la app vieja: promotor + cliente lado a lado (cada una se oculta si su filtro está activo). */}
           <section className="grid gap-4 xl:grid-cols-2">

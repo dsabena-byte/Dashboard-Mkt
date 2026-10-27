@@ -35,7 +35,8 @@ export function CbFiltersBar({ current, options }: CbFiltersBarProps) {
   }
 
   function clearAll() {
-    router.push(window.location.pathname as never);
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    router.push((tab ? `?tab=${tab}` : window.location.pathname) as never);
   }
 
   const hasAny =
