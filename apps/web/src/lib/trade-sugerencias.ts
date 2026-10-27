@@ -28,13 +28,23 @@ async function leerHomologos(): Promise<Hom[]> {
 export const getSugerenciasTr = cache(async () => {
   const est = await trEstado();
   if (est.cb == null) return null;
-  const [cb, ex, hom, cad] = await Promise.all([
+  const [cb, ex, hom, cad, vtc] = await Promise.all([
     trAll<CbMin>(`tr_cb_semanal?select=semana,tienda,target_cb,real_cb,target_inf,real_inf&anio=eq.${est.cb}`),
     trAll<Ex>("tr_existencias?select=numero_tienda,tienda,cadena,sku,existencia"),
     leerHomologos(),
     trAll<{ clave: string; alias: string[]; cliente: string | null }>("tr_cadenas?select=clave,alias,cliente"),
+    trAll<{ cliente: string; tipologia: string | null }>("vt_clientes?select=cliente,tipologia", "cliente").catch(() => []),
   ]);
+  // El catálogo (cb_homologos) tiene clientes propios (Top 10 / Hiper) y UN renglón por tipología para Grandes Cuentas
+  // Resto y Small Retailers → un cliente sin catálogo propio usa el de su tipología (vt_clientes).
+  const claves = new Set(hom.map((h) => (h.cliente ?? "").toUpperCase().trim()));
+  const gcr = [...claves].find((k) => k.startsWith("GRANDES CUENTAS RESTO")) ?? "GRANDES CUENTAS RESTO";
+  const tipo = new Map(vtc.map((v) => [v.cliente.toUpperCase().trim(), (v.tipologia ?? "").toUpperCase()]));
+  const catDe = (cli: string) => {
+    const k = cli.toUpperCase().trim();
+    return claves.has(k) ? cli : tipo.get(k) === "GRANDES CUENTAS RESTO" ? gcr : "SMALL RETAILERS";
+  };
   const cadenaCliente = new Map<string, string>();
-  for (const c of cad) if (c.cliente) for (const k of [c.clave, ...(c.alias ?? [])]) cadenaCliente.set(k, c.cliente);
+  for (const c of cad) if (c.cliente) for (const k of [c.clave, ...(c.alias ?? [])]) cadenaCliente.set(k, catDe(c.cliente));
   return calcularSugerencias(cb, ex, hom, cadenaCliente);
 });

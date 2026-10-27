@@ -23,6 +23,17 @@ const N_MET = 11; // CB Sell In ×3 · CB Trade ×3 · FS ×4 · exhibición esp
 const normN = (s: string | null | undefined) =>
   (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
 
+/** Cliente de CB Ventas cuyo nombre contiene TODAS las palabras distintivas del nombre dado (ej. "HENDEL" → "HENDEL HOGAR SA");
+ *  null si no hay o si hay más de uno (no adivina). `clientes` = nombres normalizados (normN). */
+export function clienteDeNombre(nombre: string | null | undefined, clientes: string[]): string | null {
+  const NO = new Set(["SA", "SRL", "SH", "SACIF", "SACIFIA", "HNOS", "HIJOS", "CIA", "HOGAR", "DE", "LA", "EL", "LOS", "Y"]);
+  const pal = (x: string) => normN(x).split(" ").filter((w) => w.length > 1 && !NO.has(w));
+  const q = pal(nombre ?? "");
+  if (!q.length) return null;
+  const hits = clientes.filter((c) => { const w = new Set(pal(c)); return q.every((x) => w.has(x)); });
+  return hits.length === 1 ? hits[0]! : null;
+}
+
 /** CB Sell In (CB Ventas, compras FC + BO) por cliente/razón social, con las mismas fórmulas y alcance del tablero /cb-ventas.
  *  null = el usuario no ve CB Ventas o no hay datos. */
 async function cbSellInPorCliente(): Promise<Map<string, Array<[number, number]>> | null> {
@@ -114,15 +125,16 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
     trAll<{ id: number; cadena: string }>("tr_tiendas?select=id,cadena").catch(() => []),
     trAll<{ clave: string; cliente: string | null }>("tr_cadenas?select=clave,cliente", "clave").catch(() => []),
   ]);
-  const cliDeCadena = new Map(cadenas.filter((c) => c.cliente).map((c) => [c.clave, c.cliente!]));
-  const cliDeTienda = new Map(tiendasCad.map((t) => [String(t.id), cliDeCadena.get(t.cadena) ?? null]));
-  for (const p of puntos) {
-    const id = idDe(p.zona);
-    if (!id) continue;
-    const cli = cliDeTienda.get(id);
+  // Cliente de la cadena = el cargado en Cadenas (tr_cadenas.cliente). Las exhibiciones fuera del relevamiento: su cadena o,
+  // si no es una cadena cargada, el único cliente de CB Ventas con ese nombre.
+  const nomSellIn = [...(sellIn?.keys() ?? [])];
+  const cliDeCadena = new Map(cadenas.filter((c) => c.cliente).map((c) => [normN(c.clave), c.cliente!]));
+  const cliDeTienda = new Map(tiendasCad.map((t) => [String(t.id), cliDeCadena.get(normN(t.cadena)) ?? null]));
+  const ponerSellIn = (p: MapaPunto, cli: string | null | undefined) => {
     const v = cli ? sellIn?.get(normN(cli)) : undefined;
-    if (cli && v) { v.forEach((x, i) => { p.vals[i] = x; }); p.cuenta = cli; p.detalle = [{ label: "Cliente (CB Sell In)", valor: cli }, ...(p.detalle ?? [])]; }
-  }
+    if (cli && v) { v.forEach((x, i) => { p.vals[i] = x; }); p.cuenta = normN(cli); p.detalle = [{ label: "Cliente (CB Sell In)", valor: cli }, ...(p.detalle ?? [])]; }
+  };
+  for (const p of puntos) { const id = idDe(p.zona); if (id) ponerSellIn(p, cliDeTienda.get(id)); }
   for (const p of puntos) {
     const id = idDe(p.zona);
     if (!id) continue; // burbujas de zona: sin dato de exhibición
@@ -137,16 +149,18 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
       if (e.lat == null || e.lon == null || (e.tienda_id != null && enMapa.has(String(e.tienda_id)))) continue;
       const vals: Array<[number, number]> = Array.from({ length: N_MET }, () => vacio);
       vals[10] = [1, 1];
-      puntos.push({ zona: `${e.cliente ?? ""} — ${e.direccion ?? e.ciudad ?? ""} (fuera del relevamiento)@x${e.id}|${e.lat}|${e.lon}|`, tiendas: 1, vals, detalle: detalle([e]) });
+      const p: MapaPunto = { zona: `${e.cliente ?? ""} — ${e.direccion ?? e.ciudad ?? ""} (fuera del relevamiento)@x${e.id}|${e.lat}|${e.lon}|`, tiendas: 1, vals, detalle: detalle([e]) };
+      ponerSellIn(p, e.tienda_id != null ? cliDeTienda.get(String(e.tienda_id)) : (cliDeCadena.get(normN(e.cliente ?? "")) ?? clienteDeNombre(e.cliente, nomSellIn)));
+      puntos.push(p);
     }
   }
   const r1 = (x: number) => Number(x.toFixed(1));
   return {
     puntos,
     metricas: [
-      { grupo: "CB Sell In", corto: "CB Sell In", label: "CB Sell In", obj: OBJETIVO_SELLIN, porCuenta: true },
-      { grupo: "CB Sell In", corto: "Infaltables", label: "CB Sell In Infaltables", obj: OBJETIVO_SELLIN, porCuenta: true },
-      { grupo: "CB Sell In", corto: "Estratégicos", label: "CB Sell In Estratégicos", obj: OBJETIVO_SELLIN, porCuenta: true },
+      { grupo: "CB Sell In", corto: "CB Sell In", label: "CB Sell In", obj: OBJETIVO_SELLIN, porCuenta: true, cuentasTotal: sellIn?.size },
+      { grupo: "CB Sell In", corto: "Infaltables", label: "CB Sell In Infaltables", obj: OBJETIVO_SELLIN, porCuenta: true, cuentasTotal: sellIn?.size },
+      { grupo: "CB Sell In", corto: "Estratégicos", label: "CB Sell In Estratégicos", obj: OBJETIVO_SELLIN, porCuenta: true, cuentasTotal: sellIn?.size },
       { grupo: "CB Trade", corto: "CB Trade", label: "CB Trade", obj: OBJ_CB },
       { grupo: "CB Trade", corto: "Infaltables", label: "CB Trade Infaltables", obj: OBJ_CB },
       { grupo: "CB Trade", corto: "Estratégicos", label: "CB Trade Estratégicos", obj: OBJ_CB },
@@ -158,7 +172,7 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
     ],
     nota: [
       !fs ? "Floor Share no disponible." : !cb ? "Cuadro Básico no disponible." : obj ? `Meta FS de ${MESES_FS[obj.mesIdx]} ${obj.anio}.` : null,
-      "CB Trade = presencia del SKU en la góndola de cada tienda (relevamiento). CB Sell In = compras del cliente (facturas + pedidos, CB Ventas): es por cliente, cada tienda muestra el de su cliente.",
+      "CB Trade = presencia del SKU en la góndola de cada tienda (relevamiento). CB Sell In = compras del cliente (facturas + pedidos, CB Ventas): es por cliente, cada tienda muestra el de su cliente. En el mapa solo están los clientes con tiendas o exhibiciones ubicadas (x/y cl.): el total de todos los clientes está en CB Ventas.",
       sellIn ? null : "CB Sell In no disponible (sin acceso a CB Ventas o sin datos).",
     ].filter(Boolean).join(" "),
   };

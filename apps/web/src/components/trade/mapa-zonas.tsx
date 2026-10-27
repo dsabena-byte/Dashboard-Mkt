@@ -9,7 +9,7 @@ import { AR_PROVINCES } from "@/lib/argentina-provinces";
 import { FotosGaleria } from "@/components/trade/exhibicion-fotos";
 
 /** `binaria` = sí/no por tienda (ej. exhibición especial): el % de la vista = tiendas con ÷ tiendas con dato. */
-export type MapaMetrica = { label: string; obj: number; binaria?: boolean; porCuenta?: boolean; grupo?: string; corto?: string };
+export type MapaMetrica = { label: string; obj: number; binaria?: boolean; porCuenta?: boolean; cuentasTotal?: number; grupo?: string; corto?: string };
 // `grupo` = bloque (CB Sell In · CB Trade · Floor Share · Exhibición); su 1ª métrica (el general, `corto` = nombre del bloque) va en gris y abre el bloque.
 // `porCuenta` = el dato es del cliente (CB Sell In): cada tienda muestra el de su cliente y los totales cuentan una vez por cliente.
 /** `detalle` = líneas extra de la ficha (ej. exhibición especial con link a las fotos). */
@@ -243,7 +243,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                     <tr key={x.label} onClick={() => setM(i)} className={`cursor-pointer whitespace-nowrap border-t ${i === m ? "bg-blue-50 font-semibold" : cab(i) || "hover:bg-muted"}`}>
                       <td className="py-1">{corto(x)}</td>
                       <td className="text-right text-base font-bold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "—" : `${v.toFixed(1)}%`}</td>
-                      <td className="pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : x.porCuenta ? `${new Set(con.map((p) => p.cuenta)).size} cl. · obj ${x.obj}%` : `obj ${x.obj}%`}</td>
+                      <td className="pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : x.porCuenta ? `${new Set(con.map((p) => p.cuenta)).size}${x.cuentasTotal ? `/${x.cuentasTotal}` : ""} cl. · obj ${x.obj}%` : `obj ${x.obj}%`}</td>
                     </tr>
                   );
                 })}
