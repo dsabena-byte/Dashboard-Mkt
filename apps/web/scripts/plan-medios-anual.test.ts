@@ -56,5 +56,16 @@ const p2 = calcPlan(cfg, meses, Object.fromEntries(Object.entries(infl).map(([k,
 ok(p2.impactos.porMedio.Meta![11]!.impr < p.impactos.porMedio.Meta![11]!.impr, "la inflación encarece los impactos");
 ok(p.metas["Inversión"][0] === 50e6 && (p.metas["VTR (≥50%)"][0] ?? 0) > 0 && (p.metas["Frecuencia"][0] ?? 0) > 0, "metas mensuales");
 
+// % offline por mes: offline = BGT × %; OOH fijo se respeta; el resto entre TV/Radio/DOOH por peso (15/3/2)
+{
+  const c = { ...cfg, offPct: cfg.offPct.map((_, i) => (i === 5 ? 40 : 0)) };
+  const v = calcInversion(c, infl);
+  const off = ["OOH", "TV", "Radio", "DOOH"].reduce((s, k) => s + v.montos[k]![5]!, 0);
+  ok(near(off, cfg.bgt[5]! * 0.4), "jun: offline = 40% del BGT");
+  ok(near(v.montos.TV![5]! / v.montos.Radio![5]!, 5, 1e-9), "TV y Radio por su peso (15:3)");
+  ok(v.montos.TV![0] === 0 && near(v.montos.OOH![0]!, 28e6), "mes sin %: sin olas, OOH fijo sigue");
+  ok(near(v.total[5]!, cfg.bgt[5]!), "jun: el digital se queda con el resto");
+  ok(planDefault(2027).offPct.every((x) => x === 0) && sanearPlan({}, 2027).offPct.length === 12, "default y saneado: % offline en 0");
+}
 if (fails) { console.error(`${fails} fallas`); process.exit(1); }
 console.log("OK");
