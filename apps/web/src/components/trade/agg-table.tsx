@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 // Tabla de desempeño de la app vieja de Trade (Floor Share y Cuadro Básico): encabezado azul, % + Δ vs objetivo por
 // columna, semáforo (verde hasta −2 pp del objetivo, amarillo hasta −6, rojo debajo) y fila de total. Server-safe.
 
@@ -33,20 +37,26 @@ function Celdas({ vals, cols, total = false }: { vals: (number | null)[]; cols: 
   );
 }
 
+// Sin barra de desplazamiento interna (pedido del user: "muchas barras"): la página scrollea; las tablas largas
+// muestran las primeras LIMITE filas + "Ver todas".
+const LIMITE = 25;
+
 export function AggTable({ titulo, columna, totalLabel, subtitulo, cols, filas, total }: {
   titulo: string; columna: string; totalLabel: string; subtitulo: string;
   cols: AggCol[]; filas: AggFila[]; total: (number | null)[];
 }) {
+  const [todas, setTodas] = useState(false);
   if (filas.length === 0) return null;
+  const visibles = todas || filas.length <= LIMITE + 5 ? filas : filas.slice(0, LIMITE);
   return (
     <section className="rounded-xl border bg-card p-4">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-bold">{titulo}</h3>
         <span className="text-[11px] text-muted-foreground">{subtitulo}</span>
       </div>
-      <div className="max-h-[440px] overflow-auto">
+      <div className="overflow-x-auto">
         <table className="w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-10">
+          <thead>
             <tr>
               <th className="border border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-bold text-slate-800">{columna}</th>
               {cols.map((c) => (
@@ -55,14 +65,14 @@ export function AggTable({ titulo, columna, totalLabel, subtitulo, cols, filas, 
             </tr>
           </thead>
           <tbody>
-            {filas.map((f) => (
+            {visibles.map((f) => (
               <tr key={f.key}>
-                <td className="whitespace-nowrap border border-slate-200 px-2 py-1.5 text-slate-800">{f.nombre}</td>
+                <td className="min-w-[140px] border border-slate-200 px-2 py-1.5 text-slate-800">{f.nombre}</td>
                 <Celdas vals={f.vals} cols={cols} />
               </tr>
             ))}
           </tbody>
-          <tfoot className="sticky bottom-0">
+          <tfoot>
             <tr className="bg-[#1e3a8a] font-extrabold text-white">
               <td className="whitespace-nowrap border border-[#1e3a8a] px-2 py-1.5">{totalLabel}</td>
               <Celdas vals={total} cols={cols} total />
@@ -70,6 +80,13 @@ export function AggTable({ titulo, columna, totalLabel, subtitulo, cols, filas, 
           </tfoot>
         </table>
       </div>
+      {visibles.length < filas.length || todas ? (
+        filas.length > LIMITE + 5 && (
+          <button onClick={() => setTodas(!todas)} className="mt-2 text-xs font-semibold text-blue-700 hover:underline">
+            {todas ? "Ver menos" : `Ver todas (${filas.length})`}
+          </button>
+        )
+      ) : null}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-// "Detalle por Tienda" de la app vieja: todas las tiendas, ordenable por columna (default: peor % CB primero).
+// "Detalle por Tienda" de la app vieja: todas las tiendas (25 + "Ver todas", sin barra interna), ordenable por columna (default: peor % CB primero).
 import { useMemo, useState } from "react";
 import type { CbByTienda } from "@/lib/cb-queries";
 
@@ -29,11 +29,13 @@ export function CbDetalleTienda({ rows }: { rows: CbByTienda[] }) {
       ? String(va ?? "").localeCompare(String(vb ?? ""), "es") : (va ?? 0) - (vb ?? 0);
     return sort.asc ? d : -d;
   }), [rows, sort]);
+  const [todas, setTodas] = useState(false);
+  const visibles = todas || data.length <= 30 ? data : data.slice(0, 25);
   const click = (k: Key) => setSort((s) => (s.k === k ? { k, asc: !s.asc } : { k, asc: false }));
   return (
-    <div className="max-h-[520px] overflow-auto">
+    <div className="overflow-x-auto">
       <table className="w-full text-xs">
-        <thead className="sticky top-0 z-10">
+        <thead>
           <tr className="text-[11px] font-semibold uppercase tracking-wide">
             {COLS.map((c) => (
               <th key={c.k} onClick={() => click(c.k)} className={`cursor-pointer select-none border-b px-3 py-2 ${c.cls}`}>
@@ -43,7 +45,7 @@ export function CbDetalleTienda({ rows }: { rows: CbByTienda[] }) {
           </tr>
         </thead>
         <tbody>
-          {data.map((r, i) => (
+          {visibles.map((r, i) => (
             <tr key={`${r.cliente}-${r.tienda}-${i}`} className="border-b last:border-0">
               <td className="px-3 py-1.5 text-muted-foreground">{r.cliente}</td>
               <td className="px-3 py-1.5">{r.tienda}</td>
@@ -58,6 +60,11 @@ export function CbDetalleTienda({ rows }: { rows: CbByTienda[] }) {
           ))}
         </tbody>
       </table>
+      {data.length > 30 && (
+        <button onClick={() => setTodas(!todas)} className="mt-2 text-xs font-semibold text-blue-700 hover:underline">
+          {todas ? "Ver menos" : `Ver todas (${data.length})`}
+        </button>
+      )}
     </div>
   );
 }
