@@ -573,6 +573,12 @@ reporte_existencia/cb_homologos).
   ordenable y Detalle de SKUs al elegir tienda/cliente (`tr_cb_semanal`). Tabla común `components/trade/agg-table.tsx`. Vista default FS =
   todas las semanas del año. Las 18 tiendas de `MANUAL_CONTACTOS` de la app vieja NO están en `tr_tiendas` (salen "Tienda sin mapeo").
   **Cargas en CSV o Excel** (`lib/leer-planilla.ts`, primera hoja; también "Importar usuarios").
+  **Mapa por zona (27-oct, `components/trade/mapa-zonas.tsx`, en /cuadros-basicos y /floor-share):** el maestro NO tiene direcciones; la
+  ubicación más fina es la ZONA = `tr_tiendas.localidad` (16: CABA, AMBA Norte/Sur/Oeste, Mar del Plata, Córdoba…; `provincia` = región,
+  8), cargadas el 27-oct desde `Tienda-promotor-supervisor.csv` del Drive (557/574; 17 con otro nombre). Burbuja por zona en su ciudad de
+  referencia (`ZONAS` en el componente; proyección lineal de `lib/argentina-provinces`: x=26.08·lon+1918.77, y=−33.34·lat−728.1), zoom/
+  arrastre, panel = Σ cumplidos ÷ Σ objetivo de lo que entra en la vista. CB Ventas NO va en el mapa (es por cuenta, sin ubicación). Con
+  direcciones (el user las puede conseguir) → geocodificar a lat/lon por tienda (servicio pago = pedir aprobación del gasto antes).
   FS sin "Evolución mensual real vs meta" (27-oct, user: no estaba en la app vieja); el editor de objetivos queda al pie (solo editores).
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
   ni en el proyecto CB viejo (hueco de origen); se cargó el 27-oct.
