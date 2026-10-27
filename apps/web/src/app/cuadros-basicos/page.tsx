@@ -48,7 +48,7 @@ const OBJ_PCT = 80;
 
 const TABS = [
   { key: "overview", label: "Cuadro Básico Trade", href: "/cuadros-basicos" },
-  { key: "mapa", label: "Mapa", href: "/cuadros-basicos?tab=mapa" },
+  { key: "mapa", label: "Heat Map", href: "/cuadros-basicos?tab=mapa" },
   { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" },
   { key: "sku", label: "Sugerencias de SKUs", href: "/cuadros-basicos?tab=sku" },
 ];
