@@ -14,7 +14,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { colorForBrand } from "@/lib/floor-share-colors";
 export { colorForBrand, BRAND_COLORS_FS } from "@/lib/floor-share-colors";
 
 interface BrandRankingProps {
@@ -22,27 +21,26 @@ interface BrandRankingProps {
   highlight?: string;
 }
 
+// Mismos colores que la app vieja: Drean rojo, el resto azul (ranking) / paleta fija por posición (evolución).
+const DREAN_RED = "#e63946";
+const OTRAS = ["#60a5fa", "#f59e0b", "#10b981", "#a78bfa", "#06b6d4", "#f97316", "#84cc16", "#f472b6", "#c084fc"];
+
 export function FloorShareBrandRanking({ data, highlight = "Drean" }: BrandRankingProps) {
   if (data.length === 0) return <div className="py-12 text-center text-xs text-muted-foreground">Sin datos.</div>;
-  const chartData = data.map((d) => ({
-    marca: d.marca,
-    share: Number(d.share.toFixed(1)),
-  }));
+  const chartData = data.map((d) => ({ marca: d.marca, share: Number(d.share.toFixed(1)) }));
   return (
-    <ResponsiveContainer width="100%" height={Math.max(280, chartData.length * 28)}>
-      <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 50, left: 80, bottom: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+    <ResponsiveContainer width="100%" height={Math.max(320, chartData.length * 38)}>
+      <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 40, left: 8, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis type="number" fontSize={11} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
-        <YAxis type="category" dataKey="marca" fontSize={11} stroke="hsl(var(--muted-foreground))" width={80} />
+        <YAxis type="category" dataKey="marca" fontSize={11} stroke="hsl(var(--muted-foreground))" width={76} />
         <Tooltip
           contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 }}
-          formatter={(v: number) => [`${v}%`, "Share"]}
+          formatter={(v: number) => [`${v}%`, "Floor Share"]}
         />
-        <Bar dataKey="share" radius={[0, 4, 4, 0]}>
-          {chartData.map((d, i) => (
-            <Cell key={i} fill={d.marca === highlight ? colorForBrand(highlight) : colorForBrand(d.marca)} opacity={d.marca === highlight ? 1 : 0.65} />
-          ))}
-          <LabelList dataKey="share" position="right" fontSize={11} fontWeight={700} formatter={(v: number) => `${v.toFixed(1)}%`} />
+        <Bar dataKey="share">
+          {chartData.map((d, i) => <Cell key={i} fill={d.marca === highlight ? DREAN_RED : "#3b82f6"} />)}
+          <LabelList dataKey="share" position="right" fontSize={10} fontWeight={700} formatter={(v: number) => `${Math.round(v)}%`} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
@@ -61,26 +59,22 @@ export function FloorShareWeeklyChart({ data, marcas }: WeeklyProps) {
     for (const m of marcas) row[m] = Number((d.shares[m] ?? 0).toFixed(1));
     return row;
   });
+  const otras = marcas.filter((m) => m !== "Drean");
+  const color = (m: string) => (m === "Drean" ? DREAN_RED : OTRAS[otras.indexOf(m) % OTRAS.length]!);
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={chartData} margin={{ top: 12, right: 24, left: 0, bottom: 4 }}>
+    <ResponsiveContainer width="100%" height={340}>
+      <LineChart data={chartData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-        <XAxis dataKey="label" fontSize={11} stroke="hsl(var(--muted-foreground))" />
-        <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} />
+        <XAxis dataKey="label" fontSize={10} stroke="hsl(var(--muted-foreground))" angle={-35} textAnchor="end" height={44} interval={0} />
+        <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${v}%`} width={40} />
         <Tooltip
           contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 }}
           formatter={(v: number) => `${v}%`}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {marcas.map((m) => (
-          <Line
-            key={m}
-            type="monotone"
-            dataKey={m}
-            stroke={colorForBrand(m)}
-            strokeWidth={m === "Drean" ? 3 : 2}
-            dot={{ r: m === "Drean" ? 5 : 3 }}
-          />
+        {/* Drean al final → se dibuja arriba de las demás. */}
+        {[...otras, "Drean"].filter((m) => marcas.includes(m)).map((m) => (
+          <Line key={m} type="monotone" dataKey={m} stroke={color(m)} strokeWidth={m === "Drean" ? 3 : 1.5} dot={{ r: m === "Drean" ? 4 : 2 }} />
         ))}
       </LineChart>
     </ResponsiveContainer>

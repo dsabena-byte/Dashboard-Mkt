@@ -6,6 +6,7 @@ import "server-only";
 
 import type { CbRow } from "./cb-queries";
 import type { FloorShareRow } from "./floor-share-queries";
+import type { Contacto } from "./fs-enrich";
 
 const PAGE = 10000;
 const CONC = 6;
@@ -106,6 +107,20 @@ export async function getTrFsRows(anio: number, semanas: number[]): Promise<Floo
 export async function getTrMaxSemanaFs(anio: number): Promise<number | null> {
   const r = await trJson<Array<{ semana: number }>>(`tr_floor_share?select=semana&anio=eq.${anio}&semana=not.is.null&order=semana.desc&limit=1`);
   return r[0]?.semana ?? null;
+}
+
+/** Tiendas con su cadena y promotor/supervisor vigentes (para el Floor Share por promotor, = app vieja). */
+export async function getTrContactos(): Promise<Contacto[]> {
+  const [asig, cad] = await Promise.all([
+    trAll<{ promotor: string | null; supervisor: string | null; tr_tiendas: { numero: string; nombre: string | null; cadena: string } | null }>(
+      "tr_tienda_asignacion?select=promotor,supervisor,tr_tiendas(numero,nombre,cadena)&hasta=is.null"),
+    trAll<{ clave: string; nombre: string | null }>("tr_cadenas?select=clave,nombre", "clave"),
+  ]);
+  const nomCad = new Map(cad.map((c) => [c.clave, c.nombre ?? c.clave]));
+  return asig.filter((a) => a.tr_tiendas?.nombre).map((a) => ({
+    numero: a.tr_tiendas!.numero, nombre: a.tr_tiendas!.nombre!, cadena: nomCad.get(a.tr_tiendas!.cadena) ?? a.tr_tiendas!.cadena,
+    promotor: a.promotor ?? "", supervisor: a.supervisor ?? "",
+  }));
 }
 
 export async function getTrTiendaCliente(): Promise<Map<string, string>> {

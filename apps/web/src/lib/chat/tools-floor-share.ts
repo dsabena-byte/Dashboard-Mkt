@@ -1,6 +1,6 @@
 import "server-only";
-import { getFsPrecomputed, getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast } from "@/lib/cb-mirror";
-import { computeFsView, type FsView, type FsEnrichedRow } from "@/lib/fs-view";
+import { getFsPrecomputed, getFloorShareRowsFast, enriquecerFs } from "@/lib/cb-mirror";
+import { computeFsView, type FsView } from "@/lib/fs-view";
 import { type CategoryBlock } from "@/lib/floor-share-queries";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS } from "@/lib/fs-objetivos";
 import { rd, topN, oneOf } from "./util";
@@ -8,20 +8,15 @@ import type { ChatTool } from "./types";
 
 // ============================================================================
 // Floor Share (/floor-share). Lee la vista PRECALCULADA (fs_precomputed, la llena el
-// cron cb-mirror: últimas 26 semanas) — antes paginaba ~135k filas del proyecto CB en
+// cron cb-mirror: semanas del año) — antes paginaba ~135k filas del proyecto CB en
 // cada pregunta. Fallback: computar sobre el mirror si el precálculo no existe.
 // Para la evolución MENSUAL por categoría usar get_cumplimiento_floor_share (trade_monthly).
 // ============================================================================
 
 async function vista(): Promise<FsView | null> {
   const pre = await getFsPrecomputed();
-  if (pre) return pre;
-  const { weeks } = await getAvailableWeeksFast();
-  const [raw, cli] = await Promise.all([getFloorShareRowsFast(weeks.slice(0, 26)), getTiendaClienteMapFast()]);
-  const rows: FsEnrichedRow[] = raw
-    .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && r.semana != null)
-    .map((r) => ({ ...r, cliente: cli.get(r.numero_tienda) ?? "Sin cliente" }));
-  return computeFsView(rows, {});
+  if (pre?.byPromotor) return pre; // precálculo viejo (sin promotor) → se recalcula
+  return computeFsView(await enriquecerFs(await getFloorShareRowsFast([])), {});
 }
 const blk = (b: CategoryBlock) => rd(b.total_units > 0 ? b.share : null, 1);
 
@@ -29,7 +24,7 @@ export const floorShareTools: ChatTool[] = [
   {
     name: "get_floor_share",
     description:
-      "Floor Share (exhibición en góndola, últimas 26 semanas relevadas): % de Drean total y por categoría (Lavado/Refrigeración/Cocción, objetivos = meta mensual por categoría del mes de referencia; sin meta 32/25/23%) + el desglose pedido en 'nivel': marcas (ranking total) | categoria_marca (share por marca en cada categoría) | cliente (cadena) | tienda | semanal (share semanal de las top marcas).",
+      "Floor Share (exhibición en góndola, semanas del año relevadas): % de Drean total y por categoría (Lavado/Refrigeración/Cocción, objetivos = meta mensual por categoría del mes de referencia; sin meta 32/25/23%) + el desglose pedido en 'nivel': marcas (ranking total) | categoria_marca (share por marca en cada categoría) | cliente (cadena) | tienda | semanal (share semanal de las top marcas).",
     parameters: {
       type: "object",
       properties: {
@@ -79,7 +74,7 @@ export const floorShareTools: ChatTool[] = [
           return { overall, tiendas: xs.slice(0, n).map((t) => ({ tienda: t.nombre_tienda, cliente: t.cliente, total_pct: blk(t.total), lavado_pct: blk(t.lavado), refri_pct: blk(t.refri), coccion_pct: blk(t.coccion) })), total_tiendas: xs.length };
         }
         case "semanal":
-          return { overall, marcas: v.top5, semanal: v.weekly.map((w) => ({ semana: w.semana, ...Object.fromEntries(Object.entries(w.shares).map(([m, s]) => [m, rd(s, 1)])) })) };
+          return { overall, marcas: v.topMarcas, semanal: v.weekly.map((w) => ({ semana: w.semana, ...Object.fromEntries(Object.entries(w.shares).map(([m, s]) => [m, rd(s, 1)])) })) };
       }
     },
   },

@@ -13,8 +13,12 @@ import {
   type FloorShareRow, type FloorShareFilter,
 } from "./floor-share-queries";
 import { isoWeekToMes } from "./cb-queries";
+import { PERSONA_PLACEHOLDERS } from "./fs-enrich";
 
-export type FsEnrichedRow = FloorShareRow & { cliente: string };
+/** Fila con cliente/promotor/supervisor (lib/fs-enrich). La tienda se identifica por número + nombre. */
+export type FsEnrichedRow = FloorShareRow & { cliente: string; promotor: string; supervisor: string };
+export const tiendaKeyFs = (r: { numero_tienda: string; nombre_tienda: string | null }) => `${r.numero_tienda}|${r.nombre_tienda ?? ""}`;
+const NO_MARCA = new Set(["otros", "total"]);
 
 export interface FsView {
   options: {
@@ -22,6 +26,8 @@ export interface FsView {
     semanas: number[];
     categorias: string[];
     clientes: string[];
+    supervisores: string[];
+    promotores: string[];
     tiendas: { value: string; label: string }[];
   };
   totalRanking: ReturnType<typeof shareByBrand>;
@@ -29,10 +35,15 @@ export interface FsView {
   cats: string[];
   byTienda: ReturnType<typeof shareByTienda>;
   byCliente: ReturnType<typeof shareByCliente>;
+  byPromotor: ReturnType<typeof shareByCliente>;
   overall: ReturnType<typeof computeOverall>;
-  top5: string[];
+  /** Drean + top 9 marcas (= app vieja). La evolución semanal ignora los filtros de mes y semana. */
+  topMarcas: string[];
   weekly: ReturnType<typeof weeklyShareByBrand>;
   totalTiendasRelevadas: number;
+  /** Semanas del período mostrado (para el subtítulo "Abril 2026 — Octubre 2026"). */
+  semanaDesde: number | null;
+  semanaHasta: number | null;
   hasData: boolean;
 }
 
@@ -46,7 +57,9 @@ function applyFilter(rs: FsEnrichedRow[], f: FloorShareFilter): FsEnrichedRow[] 
     if (f.semanas && f.semanas.length > 0 && !f.semanas.includes(r.semana)) return false;
     if (f.categorias && f.categorias.length > 0 && !f.categorias.includes(normalizeCategoria(r.categoria ?? ""))) return false;
     if (f.clientes && f.clientes.length > 0 && !f.clientes.includes(r.cliente)) return false;
-    if (f.tiendas && f.tiendas.length > 0 && !f.tiendas.includes(r.numero_tienda ?? "")) return false;
+    if (f.supervisores && f.supervisores.length > 0 && !f.supervisores.includes(r.supervisor)) return false;
+    if (f.promotores && f.promotores.length > 0 && !f.promotores.includes(r.promotor)) return false;
+    if (f.tiendas && f.tiendas.length > 0 && !f.tiendas.includes(tiendaKeyFs(r))) return false;
     if (f.marcas && f.marcas.length > 0 && !f.marcas.includes(r.marca ?? "")) return false;
     return true;
   });
@@ -61,29 +74,42 @@ export function computeFsView(allRows: FsEnrichedRow[], filter: FloorShareFilter
     semanas: uniq(applyFilter(allRows, { ...filter, semanas: [] }).map((r) => r.semana)).sort((a, b) => a - b),
     categorias: uniq(applyFilter(allRows, { ...filter, categorias: [] }).map((r) => normalizeCategoria(r.categoria))).sort(),
     clientes: uniq(applyFilter(allRows, { ...filter, clientes: [] }).map((r) => r.cliente)).sort(),
-    tiendas: uniq(applyFilter(allRows, { ...filter, tiendas: [] })
-      .map((r) => ({ value: r.numero_tienda, label: r.nombre_tienda ?? r.numero_tienda })))
-      .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)
-      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" })),
+    supervisores: uniq(applyFilter(allRows, { ...filter, supervisores: [] }).map((r) => r.supervisor)).sort(),
+    promotores: uniq(applyFilter(allRows, { ...filter, promotores: [] }).map((r) => r.promotor)).sort(),
+    tiendas: [...new Map(applyFilter(allRows, { ...filter, tiendas: [] })
+      .map((r) => [tiendaKeyFs(r), { value: tiendaKeyFs(r), label: `${r.numero_tienda} - ${r.nombre_tienda ?? ""}` }])).values()]
+      .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base", numeric: true })),
   };
 
   const totalRanking = shareByBrand(rows);
   const catBrand = shareByCatBrand(rows);
-  const byTienda = shareByTienda(rows);
-  const byCliente = shareByCliente(rows);
+  const byTienda = shareByTienda(applyFilter(allRows, { ...filter, tiendas: [] }));
+  // Cada tabla ignora su propio filtro (= app vieja) y saca los "sin asignar".
+  const byCliente = shareByCliente(applyFilter(allRows, { ...filter, clientes: [] }).filter((r) => !PERSONA_PLACEHOLDERS.has(r.cliente)));
+  const byPromotor = shareByCliente(applyFilter(allRows, { ...filter, promotores: [] })
+    .filter((r) => !PERSONA_PLACEHOLDERS.has(r.promotor)).map((r) => ({ ...r, cliente: r.promotor })));
   const overall = computeOverall(rows);
 
-  const top5 = totalRanking.slice(0, 5).map((r) => r.marca);
-  if (!top5.includes(OWN_BRAND_FS) && rows.some((r) => r.marca === OWN_BRAND_FS)) top5.unshift(OWN_BRAND_FS);
-  const weekly = weeklyShareByBrand(rows, top5);
+  // Evolución semanal: Drean + top 9 sin los filtros de mes/semana (se ve toda la serie).
+  const evolRows = applyFilter(allRows, { ...filter, meses: [], semanas: [] });
+  const topMarcas = [OWN_BRAND_FS, ...shareByBrand(evolRows).map((r) => r.marca)
+    .filter((m) => m !== OWN_BRAND_FS && !NO_MARCA.has(m.toLowerCase())).slice(0, 9)];
+  const weekly = weeklyShareByBrand(evolRows, topMarcas);
 
   const cats = uniq(rows.map((r) => normalizeCategoria(r.categoria))).sort();
-  const totalTiendasRelevadas = new Set(allRows.map((r) => r.numero_tienda)).size;
+  const totalTiendasRelevadas = new Set(rows.map(tiendaKeyFs)).size;
+  let semMin = Infinity, semMax = -Infinity; // sin spread: son ~140k filas
+  for (const r of rows) { if (r.semana < semMin) semMin = r.semana; if (r.semana > semMax) semMax = r.semana; }
 
-  return { options, totalRanking, catBrand, cats, byTienda, byCliente, overall, top5, weekly, totalTiendasRelevadas, hasData: rows.length > 0 };
+  return {
+    options, totalRanking, catBrand, cats, byTienda, byCliente, byPromotor, overall, topMarcas, weekly, totalTiendasRelevadas,
+    semanaDesde: rows.length ? semMin : null, semanaHasta: rows.length ? semMax : null,
+    hasData: rows.length > 0,
+  };
 }
 
 // ¿El filtro es la vista DEFAULT (sin nada seleccionado)? → puede leerse del precálculo.
 export function isFsDefault(f: FloorShareFilter): boolean {
-  return !(f.meses?.length || f.semanas?.length || f.categorias?.length || f.clientes?.length || f.tiendas?.length || f.marcas?.length);
+  return !(f.meses?.length || f.semanas?.length || f.categorias?.length || f.clientes?.length || f.tiendas?.length || f.marcas?.length
+    || f.supervisores?.length || f.promotores?.length);
 }

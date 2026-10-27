@@ -3,11 +3,12 @@ import "server-only";
 // Precálculos que dependen de las cargas de Trade. Se recalculan al confirmar/deshacer una carga, al final de
 // la migración (trade-migrar) y en el cron trade-agg. Así el tablero lee UNA fila en la vista default:
 //   tr_precalc 'cb_default' (vista de /cuadros-basicos sin filtros), fs_precomputed id=1 (vista default de
-//   /floor-share, 26 semanas) y trade_monthly (Seguimiento).
+//   /floor-share, semanas del año) y trade_monthly (Seguimiento).
 
-import { trEstado, trInvalidarEstado, getTrCbRows, getTrFsRows, getTrTiendaCliente, setTrPrecalc, trUpsert } from "./trade-db";
+import { trEstado, trInvalidarEstado, getTrCbRows, getTrFsRows, setTrPrecalc, trUpsert } from "./trade-db";
 import { computeCbView } from "./cb-view";
-import { computeFsView, type FsEnrichedRow } from "./fs-view";
+import { computeFsView } from "./fs-view";
+import { enriquecerFs } from "./cb-mirror";
 import { tradeMonthlyDeFilas } from "./trade-monthly";
 
 export async function refrescarDerivados(): Promise<Record<string, string>> {
@@ -17,10 +18,9 @@ export async function refrescarDerivados(): Promise<Record<string, string>> {
   const anio = est.cb ?? est.fs;
   if (anio == null) return { estado: "sin datos en tr_*" };
 
-  const [cbRows, fsAll, cliente] = await Promise.all([
+  const [cbRows, fsAll] = await Promise.all([
     est.cb != null ? getTrCbRows(est.cb) : Promise.resolve([]),
     est.fs != null ? getTrFsRows(est.fs, []) : Promise.resolve([]),
-    getTrTiendaCliente().catch(() => new Map<string, string>()),
   ]);
 
   if (cbRows.length) {
@@ -29,13 +29,11 @@ export async function refrescarDerivados(): Promise<Record<string, string>> {
   }
 
   if (fsAll.length) {
-    const semanas = [...new Set(fsAll.map((r) => r.semana))].sort((a, b) => b - a).slice(0, 26);
-    const def = new Set(semanas);
-    const enriched: FsEnrichedRow[] = fsAll
-      .filter((r) => r.marca != null && r.categoria != null && r.numero_tienda != null && def.has(r.semana))
-      .map((r) => ({ ...r, cliente: cliente.get(r.numero_tienda) ?? "Sin cliente" }));
-    await trUpsert("fs_precomputed", [{ id: 1, data: computeFsView(enriched, {}), updated_at: new Date().toISOString() }], "id");
-    out.fs_default = `${enriched.length} filas, semanas ${Math.min(...semanas)}–${Math.max(...semanas)}`;
+    // Vista default = todas las semanas del año (= app vieja), con cliente/promotor/supervisor.
+    const enriched = await enriquecerFs(fsAll);
+    const view = computeFsView(enriched, {});
+    await trUpsert("fs_precomputed", [{ id: 1, data: view, updated_at: new Date().toISOString() }], "id");
+    out.fs_default = `${enriched.length} filas, semanas ${view.semanaDesde}–${view.semanaHasta}`;
   }
 
   const t = tradeMonthlyDeFilas(cbRows, fsAll, anio);
