@@ -36,7 +36,7 @@ export interface FsView {
   byTienda: ReturnType<typeof shareByTienda>;
   byCliente: ReturnType<typeof shareByCliente>;
   byPromotor: ReturnType<typeof shareByCliente>;
-  /** Para el mapa: `cliente` = zona, o "N - tienda@lat|lon|prov" si la tienda tiene dirección geocodificada. */
+  /** Para el mapa: `cliente` = zona, o "N - tienda@id|lat|lon|prov" si la tienda tiene dirección geocodificada. */
   byZona?: ReturnType<typeof shareByCliente>;
   overall: ReturnType<typeof computeOverall>;
   /** Drean + top 9 marcas (= app vieja). La evolución semanal ignora los filtros de mes y semana. */

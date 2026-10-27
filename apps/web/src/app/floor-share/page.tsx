@@ -12,6 +12,7 @@ import { getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-
 import { isoWeekToMes } from "@/lib/cb-queries";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
 import { MapaZonas } from "@/components/trade/mapa-zonas";
+import { mapaTrade } from "@/lib/trade-mapa";
 import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
@@ -106,6 +107,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const sub = `${periodo ? `${periodo} · ` : ""}Δ vs objetivo`;
 
   const esMapa = searchParams.tab === "mapa";
+  const mapa = esMapa && hasData ? await mapaTrade({ fs: v, fsFilter: filter }) : null;
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
 
   // Objetivo = la META MENSUAL por categoría (fuente única, lib/fs-objetivos) del mes de referencia de la vista:
@@ -172,15 +174,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           </div>
           {metasBloque}
         </>
-      ) : esMapa ? (
-        <MapaZonas
-          titulo="Floor Share por tienda"
-          metricas={[{ label: "General", obj: Number(genObj.toFixed(1)) }, { label: "Lavado", obj: OBJ.lavado }, { label: "Refrigeración", obj: OBJ.refri }, { label: "Cocción", obj: OBJ.coccion }]}
-          puntos={(v.byZona ?? []).map((z) => ({
-            zona: z.cliente, tiendas: z.tiendas,
-            vals: [z.total, z.lavado, z.refri, z.coccion].map((b) => [b.drean_units, b.total_units] as [number, number]),
-          }))}
-        />
+      ) : mapa ? (
+        <MapaZonas titulo="Floor Share y Cuadro Básico por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} inicial={3} />
       ) : (
         <>
           <section className="grid gap-3 lg:grid-cols-4">

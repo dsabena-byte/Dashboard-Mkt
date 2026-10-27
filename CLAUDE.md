@@ -583,6 +583,11 @@ reporte_existencia/cb_homologos).
   maestro sin match en el master (La Anónima, DGZ, Electro GV, etc.). Vía: `getTrContactos` → `geo` "lat|lon|provincia" → la clave del punto es "N - tienda@lat|lon|prov" (`byZona` de cb/fs-view);
   sin geo cae en la burbuja de su ZONA (`tr_tiendas.localidad`, `ZONAS` en el componente; proyección x=26.08·lon+1918.77,
   y=−33.34·lat−728.1). Panel = Σ cumplidos ÷ Σ objetivo de lo que entra en la vista. CB Ventas NO va en el mapa (es por cuenta).
+  **Mapa cruzado (27-oct, `lib/trade-mapa.ts` `mapaTrade`):** la pestaña Mapa de CB y de FS muestra las 7 métricas (CB, Inf, Est, FS
+  general/Lav/Refri/Cocc) en el mismo punto (clave = id de tr_tiendas: `geo` = "id|lat|lon|prov"); el tablero base manda sus filtros y
+  el otro toma período + equipo; con filtro de cliente/tienda/categoría se recorta a las tiendas del base. Clic en un punto = ficha con
+  todo. Validado: 186 tiendas con CB y FS, 316 solo FS. PRÓXIMO (pedido del user): exhibición especial/mobiliario con foto por tienda
+  (el user manda los datos) y, por cliente, CB Ventas (`vt_clientes` ↔ `tr_cadenas.cliente`).
   `tr_tiendas` tiene ~19 tiendas DUPLICADAS (ids 576–594, nombre en mayúsculas y cadena equivocada; misma dirección que el original).
   FS sin "Evolución mensual real vs meta" (27-oct, user: no estaba en la app vieja); el editor de objetivos queda al pie (solo editores).
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
