@@ -16,7 +16,8 @@ import {
 import { computeCbView, isCbDefault, applyCbFilter, computeSkuDetalle, type CbView, type CbSkuDet } from "@/lib/cb-view";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
 import { MapaZonas } from "@/components/trade/mapa-zonas";
-import { mapaTrade } from "@/lib/trade-mapa";
+import { mapaTrade, exhibicionesDeTiendas } from "@/lib/trade-mapa";
+import { ExhibicionesTienda } from "@/components/trade/exhibicion-fotos";
 import { CbDetalleTienda } from "@/components/cb/cb-detalle-tienda";
 import { getTrPrecalc, trEstado, getTrCbSkuRows } from "@/lib/trade-db";
 import { puedeEditarActual } from "@/lib/usuarios-server";
@@ -161,6 +162,10 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const { options, totals, weekly, byDiv, byCliente, byPromotor, byTienda, totalTiendasRelevadas, hasData } = v;
   const cbVals = (r: { cb_pct: number; infalt_pct: number; estrat_pct: number }) => [r.cb_pct, r.infalt_pct, r.estrat_pct];
   const totVals = [totals.cb_pct, totals.infalt_pct, totals.estrat_pct];
+  // Al filtrar tiendas: sus exhibiciones especiales con fotos (pedido del user: ver la foto en el tablero, no en Drive).
+  const exhib = tab !== "mapa" && filter.tiendas?.length
+    ? await exhibicionesDeTiendas(filter.tiendas.map((t) => { const m = t.match(/^(\d+)\s*[-–]\s*(.+)$/); return { numero: m?.[1] ?? "", nombre: m?.[2] ?? t, label: t }; })).catch(() => [])
+    : [];
   const seleccion = [...(filter.tiendas ?? []), ...(filter.clientes ?? [])].join(", ");
   const lastUpdated = await maxUpdatedAt("cuadro_basico_semanal", "cb").catch(() => null);
   const mapa = tab === "mapa" && hasData ? await mapaTrade({ cb: v, cbFilter: filter }) : null;
@@ -210,6 +215,8 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
               contexto={`Universo histórico: ${totalTiendasRelevadas}`}
             />
           </section>
+
+          <ExhibicionesTienda items={exhib} />
 
           {weekly.length > 1 && (
             <section className="rounded-xl border bg-card p-4">

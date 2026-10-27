@@ -6,7 +6,9 @@ import "server-only";
 import { getCbRowsFast, enriquecerCb, getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-mirror";
 import { computeCbView, isCbDefault, type CbView } from "@/lib/cb-view";
 import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
-import { getTrPrecalc, trEstado, getTrExhibiciones } from "@/lib/trade-db";
+import { getTrPrecalc, trEstado, getTrExhibiciones, getTrContactos } from "@/lib/trade-db";
+import { crearEnriquecedorFs } from "@/lib/fs-enrich";
+import type { ExhibicionTienda } from "@/components/trade/exhibicion-fotos";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS } from "@/lib/fs-objetivos";
 import { CATEGORIA_PESOS } from "@/lib/categorias";
 import type { CbFilter } from "@/lib/cb-queries";
@@ -80,7 +82,8 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
   for (const e of exh) if (e.tienda_id != null) porTienda.set(String(e.tienda_id), [...(porTienda.get(String(e.tienda_id)) ?? []), e]);
   const detalle = (es: typeof exh) => es.flatMap((e) => [
     { label: `Exhibición${e.anio ? ` ${e.anio}` : ""}`, valor: e.exhibidor ?? "sin detalle" },
-    ...(e.link_fotos ? [{ label: "Fotos", valor: "ver carpeta", href: e.link_fotos }] : []),
+    ...(e.fotos?.length ? [{ label: "Fotos", valor: "", fotos: e.fotos }]
+      : e.link_fotos?.startsWith("http") ? [{ label: "Fotos", valor: "ver en Drive", href: e.link_fotos }] : []),
   ]);
   for (const p of puntos) {
     const id = idDe(p.zona);
@@ -110,4 +113,16 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
     ],
     nota: !fs ? "Floor Share no disponible." : !cb ? "Cuadro Básico no disponible." : obj ? `Meta FS de ${MESES_FS[obj.mesIdx]} ${obj.anio}.` : null,
   };
+}
+
+/** Exhibiciones de las tiendas filtradas (mismo cruce tienda → tr_tiendas que el mapa: número + nombre del maestro). */
+export async function exhibicionesDeTiendas(tiendas: Array<{ numero: string; nombre: string; label: string }>): Promise<ExhibicionTienda[]> {
+  if (!tiendas.length) return [];
+  const [contactos, exh] = await Promise.all([getTrContactos().catch(() => []), getTrExhibiciones()]);
+  const enr = crearEnriquecedorFs(contactos);
+  const porId = new Map<string, string>();
+  for (const t of tiendas) { const id = enr(t.numero, t.nombre)?.geo?.split("|")[0]; if (id) porId.set(id, t.label); }
+  return exh.filter((e) => e.tienda_id != null && porId.has(String(e.tienda_id)))
+    .sort((a, b) => (b.anio ?? 0) - (a.anio ?? 0))
+    .map((e) => ({ id: e.id, tienda: porId.get(String(e.tienda_id))!, anio: e.anio, exhibidor: e.exhibidor, fotos: e.fotos ?? [], link: e.link_fotos }));
 }

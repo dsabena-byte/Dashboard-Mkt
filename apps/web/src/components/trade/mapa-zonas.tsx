@@ -6,11 +6,12 @@
 // suma SOLO lo que entra en la vista (Σ cumplidos ÷ Σ objetivo, no promedio de porcentajes).
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 import { AR_PROVINCES } from "@/lib/argentina-provinces";
+import { FotosGaleria } from "@/components/trade/exhibicion-fotos";
 
 /** `binaria` = sí/no por tienda (ej. exhibición especial): el % de la vista = tiendas con ÷ tiendas con dato. */
 export type MapaMetrica = { label: string; obj: number; binaria?: boolean };
 /** `detalle` = líneas extra de la ficha (ej. exhibición especial con link a las fotos). */
-export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]>; detalle?: Array<{ label: string; valor: string; href?: string }> };
+export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]>; detalle?: Array<{ label: string; valor: string; href?: string; fotos?: string[] }> };
 
 // Ciudad de referencia de cada zona (lat, lon) y su provincia en el mapa.
 const ZONAS: Record<string, { lat: number; lon: number; prov: string }> = {
@@ -204,6 +205,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                   <div key={i} className="mt-1.5 border-t border-blue-100 pt-1.5">
                     <span className="text-muted-foreground">{d.label}: </span>
                     {d.href ? <a href={d.href} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">{d.valor}</a> : d.valor}
+                    {d.fotos?.length ? <div className="mt-1"><FotosGaleria fotos={d.fotos} chica /></div> : null}
                   </div>
                 ))}
               </div>
