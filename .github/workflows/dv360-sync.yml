@@ -1,0 +1,62 @@
+name: DV360 sync (Bid Manager API)
+
+# Llama /api/cron/dv360-sync: corre en la Bid Manager API v2 las mismas consultas que los reportes "DV360 Video Drean"
+# y "DV360 Reach Drean" (meses calendario completos; el en curso hasta ayer) y escribe dv360_creatives + dv360_reach.
+# Reemplaza a syncDv360/syncDv360Reach del Apps Script. Nunca pisa un mes con menos datos que lo guardado (>2%) salvo force.
+on:
+  schedule:
+    - cron: "10 11 * * *" # 08:10 ART
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "1 = dry-run (compara guardado vs API por mes, no escribe)"
+        required: false
+        default: ""
+      meses:
+        description: "Cantidad de meses (incluye el en curso). Vacío = 3"
+        required: false
+        default: ""
+      desde:
+        description: "YYYY-MM (pisa a 'meses')"
+        required: false
+        default: ""
+      force:
+        description: "1 = pisa aunque la API traiga menos que lo guardado"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: GET /api/cron/dv360-sync
+        run: |
+          set -euo pipefail
+          BASE="${APP_URL:-https://dashboard-mkt-seven.vercel.app}"
+          QS=""
+          [ -n "${DRY_INPUT:-}" ] && QS="${QS}&dry=1"
+          [ -n "${MESES_INPUT:-}" ] && QS="${QS}&meses=${MESES_INPUT}"
+          [ -n "${DESDE_INPUT:-}" ] && QS="${QS}&desde=${DESDE_INPUT}"
+          [ -n "${FORCE_INPUT:-}" ] && QS="${QS}&force=1"
+          URL="$BASE/api/cron/dv360-sync"
+          [ -n "$QS" ] && URL="${URL}?${QS#&}"
+          echo "GET $URL"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 320 \
+            -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+          echo "HTTP $HTTP_CODE"
+          cat response.json; echo ""
+          if [ "$HTTP_CODE" != "200" ]; then echo "::error::HTTP $HTTP_CODE"; exit 1; fi
+          if grep -q '"ok":false' response.json; then echo "::error::cron devolvió error"; exit 1; fi
+          B=$(jq -r '.bloqueados // 0' response.json)
+          if [ "$B" != "0" ]; then echo "::warning::$B mes(es) no se pisaron porque la API trae menos que lo guardado (ver respuesta)"; fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+          DRY_INPUT: ${{ inputs.dry }}
+          MESES_INPUT: ${{ inputs.meses }}
+          DESDE_INPUT: ${{ inputs.desde }}
+          FORCE_INPUT: ${{ inputs.force }}

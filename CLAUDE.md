@@ -722,6 +722,12 @@ reporte_existencia/cb_homologos).
   (Programmatic 2.557 + YouTube 1.957) vs la recarga completa de US$17.108 → el `syncDv360` diario lo re-pisó con
   CSV parcial (el pendiente de "recurrencia" se materializó). Ago-26 también sospechoso (US$9.081 vs jul US$39.073).
   Fix de fondo = rango fijo/largo en el reporte "DV360 Video Drean" o que `syncDv360` no reescriba un mes con CSV parcial.
+- **DV360 números por API (27-oct-2026, rama `claude/dv360-sync`):** `/api/cron/dv360-sync` + `dv360-sync.yml` (diario 08:10 ART)
+  reemplazan a `syncDv360`/`syncDv360Reach` del Apps Script: Bid Manager API v2 con meses calendario completos, misma agregación
+  (`lib/dv360-report.ts`, test de paridad `scripts/dv360-report.test.ts`), y NUNCA pisa un mes con >2% menos impresiones/inversión
+  que lo guardado (salvo `?force=1`). Token: `DV360_REFRESH_TOKEN` o `GOOGLE_REFRESH_TOKEN` con scope `doubleclickbidmanager`
+  (`lib/dv360-oauth.ts`, también lo usa dv360-thumbs). **No probado contra la API real:** primera corrida = `dry=1`; después apagar
+  los triggers del Apps Script. Detalle en `docs/dv360-sync.md`.
 - **DV360 miniaturas (28-sep-2026):** números = reporte OMD (sin cambios); imágenes = API DV360 solo lectura (scope
   `display-video`, anunciante 8003891470). Cron `/api/cron/dv360-thumbs` + `dv360-thumbs.yml` (diario, `dry`) espeja
   `/simgad/<n>` (tpc.googlesyndication.com, respaldo s0.2mdn.net) / YouTube a `meta-thumbs/dv360/<id>.jpg` + manifiesto
