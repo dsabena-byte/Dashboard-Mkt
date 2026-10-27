@@ -199,7 +199,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
             )}
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2">
             <AggTable titulo="🏢 Performance por cliente" columna="Cliente" totalLabel="FLOORSHARE TOTAL" subtitulo={sub} cols={fsCols(OBJ)}
               filas={byCliente.map((r) => ({ key: r.cliente, nombre: r.cliente, vals: fsVals(r) }))} total={fsVals(overall)} />
             <AggTable titulo="👥 Performance por promotor" columna="Promotor" totalLabel="FLOORSHARE TOTAL EQUIPO" subtitulo={sub} cols={fsCols(OBJ)}

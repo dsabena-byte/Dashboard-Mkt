@@ -218,7 +218,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           </section>
 
           {/* Como la app vieja: promotor + cliente lado a lado (cada una se oculta si su filtro está activo). */}
-          <section className="grid gap-4 lg:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2">
             {!filter.promotores?.length && (
               <AggTable titulo="🏆 Cumplimiento por Promotor" columna="Promotor" totalLabel="TOTAL EQUIPO" subtitulo={`Δ vs objetivo ${OBJ_PCT}%`}
                 cols={CB_COLS} filas={byPromotor.map((r) => ({ key: r.key, nombre: r.key, vals: cbVals(r) }))} total={totVals} />
@@ -265,7 +265,7 @@ function SkuCol({ titulo, items, porTienda }: { titulo: string; items: CbSkuDet[
       {items.length === 0 ? (
         <p className="p-2 text-xs text-muted-foreground">No hay SKUs de este tipo en esta selección.</p>
       ) : (
-        <div className="max-h-[420px] space-y-1 overflow-auto">
+        <div className="space-y-1">
           {items.map((s) => (
             <div key={s.sku} className={`flex items-center gap-2 rounded border px-2 py-1.5 text-xs ${s.cumple ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
               <span>{s.cumple ? "✅" : "❌"}</span>
