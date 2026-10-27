@@ -13,9 +13,7 @@ import { isoWeekToMes } from "@/lib/cb-queries";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
 import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
-import { MetaEvolChart } from "@/components/pauta/meta-evol-chart";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
-import { getTradeMonthly } from "@/lib/trade-monthly";
 import { puedeEditarActual } from "@/lib/usuarios-server";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
@@ -115,14 +113,10 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const semMax = Math.max(0, ...sems);
   const mesesFiltro = (filter.meses ?? []).map((m) => MESES.indexOf(m)).filter((i) => i >= 0);
   const { anio, mesIdx } = mesRefFs(semMax, mesesFiltro.length ? Math.max(...mesesFiltro) : undefined);
-  const [objAnio, tm, editor] = await Promise.all([getFsObjetivosAnio(anio), getTradeMonthly(anio), puedeEditarActual("trade")]);
+  const [objAnio, editor] = await Promise.all([getFsObjetivosAnio(anio), puedeEditarActual("trade")]);
   const o = objAnio[mesIdx]!;
   const OBJ: Obj = { lavado: o.lavado, refri: o.refrigeracion, coccion: o.coccion };
   const objLabel = (v: number) => `Meta ${MESES[mesIdx]} ${anio}: ${Number(v.toFixed(1))}%`;
-  const evol = ([["Lavado", "lavado"], ["Refrigeración", "refrigeracion"], ["Cocción", "coccion"]] as const).map(([cat, k]) => ({
-    cat,
-    data: MESES.map((mes, i) => ({ mes, real: tm.fsCat[cat]?.[i] ?? null, meta: objAnio[i]![k] })),
-  }));
 
   // Objetivo general ponderado (Σ obj_cat × peso / Σ peso) para el card general.
   const genObj = (() => {
@@ -136,18 +130,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
 
   const metasBloque = (
     <>
-      <section className="rounded-xl border bg-card p-4">
-        <h3 className="text-sm font-bold">Evolución mensual · real vs meta {anio}</h3>
-        <p className="mb-3 text-[11px] text-muted-foreground">Share Drean de cada mes contra la meta de ESE mes (sin meta cargada: 32 / 25 / 23%).</p>
-        <div className="grid gap-4 lg:grid-cols-3">
-          {evol.map((e) => (
-            <div key={e.cat}>
-              <div className="mb-1 text-xs font-semibold text-muted-foreground">{e.cat}</div>
-              <MetaEvolChart data={e.data} mode="bar" unidad="%" realName={`Floor Share ${e.cat}`} />
-            </div>
-          ))}
-        </div>
-      </section>
       {editor && (
         <MetaPanel
           plan={FS_PLAN}
@@ -203,9 +185,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               contexto={`${overall.coccion.drean_units.toLocaleString()} / ${overall.coccion.total_units.toLocaleString()}`} />
           </section>
 
-          {/* Estructura estándar: cards → evolución real vs meta (+ metas) → contenido. */}
-          {metasBloque}
-
           {/* Como la app vieja: ranking + evolución · cliente + promotor · tienda. */}
           <section className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-4">
@@ -232,6 +211,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               key: `${r.numero_tienda}|${r.nombre_tienda}`, vals: fsVals(r),
               nombre: `${["Sin asignar", "Sin cliente"].includes(r.cliente) ? "" : `${r.cliente} — `}${r.numero_tienda} - ${r.nombre_tienda}`,
             }))} total={fsVals(overall)} />
+          {/* La app vieja no tenía evolución mensual: solo queda el editor de objetivos (editores Trade). */}
+          {metasBloque}
         </>
       )}
     </div>

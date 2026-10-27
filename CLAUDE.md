@@ -563,6 +563,19 @@ reporte_existencia/cb_homologos).
   idempotente, `?parte=verificar` compara origen vs destino). `cb-mirror` = no-op con datos en `tr_*`. Sugerencias
   (`lib/trade-sugerencias*.ts`) = port de las vistas del proyecto CB; el catálogo/homólogos se sigue leyendo de `cb_homologos` (CB).
   Pasos y pendientes: PENDIENTES D24.
+  **Pantallas = las de la app vieja (27-oct, pedido del user; validado al número contra el proyecto CB):** FS 22,1% · 566 tiendas · 91.932/416.822;
+  CB 71,9% · 20.146/28.013 · 188 tiendas. **Tienda FS = número + nombre** (el número se repite entre cadenas: "1" = 5H, Ama Hogar, Audio
+  Visión…; antes se mezclaban y salían 420). Cliente/promotor/supervisor con la lógica vieja en `lib/fs-enrich.ts` (cliente inferido del
+  nombre + alias; promotor/supervisor de `tr_tienda_asignacion` vigente; SIN nombres de personas en el código, repo público) vía
+  `enriquecerFs`/`enriquecerCb` (`lib/cb-mirror.ts`). FS: filtros Supervisor/Promotor, ranking top 10 (Drean rojo), evolución Drean + top 9
+  (ignora mes/semana), tablas cliente · promotor · tienda con total y semáforo viejo (verde ≥ obj−2, amarillo ≥ obj−6). CB: mismas filtros,
+  Cumplimiento por Promotor (TOTAL EQUIPO) y por Cliente (TOTAL CADENAS) — se ocultan si su filtro está activo —, Detalle por Tienda completo
+  ordenable y Detalle de SKUs al elegir tienda/cliente (`tr_cb_semanal`). Tabla común `components/trade/agg-table.tsx`. Vista default FS =
+  todas las semanas del año. Las 18 tiendas de `MANUAL_CONTACTOS` de la app vieja NO están en `tr_tiendas` (salen "Tienda sin mapeo").
+  **Cargas en CSV o Excel** (`lib/leer-planilla.ts`, primera hoja; también "Importar usuarios").
+  FS sin "Evolución mensual real vs meta" (27-oct, user: no estaba en la app vieja); el editor de objetivos queda al pie (solo editores).
+  Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
+  ni en el proyecto CB viejo (hueco de origen); se cargó el 27-oct.
 - **Sin 2023 (16-oct, user: "info muy vieja"):** `ANIO_MINIMO = 2024` (presupuesto-core) filtra años anteriores en `getBgtData` (tablero,
   chat, señales) y en `/api/presupuesto` (versiones, TC, facturación de la carga). Los datos NO se borran de la base.
 ## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026

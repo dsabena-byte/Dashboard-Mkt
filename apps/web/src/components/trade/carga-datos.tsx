@@ -71,6 +71,10 @@ export function CargaDatos() {
       .reduce((s, c) => s + c.filas, 0);
   }
 
+  // Archivos reconocidos, sin errores y sin cargar todavía (cuando suben varios a la vez).
+  const pendientes = archivos.filter((a) => a.tipo && a.resumen && !a.errores.length && (a.estado === "listo" || a.estado === "error"));
+  async function confirmarTodos() { for (const a of pendientes) await confirmar(a); }
+
   async function confirmar(a: Archivo) {
     if (!a.tipo || !a.resumen) return;
     if ((a.tipo === "cb" || a.tipo === "fs") && (!a.semana || a.semana < 1 || a.semana > 53)) return set(a.id, { msg: "Completá la semana (1 a 53)." });
@@ -133,6 +137,13 @@ export function CargaDatos() {
 
       {error && <div className="rounded-lg border bg-rose-50 p-3 text-xs text-rose-900">{error}</div>}
 
+      {pendientes.length > 1 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
+          <span>{pendientes.length} archivos listos para cargar. Cada uno se confirma por separado, o todos juntos:</span>
+          <button onClick={() => void confirmarTodos()} className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white">Confirmar todos</button>
+        </div>
+      )}
+
       {archivos.map((a) => {
         const prev = yaCargado(a);
         const r = a.resumen;
@@ -172,7 +183,7 @@ export function CargaDatos() {
                 </div>
                 {a.avisos.map((x) => <div key={x} className="text-xs text-muted-foreground">{x}</div>)}
                 {a.tipo === "u3" && <div className="rounded-md bg-amber-50 p-2 text-xs text-amber-900">Reemplaza el Reporte de Existencias completo (es la foto vigente).</div>}
-                {prev > 0 && (
+                {prev > 0 && a.estado !== "ok" && (
                   <div className="rounded-md bg-amber-50 p-2 text-xs text-amber-900">
                     La semana {a.semana}{a.tipo === "fs" && a.categoria ? ` de ${CAT_LABEL[a.categoria]}` : ""} ya está cargada ({prev.toLocaleString("es-AR")} filas): se va a REEMPLAZAR por este archivo.
                   </div>
@@ -206,7 +217,10 @@ export function CargaDatos() {
                     <div className="mt-1 max-h-40 overflow-auto text-muted-foreground">{r.nuevosSkus.join(" · ")}</div>
                   </details>
                 )}
-                <div className="flex items-center gap-3">
+                {a.estado === "ok" && (
+                  <div className="rounded-md bg-emerald-50 p-2 text-xs font-semibold text-emerald-800">✅ {a.msg} Ya está en el tablero; podés quitar esta tarjeta.</div>
+                )}
+                <div className={`flex items-center gap-3 ${a.estado === "ok" ? "hidden" : ""}`}>
                   <button
                     disabled={a.estado === "subiendo" || a.estado === "ok"}
                     onClick={() => void confirmar(a)}
