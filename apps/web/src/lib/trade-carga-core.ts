@@ -3,7 +3,7 @@
 // syncReporteExistencia / syncContactos). Lo usan el navegador (vista previa) y el server (validación).
 // Test: `npx tsx scripts/trade-carga.test.ts`.
 
-export type TipoCarga = "cb" | "fs" | "u3" | "tiendas";
+export type TipoCarga = "cb" | "fs" | "u3" | "tiendas" | "exh";
 export type CategoriaFs = "lavado" | "refrigeracion" | "coccion";
 export const CATEGORIAS_FS: CategoriaFs[] = ["lavado", "refrigeracion", "coccion"];
 export const TIPO_LABEL: Record<TipoCarga, string> = {
@@ -11,6 +11,7 @@ export const TIPO_LABEL: Record<TipoCarga, string> = {
   fs: "Floor Share",
   u3: "Reporte de Existencias U3",
   tiendas: "Tiendas / promotor / supervisor",
+  exh: "Exhibición de SKUs por tienda",
 };
 
 export interface FilaCb {
@@ -23,6 +24,12 @@ export interface FilaU3 {
   formato: string | null; canal: string | null; division: string | null; categoria: string | null; subcategoria: string | null;
   marca: string | null; sku: string | null; ean: string | null; descripcion: string | null; existencia: number;
   estado: string | null; promotor: string | null; supervisor: string | null;
+}
+/** Reporte semanal de exhibición (ReportExhibitions): qué SKU está exhibido en qué tienda. Base de "Sugerencias de SKUs". */
+export interface FilaExh {
+  tienda: string; numero_tienda: string | null; cadena: string | null; formato: string | null; canal: string | null;
+  division: string | null; categoria: string | null; subcategoria: string | null; marca: string | null; sku: string;
+  descripcion: string | null; tipo_espacio: string | null; estatus_pdv: string | null; existencia: number; fecha_captura: string | null;
 }
 export interface FilaTienda {
   cadena: string; numero: string; nombre: string; segmentacion: string | null; provincia: string | null;
@@ -134,6 +141,10 @@ export function detectarTipo(grid: string[][]): { tipo: TipoCarga | null; motivo
   const has = (h: string[], x: string) => h.some((c) => c === x);
   if ((has(h0, "targetcb") || has(h0, "target cb")) && (has(h0, "sku mabe") || has(h0, "sku")))
     return { tipo: "cb", motivo: "tiene las columnas targetCB / SKU MABE" };
+  // Antes que U3: el reporte de exhibición trae lo mismo que el U3 (ID, NO. DE TIENDA, SKU, EXISTENCIA EN EXHIBICIÓN)
+  // más CÓDIGO EXHIBICIÓN y el estatus de colocación, que el U3 no tiene.
+  if (has(h0, "sku") && has(h0, "codigo exhibicion"))
+    return { tipo: "exh", motivo: "tiene CÓDIGO EXHIBICIÓN" };
   if (has(h0, "id") && has(h0, "sku") && h0.some((c) => c.includes("existencia")) && h0.some((c) => /no\.? de tienda|numero de tienda/.test(c)))
     return { tipo: "u3", motivo: "tiene ID, NO. DE TIENDA, SKU y EXISTENCIA" };
   if (has(h0, "promotor") && has(h0, "cadena") && h0.some((c) => c.includes("tienda") || c.includes("pdv")))
@@ -151,6 +162,8 @@ export function infoDesdeNombre(nombre: string): { semana: number | null; catego
   if (m1) return { semana: null, categoria: normCategoria(m1[3]!), anio: Number(m1[1]), mes: Number(m1[2]) };
   const m2 = base.match(/^(\d{1,2})\s*[-_]\s*(.+?)\.(?:csv|xlsx|xlsm|xls)$/i);
   if (m2) return { semana: Number(m2[1]), categoria: normCategoria(m2[2]!), anio: null, mes: null };
+  const mf = base.match(/semana[\s_-]*fiscal[\s_-]*(\d{1,2})(?!\d)/i); // "Exhibicion_Semana_Fiscal_43_Dani.xlsx"
+  if (mf) return { semana: Number(mf[1]), categoria: null, anio: null, mes: null };
   const m3 = base.match(/^(\d{1,2})\.(?:csv|xlsx|xlsm|xls)$/i);
   if (m3) return { semana: Number(m3[1]), categoria: null, anio: null, mes: null };
   return { semana: null, categoria: null, anio: null, mes: null };
@@ -266,6 +279,36 @@ export function parseU3(grid: string[][]): Parseo<FilaU3> {
   return { filas, avisos: [], errores: filas.length ? [] : ["Sin filas válidas."] };
 }
 
+/** Exhibición de SKUs por tienda: una fila por exhibición (tienda × SKU × espacio), tal cual el reporte. */
+export function parseExh(grid: string[][]): Parseo<FilaExh> {
+  const headers = (grid[0] ?? []).map((h) => normHeader(h ?? ""));
+  const idx = (...res: RegExp[]) => { for (const re of res) { const i = headers.findIndex((h) => re.test(h)); if (i >= 0) return i; } return -1; };
+  const iTi = idx(/^tienda$/), iNum = idx(/no\.? de tienda/, /numero de tienda/), iCad = idx(/^cadena$/), iFor = idx(/^formato$/), iCanal = idx(/^canal$/);
+  const iDiv = idx(/^division$/), iCat = idx(/^categoria$/), iSub = idx(/^subcategoria$/), iMarca = idx(/^marca$/), iSku = idx(/^sku$/);
+  const iDesc = idx(/^descripcion/), iEsp = idx(/^tipo de espacio$/), iEst = idx(/^estatus de colocacion pdv$/), iEx = idx(/existencia/);
+  const iFecha = idx(/^fecha de captura$/);
+  if (iTi < 0 || iSku < 0) return { filas: [], avisos: [], errores: ["Faltan columnas críticas (TIENDA / SKU)."] };
+  const fecha = (s: string | undefined) => {
+    const m = (s ?? "").trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+    if (!m) return null;
+    const y = Number(m[3]) < 100 ? Number(m[3]) + 2000 : Number(m[3]);
+    return `${y}-${m[2]!.padStart(2, "0")}-${m[1]!.padStart(2, "0")}`;
+  };
+  const filas: FilaExh[] = [];
+  for (let r = 1; r < grid.length; r++) {
+    const row = grid[r]!;
+    const c = (i: number) => (i >= 0 ? (row[i] ?? "").trim() || null : null);
+    const tienda = c(iTi), sku = c(iSku);
+    if (!tienda || !sku) continue;
+    filas.push({
+      tienda, numero_tienda: c(iNum) ?? splitTienda(tienda)?.numero ?? null, cadena: c(iCad), formato: c(iFor), canal: c(iCanal),
+      division: c(iDiv), categoria: c(iCat), subcategoria: c(iSub), marca: c(iMarca), sku, descripcion: c(iDesc),
+      tipo_espacio: c(iEsp), estatus_pdv: c(iEst), existencia: parseInt(row[iEx] ?? "", 10) || 0, fecha_captura: fecha(row[iFecha]),
+    });
+  }
+  return { filas, avisos: [], errores: filas.length ? [] : ["Sin filas válidas."] };
+}
+
 /** Tienda-promotor-supervisor (= syncContactos) + segmentación, provincia, localidad. */
 export function parseTiendas(grid: string[][]): Parseo<FilaTienda> {
   const filas: FilaTienda[] = [];
@@ -290,8 +333,8 @@ export function parseTiendas(grid: string[][]): Parseo<FilaTienda> {
   return { filas, avisos: [], errores: filas.length ? [] : ["No encontré tiendas en el archivo."] };
 }
 
-export function parsear(tipo: TipoCarga, grid: string[][]): Parseo<FilaCb | FilaFs | FilaU3 | FilaTienda> {
-  return tipo === "cb" ? parseCb(grid) : tipo === "fs" ? parseFs(grid) : tipo === "u3" ? parseU3(grid) : parseTiendas(grid);
+export function parsear(tipo: TipoCarga, grid: string[][]): Parseo<FilaCb | FilaFs | FilaU3 | FilaTienda | FilaExh> {
+  return tipo === "cb" ? parseCb(grid) : tipo === "fs" ? parseFs(grid) : tipo === "u3" ? parseU3(grid) : tipo === "exh" ? parseExh(grid) : parseTiendas(grid);
 }
 
 // ───────────── vista previa contra los maestros ─────────────
@@ -329,6 +372,9 @@ export function resumir(tipo: TipoCarga, filas: unknown[], m: MaestrosResumen | 
       const f = f0 as FilaFs;
       tiendas.add(`${f.numero_tienda} - ${f.nombre_tienda}`); marcas.add(f.marca);
       if (m && f.numero_tienda && !known.n.has(f.numero_tienda)) nT.add(`${f.numero_tienda} - ${f.nombre_tienda}`);
+    } else if (tipo === "exh") {
+      const f = f0 as FilaExh;
+      tiendas.add(f.tienda); skus.add(f.sku); if (f.cadena) cadenas.add(f.cadena); if (f.marca) marcas.add(f.marca);
     } else if (tipo === "u3") {
       const f = f0 as FilaU3;
       if (f.numero_tienda) tiendas.add(`${f.cadena ?? ""}|${f.numero_tienda}`);
@@ -378,6 +424,15 @@ export function validarFila(tipo: TipoCarga, f: unknown): string | null {
     if (esMarcaBasura(o.marca as string)) return "marca inválida (columna del CB)";
     if (!ent(o.unidades, 1)) return "unidades inválidas";
     if (o.pct_raw != null && (typeof o.pct_raw !== "number" || !Number.isFinite(o.pct_raw))) return "% inválido";
+    return null;
+  }
+  if (tipo === "exh") {
+    if (!txt(o.tienda) || !o.tienda || !txt(o.sku, 80) || !o.sku) return "falta tienda o SKU";
+    for (const k of ["numero_tienda", "cadena", "formato", "canal", "division", "categoria", "subcategoria", "marca", "descripcion", "tipo_espacio", "estatus_pdv"]) {
+      if (!txtN(o[k])) return `${k} inválido`;
+    }
+    if (o.fecha_captura != null && !(typeof o.fecha_captura === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.fecha_captura))) return "fecha inválida";
+    if (!ent(o.existencia, 0)) return "existencia inválida";
     return null;
   }
   if (tipo === "u3") {

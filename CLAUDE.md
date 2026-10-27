@@ -599,6 +599,15 @@ reporte_existencia/cb_homologos).
   (`drive.google.com/embeddedfolderview?id=`) y cada foto se baja con `drive.google.com/thumbnail?id=<id>&sz=w1200` y se copia al bucket
   público `meta-thumbs/exhibiciones/<id>/<fileId>.jpg` (máx 6 por activación; script one-off en el scratchpad, no hay cron). Se ven SOLO en la
   pestaña Mapa (ficha del punto + sección debajo del mapa al filtrar una tienda; el user no las quiere en el tablero) (`ExhibicionesTienda`, `exhibicionesDeTiendas` en `lib/trade-mapa.ts`).
+  **Sugerencias de SKUs (27-oct, pestaña `?tab=sku` de /cuadros-basicos, migración 0144 `tr_exhibicion_sku`):** archivo semanal
+  "ReportExhibitions" (Exhibicion_Semana_Fiscal_NN; se carga en Cargar datos como tipo `exh`, detectado por la columna CÓDIGO EXHIBICIÓN —
+  el U3 trae casi las mismas columnas—, reemplaza la semana, deshacer igual que CB/FS). Cálculo puro `lib/cb-sugerencias-sku.ts`: período
+  mín. 4 semanas; SKU exhibido en la tienda = sin «Retirada» en ≥ la mitad de sus semanas relevadas; CB = última semana del período.
+  Por grupo (cliente de tr_cb_semanal, o tipología vía tr_cadenas.cliente → vt_clientes, fallback razón social del reporte): SKUs fuera
+  del CB exhibidos → % CB si es HOMÓLOGO de un SKU del CB (solo mismo segmento o mismo tipo con otra capacidad: no carga superior por
+  frontal, ni cíclica por no frost) y si se SUMA al CB. Validado con sem 40–43 reales: 189 tiendas del CB en el reporte; 422 faltantes,
+  137 con un SKU del mismo segmento exhibido. Segmento = subcategoría sin color (`segmento`, `tipoProducto`), base para el FS por
+  ancho/tipo que pidió el user después.
   `tr_tiendas` tiene ~19 tiendas DUPLICADAS (ids 576–594, nombre en mayúsculas y cadena equivocada; misma dirección que el original).
   FS sin "Evolución mensual real vs meta" (27-oct, user: no estaba en la app vieja); el editor de objetivos queda al pie (solo editores).
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía

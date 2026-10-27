@@ -77,7 +77,7 @@ export function CargaDatos() {
 
   async function confirmar(a: Archivo) {
     if (!a.tipo || !a.resumen) return;
-    if ((a.tipo === "cb" || a.tipo === "fs") && (!a.semana || a.semana < 1 || a.semana > 53)) return set(a.id, { msg: "Completá la semana (1 a 53)." });
+    if ((a.tipo === "cb" || a.tipo === "fs" || a.tipo === "exh") && (!a.semana || a.semana < 1 || a.semana > 53)) return set(a.id, { msg: "Completá la semana (1 a 53)." });
     if (a.tipo === "fs" && !a.categoria) return set(a.id, { msg: "Elegí la categoría del Floor Share." });
     set(a.id, { estado: "subiendo", msg: "Subiendo…" });
     const alias = Object.entries(a.alias).filter(([, v]) => v).map(([de, aa]) => ({ de, a: aa }));
@@ -160,7 +160,7 @@ export function CargaDatos() {
             {a.errores.map((e) => <div key={e} className="rounded-md bg-rose-50 p-2 text-xs text-rose-900">{e}</div>)}
             {a.tipo && !a.errores.length && r && (
               <>
-                {(a.tipo === "cb" || a.tipo === "fs") && (
+                {(a.tipo === "cb" || a.tipo === "fs" || a.tipo === "exh") && (
                   <div className="flex flex-wrap items-end gap-3 text-xs">
                     <label className="flex flex-col">Año<input type="number" className="w-20 rounded border px-2 py-1" value={a.anio} onChange={(e) => set(a.id, { anio: Number(e.target.value) })} /></label>
                     <label className="flex flex-col">Semana<input type="number" className="w-20 rounded border px-2 py-1" value={a.semana ?? ""} onChange={(e) => set(a.id, { semana: e.target.value ? Number(e.target.value) : null })} /></label>
