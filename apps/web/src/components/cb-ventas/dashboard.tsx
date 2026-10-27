@@ -783,7 +783,7 @@ function TablaCumplimiento({
         </div>
         <span className="text-xs text-slate-500">Δ vs objetivo {OBJETIVO}%</span>
       </div>
-      <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+      <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="sticky top-0 z-[1]">
             <tr>
@@ -1021,7 +1021,7 @@ function TablaSKUs({ rows, mostrarClientes, comprasFiltradas, cbClientesPorSku }
   const labelSpan = mostrarClientes ? 3 : 2;
 
   return (
-    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+    <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-[1]">
           <tr>
