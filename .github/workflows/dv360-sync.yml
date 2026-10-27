@@ -24,6 +24,10 @@ on:
         description: "1 = pisa aunque la API traiga menos que lo guardado"
         required: false
         default: ""
+      ver:
+        description: "1 = solo lista las consultas de DV360 que ve la cuenta (diagnóstico)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -42,6 +46,7 @@ jobs:
           [ -n "${MESES_INPUT:-}" ] && QS="${QS}&meses=${MESES_INPUT}"
           [ -n "${DESDE_INPUT:-}" ] && QS="${QS}&desde=${DESDE_INPUT}"
           [ -n "${FORCE_INPUT:-}" ] && QS="${QS}&force=1"
+          [ -n "${VER_INPUT:-}" ] && QS="${QS}&ver=1"
           URL="$BASE/api/cron/dv360-sync"
           [ -n "$QS" ] && URL="${URL}?${QS#&}"
           echo "GET $URL"
@@ -58,5 +63,6 @@ jobs:
           APP_URL: ${{ vars.APP_URL }}
           DRY_INPUT: ${{ inputs.dry }}
           MESES_INPUT: ${{ inputs.meses }}
+          VER_INPUT: ${{ inputs.ver }}
           DESDE_INPUT: ${{ inputs.desde }}
           FORCE_INPUT: ${{ inputs.force }}

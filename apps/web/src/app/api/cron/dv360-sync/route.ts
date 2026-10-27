@@ -62,16 +62,32 @@ async function bm<T>(token: string, path: string, init?: RequestInit): Promise<T
   return (text ? JSON.parse(text) : {}) as T;
 }
 
-type Query = { queryId?: string; metadata?: { title?: string } };
+type QueryParams = { type?: string; groupBys?: string[]; filters?: { type: string; value: string }[]; metrics?: string[] };
+type Query = { queryId?: string; metadata?: { title?: string }; params?: QueryParams };
 type Report = {
   key?: { queryId?: string; reportId?: string };
   metadata?: { status?: { state?: string }; googleCloudStoragePath?: string; reportDataStartDate?: Ymd; reportDataEndDate?: Ymd };
 };
 
 /** Reusa la consulta por título (versionado: si cambian dimensiones/métricas, cambia el título y se crea otra). */
-async function asegurarQuery(token: string, existentes: Query[], titulo: string, q: { groupBys: string[]; metrics: string[] }, adv: string): Promise<string> {
+// Si la cuenta ve el reporte programado de OMD ("DV360 Video Drean" / "DV360 Reach Drean"), se copian SUS parámetros
+// (tipo, dimensiones, métricas y filtros): mismos datos que llegaban por mail, sin adivinar nombres de la API.
+async function asegurarQuery(token: string, existentes: Query[], titulo: string, q: { groupBys: string[]; metrics: string[] }, adv: string, fuente?: string): Promise<string> {
   const ya = existentes.find((x) => x.metadata?.title === titulo);
   if (ya?.queryId) return ya.queryId;
+  const omd = fuente ? existentes.find((x) => (x.metadata?.title ?? "").toLowerCase().includes(fuente.toLowerCase()) && x.params?.metrics?.length) : undefined;
+  if (omd?.params) {
+    const copia = await bm<Query>(token, "/queries", {
+      method: "POST",
+      body: JSON.stringify({
+        metadata: { title: titulo, dataRange: { range: "LAST_30_DAYS" }, format: "CSV" },
+        params: { type: omd.params.type, groupBys: omd.params.groupBys, filters: omd.params.filters, metrics: omd.params.metrics },
+        schedule: { frequency: "ONE_TIME" },
+      }),
+    });
+    if (!copia.queryId) throw new DvError("error_api", "La API no devolvió queryId al copiar la consulta de OMD");
+    return copia.queryId;
+  }
   const creada = await bm<Query>(token, "/queries", {
     method: "POST",
     body: JSON.stringify({
@@ -233,9 +249,16 @@ export async function GET(request: Request) {
     }
 
     const existentes = await listarQueries(token);
+    // ?ver=1 → qué consultas ve la cuenta (título, tipo, dimensiones, métricas, tipos de filtro). Solo lectura.
+    if (url.searchParams.get("ver") === "1") {
+      return NextResponse.json({ ok: true, fuente, consultas: existentes.map((x) => ({
+        id: x.queryId, titulo: x.metadata?.title, tipo: x.params?.type, groupBys: x.params?.groupBys,
+        metrics: x.params?.metrics, filtros: (x.params?.filters ?? []).map((f) => f.type),
+      })) });
+    }
     const [qCr, qRe] = await Promise.all([
-      asegurarQuery(token, existentes, `dashboard-mkt dv360-sync creatives v1 (${adv})`, DV360_QUERY_CREATIVES, adv),
-      asegurarQuery(token, existentes, `dashboard-mkt dv360-sync reach v1 (${adv})`, DV360_QUERY_REACH, adv),
+      asegurarQuery(token, existentes, `dashboard-mkt dv360-sync creatives v2 (${adv})`, DV360_QUERY_CREATIVES, adv, "DV360 Video Drean"),
+      asegurarQuery(token, existentes, `dashboard-mkt dv360-sync reach v2 (${adv})`, DV360_QUERY_REACH, adv, "DV360 Reach Drean"),
     ]);
     const [cr, re] = await Promise.all([correrYBajar(token, qCr, desde, hasta, t0), correrYBajar(token, qRe, desde, hasta, t0)]);
     const creatives = aggCreatives(cr.csv, SOURCE);
