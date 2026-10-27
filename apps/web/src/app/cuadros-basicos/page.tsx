@@ -1,5 +1,5 @@
 import { CbFiltersBar } from "@/components/cb/cb-filters";
-import { getCbRowsFast } from "@/lib/cb-mirror";
+import { getCbRowsFast, enriquecerCb } from "@/lib/cb-mirror";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { LastUpdated } from "@/components/last-updated";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
@@ -13,8 +13,10 @@ import {
   getCbSuggestionsDetail,
   type CbFilter,
 } from "@/lib/cb-queries";
-import { computeCbView, isCbDefault, type CbView } from "@/lib/cb-view";
-import { getTrPrecalc, trEstado } from "@/lib/trade-db";
+import { computeCbView, isCbDefault, applyCbFilter, computeSkuDetalle, type CbView, type CbSkuDet } from "@/lib/cb-view";
+import { AggTable, type AggCol } from "@/components/trade/agg-table";
+import { CbDetalleTienda } from "@/components/cb/cb-detalle-tienda";
+import { getTrPrecalc, trEstado, getTrCbSkuRows } from "@/lib/trade-db";
 import { puedeEditarActual } from "@/lib/usuarios-server";
 import { CargaDatos } from "@/components/trade/carga-datos";
 import { MaestrosTrade } from "@/components/trade/maestros";
@@ -36,22 +38,8 @@ function paramArr(searchParams: PageProps["searchParams"], key: string): string[
 
 const OBJ_PCT = 80;
 
-function deltaPp(value: number): string {
-  const diff = value - OBJ_PCT;
-  const arrow = diff >= 0 ? "↑" : "↓";
-  return `${diff >= 0 ? "+" : ""}${diff.toFixed(0)} pp ${arrow}`;
-}
 
-function deltaClass(value: number): string {
-  return value >= OBJ_PCT ? "text-emerald-600" : "text-rose-500";
-}
 
-function cellBg(pct: number | null): string {
-  if (pct == null) return "text-muted-foreground";
-  if (pct >= 80) return "bg-emerald-50 text-emerald-700 font-semibold";
-  if (pct >= 70) return "bg-amber-50 text-amber-700 font-semibold";
-  return "bg-rose-50 text-rose-600 font-semibold";
-}
 
 const TABS = [
   { key: "overview", label: "Cuadro Básico Trade", href: "/cuadros-basicos" },
@@ -143,21 +131,34 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
     divisiones: paramArr(searchParams, "divisiones"),
     clientes: paramArr(searchParams, "clientes"),
+    supervisores: paramArr(searchParams, "supervisores"),
+    promotores: paramArr(searchParams, "promotores"),
     tiendas: paramArr(searchParams, "tiendas"),
   };
 
   // Vista DEFAULT (sin filtros) → precalculada en cada carga (tr_precalc 'cb_default', una fila). Con filtros
   // (o sin tablas tr_*) → se computa sobre el CB agregado sin SKU (vw_tr_cb_agg) o el mirror.
   let view: CbView | null = null;
+  let skus: ReturnType<typeof computeSkuDetalle> | null = null;
   let fetchError: string | null = null;
   try {
     if (isCbDefault(filter) && (await trEstado()).cb != null) view = await getTrPrecalc<CbView>("cb_default");
-    if (!view) view = computeCbView(await getCbRowsFast(), filter);
+    if (view && !view.byPromotor) view = null; // precálculo viejo (sin promotor) → se recalcula
+    if (!view) view = computeCbView(await enriquecerCb(await getCbRowsFast()), filter);
+    // Detalle de SKUs (= app vieja) cuando se elige una tienda o un cliente.
+    const est = await trEstado();
+    if ((filter.tiendas?.length || filter.clientes?.length) && est.cb != null) {
+      const skuRows = await getTrCbSkuRows(est.cb, { tiendas: filter.tiendas, clientes: filter.clientes });
+      skus = computeSkuDetalle(applyCbFilter(skuRows, { ...filter, promotores: [], supervisores: [] }));
+    }
   } catch (err) {
     fetchError = err instanceof Error ? err.message : String(err);
   }
   const v: CbView = view ?? computeCbView([], filter);
-  const { options, totals, weekly, byDiv, byCliente, byTienda, totalTiendasRelevadas, hasData } = v;
+  const { options, totals, weekly, byDiv, byCliente, byPromotor, byTienda, totalTiendasRelevadas, hasData } = v;
+  const cbVals = (r: { cb_pct: number; infalt_pct: number; estrat_pct: number }) => [r.cb_pct, r.infalt_pct, r.estrat_pct];
+  const totVals = [totals.cb_pct, totals.infalt_pct, totals.estrat_pct];
+  const seleccion = [...(filter.tiendas ?? []), ...(filter.clientes ?? [])].join(", ");
   const lastUpdated = await maxUpdatedAt("cuadro_basico_semanal", "cb").catch(() => null);
 
   return (
@@ -216,99 +217,70 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
             <CbCategoryChart data={byDiv} />
           </section>
 
-          <section className="rounded-xl border bg-card overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3">
-              <h3 className="text-sm font-bold">🏬 Cumplimiento por Cliente / Cadena</h3>
-              <span className="text-[11px] text-muted-foreground">Δ vs objetivo 80%</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="border-b bg-muted/40 text-muted-foreground">
-                  <tr>
-                    <th rowSpan={2} className="border-r border-border px-3 py-2 text-left align-bottom">Cliente/Cadena</th>
-                    <th colSpan={2} className="border-r border-border px-3 py-1 text-center text-[11px] font-semibold uppercase tracking-wide">% CB</th>
-                    <th colSpan={2} className="hidden border-r border-border px-3 py-1 text-center text-[11px] font-semibold uppercase tracking-wide md:table-cell">% Infaltables</th>
-                    <th colSpan={2} className="hidden px-3 py-1 text-center text-[11px] font-semibold uppercase tracking-wide md:table-cell">% Estratégico</th>
-                  </tr>
-                  <tr className="text-[10px] uppercase tracking-wide">
-                    <th className="px-2 py-1 text-right">%</th>
-                    <th className="border-r border-border px-2 py-1 text-right">Δ</th>
-                    <th className="hidden px-2 py-1 text-right md:table-cell">%</th>
-                    <th className="hidden border-r border-border px-2 py-1 text-right md:table-cell">Δ</th>
-                    <th className="hidden px-2 py-1 text-right md:table-cell">%</th>
-                    <th className="hidden px-2 py-1 text-right md:table-cell">Δ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byCliente.slice(0, 30).map((r) => (
-                    <tr key={r.key} className="border-b last:border-0">
-                      <td className="px-3 py-1.5 font-medium">{r.key}</td>
-                      <td className={`px-2 py-1.5 text-right tabular-nums ${cellBg(r.cb_pct)}`}>{r.cb_pct.toFixed(0)}%</td>
-                      <td className={`border-r border-border px-2 py-1.5 text-right tabular-nums ${deltaClass(r.cb_pct)}`}>{deltaPp(r.cb_pct)}</td>
-                      <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${cellBg(r.infalt_pct)}`}>{r.infalt_pct.toFixed(0)}%</td>
-                      <td className={`hidden border-r border-border px-2 py-1.5 text-right tabular-nums md:table-cell ${deltaClass(r.infalt_pct)}`}>{deltaPp(r.infalt_pct)}</td>
-                      <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${cellBg(r.estrat_pct)}`}>{r.estrat_pct.toFixed(0)}%</td>
-                      <td className={`hidden px-2 py-1.5 text-right tabular-nums md:table-cell ${deltaClass(r.estrat_pct)}`}>{deltaPp(r.estrat_pct)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 bg-muted font-bold text-foreground">
-                    <td className="px-3 py-2">TOTAL CADENAS</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{totals.cb_pct.toFixed(0)}%</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{deltaPp(totals.cb_pct)}</td>
-                    <td className="hidden px-2 py-2 text-right tabular-nums md:table-cell">{totals.infalt_pct.toFixed(0)}%</td>
-                    <td className="hidden px-2 py-2 text-right tabular-nums md:table-cell">{deltaPp(totals.infalt_pct)}</td>
-                    <td className="hidden px-2 py-2 text-right tabular-nums md:table-cell">{totals.estrat_pct.toFixed(0)}%</td>
-                    <td className="hidden px-2 py-2 text-right tabular-nums md:table-cell">{deltaPp(totals.estrat_pct)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+          {/* Como la app vieja: promotor + cliente lado a lado (cada una se oculta si su filtro está activo). */}
+          <section className="grid gap-4 lg:grid-cols-2">
+            {!filter.promotores?.length && (
+              <AggTable titulo="🏆 Cumplimiento por Promotor" columna="Promotor" totalLabel="TOTAL EQUIPO" subtitulo={`Δ vs objetivo ${OBJ_PCT}%`}
+                cols={CB_COLS} filas={byPromotor.map((r) => ({ key: r.key, nombre: r.key, vals: cbVals(r) }))} total={totVals} />
+            )}
+            {!filter.clientes?.length && (
+              <AggTable titulo="🏪 Cumplimiento por Cliente/Cadena" columna="Cliente/Cadena" totalLabel="TOTAL CADENAS" subtitulo={`Δ vs objetivo ${OBJ_PCT}%`}
+                cols={CB_COLS} filas={byCliente.map((r) => ({ key: r.key, nombre: r.key, vals: cbVals(r) }))} total={totVals} />
+            )}
           </section>
 
-          <section className="rounded-xl border bg-card overflow-hidden">
-            <div className="px-4 py-3">
-              <h3 className="text-sm font-bold">📋 Detalle por Tienda</h3>
-              <p className="text-[11px] text-muted-foreground">% CB desglosado por división. Top 50 por defecto.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-[11px] font-semibold uppercase tracking-wide">
-                    <th className="hidden border-b bg-muted/40 px-3 py-2 text-left text-muted-foreground sm:table-cell">Cliente</th>
-                    <th className="border-b bg-muted/40 px-3 py-2 text-left text-muted-foreground">Tienda</th>
-                    <th className="border-b bg-blue-100 px-3 py-2 text-center text-blue-800">Lavado</th>
-                    <th className="border-b bg-cyan-100 px-3 py-2 text-center text-cyan-800">Refri</th>
-                    <th className="border-b bg-pink-100 px-3 py-2 text-center text-pink-800">Cocción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byTienda.slice(0, 50).map((r, i) => (
-                    <tr key={`${r.cliente}-${r.tienda}-${i}`} className="border-b last:border-0">
-                      <td className="hidden px-3 py-1.5 text-muted-foreground sm:table-cell">{r.cliente}</td>
-                      <td className="px-3 py-1.5">
-                        <div>{r.tienda}</div>
-                        <div className="text-[10px] text-muted-foreground sm:hidden">{r.cliente}</div>
-                      </td>
-                      <td className={`px-2 py-1.5 text-center tabular-nums ${cellBg(r.cb_lavado)}`}>
-                        {r.cb_lavado != null ? `${r.cb_lavado.toFixed(0)}%` : "—"}
-                      </td>
-                      <td className={`px-2 py-1.5 text-center tabular-nums ${cellBg(r.cb_refri)}`}>
-                        {r.cb_refri != null ? `${r.cb_refri.toFixed(0)}%` : "—"}
-                      </td>
-                      <td className={`px-2 py-1.5 text-center tabular-nums ${cellBg(r.cb_coccion)}`}>
-                        {r.cb_coccion != null ? `${r.cb_coccion.toFixed(0)}%` : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <section className="rounded-xl border bg-card p-4">
+            <h3 className="mb-3 text-sm font-bold">📋 Detalle por Tienda</h3>
+            <CbDetalleTienda rows={byTienda} />
           </section>
+
+          {skus && (
+            <section className="rounded-xl border bg-card p-4">
+              <h3 className="mb-1 text-sm font-bold">🔍 Detalle de SKUs — {seleccion}</h3>
+              {!filter.tiendas?.length && (
+                <p className="mb-3 text-xs text-muted-foreground">📍 Vista agregada de {skus.tiendas} tienda{skus.tiendas !== 1 ? "s" : ""}</p>
+              )}
+              <div className="grid gap-4 lg:grid-cols-2">
+                <SkuCol titulo="📌 Infaltables" items={skus.infaltables} porTienda={!filter.tiendas?.length} />
+                <SkuCol titulo="🎯 Estratégicos" items={skus.estrategicos} porTienda={!filter.tiendas?.length} />
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>
   );
 }
 
+
+const CB_COLS: AggCol[] = [{ label: "% CB", obj: OBJ_PCT }, { label: "% Infaltables", obj: OBJ_PCT }, { label: "% Estratégico", obj: OBJ_PCT }];
+
+function SkuCol({ titulo, items, porTienda }: { titulo: string; items: CbSkuDet[]; porTienda: boolean }) {
+  const ok = items.filter((s) => s.cumple).length;
+  return (
+    <div>
+      <h4 className="mb-2 flex items-center justify-between text-sm font-semibold">
+        {titulo} <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{ok} / {items.length}</span>
+      </h4>
+      {items.length === 0 ? (
+        <p className="p-2 text-xs text-muted-foreground">No hay SKUs de este tipo en esta selección.</p>
+      ) : (
+        <div className="max-h-[420px] space-y-1 overflow-auto">
+          {items.map((s) => (
+            <div key={s.sku} className={`flex items-center gap-2 rounded border px-2 py-1.5 text-xs ${s.cumple ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
+              <span>{s.cumple ? "✅" : "❌"}</span>
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold">{s.sku}</div>
+                <div className="text-[10px] text-muted-foreground">{s.division}{porTienda ? ` · ${s.nTiendasCumplen}/${s.nTiendas} tiendas cumplen` : ""}</div>
+              </div>
+              <div className="text-right">
+                <div className="font-bold tabular-nums">{Math.round(s.pct)}%</div>
+                <div className="text-[10px] text-muted-foreground">{s.real} / {s.target}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

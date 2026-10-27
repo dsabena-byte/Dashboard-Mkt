@@ -98,6 +98,13 @@ export async function getTrCbRows(anio: number): Promise<CbRow[]> {
   return rows.map((r) => ({ ...r, sku: "" }));
 }
 
+/** Filas por SKU (para el detalle de SKUs de una tienda o cliente). */
+export async function getTrCbSkuRows(anio: number, f: { tiendas?: string[]; clientes?: string[] }): Promise<CbRow[]> {
+  const inL = (xs: string[]) => `(${xs.map((x) => `"${x.replace(/"/g, '\\"')}"`).join(",")})`;
+  const q = [f.tiendas?.length ? `&tienda=in.${encodeURIComponent(inL(f.tiendas))}` : "", f.clientes?.length ? `&cliente=in.${encodeURIComponent(inL(f.clientes))}` : ""].join("");
+  return trAll<CbRow>(`tr_cb_semanal?select=semana,tienda,sku,cliente,division,target_cb,real_cb,target_inf,real_inf,tipo_sku&anio=eq.${anio}${q}`);
+}
+
 const FS_SEL = "periodo,semana,categoria,numero_tienda,nombre_tienda,marca,unidades,pct_raw";
 export async function getTrFsRows(anio: number, semanas: number[]): Promise<FloorShareRow[]> {
   const f = semanas.length ? `&semana=in.(${semanas.join(",")})` : "&semana=not.is.null";

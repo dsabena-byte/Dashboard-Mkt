@@ -26,6 +26,8 @@ export interface CbFilter {
   semanas?: number[];
   divisiones?: string[];
   clientes?: string[];
+  supervisores?: string[];
+  promotores?: string[];
   tiendas?: string[];
 }
 
@@ -53,6 +55,9 @@ export interface CbRow {
   target_inf: number;
   real_inf: number;
   tipo_sku: string | null;
+  /** Del maestro de tiendas (lib/fs-enrich), = app vieja. */
+  promotor?: string;
+  supervisor?: string;
 }
 
 export interface CbTotals {
@@ -252,10 +257,10 @@ export interface CbByDim {
   estrat_delta: number;
 }
 
-export function computeByDim(rows: CbRow[], dim: "cliente" | "tienda"): CbByDim[] {
+export function computeByDim(rows: CbRow[], dim: "cliente" | "tienda" | "promotor"): CbByDim[] {
   const map = new Map<string, { cb_t: number; cb_o: number; i_t: number; i_o: number; e_t: number; e_o: number }>();
   for (const r of rows) {
-    const key = r[dim] ?? "—";
+    const key = r[dim] ?? "Sin asignar";
     const acc = map.get(key) ?? { cb_t: 0, cb_o: 0, i_t: 0, i_o: 0, e_t: 0, e_o: 0 };
     acc.cb_t += r.target_cb ?? 0; acc.cb_o += r.real_cb ?? 0;
     acc.i_t += r.target_inf ?? 0; acc.i_o += r.real_inf ?? 0;
@@ -285,6 +290,7 @@ export interface CbByTienda {
   cb_lavado: number | null;
   cb_refri: number | null;
   cb_coccion: number | null;
+  cb_total: number | null;
 }
 
 function divKind(d: string): "lavado" | "refri" | "coccion" | null {
@@ -296,14 +302,15 @@ function divKind(d: string): "lavado" | "refri" | "coccion" | null {
 }
 
 export function computeByTienda(rows: CbRow[]): CbByTienda[] {
-  const map = new Map<string, { cliente: string; tienda: string; lav_t: number; lav_o: number; ref_t: number; ref_o: number; coc_t: number; coc_o: number }>();
+  const map = new Map<string, { cliente: string; tienda: string; lav_t: number; lav_o: number; ref_t: number; ref_o: number; coc_t: number; coc_o: number; t: number; o: number }>();
   for (const r of rows) {
-    const key = `${r.cliente ?? "—"}__${r.tienda ?? "—"}`;
+    const key = r.tienda ?? "—"; // por tienda (= app vieja); el cliente es el primero que aparece
     const acc = map.get(key) ?? {
       cliente: r.cliente ?? "—",
       tienda: r.tienda ?? "—",
-      lav_t: 0, lav_o: 0, ref_t: 0, ref_o: 0, coc_t: 0, coc_o: 0,
+      lav_t: 0, lav_o: 0, ref_t: 0, ref_o: 0, coc_t: 0, coc_o: 0, t: 0, o: 0,
     };
+    acc.t += r.target_cb ?? 0; acc.o += r.real_cb ?? 0;
     const k = divKind(r.division);
     if (k === "lavado")  { acc.lav_t += r.target_cb ?? 0; acc.lav_o += r.real_cb ?? 0; }
     if (k === "refri")   { acc.ref_t += r.target_cb ?? 0; acc.ref_o += r.real_cb ?? 0; }
@@ -316,6 +323,7 @@ export function computeByTienda(rows: CbRow[]): CbByTienda[] {
     cb_lavado:  v.lav_t > 0 ? (v.lav_o / v.lav_t) * 100 : null,
     cb_refri:   v.ref_t > 0 ? (v.ref_o / v.ref_t) * 100 : null,
     cb_coccion: v.coc_t > 0 ? (v.coc_o / v.coc_t) * 100 : null,
+    cb_total: v.t > 0 ? (v.o / v.t) * 100 : null,
   }));
 }
 
