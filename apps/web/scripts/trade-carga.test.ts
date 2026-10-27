@@ -5,7 +5,7 @@ import {
   decodificar, parseCsv, detectarTipo, infoDesdeNombre, parseCb, parseFs, parseU3, parseTiendas, validarFila, faltantes,
   resumir, normClave, splitTienda, esMarcaBasura, parseExh,
 } from "../src/lib/trade-carga-core";
-import { calcularSugerenciasSku, claveSku, equivalencias, segmento, tipoProducto } from "../src/lib/cb-sugerencias-sku";
+import { calcularSugerenciasSku, claveSku, equivalencias, familiaCocina, segmento, tipoProducto } from "../src/lib/cb-sugerencias-sku";
 import { calcularSugerencias } from "../src/lib/trade-sugerencias-core";
 
 let n = 0;
@@ -184,5 +184,8 @@ const eqv = equivalencias([{ modelo: "cb1", homologos: ["00NUEVO", "OTRO"] }]);
 const [g3] = calcularSugerenciasSku(exhRows, cbRows2, () => "C", { equivalentes: eqv });
 eq([g3!.sugerencias.map((s) => s.sku), g3!.homologosExcluidos], [["TOP"], [{ sku: "NUEVO", de: "CB1" }]], "homólogo del CB (catálogo de Ventas) no se sugiere");
 eq(claveSku("NEXT 6·09 ECO"), claveSku("next 6.09  eco"), "clave de SKU: · = . y mayúsculas");
+eq(["CD5502AB", "CD5602AN0", "CD5503AI", "CD5617AI0", "CD6009EI", "CD7609EI", "LFDR0914ISG0"].map(familiaCocina),
+  ["CD5602", "CD5602", "CD5603", "CD5614", "sola:CD6009EI", "sola:CD7609EI", null], "familias de cocinas (55→56, 02/03/14-17, 60≠76)");
+eq(equivalencias([{ modelo: "CD6009EI", homologos: ["CD7609EI"] }]).size, 0, "cocinas: el catálogo de Ventas no manda (60 ≠ 76)");
 
 console.log(`trade-carga: ${n} checks OK`);

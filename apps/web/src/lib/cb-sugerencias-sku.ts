@@ -29,10 +29,23 @@ export type GrupoSku = {
 /** Clave para comparar códigos: sin ceros a la izquierda, mayúsculas, "·" = ".", sin espacios de más. */
 export const claveSku = (s: string) => s.trim().toUpperCase().replace(/·/g, ".").replace(/\s+/g, " ").replace(/^0+(?=.)/, "");
 
+/** Cocinas (27-oct, definición del user): CD55xx se reemplazó por CD56xx; "02" = sin luz ni encendido eléctrico y "03" = con
+ *  luz y encendido (cada una en blanco/inox/negro); CD5614/CD5617 = las más especificadas de 56 cm; 60 cm y 76 cm son distintas.
+ *  Para las cocinas manda esta regla y NO el catálogo de Ventas (que junta 60 con 76). Otras cocinas → sin familia. */
+export function familiaCocina(sku: string): string | null {
+  const k = claveSku(sku);
+  if (!k.startsWith("CD")) return null;
+  const m = k.match(/^CD5[56](02|03)/);
+  if (m) return `CD56${m[1]}`;
+  if (/^CD56(14|17)/.test(k)) return "CD5614";
+  return `sola:${k}`;
+}
+
 /** Grupos de equivalencia del catálogo de CB Ventas: cada renglón = modelo + sus homólogos. */
 export function equivalencias(renglones: { modelo: string; homologos: string[] | null }[]): Map<string, Set<string>> {
   const eq = new Map<string, Set<string>>();
   for (const r of renglones) {
+    if (familiaCocina(r.modelo)) continue; // las cocinas van por familiaCocina
     const ks = [r.modelo, ...(r.homologos ?? [])].filter(Boolean).map(claveSku);
     for (const k of ks) { if (!eq.has(k)) eq.set(k, new Set()); for (const o of ks) if (o !== k) eq.get(k)!.add(o); }
   }
@@ -96,7 +109,11 @@ export function calcularSugerenciasSku(
     // SKU del CB por clave; un candidato equivalente (homólogo) a alguno ya está cubierto.
     const enCb = new Map<string, string>();
     for (const s of cbSet) enCb.set(claveSku(s), s);
+    const famCb = new Map<string, string>();
+    for (const s of cbSet) { const f = familiaCocina(s); if (f) famCb.set(f, s); }
     const homDe = (c: string) => {
+      const f = familiaCocina(c);
+      if (f) return famCb.get(f) ?? null;
       for (const e of opts.equivalentes?.get(claveSku(c)) ?? []) { const s = enCb.get(e); if (s) return s; }
       return null;
     };
