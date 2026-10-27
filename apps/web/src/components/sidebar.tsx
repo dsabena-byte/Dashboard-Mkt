@@ -19,6 +19,8 @@ import {
   ChevronRight,
   Menu,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { isPathAllowed } from "@/lib/dashboard-access";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -111,6 +113,11 @@ export function Sidebar({ allowed = null, esAdmin = false }: { allowed?: string[
 
   // Cerrar drawer al navegar; mantener abiertos los ancestros del activo.
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
+  // Menú lateral escondible en escritorio (como Claude): más ancho para los tableros. Se recuerda por navegador.
+  const [oculto, setOculto] = useState(false);
+  useEffect(() => { try { setOculto(localStorage.getItem("menu-oculto") === "1"); } catch { /* sin storage */ } }, []);
+  useEffect(() => { document.documentElement.dataset.menu = oculto ? "oculto" : ""; }, [oculto]);
+  const toggleMenu = (v: boolean) => { setOculto(v); try { localStorage.setItem("menu-oculto", v ? "1" : "0"); } catch { /* sin storage */ } };
   useEffect(() => {
     const anc = ancestorsOf(TREE, pathname);
     if (anc && anc.length) setOpenIds((prev) => { const n = new Set(prev); anc.forEach((id) => n.add(id)); return n; });
@@ -238,10 +245,21 @@ export function Sidebar({ allowed = null, esAdmin = false }: { allowed?: string[
         <Image src="/drean-logo-white.png" alt={tenant.displayName} width={tenant.branding.logoWidth} height={tenant.branding.logoHeight} className="h-6 w-auto" />
       </div>
 
-      {/* Sidebar desktop */}
-      <aside className="sn sticky top-0 hidden h-screen w-64 shrink-0 flex-col md:flex">
-        {navContent}
-      </aside>
+      {/* Sidebar desktop (escondible) */}
+      {oculto ? (
+        <button type="button" onClick={() => toggleMenu(false)} title="Mostrar menú" aria-label="Mostrar menú"
+          className="fixed left-2 top-2 z-40 hidden rounded-md bg-[#0c1a33] p-2 text-slate-200 shadow-md hover:bg-[#13264a] md:block">
+          <PanelLeftOpen className="h-4 w-4" />
+        </button>
+      ) : (
+        <aside className="sn sticky top-0 hidden h-screen w-64 shrink-0 flex-col md:flex">
+          <button type="button" onClick={() => toggleMenu(true)} title="Ocultar menú" aria-label="Ocultar menú"
+            className="absolute right-2 top-2 z-10 rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-slate-100">
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+          {navContent}
+        </aside>
+      )}
 
       {/* Drawer mobile */}
       {drawerOpen && (

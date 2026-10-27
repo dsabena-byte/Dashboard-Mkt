@@ -111,3 +111,8 @@
    DESPUÉS del renglón de pestañas (título y "Cómo leer" quedan); el tablero no se desmonta. */
 .dash-tabs[data-vista="diagnostico"] [data-dash-bar] ~ :not([data-dash-keep]) { display: none !important; }
 .dash-tabs[data-vista="tablero"] > [data-dash-diag] { display: none !important; }
+
+/* Menú lateral oculto (escritorio): lugar para el botón "Mostrar menú" sin tapar el título. */
+@media (min-width: 768px) {
+  html[data-menu="oculto"] main { padding-left: 2.75rem; }
+}
