@@ -76,6 +76,7 @@ function Tiendas({ data, hacer }: { data: Record<string, unknown>; hacer: Hacer 
   const { vis, total, caja, mas } = useBusqueda(base, TIENDA_CAMPOS);
   const [alta, setAlta] = useState({ cadena: "", numero: "", nombre: "" });
   const nSug = filas.filter((f) => f.sugerencia).length;
+  const sinMaestro = (data.sinMaestro as Array<{ numero: string; nombre: string; cliente: string }>) ?? [];
   const hoy = new Date().toISOString().slice(0, 10);
   const asignar = (f: Fila, promotor: unknown, supervisor: unknown, desde = hoy) =>
     hacer({ entidad: "asignacion", tienda_id: f.id, promotor, supervisor, desde }, "Asignación actualizada (la anterior queda en el historial).");
@@ -124,6 +125,29 @@ function Tiendas({ data, hacer }: { data: Record<string, unknown>; hacer: Hacer 
         </table>
       </div>
       {mas}
+      {sinMaestro.length > 0 && (
+        <details className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs">
+          <summary className="cursor-pointer font-semibold text-amber-900">
+            {sinMaestro.length} tiendas de las cargas de Floor Share que no están en el maestro (sin promotor/supervisor ni cadena)
+          </summary>
+          <p className="mt-1 text-amber-900">“Usar” completa el formulario de abajo; elegí la cadena y creala. Después asignale promotor y supervisor en la tabla.</p>
+          <div className="mt-2 max-h-72 overflow-auto">
+            <table className="w-full">
+              <thead className="text-left text-amber-900"><tr><th className="px-2 py-1">N°</th><th className="px-2">Nombre</th><th className="px-2">Cliente (por el nombre)</th><th /></tr></thead>
+              <tbody>
+                {sinMaestro.map((t) => (
+                  <tr key={`${t.numero}|${t.nombre}`} className="border-t border-amber-200">
+                    <td className="px-2 py-1 tabular-nums">{t.numero}</td>
+                    <td className="px-2">{t.nombre}</td>
+                    <td className="px-2">{t.cliente}</td>
+                    <td className="px-2"><button className="underline" onClick={() => setAlta({ cadena: "", numero: t.numero, nombre: t.nombre })}>Usar</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
       <section className="flex flex-wrap items-end gap-2 rounded-xl border bg-card p-3 text-xs">
         <b className="w-full">Nueva tienda</b>
         <label className="flex flex-col">Cadena<input list="tr-cadenas" className="rounded border px-1 py-0.5" value={alta.cadena} onChange={(e) => setAlta({ ...alta, cadena: e.target.value })} /></label>
@@ -174,11 +198,20 @@ function Cadenas({ filas, hacer }: { filas: Fila[]; hacer: Hacer }) {
 }
 
 const SKU_CAMPOS = ["sku", "descripcion", "nombre_comercial", "categoria"];
-function Skus({ filas, hacer }: { filas: Fila[]; hacer: Hacer }) {
+// SKU dado de alta desde una carga = sin descripción → arriba y marcado, para completarlo (antes quedaba perdido entre todos).
+const incompleto = (f: Fila) => !txt(f.descripcion).trim() || !txt(f.division).trim();
+function Skus({ filas: todas, hacer }: { filas: Fila[]; hacer: Hacer }) {
+  const filas = useMemo(() => [...todas].sort((a, b) => Number(incompleto(b)) - Number(incompleto(a))), [todas]);
+  const nInc = filas.filter(incompleto).length;
   const { vis, caja, mas } = useBusqueda(filas, SKU_CAMPOS);
   const campo = (f: Fila, c: string, ancho?: string) => <Editable valor={f[c]} ancho={ancho} onSave={(v) => void hacer({ entidad: "sku", sku: f.sku, cambios: { [c]: v } })} />;
   return (
     <>
+      {nInc > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          {nInc} SKU{nInc !== 1 ? "s" : ""} nuevo{nInc !== 1 ? "s" : ""} de las cargas sin descripción o división: están primeros en la tabla, completalos ahí.
+        </div>
+      )}
       {caja}
       <div className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full text-xs">
@@ -187,8 +220,8 @@ function Skus({ filas, hacer }: { filas: Fila[]; hacer: Hacer }) {
           </thead>
           <tbody>
             {vis.map((f) => (
-              <tr key={txt(f.sku)} className="border-t">
-                <td className="px-2 py-1 font-mono">{txt(f.sku)}</td>
+              <tr key={txt(f.sku)} className={`border-t ${incompleto(f) ? "bg-amber-50" : ""}`}>
+                <td className="px-2 py-1 font-mono">{txt(f.sku)}{incompleto(f) && <span className="ml-1 rounded bg-amber-200 px-1 text-[10px] font-sans text-amber-900">completar</span>}</td>
                 <td className="px-2">{campo(f, "descripcion", "w-56")}</td>
                 <td className="px-2">{campo(f, "nombre_comercial")}</td>
                 <td className="px-2">{campo(f, "division", "w-32")}</td>

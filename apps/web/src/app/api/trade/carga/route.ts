@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { exigirEdicion, getMiPerfil, puedeVerTablero } from "@/lib/usuarios-server";
 import { trAll, trJson, trRest, trRpc, trUpsert, esFaltaTabla, TradeDbError } from "@/lib/trade-db";
 import { refrescarDerivados } from "@/lib/trade-derivados";
-import { CATEGORIAS_FS, faltantes, normClave, validarFila, type Cargado, type FilaTienda, type TipoCarga } from "@/lib/trade-carga-core";
+import { CATEGORIAS_FS, faltantes, normClave, validarFila, type Cargado, type FilaCb, type FilaTienda, type TipoCarga } from "@/lib/trade-carga-core";
 
 // "Cargar datos" de Trade (pestaña de /cuadros-basicos). El navegador parsea el CSV (trade-carga-core) y sube
 // las filas por partes a una carga en estado "subiendo"; "confirmar" reemplaza la semana (+categoría) en UNA
@@ -81,6 +81,7 @@ export async function POST(req: Request) {
         const m = validarFila(carga.tipo, filas[i]);
         if (m) return NextResponse.json({ error: `Fila ${i + 1}: ${m}` }, { status: 400 });
       }
+      if (carga.tipo === "cb") await completarDivision(filas as FilaCb[]);
       await trRest("tr_carga_filas", { method: "POST", prefer: "return=minimal", body: JSON.stringify(filas.map((fila) => ({ carga_id: cargaId, fila }))) });
       return NextResponse.json({ ok: true, recibidas: filas.length });
     }
@@ -104,6 +105,16 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: "Acción desconocida" }, { status: 400 });
   } catch (e) { return err(e); }
+}
+
+// Fila de CB sin división (pasó con 1 fila de la sem 38: salía una 4ª categoría vacía) → la del maestro de SKUs.
+async function completarDivision(filas: FilaCb[]): Promise<void> {
+  const sin = [...new Set(filas.filter((f) => !f.division?.trim() && f.sku).map((f) => f.sku))];
+  if (!sin.length) return;
+  const q = sin.map((x) => `"${x.replace(/"/g, '\\"')}"`).join(",");
+  const skus = await trJson<Array<{ sku: string; division: string | null }>>(`tr_skus?select=sku,division&sku=in.(${encodeURIComponent(q)})`);
+  const div = new Map(skus.filter((x) => x.division).map((x) => [x.sku, x.division!]));
+  for (const f of filas) if (!f.division?.trim() && div.has(f.sku)) f.division = div.get(f.sku)!;
 }
 
 export async function DELETE(req: Request) {

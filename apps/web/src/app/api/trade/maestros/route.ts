@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getFsPrecomputed } from "@/lib/cb-mirror";
+import { norm, normalizeStoreNumber } from "@/lib/fs-enrich";
 import { exigirEdicion, getMiPerfil, puedeVerTablero } from "@/lib/usuarios-server";
 import { auditar, esFaltaTabla, trAll, trJson, trRest, trUpsert } from "@/lib/trade-db";
 import { normClave } from "@/lib/trade-carga-core";
@@ -52,7 +54,15 @@ export async function GET(req: Request) {
         if ((ultimo.get(k)?.fecha ?? "") <= f) ultimo.set(k, { promotor: r.promotor, supervisor: r.supervisor, fecha: f });
       }
       const va = new Map(asig.map((a) => [a.tienda_id, a]));
+      // Tiendas que aparecen en las cargas de Floor Share y no están en el maestro (número + nombre): antes se avisaba
+      // al cargar y la info se perdía. Sale de la vista precalculada (fs_precomputed, sin paginar el FS).
+      const enMaestro = new Set(tiendas.map((t) => `${normalizeStoreNumber(String(t.numero))}|${norm(String(t.nombre ?? ""))}`));
+      const fs = await getFsPrecomputed().catch(() => null);
+      const sinMaestro = (fs?.byTienda ?? [])
+        .filter((t) => !enMaestro.has(`${normalizeStoreNumber(t.numero_tienda)}|${norm(t.nombre_tienda)}`))
+        .map((t) => ({ numero: t.numero_tienda, nombre: t.nombre_tienda, cliente: t.cliente }));
       return NextResponse.json({
+        sinMaestro,
         cadenas: cadenas.map((c) => ({ clave: c.clave, nombre: c.nombre })),
         personas: (await trAll<{ nombre: string; rol: string }>("tr_personas?select=nombre,rol&activa=is.true", "nombre")),
         tiendas: tiendas.map((t) => {
