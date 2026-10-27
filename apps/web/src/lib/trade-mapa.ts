@@ -1,12 +1,12 @@
 import "server-only";
-// Mapa Trade cruzado (pedido del user 27-oct-2026): CB Trade y Floor Share en el MISMO mapa, en los dos tableros. Cada
+// Mapa Trade cruzado (pedido del user 27-oct-2026): CB Trade, Floor Share y exhibición especial en el MISMO mapa, en los dos tableros. Cada
 // tienda geocodificada es un punto (clave = id de tr_tiendas, viene en "label@id|lat|lon|prov"); el resto se agrupa por
 // zona. El tablero base manda sus filtros; el otro toma período y equipo (meses, semanas, supervisor, promotor) y, si el
 // base filtra cliente/tienda/categoría, se recorta a las tiendas que quedaron en el base.
 import { getCbRowsFast, enriquecerCb, getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-mirror";
 import { computeCbView, isCbDefault, type CbView } from "@/lib/cb-view";
 import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
-import { getTrPrecalc, trEstado } from "@/lib/trade-db";
+import { getTrPrecalc, trEstado, getTrExhibiciones } from "@/lib/trade-db";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS } from "@/lib/fs-objetivos";
 import { CATEGORIA_PESOS } from "@/lib/categorias";
 import type { CbFilter } from "@/lib/cb-queries";
@@ -62,7 +62,7 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
   const out = new Map<string, MapaPunto>();
   const poner = (zona: string, tiendas: number, desde: number, vals: Array<[number, number]>) => {
     const k = idDe(zona) ?? `zona:${zona}`;
-    const p = out.get(k) ?? { zona, tiendas: 0, vals: Array.from({ length: 7 }, () => vacio) };
+    const p = out.get(k) ?? { zona, tiendas: 0, vals: Array.from({ length: 8 }, () => vacio) };
     p.tiendas = Math.max(p.tiendas, tiendas);
     vals.forEach((v, i) => { p.vals[desde + i] = v; });
     out.set(k, p);
@@ -72,6 +72,33 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
   // Con filtro de cliente/tienda/categoría en el tablero base, solo quedan las tiendas que el base mostró.
   const delBase = new Set((recorte === "cb" ? cb?.byZona?.map((z) => z.zona) : recorte === "fs" ? fs?.byZona?.map((z) => z.cliente) : [])?.map((z) => idDe(z) ?? `zona:${z}`) ?? []);
   const puntos = [...out].filter(([k]) => !recorte || delBase.has(k)).map(([, p]) => p);
+
+  // Exhibición especial / activación WOW (tr_exhibiciones): sí/no por tienda + ficha con el mueble y las fotos. Las de
+  // tiendas fuera del relevamiento de Trade son puntos propios (solo con esta variable), salvo que haya filtro de tiendas.
+  const exh = await getTrExhibiciones();
+  const porTienda = new Map<string, typeof exh>();
+  for (const e of exh) if (e.tienda_id != null) porTienda.set(String(e.tienda_id), [...(porTienda.get(String(e.tienda_id)) ?? []), e]);
+  const detalle = (es: typeof exh) => es.flatMap((e) => [
+    { label: `Exhibición${e.anio ? ` ${e.anio}` : ""}`, valor: e.exhibidor ?? "sin detalle" },
+    ...(e.link_fotos ? [{ label: "Fotos", valor: "ver carpeta", href: e.link_fotos }] : []),
+  ]);
+  for (const p of puntos) {
+    const id = idDe(p.zona);
+    if (!id) continue; // burbujas de zona: sin dato de exhibición
+    const es = porTienda.get(id) ?? [];
+    p.vals[7] = [es.length ? 1 : 0, 1];
+    if (es.length) p.detalle = detalle(es);
+  }
+  const filtraTiendas = recorte || ("cb" in base ? base.cbFilter : base.fsFilter).promotores?.length || ("cb" in base ? base.cbFilter : base.fsFilter).supervisores?.length;
+  if (!filtraTiendas) {
+    const enMapa = new Set(puntos.map((p) => idDe(p.zona)));
+    for (const e of exh) {
+      if (e.lat == null || e.lon == null || (e.tienda_id != null && enMapa.has(String(e.tienda_id)))) continue;
+      const vals: Array<[number, number]> = Array.from({ length: 8 }, () => vacio);
+      vals[7] = [1, 1];
+      puntos.push({ zona: `${e.cliente ?? ""} — ${e.direccion ?? e.ciudad ?? ""} (fuera del relevamiento)@x${e.id}|${e.lat}|${e.lon}|`, tiendas: 1, vals, detalle: detalle([e]) });
+    }
+  }
   const r1 = (x: number) => Number(x.toFixed(1));
   return {
     puntos,
@@ -79,6 +106,7 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
       { label: "CB", obj: OBJ_CB }, { label: "CB Infaltables", obj: OBJ_CB }, { label: "CB Estratégico", obj: OBJ_CB },
       { label: "FS general", obj: r1(obj?.general ?? 0) }, { label: "FS Lavado", obj: obj?.lavado ?? 0 },
       { label: "FS Refrigeración", obj: obj?.refri ?? 0 }, { label: "FS Cocción", obj: obj?.coccion ?? 0 },
+      { label: "Exhibición especial", obj: 100, binaria: true },
     ],
     nota: !fs ? "Floor Share no disponible." : !cb ? "Cuadro Básico no disponible." : obj ? `Meta FS de ${MESES_FS[obj.mesIdx]} ${obj.anio}.` : null,
   };

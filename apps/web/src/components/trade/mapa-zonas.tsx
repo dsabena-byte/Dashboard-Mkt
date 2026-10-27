@@ -7,8 +7,10 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 import { AR_PROVINCES } from "@/lib/argentina-provinces";
 
-export type MapaMetrica = { label: string; obj: number };
-export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]> };
+/** `binaria` = sí/no por tienda (ej. exhibición especial): el % de la vista = tiendas con ÷ tiendas con dato. */
+export type MapaMetrica = { label: string; obj: number; binaria?: boolean };
+/** `detalle` = líneas extra de la ficha (ej. exhibición especial con link a las fotos). */
+export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]>; detalle?: Array<{ label: string; valor: string; href?: string }> };
 
 // Ciudad de referencia de cada zona (lat, lon) y su provincia en el mapa.
 const ZONAS: Record<string, { lat: number; lon: number; prov: string }> = {
@@ -57,6 +59,7 @@ const VISTAS: Array<{ label: string; v: Caja }> = [
 // Semáforo de la app vieja: verde hasta −2 pp del objetivo, amarillo hasta −6, rojo debajo.
 const color = (v: number | null, obj: number) => (v == null ? "#94a3b8" : v - obj >= -2 ? "#16a34a" : v - obj >= -6 ? "#d97706" : "#dc2626");
 const tinte = (v: number | null, obj: number) => (v == null ? "#f1f5f9" : v - obj >= -2 ? "#dcfce7" : v - obj >= -6 ? "#fef3c7" : "#fee2e2");
+const fmt = (v: number | null, x: MapaMetrica) => (v == null ? "—" : x.binaria ? (v > 0 ? "Sí" : "No") : `${v.toFixed(0)}%`);
 const pct = ([n, d]: [number, number]) => (d > 0 ? (n / d) * 100 : null);
 const suma = (xs: Array<[number, number]>): [number, number] => xs.reduce<[number, number]>((a, [n, d]) => [a[0] + n, a[1] + d], [0, 0]);
 
@@ -67,7 +70,8 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const [cam, setCam] = useState({ cx: ZONAS_CAJA.x + ZONAS_CAJA.w / 2, cy: ZONAS_CAJA.y + ZONAS_CAJA.h / 2, w: 0 });
   const [asp, setAsp] = useState(1.5);
   const [m, setM] = useState(inicial);
-  const [sel, setSel] = useState<string | null>(null); // ficha: todas las métricas de un punto
+  const [sel, setSel] = useState<string | null>(null);
+  const [todas, setTodas] = useState(false); // ficha: todas las métricas de un punto
   const [hover, setHover] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; cam: typeof cam } | null>(null);
@@ -96,8 +100,6 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   }, [ubicados, m]);
 
   const enVistaTodos = ubicados.filter((p) => p.x >= vb.x && p.x <= vb.x + vb.w && p.y >= vb.y && p.y <= vb.y + vb.h);
-  // Solo los puntos con dato en la métrica elegida (un punto puede tener CB y no Floor Share, o al revés).
-  const enVista = enVistaTodos.filter((p) => (p.vals[m]?.[1] ?? 0) > 0);
   const escala = Math.min(1, vb.w / FULL.w); // las burbujas no crecen al hacer zoom
   const maxT = Math.max(1, ...ubicados.map((p) => p.tiendas));
 
@@ -120,7 +122,6 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const setVista = (c: Caja) => setCam(encuadrar(c));
 
   const metrica = metricas[m]!;
-  const tot = suma(enVista.map((p) => p.vals[m]!));
   return (
     <section className="rounded-xl border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -157,7 +158,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                   <circle cx={p.x} cy={p.y} r={r} fill={color(v, metrica.obj)} fillOpacity={0.75} stroke="#fff" strokeWidth={1.2 * escala} />
                   {(hover === p.zona || (p.tienda ? escala < 0.06 : escala < 0.45)) && (
                     <text x={p.x + r + 2 * escala} y={p.y + 3 * escala} fontSize={9 * escala} fontWeight={600} fill="#0f172a">
-                      {p.label} · {v == null ? "—" : `${v.toFixed(0)}%`}
+                      {p.label} · {fmt(v, metrica)}
                     </text>
                   )}
                 </g>
@@ -183,6 +184,12 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                   <tbody>
                     {metricas.map((x, i) => {
                       const v = pct(p.vals[i]!);
+                      if (x.binaria) return (
+                        <tr key={x.label} className="border-t border-blue-100">
+                          <td className="py-0.5">{x.label}</td>
+                          <td colSpan={2} className="text-right font-semibold" style={{ color: v == null ? undefined : color(v, x.obj) }}>{v == null ? "sin dato" : v > 0 ? "Sí" : "No"}</td>
+                        </tr>
+                      );
                       return (
                         <tr key={x.label} className="border-t border-blue-100">
                           <td className="py-0.5">{x.label}</td>
@@ -193,31 +200,64 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                     })}
                   </tbody>
                 </table>
+                {p.detalle?.map((d, i) => (
+                  <div key={i} className="mt-1.5 border-t border-blue-100 pt-1.5">
+                    <span className="text-muted-foreground">{d.label}: </span>
+                    {d.href ? <a href={d.href} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">{d.valor}</a> : d.valor}
+                  </div>
+                ))}
               </div>
             );
           })()}
+          {/* Todas las variables a la vez sobre lo que entra en la vista (pedido del user); tocar una pinta el mapa con ella. */}
           <div className="rounded-lg border p-3">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">En la vista</div>
-            <div className="mt-1 text-2xl font-bold" style={{ color: color(pct(tot), metrica.obj) }}>{pct(tot) == null ? "—" : `${pct(tot)!.toFixed(1)}%`}</div>
-            <div className="text-muted-foreground">{metrica.label} · objetivo {metrica.obj}% · {enVista.reduce((s, p) => s + p.tiendas, 0)} tiendas</div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">En la vista · {enVistaTodos.reduce((s, p) => s + p.tiendas, 0)} tiendas</div>
+            <table className="mt-1 w-full">
+              <tbody>
+                {metricas.map((x, i) => {
+                  const con = enVistaTodos.filter((p) => (p.vals[i]?.[1] ?? 0) > 0);
+                  const v = pct(suma(con.map((p) => p.vals[i]!)));
+                  return (
+                    <tr key={x.label} onClick={() => setM(i)} className={`cursor-pointer border-t ${i === m ? "bg-blue-50" : "hover:bg-muted"}`}>
+                      <td className="py-1">{x.label}</td>
+                      <td className="text-right text-base font-bold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "—" : `${v.toFixed(1)}%`}</td>
+                      <td className="pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : `obj ${x.obj}%`}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <table className="w-full">
-            <thead><tr className="text-left text-muted-foreground"><th className="py-1">Tienda / zona</th><th className="text-right">Tiendas</th><th className="text-right">{metrica.label}</th></tr></thead>
-            <tbody>
-              {[...enVista].sort((a, b) => (pct(a.vals[m]!) ?? -1) - (pct(b.vals[m]!) ?? -1)).slice(0, 40).map((p) => {
-                const v = pct(p.vals[m]!);
-                return (
-                  <tr key={p.zona} className={`cursor-pointer border-t ${hover === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)}>
-                    <td className="py-1">{p.label}</td>
-                    <td className="text-right tabular-nums">{p.tiendas}</td>
-                    <td className="text-right font-semibold tabular-nums" style={{ color: color(v, metrica.obj) }}>{v == null ? "—" : `${v.toFixed(0)}%`}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {enVista.length > 40 && <p className="text-[11px] text-muted-foreground">Se ven las 40 peores de {enVista.length}; hacé zoom para ver el resto.</p>}
         </div>
+      </div>
+
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b text-left text-muted-foreground">
+              <th className="py-1.5 pr-2">Tienda / zona · {enVistaTodos.length} en la vista</th>
+              {metricas.map((x, i) => (
+                <th key={x.label} onClick={() => setM(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${i === m ? "text-blue-700" : ""}`}>{x.label}{i === m ? " ▲" : ""}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[...enVistaTodos].sort((a, b) => (pct(a.vals[m]!) ?? 1e9) - (pct(b.vals[m]!) ?? 1e9)).slice(0, todas ? undefined : 30).map((p) => (
+              <tr key={p.zona} className={`cursor-pointer border-b ${hover === p.zona || sel === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)}>
+                <td className="py-1 pr-2">{p.label}</td>
+                {metricas.map((x, i) => {
+                  const v = pct(p.vals[i]!);
+                  return <td key={x.label} className="px-2 text-right font-semibold tabular-nums" style={{ color: v == null ? "#94a3b8" : color(v, x.obj) }}>{fmt(v, x)}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {enVistaTodos.length > 30 && (
+          <button onClick={() => setTodas(!todas)} className="mt-2 text-xs font-semibold text-blue-700 hover:underline">
+            {todas ? "Ver menos" : `Ver todas (${enVistaTodos.length})`}
+          </button>
+        )}
       </div>
     </section>
   );

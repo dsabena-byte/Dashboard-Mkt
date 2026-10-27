@@ -153,3 +153,12 @@ export async function auditar(usuario: string | null, entidad: string, clave: st
     body: JSON.stringify([{ usuario, entidad, clave, antes: antes ?? null, despues: despues ?? null }]),
   });
 }
+
+/** Exhibiciones especiales / activaciones WOW vigentes (tr_exhibiciones, migración 0142). [] si la tabla no existe. */
+export type TrExhibicion = {
+  id: number; tienda_id: number | null; cliente: string | null; direccion: string | null; ciudad: string | null; anio: number | null;
+  exhibidor: string | null; link_fotos: string | null; lat: number | null; lon: number | null;
+};
+export async function getTrExhibiciones(): Promise<TrExhibicion[]> {
+  return trAll<TrExhibicion>("tr_exhibiciones?select=id,tienda_id,cliente,direccion,ciudad,anio,exhibidor,link_fotos,lat,lon&activa=is.true").catch(() => []);
+}
