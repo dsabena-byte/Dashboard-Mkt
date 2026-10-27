@@ -165,13 +165,19 @@ eq(tipoProducto("277 - 2 puertas - Cíclico"), "2 puertas - Cíclico", "tipo hel
 const ex = (semana: number, tienda: string, sku: string, sub = "56 cm - Piso - Gas -", est = "Se mantiene") =>
   ({ semana, tienda, sku, division: "COCCIÓN", categoria: "ESTUFAS", subcategoria: sub, descripcion: sku, estatus_pdv: est });
 const exhRows = [
-  // tienda 1: tiene el CB (CB1) y además NUEVO (no CB); tienda 2: falta CB1 pero exhibe NUEVO; tienda 3: NUEVO retirado
-  ...[40, 41, 42, 43].flatMap((w) => [ex(w, "1 - Uno", "CB1"), ex(w, "1 - Uno", "NUEVO"), ex(w, "2 - Dos", "NUEVO"), ex(w, "3 - Tres", "NUEVO", undefined, "Retirada"), ex(w, "3 - Tres", "CB1")]),
+  // NUEVO: tiendas 1 y 2 (en la 3 retirado); TOP: en las 3, pero en la 1 solo 1 de 4 semanas (no cuenta)
+  ...[40, 41, 42, 43].flatMap((w) => [ex(w, "1 - Uno", "CB1"), ex(w, "1 - Uno", "NUEVO"), ex(w, "2 - Dos", "NUEVO"), ex(w, "3 - Tres", "NUEVO", undefined, "Retirada"), ex(w, "3 - Tres", "CB1"),
+    ex(w, "2 - Dos", "TOP"), ex(w, "3 - Tres", "TOP"), ex(w, "4 - Cuatro", "TOP")]),
+  ex(40, "1 - Uno", "TOP"),
 ];
 const cbRows = ["1 - UNO", "2 - DOS", "3 - TRES"].map((t, i) => ({ semana: 43, tienda: t, cliente: "C", sku: "CB1", target_cb: 1, real_cb: i === 1 ? 0 : 1 }));
 const [g] = calcularSugerenciasSku(exhRows, cbRows, () => "C");
 eq([g!.tiendas, g!.target, g!.real, Math.round(g!.pct)], [3, 3, 2, 67], "grupo: % CB actual");
-eq(g!.sugerencias.map((s) => [s.sku, s.tiendasExh, s.homologo?.de, s.homologo?.mismoSegmento, s.homologo?.recupera, Math.round(s.homologo!.deltaPp)]),
-  [["NUEVO", 2, "CB1", true, 1, 33]], "NUEVO como homólogo de CB1 recupera la tienda 2 (+33 pp); retirado no cuenta");
+// NUEVO (2/3 tiendas) no sube el 67%; TOP tampoco (2/3: en la 1 solo 1 semana de 4; la tienda 4 no tiene CB) → nada.
+eq(g!.sugerencias.map((s) => s.sku), [], "solo se sugiere lo que sube el %: exhibido en más tiendas que el % actual");
+const cbRows2 = cbRows.map((r) => ({ ...r, real_cb: r.tienda === "1 - UNO" ? 1 : 0 })); // 33%
+const [g2] = calcularSugerenciasSku(exhRows, cbRows2, () => "C");
+eq(g2!.sugerencias.map((s) => [s.sku, s.tiendasExh, Math.round(s.pct), Math.round(s.acumPct)]),
+  [["NUEVO", 2, 50, 50], ["TOP", 2, 50, 56]], "sumar al CB: % con cada SKU y acumulado (1+2+2)/(3+3+3)");
 
 console.log(`trade-carga: ${n} checks OK`);

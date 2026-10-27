@@ -1,7 +1,7 @@
 "use client";
 
-// Pestaña "Sugerencias de SKUs" de /cuadros-basicos: SKUs fuera del CB del cliente (o tipología) que ya están exhibidos
-// en sus tiendas y subirían el % CB. Datos calculados en el server (lib/cb-sugerencias-sku-server.ts).
+// Pestaña "Sugerencias de SKUs" de /cuadros-basicos: SKUs para SUMAR al CB del cliente (o tipología) que ya están
+// exhibidos en sus tiendas y suben el % CB. Datos calculados en el server (lib/cb-sugerencias-sku-server.ts).
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GrupoSku } from "@/lib/cb-sugerencias-sku";
@@ -60,7 +60,8 @@ export function CbSugerenciasSku({ porCliente, porTipologia, semanas, desde, has
         )}
         <p className="mt-2 text-muted-foreground">
           Un SKU cuenta como exhibido en una tienda si apareció (sin «Retirada») en al menos la mitad de las semanas relevadas del período.
-          El % CB es el de la última semana del período. Cada sugerencia se estima por separado: no se suman.
+          El % CB es el de la última semana del período. Son SKUs para agregar al CB (no reemplazan a ninguno): cada uno suma una
+          posición por tienda, cumplida donde ya está exhibido. Solo se listan los que suben el %; «Acumulado» = sumando ese y los de arriba.
         </p>
       </section>
 
@@ -82,9 +83,8 @@ export function CbSugerenciasSku({ porCliente, porTipologia, semanas, desde, has
                     <th className="py-1.5 pr-2">SKU sugerido</th>
                     <th className="pr-2">Categoría · segmento</th>
                     <th className="pr-2 text-right">Exhibido en</th>
-                    <th className="pr-2">Como homólogo de (del CB)</th>
-                    <th className="pr-2 text-right">% CB si es homólogo</th>
-                    <th className="text-right">% CB si se suma al CB</th>
+                    <th className="pr-2 text-right">% CB sumando este SKU</th>
+                    <th className="text-right">% CB acumulado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -93,19 +93,11 @@ export function CbSugerenciasSku({ porCliente, porTipologia, semanas, desde, has
                       <td className="py-1.5 pr-2"><div className="font-mono font-semibold">{s.sku}</div><div className="text-muted-foreground">{s.descripcion}</div></td>
                       <td className="pr-2">{s.categoria}<div className="text-muted-foreground">{s.segmento || "—"}</div></td>
                       <td className="pr-2 text-right tabular-nums">{s.tiendasExh}/{s.tiendas} tiendas</td>
-                      <td className="pr-2">
-                        {s.homologo ? (
-                          <>
-                            <span className="font-mono">{s.homologo.de}</span>
-                            <div className="text-muted-foreground">{s.homologo.mismoSegmento ? "mismo segmento" : "mismo tipo, otra capacidad"} · cubre {s.homologo.recupera} faltante{s.homologo.recupera !== 1 ? "s" : ""}</div>
-                          </>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
                       <td className="pr-2 text-right tabular-nums">
-                        {s.homologo ? <><span className={pctCls(g.pct + s.homologo.deltaPp)}>{(g.pct + s.homologo.deltaPp).toFixed(1)}%</span><div className="text-emerald-700">{pp(s.homologo.deltaPp)}</div></> : "—"}
+                        <span className={pctCls(s.pct)}>{s.pct.toFixed(1)}%</span><div className="text-emerald-700">{pp(s.pct - g.pct)}</div>
                       </td>
                       <td className="text-right tabular-nums">
-                        {s.nuevoDeltaPp > 0 ? <><span className={pctCls(g.pct + s.nuevoDeltaPp)}>{(g.pct + s.nuevoDeltaPp).toFixed(1)}%</span><div className="text-emerald-700">{pp(s.nuevoDeltaPp)}</div></> : <span className="text-muted-foreground">no sube</span>}
+                        <span className={pctCls(s.acumPct)}>{s.acumPct.toFixed(1)}%</span><div className="text-emerald-700">{pp(s.acumPct - g.pct)}</div>
                       </td>
                     </tr>
                   ))}
