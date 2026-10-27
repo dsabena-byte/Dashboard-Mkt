@@ -6,6 +6,8 @@ import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
 import { CbCategoryChart } from "@/components/cb/cb-category-chart";
 import { CbSuggestionsTab } from "@/components/cb/cb-suggestions-tab";
+import { CbSugerenciasSku } from "@/components/cb/cb-sugerencias-sku";
+import { getSugerenciasSku, MIN_SEMANAS } from "@/lib/cb-sugerencias-sku-server";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import {
   getCbBaselineMedidas,
@@ -48,6 +50,7 @@ const TABS = [
   { key: "overview", label: "Cuadro Básico Trade", href: "/cuadros-basicos" },
   { key: "mapa", label: "Mapa", href: "/cuadros-basicos?tab=mapa" },
   { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" },
+  { key: "sku", label: "Sugerencias de SKUs", href: "/cuadros-basicos?tab=sku" },
 ];
 // Solo quien puede editar Trade (exigirEdicion("trade")) ve la carga y los maestros.
 const TABS_EDITOR = [
@@ -89,6 +92,20 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         {!editor ? (
           <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">No tenés permiso para editar Trade. Pedíselo al administrador.</div>
         ) : tab === "carga" ? <CargaDatos /> : <MaestrosTrade entidad={tab as "tiendas" | "cadenas" | "skus"} />}
+      </div>
+    );
+  }
+
+  // Tab "sku": SKUs fuera del CB que ya están exhibidos (archivos de exhibición semanales).
+  if (tab === "sku") {
+    const num = (k: string) => { const v = Number(typeof searchParams[k] === "string" ? searchParams[k] : ""); return Number.isInteger(v) && v > 0 ? v : undefined; };
+    let d: Awaited<ReturnType<typeof getSugerenciasSku>> | null = null, err: string | null = null;
+    try { d = await getSugerenciasSku(num("desde"), num("hasta")); } catch (e) { err = e instanceof Error ? e.message : String(e); }
+    return (
+      <div className="space-y-4">
+        <Encabezado tab={tab} editor={editor} />
+        {(err || d?.error) && <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">{err ?? d?.error}</div>}
+        {d && <CbSugerenciasSku porCliente={d.porCliente} porTipologia={d.porTipologia} semanas={d.semanas} desde={d.desde} hasta={d.hasta} minSemanas={MIN_SEMANAS} />}
       </div>
     );
   }

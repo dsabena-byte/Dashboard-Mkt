@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   try {
     if (body.accion === "iniciar") {
       const tipo = body.tipo as TipoCarga;
-      if (!["cb", "fs", "u3"].includes(tipo)) return NextResponse.json({ error: "Tipo inválido" }, { status: 400 });
+      if (!["cb", "fs", "u3", "exh"].includes(tipo)) return NextResponse.json({ error: "Tipo inválido" }, { status: 400 });
       const anio = tipo === "u3" ? null : Number(body.anio), semana = tipo === "u3" ? null : Number(body.semana);
       const categoria = tipo === "fs" ? String(body.categoria ?? "") : null;
       if (tipo !== "u3" && (!Number.isInteger(anio) || anio! < 2024 || anio! > 2100 || !Number.isInteger(semana) || semana! < 1 || semana! > 53))

@@ -3,8 +3,9 @@
 import assert from "node:assert/strict";
 import {
   decodificar, parseCsv, detectarTipo, infoDesdeNombre, parseCb, parseFs, parseU3, parseTiendas, validarFila, faltantes,
-  resumir, normClave, splitTienda, esMarcaBasura,
+  resumir, normClave, splitTienda, esMarcaBasura, parseExh,
 } from "../src/lib/trade-carga-core";
+import { calcularSugerenciasSku, segmento, tipoProducto } from "../src/lib/cb-sugerencias-sku";
 import { calcularSugerencias } from "../src/lib/trade-sugerencias-core";
 
 let n = 0;
@@ -147,5 +148,30 @@ eq(sug.baseline.cb_pct_avg, 50, "sugerencias: baseline últimas 3 semanas");
 eq(sug.suggestions.map((s) => [s.numero_tienda, s.cb_target, s.cb_ok, s.cb_pct, s.infalt_pct, s.estrat_pct]), [["30", 2, 1, 50, 100, 0]],
   "sugerencias: solo tiendas NO medidas; presente por homólogo");
 eq(sug.details.find((d) => d.modelo === "M1")?.found_sku, "SKUH", "sugerencias: SKU encontrado = homólogo");
+
+// ── Exhibición de SKUs por tienda (ReportExhibitions) + Sugerencias de SKUs ──
+const gExh = [
+  ["ID", "CÓDIGO EXHIBICIÓN", "TIPO DE ESPACIO", "ESTATUS DE COLOCACIÓN PDV", "CADENA", "FORMATO", "NO. DE TIENDA", "TIENDA", "DIVISIÓN", "CATEGORÍA", "SUBCATEGORÍA", "MARCA", "SKU", "DESCRIPCIÓN DE PRODUCTO", "EXISTENCIA EN EXHIBICIÓN", "FECHA DE CAPTURA"],
+  ["1", "EXN-1", "Exhibición normal sin mueble", "Se mantiene", "Cadena Uno", "Cadena Uno SA", "1", "1 - Cadena Uno Centro", "COCCIÓN", "ESTUFAS", "56 cm - Piso - Gas - Gris", "Drean", "SKUA", "Cocina A", "1", "9/10/2026"],
+];
+eq(detectarTipo(gExh).tipo, "exh", "detecta exhibición antes que U3 (también tiene ID/NO. DE TIENDA/SKU/EXISTENCIA)");
+eq(infoDesdeNombre("Exhibicion_Semana_Fiscal_43_Dani.xlsx").semana, 43, "semana fiscal desde el nombre");
+const pe = parseExh(gExh);
+eq([pe.filas.length, pe.filas[0]!.numero_tienda, pe.filas[0]!.fecha_captura, pe.filas[0]!.estatus_pdv], [1, "1", "2026-10-09", "Se mantiene"], "parseExh");
+eq(validarFila("exh", pe.filas[0]), null, "fila de exhibición válida");
+eq(segmento("56 cm - Piso - Gas - Gris"), "56 cm - Piso - Gas", "segmento sin color");
+eq(tipoProducto("Automática Carga Frontal - 10.5 Kg - Europeo"), "Automática Carga Frontal - Europeo", "tipo sin capacidad");
+eq(tipoProducto("277 - 2 puertas - Cíclico"), "2 puertas - Cíclico", "tipo heladera sin litros");
+const ex = (semana: number, tienda: string, sku: string, sub = "56 cm - Piso - Gas -", est = "Se mantiene") =>
+  ({ semana, tienda, sku, division: "COCCIÓN", categoria: "ESTUFAS", subcategoria: sub, descripcion: sku, estatus_pdv: est });
+const exhRows = [
+  // tienda 1: tiene el CB (CB1) y además NUEVO (no CB); tienda 2: falta CB1 pero exhibe NUEVO; tienda 3: NUEVO retirado
+  ...[40, 41, 42, 43].flatMap((w) => [ex(w, "1 - Uno", "CB1"), ex(w, "1 - Uno", "NUEVO"), ex(w, "2 - Dos", "NUEVO"), ex(w, "3 - Tres", "NUEVO", undefined, "Retirada"), ex(w, "3 - Tres", "CB1")]),
+];
+const cbRows = ["1 - UNO", "2 - DOS", "3 - TRES"].map((t, i) => ({ semana: 43, tienda: t, cliente: "C", sku: "CB1", target_cb: 1, real_cb: i === 1 ? 0 : 1 }));
+const [g] = calcularSugerenciasSku(exhRows, cbRows, () => "C");
+eq([g!.tiendas, g!.target, g!.real, Math.round(g!.pct)], [3, 3, 2, 67], "grupo: % CB actual");
+eq(g!.sugerencias.map((s) => [s.sku, s.tiendasExh, s.homologo?.de, s.homologo?.mismoSegmento, s.homologo?.recupera, Math.round(s.homologo!.deltaPp)]),
+  [["NUEVO", 2, "CB1", true, 1, 33]], "NUEVO como homólogo de CB1 recupera la tienda 2 (+33 pp); retirado no cuenta");
 
 console.log(`trade-carga: ${n} checks OK`);
