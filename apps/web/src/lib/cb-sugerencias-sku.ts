@@ -2,6 +2,8 @@
 // (tr_exhibicion_sku, mínimo 4 semanas = un mes) busca SKUs que NO están en el cuadro básico del grupo (cliente o
 // tipología) pero sí están exhibidos en sus tiendas, y estima cuánto subiría el % CB si se SUMAN al CB (una posición
 // más por tienda, cumplida donde ya está exhibido). Solo agregar, nunca reemplazar: el CB de Trade no tiene homólogos.
+// No se sugiere un SKU que ya es HOMÓLOGO de uno del CB según el catálogo de CB Ventas (27-oct, pedido del user: un
+// lavarropas frontal 6 kg con otro código ya está en el CB) → `homologosExcluidos`.
 // `acumPct` = % CB sumando ese SKU y todos los de arriba en la lista (orden de mayor a menor aporte). PURO, sin I/O.
 // Test: `npx tsx scripts/trade-carga.test.ts`.
 
@@ -18,7 +20,24 @@ export type SkuSugerido = {
   /** % CB del grupo sumando solo este SKU, y sumando este y todos los anteriores de la lista. */
   pct: number; acumPct: number;
 };
-export type GrupoSku = { grupo: string; tiendas: number; target: number; real: number; pct: number; sugerencias: SkuSugerido[] };
+export type GrupoSku = {
+  grupo: string; tiendas: number; target: number; real: number; pct: number; sugerencias: SkuSugerido[];
+  /** SKUs exhibidos fuera del CB que no se sugieren porque son homólogos de uno que ya está (`de`). */
+  homologosExcluidos: { sku: string; de: string }[];
+};
+
+/** Clave para comparar códigos: sin ceros a la izquierda, mayúsculas, "·" = ".", sin espacios de más. */
+export const claveSku = (s: string) => s.trim().toUpperCase().replace(/·/g, ".").replace(/\s+/g, " ").replace(/^0+(?=.)/, "");
+
+/** Grupos de equivalencia del catálogo de CB Ventas: cada renglón = modelo + sus homólogos. */
+export function equivalencias(renglones: { modelo: string; homologos: string[] | null }[]): Map<string, Set<string>> {
+  const eq = new Map<string, Set<string>>();
+  for (const r of renglones) {
+    const ks = [r.modelo, ...(r.homologos ?? [])].filter(Boolean).map(claveSku);
+    for (const k of ks) { if (!eq.has(k)) eq.set(k, new Set()); for (const o of ks) if (o !== k) eq.get(k)!.add(o); }
+  }
+  return eq;
+}
 
 const COLOR = new Set(["BLANCO", "BLANCA", "GRIS", "GRAY", "GREY", "INOXIDABLE", "INOX", "NEGRO", "NEGRA", "SILVER", "PLATA", "ACERO", "BLACK", "WHITE"]);
 const norm = (s: string | null | undefined) =>
@@ -37,7 +56,7 @@ export const tipoProducto = (seg: string) =>
   seg.split(" - ").filter((p) => !/^\d+([.,]\d+)?\s*(kg|cm|l|lts|litros)?$/i.test(p.trim())).join(" - ");
 
 export function calcularSugerenciasSku(
-  exh: ExhSkuRow[], cb: CbSkuRow[], grupoDe: (tienda: string, cliente: string | null) => string, opts: { top?: number } = {},
+  exh: ExhSkuRow[], cb: CbSkuRow[], grupoDe: (tienda: string, cliente: string | null) => string, opts: { top?: number; equivalentes?: Map<string, Set<string>> } = {},
 ): GrupoSku[] {
   // Exhibición: semanas relevadas por tienda y semanas en que cada SKU estuvo exhibido (no "Retirada").
   const semT = new Map<string, Set<number>>(), exT = new Map<string, Map<string, Set<number>>>();
@@ -74,8 +93,19 @@ export function calcularSugerenciasSku(
     const cbSet = new Set<string>();
     for (const k of ks) for (const [s, v] of cbT.get(k)!.skus) { T += v.t; R += v.r; cbSet.add(s); }
     if (!T) continue;
-    const cand = new Map<string, number>();
-    for (const k of ks) for (const s of exT.get(k)!.keys()) if (!cbSet.has(s) && presente(k, s)) cand.set(s, (cand.get(s) ?? 0) + 1);
+    // SKU del CB por clave; un candidato equivalente (homólogo) a alguno ya está cubierto.
+    const enCb = new Map<string, string>();
+    for (const s of cbSet) enCb.set(claveSku(s), s);
+    const homDe = (c: string) => {
+      for (const e of opts.equivalentes?.get(claveSku(c)) ?? []) { const s = enCb.get(e); if (s) return s; }
+      return null;
+    };
+    const cand = new Map<string, number>(), excl = new Map<string, string>();
+    for (const k of ks) for (const s of exT.get(k)!.keys()) {
+      if (cbSet.has(s) || enCb.has(claveSku(s)) || !presente(k, s)) continue;
+      const de = homDe(s);
+      if (de) excl.set(s, de); else cand.set(s, (cand.get(s) ?? 0) + 1);
+    }
     const N = ks.length, pct = R / T;
     // Sumar un SKU sube el % solo si está exhibido en una proporción de tiendas mayor al % que hay: de mayor a menor
     // exhibición, se agregan mientras sigan subiendo el % acumulado (después de eso lo bajarían).
@@ -87,7 +117,7 @@ export function calcularSugerenciasSku(
       const ic = info.get(c)!;
       sugerencias.push({ sku: c, descripcion: ic.desc, categoria: ic.cat, segmento: ic.seg, tiendasExh: n, tiendas: N, pct: ((R + n) / (T + N)) * 100, acumPct: (r / t) * 100 });
     }
-    out.push({ grupo, tiendas: N, target: T, real: R, pct: pct * 100, sugerencias });
+    out.push({ grupo, tiendas: N, target: T, real: R, pct: pct * 100, sugerencias, homologosExcluidos: [...excl].map(([sku, de]) => ({ sku, de })) });
   }
   return out.sort((a, b) => a.pct - b.pct);
 }
