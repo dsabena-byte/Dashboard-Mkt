@@ -108,8 +108,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const sub = `${periodo ? `${periodo} · ` : ""}Δ vs objetivo`;
 
   const esMapa = searchParams.tab === "mapa";
-  // Al filtrar tiendas: sus exhibiciones especiales con fotos (clave de tienda FS = "número|nombre").
-  const exhib = !esMapa && filter.tiendas?.length
+  // Pestaña Mapa + filtro de tiendas: sus exhibiciones especiales con fotos (solo en el mapa, pedido del user) (clave de tienda FS = "número|nombre").
+  const exhib = esMapa && filter.tiendas?.length
     ? await exhibicionesDeTiendas(filter.tiendas.map((k) => { const [numero = "", nombre = ""] = k.split("|"); return { numero, nombre, label: `${numero} - ${nombre}` }; })).catch(() => [])
     : [];
   const mapa = esMapa && hasData ? await mapaTrade({ fs: v, fsFilter: filter }) : null;
@@ -180,7 +180,10 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           {metasBloque}
         </>
       ) : mapa ? (
-        <MapaZonas titulo="Floor Share y Cuadro Básico por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} inicial={3} />
+        <>
+          <MapaZonas titulo="Floor Share y Cuadro Básico por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} inicial={3} />
+          <ExhibicionesTienda items={exhib} />
+        </>
       ) : (
         <>
           <section className="grid gap-3 lg:grid-cols-4">
@@ -195,8 +198,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
             <KpiObjCard title="Cocción" medida="Share Drean góndola" value={overall.coccion.share} obj={OBJ.coccion} objLabel={objLabel(OBJ.coccion)}
               contexto={`${overall.coccion.drean_units.toLocaleString()} / ${overall.coccion.total_units.toLocaleString()}`} />
           </section>
-
-          <ExhibicionesTienda items={exhib} />
 
           {/* Como la app vieja: ranking + evolución · cliente + promotor · tienda. */}
           <section className="grid gap-4 lg:grid-cols-2">

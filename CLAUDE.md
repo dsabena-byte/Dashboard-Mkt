@@ -597,8 +597,8 @@ reporte_existencia/cb_homologos).
   del user). Inactiva = RETIRADO / PDV CERRADO. PRÓXIMO: CB Ventas por cliente (`vt_clientes` ↔ `tr_cadenas.cliente`).
   **Fotos (27-oct, 0143 aplicada, `tr_exhibiciones.fotos`):** las carpetas de Drive de la planilla son públicas → se listan sin credenciales
   (`drive.google.com/embeddedfolderview?id=`) y cada foto se baja con `drive.google.com/thumbnail?id=<id>&sz=w1200` y se copia al bucket
-  público `meta-thumbs/exhibiciones/<id>/<fileId>.jpg` (máx 6 por activación; script one-off en el scratchpad, no hay cron). Se ven en la
-  ficha del mapa y en el tablero de CB/FS al filtrar una tienda (`ExhibicionesTienda`, `exhibicionesDeTiendas` en `lib/trade-mapa.ts`).
+  público `meta-thumbs/exhibiciones/<id>/<fileId>.jpg` (máx 6 por activación; script one-off en el scratchpad, no hay cron). Se ven SOLO en la
+  pestaña Mapa (ficha del punto + sección debajo del mapa al filtrar una tienda; el user no las quiere en el tablero) (`ExhibicionesTienda`, `exhibicionesDeTiendas` en `lib/trade-mapa.ts`).
   `tr_tiendas` tiene ~19 tiendas DUPLICADAS (ids 576–594, nombre en mayúsculas y cadena equivocada; misma dirección que el original).
   FS sin "Evolución mensual real vs meta" (27-oct, user: no estaba en la app vieja); el editor de objetivos queda al pie (solo editores).
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
