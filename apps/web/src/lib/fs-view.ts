@@ -16,7 +16,7 @@ import { isoWeekToMes } from "./cb-queries";
 import { PERSONA_PLACEHOLDERS } from "./fs-enrich";
 
 /** Fila con cliente/promotor/supervisor (lib/fs-enrich). La tienda se identifica por número + nombre. */
-export type FsEnrichedRow = FloorShareRow & { cliente: string; promotor: string; supervisor: string; zona?: string };
+export type FsEnrichedRow = FloorShareRow & { cliente: string; promotor: string; supervisor: string; zona?: string; geo?: string };
 export const tiendaKeyFs = (r: { numero_tienda: string; nombre_tienda: string | null }) => `${r.numero_tienda}|${r.nombre_tienda ?? ""}`;
 const NO_MARCA = new Set(["otros", "total"]);
 
@@ -36,7 +36,7 @@ export interface FsView {
   byTienda: ReturnType<typeof shareByTienda>;
   byCliente: ReturnType<typeof shareByCliente>;
   byPromotor: ReturnType<typeof shareByCliente>;
-  /** Por zona del maestro de tiendas (mapa). `cliente` = zona. */
+  /** Para el mapa: `cliente` = zona, o "N - tienda@lat|lon|prov" si la tienda tiene dirección geocodificada. */
   byZona?: ReturnType<typeof shareByCliente>;
   overall: ReturnType<typeof computeOverall>;
   /** Drean + top 9 marcas (= app vieja). La evolución semanal ignora los filtros de mes y semana. */
@@ -91,7 +91,7 @@ export function computeFsView(allRows: FsEnrichedRow[], filter: FloorShareFilter
   const byPromotor = shareByCliente(applyFilter(allRows, { ...filter, promotores: [] })
     .filter((r) => !PERSONA_PLACEHOLDERS.has(r.promotor)).map((r) => ({ ...r, cliente: r.promotor })));
   const overall = computeOverall(rows);
-  const byZona = shareByCliente(rows.map((r) => ({ ...r, cliente: r.zona || "Sin zona" })));
+  const byZona = shareByCliente(rows.map((r) => ({ ...r, cliente: r.geo ? `${r.numero_tienda} - ${r.nombre_tienda}@${r.geo}` : r.zona || "Sin zona" })));
 
   // Evolución semanal: Drean + top 9 sin los filtros de mes/semana (se ve toda la serie).
   const evolRows = applyFilter(allRows, { ...filter, meses: [], semanas: [] });

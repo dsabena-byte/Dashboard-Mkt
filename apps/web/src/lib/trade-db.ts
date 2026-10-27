@@ -119,14 +119,15 @@ export async function getTrMaxSemanaFs(anio: number): Promise<number | null> {
 /** Tiendas con su cadena y promotor/supervisor vigentes (para el Floor Share por promotor, = app vieja). */
 export async function getTrContactos(): Promise<Contacto[]> {
   const [asig, cad] = await Promise.all([
-    trAll<{ promotor: string | null; supervisor: string | null; tr_tiendas: { numero: string; nombre: string | null; cadena: string; localidad: string | null } | null }>(
-      "tr_tienda_asignacion?select=promotor,supervisor,tr_tiendas(numero,nombre,cadena,localidad)&hasta=is.null"),
+    trAll<{ promotor: string | null; supervisor: string | null; tr_tiendas: { numero: string; nombre: string | null; cadena: string; localidad: string | null; lat: number | null; lon: number | null; estado: string | null } | null }>(
+      "tr_tienda_asignacion?select=promotor,supervisor,tr_tiendas(numero,nombre,cadena,localidad,lat,lon,estado)&hasta=is.null"),
     trAll<{ clave: string; nombre: string | null }>("tr_cadenas?select=clave,nombre", "clave"),
   ]);
   const nomCad = new Map(cad.map((c) => [c.clave, c.nombre ?? c.clave]));
   return asig.filter((a) => a.tr_tiendas?.nombre).map((a) => ({
     numero: a.tr_tiendas!.numero, nombre: a.tr_tiendas!.nombre!, cadena: nomCad.get(a.tr_tiendas!.cadena) ?? a.tr_tiendas!.cadena,
     promotor: a.promotor ?? "", supervisor: a.supervisor ?? "", zona: a.tr_tiendas!.localidad ?? "",
+    geo: a.tr_tiendas!.lat != null && a.tr_tiendas!.lon != null ? `${a.tr_tiendas!.lat.toFixed(5)}|${a.tr_tiendas!.lon.toFixed(5)}|${a.tr_tiendas!.estado ?? ""}` : undefined,
   }));
 }
 

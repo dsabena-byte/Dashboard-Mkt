@@ -3,8 +3,9 @@
 // OJO: el número de tienda NO es único entre cadenas ("1" = varias tiendas) → la clave es número + nombre.
 // Los nombres de personas NO van en el código (repo público): las asignaciones viven en tr_tienda_asignacion.
 
-export type Contacto = { numero: string; nombre: string; cadena: string; promotor: string; supervisor: string; zona?: string };
-export type FsPersonas = { cliente: string; promotor: string; supervisor: string; zona: string };
+export type Contacto = { numero: string; nombre: string; cadena: string; promotor: string; supervisor: string; zona?: string; geo?: string };
+/** `geo` = "lat|lon|provincia" de la tienda (master con direcciones); sin geo el mapa la ubica en su zona. */
+export type FsPersonas = { cliente: string; promotor: string; supervisor: string; zona: string; geo?: string };
 export const ZONA_SIN = "Sin zona";
 
 export const PROMOTOR_NO_MAPEO = "Tienda sin mapeo";
@@ -119,6 +120,7 @@ export function crearEnriquecedorFs(contactos: Contacto[]): (numero: string, nom
         promotor: !c ? PROMOTOR_NO_MAPEO : c.promotor || PROMOTOR_SIN,
         supervisor: !c ? PROMOTOR_NO_MAPEO : c.supervisor || SUPERVISOR_SIN,
         zona: c?.zona?.trim() || ZONA_SIN,
+        ...(c?.geo ? { geo: c.geo } : {}),
       };
     }
     cache.set(ck, out);

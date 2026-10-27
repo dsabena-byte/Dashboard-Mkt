@@ -118,7 +118,7 @@ export async function enriquecerCb(rows: CbRow[]): Promise<CbRow[]> {
   return rows.map((r) => {
     const m = (r.tienda ?? "").trim().match(/^(\d+)\s*[-–]\s*(.+)$/);
     const p = enr(m?.[1] ?? "", m?.[2] ?? r.tienda ?? "");
-    return { ...r, promotor: p?.promotor ?? PROMOTOR_NO_MAPEO, supervisor: p?.supervisor ?? PROMOTOR_NO_MAPEO, zona: p?.zona ?? "Sin zona" };
+    return { ...r, promotor: p?.promotor ?? PROMOTOR_NO_MAPEO, supervisor: p?.supervisor ?? PROMOTOR_NO_MAPEO, zona: p?.zona ?? "Sin zona", ...(p?.geo ? { geo: p.geo } : {}) };
   });
 }
 
