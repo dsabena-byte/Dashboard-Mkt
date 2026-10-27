@@ -163,7 +163,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const cbVals = (r: { cb_pct: number; infalt_pct: number; estrat_pct: number }) => [r.cb_pct, r.infalt_pct, r.estrat_pct];
   const totVals = [totals.cb_pct, totals.infalt_pct, totals.estrat_pct];
   // Al filtrar tiendas: sus exhibiciones especiales con fotos (pedido del user: ver la foto en el tablero, no en Drive).
-  const exhib = tab !== "mapa" && filter.tiendas?.length
+  const exhib = filter.tiendas?.length
     ? await exhibicionesDeTiendas(filter.tiendas.map((t) => { const m = t.match(/^(\d+)\s*[-–]\s*(.+)$/); return { numero: m?.[1] ?? "", nombre: m?.[2] ?? t, label: t }; })).catch(() => [])
     : [];
   const seleccion = [...(filter.tiendas ?? []), ...(filter.clientes ?? [])].join(", ");
@@ -194,7 +194,10 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
           Sin datos para los filtros seleccionados.
         </div>
       ) : mapa ? (
-        <MapaZonas titulo="Cuadro Básico y Floor Share por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} />
+        <>
+          <MapaZonas titulo="Cuadro Básico y Floor Share por tienda" metricas={mapa.metricas} puntos={mapa.puntos} nota={mapa.nota} />
+          <ExhibicionesTienda items={exhib} />
+        </>
       ) : (
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
