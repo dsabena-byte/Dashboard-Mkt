@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CATEGORIAS_FS, CAT_LABEL, TIPO_LABEL, decodificar, detectarTipo, infoDesdeNombre, normClave, parseCsv, parsear, resumir, splitTienda,
+  CATEGORIAS_FS, CAT_LABEL, TIPO_LABEL, detectarTipo, infoDesdeNombre, normClave, parsear, resumir, splitTienda,
   type CategoriaFs, type FilaCb, type FilaU3, type Faltante, type MaestrosResumen, type Resumen, type TipoCarga, type Cargado,
 } from "@/lib/trade-carga-core";
+import { leerGrilla, ACCEPT_PLANILLAS } from "@/lib/leer-planilla";
 
 // "Cargar datos" de Trade (reemplaza al Drive + Apps Script). El archivo se lee y valida en el navegador; recién al
 // confirmar se sube por partes y se reemplaza la semana en una sola transacción (ver app/api/trade/carga).
@@ -48,7 +49,7 @@ export function CargaDatos() {
     const nuevos: Archivo[] = [];
     for (const f of Array.from(files)) {
       const id = `${f.name}-${f.size}-${Date.now()}-${Math.random()}`;
-      const grid = parseCsv(decodificar(new Uint8Array(await f.arrayBuffer())));
+      const grid = await leerGrilla(f); // CSV o Excel
       const { tipo, motivo } = detectarTipo(grid);
       const info = infoDesdeNombre(f.name);
       const p = tipo ? parsear(tipo, grid) : { filas: [], avisos: [], errores: [motivo] };
@@ -121,12 +122,12 @@ export function CargaDatos() {
       >
         <p className="text-sm font-semibold">Arrastrá acá los archivos de la semana (uno o varios)</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Los mismos CSV que se subían al Drive: Cuadro Básico (<code>42.csv</code>), Floor Share (<code>42-Lavado.csv</code>),
+          Los mismos archivos que se subían al Drive, en CSV o Excel: Cuadro Básico (<code>42.csv</code>), Floor Share (<code>42-Lavado.csv</code>),
           Reporte de Existencias U3 y Tienda-promotor-supervisor. Reconocemos el tipo por el contenido. Nada se guarda hasta que confirmes.
         </p>
         <label className="mt-3 inline-block cursor-pointer rounded-md bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white">
           Elegir archivos
-          <input type="file" accept=".csv,text/csv" multiple className="hidden" onChange={(e) => { if (e.target.files) void leer(e.target.files); e.target.value = ""; }} />
+          <input type="file" accept={ACCEPT_PLANILLAS} multiple className="hidden" onChange={(e) => { if (e.target.files) void leer(e.target.files); e.target.value = ""; }} />
         </label>
       </section>
 
