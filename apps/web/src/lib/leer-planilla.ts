@@ -10,11 +10,36 @@ const celda = (c: unknown): string => {
   return String(c ?? "").trim();
 };
 
+type Xlsx = typeof import("xlsx");
+/** Algunos sistemas (ej. el ReportExhibitions del relevamiento) guardan los acentos como entidades ("C&#xD3;DIGO") en
+ *  celdas t="str" y SheetJS 0.18 las convierte en "\uFFFD" ("C�DIGO"). Se reescriben como UTF-8 antes de leer.
+ *  Si el archivo no es un zip (.xls viejo) o no tiene entidades, queda igual. */
+export function xlsxSinEntidades(XLSX: Xlsx, buf: Uint8Array): Uint8Array {
+  try {
+    const cfb = XLSX.CFB.read(buf, { type: "array" });
+    let cambio = false;
+    cfb.FullPaths.forEach((p: string, i: number) => {
+      const e = cfb.FileIndex[i];
+      if (!/\/xl\/.*\.xml$/i.test(p) || !e?.content) return;
+      const txt = new TextDecoder("utf-8").decode(e.content as Uint8Array);
+      if (!/&#(x[0-9a-f]+|\d+);/i.test(txt)) return;
+      const fixed = txt.replace(/&#(x[0-9a-f]+|\d+);/gi, (m, c: string) => {
+        const n = c[0]!.toLowerCase() === "x" ? parseInt(c.slice(1), 16) : parseInt(c, 10);
+        return n > 127 && n !== 0xfffd ? String.fromCodePoint(n) : m; // < 128 incluye &#x26; (&): se deja escapado
+      });
+      if (fixed !== txt) { e.content = new TextEncoder().encode(fixed.replace(/encoding="us-ascii"/i, 'encoding="utf-8"')); cambio = true; }
+    });
+    return cambio ? (XLSX.CFB.write(cfb, { type: "array", fileType: "zip" }) as unknown as Uint8Array) : buf;
+  } catch {
+    return buf;
+  }
+}
+
 export async function leerGrilla(f: File): Promise<string[][]> {
   const buf = await f.arrayBuffer();
   if (!esExcel(f.name)) return parseCsv(decodificar(new Uint8Array(buf)));
   const XLSX = await import("xlsx");
-  const wb = XLSX.read(buf, { type: "array", cellDates: true });
+  const wb = XLSX.read(xlsxSinEntidades(XLSX, new Uint8Array(buf)), { type: "array", cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0] ?? ""];
   if (!ws) return [];
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: true, defval: "", blankrows: false });
