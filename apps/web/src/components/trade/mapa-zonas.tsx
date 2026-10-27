@@ -154,7 +154,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
           ))}
         </div>
       </div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div className="relative">
           <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
             <button onClick={() => zoom(0.6)} className="rounded border bg-white px-2 text-sm shadow-sm" aria-label="Acercar">+</button>
@@ -165,7 +165,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
           </div>
           <svg
             ref={svgRef} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} preserveAspectRatio="xMidYMid meet"
-            className="block h-[520px] w-full cursor-grab touch-none select-none rounded-lg bg-slate-50 active:cursor-grabbing"
+            className="block h-[480px] w-full cursor-grab touch-none select-none rounded-lg bg-slate-50 active:cursor-grabbing"
             onWheel={onWheel} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => (drag.current = null)} onPointerLeave={() => (drag.current = null)}
             role="img" aria-label={`Mapa de ${titulo}`}
           >
@@ -192,7 +192,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
             {sinUbicar > 0 ? ` ${sinUbicar} tiendas sin zona cargada no aparecen en el mapa.` : ""} Tocá un punto para ver su ficha.{nota ? ` ${nota}` : ""}
           </p>
         </div>
-        <div className="space-y-2 text-xs">
+        <div className="space-y-2 text-sm">
           {(() => {
             const p = ubicados.find((u) => u.zona === sel);
             if (!p) return null;
