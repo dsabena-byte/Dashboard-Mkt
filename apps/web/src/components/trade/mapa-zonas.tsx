@@ -259,7 +259,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
           <thead>
             <tr className="border-b text-left text-muted-foreground">
               <th onClick={() => ordenar(-1)} className={`cursor-pointer whitespace-nowrap py-1.5 pr-2 ${ord.col === -1 ? "text-blue-700" : ""}`}>
-                Cliente / tienda · {enVistaTodos.length} tiendas en la vista{ord.col === -1 ? (ord.asc ? " ▲" : " ▼") : ""}
+                Cliente / tienda ({enVistaTodos.length}){ord.col === -1 ? (ord.asc ? " ▲" : " ▼") : ""}
               </th>
               {metricas.map((x, i) => (
                 <th key={x.label} onClick={() => ordenar(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${inicio(i) && i > 0 ? "border-l" : ""} ${cab(i)} ${i === ord.col ? "text-blue-700" : ""}`}>
@@ -284,19 +284,21 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
               const grupos = [...porCli].map(([label, ps]) => ({ label, ps, vals: metricas.map((x, i) => sumaMetrica(ps.filter((p) => (p.vals[i]?.[1] ?? 0) > 0), i, x)) }));
               const celdas = (vals: Array<[number, number]>) => metricas.map((x, i) => {
                 const v = pct(vals[i]!);
-                return <td key={x.label} className={`px-2 text-right font-semibold tabular-nums ${inicio(i) && i > 0 ? "border-l" : ""}`} style={{ color: v == null ? "#94a3b8" : color(v, x.obj) }}>{fmt(v, x)}</td>;
+                // binaria con varias tiendas (fila de cliente): cuántas tienen, no un Sí/No
+                const txt = x.binaria && vals[i]![1] > 1 ? `${vals[i]![0]}/${vals[i]![1]}` : fmt(v, x);
+                return <td key={x.label} className={`px-2 text-right font-semibold tabular-nums ${inicio(i) && i > 0 ? "border-l" : ""}`} style={{ color: v == null ? "#94a3b8" : color(v, x.obj) }}>{txt}</td>;
               });
               return grupos.sort(cmp).slice(0, todas ? undefined : 30).flatMap((g) => {
                 const abierto = abiertos.has(g.label);
                 const toggle = () => setAbiertos((s) => { const n = new Set(s); if (n.has(g.label)) n.delete(g.label); else n.add(g.label); return n; });
                 return [
                   <tr key={`c:${g.label}`} className="cursor-pointer border-b bg-slate-50 font-semibold hover:bg-slate-100" onClick={toggle}>
-                    <td className="whitespace-nowrap py-1.5 pr-2">{abierto ? "▾" : "▸"} {g.label} <span className="font-normal text-muted-foreground">· {g.ps.length} {g.ps.length === 1 ? "tienda" : "tiendas"}</span></td>
+                    <td className="whitespace-nowrap py-1.5 pr-2" title={g.label}>{abierto ? "▾" : "▸"} <span className="inline-block max-w-[220px] truncate align-bottom">{g.label}</span> <span className="font-normal text-muted-foreground">· {g.ps.length} {g.ps.length === 1 ? "tienda" : "tiendas"}</span></td>
                     {celdas(g.vals)}
                   </tr>,
                   ...(abierto ? [...g.ps].sort(cmp).map((p) => (
                     <tr key={p.zona} className={`cursor-pointer border-b ${hover === p.zona || sel === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)}>
-                      <td className="whitespace-nowrap py-1 pl-5 pr-2">{p.label}</td>
+                      <td className="whitespace-nowrap py-1 pl-5 pr-2" title={p.label}><span className="inline-block max-w-[240px] truncate align-bottom">{p.label}</span></td>
                       {celdas(p.vals)}
                     </tr>
                   )) : []),
