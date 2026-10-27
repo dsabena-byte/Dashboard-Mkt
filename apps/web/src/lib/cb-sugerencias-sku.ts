@@ -37,6 +37,7 @@ export function familiaCocina(sku: string): string | null {
   if (!k.startsWith("CD")) return null;
   const m = k.match(/^CD5[56](02|03)/);
   if (m) return `CD56${m[1]}`;
+  if (/^CD550[57]/.test(k)) return "CD5603"; // CD5505/CD5507: similares a la 03 (user 27-oct)
   if (/^CD56(14|17)/.test(k)) return "CD5614";
   return `sola:${k}`;
 }
