@@ -345,7 +345,7 @@ export function shareByCliente<T extends FloorShareRow & { cliente: string }>(ro
       acc[k].total_units += u;
       if (r.marca === OWN_BRAND_FS) acc[k].drean_units += u;
     }
-    if (r.numero_tienda) tiendasByCliente.get(r.cliente)!.add(r.numero_tienda);
+    if (r.numero_tienda) tiendasByCliente.get(r.cliente)!.add(`${r.numero_tienda}|${r.nombre_tienda ?? ""}`); // el número se repite entre cadenas
   }
   for (const v of map.values()) {
     finalize(v.total);

@@ -15,6 +15,7 @@ import {
 } from "@/lib/cb-queries";
 import { computeCbView, isCbDefault, applyCbFilter, computeSkuDetalle, type CbView, type CbSkuDet } from "@/lib/cb-view";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
+import { MapaZonas } from "@/components/trade/mapa-zonas";
 import { CbDetalleTienda } from "@/components/cb/cb-detalle-tienda";
 import { getTrPrecalc, trEstado, getTrCbSkuRows } from "@/lib/trade-db";
 import { puedeEditarActual } from "@/lib/usuarios-server";
@@ -143,7 +144,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   let fetchError: string | null = null;
   try {
     if (isCbDefault(filter) && (await trEstado()).cb != null) view = await getTrPrecalc<CbView>("cb_default");
-    if (view && !view.byPromotor) view = null; // precálculo viejo (sin promotor) → se recalcula
+    if (view && (!view.byPromotor || !view.byZona)) view = null; // precálculo viejo (sin promotor/zona) → se recalcula
     if (!view) view = computeCbView(await enriquecerCb(await getCbRowsFast()), filter);
     // Detalle de SKUs (= app vieja) cuando se elige una tienda o un cliente.
     const est = await trEstado();
@@ -216,6 +217,12 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
             <h3 className="mb-3 text-sm font-bold">📊 Cumplimiento por Categoría</h3>
             <CbCategoryChart data={byDiv} />
           </section>
+
+          <MapaZonas
+            titulo="Cuadro Básico por zona"
+            metricas={[{ label: "% CB", obj: OBJ_PCT }, { label: "% Infaltables", obj: OBJ_PCT }, { label: "% Estratégico", obj: OBJ_PCT }]}
+            puntos={(v.byZona ?? []).map((z) => ({ zona: z.zona, tiendas: z.tiendas, vals: [z.cb, z.inf, z.est] }))}
+          />
 
           {/* Como la app vieja: promotor + cliente lado a lado (cada una se oculta si su filtro está activo). */}
           <section className="grid gap-4 xl:grid-cols-2">

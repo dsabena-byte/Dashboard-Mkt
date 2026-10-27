@@ -1,0 +1,181 @@
+"use client";
+
+// Mapa de Argentina por ZONA del maestro de tiendas (CB Trade / Floor Share). El maestro no tiene direcciones: la
+// ubicación más fina es la zona (CABA, AMBA Norte/Sur/Oeste, Rosario…), así que cada zona es una burbuja en su
+// ciudad de referencia y cada provincia toma el color de sus zonas. Zoom con rueda/botones y arrastre; el panel
+// suma SOLO lo que entra en la vista (Σ cumplidos ÷ Σ objetivo, no promedio de porcentajes).
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
+import { AR_PROVINCES } from "@/lib/argentina-provinces";
+
+export type MapaMetrica = { label: string; obj: number };
+export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]> };
+
+// Ciudad de referencia de cada zona (lat, lon) y su provincia en el mapa.
+const ZONAS: Record<string, { lat: number; lon: number; prov: string }> = {
+  "caba": { lat: -34.60, lon: -58.40, prov: "Capital Federal" },
+  "amba norte": { lat: -34.46, lon: -58.66, prov: "Buenos Aires" },
+  "amba oeste": { lat: -34.66, lon: -58.78, prov: "Buenos Aires" },
+  "amba sur": { lat: -34.82, lon: -58.36, prov: "Buenos Aires" },
+  "mar del plata": { lat: -38.00, lon: -57.55, prov: "Buenos Aires" },
+  "san nicolas": { lat: -33.33, lon: -60.22, prov: "Buenos Aires" },
+  "cordoba": { lat: -31.42, lon: -64.18, prov: "Cordoba" },
+  "rio cuarto": { lat: -33.12, lon: -64.35, prov: "Cordoba" },
+  "santa fe": { lat: -31.63, lon: -60.70, prov: "Santa Fe" },
+  "rosario": { lat: -32.95, lon: -60.65, prov: "Santa Fe" },
+  "entre rios": { lat: -31.73, lon: -60.53, prov: "Entre Rios" },
+  "tucuman": { lat: -26.82, lon: -65.22, prov: "Tucuman" },
+  "salta": { lat: -24.79, lon: -65.41, prov: "Salta" },
+  "jujuy": { lat: -24.19, lon: -65.30, prov: "Jujuy" },
+  "mendoza": { lat: -32.89, lon: -68.83, prov: "Mendoza" },
+  "lujan de cuyo": { lat: -33.04, lon: -68.88, prov: "Mendoza" },
+};
+const canon = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+// Proyección de los paths de lib/argentina-provinces (lineal; ajustada con los bordes de 8 provincias, error < 3 px).
+const px = (lon: number) => 26.08 * lon + 1918.77;
+const py = (lat: number) => -33.34 * lat - 728.1;
+
+type Caja = { x: number; y: number; w: number; h: number };
+const FULL: Caja = { x: 0, y: 0, w: 520, h: 1107 };
+const ZONAS_CAJA: Caja = { x: 110, y: 20, w: 400, h: 540 }; // de Jujuy a Mar del Plata: donde hay tiendas
+const VISTAS: Array<{ label: string; v: Caja }> = [
+  { label: "Zonas", v: ZONAS_CAJA },
+  { label: "País", v: FULL },
+  { label: "AMBA", v: { x: 380, y: 410, w: 50, h: 60 } },
+  { label: "Centro", v: { x: 230, y: 280, w: 230, h: 300 } },
+  { label: "NOA", v: { x: 150, y: 30, w: 180, h: 230 } },
+  { label: "Cuyo", v: { x: 80, y: 340, w: 150, h: 180 } },
+];
+
+// Semáforo de la app vieja: verde hasta −2 pp del objetivo, amarillo hasta −6, rojo debajo.
+const color = (v: number | null, obj: number) => (v == null ? "#94a3b8" : v - obj >= -2 ? "#16a34a" : v - obj >= -6 ? "#d97706" : "#dc2626");
+const tinte = (v: number | null, obj: number) => (v == null ? "#f1f5f9" : v - obj >= -2 ? "#dcfce7" : v - obj >= -6 ? "#fef3c7" : "#fee2e2");
+const pct = ([n, d]: [number, number]) => (d > 0 ? (n / d) * 100 : null);
+const suma = (xs: Array<[number, number]>): [number, number] => xs.reduce<[number, number]>((a, [n, d]) => [a[0] + n, a[1] + d], [0, 0]);
+
+export function MapaZonas({ titulo, puntos, metricas }: { titulo: string; puntos: MapaPunto[]; metricas: MapaMetrica[] }) {
+  // Vista = centro + ancho; el alto sale de la proporción REAL del recuadro (así lo que se ve = lo que suma el panel).
+  const [cam, setCam] = useState({ cx: ZONAS_CAJA.x + ZONAS_CAJA.w / 2, cy: ZONAS_CAJA.y + ZONAS_CAJA.h / 2, w: 0 });
+  const [asp, setAsp] = useState(1.5);
+  const [m, setM] = useState(0);
+  const [hover, setHover] = useState<string | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const drag = useRef<{ x: number; y: number; cam: typeof cam } | null>(null);
+  const encuadrar = (c: Caja, a = asp) => ({ cx: c.x + c.w / 2, cy: c.y + c.h / 2, w: Math.max(c.w, c.h * a) });
+  useEffect(() => {
+    const el = svgRef.current; if (!el) return;
+    const ro = new ResizeObserver(([e]) => { const r = e!.contentRect; if (r.width && r.height) setAsp(r.width / r.height); });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const w = cam.w || encuadrar(ZONAS_CAJA).w, h = w / asp;
+  const vb: Caja = { x: cam.cx - w / 2, y: cam.cy - h / 2, w, h };
+
+  const ubicados = useMemo(() => puntos.flatMap((p) => {
+    const z = ZONAS[canon(p.zona)];
+    return z ? [{ ...p, ...z, x: px(z.lon), y: py(z.lat) }] : [];
+  }), [puntos]);
+  const sinUbicar = puntos.filter((p) => !ZONAS[canon(p.zona)]).reduce((s, p) => s + p.tiendas, 0);
+  const porProv = useMemo(() => {
+    const out = new Map<string, Array<[number, number]>>();
+    for (const p of ubicados) out.set(p.prov, [...(out.get(p.prov) ?? []), p.vals[m]!]);
+    return new Map([...out].map(([k, v]) => [k, pct(suma(v))]));
+  }, [ubicados, m]);
+
+  const enVista = ubicados.filter((p) => p.x >= vb.x && p.x <= vb.x + vb.w && p.y >= vb.y && p.y <= vb.y + vb.h);
+  const escala = Math.min(1, vb.w / FULL.w); // las burbujas no crecen al hacer zoom
+  const maxT = Math.max(1, ...ubicados.map((p) => p.tiendas));
+
+  const aSvg = (x: number, y: number) => {
+    const r = svgRef.current!.getBoundingClientRect();
+    return { x: vb.x + ((x - r.left) / r.width) * vb.w, y: vb.y + ((y - r.top) / r.height) * vb.h };
+  };
+  // Zoom manteniendo fijo el punto (px, py) del mapa.
+  const zoom = (f: number, px0 = cam.cx, py0 = cam.cy) => {
+    const nw = Math.min(1200, Math.max(20, w * f));
+    setCam({ cx: px0 - (px0 - cam.cx) * (nw / w), cy: py0 - (py0 - cam.cy) * (nw / w), w: nw });
+  };
+  const onWheel = (e: WheelEvent<SVGSVGElement>) => { const p = aSvg(e.clientX, e.clientY); zoom(e.deltaY > 0 ? 1.25 : 0.8, p.x, p.y); };
+  const onDown = (e: PointerEvent<SVGSVGElement>) => { drag.current = { x: e.clientX, y: e.clientY, cam: { ...cam, w } }; (e.target as Element).setPointerCapture?.(e.pointerId); };
+  const onMove = (e: PointerEvent<SVGSVGElement>) => {
+    const d = drag.current; if (!d) return;
+    const r = svgRef.current!.getBoundingClientRect();
+    setCam({ ...d.cam, cx: d.cam.cx - ((e.clientX - d.x) / r.width) * vb.w, cy: d.cam.cy - ((e.clientY - d.y) / r.height) * vb.h });
+  };
+  const setVista = (c: Caja) => setCam(encuadrar(c));
+
+  const metrica = metricas[m]!;
+  const tot = suma(enVista.map((p) => p.vals[m]!));
+  return (
+    <section className="rounded-xl border bg-card p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-bold">🗺️ {titulo}</h3>
+        <div className="flex flex-wrap gap-1 text-xs">
+          {metricas.map((x, i) => (
+            <button key={x.label} onClick={() => setM(i)} className={`rounded-full border px-2.5 py-1 ${i === m ? "border-blue-700 bg-blue-700 text-white" : "hover:bg-muted"}`}>{x.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="relative">
+          <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
+            <button onClick={() => zoom(0.6)} className="rounded border bg-white px-2 text-sm shadow-sm" aria-label="Acercar">+</button>
+            <button onClick={() => zoom(1.6)} className="rounded border bg-white px-2 text-sm shadow-sm" aria-label="Alejar">−</button>
+          </div>
+          <div className="absolute right-2 top-2 z-10 flex flex-wrap justify-end gap-1">
+            {VISTAS.map((v) => <button key={v.label} onClick={() => setVista(v.v)} className="rounded border bg-white px-2 py-0.5 text-[11px] shadow-sm hover:bg-muted">{v.label}</button>)}
+          </div>
+          <svg
+            ref={svgRef} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} preserveAspectRatio="xMidYMid meet"
+            className="block h-[520px] w-full cursor-grab touch-none select-none rounded-lg bg-slate-50 active:cursor-grabbing"
+            onWheel={onWheel} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => (drag.current = null)} onPointerLeave={() => (drag.current = null)}
+            role="img" aria-label={`Mapa de ${titulo}`}
+          >
+            {AR_PROVINCES.map((p) => (
+              <path key={p.name} d={p.path} fill={tinte(porProv.get(p.name) ?? null, metrica.obj)} stroke="#cbd5e1" strokeWidth={0.6 * escala} />
+            ))}
+            {ubicados.map((p) => {
+              const v = pct(p.vals[m]!);
+              const r = (4 + 14 * Math.sqrt(p.tiendas / maxT)) * escala;
+              return (
+                <g key={p.zona} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)}>
+                  <circle cx={p.x} cy={p.y} r={r} fill={color(v, metrica.obj)} fillOpacity={0.75} stroke="#fff" strokeWidth={1.2 * escala} />
+                  {(escala < 0.45 || hover === p.zona) && (
+                    <text x={p.x + r + 2 * escala} y={p.y + 3 * escala} fontSize={9 * escala} fontWeight={600} fill="#0f172a">
+                      {p.zona} · {v == null ? "—" : `${v.toFixed(0)}%`}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Rueda del mouse o +/− para hacer zoom, arrastrá para moverte. Burbuja = zona del maestro de tiendas (tamaño = cantidad de tiendas, color = vs objetivo).
+            {sinUbicar > 0 ? ` ${sinUbicar} tiendas sin zona cargada no aparecen en el mapa.` : ""}
+          </p>
+        </div>
+        <div className="space-y-2 text-xs">
+          <div className="rounded-lg border p-3">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">En la vista</div>
+            <div className="mt-1 text-2xl font-bold" style={{ color: color(pct(tot), metrica.obj) }}>{pct(tot) == null ? "—" : `${pct(tot)!.toFixed(1)}%`}</div>
+            <div className="text-muted-foreground">{metrica.label} · objetivo {metrica.obj}% · {enVista.length} zonas · {enVista.reduce((s, p) => s + p.tiendas, 0)} tiendas</div>
+          </div>
+          <table className="w-full">
+            <thead><tr className="text-left text-muted-foreground"><th className="py-1">Zona</th><th className="text-right">Tiendas</th><th className="text-right">{metrica.label}</th></tr></thead>
+            <tbody>
+              {[...enVista].sort((a, b) => (pct(a.vals[m]!) ?? -1) - (pct(b.vals[m]!) ?? -1)).map((p) => {
+                const v = pct(p.vals[m]!);
+                return (
+                  <tr key={p.zona} className={`border-t ${hover === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)}>
+                    <td className="py-1">{p.zona}</td>
+                    <td className="text-right tabular-nums">{p.tiendas}</td>
+                    <td className="text-right font-semibold tabular-nums" style={{ color: color(v, metrica.obj) }}>{v == null ? "—" : `${v.toFixed(0)}%`}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}

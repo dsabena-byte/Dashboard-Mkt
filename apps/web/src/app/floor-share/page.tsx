@@ -11,6 +11,7 @@ import {
 import { getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-mirror";
 import { isoWeekToMes } from "@/lib/cb-queries";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
+import { MapaZonas } from "@/components/trade/mapa-zonas";
 import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
@@ -83,7 +84,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   let fetchError: string | null = null;
 
   if (isFsDefault(filter)) view = await getFsPrecomputed();
-  if (view && !view.byPromotor) view = null; // precálculo viejo (antes de promotor/supervisor) → se recalcula
+  if (view && (!view.byPromotor || !view.byZona)) view = null; // precálculo viejo (sin promotor/zona) → se recalcula
 
   if (!view) {
     try {
@@ -198,6 +199,15 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               </div>
             )}
           </section>
+
+          <MapaZonas
+            titulo="Floor Share por zona"
+            metricas={[{ label: "General", obj: Number(genObj.toFixed(1)) }, { label: "Lavado", obj: OBJ.lavado }, { label: "Refrigeración", obj: OBJ.refri }, { label: "Cocción", obj: OBJ.coccion }]}
+            puntos={(v.byZona ?? []).map((z) => ({
+              zona: z.cliente, tiendas: z.tiendas,
+              vals: [z.total, z.lavado, z.refri, z.coccion].map((b) => [b.drean_units, b.total_units] as [number, number]),
+            }))}
+          />
 
           <section className="grid gap-4 xl:grid-cols-2">
             <AggTable titulo="🏢 Performance por cliente" columna="Cliente" totalLabel="FLOORSHARE TOTAL" subtitulo={sub} cols={fsCols(OBJ)}
