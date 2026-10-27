@@ -144,17 +144,17 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
   return {
     puntos,
     metricas: [
-      { grupo: "CB Sell In (ventas)", corto: "General", label: "CB Sell In", obj: OBJETIVO_SELLIN, porCuenta: true },
-      { grupo: "CB Sell In (ventas)", corto: "Infaltables", label: "CB Sell In Infaltables", obj: OBJETIVO_SELLIN, porCuenta: true },
-      { grupo: "CB Sell In (ventas)", corto: "Estratégicos", label: "CB Sell In Estratégicos", obj: OBJETIVO_SELLIN, porCuenta: true },
-      { grupo: "CB Trade", corto: "General", label: "CB Trade", obj: OBJ_CB },
+      { grupo: "CB Sell In", corto: "CB Sell In", label: "CB Sell In", obj: OBJETIVO_SELLIN, porCuenta: true },
+      { grupo: "CB Sell In", corto: "Infaltables", label: "CB Sell In Infaltables", obj: OBJETIVO_SELLIN, porCuenta: true },
+      { grupo: "CB Sell In", corto: "Estratégicos", label: "CB Sell In Estratégicos", obj: OBJETIVO_SELLIN, porCuenta: true },
+      { grupo: "CB Trade", corto: "CB Trade", label: "CB Trade", obj: OBJ_CB },
       { grupo: "CB Trade", corto: "Infaltables", label: "CB Trade Infaltables", obj: OBJ_CB },
       { grupo: "CB Trade", corto: "Estratégicos", label: "CB Trade Estratégicos", obj: OBJ_CB },
-      { grupo: "Floor Share", corto: "General", label: "FS general", obj: r1(obj?.general ?? 0) },
+      { grupo: "Floor Share", corto: "Floor Share", label: "FS general", obj: r1(obj?.general ?? 0) },
       { grupo: "Floor Share", corto: "Lavado", label: "FS Lavado", obj: obj?.lavado ?? 0 },
       { grupo: "Floor Share", corto: "Refrigeración", label: "FS Refrigeración", obj: obj?.refri ?? 0 },
       { grupo: "Floor Share", corto: "Cocción", label: "FS Cocción", obj: obj?.coccion ?? 0 },
-      { grupo: "Exhibición especial", corto: "Sí / No", label: "Exhibición especial", obj: 100, binaria: true },
+      { grupo: "Exhibición especial", corto: "Exhibición especial", label: "Exhibición especial", obj: 100, binaria: true },
     ],
     nota: [
       !fs ? "Floor Share no disponible." : !cb ? "Cuadro Básico no disponible." : obj ? `Meta FS de ${MESES_FS[obj.mesIdx]} ${obj.anio}.` : null,
