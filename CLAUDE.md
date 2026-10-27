@@ -594,7 +594,7 @@ reporte_existencia/cb_homologos).
   161 asignadas (96 por dirección), 184 fuera del relevamiento ubicadas por su dirección/ciudad (Georef). Alias de cadenas en el script
   (MUSIMUNDO (EMSA) → On City/Megatone, BLAS MARTINUCCI → Novogar, 5 H → Cravero…). El mapa suma la 8ª variable (sí/no por tienda +
   ficha con mueble y fotos) y muestra TODAS las variables a la vez (resumen de la vista + tabla con una columna por variable; pedido
-  del user). Inactiva = RETIRADO / PDV CERRADO. PRÓXIMO: CB Ventas por cliente (`vt_clientes` ↔ `tr_cadenas.cliente`).
+  del user). Inactiva = RETIRADO / PDV CERRADO. **CB Sell In en el Heat Map (27-oct, pedido del user):** 9ª métrica «CB Sell In (ventas)» = CB Ventas del cliente de la tienda (tienda → `tr_cadenas.cliente` → % de `calcularPorcentajes` con el alcance de `getCbVentasDatos`; sin acceso a CB Ventas → vacío + nota); `porCuenta` = cada cliente cuenta UNA vez en los totales. Las de Trade se renombraron «CB Trade…». Pestaña «Mapa» → «Heat Map». Cobertura 27-oct: 348/599 tiendas con dirección tienen cliente SAP (13 clientes).
   **Fotos (27-oct, 0143 aplicada, `tr_exhibiciones.fotos`):** las carpetas de Drive de la planilla son públicas → se listan sin credenciales
   (`drive.google.com/embeddedfolderview?id=`) y cada foto se baja con `drive.google.com/thumbnail?id=<id>&sz=w1200` y se copia al bucket
   público `meta-thumbs/exhibiciones/<id>/<fileId>.jpg` (máx 6 por activación; script one-off en el scratchpad, no hay cron). Se ven SOLO en la

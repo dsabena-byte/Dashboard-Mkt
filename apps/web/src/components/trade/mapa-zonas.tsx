@@ -9,9 +9,10 @@ import { AR_PROVINCES } from "@/lib/argentina-provinces";
 import { FotosGaleria } from "@/components/trade/exhibicion-fotos";
 
 /** `binaria` = sí/no por tienda (ej. exhibición especial): el % de la vista = tiendas con ÷ tiendas con dato. */
-export type MapaMetrica = { label: string; obj: number; binaria?: boolean };
+export type MapaMetrica = { label: string; obj: number; binaria?: boolean; porCuenta?: boolean };
+// `porCuenta` = el dato es del cliente (CB Sell In): cada tienda muestra el de su cliente y los totales cuentan una vez por cliente.
 /** `detalle` = líneas extra de la ficha (ej. exhibición especial con link a las fotos). */
-export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]>; detalle?: Array<{ label: string; valor: string; href?: string; fotos?: string[] }> };
+export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]>; cuenta?: string | null; detalle?: Array<{ label: string; valor: string; href?: string; fotos?: string[] }> };
 
 // Ciudad de referencia de cada zona (lat, lon) y su provincia en el mapa.
 const ZONAS: Record<string, { lat: number; lon: number; prov: string }> = {
@@ -63,6 +64,13 @@ const tinte = (v: number | null, obj: number) => (v == null ? "#f1f5f9" : v - ob
 const fmt = (v: number | null, x: MapaMetrica) => (v == null ? "—" : x.binaria ? (v > 0 ? "Sí" : "No") : `${v.toFixed(0)}%`);
 const pct = ([n, d]: [number, number]) => (d > 0 ? (n / d) * 100 : null);
 const suma = (xs: Array<[number, number]>): [number, number] => xs.reduce<[number, number]>((a, [n, d]) => [a[0] + n, a[1] + d], [0, 0]);
+/** Suma de la métrica i sobre los puntos; si es por cliente, cada cliente cuenta una sola vez. */
+const sumaMetrica = (ps: Array<Pick<MapaPunto, "vals" | "cuenta">>, i: number, x: MapaMetrica): [number, number] => {
+  if (!x.porCuenta) return suma(ps.map((p) => p.vals[i]!));
+  const vistos = new Map<string, [number, number]>();
+  for (const p of ps) if (p.cuenta && (p.vals[i]?.[1] ?? 0) > 0) vistos.set(p.cuenta, p.vals[i]!);
+  return suma([...vistos.values()]);
+};
 
 export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   titulo: string; puntos: MapaPunto[]; metricas: MapaMetrica[]; nota?: string | null; inicial?: number;
@@ -101,10 +109,10 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const sinUbicar = puntos.filter((p) => !tiendaGeo(p.zona) && !ZONAS[canon(p.zona)]).reduce((s, p) => s + p.tiendas, 0);
   const nTiendas = ubicados.filter((p) => p.tienda).length;
   const porProv = useMemo(() => {
-    const out = new Map<string, Array<[number, number]>>();
-    for (const p of ubicados) out.set(p.prov, [...(out.get(p.prov) ?? []), p.vals[m]!]);
-    return new Map([...out].map(([k, v]) => [k, pct(suma(v))]));
-  }, [ubicados, m]);
+    const out = new Map<string, typeof ubicados>();
+    for (const p of ubicados) out.set(p.prov, [...(out.get(p.prov) ?? []), p]);
+    return new Map([...out].map(([k, v]) => [k, pct(sumaMetrica(v, m, metricas[m]!))]));
+  }, [ubicados, m, metricas]);
 
   const enVistaTodos = ubicados.filter((p) => p.x >= vb.x && p.x <= vb.x + vb.w && p.y >= vb.y && p.y <= vb.y + vb.h);
   const escala = Math.min(1, vb.w / FULL.w); // las burbujas no crecen al hacer zoom
@@ -224,12 +232,12 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
               <tbody>
                 {metricas.map((x, i) => {
                   const con = enVistaTodos.filter((p) => (p.vals[i]?.[1] ?? 0) > 0);
-                  const v = pct(suma(con.map((p) => p.vals[i]!)));
+                  const v = pct(sumaMetrica(con, i, x));
                   return (
                     <tr key={x.label} onClick={() => setM(i)} className={`cursor-pointer border-t ${i === m ? "bg-blue-50" : "hover:bg-muted"}`}>
                       <td className="py-1">{x.label}</td>
                       <td className="text-right text-base font-bold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "—" : `${v.toFixed(1)}%`}</td>
-                      <td className="pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : `obj ${x.obj}%`}</td>
+                      <td className="pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : x.porCuenta ? `${new Set(con.map((p) => p.cuenta)).size} clientes · obj ${x.obj}%` : `obj ${x.obj}%`}</td>
                     </tr>
                   );
                 })}
