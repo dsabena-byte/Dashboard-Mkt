@@ -15,6 +15,30 @@ piezas pautadas y embudo de video.
 >
 > **Google Search NO está en DV360** (vive en Google Ads) → no se incluye.
 
+## 🔁 Oct-2026: sync por API (reemplaza a syncDv360 / syncDv360Reach del Apps Script)
+
+**Cron `/api/cron/dv360-sync`** (workflow `dv360-sync.yml`, diario 08:10 ART + manual con `dry`/`meses`/`desde`/`force`).
+En vez de leer el CSV del mail, corre en la **Bid Manager API v2** (`doubleclickbidmanager.googleapis.com/v2`) dos
+consultas guardadas con las MISMAS dimensiones/métricas que los reportes programados (creatives: Date, Creative, Line Item,
+Line Item Status + Impressions/Clicks/Revenue (USD)/Starts/Skips/cuartiles; reach: Month, Line Item + Impressions/Revenue/
+Unique Reach: Impression Reach/Average Impression Frequency), filtradas por partner 7996192225 + anunciante 8003891470, con
+rango EXPLÍCITO de meses calendario completos (el en curso hasta ayer, hora AR). Las consultas se crean una vez y se
+reusan por título (`dashboard-mkt dv360-sync creatives|reach v1 (…)`). Agregación/clasificación = port literal del Apps
+Script en `apps/web/src/lib/dv360-report.ts` (test de paridad `npx tsx scripts/dv360-report.test.ts`, CSV sintético).
+`source = 'dv360_api'` (el script escribía `dv360_scheduled`; ningún lector usa la columna).
+
+- **Fix clave:** un mes se escribe solo si el reporte lo cubre entero y NO trae >2% menos impresiones o inversión que
+  lo guardado; si no, queda `bloqueado` (log + warning en el workflow) salvo `?force=1`. Escritura = upsert por PK y
+  después borra las claves del mes que ya no vienen (si el upsert falla, no se pierde nada).
+- **Auth:** `DV360_REFRESH_TOKEN` (si existe) o `GOOGLE_REFRESH_TOKEN`, con `GOOGLE_CLIENT_ID/SECRET`; se usa el primero
+  que tenga el scope `https://www.googleapis.com/auth/doubleclickbidmanager`. Sin él → `estado: "no_scope"`. Otros estados:
+  `api_no_habilitada`, `sin_acceso`, `token_invalido`, `consulta_invalida`, `cuota`, `reporte_fallido`, `timeout`.
+  `dv360-thumbs` usa el mismo helper (`lib/dv360-oauth.ts`) con scope `display-video`.
+- **Puesta en marcha:** (1) habilitar "DoubleClick Bid Manager API" en el proyecto de Cloud del OAuth client; (2) token con
+  el scope `doubleclickbidmanager` (sumarlo al GOOGLE_REFRESH_TOKEN conservando los actuales, o crear DV360_REFRESH_TOKEN);
+  (3) Actions → "DV360 sync" → `dry=1` y comparar por mes guardado vs API; (4) recién ahí correrlo sin dry y **apagar los
+  triggers de `syncDv360`/`syncDv360Reach`** en el Apps Script (si no, el mail parcial puede volver a pisar).
+
 ## ⚠️ Actualización 2026-06-23 (leer antes de tocar nada)
 
 Diagnóstico completo de "Programmatic figura $0 en junio" — **resuelto**, y la

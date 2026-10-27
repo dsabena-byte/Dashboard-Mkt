@@ -10,6 +10,7 @@ import {
   type Dv360ThumbEntry,
   type Dv360ThumbManifest,
 } from "@/lib/dv360-thumbs-shared";
+import { dv360AccessToken } from "@/lib/dv360-oauth";
 
 // Miniaturas de las piezas de DV360 (SOLO LECTURA de la Display & Video 360 API).
 // Los números de DV360 NO cambian: siguen llegando del reporte de OMD (Apps Script → dv360_creatives), que solo
@@ -28,23 +29,6 @@ export const maxDuration = 300;
 const API = "https://displayvideo.googleapis.com/v4";
 const CONCURRENCY = 6;
 const DRY_SAMPLE = 8;
-
-async function accessToken(): Promise<{ token: string; scopes: string[] }> {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID ?? "",
-      client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN ?? "",
-      grant_type: "refresh_token",
-    }),
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`OAuth refresh ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = (await res.json()) as { access_token: string; scope?: string };
-  return { token: data.access_token, scopes: (data.scope ?? "").split(" ").filter(Boolean) };
-}
 
 async function listCreatives(token: string, adv: string): Promise<Dv360ApiCreative[]> {
   const out: Dv360ApiCreative[] = [];
@@ -108,9 +92,9 @@ export async function GET(request: Request) {
   const adv = url.searchParams.get("adv") || DV360_ADVERTISER_ID;
   const t0 = Date.now();
   try {
-    const { token, scopes } = await accessToken();
-    if (!scopes.some((s) => s.endsWith("/display-video"))) {
-      return NextResponse.json({ ok: false, estado: "no_scope", error: "GOOGLE_REFRESH_TOKEN sin scope display-video" }, { status: 500 });
+    const { token, tieneScope } = await dv360AccessToken("/display-video");
+    if (!tieneScope) {
+      return NextResponse.json({ ok: false, estado: "no_scope", error: "Ni DV360_REFRESH_TOKEN ni GOOGLE_REFRESH_TOKEN tienen el scope display-video" }, { status: 500 });
     }
     const creatives = await listCreatives(token, adv);
     const porTipo: Record<string, number> = {};
