@@ -76,6 +76,9 @@ export const normHeader = (h: string): string =>
   (h ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[\s_\-]+/g, " ").trim();
 
 /** Clave de cadena/tienda: MAYÚSCULAS, sin acentos, espacios simples. "Chango Mas" = "CHANGO MÁS". */
+/** SKU sin ceros a la izquierda (SAP exporta "000000000700200382" y otros archivos "700200382": es el mismo). */
+export const normSku = (s: string | null): string | null => (s ? s.replace(/^0+(?=.)/, "") : s);
+
 export const normClave = (s: string | null | undefined): string =>
   (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 
@@ -181,7 +184,7 @@ export function parseCb(grid: string[][]): Parseo<FilaCb> {
   let recortes = 0;
   for (const o of aObjetos(grid)) {
     const tienda = pick(o, ["tienda hmpdv", "tienda"]);
-    const sku = pick(o, ["sku mabe", "sku"]);
+    const sku = normSku(pick(o, ["sku mabe", "sku"]));
     if (!tienda || !sku) continue;
     const tu = tienda.toUpperCase();
     if (tu === "TOTAL" || tu.startsWith("TOTAL ") || tu === "SUBTOTAL" || sku.toUpperCase() === "TOTAL") continue;
@@ -270,7 +273,7 @@ export function parseU3(grid: string[][]): Parseo<FilaU3> {
     const c = (i: number) => (i >= 0 ? (row[i] ?? "").trim() || null : null);
     byId.set(id, {
       id, fecha_captura: fecha(row[iFecha]), numero_tienda: c(iNum), tienda: c(iTi), cadena: c(iCad), formato: c(iFormato),
-      canal: c(iCanal), division: c(iDiv), categoria: c(iCat), subcategoria: c(iSub), marca: c(iMarca), sku: c(iSku),
+      canal: c(iCanal), division: c(iDiv), categoria: c(iCat), subcategoria: c(iSub), marca: c(iMarca), sku: normSku(c(iSku)),
       ean: c(iEan), descripcion: c(iDesc), existencia: parseInt(row[iEx] ?? "", 10) || 0, estado: c(iEst),
       promotor: c(iProm), supervisor: c(iSup),
     });
@@ -298,7 +301,7 @@ export function parseExh(grid: string[][]): Parseo<FilaExh> {
   for (let r = 1; r < grid.length; r++) {
     const row = grid[r]!;
     const c = (i: number) => (i >= 0 ? (row[i] ?? "").trim() || null : null);
-    const tienda = c(iTi), sku = c(iSku);
+    const tienda = c(iTi), sku = normSku(c(iSku));
     if (!tienda || !sku) continue;
     filas.push({
       tienda, numero_tienda: c(iNum) ?? splitTienda(tienda)?.numero ?? null, cadena: c(iCad), formato: c(iFor), canal: c(iCanal),
