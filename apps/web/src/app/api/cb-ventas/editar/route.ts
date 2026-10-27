@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 import { exigirEdicion, getMiPerfil } from "@/lib/usuarios-server";
-import { auditarCbv, leerCatalogo, leerClientes, svc } from "@/lib/cb-ventas/server";
-import { CATEGORIAS, limpiarHomologos, parseCatalogo, parseClasificacion, TIPOLOGIAS } from "@/lib/cb-ventas/core";
+import { auditarCbv, svc } from "@/lib/cb-ventas/server";
+import { CATEGORIAS, limpiarHomologos, TIPOLOGIAS } from "@/lib/cb-ventas/core";
+import { hoyAR, planEdicion } from "@/lib/cb-ventas/vigencia";
 import type { Categoria, TipoCB, Tipologia } from "@/lib/cb-ventas/types";
 
 // Edición puntual de CB Ventas (solo quien edita el área trade: es_editor o admin). Todo queda en vt_auditoria.
 //   cliente_guardar { cliente, tipologia, vendedor, gerencia, peso (0..1), id_sap } · cliente_borrar { cliente }
-//   clientes_csv { csv, confirmar? }   → Clasificacion-clientes-*.csv: vista previa o reemplazo de la lista
 //   catalogo_agregar { tipologia, cliente|null, categoria, tipo, modelo, homologos[] }
 //   catalogo_guardar { id, tipo, modelo, homologos[] } · catalogo_borrar { id }
-//   catalogo_csv { csv, confirmar? }   → Cuadros Basicos-*-hom.csv: vista previa o reemplazo del catálogo
+// Catálogo con VIGENCIA (0140): lo que ya valió en un mes pasado nunca se pisa ni se borra; se cierra al fin del mes
+// anterior y el cambio nace el 1º de este mes (lib/cb-ventas/vigencia.ts). Ya no hay subida de CSV (pedido del dueño).
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const err = (error: string, status = 400) => NextResponse.json({ error }, { status });
+const TIPOS: TipoCB[] = ["INFALTABLE", "ESTRATEGICO"];
+const SIN_VIGENCIA = "Falta correr la migración 0140_cb_ventas_vigencia.sql: sin ella, editar el cuadro básico cambiaría los meses pasados.";
 const txt = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 export async function POST(request: Request) {
@@ -57,82 +60,76 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (accion === "clientes_csv") {
-    const filas = parseClasificacion(txt(b.csv, 2_000_000));
-    const vistos = new Set<string>();
-    const unicas = filas.filter((f) => f.cliente && !vistos.has(f.cliente) && vistos.add(f.cliente));
-    if (!unicas.length) return err("No encontré clientes con tipología válida (columnas ID, CLIENTE, PESO FACTURACION, TIPOLOGIA, VENDEDOR, GERENCIA).");
-    const antes = await leerClientes(s);
-    const resumen = { filas: unicas.length, repetidos: filas.length - unicas.length, antes: antes.length, nuevos: unicas.filter((f) => !antes.some((a) => a.cliente === f.cliente)).length, salen: antes.filter((a) => !vistos.has(a.cliente)).length };
-    if (b.confirmar !== true) return NextResponse.json({ ok: true, vistaPrevia: resumen });
-    const now = new Date().toISOString();
-    const rows = unicas.map((f, i) => ({ cliente: f.cliente, id_sap: f.id || null, tipologia: f.tipologia, vendedor: f.vendedor, gerencia: f.gerente, peso: f.pesoFacturacion, orden: i, updated_at: now, updated_by: actor }));
-    const up = await s.from("vt_clientes").upsert(rows, { onConflict: "cliente" });
-    if (up.error) return err(up.error.message, 500);
-    const salen = antes.filter((a) => !vistos.has(a.cliente)).map((a) => a.cliente);
-    if (salen.length) {
-      const del = await s.from("vt_clientes").delete().in("cliente", salen);
-      if (del.error) return err(del.error.message, 500);
-    }
-    await auditarCbv(s, actor, "clientes", "importar_csv", { filas: antes.length }, resumen);
-    return NextResponse.json({ ok: true, resumen });
-  }
+  if (accion.startsWith("catalogo_")) {
+    // Vigencia (0140): sin las columnas, editar cambiaría TODOS los meses pasados → se bloquea hasta correrla.
+    const probe = await s.from("vt_cb_catalogo").select("vigente_desde").limit(1);
+    if (probe.error) return err(probe.error.code === "42703" ? SIN_VIGENCIA : probe.error.message, probe.error.code === "42703" ? 409 : 500);
+    const hoy = hoyAR();
+    const nuevoDesde = `${hoy.slice(0, 7)}-01`;
+    const homs = (modelo: string) => limpiarHomologos(modelo, Array.isArray(b.homologos) ? b.homologos.map((h) => txt(h, 80)) : []);
+    const ahora = new Date().toISOString();
 
-  if (accion === "catalogo_agregar") {
-    const tipologia = txt(b.tipologia) as Tipologia;
-    const categoria = txt(b.categoria) as Categoria;
-    const tipo = txt(b.tipo) as TipoCB;
-    const modelo = txt(b.modelo, 80);
-    if (!TIPOLOGIAS.includes(tipologia) || !CATEGORIAS.includes(categoria) || !["INFALTABLE", "ESTRATEGICO"].includes(tipo) || !modelo) {
-      return err("Completá tipología, categoría, tipo y modelo.");
-    }
-    const homologos = limpiarHomologos(modelo, Array.isArray(b.homologos) ? b.homologos.map((h) => txt(h, 80)) : []);
-    const fila = { tipologia, cliente: txt(b.cliente) || null, categoria, tipo, modelo, homologos, orden: 100000, updated_at: new Date().toISOString(), updated_by: actor };
-    const { data, error } = await s.from("vt_cb_catalogo").insert(fila).select("id").single();
-    if (error) return err(error.message, 500);
-    await auditarCbv(s, actor, "catalogo", "alta", null, { id: (data as { id: number }).id, ...fila });
-    return NextResponse.json({ ok: true });
-  }
-
-  if (accion === "catalogo_guardar" || accion === "catalogo_borrar") {
-    const id = Number(b.id);
-    const { data: antes } = await s.from("vt_cb_catalogo").select("*").eq("id", id).maybeSingle();
-    if (!antes) return err("Ese renglón no existe.", 404);
-    if (accion === "catalogo_borrar") {
-      const { error } = await s.from("vt_cb_catalogo").delete().eq("id", id);
+    if (accion === "catalogo_agregar") {
+      const tipologia = txt(b.tipologia) as Tipologia;
+      const categoria = txt(b.categoria) as Categoria;
+      const tipo = txt(b.tipo) as TipoCB;
+      const modelo = txt(b.modelo, 80);
+      if (!TIPOLOGIAS.includes(tipologia) || !CATEGORIAS.includes(categoria) || !TIPOS.includes(tipo) || !modelo) {
+        return err("Completá categoría, tipo y el código del modelo.");
+      }
+      const cliente = txt(b.cliente) || null;
+      let dup = s.from("vt_cb_catalogo").select("id").eq("tipologia", tipologia).eq("modelo", modelo).is("vigente_hasta", null);
+      dup = cliente ? dup.eq("cliente", cliente) : dup.is("cliente", null);
+      const { data: ya } = await dup.limit(1);
+      if (ya?.length) return err(`${modelo} ya está en este cuadro básico.`);
+      // Nace el 1º de este mes: los meses pasados no lo tenían.
+      const fila = { tipologia, cliente, categoria, tipo, modelo, homologos: homs(modelo), orden: 100000, vigente_desde: nuevoDesde, updated_at: ahora, updated_by: actor };
+      const { data, error } = await s.from("vt_cb_catalogo").insert(fila).select("id").single();
       if (error) return err(error.message, 500);
-      await auditarCbv(s, actor, "catalogo", "baja", antes, null);
+      await auditarCbv(s, actor, "catalogo", "alta", null, { id: (data as { id: number }).id, ...fila });
       return NextResponse.json({ ok: true });
     }
-    const tipo = txt(b.tipo) as TipoCB;
-    const modelo = txt(b.modelo, 80);
-    if (!["INFALTABLE", "ESTRATEGICO"].includes(tipo) || !modelo) return err("Tipo o modelo inválido.");
-    const cambios = { tipo, modelo, homologos: limpiarHomologos(modelo, Array.isArray(b.homologos) ? b.homologos.map((h) => txt(h, 80)) : []), updated_at: new Date().toISOString(), updated_by: actor };
-    const { error } = await s.from("vt_cb_catalogo").update(cambios).eq("id", id);
-    if (error) return err(error.message, 500);
-    await auditarCbv(s, actor, "catalogo", "editar", antes, { ...antes, ...cambios });
-    return NextResponse.json({ ok: true });
-  }
 
-  if (accion === "catalogo_csv") {
-    const filas = parseCatalogo(txt(b.csv, 2_000_000));
-    if (!filas.length) return err("No encontré renglones válidos (columnas TIPOLOGIA, CLIENTE, CUADRO BASICO, CATEGORIA, MODELO, HOMOLOGO 1…).");
-    const antes = await leerCatalogo(s);
-    const resumen = { renglones: filas.length, antes: antes.length, clientes: new Set(filas.map((f) => f.cliente ?? `(${f.tipologia})`)).size, modelos: new Set(filas.map((f) => f.modelo)).size };
-    if (b.confirmar !== true) return NextResponse.json({ ok: true, vistaPrevia: resumen });
-    const now = new Date().toISOString();
-    // Primero se inserta lo nuevo y después se borra lo viejo: si algo falla, nunca queda vacío.
-    const ins = await s.from("vt_cb_catalogo").insert(filas.map((f) => ({ ...f, updated_at: now, updated_by: actor })));
-    if (ins.error) return err(ins.error.message, 500);
-    if (antes.length) {
-      const ids = antes.map((a) => a.id!);
-      for (let i = 0; i < ids.length; i += 500) {
-        const del = await s.from("vt_cb_catalogo").delete().in("id", ids.slice(i, i + 500));
-        if (del.error) return err(`Se cargó el catálogo nuevo pero no se pudo borrar el anterior: ${del.error.message}`, 500);
+    if (accion === "catalogo_guardar" || accion === "catalogo_borrar") {
+      const id = Number(b.id);
+      const { data: antes } = await s.from("vt_cb_catalogo").select("*").eq("id", id).maybeSingle();
+      if (!antes) return err("Ese renglón no existe.", 404);
+      const row = antes as Record<string, unknown> & { vigente_desde: string | null; vigente_hasta: string | null };
+      if (row.vigente_hasta) return err("Ese renglón ya no está vigente (es historia): no se edita.");
+      const plan = planEdicion({ desde: row.vigente_desde }, hoy);
+
+      if (accion === "catalogo_borrar") {
+        // Nació este mes → se borra. Si ya valió en un mes pasado → se cierra al fin del mes anterior (la historia queda).
+        const r = plan.modo === "en_lugar"
+          ? await s.from("vt_cb_catalogo").delete().eq("id", id)
+          : await s.from("vt_cb_catalogo").update({ vigente_hasta: plan.hasta, updated_at: ahora, updated_by: actor }).eq("id", id);
+        if (r.error) return err(r.error.message, 500);
+        await auditarCbv(s, actor, "catalogo", "baja", antes, plan.modo === "en_lugar" ? null : { ...row, vigente_hasta: plan.hasta });
+        return NextResponse.json({ ok: true });
       }
+
+      const tipo = txt(b.tipo) as TipoCB;
+      const modelo = txt(b.modelo, 80);
+      if (!TIPOS.includes(tipo) || !modelo) return err("El modelo no puede quedar vacío y el tipo es Infaltable o Estratégico.");
+      const cambios = { tipo, modelo, homologos: homs(modelo), updated_at: ahora, updated_by: actor };
+      if (plan.modo === "en_lugar") {
+        const { error } = await s.from("vt_cb_catalogo").update(cambios).eq("id", id);
+        if (error) return err(error.message, 500);
+        await auditarCbv(s, actor, "catalogo", "editar", antes, { ...row, ...cambios });
+        return NextResponse.json({ ok: true });
+      }
+      // Primero la versión nueva (desde el 1º de este mes) y después se cierra la vieja; si el cierre falla, se deshace.
+      const nueva = { tipologia: row.tipologia, cliente: row.cliente, categoria: row.categoria, orden: row.orden, ...cambios, vigente_desde: plan.desde, vigente_hasta: null };
+      const ins = await s.from("vt_cb_catalogo").insert(nueva).select("id").single();
+      if (ins.error) return err(ins.error.message, 500);
+      const cierre = await s.from("vt_cb_catalogo").update({ vigente_hasta: plan.hasta }).eq("id", id);
+      if (cierre.error) {
+        await s.from("vt_cb_catalogo").delete().eq("id", (ins.data as { id: number }).id);
+        return err(cierre.error.message, 500);
+      }
+      await auditarCbv(s, actor, "catalogo", "editar", antes, { cerrado: { id, vigente_hasta: plan.hasta }, nuevo: { id: (ins.data as { id: number }).id, ...nueva } });
+      return NextResponse.json({ ok: true });
     }
-    await auditarCbv(s, actor, "catalogo", "importar_csv", { renglones: antes.length }, resumen);
-    return NextResponse.json({ ok: true, resumen });
   }
 
   return err("Acción desconocida.");

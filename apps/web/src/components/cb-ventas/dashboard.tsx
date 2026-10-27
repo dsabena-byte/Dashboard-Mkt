@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import {
   AlertTriangle, Trophy, Building2, BarChart3, ChevronUp, ChevronDown, Minus,
-  RotateCcw, Users, Target, FileText, CheckCircle2, Clock, XCircle, TrendingUp,
+  RotateCcw, FileText, CheckCircle2, Clock, XCircle, TrendingUp,
 } from "lucide-react";
 import type {
   CuadroBasicoItem, ClasificacionCliente, VentaRow, VentasFile, Tipologia,
@@ -22,6 +22,8 @@ import {
   mesEnCursoDe,
   type VentanaCtx,
 } from "@/lib/cb-ventas/metrics";
+import { KpiObjCard } from "@/components/trade/kpi-obj-card";
+import { hoyAR, vigenteEnFecha, vigenteEnMes } from "@/lib/cb-ventas/vigencia";
 import { AnalisisCB, type AnalisisData, type SegAnalisis } from "./analisis";
 
 const OBJETIVO = 80;
@@ -65,7 +67,7 @@ type Filters = {
   cliente: string;
 };
 
-export default function CbVentasDashboard({ cuadroBasico, clasificacion, ventas, user, vista }: Props) {
+export default function CbVentasDashboard({ cuadroBasico: cuadroBasicoTodo, clasificacion, ventas, user, vista }: Props) {
   const isVendedor = user?.rol === "vendedor";
   const lockedVendedor = isVendedor ? user!.vendedor : null;
   const vendedorPorCliente = useMemo(() => {
@@ -88,11 +90,6 @@ export default function CbVentasDashboard({ cuadroBasico, clasificacion, ventas,
     () => [...new Set(clasificacion.map((c) => c.gerente))],
     [clasificacion],
   );
-  const CLIENTES_UNICOS = useMemo(
-    () => [...new Set(cuadroBasico.map((c) => c.cliente))],
-    [cuadroBasico],
-  );
-
   const [filters, setFilters] = useState<Filters>({
     mes: [],
     categoria: "TODAS",
@@ -101,6 +98,20 @@ export default function CbVentasDashboard({ cuadroBasico, clasificacion, ventas,
     tipologia: [],
     cliente: "TODOS",
   });
+
+  // Vigencia (0140): el cuadro básico "de ahora" = el que vale hoy, o el del último mes elegido en el filtro de MES.
+  // La evolución mensual recibe toda la historia y usa en cada mes lo que valía en ese mes.
+  const cuadroBasico = useMemo(() => {
+    if (!filters.mes.length) { const hoy = hoyAR(); return cuadroBasicoTodo.filter((i) => vigenteEnFecha(i, hoy)); }
+    const anio = new Date(ventas.generatedAt).getFullYear();
+    const mes = Math.max(...filters.mes.map(Number));
+    return cuadroBasicoTodo.filter((i) => vigenteEnMes(i, anio, mes));
+  }, [cuadroBasicoTodo, filters.mes, ventas.generatedAt]);
+  const CLIENTES_UNICOS = useMemo(
+    () => [...new Set(cuadroBasico.map((c) => c.cliente))],
+    [cuadroBasico],
+  );
+
   const [clienteSeleccionado, setClienteSeleccionado] = useState<string | null>(null);
 
   const updateFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
@@ -186,18 +197,25 @@ export default function CbVentasDashboard({ cuadroBasico, clasificacion, ventas,
     [ventas.rows, filters.mes, filters.vendedor, vendedorPorCliente],
   );
 
+  const pasaFiltros = (item: CuadroBasicoItem) => {
+    if (filters.categoria !== "TODAS" && item.categoria !== filters.categoria) return false;
+    if (filters.tipologia.length > 0 && !filters.tipologia.includes(item.tipologia)) return false;
+    if (filters.cliente !== "TODOS" && item.cliente !== filters.cliente) return false;
+    const v = vendedorPorCliente.get(item.cliente);
+    if (filters.vendedor !== "TODOS" && v !== filters.vendedor) return false;
+    if (filters.gerente !== "TODOS" && (v ? gerentePorVendedor.get(v) : undefined) !== filters.gerente) return false;
+    return true;
+  };
   const cbFiltrado = useMemo(
-    () =>
-      cuadroBasico.filter((item) => {
-        if (filters.categoria !== "TODAS" && item.categoria !== filters.categoria) return false;
-        if (filters.tipologia.length > 0 && !filters.tipologia.includes(item.tipologia)) return false;
-        if (filters.cliente !== "TODOS" && item.cliente !== filters.cliente) return false;
-        const v = vendedorPorCliente.get(item.cliente);
-        if (filters.vendedor !== "TODOS" && v !== filters.vendedor) return false;
-        if (filters.gerente !== "TODOS" && (v ? gerentePorVendedor.get(v) : undefined) !== filters.gerente) return false;
-        return true;
-      }),
+    () => cuadroBasico.filter(pasaFiltros),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [cuadroBasico, filters, vendedorPorCliente, gerentePorVendedor],
+  );
+  // Mismos filtros sobre TODA la historia: solo para la evolución mensual (cada mes toma lo que valía en ese mes).
+  const cbFiltradoTodo = useMemo(
+    () => cuadroBasicoTodo.filter(pasaFiltros),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cuadroBasicoTodo, filters, vendedorPorCliente, gerentePorVendedor],
   );
 
   // Ventana de FACTURACIÓN a MES CERRADO por tipología y criterio de "cumplido":
@@ -293,7 +311,7 @@ export default function CbVentasDashboard({ cuadroBasico, clasificacion, ventas,
   // lib/sellin-metrics.ts para que el copiloto grafique exactamente lo mismo.
   const evolucionMensual = useMemo(
     () =>
-      evolucionMensualCB(cbFiltrado, ventas.rows, {
+      evolucionMensualCB(cbFiltradoTodo, ventas.rows, {
         generatedAt: ventas.generatedAt,
         vendedor: filters.vendedor !== "TODOS" ? filters.vendedor : null,
         vendedorPorCliente,
@@ -303,7 +321,7 @@ export default function CbVentasDashboard({ cuadroBasico, clasificacion, ventas,
         "% Infaltables": p.pctInf,
         "% Estratégico": p.pctEst,
       })),
-    [cbFiltrado, filters.vendedor, ventas, vendedorPorCliente],
+    [cbFiltradoTodo, filters.vendedor, ventas, vendedorPorCliente],
   );
 
   const kpisGlobales = useMemo(() => {
@@ -588,11 +606,20 @@ export default function CbVentasDashboard({ cuadroBasico, clasificacion, ventas,
               <AnalisisCB analisis={analisisData} />
             ) : (
             <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <KpiCard label="% Cuadro Básico" value={`${kpisGlobales.pctCB}%`} subtitle={`${kpisGlobales.cumplidosCB}/${kpisGlobales.totalCB} SKUs`} icon={<Target />} color="blue" pct={kpisGlobales.pctCB} objetivo={OBJETIVO} featured />
-              <KpiCard label="% Infaltables" value={`${kpisGlobales.pctInf}%`} subtitle={`${kpisGlobales.cumplidosInf}/${kpisGlobales.totalInf} SKUs`} icon={<CheckCircle2 />} color="violet" pct={kpisGlobales.pctInf} objetivo={OBJETIVO} />
-              <KpiCard label="% Estratégico" value={`${kpisGlobales.pctEst}%`} subtitle={`${kpisGlobales.cumplidosEst}/${kpisGlobales.totalEst} SKUs`} icon={<BarChart3 />} color="pink" pct={kpisGlobales.pctEst} objetivo={OBJETIVO} />
-              <KpiCard label="Clientes" value={kpisGlobales.cantClientes} subtitle={`${kpisGlobales.cantVendedores} vendedores`} icon={<Users />} color="slate" />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Mismo card que /cuadros-basicos y /floor-share (KpiObjCard: semáforo solo para el estado). */}
+              <KpiObjCard title="Cuadro Básico" medida="% de modelos del CB comprados" value={kpisGlobales.pctCB} obj={OBJETIVO} decimals={0} contexto={`${kpisGlobales.cumplidosCB} / ${kpisGlobales.totalCB} SKUs`} />
+              <KpiObjCard title="Infaltables" medida="% de infaltables comprados" value={kpisGlobales.pctInf} obj={OBJETIVO} decimals={0} contexto={`${kpisGlobales.cumplidosInf} / ${kpisGlobales.totalInf} SKUs`} />
+              <KpiObjCard title="Estratégico" medida="% de estratégicos comprados" value={kpisGlobales.pctEst} obj={OBJETIVO} decimals={0} contexto={`${kpisGlobales.cumplidosEst} / ${kpisGlobales.totalEst} SKUs`} />
+              <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clientes</div>
+                <div className="mt-0.5 text-[10px] text-muted-foreground/70">Según filtros aplicados</div>
+                <div className="mt-2 text-3xl font-bold tabular-nums tracking-tight">{kpisGlobales.cantClientes}</div>
+                <div className="mt-3 flex items-center justify-between border-t pt-2 text-[11px]">
+                  <span className="text-muted-foreground">Vendedores</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 font-semibold tabular-nums text-foreground">{kpisGlobales.cantVendedores}</span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -854,92 +881,6 @@ function FilterDropdown({
           <option key={o.v} value={o.v}>{o.l}</option>
         ))}
       </select>
-    </div>
-  );
-}
-
-function KpiCard({
-  label, value, subtitle, icon, color, pct, objetivo, featured,
-}: {
-  label: string;
-  value: string | number;
-  subtitle?: string;
-  icon: React.ReactElement;
-  color: "blue" | "violet" | "pink" | "slate" | "red";
-  pct?: number;
-  objetivo?: number;
-  featured?: boolean;
-}) {
-  const colors: Record<string, { bg: string; text: string }> = {
-    blue: { bg: "bg-blue-50", text: "text-blue-600" },
-    violet: { bg: "bg-violet-50", text: "text-violet-600" },
-    pink: { bg: "bg-pink-50", text: "text-pink-600" },
-    slate: { bg: "bg-slate-100", text: "text-slate-700" },
-    red: { bg: "bg-red-50", text: "text-red-600" },
-  };
-
-  if (featured) {
-    // Paleta replicada de .fs-headline (Trade Marketing dashboard) para
-    // mantener consistencia entre los dos dashboards: gradient slate-900
-    // → blue-900, valor en coral #e63946, labels en blanco con opacidad.
-    return (
-      <div
-        className="p-4 sm:p-5 rounded-lg shadow-md"
-        style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)" }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] sm:text-[11px] font-semibold text-white/85 uppercase tracking-wider">{label}</div>
-            <div className="flex items-baseline gap-2 mt-2">
-              <div className="text-3xl sm:text-5xl font-bold leading-none" style={{ color: "#e63946" }}>{value}</div>
-              {pct !== undefined && objetivo !== undefined && (
-                <div className="text-base font-medium text-white/75">/ {objetivo}%</div>
-              )}
-            </div>
-            {subtitle && <div className="text-xs text-white/75 mt-2">{subtitle}</div>}
-          </div>
-          <div className="p-2.5 rounded-lg bg-white/15 text-white flex-shrink-0">
-            {React.cloneElement(icon, { className: "w-5 h-5" } as React.HTMLAttributes<HTMLElement>)}
-          </div>
-        </div>
-        {pct !== undefined && (
-          <div className="mt-4 w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
-            <div
-              className="h-full transition-all"
-              style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: "#e63946" }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const c = colors[color]!;
-  return (
-    <div className="bg-white p-4 sm:p-5 rounded-lg border border-slate-200 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{label}</div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <div className={`text-3xl sm:text-4xl font-bold ${c.text} leading-none`}>{value}</div>
-            {pct !== undefined && objetivo !== undefined && (
-              <div className="text-sm text-slate-400 font-medium">/ {objetivo}%</div>
-            )}
-          </div>
-          {subtitle && <div className="text-xs text-slate-500 mt-2">{subtitle}</div>}
-        </div>
-        <div className={`p-2.5 rounded-lg ${c.bg} ${c.text} flex-shrink-0`}>
-          {React.cloneElement(icon, { className: "w-5 h-5" } as React.HTMLAttributes<HTMLElement>)}
-        </div>
-      </div>
-      {pct !== undefined && (
-        <div className="mt-4 w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-all ${pct >= 80 ? "bg-green-500" : pct >= 70 ? "bg-yellow-400" : "bg-red-500"}`}
-            style={{ width: `${Math.min(pct, 100)}%` }}
-          />
-        </div>
-      )}
     </div>
   );
 }

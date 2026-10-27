@@ -20,6 +20,9 @@ export interface CatalogoRow {
   modelo: string;
   homologos: string[];
   orden: number;
+  /** Migración 0140: desde cuándo / hasta cuándo vale (hasta null = vigente). Ausentes = vale siempre. */
+  vigente_desde?: string | null;
+  vigente_hasta?: string | null;
 }
 
 // ---------- CSV (equivalente a PapaParse header:true que usaba la app vieja) ----------
@@ -150,7 +153,8 @@ export function expandirCatalogo(catalogo: CatalogoRow[], clasificacion: Clasifi
   for (const c of clasificacion) (porTip.get(c.tipologia) ?? porTip.set(c.tipologia, []).get(c.tipologia)!).push(c.cliente);
   const out: CuadroBasicoItem[] = [];
   for (const r of [...catalogo].sort((a, b) => a.orden - b.orden)) {
-    const base = { tipologia: r.tipologia, tipo: r.tipo, categoria: r.categoria, sku: r.modelo, skuAliases: r.homologos };
+    const base: Omit<CuadroBasicoItem, "cliente"> = { tipologia: r.tipologia, tipo: r.tipo, categoria: r.categoria, sku: r.modelo, skuAliases: r.homologos };
+    if (r.vigente_desde || r.vigente_hasta) Object.assign(base, { desde: r.vigente_desde ?? null, hasta: r.vigente_hasta ?? null });
     if (r.cliente) out.push({ ...base, cliente: r.cliente });
     else for (const cli of porTip.get(r.tipologia) ?? []) out.push({ ...base, cliente: cli });
   }
