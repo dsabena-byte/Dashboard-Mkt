@@ -13,7 +13,7 @@ export type MapaMetrica = { label: string; obj: number; binaria?: boolean; porCu
 // `grupo` = bloque (CB Sell In · CB Trade · Floor Share · Exhibición); su 1ª métrica (el general, `corto` = nombre del bloque) va en gris y abre el bloque.
 // `porCuenta` = el dato es del cliente (CB Sell In): cada tienda muestra el de su cliente y los totales cuentan una vez por cliente.
 /** `detalle` = líneas extra de la ficha (ej. exhibición especial con link a las fotos). */
-export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]>; cuenta?: string | null; detalle?: Array<{ label: string; valor: string; href?: string; fotos?: string[] }> };
+export type MapaPunto = { zona: string; tiendas: number; vals: Array<[number, number]>; cuenta?: string | null; cliente?: string; detalle?: Array<{ label: string; valor: string; href?: string; fotos?: string[] }> };
 
 // Ciudad de referencia de cada zona (lat, lon) y su provincia en el mapa.
 const ZONAS: Record<string, { lat: number; lon: number; prov: string }> = {
@@ -81,7 +81,8 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const [asp, setAsp] = useState(1.5);
   const [m, setM] = useState(inicial);
   const [sel, setSel] = useState<string | null>(null);
-  const [todas, setTodas] = useState(false); // ficha: todas las métricas de un punto
+  const [todas, setTodas] = useState(false); // tabla: todos los clientes (si no, los primeros 30)
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set()); // clientes desplegados en la tabla
   const [hover, setHover] = useState<string | null>(null);
   // Orden de la tabla: columna (-1 = tienda/zona, si no índice de métrica) y sentido; clic en el mismo encabezado lo invierte.
   const [ord, setOrd] = useState<{ col: number; asc: boolean }>({ col: inicial, asc: true });
@@ -258,7 +259,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
           <thead>
             <tr className="border-b text-left text-muted-foreground">
               <th onClick={() => ordenar(-1)} className={`cursor-pointer whitespace-nowrap py-1.5 pr-2 ${ord.col === -1 ? "text-blue-700" : ""}`}>
-                Tienda / zona · {enVistaTodos.length} en la vista{ord.col === -1 ? (ord.asc ? " ▲" : " ▼") : ""}
+                Cliente / tienda · {enVistaTodos.length} tiendas en la vista{ord.col === -1 ? (ord.asc ? " ▲" : " ▼") : ""}
               </th>
               {metricas.map((x, i) => (
                 <th key={x.label} onClick={() => ordenar(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${inicio(i) && i > 0 ? "border-l" : ""} ${cab(i)} ${i === ord.col ? "text-blue-700" : ""}`}>
@@ -268,25 +269,45 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
             </tr>
           </thead>
           <tbody>
-            {[...enVistaTodos].sort((a, b) => {
-              if (ord.col < 0) return (ord.asc ? 1 : -1) * a.label.localeCompare(b.label, "es", { numeric: true });
-              const va = pct(a.vals[ord.col]!), vb = pct(b.vals[ord.col]!);
-              if (va == null || vb == null) return va == null ? (vb == null ? 0 : 1) : -1; // sin dato siempre al final
-              return ord.asc ? va - vb : vb - va;
-            }).slice(0, todas ? undefined : 30).map((p) => (
-              <tr key={p.zona} className={`cursor-pointer border-b ${hover === p.zona || sel === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)}>
-                <td className="whitespace-nowrap py-1 pr-2">{p.label}</td>
-                {metricas.map((x, i) => {
-                  const v = pct(p.vals[i]!);
-                  return <td key={x.label} className={`px-2 text-right font-semibold tabular-nums ${inicio(i) && i > 0 ? "border-l" : ""}`} style={{ color: v == null ? "#94a3b8" : color(v, x.obj) }}>{fmt(v, x)}</td>;
-                })}
-              </tr>
-            ))}
+            {(() => {
+              // Primero el consolidado por cliente (cliente SAP o, si no hay, la cadena); clic = sus tiendas.
+              type Fila = { label: string; vals: Array<[number, number]> };
+              const valor = (f: Fila) => (ord.col < 0 ? null : pct(f.vals[ord.col]!));
+              const cmp = (a: Fila, b: Fila) => {
+                if (ord.col < 0) return (ord.asc ? 1 : -1) * a.label.localeCompare(b.label, "es", { numeric: true });
+                const va = valor(a), vb = valor(b);
+                if (va == null || vb == null) return va == null ? (vb == null ? 0 : 1) : -1; // sin dato siempre al final
+                return ord.asc ? va - vb : vb - va;
+              };
+              const porCli = new Map<string, typeof enVistaTodos>();
+              for (const p of enVistaTodos) { const k = p.cliente ?? "Sin cliente (zonas sin dirección)"; porCli.set(k, [...(porCli.get(k) ?? []), p]); }
+              const grupos = [...porCli].map(([label, ps]) => ({ label, ps, vals: metricas.map((x, i) => sumaMetrica(ps.filter((p) => (p.vals[i]?.[1] ?? 0) > 0), i, x)) }));
+              const celdas = (vals: Array<[number, number]>) => metricas.map((x, i) => {
+                const v = pct(vals[i]!);
+                return <td key={x.label} className={`px-2 text-right font-semibold tabular-nums ${inicio(i) && i > 0 ? "border-l" : ""}`} style={{ color: v == null ? "#94a3b8" : color(v, x.obj) }}>{fmt(v, x)}</td>;
+              });
+              return grupos.sort(cmp).slice(0, todas ? undefined : 30).flatMap((g) => {
+                const abierto = abiertos.has(g.label);
+                const toggle = () => setAbiertos((s) => { const n = new Set(s); if (n.has(g.label)) n.delete(g.label); else n.add(g.label); return n; });
+                return [
+                  <tr key={`c:${g.label}`} className="cursor-pointer border-b bg-slate-50 font-semibold hover:bg-slate-100" onClick={toggle}>
+                    <td className="whitespace-nowrap py-1.5 pr-2">{abierto ? "▾" : "▸"} {g.label} <span className="font-normal text-muted-foreground">· {g.ps.length} {g.ps.length === 1 ? "tienda" : "tiendas"}</span></td>
+                    {celdas(g.vals)}
+                  </tr>,
+                  ...(abierto ? [...g.ps].sort(cmp).map((p) => (
+                    <tr key={p.zona} className={`cursor-pointer border-b ${hover === p.zona || sel === p.zona ? "bg-muted" : ""}`} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)}>
+                      <td className="whitespace-nowrap py-1 pl-5 pr-2">{p.label}</td>
+                      {celdas(p.vals)}
+                    </tr>
+                  )) : []),
+                ];
+              });
+            })()}
           </tbody>
         </table>
-        {enVistaTodos.length > 30 && (
+        {new Set(enVistaTodos.map((p) => p.cliente)).size > 30 && (
           <button onClick={() => setTodas(!todas)} className="mt-2 text-xs font-semibold text-blue-700 hover:underline">
-            {todas ? "Ver menos" : `Ver todas (${enVistaTodos.length})`}
+            {todas ? "Ver menos" : `Ver todos los clientes (${new Set(enVistaTodos.map((p) => p.cliente)).size})`}
           </button>
         )}
       </div>
