@@ -860,11 +860,12 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
   // ejecución real (Meta/DV360/Google Ads) SOLO para los medios sin plan OMD ese
   // mes (no duplica). Inversión: DV360 (USD) → ARS por el fx del mes. VTR ≥50% =
   // vistas al 50% ÷ impresiones de video (Meta p50 + DV360 q50; sin gap-fill, es
-  // una tasa de calidad). Solo meses CERRADOS (< mes corriente); el resto = null.
+  // una tasa de calidad). Meses cerrados + el en curso (parcial); los futuros = null.
   const impactoMensual = useMemo(() => {
     const DVMED: Record<string, string> = { YouTube: "YouTube", Programmatic: "Programmatic", "Demand Gen": "Google Demand Gen", Marketplace: "Mercado Ads" };
     return HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
-      const cerrado = i + 1 < currentMonth; // mes ya terminado (el corriente arranca vacío)
+      // Meses cerrados + el mes EN CURSO (ejecutado hasta hoy, parcial). Las cards usan el último cerrado.
+      const cerrado = i + 1 <= currentMonth;
       const nulo = { mes: short, inv: null as number | null, alc: null as number | null, impr: null as number | null, clic: null as number | null, v50: 0, vbase: 0 };
       if (!cerrado) return nulo;
       const mesLabel = `${full} 2026`;
@@ -921,11 +922,11 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
     try { return fatigaPiezas({ metaPaid, dv360, dv360Reach, fxRates, mesEnCurso: new Date().toISOString().slice(0, 7) }); } catch { return null; }
   }, [metaPaid, dv360, dv360Reach, fxRates]);
 
-  // Mes de REFERENCIA para las cards = último mes cerrado con ejecución real.
+  // Mes de REFERENCIA para las cards = último mes CERRADO con ejecución real (el en curso solo va al gráfico).
   const refIdxImp = useMemo(() => {
-    for (let i = impactoMensual.length - 1; i >= 0; i--) { if (impactoMensual[i]?.impr != null) return i; }
+    for (let i = Math.min(impactoMensual.length, currentMonth - 1) - 1; i >= 0; i--) { if (impactoMensual[i]?.impr != null) return i; }
     return -1;
-  }, [impactoMensual]);
+  }, [impactoMensual, currentMonth]);
   const refMesImp = refIdxImp >= 0 ? (impactoMensual[refIdxImp]?.mes ?? "") : "";
 
   // Descriptores de los 6 KPIs de Impacto Campaña (real + meta + tipo de agregación YTD).
@@ -1304,7 +1305,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
           <SectionTitle>Evolución mensual · real vs meta</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
             Año completo 2026 (no responde a los filtros). Real en azul/tinta, meta en gris pizarra.
-            Solo meses cerrados; el mes en curso arranca vacío. Cargá las metas en el configurador de abajo.
+            El mes en curso muestra lo ejecutado hasta hoy (parcial); las cards comparan el último mes cerrado. Cargá las metas en el configurador de abajo.
           </p>
           <section className="grid gap-4 lg:grid-cols-2">
             {impactoCards.map((c) =>
