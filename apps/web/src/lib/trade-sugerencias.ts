@@ -12,7 +12,7 @@ import { getCbSupabase } from "./supabase-cb";
 import { trAll, trEstado } from "./trade-db";
 import { calcularSugerencias, type CbMin, type Ex, type Hom } from "./trade-sugerencias-core";
 
-export async function leerHomologos(): Promise<Hom[]> {
+async function leerHomologos(): Promise<Hom[]> {
   const sb = getCbSupabase();
   const out: Hom[] = [];
   for (let from = 0; from < 20_000; from += 1000) {
