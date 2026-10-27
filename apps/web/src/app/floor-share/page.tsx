@@ -105,6 +105,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     ? `${mesLargo(v.semanaDesde)} — ${mesLargo(v.semanaHasta)}` : "";
   const sub = `${periodo ? `${periodo} · ` : ""}Δ vs objetivo`;
 
+  const esMapa = searchParams.tab === "mapa";
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
 
   // Objetivo = la META MENSUAL por categoría (fuente única, lib/fs-objetivos) del mes de referencia de la vista:
@@ -153,8 +154,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
       <HowToRead slug="floor-share" />
-      {/* Sin pestaña Diagnóstico (pedido del user): sin <DashTabs>, el renglón queda solo con "Tablero". */}
-      <DashTabBar />
+      {/* Sin pestaña Diagnóstico (pedido del user): sin <DashTabs>, el renglón queda Tablero · Mapa por zona. */}
+      <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/floor-share" }, { key: "mapa", label: "Mapa por zona", href: "/floor-share?tab=mapa" }]} active={esMapa ? "mapa" : "tablero"} />
 
       <FloorShareFilters current={filter} options={options} />
 
@@ -171,6 +172,15 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           </div>
           {metasBloque}
         </>
+      ) : esMapa ? (
+        <MapaZonas
+          titulo="Floor Share por zona"
+          metricas={[{ label: "General", obj: Number(genObj.toFixed(1)) }, { label: "Lavado", obj: OBJ.lavado }, { label: "Refrigeración", obj: OBJ.refri }, { label: "Cocción", obj: OBJ.coccion }]}
+          puntos={(v.byZona ?? []).map((z) => ({
+            zona: z.cliente, tiendas: z.tiendas,
+            vals: [z.total, z.lavado, z.refri, z.coccion].map((b) => [b.drean_units, b.total_units] as [number, number]),
+          }))}
+        />
       ) : (
         <>
           <section className="grid gap-3 lg:grid-cols-4">
@@ -199,15 +209,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
               </div>
             )}
           </section>
-
-          <MapaZonas
-            titulo="Floor Share por zona"
-            metricas={[{ label: "General", obj: Number(genObj.toFixed(1)) }, { label: "Lavado", obj: OBJ.lavado }, { label: "Refrigeración", obj: OBJ.refri }, { label: "Cocción", obj: OBJ.coccion }]}
-            puntos={(v.byZona ?? []).map((z) => ({
-              zona: z.cliente, tiendas: z.tiendas,
-              vals: [z.total, z.lavado, z.refri, z.coccion].map((b) => [b.drean_units, b.total_units] as [number, number]),
-            }))}
-          />
 
           <section className="grid gap-4 xl:grid-cols-2">
             <AggTable titulo="🏢 Performance por cliente" columna="Cliente" totalLabel="FLOORSHARE TOTAL" subtitulo={sub} cols={fsCols(OBJ)}
