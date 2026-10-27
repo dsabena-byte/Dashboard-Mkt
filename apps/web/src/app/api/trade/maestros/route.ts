@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { exigirEdicion, getMiPerfil, puedeVerTablero } from "@/lib/usuarios-server";
 import { auditar, esFaltaTabla, trAll, trJson, trRest, trUpsert } from "@/lib/trade-db";
 import { normClave } from "@/lib/trade-carga-core";
-import { refrescarDerivados } from "@/lib/trade-derivados";
 
 // Edición puntual de los maestros de Trade (pestañas de /cuadros-basicos). Todo cambio queda en tr_auditoria.
-//   GET ?entidad=tiendas|cadenas|skus|objetivos
+//   GET ?entidad=tiendas|cadenas|skus
 //   PATCH {entidad:"tienda", id, cambios} · {entidad:"tienda_alta", ...} · {entidad:"asignacion", tienda_id, promotor, supervisor, desde}
-//         {entidad:"cadena", clave, cambios} · {entidad:"cadena_unir", de, a} · {entidad:"sku", sku, cambios} · {entidad:"objetivos", valor}
+//         {entidad:"cadena", clave, cambios} · {entidad:"cadena_unir", de, a} · {entidad:"sku", sku, cambios}
+// (Los objetivos de Floor Share ya NO van acá: son las metas mensuales por categoría de /floor-share.)
 export const dynamic = "force-dynamic";
 
 const err = (e: unknown) => esFaltaTabla(e)
@@ -73,11 +73,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ cadenas: cadenas.map((c) => ({ ...c, tiendas: n.get(c.clave as string) ?? 0 })) });
     }
     if (entidad === "skus") return NextResponse.json({ skus: await trAll("tr_skus?select=sku,descripcion,nombre_comercial,division,categoria,marca,ean", "sku") });
-    if (entidad === "objetivos") {
-      const [r] = await trJson<Array<{ valor: unknown; updated_at: string; updated_by: string | null }>>("tr_config?clave=eq.fs_objetivos&select=valor,updated_at,updated_by");
-      return NextResponse.json({ objetivos: r ?? null });
-    }
-    return bad("entidad = tiendas | cadenas | skus | objetivos");
+    return bad("entidad = tiendas | cadenas | skus");
   } catch (e) { return err(e); }
 }
 
@@ -164,17 +160,6 @@ export async function PATCH(req: Request) {
         if (!antes) return bad("El SKU no existe");
         await trRest(`tr_skus?sku=eq.${encodeURIComponent(sku)}`, { method: "PATCH", prefer: "return=minimal", body: JSON.stringify({ ...c, updated_at: now() }) });
         await auditar(usuario, "sku", sku, antes, c);
-        return NextResponse.json({ ok: true });
-      }
-      case "objetivos": {
-        const v = b.valor as Record<string, unknown> | null;
-        const ok = (x: unknown) => typeof x === "number" && x > 0 && x <= 100;
-        if (!v || !ok(v.lavado) || !ok(v.refrigeracion) || !ok(v.coccion)) return bad("Cada objetivo tiene que ser un % entre 0 y 100");
-        const valor = { lavado: v.lavado, refrigeracion: v.refrigeracion, coccion: v.coccion };
-        const [antes] = await trJson<Array<{ valor: unknown }>>("tr_config?clave=eq.fs_objetivos&select=valor");
-        await trUpsert("tr_config", [{ clave: "fs_objetivos", valor, updated_at: now(), updated_by: usuario }], "clave");
-        await auditar(usuario, "fs_objetivos", "fs_objetivos", antes?.valor ?? null, valor);
-        await refrescarDerivados().catch(() => null); // el cruce CB × FS usa los objetivos
         return NextResponse.json({ ok: true });
       }
     }

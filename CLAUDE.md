@@ -543,15 +543,20 @@ reporte_existencia/cb_homologos).
 - **Trade en Drean (26-oct-2026, migración `0138_trade.sql` CORRIDA + histórico migrado y verificado 26-oct):** CB de Trade, Floor Share y Existencias U3
   pasan del proyecto Supabase CB + Drive/Apps Script a tablas `tr_*` del PRINCIPAL. Maestros `tr_cadenas` (clave normalizada + `alias`
   + `cliente` SAP; absorbe `cb_cadena_alias`), `tr_tiendas` (identidad = cadena + número), `tr_personas` + `tr_tienda_asignacion`
-  (desde/hasta), `tr_skus`, `tr_config` (objetivos FS); cargas `tr_cb_semanal`/`tr_floor_share`/`tr_existencias` con log `tr_cargas`
+  (desde/hasta), `tr_skus`, `tr_config` (la fila `fs_objetivos` quedó SIN USO desde 27-oct); cargas `tr_cb_semanal`/`tr_floor_share`/`tr_existencias` con log `tr_cargas`
   (+ staging `tr_carga_filas`), `tr_auditoria`, `tr_precalc`. **Reemplazo atómico** por RPC `tr_confirmar_carga` (backup en
   `tr_cargas.anterior` → delete semana(+cat) → insert) y `tr_deshacer_carga`. Lectores: `lib/trade-db.ts`; `lib/cb-mirror.ts` usa
   `tr_*` si tienen datos (`trEstado()`), si no el mirror / proyecto CB (fail-safe). **Velocidad:** vista default de /cuadros-basicos =
   1 fila `tr_precalc.cb_default` (24 KB; antes bajaba 24.820 filas/5 MB del mirror en cada visita, 1,9–4 s); con filtros =
-  `vw_tr_cb_agg` (sin SKU, mismos totales, verificado con data real); FS default sigue en `fs_precomputed`; el cruce se precalcula
-  (`tr_precalc.cruce`). Todo se recalcula en `refrescarDerivados()` (`lib/trade-derivados.ts`) al confirmar/deshacer cargas.
-  `trade_monthly` ya no mete las cargas mensuales viejas de FS (semana null) en "Dic". Pestañas de /cuadros-basicos: Overview ·
-  Sugerencias · CB × Floor Share | (editores `exigirEdicion("trade")`) Cargar datos · Tiendas · Cadenas · SKUs · Objetivos FS.
+  `vw_tr_cb_agg` (sin SKU, mismos totales, verificado con data real); FS default sigue en `fs_precomputed`. Todo se recalcula en `refrescarDerivados()` (`lib/trade-derivados.ts`) al confirmar/deshacer cargas.
+  `trade_monthly` ya no mete las cargas mensuales viejas de FS (semana null) en "Dic". Pestañas de /cuadros-basicos (27-oct, pedido del user): Cuadro Básico Trade ·
+  Sugerencias de tiendas | (editores `exigirEdicion("trade")`) Cargar datos · Tiendas · Cadenas · SKUs. SIN Diagnóstico, sin "CB × Floor Share"
+  (borrado `trade-cruce`) ni "Objetivos FS"; /floor-share tampoco tiene Diagnóstico (no se envuelven en `<DashTabs>`). El CB de Trade sale
+  de los archivos semanales: NO editar catálogo CB de Trade.
+  **Objetivos de Floor Share = metas MENSUALES por categoría** (plan "Floor Share", `kpi_meta_valores`) = fuente única (`lib/fs-objetivos.ts`:
+  `getFsObjetivosAnio`, mes sin meta → 32/25/23; `mesRefFs`). Se editan en /floor-share (MetaPanel, solo editores Trade). Cards/tablas usan la
+  meta del mes de referencia (mes filtrado o el de la última semana); evolución, señales, Seguimiento y copiloto comparan cada mes contra SU meta.
+  Cards de Trade (CB, FS, CB Ventas) = `KpiObjCard` (`obj={null}` = card informativa).
   Carga: el navegador parsea (`lib/trade-carga-core.ts`, mismas reglas que el Apps Script, test `scripts/trade-carga.test.ts`),
   detecta el tipo POR CONTENIDO (rechaza un CB subido como FS, caso 42-Coccion) y sube por partes a `/api/trade/carga`; maestros
   por `/api/trade/maestros` (auditado). Migración del histórico: `/api/cron/trade-migrar` + workflow `trade-migrar.yml` (manual,

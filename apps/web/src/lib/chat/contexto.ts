@@ -112,7 +112,7 @@ const CTX: DashContexto[] = [
   },
   {
     key: "floor-share", path: "/floor-share", label: "Floor Share",
-    foco: "Exhibición de Drean en góndola por categoría (objetivos 32/25/23%), marca, cadena y tienda.",
+    foco: "Exhibición de Drean en góndola por categoría (objetivo = meta mensual por categoría), marca, cadena y tienda.",
     sugerencias: [
       "¿Cumplimos el objetivo de Floor Share por categoría?",
       "¿En qué cadenas perdemos exhibición contra la competencia?",

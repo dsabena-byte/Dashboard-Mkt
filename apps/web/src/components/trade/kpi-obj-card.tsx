@@ -3,7 +3,8 @@ import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR } from "@/lib/metas";
 // Card de KPI con objetivo — sistema visual sobrio (= MetaKpiCard): headline
 // coloreado por SEMÁFORO (verde si cumple el objetivo, amarillo cerca, rojo lejos),
 // chip de desvío en pp y barra de avance. Reemplaza los cards navy/rojos de CB y
-// Floor Share para alinearlos con el resto de los dashboards.
+// Floor Share para alinearlos con el resto de los dashboards. Card ÚNICA de KPI de Trade (/cuadros-basicos,
+// /floor-share, /cb-ventas). Sin objetivo (obj null) = card informativa: valor en tinta, sin semáforo ni barra.
 
 const SEM_BG: Record<string, string> = {
   verde: "rgba(22,163,74,.12)",
@@ -13,16 +14,30 @@ const SEM_BG: Record<string, string> = {
 };
 
 export function KpiObjCard({
-  title, medida, value, obj, unit = "%", decimals = 1, contexto,
+  title, medida, value, obj, unit = "%", decimals = 1, contexto, objLabel,
 }: {
   title: string;
   medida?: string;
   value: number | null;
-  obj: number;
+  obj: number | null;
   unit?: string;
   decimals?: number;
   contexto?: string;
+  /** Texto del objetivo (ej. "Meta Oct 25%"); default "Objetivo {obj}{unit}". */
+  objLabel?: string;
 }) {
+  if (obj == null) {
+    return (
+      <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+        {medida && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{medida}</div>}
+        <div className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-foreground">
+          {value != null ? `${value.toLocaleString("es-AR", { maximumFractionDigits: decimals })}${unit}` : "—"}
+        </div>
+        {contexto && <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{contexto}</div>}
+      </div>
+    );
+  }
   const cumpl = cumplimientoPct(value, obj, "up");
   const sem = semaforoDe(cumpl, { umbralVerde: 100, umbralAmarillo: 90 });
   const color = SEMAFORO_COLOR[sem];
@@ -44,7 +59,7 @@ export function KpiObjCard({
       {contexto && <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{contexto}</div>}
 
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-        <span>Objetivo {obj}{unit}</span>
+        <span>{objLabel ?? `Objetivo ${obj}${unit}`}</span>
       </div>
       <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, background: color }} />
