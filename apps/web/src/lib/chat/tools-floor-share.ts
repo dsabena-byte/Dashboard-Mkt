@@ -2,7 +2,7 @@ import "server-only";
 import { getFsPrecomputed, getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast } from "@/lib/cb-mirror";
 import { computeFsView, type FsView, type FsEnrichedRow } from "@/lib/fs-view";
 import { type CategoryBlock } from "@/lib/floor-share-queries";
-import { getFsObjetivos } from "@/lib/trade-db";
+import { getFsObjetivosAnio, mesRefFs, MESES_FS } from "@/lib/fs-objetivos";
 import { rd, topN, oneOf } from "./util";
 import type { ChatTool } from "./types";
 
@@ -29,7 +29,7 @@ export const floorShareTools: ChatTool[] = [
   {
     name: "get_floor_share",
     description:
-      "Floor Share (exhibición en góndola, últimas 26 semanas relevadas): % de Drean total y por categoría (Lavado/Refrigeración/Cocción, objetivos 32/25/23%) + el desglose pedido en 'nivel': marcas (ranking total) | categoria_marca (share por marca en cada categoría) | cliente (cadena) | tienda | semanal (share semanal de las top marcas).",
+      "Floor Share (exhibición en góndola, últimas 26 semanas relevadas): % de Drean total y por categoría (Lavado/Refrigeración/Cocción, objetivos = meta mensual por categoría del mes de referencia; sin meta 32/25/23%) + el desglose pedido en 'nivel': marcas (ranking total) | categoria_marca (share por marca en cada categoría) | cliente (cadena) | tienda | semanal (share semanal de las top marcas).",
     parameters: {
       type: "object",
       properties: {
@@ -51,7 +51,10 @@ export const floorShareTools: ChatTool[] = [
         lavado_pct: blk(v.overall.lavado),
         refrigeracion_pct: blk(v.overall.refri),
         coccion_pct: blk(v.overall.coccion),
-        objetivos_pct: await getFsObjetivos(),
+        objetivos_pct: await (async () => {
+          const r = mesRefFs(v.options.semanas.length ? Math.max(...v.options.semanas) : 0);
+          return { mes: `${MESES_FS[r.mesIdx]} ${r.anio}`, ...(await getFsObjetivosAnio(r.anio))[r.mesIdx] };
+        })(),
         tiendas: v.overall.tiendas,
         semanas: v.options.semanas.length ? `${v.options.semanas[0]}–${v.options.semanas[v.options.semanas.length - 1]}` : null,
       };

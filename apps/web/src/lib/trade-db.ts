@@ -97,12 +97,6 @@ export async function getTrCbRows(anio: number): Promise<CbRow[]> {
   return rows.map((r) => ({ ...r, sku: "" }));
 }
 
-export interface CbDetalle extends CbRow { numero_tienda: string | null }
-/** CB con SKU (para el cruce CB × Floor Share). */
-export async function getTrCbDetalle(anio: number): Promise<CbDetalle[]> {
-  return trAll<CbDetalle>(`tr_cb_semanal?select=semana,tienda,numero_tienda,sku,${CB_SEL.replace("semana,tienda,", "")}&anio=eq.${anio}`);
-}
-
 const FS_SEL = "periodo,semana,categoria,numero_tienda,nombre_tienda,marca,unidades,pct_raw";
 export async function getTrFsRows(anio: number, semanas: number[]): Promise<FloorShareRow[]> {
   const f = semanas.length ? `&semana=in.(${semanas.join(",")})` : "&semana=not.is.null";
@@ -128,15 +122,6 @@ export async function getTrPrecalc<T>(clave: string): Promise<T | null> {
 
 export async function setTrPrecalc(clave: string, data: unknown): Promise<void> {
   await trUpsert("tr_precalc", [{ clave, data, updated_at: new Date().toISOString() }], "clave");
-}
-
-export interface FsObjetivos { lavado: number; refrigeracion: number; coccion: number }
-export const FS_OBJETIVOS_DEFAULT: FsObjetivos = { lavado: 32, refrigeracion: 25, coccion: 23 };
-export async function getFsObjetivos(): Promise<FsObjetivos> {
-  try {
-    const r = await trJson<Array<{ valor: Partial<FsObjetivos> }>>("tr_config?clave=eq.fs_objetivos&select=valor");
-    return { ...FS_OBJETIVOS_DEFAULT, ...(r[0]?.valor ?? {}) };
-  } catch { return FS_OBJETIVOS_DEFAULT; }
 }
 
 export async function auditar(usuario: string | null, entidad: string, clave: string, antes: unknown, despues: unknown): Promise<void> {

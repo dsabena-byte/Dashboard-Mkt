@@ -87,7 +87,7 @@ Mapa Estratégico: objetivos (TOM, SOM, Intención de compra, Poder de marca, co
 ## Fuentes (reglas de verdad)
 - Pauta: Meta, YouTube/Programmatic (DV360) y Google Search/Demand Gen salen de la API; TikTok, Mercado Ads, Geo, TV, OOH, DOOH de la carga OMD. Performance Max/ecommerce va aparte (conversión). Alcance de pauta = suma por medio (no deduplicado).
 - Redes: el objetivo se mide con Instagram; el alcance de Facebook es poco confiable (Meta deprecó el reach orgánico).
-- Trade: CB (objetivo 80%) y Floor Share (32/25/23% Lavado/Refri/Cocción). Mercado: GfK (ventas reales). Salud de Marca: Kantar por ola (nov-26 = proyección).
+- Trade: CB (objetivo 80%) y Floor Share (objetivo = meta MENSUAL por categoría Lavado/Refri/Cocción; cada mes contra la suya, sin meta 32/25/23%). Mercado: GfK (ventas reales). Salud de Marca: Kantar por ola (nov-26 = proyección).
 
 ## Método de cruce (seguilo)
 1. Identificá qué datos responden la pregunta y traé 2+ fuentes cuando lo amerite (ej. pauta + web, redes + share of search, seguimiento + la disciplina del KPI con más brecha, share of search + GfK + Kantar, Floor Share + Mkt Canal). Llamá varias tools en paralelo.

@@ -2,7 +2,7 @@ import "server-only";
 import { getSeguimientoCompleto } from "@/lib/objetivos-por-categoria";
 import { getMapaConfig } from "@/lib/mapa-server";
 import { getTradeMonthly } from "@/lib/trade-monthly";
-import { FS_OBJ_PCT } from "@/lib/floor-share-queries";
+import { getFsObjetivosAnio } from "@/lib/fs-objetivos";
 import { getFacturacionMensual } from "@/lib/facturacion-queries";
 import { MES, rd, hoyAR, periodo, enPeriodo, ymKey, keyLabel } from "./util";
 import type { ChatTool } from "./types";
@@ -134,17 +134,20 @@ export const overviewTools: ChatTool[] = [
   {
     name: "get_cumplimiento_floor_share",
     description:
-      "Floor Share de Drean por mes del año en curso, general (ponderado) y por categoría (Lavado/Refrigeración/Cocción) con sus objetivos (32/25/23%): serie mensual, último mes y promedio últimos 4 meses. Fuente: trade_monthly.",
+      "Floor Share de Drean por mes del año en curso, general (ponderado) y por categoría (Lavado/Refrigeración/Cocción) con el objetivo de CADA mes (meta mensual por categoría; sin meta 32/25/23%): serie mensual, último mes y promedio últimos 4 meses. Fuente: trade_monthly.",
     parameters: { type: "object", properties: {} },
     run: async () => {
-      const t = await getTradeMonthly(anioActual());
+      const [t, objs] = await Promise.all([getTradeMonthly(anioActual()), getFsObjetivosAnio(anioActual())]);
       const hasta = mesActualIdx();
-      const obj: Record<string, number> = { Lavado: FS_OBJ_PCT.lavado, Refrigeración: FS_OBJ_PCT.refri, Cocción: FS_OBJ_PCT.coccion };
+      const k: Record<string, "lavado" | "refrigeracion" | "coccion"> = { Lavado: "lavado", Refrigeración: "refrigeracion", Cocción: "coccion" };
       const cat = (nombre: string, xs: (number | null)[]) => {
-        const vals = xs.map((v, i) => ({ mes: MES[i], share_pct: i <= hasta ? rd(v, 1) : null })).filter((x) => x.share_pct != null);
+        // Cada mes contra SU objetivo (General: sin objetivo propio).
+        const objMes = (i: number) => (k[nombre] ? objs[i]![k[nombre]!] : null);
+        const vals = xs.map((v, i) => ({ mes: MES[i], share_pct: i <= hasta ? rd(v, 1) : null, objetivo_pct: objMes(i) })).filter((x) => x.share_pct != null);
         const u4 = vals.slice(-4);
         const prom = u4.length ? u4.reduce((a, b) => a + (b.share_pct ?? 0), 0) / u4.length : null;
-        return { categoria: nombre, objetivo_pct: obj[nombre] ?? null, serie: vals, ultimo: vals[vals.length - 1] ?? null, promedio_u4m: rd(prom, 1), cumple_u4m: prom != null && obj[nombre] != null ? prom >= obj[nombre]! : null };
+        const objU4 = u4.length && u4[0]!.objetivo_pct != null ? u4.reduce((a, b) => a + (b.objetivo_pct ?? 0), 0) / u4.length : null;
+        return { categoria: nombre, serie: vals, ultimo: vals[vals.length - 1] ?? null, promedio_u4m: rd(prom, 1), objetivo_promedio_u4m: rd(objU4, 1), cumple_u4m: prom != null && objU4 != null ? prom >= objU4 : null };
       };
       return {
         general: cat("General", t.fsGeneral),

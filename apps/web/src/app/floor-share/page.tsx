@@ -13,12 +13,15 @@ import {
 import { getFloorShareRowsFast, getTiendaClienteMapFast, getAvailableWeeksFast, getFsPrecomputed } from "@/lib/cb-mirror";
 import { computeFsView, isFsDefault, type FsView, type FsEnrichedRow } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
-import { getFsObjetivos } from "@/lib/trade-db";
-
-type Obj = { lavado: number; refri: number; coccion: number };
+import { MetaEvolChart } from "@/components/pauta/meta-evol-chart";
+import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
+import { getTradeMonthly } from "@/lib/trade-monthly";
+import { puedeEditarActual } from "@/lib/usuarios-server";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
-import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
+import { DashTabBar } from "@/components/diagnostico/dash-tabs";
+
+type Obj = { lavado: number; refri: number; coccion: number };
 import { HowToRead } from "@/components/knowledge/how-to-read";
 
 export const dynamic = "force-dynamic";
@@ -72,9 +75,6 @@ export default async function FloorSharePage({ searchParams }: PageProps) {
 }
 
 async function renderFloorShare(searchParams: PageProps["searchParams"]) {
-  // Objetivos por categoría: editables en Cuadros Básicos → Objetivos FS (tr_config); default 32 / 25 / 23.
-  const o = await getFsObjetivos();
-  const OBJ: Obj = { lavado: o.lavado, refri: o.refrigeracion, coccion: o.coccion };
   const filter: FloorShareFilter = {
     meses: paramArr(searchParams, "meses"),
     semanas: paramArr(searchParams, "semanas").map(Number).filter((n) => !isNaN(n)),
@@ -116,6 +116,22 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
 
   const lastUpdated = await maxUpdatedAt("floor_share", "cb").catch(() => null);
 
+  // Objetivo = la META MENSUAL por categoría (fuente única, lib/fs-objetivos) del mes de referencia de la vista:
+  // el último mes filtrado o el de la última semana relevada. Cada mes usa SU meta (la evolución de abajo
+  // compara mes a mes), así que editar un mes no cambia los demás. Mes sin meta → 32 / 25 / 23.
+  const sems = filter.semanas?.length ? filter.semanas : weekly.length ? weekly.map((w) => w.semana) : options.semanas;
+  const semMax = Math.max(0, ...sems);
+  const mesesFiltro = (filter.meses ?? []).map((m) => MESES.indexOf(m)).filter((i) => i >= 0);
+  const { anio, mesIdx } = mesRefFs(semMax, mesesFiltro.length ? Math.max(...mesesFiltro) : undefined);
+  const [objAnio, tm, editor] = await Promise.all([getFsObjetivosAnio(anio), getTradeMonthly(anio), puedeEditarActual("trade")]);
+  const o = objAnio[mesIdx]!;
+  const OBJ: Obj = { lavado: o.lavado, refri: o.refrigeracion, coccion: o.coccion };
+  const objLabel = (v: number) => `Meta ${MESES[mesIdx]} ${anio}: ${Number(v.toFixed(1))}%`;
+  const evol = ([["Lavado", "lavado"], ["Refrigeración", "refrigeracion"], ["Cocción", "coccion"]] as const).map(([cat, k]) => ({
+    cat,
+    data: MESES.map((mes, i) => ({ mes, real: tm.fsCat[cat]?.[i] ?? null, meta: objAnio[i]![k] })),
+  }));
+
   // Objetivo general ponderado (Σ obj_cat × peso / Σ peso) para el card general.
   const genObj = (() => {
     const p = CATEGORIA_PESOS as Record<string, number>;
@@ -126,8 +142,34 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     return items.reduce((s, [o, w]) => s + o * w, 0) / wsum;
   })();
 
+  const metasBloque = (
+    <>
+      <section className="rounded-xl border bg-card p-4">
+        <h3 className="text-sm font-bold">Evolución mensual · real vs meta {anio}</h3>
+        <p className="mb-3 text-[11px] text-muted-foreground">Share Drean de cada mes contra la meta de ESE mes (sin meta cargada: 32 / 25 / 23%).</p>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {evol.map((e) => (
+            <div key={e.cat}>
+              <div className="mb-1 text-xs font-semibold text-muted-foreground">{e.cat}</div>
+              <MetaEvolChart data={e.data} mode="bar" unidad="%" realName={`Floor Share ${e.cat}`} />
+            </div>
+          ))}
+        </div>
+      </section>
+      {editor && (
+        <MetaPanel
+          plan={FS_PLAN}
+          catPesos={CATEGORIA_PESOS}
+          titulo="Metas de Floor Share (objetivos por mes y categoría)"
+          subtitulo="Acá se editan los objetivos: Ene–Dic para Lavado, Refrigeración y Cocción. Cada mes se compara contra su meta (cambiar un mes no toca los otros). El general se calcula solo (Σ categoría × peso). Mes sin meta = 32 / 25 / 23%."
+          kpis={[{ nombre: FS_KPI, unidad: "%", categorias: [...CATEGORIAS_CORE] }]}
+        />
+      )}
+    </>
+  );
+
   return (
-    <DashTabs dash="floor-share" className="space-y-4">
+    <div className="space-y-4">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Floor Share</h2>
         <p className="text-sm text-muted-foreground">
@@ -136,15 +178,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
         <LastUpdated date={lastUpdated} className="mt-1" />
       </header>
       <HowToRead slug="floor-share" />
+      {/* Sin pestaña Diagnóstico (pedido del user): sin <DashTabs>, el renglón queda solo con "Tablero". */}
       <DashTabBar />
-
-      <MetaPanel
-        plan="Floor Share"
-        catPesos={CATEGORIA_PESOS}
-        titulo="Metas de Floor Share"
-        subtitulo="Cargá la meta mensual POR CATEGORÍA (Lavado/Refrigeración/Cocción). El Floor Share general se calcula solo (Σ categoría × peso). Alimenta el rollup de objetivos del Seguimiento."
-        kpis={[{ nombre: "Floor Share (exhibición)", unidad: "%", categorias: [...CATEGORIAS_CORE] }]}
-      />
 
       <FloorShareFilters current={filter} options={options} />
 
@@ -155,23 +190,29 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       )}
 
       {!hasData ? (
-        <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
-          Sin datos para los filtros seleccionados.
-        </div>
+        <>
+          <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">
+            Sin datos para los filtros seleccionados.
+          </div>
+          {metasBloque}
+        </>
       ) : (
         <>
           <section className="grid gap-3 lg:grid-cols-4">
             <KpiObjCard
-              title="Floor Share — general" medida="Drean · todas las categorías" value={overall.total.share} obj={Number(genObj.toFixed(1))}
+              title="Floor Share — general" medida="Drean · todas las categorías" value={overall.total.share} obj={Number(genObj.toFixed(1))} objLabel={`Meta ${MESES[mesIdx]} ${anio}: ${genObj.toFixed(1)}% (ponderada)`}
               contexto={`${overall.total.drean_units.toLocaleString()} / ${overall.total.total_units.toLocaleString()} · ${totalTiendasRelevadas} tiendas`}
             />
-            <KpiObjCard title="Lavado" medida="Share Drean góndola" value={overall.lavado.share} obj={OBJ.lavado}
+            <KpiObjCard title="Lavado" medida="Share Drean góndola" value={overall.lavado.share} obj={OBJ.lavado} objLabel={objLabel(OBJ.lavado)}
               contexto={`${overall.lavado.drean_units.toLocaleString()} / ${overall.lavado.total_units.toLocaleString()}`} />
-            <KpiObjCard title="Refrigeración" medida="Share Drean góndola" value={overall.refri.share} obj={OBJ.refri}
+            <KpiObjCard title="Refrigeración" medida="Share Drean góndola" value={overall.refri.share} obj={OBJ.refri} objLabel={objLabel(OBJ.refri)}
               contexto={`${overall.refri.drean_units.toLocaleString()} / ${overall.refri.total_units.toLocaleString()}`} />
-            <KpiObjCard title="Cocción" medida="Share Drean góndola" value={overall.coccion.share} obj={OBJ.coccion}
+            <KpiObjCard title="Cocción" medida="Share Drean góndola" value={overall.coccion.share} obj={OBJ.coccion} objLabel={objLabel(OBJ.coccion)}
               contexto={`${overall.coccion.drean_units.toLocaleString()} / ${overall.coccion.total_units.toLocaleString()}`} />
           </section>
+
+          {/* Estructura estándar: cards → evolución real vs meta (+ metas) → contenido. */}
+          {metasBloque}
 
           {/* Estructura estándar: cards → evolución → contenido. */}
           {weekly.length > 1 && (
@@ -232,7 +273,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           <TiendaTable rows={byTienda} OBJ={OBJ} />
         </>
       )}
-    </DashTabs>
+    </div>
   );
 }
 
