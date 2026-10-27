@@ -58,6 +58,7 @@ export interface CbRow {
   /** Del maestro de tiendas (lib/fs-enrich), = app vieja. */
   promotor?: string;
   supervisor?: string;
+  zona?: string;
 }
 
 export interface CbTotals {

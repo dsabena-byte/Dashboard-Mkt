@@ -14,6 +14,8 @@ export interface CbView {
   byDiv: ReturnType<typeof computeByDivision>;
   byCliente: ReturnType<typeof computeByDim>;
   byPromotor: ReturnType<typeof computeByDim>;
+  /** Por zona del maestro de tiendas (mapa): objetivos y cumplidos para sumar lo que entra en la vista. */
+  byZona?: CbZona[];
   byTienda: ReturnType<typeof computeByTienda>;
   totalTiendasRelevadas: number;
   hasData: boolean;
@@ -56,11 +58,25 @@ export function computeCbView(allRows: CbRow[], filter: CbFilter): CbView {
     byDiv: computeByDivision(rows),
     byCliente: computeByDim(rows, "cliente").filter((r) => !PERSONA_PLACEHOLDERS.has(r.key)),
     byPromotor: computeByDim(rows, "promotor").filter((r) => !PERSONA_PLACEHOLDERS.has(r.key)),
+    byZona: computeCbZonas(rows),
     // Todas las tiendas, peor % CB primero (= app vieja).
     byTienda: computeByTienda(rows).sort((a, b) => (a.cb_total ?? 0) - (b.cb_total ?? 0)),
     totalTiendasRelevadas: new Set(allRows.map((r) => r.tienda)).size,
     hasData: rows.length > 0,
   };
+}
+
+export type CbZona = { zona: string; tiendas: number; cb: [number, number]; inf: [number, number]; est: [number, number] };
+/** [cumplidos, objetivo] por zona; Estratégico = CB − Infaltable (= app vieja). */
+export function computeCbZonas(rows: CbRow[]): CbZona[] {
+  const m = new Map<string, { t: Set<string>; cb: [number, number]; inf: [number, number] }>();
+  for (const r of rows) {
+    const z = r.zona || "Sin zona";
+    const e = m.get(z) ?? { t: new Set<string>(), cb: [0, 0], inf: [0, 0] };
+    e.t.add(r.tienda); e.cb[0] += r.real_cb ?? 0; e.cb[1] += r.target_cb ?? 0; e.inf[0] += r.real_inf ?? 0; e.inf[1] += r.target_inf ?? 0;
+    m.set(z, e);
+  }
+  return [...m].map(([zona, e]) => ({ zona, tiendas: e.t.size, cb: e.cb, inf: e.inf, est: [e.cb[0] - e.inf[0], e.cb[1] - e.inf[1]] }));
 }
 
 // ── Detalle de SKUs de una tienda o cliente (= app vieja): cada SKU es Infaltable si targetCB = targetInf. ──
