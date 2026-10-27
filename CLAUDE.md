@@ -577,8 +577,10 @@ reporte_existencia/cb_homologos).
   dirección: master de tiendas del user (Excel, 1.626 filas) cruzado por número + nombre → 614/631 tiendas; columnas nuevas de `tr_tiendas`
   (migración **0141**, aplicada): `direccion, codigo_postal, municipio, estado` (= provincia real; `provincia` sigue = región) y `lat, lon,
   geo_precision` ('direccion' | 'localidad'). Geocodificado GRATIS: Georef (apis.datos.gob.ar, bulk POST) + Nominatim/OSM para lo que no
-  encontró → 550 por dirección, 50 al centro de su localidad, 14 sin ubicar (el master trae localidades erróneas en Tucumán: "Leales" con
-  CP 4000). Vía: `getTrContactos` → `geo` "lat|lon|provincia" → la clave del punto es "N - tienda@lat|lon|prov" (`byZona` de cb/fs-view);
+  encontró. VALIDACIÓN: Georef `/ubicacion` de cada punto debe caer en el municipio/departamento del master (CABA: en CABA); si no →
+  centro del municipio. Resultado: 442 por dirección, 157 al centro del municipio, 15 sin ubicar (Georef "solo provincia" ubicaba mal:
+  Cravero Río Cuarto caía en Córdoba capital; el master trae localidades erróneas en Tucumán: "Leales" con CP 4000). 17 tiendas del
+  maestro sin match en el master (La Anónima, DGZ, Electro GV, etc.). Vía: `getTrContactos` → `geo` "lat|lon|provincia" → la clave del punto es "N - tienda@lat|lon|prov" (`byZona` de cb/fs-view);
   sin geo cae en la burbuja de su ZONA (`tr_tiendas.localidad`, `ZONAS` en el componente; proyección x=26.08·lon+1918.77,
   y=−33.34·lat−728.1). Panel = Σ cumplidos ÷ Σ objetivo de lo que entra en la vista. CB Ventas NO va en el mapa (es por cuenta).
   `tr_tiendas` tiene ~19 tiendas DUPLICADAS (ids 576–594, nombre en mayúsculas y cadena equivocada; misma dirección que el original).
