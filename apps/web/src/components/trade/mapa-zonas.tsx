@@ -208,15 +208,16 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                       const v = pct(p.vals[i]!);
                       if (x.binaria) return (
                         <tr key={x.label} className={`whitespace-nowrap border-t border-blue-100 ${cab(i)}`}>
-                          <td className="py-0.5">{corto(x)}</td>
-                          <td colSpan={2} className="text-right font-semibold" style={{ color: v == null ? undefined : color(v, x.obj) }}>{v == null ? "sin dato" : v > 0 ? "Sí" : "No"}</td>
+                          <td className="py-1">{corto(x)}</td>
+                          <td className="w-20 text-right text-base font-bold tabular-nums" style={{ color: v == null ? undefined : color(v, x.obj) }}>{v == null ? "—" : v > 0 ? "Sí" : "No"}</td>
+                          <td className="w-[150px] pl-2 text-right text-[11px] text-muted-foreground" />
                         </tr>
                       );
                       return (
                         <tr key={x.label} className={`whitespace-nowrap border-t border-blue-100 ${cab(i)}`}>
-                          <td className="py-0.5">{corto(x)}</td>
-                          <td className="text-right font-semibold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "sin dato" : `${v.toFixed(0)}%`}</td>
-                          <td className="w-12 text-right text-muted-foreground tabular-nums">obj {x.obj}%</td>
+                          <td className="py-1">{corto(x)}</td>
+                          <td className="w-20 text-right text-base font-bold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "—" : `${v.toFixed(1)}%`}</td>
+                          <td className="w-[150px] pl-2 text-right text-[11px] text-muted-foreground">obj {x.obj}%</td>
                         </tr>
                       );
                     })}
@@ -243,8 +244,8 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                   return (
                     <tr key={x.label} onClick={() => setM(i)} className={`cursor-pointer whitespace-nowrap border-t ${i === m ? "bg-blue-50 font-semibold" : cab(i) || "hover:bg-muted"}`}>
                       <td className="py-1">{corto(x)}</td>
-                      <td className="text-right text-base font-bold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "—" : `${v.toFixed(1)}%`}</td>
-                      <td className="pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : x.porCuenta ? `${new Set(con.map((p) => p.cuenta)).size}${x.cuentasTotal ? `/${x.cuentasTotal}` : ""} cl. · obj ${x.obj}%` : `obj ${x.obj}%`}</td>
+                      <td className="w-20 text-right text-base font-bold tabular-nums" style={{ color: color(v, x.obj) }}>{v == null ? "—" : `${v.toFixed(1)}%`}</td>
+                      <td className="w-[150px] pl-2 text-right text-[11px] text-muted-foreground">{x.binaria ? `${con.filter((p) => p.vals[i]![0] > 0).length}/${con.length}` : x.porCuenta ? `${new Set(con.map((p) => p.cuenta)).size}${x.cuentasTotal ? `/${x.cuentasTotal}` : ""} cl. · obj ${x.obj}%` : `obj ${x.obj}%`}</td>
                     </tr>
                   );
                 })}
