@@ -105,7 +105,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
       <div className="space-y-4">
         <Encabezado tab={tab} editor={editor} />
         {(err || d?.error) && <div className="rounded-lg border bg-rose-50 p-4 text-xs text-rose-900">{err ?? d?.error}</div>}
-        {d && <CbSugerenciasSku porCliente={d.porCliente} porTipologia={d.porTipologia} semanas={d.semanas} desde={d.desde} hasta={d.hasta} minSemanas={MIN_SEMANAS} />}
+        {d && <CbSugerenciasSku porCliente={d.porCliente} porTipologia={d.porTipologia} semanas={d.semanas} desde={d.desde} hasta={d.hasta} minSemanas={MIN_SEMANAS} editor={editor} />}
       </div>
     );
   }

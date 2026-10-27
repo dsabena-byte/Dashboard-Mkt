@@ -183,6 +183,8 @@ eq(g2!.sugerencias.map((s) => [s.sku, s.tiendasExh, Math.round(s.pct), Math.roun
 const eqv = equivalencias([{ modelo: "cb1", homologos: ["00NUEVO", "OTRO"] }]);
 const [g3] = calcularSugerenciasSku(exhRows, cbRows2, () => "C", { equivalentes: eqv });
 eq([g3!.sugerencias.map((s) => s.sku), g3!.homologosExcluidos], [["TOP"], [{ sku: "NUEVO", de: "CB1" }]], "homólogo del CB (catálogo de Ventas) no se sugiere");
+const [g4] = calcularSugerenciasSku(exhRows, cbRows2, () => "C", { descartados: () => new Set(["NUEVO"]) });
+eq([g4!.sugerencias.map((s) => s.sku), g4!.descartados, g4!.cb.map((c) => [c.sku, c.cumple, c.total])], [["TOP"], ["NUEVO"], [["CB1", 1, 3]]], "sacado por el usuario: no se sugiere; CB actual por SKU");
 eq(claveSku("NEXT 6·09 ECO"), claveSku("next 6.09  eco"), "clave de SKU: · = . y mayúsculas");
 eq(familiaCocina("CD5507AI"), "CD5603", "CD5505/5507 = familia 03");
 eq(["CD5502AB", "CD5602AN0", "CD5503AI", "CD5617AI0", "CD6009EI", "CD7609EI", "LFDR0914ISG0"].map(familiaCocina),
