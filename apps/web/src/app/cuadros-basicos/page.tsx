@@ -162,8 +162,8 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const { options, totals, weekly, byDiv, byCliente, byPromotor, byTienda, totalTiendasRelevadas, hasData } = v;
   const cbVals = (r: { cb_pct: number; infalt_pct: number; estrat_pct: number }) => [r.cb_pct, r.infalt_pct, r.estrat_pct];
   const totVals = [totals.cb_pct, totals.infalt_pct, totals.estrat_pct];
-  // Al filtrar tiendas: sus exhibiciones especiales con fotos (pedido del user: ver la foto en el tablero, no en Drive).
-  const exhib = filter.tiendas?.length
+  // Pestaña Mapa + filtro de tiendas: sus exhibiciones especiales con fotos (solo en el mapa, pedido del user) (pedido del user: ver la foto en el tablero, no en Drive).
+  const exhib = tab === "mapa" && filter.tiendas?.length
     ? await exhibicionesDeTiendas(filter.tiendas.map((t) => { const m = t.match(/^(\d+)\s*[-–]\s*(.+)$/); return { numero: m?.[1] ?? "", nombre: m?.[2] ?? t, label: t }; })).catch(() => [])
     : [];
   const seleccion = [...(filter.tiendas ?? []), ...(filter.clientes ?? [])].join(", ");
@@ -218,8 +218,6 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
               contexto={`Universo histórico: ${totalTiendasRelevadas}`}
             />
           </section>
-
-          <ExhibicionesTienda items={exhib} />
 
           {weekly.length > 1 && (
             <section className="rounded-xl border bg-card p-4">
