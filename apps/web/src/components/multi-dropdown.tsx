@@ -23,15 +23,24 @@ export function MultiDropdown({
   onChange,
 }: MultiDropdownProps) {
   const [open, setOpen] = useState(false);
+  // Borrador local: el tilde se marca al instante y el filtro se aplica UNA vez al cerrar (cada onChange puede
+  // recargar el tablero en el servidor; tildar 5 tiendas eran 5 recargas y el tilde tardaba en verse).
+  const [draft, setDraft] = useState(selected);
   const ref = useRef<HTMLDivElement>(null);
+  const cerrar = () => {
+    setOpen(false);
+    const a = [...draft].sort().join("\u0000"), b = [...selected].sort().join("\u0000");
+    if (a !== b) onChange(draft);
+  };
+  useEffect(() => { if (!open) setDraft(selected); }, [selected, open]);
 
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) cerrar();
     };
     const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") cerrar();
     };
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onEsc);
@@ -39,19 +48,19 @@ export function MultiDropdown({
       document.removeEventListener("mousedown", onDocClick);
       document.removeEventListener("keydown", onEsc);
     };
-  }, [open]);
+  }); // sin deps: el listener tiene que ver el borrador actual
 
   const toggle = (v: string) => {
-    if (selected.includes(v)) onChange(selected.filter((x) => x !== v));
-    else onChange([...selected, v]);
+    setDraft((d) => (d.includes(v) ? d.filter((x) => x !== v) : [...d, v]));
   };
 
+  const sel = open ? draft : selected;
   const triggerText =
-    selected.length === 0
+    sel.length === 0
       ? placeholder
-      : selected.length === 1
-        ? options.find((o) => o.value === selected[0])?.label ?? selected[0]
-        : `${selected.length} seleccionados`;
+      : sel.length === 1
+        ? options.find((o) => o.value === sel[0])?.label ?? sel[0]
+        : `${sel.length} seleccionados`;
 
   return (
     <div className="flex flex-col gap-1" ref={ref}>
@@ -61,10 +70,10 @@ export function MultiDropdown({
       <div className="relative">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => (open ? cerrar() : setOpen(true))}
           className="flex h-9 min-w-[160px] items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-sm hover:bg-secondary/40 focus:outline-none focus:ring-1 focus:ring-ring"
         >
-          <span className={selected.length === 0 ? "text-muted-foreground" : ""}>
+          <span className={sel.length === 0 ? "text-muted-foreground" : ""}>
             {triggerText}
           </span>
           <svg
@@ -79,17 +88,17 @@ export function MultiDropdown({
         </button>
         {open && (
           <div className="absolute left-0 top-full z-30 mt-1 max-h-72 w-max min-w-full overflow-y-auto rounded-md border border-input bg-card p-1 shadow-lg">
-            {selected.length > 0 && (
+            {draft.length > 0 && (
               <button
                 type="button"
-                onClick={() => onChange([])}
+                onClick={() => setDraft([])}
                 className="flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-secondary"
               >
                 Limpiar selección
               </button>
             )}
             {options.map((o) => {
-              const isSel = selected.includes(o.value);
+              const isSel = draft.includes(o.value);
               return (
                 <label
                   key={o.value}
@@ -105,6 +114,9 @@ export function MultiDropdown({
                 </label>
               );
             })}
+            <button type="button" onClick={cerrar} className="sticky bottom-0 mt-1 w-full rounded bg-blue-700 px-2 py-1.5 text-xs font-semibold text-white hover:bg-blue-800">
+              Aplicar
+            </button>
           </div>
         )}
       </div>
