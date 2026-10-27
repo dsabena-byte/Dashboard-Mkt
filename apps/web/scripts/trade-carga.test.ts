@@ -173,5 +173,8 @@ const [g] = calcularSugerenciasSku(exhRows, cbRows, () => "C");
 eq([g!.tiendas, g!.target, g!.real, Math.round(g!.pct)], [3, 3, 2, 67], "grupo: % CB actual");
 eq(g!.sugerencias.map((s) => [s.sku, s.tiendasExh, s.homologo?.de, s.homologo?.mismoSegmento, s.homologo?.recupera, Math.round(s.homologo!.deltaPp)]),
   [["NUEVO", 2, "CB1", true, 1, 33]], "NUEVO como homólogo de CB1 recupera la tienda 2 (+33 pp); retirado no cuenta");
+// Si el catálogo CB del cliente ya tiene NUEVO (como modelo u homólogo), no es una sugerencia.
+const [gh] = calcularSugerenciasSku(exhRows, cbRows, () => "C", { catalogo: () => ["CB1", "NUEVO"] });
+eq(gh!.sugerencias.map((s) => s.sku), [], "SKU ya en el catálogo CB del cliente: no se sugiere");
 
 console.log(`trade-carga: ${n} checks OK`);

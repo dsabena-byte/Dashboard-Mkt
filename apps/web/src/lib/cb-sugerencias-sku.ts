@@ -39,7 +39,8 @@ export const tipoProducto = (seg: string) =>
   seg.split(" - ").filter((p) => !/^\d+([.,]\d+)?\s*(kg|cm|l|lts|litros)?$/i.test(p.trim())).join(" - ");
 
 export function calcularSugerenciasSku(
-  exh: ExhSkuRow[], cb: CbSkuRow[], grupoDe: (tienda: string, cliente: string | null) => string, opts: { top?: number } = {},
+  exh: ExhSkuRow[], cb: CbSkuRow[], grupoDe: (tienda: string, cliente: string | null) => string,
+  opts: { top?: number; catalogo?: (tienda: string, cliente: string | null) => Iterable<string> } = {},
 ): GrupoSku[] {
   // Exhibición: semanas relevadas por tienda y semanas en que cada SKU estuvo exhibido (no "Retirada").
   const semT = new Map<string, Set<number>>(), exT = new Map<string, Map<string, Set<number>>>();
@@ -59,11 +60,12 @@ export function calcularSugerenciasSku(
   // CB: la última semana de cada tienda dentro de lo que se pasó.
   const ult = new Map<string, number>();
   for (const r of cb) { const k = claveTienda(r.tienda); ult.set(k, Math.max(ult.get(k) ?? 0, r.semana)); }
-  const cbT = new Map<string, { label: string; cliente: string | null; skus: Map<string, { t: number; r: number }> }>();
+  const cbT = new Map<string, { label: string; cliente: string | null; skus: Map<string, { t: number; r: number }>; hom: Set<string> }>();
   for (const r of cb) {
     const k = claveTienda(r.tienda);
     if (r.semana !== ult.get(k) || !(r.target_cb > 0) || !semT.has(k)) continue; // sin exhibición no se puede sugerir
-    if (!cbT.has(k)) cbT.set(k, { label: r.tienda, cliente: r.cliente, skus: new Map() });
+    // hom = SKUs del catálogo CB del cliente (modelos y homólogos): ya son CB aunque la planilla semanal no los mida.
+    if (!cbT.has(k)) cbT.set(k, { label: r.tienda, cliente: r.cliente, skus: new Map(), hom: new Set(opts.catalogo?.(r.tienda, r.cliente) ?? []) });
     cbT.get(k)!.skus.set(r.sku, { t: r.target_cb, r: Math.min(r.real_cb, r.target_cb) });
   }
 
@@ -77,7 +79,7 @@ export function calcularSugerenciasSku(
     for (const k of ks) for (const [s, v] of cbT.get(k)!.skus) { T += v.t; R += v.r; cbSet.add(s); }
     if (!T) continue;
     const cand = new Map<string, number>();
-    for (const k of ks) for (const s of exT.get(k)!.keys()) if (!cbSet.has(s) && presente(k, s)) cand.set(s, (cand.get(s) ?? 0) + 1);
+    for (const k of ks) for (const s of exT.get(k)!.keys()) if (!cbSet.has(s) && !cbT.get(k)!.hom.has(s) && presente(k, s)) cand.set(s, (cand.get(s) ?? 0) + 1);
     const N = ks.length, pct = R / T;
     const sugerencias: SkuSugerido[] = [];
     for (const [c, n] of cand) {
@@ -89,7 +91,7 @@ export function calcularSugerenciasSku(
         const mismo = !!ic.seg && ic.seg === is.seg;
         if (!mismo && (!ic.seg || tipoProducto(ic.seg) !== tipoProducto(is.seg))) continue;
         let rec = 0;
-        for (const k of ks) { const v = cbT.get(k)!.skus.get(s); if (v && v.r < v.t && presente(k, c)) rec += v.t - v.r; }
+        for (const k of ks) { const v = cbT.get(k)!.skus.get(s); if (v && v.r < v.t && !cbT.get(k)!.hom.has(c) && presente(k, c)) rec += v.t - v.r; }
         if (!rec) continue;
         if (!homologo || (mismo && !homologo.mismoSegmento) || (mismo === homologo.mismoSegmento && rec > homologo.recupera))
           homologo = { de: s, mismoSegmento: mismo, recupera: rec, deltaPp: (rec / T) * 100 };
