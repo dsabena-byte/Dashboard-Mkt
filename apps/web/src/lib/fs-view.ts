@@ -131,3 +131,28 @@ export function isFsDefault(f: FloorShareFilter): boolean {
   return !(f.meses?.length || f.semanas?.length || f.categorias?.length || f.clientes?.length || f.tiendas?.length || f.marcas?.length
     || f.supervisores?.length || f.promotores?.length);
 }
+
+// ─── Vistas precalculadas por período (un mes o una semana sin otros filtros) ───────────────────────────────
+// id de fs_precomputed: 1 = vista default · 1000+mes (1–12) · 2000+semana. Se guardan SIN options/topMarcas/weekly/
+// monthly (ignoran el filtro de tiempo: se toman de la vista default al leer).
+export const fsIdMes = (mes: string) => 1000 + MES_ORDER.indexOf(mes) + 1;
+export const fsIdSemana = (semana: number) => 2000 + semana;
+export type FsVistaPeriodo = Omit<FsView, "options" | "topMarcas" | "weekly" | "monthly">;
+
+export function fsVistasPorPeriodo(rows: FsEnrichedRow[], base: FsView): { id: number; data: FsVistaPeriodo }[] {
+  const porMes = new Map<string, FsEnrichedRow[]>(), porSem = new Map<number, FsEnrichedRow[]>();
+  for (const r of rows) {
+    const m = isoWeekToMes(r.semana);
+    (porMes.get(m) ?? porMes.set(m, []).get(m)!).push(r);
+    (porSem.get(r.semana) ?? porSem.set(r.semana, []).get(r.semana)!).push(r);
+  }
+  const slim = (v: FsView): FsVistaPeriodo => { const { options: _o, topMarcas: _t, weekly: _w, monthly: _m, ...resto } = v; return resto; };
+  return [
+    ...[...porMes].filter(([m]) => base.options.meses.includes(m)).map(([m, rs]) => ({ id: fsIdMes(m), data: slim(computeFsView(rs, { meses: [m] })) })),
+    ...[...porSem].map(([s, rs]) => ({ id: fsIdSemana(s), data: slim(computeFsView(rs, { semanas: [s] })) })),
+  ];
+}
+
+/** Arma la vista completa de un período precalculado con las partes que ignoran el filtro de tiempo (de la default). */
+export const fsVistaConBase = (p: FsVistaPeriodo, base: FsView): FsView =>
+  ({ ...p, options: base.options, topMarcas: base.topMarcas, weekly: base.weekly, monthly: base.monthly });
