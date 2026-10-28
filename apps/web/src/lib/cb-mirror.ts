@@ -122,6 +122,29 @@ export async function enriquecerCb(rows: CbRow[]): Promise<CbRow[]> {
   });
 }
 
+// Filas de Floor Share enriquecidas para la vista CON FILTROS. Bajarlas tarda ~10 s (≈200k filas, 35 MB), así que
+// quedan en memoria mientras no cambie el precálculo (fs_precomputed.updated_at se reescribe en cada carga).
+// shortcut: caché por instancia serverless; la 1ª consulta con filtros de cada instancia sigue tardando ~10 s.
+let fsFilasCache: { ver: string; at: number; rows: FsEnrichedRow[] } | null = null;
+export async function getFsFilasEnriquecidas(): Promise<FsEnrichedRow[]> {
+  const ver = await fsPrecomputedVersion();
+  if (fsFilasCache && ver && fsFilasCache.ver === ver && Date.now() - fsFilasCache.at < 60 * 60_000) return fsFilasCache.rows;
+  const rows = await enriquecerFs(await getFloorShareRowsFast([]));
+  if (ver) fsFilasCache = { ver, at: Date.now(), rows };
+  return rows;
+}
+
+async function fsPrecomputedVersion(): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  try {
+    const res = await fetch(`${url}/rest/v1/fs_precomputed?id=eq.1&select=updated_at`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" });
+    if (!res.ok) return null;
+    return ((await res.json()) as Array<{ updated_at: string }>)[0]?.updated_at ?? null;
+  } catch { return null; }
+}
+
 // Vista default de Floor Share PRECALCULADA (la llena el cron). null si no existe.
 export async function getFsPrecomputed(): Promise<FsView | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

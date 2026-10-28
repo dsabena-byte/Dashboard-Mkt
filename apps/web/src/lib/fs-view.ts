@@ -14,6 +14,7 @@ import {
 } from "./floor-share-queries";
 import { isoWeekToMes } from "./cb-queries";
 import { PERSONA_PLACEHOLDERS } from "./fs-enrich";
+import { mesKeySemana } from "./fs-mes";
 
 /** Fila con cliente/promotor/supervisor (lib/fs-enrich). La tienda se identifica por número + nombre. */
 export type FsEnrichedRow = FloorShareRow & { cliente: string; promotor: string; supervisor: string; zona?: string; geo?: string };
@@ -42,6 +43,13 @@ export interface FsView {
   /** Drean + top 9 marcas (= app vieja). La evolución semanal ignora los filtros de mes y semana. */
   topMarcas: string[];
   weekly: ReturnType<typeof weeklyShareByBrand>;
+  /** Igual que weekly pero por MES calendario (semana = YYYYMM). Toggle Semanal/Mensual del gráfico. */
+  monthly?: ReturnType<typeof weeklyShareByBrand>;
+  /** Share Drean por categoría de cada mes de la vista filtrada ("YYYY-MM"), para la fila "Mes" de las cards. */
+  porMes?: { mes: string; overall: ReturnType<typeof computeOverall> }[];
+  /** Meses ("YYYY-MM") de la primera y última semana de la vista (subtítulo de las tablas). */
+  mesDesde?: string | null;
+  mesHasta?: string | null;
   totalTiendasRelevadas: number;
   /** Semanas del período mostrado (para el subtítulo "Abril 2026 — Octubre 2026"). */
   semanaDesde: number | null;
@@ -98,14 +106,21 @@ export function computeFsView(allRows: FsEnrichedRow[], filter: FloorShareFilter
   const topMarcas = [OWN_BRAND_FS, ...shareByBrand(evolRows).map((r) => r.marca)
     .filter((m) => m !== OWN_BRAND_FS && !NO_MARCA.has(m.toLowerCase())).slice(0, 9)];
   const weekly = weeklyShareByBrand(evolRows, topMarcas);
+  const ym = (r: FsEnrichedRow) => Number(mesKeySemana(r.periodo, r.semana).replace("-", ""));
+  const monthly = weeklyShareByBrand(evolRows.map((r) => ({ ...r, semana: ym(r) })), topMarcas);
+  const grupos = new Map<string, FsEnrichedRow[]>();
+  for (const r of rows) { const k = mesKeySemana(r.periodo, r.semana); const g = grupos.get(k); if (g) g.push(r); else grupos.set(k, [r]); }
+  const porMes = [...grupos.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([mes, g]) => ({ mes, overall: computeOverall(g) }));
 
   const cats = uniq(rows.map((r) => normalizeCategoria(r.categoria))).sort();
   const totalTiendasRelevadas = new Set(rows.map(tiendaKeyFs)).size;
   let semMin = Infinity, semMax = -Infinity; // sin spread: son ~140k filas
-  for (const r of rows) { if (r.semana < semMin) semMin = r.semana; if (r.semana > semMax) semMax = r.semana; }
+  let rMin: FsEnrichedRow | null = null, rMax: FsEnrichedRow | null = null;
+  for (const r of rows) { if (r.semana < semMin) { semMin = r.semana; rMin = r; } if (r.semana > semMax) { semMax = r.semana; rMax = r; } }
 
   return {
-    options, totalRanking, catBrand, cats, byTienda, byCliente, byPromotor, byZona, overall, topMarcas, weekly, totalTiendasRelevadas,
+    options, totalRanking, catBrand, cats, byTienda, byCliente, byPromotor, byZona, overall, topMarcas, weekly, monthly, porMes, totalTiendasRelevadas,
+    mesDesde: rMin ? mesKeySemana(rMin.periodo, rMin.semana) : null, mesHasta: rMax ? mesKeySemana(rMax.periodo, rMax.semana) : null,
     semanaDesde: rows.length ? semMin : null, semanaHasta: rows.length ? semMax : null,
     hasData: rows.length > 0,
   };
