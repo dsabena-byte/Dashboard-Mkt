@@ -619,6 +619,10 @@ reporte_existencia/cb_homologos).
   cards FS = sistema de Redes (filas «Mes» vs su meta y «Período» vs promedio de metas, chip en pp). **`MetaKpiCard` muestra real + meta en cada
   fila (todos los tableros)** y `KpiObjCard` (CB, CB Ventas) usa MetaKpiCard. Regenerar precálculos sin migrar: `trade-migrar.yml` con
   `solo_derivados=1` (el workflow completo re-migra desde el proyecto CB y pisaría cargas nuevas).
+  **Filtros de tiempo rápidos (28-oct, #987, pedido del user):** `refrescarDerivados` guarda además una vista por MES (`fs_precomputed` id
+  1000+mes) y por SEMANA (id 2000+semana), sin options/evolución (salen de la default id=1, `fsVistaConBase`): 54 vistas, ~4 s, máx 181 KB;
+  un mes o una semana = 2 lecturas (~0,7 s c/u medidas) en vez de bajar ~200k filas (~11 s). Varios meses/semanas sin otros filtros = baja
+  solo esas semanas (~1,4 s). Verificado idéntico al cálculo completo. Otros filtros (categoría/cliente/promotor/tienda) = camino completo + caché.
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
   ni en el proyecto CB viejo (hueco de origen); se cargó el 27-oct.
 - **Sync de SharePoint BORRADO (28-oct, pedido del user):** el workflow «Sync presupuestos desde SharePoint» de Dashboard-BGT (fallaba: link vencido) se eliminó (Dashboard-BGT#10). `data.json` queda congelado; el presupuesto se carga desde /funnel.
