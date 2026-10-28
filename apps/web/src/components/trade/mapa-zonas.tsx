@@ -46,6 +46,32 @@ function tiendaGeo(z: string) {
 // Proyección de los paths de lib/argentina-provinces (lineal; ajustada con los bordes de 8 provincias, error < 3 px).
 const px = (lon: number) => 26.08 * lon + 1918.77;
 const py = (lat: number) => -33.34 * lat - 728.1;
+const lonDe = (x: number) => (x - 1918.77) / 26.08;
+const latDe = (y: number) => (y + 728.1) / -33.34;
+
+// Mapa base (calles y ciudades) de CARTO/OpenStreetMap al hacer zoom: cada tile se ubica por sus esquinas lat/lon con la
+// misma proyección lineal del mapa (dentro de un tile la diferencia con Mercator es < 1 px).
+const TILE_URL = (z: number, x: number, y: number) => `https://${"abcd"[(x + y) % 4]}.basemaps.cartocdn.com/light_all/${z}/${x}/${y}@2x.png`;
+const tileX = (lon: number, z: number) => Math.floor(((lon + 180) / 360) * 2 ** z);
+const tileY = (lat: number, z: number) => { const r = (lat * Math.PI) / 180; return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z); };
+const tileLon = (x: number, z: number) => (x / 2 ** z) * 360 - 180;
+const tileLat = (y: number, z: number) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / 2 ** z))) * 180) / Math.PI;
+function tiles(vb: { x: number; y: number; w: number; h: number }, anchoPx: number) {
+  const lon0 = lonDe(vb.x), lon1 = lonDe(vb.x + vb.w), latN = latDe(vb.y), latS = latDe(vb.y + vb.h);
+  let z = Math.min(18, Math.round(Math.log2((360 * anchoPx) / (256 * (lon1 - lon0)))));
+  if (z < 7) return [];
+  const out: Array<{ k: string; href: string; x: number; y: number; w: number; h: number }> = [];
+  for (; z >= 7; z--) {
+    const [x0, x1, y0, y1] = [tileX(lon0, z), tileX(lon1, z), tileY(latN, z), tileY(latS, z)];
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 80) continue; // tope de tiles por vista
+    for (let tx = x0; tx <= x1; tx++) for (let ty = y0; ty <= y1; ty++) {
+      const X = px(tileLon(tx, z)), Y = py(tileLat(ty, z));
+      out.push({ k: `${z}/${tx}/${ty}`, href: TILE_URL(z, tx, ty), x: X, y: Y, w: px(tileLon(tx + 1, z)) - X, h: py(tileLat(ty + 1, z)) - Y });
+    }
+    return out;
+  }
+  return out;
+}
 
 type Caja = { x: number; y: number; w: number; h: number };
 const FULL: Caja = { x: 0, y: 0, w: 520, h: 1107 };
@@ -79,6 +105,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   // Vista = centro + ancho; el alto sale de la proporción REAL del recuadro (así lo que se ve = lo que suma el panel).
   const [cam, setCam] = useState({ cx: ZONAS_CAJA.x + ZONAS_CAJA.w / 2, cy: ZONAS_CAJA.y + ZONAS_CAJA.h / 2, w: 0 });
   const [asp, setAsp] = useState(1.5);
+  const [anchoPx, setAnchoPx] = useState(800);
   const [m, setM] = useState(inicial);
   const [sel, setSel] = useState<string | null>(null);
   const [todas, setTodas] = useState(false); // tabla: todos los clientes (si no, los primeros 30)
@@ -95,7 +122,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const encuadrar = (c: Caja, a = asp) => ({ cx: c.x + c.w / 2, cy: c.y + c.h / 2, w: Math.max(c.w, c.h * a) });
   useEffect(() => {
     const el = svgRef.current; if (!el) return;
-    const ro = new ResizeObserver(([e]) => { const r = e!.contentRect; if (r.width && r.height) setAsp(r.width / r.height); });
+    const ro = new ResizeObserver(([e]) => { const r = e!.contentRect; if (r.width && r.height) { setAsp(r.width / r.height); setAnchoPx(r.width); } });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -119,6 +146,19 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const enVistaTodos = ubicados.filter((p) => p.x >= vb.x && p.x <= vb.x + vb.w && p.y >= vb.y && p.y <= vb.y + vb.h);
   const escala = Math.min(1, vb.w / FULL.w); // las burbujas no crecen al hacer zoom
   const maxT = Math.max(1, ...ubicados.map((p) => p.tiendas));
+  const base = tiles(vb, anchoPx);
+  // Etiquetas sin encimarse: primero las de más tiendas (o la del mouse), solo si su caja no pisa otra ya puesta.
+  const conEtiqueta = useMemo(() => {
+    const fs = 9 * escala, out = new Set<string>(), cajas: Caja[] = [];
+    const orden = [...enVistaTodos].sort((a, b) => (a.zona === hover ? -1 : b.zona === hover ? 1 : b.tiendas - a.tiendas));
+    for (const p of orden) {
+      const r = (p.tienda ? 3.5 : 4 + 14 * Math.sqrt(p.tiendas / maxT)) * escala;
+      const c = { x: p.x + r, y: p.y - fs, w: (p.label.length + 8) * fs * 0.55, h: fs * 1.3 };
+      if (p.zona !== hover && cajas.some((o) => c.x < o.x + o.w && o.x < c.x + c.w && c.y < o.y + o.h && o.y < c.y + c.h)) continue;
+      cajas.push(c); out.add(p.zona);
+    }
+    return out;
+  }, [enVistaTodos, escala, hover, maxT]);
 
   const aSvg = (x: number, y: number) => {
     const r = svgRef.current!.getBoundingClientRect();
@@ -169,8 +209,9 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
             onWheel={onWheel} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => (drag.current = null)} onPointerLeave={() => (drag.current = null)}
             role="img" aria-label={`Mapa de ${titulo}`}
           >
+            {base.map((t) => <image key={t.k} href={t.href} x={t.x} y={t.y} width={t.w} height={t.h} preserveAspectRatio="none" />)}
             {AR_PROVINCES.map((p) => (
-              <path key={p.name} d={p.path} fill={tinte(porProv.get(p.name) ?? null, metrica.obj)} stroke="#cbd5e1" strokeWidth={0.6 * escala} />
+              <path key={p.name} d={p.path} fill={tinte(porProv.get(p.name) ?? null, metrica.obj)} fillOpacity={base.length ? 0.25 : 1} stroke="#cbd5e1" strokeWidth={0.6 * escala} />
             ))}
             {ubicados.map((p) => {
               const v = pct(p.vals[m]!);
@@ -178,8 +219,8 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
               return (
                 <g key={p.zona} onMouseEnter={() => setHover(p.zona)} onMouseLeave={() => setHover(null)} onClick={() => setSel(p.zona)} className="cursor-pointer">
                   <circle cx={p.x} cy={p.y} r={r} fill={color(v, metrica.obj)} fillOpacity={0.75} stroke="#fff" strokeWidth={1.2 * escala} />
-                  {(hover === p.zona || (p.tienda ? escala < 0.06 : escala < 0.45)) && (
-                    <text x={p.x + r + 2 * escala} y={p.y + 3 * escala} fontSize={9 * escala} fontWeight={600} fill="#0f172a">
+                  {(hover === p.zona || (conEtiqueta.has(p.zona) && (p.tienda ? escala < 0.12 : escala < 0.45))) && (
+                    <text x={p.x + r + 2 * escala} y={p.y + 3 * escala} fontSize={9 * escala} fontWeight={600} fill="#0f172a" stroke="#fff" strokeWidth={2.5 * escala} paintOrder="stroke">
                       {p.label} · {fmt(v, metrica)}
                     </text>
                   )}
@@ -188,8 +229,9 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
             })}
           </svg>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Rueda del mouse o +/− para hacer zoom, arrastrá para moverte. Punto = tienda ({nTiendas} con dirección); burbuja grande = tiendas sin dirección agrupadas por zona. Color = vs objetivo.
+            Rueda del mouse o +/− para hacer zoom (al acercarte aparecen calles y ciudades), arrastrá para moverte. Punto = tienda ({nTiendas} con dirección); burbuja grande = tiendas sin dirección agrupadas por zona. Color = vs objetivo.
             {sinUbicar > 0 ? ` ${sinUbicar} tiendas sin zona cargada no aparecen en el mapa.` : ""} Tocá un punto para ver su ficha.{nota ? ` ${nota}` : ""}
+            {base.length ? <span className="ml-1">Mapa base © OpenStreetMap · © CARTO.</span> : null}
           </p>
         </div>
         <div className="space-y-2 text-sm">
