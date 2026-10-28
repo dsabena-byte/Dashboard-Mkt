@@ -70,8 +70,10 @@ export function FloorShareWeeklyChart({ data, marcas, label = (n) => `Sem ${n}` 
         <Tooltip
           contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 6, fontSize: 12 }}
           formatter={(v: number) => `${v}%`}
+          itemSorter={(it) => -Number(it.value ?? 0)}
         />
-        <Legend wrapperStyle={{ fontSize: 11 }} />
+        {/* Leyenda de mayor a menor share (marcas ya viene ordenada: Drean + top por share); las líneas se dibujan con Drean arriba. */}
+        <Legend wrapperStyle={{ fontSize: 11 }} payload={marcas.map((m) => ({ value: m, id: m, type: "line" as const, color: color(m) }))} />
         {/* Drean al final → se dibuja arriba de las demás. */}
         {[...otras, "Drean"].filter((m) => marcas.includes(m)).map((m) => (
           <Line key={m} type="monotone" dataKey={m} stroke={color(m)} strokeWidth={m === "Drean" ? 3 : 1.5} dot={{ r: m === "Drean" ? 4 : 2 }} />
