@@ -145,17 +145,17 @@ async function fsPrecomputedVersion(): Promise<string | null> {
   } catch { return null; }
 }
 
-// Vista default de Floor Share PRECALCULADA (la llena el cron). null si no existe.
-export async function getFsPrecomputed(): Promise<FsView | null> {
+// Vista de Floor Share PRECALCULADA (id 1 = default; 1000+mes / 2000+semana = un período, ver fs-view). null si no existe.
+export async function getFsPrecomputed<T = FsView>(id = 1): Promise<T | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
   try {
-    const res = await fetch(`${url}/rest/v1/fs_precomputed?id=eq.1&select=data`, {
+    const res = await fetch(`${url}/rest/v1/fs_precomputed?id=eq.${id}&select=data`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store",
     });
     if (!res.ok) return null;
-    const rows = (await res.json()) as Array<{ data: FsView }>;
+    const rows = (await res.json()) as Array<{ data: T }>;
     return rows[0]?.data ?? null;
   } catch {
     return null;

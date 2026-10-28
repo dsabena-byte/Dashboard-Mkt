@@ -9,12 +9,13 @@ import {
   type CategoryBlock,
   type FloorShareFilter,
 } from "@/lib/floor-share-queries";
-import { getFsFilasEnriquecidas, getFsPrecomputed } from "@/lib/cb-mirror";
+import { getFsFilasEnriquecidas, getFsPrecomputed, getFloorShareRowsFast, enriquecerFs } from "@/lib/cb-mirror";
+import { isoWeekToMes } from "@/lib/cb-queries";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
 import { MapaZonas } from "@/components/trade/mapa-zonas";
 import { mapaTrade, exhibicionesDeTiendas } from "@/lib/trade-mapa";
 import { ExhibicionesTienda } from "@/components/trade/exhibicion-fotos";
-import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
+import { computeFsView, isFsDefault, fsIdMes, fsIdSemana, fsVistaConBase, type FsView, type FsVistaPeriodo } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
 import { puedeEditarActual } from "@/lib/usuarios-server";
@@ -88,6 +89,30 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   if (isFsDefault(filter)) view = await getFsPrecomputed();
   if (view && (!view.byPromotor || !view.byZona || !view.monthly || !view.porMes)) view = null; // precálculo viejo → se recalcula
 
+  // Filtro SOLO de mes/semana (el caso común): se bajan únicamente esas semanas (~20k filas, ~1,4 s medidos) en vez del
+  // año entero (~200k, ~11 s). La evolución y las opciones ignoran el filtro de tiempo → salen del precálculo default.
+  const soloTiempo = Boolean(filter.meses?.length || filter.semanas?.length)
+    && !(filter.categorias?.length || filter.clientes?.length || filter.supervisores?.length || filter.promotores?.length || filter.tiendas?.length);
+  // UN mes o UNA semana (lo más usado): vista ya calculada al cargar los datos → una sola lectura.
+  const idPeriodo = !soloTiempo ? null
+    : filter.meses?.length === 1 && !filter.semanas?.length ? fsIdMes(filter.meses[0]!)
+    : filter.semanas?.length === 1 && !filter.meses?.length ? fsIdSemana(filter.semanas[0]!) : null;
+  if (!view && idPeriodo) {
+    const [base, per] = await Promise.all([getFsPrecomputed(), getFsPrecomputed<FsVistaPeriodo>(idPeriodo)]);
+    if (base?.monthly && per?.porMes) view = fsVistaConBase(per, base);
+  }
+  if (!view && soloTiempo) {
+    try {
+      const base = await getFsPrecomputed();
+      if (base?.monthly && base.porMes) {
+        const semanas = base.options.semanas.filter((sem) =>
+          (!filter.semanas?.length || filter.semanas.includes(sem)) && (!filter.meses?.length || filter.meses.includes(isoWeekToMes(sem))));
+        const parcial = computeFsView(await enriquecerFs(await getFloorShareRowsFast(semanas.length ? semanas : [-1])), filter);
+        view = { ...parcial, options: base.options, topMarcas: base.topMarcas, weekly: base.weekly, monthly: base.monthly };
+      }
+    } catch { view = null; /* cae al camino completo */ }
+  }
+
   if (!view) {
     try {
       // Todas las semanas del año (= app vieja); los filtros se aplican en computeFsView.
@@ -140,7 +165,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       contexto={ctx ?? `${overall[key].drean_units.toLocaleString()} / ${overall[key].total_units.toLocaleString()} en ${etiquetaPeriodo}`}
       rows={[
         ...(mesRef ? [{ label: `Mes ${corto(refKey)}`, actual: mesRef[key].share, meta: metaDe(OBJ) }] : []),
-        { label: `Período ${etiquetaPeriodo}`, actual: overall[key].share, meta: metaProm(metaDe) },
+        // Si el período es un solo mes, la fila "Período" repetiría la de "Mes".
+        ...(mesRef && mesesVista.length <= 1 ? [] : [{ label: `Período ${etiquetaPeriodo}`, actual: overall[key].share, meta: metaProm(metaDe) }]),
       ]} />
   );
 

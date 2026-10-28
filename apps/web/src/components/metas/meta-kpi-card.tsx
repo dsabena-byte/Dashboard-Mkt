@@ -77,18 +77,14 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
           const barPct = cumpl == null ? 0 : Math.max(0, Math.min(cumpl, 100));
           return (
             <div key={r.label}>
+              {/* Renglón 1: período + desvío · renglón 2: real vs meta (sin cortes de línea). */}
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-baseline gap-1.5 text-xs">
+                <div className="flex min-w-0 items-center gap-1.5 text-xs">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
-                  <span className="text-muted-foreground">{r.label}</span>
-                  <span className="text-muted-foreground/60">·</span>
-                  {/* Real vs meta en cada fila (pedido del user 28-oct: no solo la meta). */}
-                  <span className="font-semibold tabular-nums">{f(r.actual)}</span>
-                  <span className="text-muted-foreground">vs meta</span>
-                  <span className="font-semibold tabular-nums">{f(r.meta)}</span>
+                  <span className="truncate font-medium text-foreground">{r.label}</span>
                 </div>
                 <span
-                  className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
+                  className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
                   style={{ color, background: SEM_BG[sem] }}
                 >
                   {desvio == null ? "sin meta" : (
@@ -98,6 +94,10 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
                     </>
                   )}
                 </span>
+              </div>
+              <div className="mt-0.5 flex items-center justify-between gap-2 whitespace-nowrap pl-3.5 text-[11px] tabular-nums text-muted-foreground">
+                <span>Real <b className="font-semibold text-foreground">{f(r.actual)}</b></span>
+                <span>Meta <b className="font-semibold text-foreground">{f(r.meta)}</b></span>
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, background: color }} />
