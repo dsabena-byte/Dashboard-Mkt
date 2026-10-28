@@ -613,8 +613,15 @@ reporte_existencia/cb_homologos).
   ancho/tipo que pidió el user después.
   `tr_tiendas` tiene ~19 tiendas DUPLICADAS (ids 576–594, nombre en mayúsculas y cadena equivocada; misma dirección que el original).
   FS sin "Evolución mensual real vs meta" (27-oct, user: no estaba en la app vieja); el editor de objetivos queda al pie (solo editores).
+  **28-oct (#984, pedidos del user):** evolución Drean vs top con toggle **Semanal/Mensual** + «⬇ Imagen» (`fs-evolucion.tsx`, dep `html-to-image`);
+  mes de una semana = el de su LUNES con su año (`lib/fs-mes.ts`: la sem 1 de 2026 es dic-2025; antes decía «Diciembre 2026»); con filtros, las
+  ~200k filas enriquecidas quedan en memoria por instancia mientras no cambie `fs_precomputed.updated_at` (antes 35 MB/~10 s por cambio);
+  cards FS = sistema de Redes (filas «Mes» vs su meta y «Período» vs promedio de metas, chip en pp). **`MetaKpiCard` muestra real + meta en cada
+  fila (todos los tableros)** y `KpiObjCard` (CB, CB Ventas) usa MetaKpiCard. Regenerar precálculos sin migrar: `trade-migrar.yml` con
+  `solo_derivados=1` (el workflow completo re-migra desde el proyecto CB y pisaría cargas nuevas).
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
   ni en el proyecto CB viejo (hueco de origen); se cargó el 27-oct.
+- **Sync de SharePoint BORRADO (28-oct, pedido del user):** el workflow «Sync presupuestos desde SharePoint» de Dashboard-BGT (fallaba: link vencido) se eliminó (Dashboard-BGT#10). `data.json` queda congelado; el presupuesto se carga desde /funnel.
 - **Sin 2023 (16-oct, user: "info muy vieja"):** `ANIO_MINIMO = 2024` (presupuesto-core) filtra años anteriores en `getBgtData` (tablero,
   chat, señales) y en `/api/presupuesto` (versiones, TC, facturación de la carga). Los datos NO se borran de la base.
 ## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026
