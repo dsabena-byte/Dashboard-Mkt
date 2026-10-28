@@ -1,5 +1,6 @@
 import { FloorShareFilters } from "@/components/floor-share/floor-share-filters";
-import { FloorShareBrandRanking, FloorShareWeeklyChart } from "@/components/floor-share/floor-share-charts";
+import { FloorShareBrandRanking } from "@/components/floor-share/floor-share-charts";
+import { FsEvolucion } from "@/components/floor-share/fs-evolucion";
 import { LastUpdated } from "@/components/last-updated";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import {
@@ -8,8 +9,7 @@ import {
   type CategoryBlock,
   type FloorShareFilter,
 } from "@/lib/floor-share-queries";
-import { getFloorShareRowsFast, getFsPrecomputed, enriquecerFs } from "@/lib/cb-mirror";
-import { isoWeekToMes } from "@/lib/cb-queries";
+import { getFsFilasEnriquecidas, getFsPrecomputed } from "@/lib/cb-mirror";
 import { AggTable, type AggCol } from "@/components/trade/agg-table";
 import { MapaZonas } from "@/components/trade/mapa-zonas";
 import { mapaTrade, exhibicionesDeTiendas } from "@/lib/trade-mapa";
@@ -18,7 +18,7 @@ import { computeFsView, isFsDefault, type FsView } from "@/lib/fs-view";
 import { MetaPanel } from "@/components/metas/meta-panel";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
 import { puedeEditarActual } from "@/lib/usuarios-server";
-import { KpiObjCard } from "@/components/trade/kpi-obj-card";
+import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
 import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
 import { DashTabBar } from "@/components/diagnostico/dash-tabs";
 
@@ -86,12 +86,12 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   let fetchError: string | null = null;
 
   if (isFsDefault(filter)) view = await getFsPrecomputed();
-  if (view && (!view.byPromotor || !view.byZona)) view = null; // precálculo viejo (sin promotor/zona) → se recalcula
+  if (view && (!view.byPromotor || !view.byZona || !view.monthly || !view.porMes)) view = null; // precálculo viejo → se recalcula
 
   if (!view) {
     try {
       // Todas las semanas del año (= app vieja); los filtros se aplican en computeFsView.
-      view = computeFsView(await enriquecerFs(await getFloorShareRowsFast([])), filter);
+      view = computeFsView(await getFsFilasEnriquecidas(), filter);
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
     }
@@ -103,8 +103,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     overall: computeOverall([]), topMarcas: [], weekly: [], totalTiendasRelevadas: 0, semanaDesde: null, semanaHasta: null, hasData: false,
   };
   const { options, totalRanking, byTienda, byCliente, byPromotor, overall, topMarcas, weekly, totalTiendasRelevadas, hasData } = v;
-  const periodo = v.semanaDesde != null && v.semanaHasta != null
-    ? `${mesLargo(v.semanaDesde)} — ${mesLargo(v.semanaHasta)}` : "";
+  const periodo = v.mesDesde && v.mesHasta ? `${mesLargo(v.mesDesde)} — ${mesLargo(v.mesHasta)}` : "";
   const sub = `${periodo ? `${periodo} · ` : ""}Δ vs objetivo`;
 
   const esMapa = searchParams.tab === "mapa";
@@ -122,20 +121,28 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const semMax = Math.max(0, ...sems);
   const mesesFiltro = (filter.meses ?? []).map((m) => MESES.indexOf(m)).filter((i) => i >= 0);
   const { anio, mesIdx } = mesRefFs(semMax, mesesFiltro.length ? Math.max(...mesesFiltro) : undefined);
-  const [objAnio, editor] = await Promise.all([getFsObjetivosAnio(anio), puedeEditarActual("trade")]);
+  const [objAnio, objAnt, editor] = await Promise.all([getFsObjetivosAnio(anio), getFsObjetivosAnio(anio - 1), puedeEditarActual("trade")]);
   const o = objAnio[mesIdx]!;
   const OBJ: Obj = { lavado: o.lavado, refri: o.refrigeracion, coccion: o.coccion };
-  const objLabel = (v: number) => `Meta ${MESES[mesIdx]} ${anio}: ${Number(v.toFixed(1))}%`;
-
-  // Objetivo general ponderado (Σ obj_cat × peso / Σ peso) para el card general.
-  const genObj = (() => {
-    const p = CATEGORIA_PESOS as Record<string, number>;
-    const items: Array<[number, number]> = [
-      [OBJ.lavado, p.Lavado ?? 0], [OBJ.refri, p["Refrigeración"] ?? 0], [OBJ.coccion, p["Cocción"] ?? 0],
-    ];
-    const wsum = items.reduce((s, [, w]) => s + w, 0) || 1;
-    return items.reduce((s, [o, w]) => s + o * w, 0) / wsum;
-  })();
+  // Cards (sistema de Redes): fila "Mes" = mes de referencia vs SU meta · fila "Período" = la vista entera vs el
+  // promedio de las metas de sus meses (el mes de dic del año anterior usa la meta de ese año).
+  const objDeMes = (k: string) => { const [y, m] = k.split("-").map(Number); const o2 = (y === anio ? objAnio : objAnt)[m! - 1] ?? o; return { lavado: o2.lavado, refri: o2.refrigeracion, coccion: o2.coccion }; };
+  const general = (ob: Obj) => { const p = CATEGORIA_PESOS as Record<string, number>; const it: Array<[number, number]> = [[ob.lavado, p.Lavado ?? 0], [ob.refri, p["Refrigeración"] ?? 0], [ob.coccion, p["Cocción"] ?? 0]]; return it.reduce((s, [x, w]) => s + x * w, 0) / (it.reduce((s, [, w]) => s + w, 0) || 1); };
+  const refKey = `${anio}-${String(mesIdx + 1).padStart(2, "0")}`;
+  const mesRef = (v.porMes ?? []).find((m) => m.mes === refKey)?.overall ?? null;
+  const mesesVista = (v.porMes ?? []).map((m) => m.mes);
+  const corto = (k: string) => `${MESES[Number(k.slice(5)) - 1]} ${k.slice(2, 4)}`;
+  const etiquetaPeriodo = v.mesDesde && v.mesHasta ? (v.mesDesde === v.mesHasta ? corto(v.mesDesde) : `${corto(v.mesDesde)}–${corto(v.mesHasta)}`) : "Período";
+  const metaProm = (f: (ob: Obj) => number) => mesesVista.length ? mesesVista.reduce((s, k) => s + f(objDeMes(k)), 0) / mesesVista.length : f(OBJ);
+  const card = (title: string, medida: string, key: "total" | "lavado" | "refri" | "coccion", metaDe: (ob: Obj) => number, ctx?: string) => (
+    <MetaKpiCard key={key} title={title} medida={medida} unidad="%" decimales={1} delta="pp"
+      headlineActual={mesRef ? mesRef[key].share : overall[key].share} headlineLabel={mesRef ? corto(refKey) : etiquetaPeriodo}
+      contexto={ctx ?? `${overall[key].drean_units.toLocaleString()} / ${overall[key].total_units.toLocaleString()} en ${etiquetaPeriodo}`}
+      rows={[
+        ...(mesRef ? [{ label: `Mes ${corto(refKey)}`, actual: mesRef[key].share, meta: metaDe(OBJ) }] : []),
+        { label: `Período ${etiquetaPeriodo}`, actual: overall[key].share, meta: metaProm(metaDe) },
+      ]} />
+  );
 
   const metasBloque = (
     <>
@@ -187,16 +194,11 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       ) : (
         <>
           <section className="grid gap-3 lg:grid-cols-4">
-            <KpiObjCard
-              title="Floor Share — general" medida="Drean · todas las categorías" value={overall.total.share} obj={Number(genObj.toFixed(1))} objLabel={`Meta ${MESES[mesIdx]} ${anio}: ${genObj.toFixed(1)}% (ponderada)`}
-              contexto={`${overall.total.drean_units.toLocaleString()} / ${overall.total.total_units.toLocaleString()} · ${totalTiendasRelevadas} tiendas`}
-            />
-            <KpiObjCard title="Lavado" medida="Share Drean góndola" value={overall.lavado.share} obj={OBJ.lavado} objLabel={objLabel(OBJ.lavado)}
-              contexto={`${overall.lavado.drean_units.toLocaleString()} / ${overall.lavado.total_units.toLocaleString()}`} />
-            <KpiObjCard title="Refrigeración" medida="Share Drean góndola" value={overall.refri.share} obj={OBJ.refri} objLabel={objLabel(OBJ.refri)}
-              contexto={`${overall.refri.drean_units.toLocaleString()} / ${overall.refri.total_units.toLocaleString()}`} />
-            <KpiObjCard title="Cocción" medida="Share Drean góndola" value={overall.coccion.share} obj={OBJ.coccion} objLabel={objLabel(OBJ.coccion)}
-              contexto={`${overall.coccion.drean_units.toLocaleString()} / ${overall.coccion.total_units.toLocaleString()}`} />
+            {card("Floor Share — general", "Drean · todas las categorías (meta ponderada)", "total", general,
+              `${overall.total.drean_units.toLocaleString()} / ${overall.total.total_units.toLocaleString()} · ${totalTiendasRelevadas} tiendas · ${etiquetaPeriodo}`)}
+            {card("Lavado", "Share Drean góndola", "lavado", (ob) => ob.lavado)}
+            {card("Refrigeración", "Share Drean góndola", "refri", (ob) => ob.refri)}
+            {card("Cocción", "Share Drean góndola", "coccion", (ob) => ob.coccion)}
           </section>
 
           {/* Como la app vieja: ranking + evolución · cliente + promotor · tienda. */}
@@ -207,8 +209,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
             </div>
             {weekly.length > 1 && (
               <div className="rounded-xl border bg-card p-4">
-                <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal — Drean vs Top marcas</h3>
-                <FloorShareWeeklyChart data={weekly} marcas={topMarcas} />
+                <FsEvolucion semanal={weekly} mensual={v.monthly ?? []} marcas={topMarcas} />
               </div>
             )}
           </section>
@@ -236,7 +237,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
 // ===== Helpers de render (= app vieja) =====
 
 const MESES_LARGOS: Record<string, string> = { Ene: "Enero", Feb: "Febrero", Mar: "Marzo", Abr: "Abril", May: "Mayo", Jun: "Junio", Jul: "Julio", Ago: "Agosto", Sep: "Septiembre", Oct: "Octubre", Nov: "Noviembre", Dic: "Diciembre" };
-const mesLargo = (sem: number) => { const m = isoWeekToMes(sem); return `${MESES_LARGOS[m] ?? m} ${new Date().getUTCFullYear()}`; };
+const mesLargo = (k: string) => { const m = MESES[Number(k.slice(5)) - 1] ?? ""; return `${MESES_LARGOS[m] ?? m} ${k.slice(0, 4)}`; };
 
 type Bloques = { lavado: CategoryBlock; refri: CategoryBlock; coccion: CategoryBlock };
 const fsVals = (b: Bloques) => (["lavado", "refri", "coccion"] as const).map((k) => (b[k].total_units > 0 ? b[k].share : null));

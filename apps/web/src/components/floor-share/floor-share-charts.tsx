@@ -52,10 +52,10 @@ interface WeeklyProps {
   marcas: string[];
 }
 
-export function FloorShareWeeklyChart({ data, marcas }: WeeklyProps) {
+export function FloorShareWeeklyChart({ data, marcas, label = (n) => `Sem ${n}` }: WeeklyProps & { label?: (n: number) => string }) {
   if (data.length === 0) return <div className="py-12 text-center text-xs text-muted-foreground">Sin datos.</div>;
   const chartData = data.map((d) => {
-    const row: Record<string, string | number> = { label: `Sem ${d.semana}` };
+    const row: Record<string, string | number> = { label: label(d.semana) };
     for (const m of marcas) row[m] = Number((d.shares[m] ?? 0).toFixed(1));
     return row;
   });

@@ -22,12 +22,18 @@ interface Props {
   children?: ReactNode;
   /** Proceso Estratégico: clave de KPI_KNOW (o nombre/alias del KPI) → muestra el 🎓 que abre la guía. Opcional. */
   learnKey?: string;
+  /** Línea chica bajo el valor (ej. "20.146 / 28.013 · 188 tiendas"). */
+  contexto?: string;
+  /** Decimales de los valores "%" (default 2). */
+  decimales?: number;
+  /** Desvío del chip: % relativo a la meta (default) o puntos porcentuales (shares de Trade). */
+  delta?: "rel" | "pp";
 }
 
-function fmt(v: number | null, unidad: "%" | "s" | "$" | "x" | "pts" | ""): string {
+function fmt(v: number | null, unidad: "%" | "s" | "$" | "x" | "pts" | "", dec = 2): string {
   if (v == null || !Number.isFinite(v)) return "—";
   if (unidad === "pts") return v.toFixed(1); // índice (ej. posición SEO)
-  if (unidad === "%") return `${v.toFixed(2)}%`;
+  if (unidad === "%") return `${v.toFixed(dec)}%`;
   if (unidad === "s") return `${Math.round(v)}s`;
   if (unidad === "x") return v.toFixed(1); // frecuencia (ratio, 1 decimal)
   const a = Math.abs(v);
@@ -42,7 +48,8 @@ const SEM_BG: Record<string, string> = {
   "sin-meta": "rgba(100,116,139,.10)",
 };
 
-export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unidad = "", direccion = "up", umbralVerde = 100, umbralAmarillo = 90, rows, children, learnKey }: Props) {
+export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unidad = "", direccion = "up", umbralVerde = 100, umbralAmarillo = 90, rows, children, learnKey, contexto, decimales = 2, delta = "rel" }: Props) {
+  const f = (v: number | null) => fmt(v, unidad, decimales);
   return (
     <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -54,16 +61,19 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
       </div>
 
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-3xl font-bold tracking-tight tabular-nums">{fmt(headlineActual, unidad)}</span>
+        <span className="text-3xl font-bold tracking-tight tabular-nums">{f(headlineActual)}</span>
         <span className="text-[11px] font-medium text-muted-foreground">{headlineLabel}</span>
       </div>
+      {contexto && <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{contexto}</div>}
 
       <div className="mt-3 space-y-2.5 border-t pt-2.5">
         {rows.map((r) => {
           const cumpl = cumplimientoPct(r.actual, r.meta, direccion);
           const sem = semaforoDe(cumpl, { umbralVerde, umbralAmarillo });
           const color = SEMAFORO_COLOR[sem];
-          const desvio = r.actual != null && r.meta != null && r.meta !== 0 ? ((r.actual - r.meta) / r.meta) * 100 : null;
+          const desvio = r.actual == null || r.meta == null ? null
+            : delta === "pp" ? r.actual - r.meta
+            : r.meta !== 0 ? ((r.actual - r.meta) / r.meta) * 100 : null;
           const barPct = cumpl == null ? 0 : Math.max(0, Math.min(cumpl, 100));
           return (
             <div key={r.label}>
@@ -72,8 +82,10 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
                   <span className="text-muted-foreground">{r.label}</span>
                   <span className="text-muted-foreground/60">·</span>
-                  <span className="text-muted-foreground">meta</span>
-                  <span className="font-semibold tabular-nums">{fmt(r.meta, unidad)}</span>
+                  {/* Real vs meta en cada fila (pedido del user 28-oct: no solo la meta). */}
+                  <span className="font-semibold tabular-nums">{f(r.actual)}</span>
+                  <span className="text-muted-foreground">vs meta</span>
+                  <span className="font-semibold tabular-nums">{f(r.meta)}</span>
                 </div>
                 <span
                   className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
@@ -82,7 +94,7 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
                   {desvio == null ? "sin meta" : (
                     <>
                       <span>{desvio >= 0 ? "▲" : "▼"}</span>
-                      <span>{Math.abs(desvio).toFixed(0)}%</span>
+                      <span>{delta === "pp" ? `${Math.abs(desvio).toFixed(1)} pp` : `${Math.abs(desvio).toFixed(0)}%`}</span>
                     </>
                   )}
                 </span>
