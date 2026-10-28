@@ -14,6 +14,10 @@ on:
         description: "Año del CB semanal (el proyecto CB no guarda el año)"
         required: false
         default: "2026"
+      solo_derivados:
+        description: "1 = SOLO recalcula los precálculos (cb_default, fs_precomputed, trade_monthly) desde tr_*; no migra nada"
+        required: false
+        default: "0"
 
 permissions:
   contents: read
@@ -27,6 +31,7 @@ jobs:
       BASE: https://dashboard-mkt-seven.vercel.app/api/cron/trade-migrar
       DRY: ${{ inputs.dry }}
       ANIO: ${{ inputs.anio }}
+      SOLO_DERIVADOS: ${{ inputs.solo_derivados }}
     steps:
       - name: Migrar por partes y verificar
         run: |
@@ -40,6 +45,7 @@ jobs:
             echo "::endgroup::"
             if [ "$code" != "200" ] || grep -q '"ok":false' r.json; then echo "::error::?$q → HTTP $code"; return 1; fi
           }
+          if [ "${SOLO_DERIVADOS:-0}" = "1" ]; then call "parte=derivados"; exit 0; fi
           call "parte=maestros"
           call "parte=cb"
           call "parte=u3"
