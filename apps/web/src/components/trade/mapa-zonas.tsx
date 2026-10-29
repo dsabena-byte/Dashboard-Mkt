@@ -115,7 +115,8 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set()); // clientes desplegados en la tabla
   const [hover, setHover] = useState<string | null>(null);
   // Orden de la tabla: columna (-1 = tienda/zona, si no índice de métrica) y sentido; clic en el mismo encabezado lo invierte.
-  const [ord, setOrd] = useState<{ col: number; asc: boolean }>({ col: inicial, asc: true });
+  // Arranca ordenada por CB Sell In (columna 0) de mayor a menor (pedido del user 29-oct).
+  const [ord, setOrd] = useState<{ col: number; asc: boolean }>({ col: 0, asc: false });
   const ordenar = (col: number) => {
     setOrd((o) => (o.col === col ? { col, asc: !o.asc } : { col, asc: true }));
     if (col >= 0) setM(col);
@@ -309,7 +310,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
                 Cliente / tienda ({enVistaTodos.length}){ord.col === -1 ? (ord.asc ? " ▲" : " ▼") : ""}
               </th>
               {metricas.map((x, i) => (
-                <th key={x.label} onClick={() => ordenar(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${inicio(i) && i > 0 ? "border-l" : ""} ${cab(i)} ${i === ord.col ? "text-blue-700" : ""}`}>
+                <th key={x.label} title={x.label} onClick={() => ordenar(i)} className={`cursor-pointer whitespace-nowrap px-2 text-right ${inicio(i) && i > 0 ? "border-l" : ""} ${cab(i)} ${i === ord.col ? "text-blue-700" : ""}`}>
                   {corto(x)}{i === ord.col ? (ord.asc ? " ▲" : " ▼") : ""}
                 </th>
               ))}
