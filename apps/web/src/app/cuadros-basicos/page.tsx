@@ -49,8 +49,8 @@ const OBJ_PCT = 80;
 const TABS = [
   { key: "overview", label: "Cuadro Básico Trade", href: "/cuadros-basicos" },
   { key: "mapa", label: "Heat Map", href: "/cuadros-basicos?tab=mapa" },
-  { key: "sugerencias", label: "Sugerencias de tiendas", href: "/cuadros-basicos?tab=sugerencias" },
-  { key: "sku", label: "Sugerencias de SKUs", href: "/cuadros-basicos?tab=sku" },
+  { key: "sugerencias", label: "Análisis Tiendas", href: "/cuadros-basicos?tab=sugerencias" },
+  { key: "sku", label: "Análisis SKUs", href: "/cuadros-basicos?tab=sku" },
 ];
 // Solo quien puede editar Trade (exigirEdicion("trade")) ve la carga y los maestros.
 const TABS_EDITOR = [
@@ -164,7 +164,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   let fetchError: string | null = null;
   try {
     if (isCbDefault(filter) && (await trEstado()).cb != null) view = await getTrPrecalc<CbView>("cb_default");
-    if (view && (!view.byPromotor || !view.byZona)) view = null; // precálculo viejo (sin promotor/zona) → se recalcula
+    if (view && (!view.byPromotor || !view.byZona || view.mesActual === undefined)) view = null; // precálculo viejo → se recalcula
     if (!view) view = computeCbView(await enriquecerCb(await getCbRowsFast()), filter);
     // Detalle de SKUs (= app vieja) cuando se elige una tienda o un cliente.
     const est = await trEstado();
@@ -179,6 +179,9 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
   const { options, totals, weekly, byDiv, byCliente, byPromotor, byTienda, totalTiendasRelevadas, hasData } = v;
   const cbVals = (r: { cb_pct: number; infalt_pct: number; estrat_pct: number }) => [r.cb_pct, r.infalt_pct, r.estrat_pct];
   const totVals = [totals.cb_pct, totals.infalt_pct, totals.estrat_pct];
+  // Cards: sin filtro de mes/semana muestran el MES EN CURSO (pedido del user 29-oct); con filtro, la vista filtrada.
+  const tc = v.mesActual?.totals ?? totals;
+  const enMes = v.mesActual ? ` · ${v.mesActual.mes} (mes en curso)` : "";
   // Pestaña Mapa + filtro de tiendas: sus exhibiciones especiales con fotos (solo en el mapa, pedido del user) (pedido del user: ver la foto en el tablero, no en Drive).
   const exhib = tab === "mapa" && filter.tiendas?.length
     ? await exhibicionesDeTiendas(filter.tiendas.map((t) => { const m = t.match(/^(\d+)\s*[-–]\s*(.+)$/); return { numero: m?.[1] ?? "", nombre: m?.[2] ?? t, label: t }; })).catch(() => [])
@@ -219,19 +222,19 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <KpiObjCard
-              title="Cuadro Básico — global" medida="% Cumplimiento CB" value={totals.cb_pct} obj={OBJ_PCT}
-              contexto={`${totals.cb_ok.toLocaleString()} / ${totals.cb_target.toLocaleString()} · ${totals.tiendas} tiendas`}
+              title="Cuadro Básico — global" medida={`% Cumplimiento CB${enMes}`} value={tc.cb_pct} obj={OBJ_PCT}
+              contexto={`${tc.cb_ok.toLocaleString()} / ${tc.cb_target.toLocaleString()} · ${tc.tiendas} tiendas`}
             />
             <KpiObjCard
-              title="Infaltables" medida="% Infaltables presentes" value={totals.infalt_pct} obj={OBJ_PCT}
-              contexto={`${totals.infalt_ok.toLocaleString()} / ${totals.infalt_target.toLocaleString()}`}
+              title="Infaltables" medida={`% Infaltables presentes${enMes}`} value={tc.infalt_pct} obj={OBJ_PCT}
+              contexto={`${tc.infalt_ok.toLocaleString()} / ${tc.infalt_target.toLocaleString()}`}
             />
             <KpiObjCard
-              title="Estratégico" medida="% Estratégicos presentes" value={totals.estrat_pct} obj={OBJ_PCT}
-              contexto={`${totals.estrat_ok.toLocaleString()} / ${totals.estrat_target.toLocaleString()}`}
+              title="Estratégico" medida={`% Estratégicos presentes${enMes}`} value={tc.estrat_pct} obj={OBJ_PCT}
+              contexto={`${tc.estrat_ok.toLocaleString()} / ${tc.estrat_target.toLocaleString()}`}
             />
             <KpiObjCard
-              title="Tiendas relevadas" medida="Según filtros aplicados" value={totals.tiendas} obj={null} unit="" decimals={0}
+              title="Tiendas relevadas" medida={v.mesActual ? `${v.mesActual.mes} (mes en curso)` : "Según filtros aplicados"} value={tc.tiendas} obj={null} unit="" decimals={0}
               contexto={`Universo histórico: ${totalTiendasRelevadas}`}
             />
           </section>
