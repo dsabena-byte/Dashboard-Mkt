@@ -847,6 +847,10 @@ reporte_existencia/cb_homologos).
     calidad). **OJO:** `Alcance único` es **suma de alcance por medio** (no dedup cross-media) — coincide
     con lo que el dash ya mostraba en las MoMStat; si algún día se quiere reach de-duplicado, hay que
     traerlo del consolidado del reporte OMD (hoy no está guardado por mes).
+    **Metas por categoría (29-oct-2026, el user cambió la meta en la vista Lavado y "no actualizaba nada": el panel editaba la
+    meta GENERAL y el gráfico de Lavado mostraba General × 35%):** en Lavado/Refri/Cocción el MetaPanel edita la meta PROPIA de la
+    categoría (`kpi_meta_valores.categoria`, prop `categoria` de MetaPanel) y el tablero la usa si tiene algún mes cargado; si no,
+    General × mix (suma) o General (tasas). El Seguimiento por categoría NO lee esas filas (sigue con el mix del Mapa).
 - **Mercado (GfK) — carga mensual:** el share de `mercado_share` se actualiza a mano desde
   exports "Brands Timeseries" de GfK (por REST, es dato no DDL). Set completo = **3 segmentos +
   Total × 3 KPIs**, por agregación (mensual + MAT). **Verificar la matriz completa ANTES de

@@ -80,6 +80,8 @@ async function getPlanningMonthly(): Promise<PlanningByMes> {
 // Los 6 KPIs estratégicos de Pauta Mkt (Impacto Campaña). Las claves coinciden con
 // el MetaPanel (plan="Pauta Mkt") y el catálogo del Mapa.
 const PAUTA_KPIS = ["Inversión", "Alcance único", "Frecuencia", "Impresiones", "VTR (≥50%)", "Clicks"] as const;
+const META_CATS = ["Lavado", "Refrigeración", "Cocción"] as const;
+type MetasPauta = Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
 const META_FALLBACK: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
 
 export default async function PerformancePautaPage({ searchParams }: { searchParams?: { tab?: string; vista?: string; moneda?: string } }) {
@@ -118,15 +120,21 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
   // + inversión diaria por medio con API (Eficiencia Medios; REST, tablas chicas, en $).
   // + miniaturas DV360 (manifiesto del cron dv360-thumbs; solo nombre → url, fail-safe {}).
   // + piezas de TikTok (manifiesto del cron tiktok-sync; fail-safe null).
-  const [metasArr, pautaDiaria, dv360Thumbs, tiktokManifest] = await Promise.all([
+  const [metasArr, metasCatArr, pautaDiaria, dv360Thumbs, tiktokManifest] = await Promise.all([
     Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK))),
+    // Metas propias de cada categoría (vista Lavado/Refri/Cocción); sin cargar → el cliente usa total × mix.
+    Promise.all(META_CATS.map((cat) => Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear, cat), META_FALLBACK))))),
     safe(getPautaDiaria(), null),
     safe(getDv360ThumbMap(rawDv360.map((r) => r.creative)), {} as Awaited<ReturnType<typeof getDv360ThumbMap>>),
     safe(getTikTokPiezas(), null),
   ]);
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
+  const metasCat = Object.fromEntries(META_CATS.map((cat, c) => [cat, Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasCatArr[c]?.[i] ?? META_FALLBACK]))])) as Record<string, MetasPauta>;
   // La meta de Inversión ($) se lleva a la misma moneda que el real.
-  if (ctx.moneda !== "corrientes") metas["Inversión"] = { ...metas["Inversión"], valores: convertir12(ctx, currentYear, metas["Inversión"].valores) };
+  if (ctx.moneda !== "corrientes") {
+    metas["Inversión"] = { ...metas["Inversión"], valores: convertir12(ctx, currentYear, metas["Inversión"].valores) };
+    for (const m of Object.values(metasCat)) m["Inversión"] = { ...m["Inversión"], valores: convertir12(ctx, currentYear, m["Inversión"].valores) };
+  }
   // Salud de los datos junto al título; el selector de moneda va más abajo, en la fila de pestañas
   // (pedido del user: no mezclarlo con las fechas de actualización).
   const headerExtra = <DataHealth dash="performance" />;
@@ -140,6 +148,6 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     </Suspense>
   );
   return (
-    <PerformanceClient headerExtra={headerExtra} monedaSlot={monedaSlot} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} dv360Thumbs={dv360Thumbs} tiktokPiezas={tiktokManifest?.items ?? []} />
+    <PerformanceClient headerExtra={headerExtra} monedaSlot={monedaSlot} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} metasCat={metasCat} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} dv360Thumbs={dv360Thumbs} tiktokPiezas={tiktokManifest?.items ?? []} />
   );
 }

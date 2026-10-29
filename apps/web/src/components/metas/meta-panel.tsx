@@ -50,6 +50,8 @@ interface Props {
    * categoría y el valor "General" se CALCULA como Σ (categoría × peso) (read-only),
    * en vez de cargarse a mano. El tab General va último. */
   catPesos?: Record<string, number>;
+  /** Categoría que edita el panel (ej. "Lavado" en la vista por categoría). Sin ella = General. */
+  categoria?: string;
 }
 
 const keyCfg = (kpi: string, cat: string) => `${kpi}|${cat}`;
@@ -68,10 +70,11 @@ function fmt(n: number | null | undefined, unidad?: string | null): string {
   return unidad === "%" ? `${s}%` : unidad === "$" ? `$${s}` : s;
 }
 
-export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefresh, catPesos, defaultOpen }: Props) {
+export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefresh, catPesos, defaultOpen, categoria }: Props) {
   const now = new Date();
   const year = anio ?? now.getFullYear();
   const month = mes ?? now.getMonth() + 1;
+  const rowCat = categoria ?? CAT_GENERAL;
 
   const [cfgMap, setCfgMap] = useState<Record<string, MetaConfig>>({});
   const [valMap, setValMap] = useState<Record<string, number | null>>({});
@@ -229,7 +232,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
         )}
       </div>
 
-      {!collapsed && !loading && !catPesos && SUGERIR_PLANES.has(plan) && (
+      {!collapsed && !loading && !catPesos && !categoria && SUGERIR_PLANES.has(plan) && (
         <SugerirMetas
           plan={plan}
           anio={year}
@@ -244,13 +247,13 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
       ) : (
         <div className="divide-y">
           {kpis.map((k) => {
-            const cfg = getCfg(k.nombre, CAT_GENERAL, k.unidad);
-            const metaMes = catPesos ? computedGeneral(k.nombre, month) : (valMap[keyVal(k.nombre, CAT_GENERAL, month)] ?? null);
+            const cfg = getCfg(k.nombre, rowCat, k.unidad);
+            const metaMes = catPesos ? computedGeneral(k.nombre, month) : (valMap[keyVal(k.nombre, rowCat, month)] ?? null);
             const cumpl = cumplimientoPct(k.actual, metaMes, cfg.direccion);
             const sem = semaforoDe(cumpl, cfg);
             const isOpen = open === k.nombre;
             const cats = k.categorias ?? [];
-            const activeCat = catTab[k.nombre] ?? CAT_GENERAL;
+            const activeCat = catTab[k.nombre] ?? rowCat;
 
             return (
               <div key={k.nombre} className="py-2.5">
@@ -269,7 +272,7 @@ export function MetaPanel({ plan, kpis, anio, mes, titulo, subtitulo, skipRefres
                         type="number"
                         inputMode="decimal"
                         value={metaMes ?? ""}
-                        onChange={(e) => setVal(k.nombre, CAT_GENERAL, month, e.target.value)}
+                        onChange={(e) => setVal(k.nombre, rowCat, month, e.target.value)}
                         className="w-24 rounded-md border bg-background px-2 py-1 text-right text-xs tabular-nums"
                         placeholder="—"
                       />
