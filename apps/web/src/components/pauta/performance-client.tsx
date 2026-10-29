@@ -337,7 +337,7 @@ function bicColor(value: number, best: number, kind: "lower" | "higher"): string
 }
 
 
-export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, ecommerceInv = [], pautaDiaria = null, dv360Thumbs = {}, tiktokPiezas = [], initialTab, headerExtra, monedaSlot }: { /** Piezas de TikTok por anuncio × mes (API vía app de BIP, manifiesto del cron tiktok-sync). */ tiktokPiezas?: TikTokPiezaMes[]; /** Selector de moneda (server): va en la fila de pestañas, a la derecha. */ monedaSlot?: React.ReactNode; /** Miniaturas DV360 por nombre de creative (API DV360, cron dv360-thumbs). */ dv360Thumbs?: Record<string, Dv360Thumb>; /** Server: salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; ecommerceInv?: (number | null)[] }) {
+export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv360Reach = [], fxRates = {}, planningMonthly = {}, googleAdsOmd = [], googleAdsCreatives = [], freshness, metas = {}, metasCat = {}, ecommerceInv = [], pautaDiaria = null, dv360Thumbs = {}, tiktokPiezas = [], initialTab, headerExtra, monedaSlot }: { /** Piezas de TikTok por anuncio × mes (API vía app de BIP, manifiesto del cron tiktok-sync). */ tiktokPiezas?: TikTokPiezaMes[]; /** Selector de moneda (server): va en la fila de pestañas, a la derecha. */ monedaSlot?: React.ReactNode; /** Miniaturas DV360 por nombre de creative (API DV360, cron dv360-thumbs). */ dv360Thumbs?: Record<string, Dv360Thumb>; /** Server: salud de los datos (a la derecha del título). */ headerExtra?: React.ReactNode; /** Inversión diaria por medio con API (Eficiencia Medios). */ pautaDiaria?: PautaDiariaData | null; initialTab?: string; data: PautaRow[]; metaPaid?: MetaPaidCreativeRow[]; dv360?: Dv360CreativeRow[]; dv360Reach?: Dv360ReachRow[]; fxRates?: Record<string, number>; planningMonthly?: Record<string, { digital: number; tvCable: number; dooh: number; ooh: number }>; googleAdsOmd?: GoogleAdsOmdRow[]; googleAdsCreatives?: GoogleAdsCreativeRow[]; freshness?: { dv360: string | null; meta: string | null; omd: string | null; gads?: string | null }; metas?: MetasPauta; /** Metas propias por categoría (Lavado/Refrigeración/Cocción). */ metasCat?: Record<string, MetasPauta>; ecommerceInv?: (number | null)[] }) {
   // Ecommerce (rol Conversión, Google Ads inhouse) = un componente más de inversión del funnel.
   // No tiene desglose por medio/impresiones, así que entra como FILAS SINTÉTICAS (medio y
   // categoría "Ecommerce", rol Conversión) mergeadas a `data` → fluye por TODAS las vistas y
@@ -952,8 +952,11 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
     const metaMult = (k: { tipo: "sum" | "rate" }) =>
       catImp !== "General" && k.tipo === "sum" ? (CAT_META_MIX[catImp] ?? 0) / 100 : 1;
     return IMPACTO_KPIS.map((k) => {
-      const md = metas[k.key] ?? META_FALLBACK;
-      const mult = metaMult(k);
+      // Meta propia de la categoría si se cargó; si no, la general × mix.
+      const propia = catImp !== "General" ? metasCat[catImp]?.[k.key as keyof MetasPauta] : undefined;
+      const usaPropia = !!propia?.valores.some((v) => v != null);
+      const md = usaPropia ? propia! : metas[k.key as keyof MetasPauta] ?? META_FALLBACK;
+      const mult = usaPropia ? 1 : metaMult(k);
       const vals = mult === 1 ? md.valores : md.valores.map((v) => (v == null ? null : v * mult));
       const scale = k.scale ?? 1;
       // Serie real mensual.
@@ -980,7 +983,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       return { ...k, md, headlineActual, metaRef, realYtd, metaYtd, chartData };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [impactoMensual, refIdxImp, metas, catImp]);
+  }, [impactoMensual, refIdxImp, metas, metasCat, catImp]);
 
   // Evolución ON/OFF para el toggle de la card de Inversión: el año COMPLETO
   // (Ene–Dic) en el eje, aunque no haya info. Solo se dibujan barras en los meses
@@ -1325,9 +1328,10 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
             <MetaPanel
               plan="Pauta Mkt"
               anio={2026}
+              categoria={catImp !== "General" ? catImp : undefined}
               mes={refIdxImp >= 0 ? refIdxImp + 1 : undefined}
-              titulo="Configuración de metas de Pauta Mkt"
-              subtitulo={`Cargá la meta mensual de cada KPI de impacto. El semáforo compara el real de ${refMesImp || "el último mes cerrado"} vs la meta del mes. El gráfico se actualiza al guardar.`}
+              titulo={catImp !== "General" ? `Configuración de metas de Pauta Mkt · ${IMPACTO_CATS.find((c) => c.key === catImp)?.label}` : "Configuración de metas de Pauta Mkt"}
+              subtitulo={catImp !== "General" ? `Estás cargando la meta propia de esta categoría. Mientras no la cargues, se usa la meta General × ${CAT_META_MIX[catImp]}% (mix) para Inversión, Alcance, Impresiones y Clicks, y la General para Frecuencia y VTR.` : `Cargá la meta mensual de cada KPI de impacto. El semáforo compara el real de ${refMesImp || "el último mes cerrado"} vs la meta del mes. El gráfico se actualiza al guardar.`}
               kpis={impactoCards.map((c) => ({ nombre: c.key, unidad: c.unidad === "" ? "u" : c.unidad, actual: c.headlineActual }))}
             />
           </div>
