@@ -82,7 +82,7 @@ export function DashTabBar({ items = [{ key: "tablero", label: "Tablero" }], act
     );
   };
   return (
-    <nav data-dash-bar data-dash-keep aria-label="Vistas del tablero" className="flex gap-1 overflow-x-auto border-b">
+    <nav data-dash-bar data-dash-keep aria-label="Vistas del tablero" className="flex flex-wrap gap-x-1 border-b">
       {items.map(render)}
       {ctx && (
         <button type="button" onClick={() => ctx.setVista("diagnostico")} className={cls(diag)}>
