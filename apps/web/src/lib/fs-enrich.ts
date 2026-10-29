@@ -3,7 +3,8 @@
 // OJO: el número de tienda NO es único entre cadenas ("1" = varias tiendas) → la clave es número + nombre.
 // Los nombres de personas NO van en el código (repo público): las asignaciones viven en tr_tienda_asignacion.
 
-export type Contacto = { numero: string; nombre: string; cadena: string; promotor: string; supervisor: string; zona?: string; geo?: string };
+/** `soloUbicacion` = tienda del maestro sin asignación vigente: solo ubica el punto en el mapa. */
+export type Contacto = { numero: string; nombre: string; cadena: string; promotor: string; supervisor: string; zona?: string; geo?: string; soloUbicacion?: true };
 /** `geo` = "id|lat|lon|provincia" de la tienda (master con direcciones); sin geo el mapa la ubica en su zona. */
 export type FsPersonas = { cliente: string; promotor: string; supervisor: string; zona: string; geo?: string };
 export const ZONA_SIN = "Sin zona";
@@ -88,9 +89,16 @@ export function crearEnriquecedorFs(contactos: Contacto[]): (numero: string, nom
   const byKey = new Map<string, Contacto>();
   const byName = new Map<string, Contacto>();
   const byFirstWord = new Map<string, string>();
+  const geoKey = new Map<string, Contacto>(), geoName = new Map<string, Contacto>();
   for (const c of contactos) {
     const numero = normalizeStoreNumber(c.numero), nn = norm(c.nombre);
     if (!numero || !nn) continue;
+    if (c.soloUbicacion) {
+      const sin = norm(c.nombre.replace(/^\s*\d+\s*[-–]\s*/, "")); // el maestro a veces guarda "N - Tienda"
+      if (!geoKey.has(`${numero}|${sin}`)) geoKey.set(`${numero}|${sin}`, c);
+      if (!geoName.has(sin)) geoName.set(sin, c);
+      continue;
+    }
     const v = { ...c, numero, promotor: canonP(limpio(c.promotor)), supervisor: limpio(c.supervisor) };
     byKey.set(`${numero}|${nn}`, v);
     if (!byName.has(nn)) byName.set(nn, v);
@@ -103,6 +111,11 @@ export function crearEnriquecedorFs(contactos: Contacto[]): (numero: string, nom
     if (direct) return direct;
     const m = nombre.trim().match(/^(\d+)\s*[-–]\s*(.+)$/);
     return (m ? byKey.get(`${normalizeStoreNumber(m[1])}|${norm(m[2])}`) : undefined) ?? byName.get(nn);
+  };
+  // Para ubicar: además las tiendas del maestro sin asignación (nunca para promotor/cliente).
+  const ubicacion = (numero: string, nombre: string): Contacto | undefined => {
+    const num = normalizeStoreNumber(numero), nn = norm(nombre), m = nombre.trim().match(/^(\d+)\s*[-–]\s*(.+)$/);
+    return exacto(numero, nombre) ?? geoKey.get(`${num}|${nn}`) ?? (m ? geoKey.get(`${normalizeStoreNumber(m[1])}|${norm(m[2])}`) : undefined) ?? geoName.get(nn);
   };
   const lookup = (numero: string, nombre: string): Contacto | undefined => {
     const num = normalizeStoreNumber(numero), nn = norm(nombre);
@@ -119,7 +132,7 @@ export function crearEnriquecedorFs(contactos: Contacto[]): (numero: string, nom
     if (!isExcludedStore(nombre)) {
       const ln = sinAcentos(nombre);
       const ov = STORE_OVERRIDES.find((o) => o.number === numero && ln.includes(o.nameContains))?.cliente;
-      const c = lookup(numero, nombre), ex = exacto(numero, nombre);
+      const c = lookup(numero, nombre), ex = ubicacion(numero, nombre);
       out = {
         cliente: canonicalizeCliente(ov ?? inferCliente(nombre, byFirstWord)),
         promotor: !c ? PROMOTOR_NO_MAPEO : c.promotor || PROMOTOR_SIN,

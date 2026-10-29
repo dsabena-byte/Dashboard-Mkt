@@ -118,17 +118,27 @@ export async function getTrMaxSemanaFs(anio: number): Promise<number | null> {
 
 /** Tiendas con su cadena y promotor/supervisor vigentes (para el Floor Share por promotor, = app vieja). */
 export async function getTrContactos(): Promise<Contacto[]> {
-  const [asig, cad] = await Promise.all([
-    trAll<{ promotor: string | null; supervisor: string | null; tr_tiendas: { id: number; numero: string; nombre: string | null; cadena: string; localidad: string | null; lat: number | null; lon: number | null; estado: string | null } | null }>(
+  type T = { id: number; numero: string; nombre: string | null; cadena: string; localidad: string | null; lat: number | null; lon: number | null; estado: string | null };
+  const [asig, cad, tiendas] = await Promise.all([
+    trAll<{ promotor: string | null; supervisor: string | null; tr_tiendas: T | null }>(
       "tr_tienda_asignacion?select=promotor,supervisor,tr_tiendas(id,numero,nombre,cadena,localidad,lat,lon,estado)&hasta=is.null"),
     trAll<{ clave: string; nombre: string | null }>("tr_cadenas?select=clave,nombre", "clave"),
+    trAll<T>("tr_tiendas?select=id,numero,nombre,cadena,localidad,lat,lon,estado&lat=not.is.null"),
   ]);
   const nomCad = new Map(cad.map((c) => [c.clave, c.nombre ?? c.clave]));
-  return asig.filter((a) => a.tr_tiendas?.nombre).map((a) => ({
-    numero: a.tr_tiendas!.numero, nombre: a.tr_tiendas!.nombre!, cadena: nomCad.get(a.tr_tiendas!.cadena) ?? a.tr_tiendas!.cadena,
-    promotor: a.promotor ?? "", supervisor: a.supervisor ?? "", zona: a.tr_tiendas!.localidad ?? "",
-    geo: a.tr_tiendas!.lat != null && a.tr_tiendas!.lon != null ? `${a.tr_tiendas!.id}|${a.tr_tiendas!.lat.toFixed(5)}|${a.tr_tiendas!.lon.toFixed(5)}|${a.tr_tiendas!.estado ?? ""}` : undefined,
-  }));
+  const geo = (t: T) => (t.lat != null && t.lon != null ? `${t.id}|${t.lat.toFixed(5)}|${t.lon.toFixed(5)}|${t.estado ?? ""}` : undefined);
+  const conAsig = new Set(asig.map((a) => a.tr_tiendas?.id));
+  return [
+    ...asig.filter((a) => a.tr_tiendas?.nombre).map((a) => ({
+      numero: a.tr_tiendas!.numero, nombre: a.tr_tiendas!.nombre!, cadena: nomCad.get(a.tr_tiendas!.cadena) ?? a.tr_tiendas!.cadena,
+      promotor: a.promotor ?? "", supervisor: a.supervisor ?? "", zona: a.tr_tiendas!.localidad ?? "", geo: geo(a.tr_tiendas!),
+    })),
+    // Tiendas del maestro sin asignación vigente: solo sirven para ubicarlas en el mapa (no cambian promotor ni cliente).
+    ...tiendas.filter((t) => t.nombre && !conAsig.has(t.id)).map((t) => ({
+      numero: t.numero, nombre: t.nombre!, cadena: nomCad.get(t.cadena) ?? t.cadena, promotor: "", supervisor: "",
+      zona: t.localidad ?? "", geo: geo(t), soloUbicacion: true as const,
+    })),
+  ];
 }
 
 export async function getTrTiendaCliente(): Promise<Map<string, string>> {
