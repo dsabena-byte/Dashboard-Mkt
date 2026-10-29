@@ -1,6 +1,7 @@
 import "server-only";
 import { runActor, apifyEnabled, ApifyQuotaError } from "@/lib/apify";
 import { postKey } from "@/lib/post-snapshots-core";
+import { guardarComentarios, claveApify } from "@/lib/social-comments";
 import {
   SCRAPER_BRANDS, FB_PAGES, WEB_COMPETIDORES, igProfileUrl, tagInstagram, tagFacebook, n8nAnalysisPrompt, N8N_SYSTEM_PROMPT,
   parseAnalysisContent, mapToSocialRows, mergeSocialRow, normalizeWeb, webHasData, cleanDomain,
@@ -64,7 +65,7 @@ async function actor<T = Record<string, unknown>>(ctx: RunCtx, id: string, input
 
 // ── LLM (mismo prompt/modelo que el nodo "GPT Analysis" de n8n) ────────────────────────────────
 const LLM_BATCH = 40;
-async function analyze(posts: TaggedPost[]): Promise<{ map: Map<string, Analysis>; errores: string[] }> {
+export async function analyze(posts: TaggedPost[]): Promise<{ map: Map<string, Analysis>; errores: string[] }> {
   const map = new Map<string, Analysis>();
   const errores: string[] = [];
   const key = process.env.OPENAI_API_KEY;
@@ -164,8 +165,17 @@ export async function partInstagram(ctx: RunCtx, opts: { posts?: number; dias?: 
   const base = { actor: ACTORS.ig, items: r.items.length, posts: tagged.length, conComentarios, filas: rows.length, porMarca: countBy(rows), conSentimiento: rows.filter((x) => x.positivo != null).length, stats, erroresLlm: errores };
   if (ctx.dry) return { estado: "dry", ...base, rows };
   const existing = await existingIg(SCRAPER_BRANDS, arDate(Date.now() - (dias + 30) * DAY));
+  const marcaDe = new Map(rows.map((x) => [x.url, x.marca]));
+  const com = await guardarComentarios(tagged.flatMap((p) => {
+    const marca = marcaDe.get(p.url);
+    return marca ? (p.commentTexts ?? []).filter((t) => t.trim()).map((t) => ({
+      clave: claveApify(p.url, t), post_url: p.url, post_key: postKey(p.url), red_social: "INSTAGRAM", marca,
+      texto: t.slice(0, 2000), like_count: null, fecha: null, fuente: "apify" as const,
+    })) : [];
+  }));
+  if (com.error) console.error("[competencia-social] no se guardaron los comentarios:", com.error);
   const w = await writeSocial(rows.map((x) => { const ex = existing.get(postKey(x.url)); return ex ? { ...x, url: ex.url } : x; }), existing);
-  return { estado: w.error ? "error_escritura" : "ok", ...base, ...w };
+  return { estado: w.error ? "error_escritura" : "ok", ...base, ...w, comentariosGuardados: com.guardados, comentariosError: com.error };
 }
 
 // ── Parte web (SimilarWeb semanal, lo que hacía n8n los domingos ~00:00 UTC) ───────────────────

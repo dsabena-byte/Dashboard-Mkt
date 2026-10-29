@@ -907,6 +907,13 @@ reporte_existencia/cb_homologos).
   (`attachIgSentiment`, solo en `app/redes/page.tsx`; sin Stories). Competencia ya trae las columnas. UI compartida
   `components/social/post-sentiment.tsx` (barra + resumen 2 líneas, click expande). FB propio: sin análisis en
   `social_posts` → no se muestra. Match YTD 27-sep: 97/106 posts IG propios (9 no están en `social_posts`), 82 con dato.
+- **Comentarios guardados + sentimiento propio por la API (29-oct-2026, pedido del user):** may–jul 2026 tenían posts de Drean
+  con resumen pero sin % (n8n pisaba el % con vacío; el texto de los comentarios nunca se guardó). Tabla **`social_post_comments`**
+  (migración 0145, APLICADA; clave = id de Meta o `apify:<shortcode>:<hash>`) que llenan: el scraper `part=ig` (Apify, todas las
+  marcas) y el cron **`/api/cron/ig-comentarios`** + `ig-comentarios.yml` (martes; manual `desde=2026-01-01`): comentarios de
+  @dreanargentina por Graph (gratis, token de la Página) → % con el mismo prompt del scraper (gpt-4o-mini) y resumen en null
+  (lo regenera `ig-sentiment-analysis`). `social_competitor` (planilla vieja de Google, feb–may) NO sirve: da 0% negativo en
+  posts cuyo resumen dice «completamente negativos» (se probó y se revirtió).
 - **Redes FB vs IG (histórico):** por post rinden parecido; IG usa `reach` (vivo), FB usa Media
   Views. Los gráficos de "total" engañan por volumen de posts (IG suma Stories que FB no expone).
 - **CB — sugerencias de tiendas:** `reporte_existencia` (proyecto CB) alimenta `vw_cb_suggestions`.

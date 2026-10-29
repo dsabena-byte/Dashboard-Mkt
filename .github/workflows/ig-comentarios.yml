@@ -1,0 +1,51 @@
+name: IG comentarios propios (API de Meta) + sentimiento
+
+# Lee los comentarios de los posts de @dreanargentina por la API de Meta (gratis), los guarda en
+# social_post_comments y calcula el % de sentimiento (gpt-4o-mini, mismo prompt del scraper).
+# Semanal (martes 08:15 UTC): posts de los últimos 30 días + cualquiera sin %. Manual: desde=2026-01-01 para el histórico.
+
+on:
+  schedule:
+    - cron: "15 8 * * 2"
+  workflow_dispatch:
+    inputs:
+      desde:
+        description: "YYYY-MM-DD (vacío = últimos 30 días)"
+        required: false
+        default: ""
+      todos:
+        description: "1 = reclasificar también los que ya tienen %"
+        required: false
+        default: ""
+      dry:
+        description: "1 = no escribe"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  ig-comentarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Trigger /api/cron/ig-comentarios
+        run: |
+          set -euo pipefail
+          BASE="${APP_URL:-https://dashboard-mkt-seven.vercel.app}"
+          URL="$BASE/api/cron/ig-comentarios?desde=${DESDE:-}&todos=${TODOS:-}&dry=${DRY:-}"
+          # Corta a los ~200 s y avisa `restantes`: se vuelve a llamar hasta terminar (máx 5 vueltas).
+          for i in 1 2 3 4 5; do
+            curl -fsS --max-time 295 "$URL" -H "Authorization: Bearer $CRON_SECRET" > out.json
+            cat out.json; echo
+            R=$(python3 -c "import json;print(json.load(open('out.json')).get('restantes',0))")
+            if [ "$R" = "0" ] || [ -n "${DRY:-}" ]; then break; fi
+          done
+          python3 -c "import json,sys;sys.exit(0 if json.load(open('out.json')).get('ok') else 1)"
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+          DESDE: ${{ inputs.desde }}
+          TODOS: ${{ inputs.todos }}
+          DRY: ${{ inputs.dry }}
