@@ -630,6 +630,10 @@ reporte_existencia/cb_homologos).
 - **Sync de SharePoint BORRADO (28-oct, pedido del user):** el workflow «Sync presupuestos desde SharePoint» de Dashboard-BGT (fallaba: link vencido) se eliminó (Dashboard-BGT#10). `data.json` queda congelado; el presupuesto se carga desde /funnel.
 - **Sin 2023 (16-oct, user: "info muy vieja"):** `ANIO_MINIMO = 2024` (presupuesto-core) filtra años anteriores en `getBgtData` (tablero,
   chat, señales) y en `/api/presupuesto` (versiones, TC, facturación de la carga). Los datos NO se borran de la base.
+## Menú lateral (29-oct-2026, pedido del user)
+- Fuera del menú (las páginas siguen por URL): **Mis tableros** (`/tableros`) y **Generador de Contenido** (`/contenido`).
+- Grupo **«Mi cuenta»** al final (después de Proceso Estratégico): Monitoreo conexiones · Alertas y reportes · Cambiar contraseña
+  (`siempre`) · Usuarios (`soloAdmin`). El pie queda solo con «Salir» (texto blanco). `components/sidebar.tsx`.
 ## Proceso Estratégico (capa de aprendizaje, ex "Método BIP") — portado sep-2026
 - **Marca: en Drean NO aparece "BIP"** (BIP es un proyecto aparte). La capa se llama **"Proceso Estratégico"** (sidebar, `/guia`, 🎓, copiloto). Ids de módulo sin `bip-`: `proceso-estrategico`, `conectar-fuentes`, `mapa-estrategico`, `insights-chat`, `tableros-planilla`. El test `guia-integridad` falla si un módulo dice "BIP". Solo quedan comentarios de código e identificadores internos (`.bip-viz`, evento `bip:learn`) y la landing `public/bip.html` (es de BIP, no del dash).
 - `/guia` ("Proceso Estratégico", último ítem del sidebar) + `/guia/[id]`: 45 módulos estáticos en `lib/guia/*`

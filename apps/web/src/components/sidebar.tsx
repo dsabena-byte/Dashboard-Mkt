@@ -11,11 +11,8 @@ import {
   HeartPulse,
   TrendingUp,
   CircleDollarSign,
-  Sparkles,
-  Activity,
   GraduationCap,
-  LayoutGrid,
-  Bell,
+  UserCircle,
   ChevronRight,
   Menu,
   X,
@@ -31,7 +28,7 @@ const tenant = getTenant();
 type Icon = ComponentType<{ className?: string }>;
 
 type NavNode =
-  | { type: "link"; href: string; label: string; icon?: Icon; dot?: string }
+  | { type: "link"; href: string; label: string; icon?: Icon; dot?: string; siempre?: boolean; soloAdmin?: boolean }
   | { type: "group"; id: string; label: string; icon?: Icon; dot?: string; children: NavNode[] }
   | { type: "divider" };
 
@@ -66,23 +63,35 @@ const TREE: NavNode[] = [
   { type: "link", href: "/salud-marca", label: "Salud de Marca", icon: HeartPulse },
   { type: "link", href: "/mercado", label: "Resultados Comerciales", icon: TrendingUp },
   { type: "link", href: "/funnel", label: "Inversión de Marketing", icon: CircleDollarSign },
-  { type: "link", href: "/tableros", label: "Mis tableros", icon: LayoutGrid },
-  { type: "divider" },
-  { type: "link", href: "/contenido", label: "Generador de Contenido", icon: Sparkles },
-  { type: "link", href: "/monitoreo", label: "Monitoreo conexiones", icon: Activity },
-  { type: "link", href: "/alerts", label: "Alertas y reportes", icon: Bell },
   { type: "divider" },
   { type: "link", href: "/guia", label: "Proceso Estratégico", icon: GraduationCap },
+  // Mis tableros (/tableros) y Generador de Contenido (/contenido) salieron del menú (29-oct-2026, pedido del user):
+  // las páginas siguen funcionando por URL.
+  {
+    type: "group",
+    id: "cuenta",
+    label: "Mi cuenta",
+    icon: UserCircle,
+    children: [
+      { type: "link", href: "/monitoreo", label: "Monitoreo conexiones" },
+      { type: "link", href: "/alerts", label: "Alertas y reportes" },
+      { type: "link", href: "/login/nueva-clave", label: "Cambiar contraseña", siempre: true },
+      { type: "link", href: "/usuarios", label: "Usuarios", soloAdmin: true },
+    ],
+  },
 ];
 
 // Poda el árbol según los dashboards permitidos (link no permitido → fuera;
 // grupo sin hijos permitidos → fuera).
-function filterTree(nodes: NavNode[], allowed: string[] | null): NavNode[] {
+function filterTree(nodes: NavNode[], allowed: string[] | null, esAdmin: boolean): NavNode[] {
   const out: NavNode[] = [];
   for (const n of nodes) {
     if (n.type === "divider") { out.push(n); continue; }
-    if (n.type === "link") { if (isPathAllowed(n.href, allowed)) out.push(n); continue; }
-    const children = filterTree(n.children, allowed);
+    if (n.type === "link") {
+      if (n.soloAdmin ? esAdmin : n.siempre || isPathAllowed(n.href, allowed)) out.push(n);
+      continue;
+    }
+    const children = filterTree(n.children, allowed, esAdmin);
     if (children.some((c) => c.type !== "divider")) out.push({ ...n, children });
   }
   return out;
@@ -107,7 +116,7 @@ export function Sidebar({ allowed = null, esAdmin = false }: { allowed?: string[
     () => new Set<string>(["trade", ...(ancestorsOf(TREE, pathname) ?? [])]),
   );
 
-  const tree = filterTree(TREE, allowed);
+  const tree = filterTree(TREE, allowed, esAdmin);
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const toggle = (id: string) => setOpenIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -214,8 +223,6 @@ export function Sidebar({ allowed = null, esAdmin = false }: { allowed?: string[
         .sn-l3.active{color:#fff;font-weight:600}
         .sn-divider{height:1px;background:#1c2c4a;margin:12px 11px}
         .sn-foot{border-top:1px solid #1c2c4a;padding:10px 12px}
-        .sn-pass{display:block;margin-top:6px;text-align:center;font-size:11px;color:#8ea0bd}
-        .sn-pass:hover{color:#e8edf6;text-decoration:underline}
         .sn-ver{padding:2px 12px 10px;font-size:10px;color:#5f6f8e}
       `}</style>
       <div className="sn-brand">
@@ -225,8 +232,6 @@ export function Sidebar({ allowed = null, esAdmin = false }: { allowed?: string[
       <nav className="sn-nav">{tree.map(renderTop)}</nav>
       <div className="sn-foot">
         <LogoutButton />
-        <Link href={{ pathname: "/login/nueva-clave" }} className="sn-pass">Cambiar contraseña</Link>
-        {esAdmin && <Link href={{ pathname: "/usuarios" }} className="sn-pass">Usuarios</Link>}
       </div>
       <div className="sn-ver">v0.1.0 · Fase 1</div>
     </>
