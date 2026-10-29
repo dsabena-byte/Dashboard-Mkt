@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import { motivoFuera, filtrarRelevantes } from "../src/lib/ad-library-shared";
+const ad = (pageName: string, title: string, body = "", link: string | null = null) => ({ pageName, title, body, link });
+assert.equal(motivoFuera(ad("Electrolux", "Llegó a Chile la nueva lavadora"), "Electrolux"), "pais");
+assert.equal(motivoFuera(ad("Electrolux", "Lavarropas", "", "https://www.electrolux.cl/lavado"), "Electrolux"), "pais");
+assert.equal(motivoFuera(ad("LG GMCC", "Compresores"), "LG"), "pagina");
+assert.equal(motivoFuera(ad("Samsung", "Nuevo Galaxy S26"), "Samsung"), "categoria");
+assert.equal(motivoFuera(ad("Samsung", "Smart TV y heladera en combo"), "Samsung"), null);
+assert.equal(motivoFuera(ad("Electrolux Argentina", "Aspiradora", "", "https://x.com.ar/?utm=cocina"), "Electrolux"), "categoria");
+assert.equal(motivoFuera(ad("Drean", "Lavarropas Next", "", "https://www.drean.com.ar/"), "Drean"), null);
+assert.equal(motivoFuera(ad("Escorial", "Termotanque eléctrico"), "Escorial"), "categoria");
+const f = filtrarRelevantes([ad("LG", "Heladera"), ad("LG", "OLED evo")] as never, "LG");
+assert.equal(f.ads.length, 1); assert.equal(f.fuera.categoria, 1);
+console.log("ad-relevancia OK");

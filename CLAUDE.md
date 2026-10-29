@@ -176,6 +176,7 @@ reporte_existencia/cb_homologos).
     set), "avisos que más sostienen" (días al aire + versiones) y cruce aviso↔posteo orgánico (`social_posts` IG con `copy`, similitud de
     texto ≥0,5) → me gusta/comentarios/views reales (`getAdEngagement`). Validado 24-sep: 17 avisos cruzados. Meta NO publica alcance/
     inversión de anuncios comerciales en AR (verificado: el actor no trae métricas).
+    **Filtro de relevancia (29-oct-2026, pedido del user: "hay pauta de Chile… LG que no tiene nada que ver con línea blanca"):** `motivoFuera`/`filtrarRelevantes` (`lib/ad-library-shared.ts`, test `scripts/ad-relevancia.test.ts`) saca avisos de otro país (link .cl/.uy/…, "llegó a Chile"), de Páginas con palabras extra al nombre (revendedores: LG GMCC, Electrogar…) y de otras categorías (TV, celulares, aspiradoras, café, calefones/termotanques…) SALVO que el texto nombre línea blanca. Se aplica al sincronizar y al LEER (limpia lo guardado sin pagar Apify). Snapshot 26-oct: Electrolux 31→12 (14 de Chile), Samsung 8→3, LG 7→1. Avisos institucionales sin categoría se conservan.
     Ambas pantallas (Simulador y Competencia) tienen un bloque **"Cómo funciona"** (`components/knowledge/como-funciona.tsx`).
   - **Alertas y reportes** (`/alerts`, reemplazó el placeholder; sidebar "Alertas y reportes"): `lib/alerts.ts`
     (server) + `lib/alerts-shared.ts` (puro) + `lib/notify.ts` (Resend REST). Candidatas = `computeSignals()` +

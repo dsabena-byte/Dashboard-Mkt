@@ -25,7 +25,7 @@ export interface CompetitorAd {
   collationId?: string | null;    // Meta agrupa las versiones de un mismo creativo
   collationCount?: number | null; // "N anuncios usan este creativo" (incluye los que no vinieron)
 }
-export interface BrandAds { marca: string; own: boolean; ads: CompetitorAd[]; fetchedAt: string | null; error?: string | null; stale?: boolean }
+export interface BrandAds { marca: string; own: boolean; ads: CompetitorAd[]; fetchedAt: string | null; error?: string | null; stale?: boolean; fuera?: { pais: number; pagina: number; categoria: number } }
 export interface AdLibraryData { brands: BrandAds[]; updatedAt: string | null }
 
 /** Marca a monitorear: `q` = búsqueda por palabra en la Biblioteca; `ctx` = si el nombre de la marca es
@@ -183,4 +183,36 @@ export function brandSummary(b: BrandAds, now = Date.now()): BrandSummary {
     masViejo: active.map(adStart).sort()[0] ?? null,
     error: b.error ?? null, stale: Boolean(b.stale), fetchedAt: b.fetchedAt,
   };
+}
+
+// ── Relevancia (29-oct-2026, pedido del user: "solo Argentina, solo línea blanca, filtrar mejor") ──────────
+// La Biblioteca de anuncios con country=AR trae también avisos de otros países que llegan a AR (Electrolux
+// Chile), Páginas que solo contienen el nombre ("LG Sonic", "Electrogar LG", "Samsung Photography") y
+// productos de otras categorías (TVs, celulares, aspiradoras, cafeteras). Drean compite en lavado,
+// refrigeración y cocción.
+const PAIS_TLD = /\.(cl|uy|py|bo|pe|br|mx|ec|ve|es)(?=[/:?#]|$)|\.com\.(co|cl|uy|py|bo|pe|br|mx|ec|ve)(?=[/:?#]|$)/i;
+const PAIS_TXT = /\b(llego a|esta en|en|de) (chile|uruguay|paraguay|bolivia|peru|mexico|colombia|brasil|espana)\b|_(cl|uy|py|pe|mx|co|br)_/;
+// Palabras que pueden acompañar a la marca en el nombre de una Página OFICIAL.
+const PAGINA_OK = new Set(["global", "argentina", "arg", "ar", "oficial", "official", "electrodomesticos", "electro", "hogar", "home", "appliances", "store", "tienda", "shop", "cocinas", "cocina", "latam", "la", "de", "y"]);
+const LINEA_BLANCA = /lavarropa|lavasecarropa|secarropa|lavado|lavar|heladera|freezer|refriger|no frost|frio|cocina|cocinar|coccion|horno|anafe|hornalla|lavavajilla|microonda|torre de lavado|electrodomestico/;
+const OTRA_CATEGORIA = /\b(tv|tvs|televisor\w*|smart tv|oled|qled|galaxy|celular\w*|smartphone\w*|notebook\w*|monitor\w*|auricular\w*|parlante\w*|aspiradora\w*|cafetera\w*|cafe|espresso|keratina|cabello|frizz|algas|compresor\w*|repuesto\w*|climatiz\w*|aire acondicionado|calefon\w*|termotanque\w*|calefactor\w*|play center)\b/;
+
+export type MotivoFuera = "pais" | "pagina" | "categoria";
+
+/** ¿El aviso cuenta para el tablero? null = sí; si no, el motivo. Puro (lo usan el sync y la lectura). */
+export function motivoFuera(ad: Pick<CompetitorAd, "pageName" | "title" | "body" | "link">, marca: string): MotivoFuera | null {
+  const texto = norm(`${ad.title} ${ad.body}`);
+  if ((ad.link && PAIS_TLD.test(ad.link.split("?")[0] ?? "")) || PAIS_TXT.test(texto) || PAIS_TXT.test((ad.link ?? "").toLowerCase())) return "pais";
+  const resto = norm(ad.pageName).split(" ").filter((t) => t && !norm(marca).split(" ").includes(t) && !PAGINA_OK.has(t));
+  if (resto.length) return "pagina";
+  // Solo el texto: los utm de los links mezclan categorías ("crosscat … cocina-octubre" en un aviso de aspiradoras).
+  if (OTRA_CATEGORIA.test(texto) && !LINEA_BLANCA.test(texto)) return "categoria";
+  return null;
+}
+
+/** Filtra los avisos de una marca y cuenta cuántos quedaron afuera por motivo. */
+export function filtrarRelevantes(ads: CompetitorAd[], marca: string): { ads: CompetitorAd[]; fuera: Record<MotivoFuera, number> } {
+  const fuera: Record<MotivoFuera, number> = { pais: 0, pagina: 0, categoria: 0 };
+  const ok = ads.filter((a) => { const m = motivoFuera(a, marca); if (m) fuera[m]++; return !m; });
+  return { ads: ok, fuera };
 }
