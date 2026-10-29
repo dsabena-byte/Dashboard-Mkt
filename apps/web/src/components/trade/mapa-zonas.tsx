@@ -57,9 +57,11 @@ const tileX = (lon: number, z: number) => Math.floor(((lon + 180) / 360) * 2 ** 
 const tileY = (lat: number, z: number) => { const r = (lat * Math.PI) / 180; return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z); };
 const tileLon = (x: number, z: number) => (x / 2 ** z) * 360 - 180;
 const tileLat = (y: number, z: number) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / 2 ** z))) * 180) / Math.PI;
-function tiles(vb: { x: number; y: number; w: number; h: number }, anchoPx: number) {
+function tiles(vb: { x: number; y: number; w: number; h: number }, anchoPx: number, dz = 0) {
   const lon0 = lonDe(vb.x), lon1 = lonDe(vb.x + vb.w), latN = latDe(vb.y), latS = latDe(vb.y + vb.h);
-  let z = Math.min(18, Math.round(Math.log2((360 * anchoPx) / (256 * (lon1 - lon0)))));
+  // Por densidad de pantalla (retina = tiles más finos); Esri tiene calles, cuadras y numeración hasta z18–19.
+  const dpr = typeof window === "undefined" ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  let z = Math.min(19, Math.round(Math.log2((360 * anchoPx * dpr) / (256 * (lon1 - lon0))))) - dz;
   if (z < 7) return [];
   const out: Array<{ k: string; href: string; x: number; y: number; w: number; h: number }> = [];
   for (; z >= 7; z--) {
@@ -148,6 +150,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   const escala = Math.min(1, vb.w / FULL.w); // las burbujas no crecen al hacer zoom
   const maxT = Math.max(1, ...ubicados.map((p) => p.tiendas));
   const base = tiles(vb, anchoPx);
+  const fondo = base.length ? tiles(vb, anchoPx, 3) : []; // menos detalle debajo: no queda en blanco mientras cargan los tiles nuevos
   // Etiquetas sin encimarse: primero las de más tiendas (o la del mouse), solo si su caja no pisa otra ya puesta.
   const conEtiqueta = useMemo(() => {
     const fs = 9 * escala, out = new Set<string>(), cajas: Caja[] = [];
@@ -167,7 +170,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
   };
   // Zoom manteniendo fijo el punto (px, py) del mapa.
   const zoom = (f: number, px0 = cam.cx, py0 = cam.cy) => {
-    const nw = Math.min(1200, Math.max(20, w * f));
+    const nw = Math.min(1200, Math.max(0.2, w * f)); // 0,2 ≈ 300 m de ancho: nivel cuadra
     setCam({ cx: px0 - (px0 - cam.cx) * (nw / w), cy: py0 - (py0 - cam.cy) * (nw / w), w: nw });
   };
   const onWheel = (e: WheelEvent<SVGSVGElement>) => { const p = aSvg(e.clientX, e.clientY); zoom(e.deltaY > 0 ? 1.25 : 0.8, p.x, p.y); };
@@ -210,7 +213,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
             onWheel={onWheel} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => (drag.current = null)} onPointerLeave={() => (drag.current = null)}
             role="img" aria-label={`Mapa de ${titulo}`}
           >
-            {base.map((t) => <image key={t.k} href={t.href} x={t.x} y={t.y} width={t.w} height={t.h} preserveAspectRatio="none" />)}
+            {[...fondo, ...base].map((t) => <image key={t.k} href={t.href} x={t.x} y={t.y} width={t.w} height={t.h} preserveAspectRatio="none" />)}
             {AR_PROVINCES.map((p) => (
               <path key={p.name} d={p.path} fill={tinte(porProv.get(p.name) ?? null, metrica.obj)} fillOpacity={base.length ? 0.15 : 1} stroke="#cbd5e1" strokeWidth={0.6 * escala} />
             ))}

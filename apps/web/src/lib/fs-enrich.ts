@@ -97,14 +97,19 @@ export function crearEnriquecedorFs(contactos: Contacto[]): (numero: string, nom
     const cad = (c.cadena || "").trim(), fw = cad.toLowerCase().split(/\s+/)[0];
     if (fw && !byFirstWord.has(fw)) byFirstWord.set(fw, cad);
   }
+  const exacto = (numero: string, nombre: string): Contacto | undefined => {
+    const num = normalizeStoreNumber(numero), nn = norm(nombre);
+    const direct = byKey.get(`${num}|${nn}`);
+    if (direct) return direct;
+    const m = nombre.trim().match(/^(\d+)\s*[-–]\s*(.+)$/);
+    return (m ? byKey.get(`${normalizeStoreNumber(m[1])}|${norm(m[2])}`) : undefined) ?? byName.get(nn);
+  };
   const lookup = (numero: string, nombre: string): Contacto | undefined => {
     const num = normalizeStoreNumber(numero), nn = norm(nombre);
     const direct = byKey.get(`${num}|${nn}`);
     if (direct) return direct;
     if (num) for (const [k, v] of byKey) if (k.startsWith(num + "|")) return v; // = app vieja
-    const m = nombre.trim().match(/^(\d+)\s*[-–]\s*(.+)$/);
-    if (m) { const fb = byKey.get(`${normalizeStoreNumber(m[1])}|${norm(m[2])}`); if (fb) return fb; }
-    return byName.get(nn);
+    return exacto(numero, nombre);
   };
   const cache = new Map<string, FsPersonas | null>();
   return (numero, nombre) => {
@@ -114,13 +119,14 @@ export function crearEnriquecedorFs(contactos: Contacto[]): (numero: string, nom
     if (!isExcludedStore(nombre)) {
       const ln = sinAcentos(nombre);
       const ov = STORE_OVERRIDES.find((o) => o.number === numero && ln.includes(o.nameContains))?.cliente;
-      const c = lookup(numero, nombre);
+      const c = lookup(numero, nombre), ex = exacto(numero, nombre);
       out = {
         cliente: canonicalizeCliente(ov ?? inferCliente(nombre, byFirstWord)),
         promotor: !c ? PROMOTOR_NO_MAPEO : c.promotor || PROMOTOR_SIN,
         supervisor: !c ? PROMOTOR_NO_MAPEO : c.supervisor || SUPERVISOR_SIN,
-        zona: c?.zona?.trim() || ZONA_SIN,
-        ...(c?.geo ? { geo: c.geo } : {}),
+        // Ubicación (punto o zona) solo con coincidencia de nombre: el mismo número existe en varias cadenas (19 = On City Jofre y Frávega Lanús).
+        zona: ex?.zona?.trim() || ZONA_SIN,
+        ...(ex?.geo ? { geo: ex.geo } : {}),
       };
     }
     cache.set(ck, out);
