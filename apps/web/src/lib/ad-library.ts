@@ -16,7 +16,7 @@ import { apifyEnabled, runActor } from "@/lib/apify";
 import { mirrorMetaImage } from "@/lib/meta-image-mirror";
 import { matchAdsToPosts, AD_LIBRARY_CAP, type AdEngagement, type OrganicPost } from "@/lib/ad-intensity";
 import { getTenant } from "@/lib/tenant/current";
-import { adLibraryBrands, adSearchUrl, adBelongsToBrand, norm, parseAdItem, type AdBrand, type AdLibraryData, type BrandAds, type CompetitorAd } from "@/lib/ad-library-shared";
+import { adLibraryBrands, adSearchUrl, adBelongsToBrand, filtrarRelevantes, motivoFuera, norm, parseAdItem, type AdBrand, type AdLibraryData, type BrandAds, type CompetitorAd } from "@/lib/ad-library-shared";
 
 export const AD_LIBRARY_ACTOR = process.env.APIFY_ACTOR_AD_LIBRARY || "apify~facebook-ads-scraper";
 const PER_BRAND = AD_LIBRARY_CAP; // anuncios máximos por marca y corrida (40; la marca que llega queda "topeada")
@@ -51,7 +51,8 @@ export async function getAdLibrarySnapshot(): Promise<AdLibraryData | null> {
   const rows = (await res.json().catch(() => [])) as SnapRow[];
   const order = new Map(adLibraryBrands().map((b, i) => [norm(b.marca), i]));
   const brands: BrandAds[] = rows
-    .map((r) => ({ marca: r.marca, own: Boolean(r.own), ads: Array.isArray(r.ads) ? r.ads : [], fetchedAt: r.fetched_at, error: r.error, stale: Boolean(r.stale) }))
+    // Filtro de relevancia también al LEER: limpia lo ya guardado sin volver a pagar la búsqueda.
+    .map((r) => { const f = filtrarRelevantes(Array.isArray(r.ads) ? r.ads : [], r.marca); return { marca: r.marca, own: Boolean(r.own), ads: f.ads, fuera: f.fuera, fetchedAt: r.fetched_at, error: r.error, stale: Boolean(r.stale) }; })
     .sort((a, b) => (order.get(norm(a.marca)) ?? 99) - (order.get(norm(b.marca)) ?? 99));
   const updatedAt = rows.map((r) => r.updated_at ?? "").sort().pop() || null;
   return { brands, updatedAt };
@@ -108,7 +109,7 @@ async function fetchBrand(b: AdBrand, nowIso: string): Promise<CompetitorAd[]> {
   const out: CompetitorAd[] = [];
   for (const it of items) {
     const ad = parseAdItem(it, nowIso);
-    if (!ad || seen.has(ad.id) || !adBelongsToBrand(ad, b)) continue;
+    if (!ad || seen.has(ad.id) || !adBelongsToBrand(ad, b) || motivoFuera(ad, b.marca)) continue;
     seen.add(ad.id);
     out.push(ad);
     if (out.length >= PER_BRAND) break;

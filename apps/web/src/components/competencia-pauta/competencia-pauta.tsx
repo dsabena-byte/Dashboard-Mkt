@@ -31,6 +31,8 @@ export function CompetenciaPauta({ brands, summaries, updatedAt, intensity = [],
   }, [brands, marca, win, fmt, sortEng, engagement]);
   const adById = useMemo(() => new Map(brands.flatMap((b) => b.ads.map((a) => [a.id, a] as const))), [brands]);
   const matched = Object.keys(engagement).length;
+  const fuera = brands.filter((b) => (marca === "__all" ? !b.own : b.marca === marca)).reduce((t, b) => ({ pais: t.pais + (b.fuera?.pais ?? 0), otro: t.otro + (b.fuera?.pagina ?? 0) + (b.fuera?.categoria ?? 0) }), { pais: 0, otro: 0 });
+  const fueraTxt = fuera.pais + fuera.otro ? ` · fuera del análisis: ${[fuera.pais && `${fuera.pais} de otros países`, fuera.otro && `${fuera.otro} de revendedores u otras categorías`].filter(Boolean).join(", ")}` : "";
   const formatos = [...new Set(brands.flatMap((b) => b.ads.map((a) => a.format)))];
   const comp = summaries.filter((s) => !s.own);
   const tot = { activos: comp.reduce((a, s) => a + s.activos, 0), n7: comp.reduce((a, s) => a + s.nuevos7, 0), n30: comp.reduce((a, s) => a + s.nuevos30, 0) };
@@ -149,7 +151,7 @@ export function CompetenciaPauta({ brands, summaries, updatedAt, intensity = [],
           {formatos.map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
         <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={sortEng} onChange={(e) => setSortEng(e.target.checked)} />Ordenar por me gusta + comentarios</label>
-        <span className="text-xs text-muted-foreground">{ads.length} {ads.length === 1 ? "anuncio" : "anuncios"} · {matched} con métricas del posteo</span>
+        <span className="text-xs text-muted-foreground">{ads.length} {ads.length === 1 ? "anuncio" : "anuncios"} · {matched} con métricas del posteo{fueraTxt}</span>
       </div>
 
       {ads.length === 0 ? (
