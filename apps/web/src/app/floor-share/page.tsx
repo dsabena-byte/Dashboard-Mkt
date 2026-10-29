@@ -128,8 +128,6 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
     overall: computeOverall([]), topMarcas: [], weekly: [], totalTiendasRelevadas: 0, semanaDesde: null, semanaHasta: null, hasData: false,
   };
   const { options, totalRanking, byTienda, byCliente, byPromotor, overall, topMarcas, weekly, totalTiendasRelevadas, hasData } = v;
-  const periodo = v.mesDesde && v.mesHasta ? `${mesLargo(v.mesDesde)} — ${mesLargo(v.mesHasta)}` : "";
-  const sub = `${periodo ? `${periodo} · ` : ""}Δ vs objetivo`;
 
   const esMapa = searchParams.tab === "mapa";
   // Pestaña Mapa + filtro de tiendas: sus exhibiciones especiales con fotos (solo en el mapa, pedido del user) (clave de tienda FS = "número|nombre").
@@ -157,7 +155,13 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   const mesRef = (v.porMes ?? []).find((m) => m.mes === refKey)?.overall ?? null;
   const mesesVista = (v.porMes ?? []).map((m) => m.mes);
   const corto = (k: string) => `${MESES[Number(k.slice(5)) - 1]} ${k.slice(2, 4)}`;
-  const etiquetaPeriodo = v.mesDesde && v.mesHasta ? (v.mesDesde === v.mesHasta ? corto(v.mesDesde) : `${corto(v.mesDesde)}–${corto(v.mesHasta)}`) : "Período";
+  // La semana 1 del año fiscal empieza en diciembre del año anterior: el período arranca en enero de `anio`.
+  // Sin filtro de mes/semana la vista es el año a la fecha → "YTD <año>".
+  const desde = v.mesDesde && v.mesDesde < `${anio}-01` ? `${anio}-01` : v.mesDesde;
+  const sinFiltroTiempo = !filter.meses?.length && !filter.semanas?.length;
+  const etiquetaPeriodo = sinFiltroTiempo ? `YTD ${anio}` : desde && v.mesHasta ? (desde === v.mesHasta ? corto(desde) : `${corto(desde)}–${corto(v.mesHasta)}`) : "Período";
+  const periodo = sinFiltroTiempo ? `YTD ${anio}` : desde && v.mesHasta ? (desde === v.mesHasta ? mesLargo(desde) : `${mesLargo(desde)} — ${mesLargo(v.mesHasta)}`) : "";
+  const sub = `${periodo ? `${periodo} · ` : ""}Δ vs objetivo`;
   const metaProm = (f: (ob: Obj) => number) => mesesVista.length ? mesesVista.reduce((s, k) => s + f(objDeMes(k)), 0) / mesesVista.length : f(OBJ);
   const card = (title: string, medida: string, key: "total" | "lavado" | "refri" | "coccion", metaDe: (ob: Obj) => number, ctx?: string) => (
     <MetaKpiCard key={key} title={title} medida={medida} unidad="%" decimales={1} delta="pp"
@@ -220,8 +224,8 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       ) : (
         <>
           <section className="grid gap-3 lg:grid-cols-4">
-            {card("Floor Share — general", "Drean · todas las categorías (meta ponderada)", "total", general,
-              `${overall.total.drean_units.toLocaleString()} / ${overall.total.total_units.toLocaleString()} · ${totalTiendasRelevadas} tiendas · ${etiquetaPeriodo}`)}
+            {/* Misma estructura que las 3 de categoría (pedido del user): medida en una línea y contexto "x / y en <período>". */}
+            {card("Floor Share — general", `Share Drean góndola · ${totalTiendasRelevadas} tiendas`, "total", general)}
             {card("Lavado", "Share Drean góndola", "lavado", (ob) => ob.lavado)}
             {card("Refrigeración", "Share Drean góndola", "refri", (ob) => ob.refri)}
             {card("Cocción", "Share Drean góndola", "coccion", (ob) => ob.coccion)}
@@ -230,7 +234,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
           {/* Como la app vieja: ranking + evolución · cliente + promotor · tienda. */}
           <section className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-3 text-sm font-bold">📊 Ranking de marcas</h3>
+              <h3 className="mb-3 text-sm font-bold">📊 Ranking de marcas <span className="font-normal text-muted-foreground">· {periodo || etiquetaPeriodo}</span></h3>
               <FloorShareBrandRanking data={totalRanking.filter((r) => !["otros", "total"].includes(r.marca.toLowerCase())).slice(0, 10)} highlight={OWN_BRAND_FS} />
             </div>
             {weekly.length > 1 && (
