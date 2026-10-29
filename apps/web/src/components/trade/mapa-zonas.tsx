@@ -49,9 +49,10 @@ const py = (lat: number) => -33.34 * lat - 728.1;
 const lonDe = (x: number) => (x - 1918.77) / 26.08;
 const latDe = (y: number) => (y + 728.1) / -33.34;
 
-// Mapa base (calles y ciudades) de CARTO/OpenStreetMap al hacer zoom: cada tile se ubica por sus esquinas lat/lon con la
+// Mapa base (calles y ciudades) de Esri al hacer zoom: cada tile se ubica por sus esquinas lat/lon con la
 // misma proyección lineal del mapa (dentro de un tile la diferencia con Mercator es < 1 px).
-const TILE_URL = (z: number, x: number, y: number) => `https://${"abcd"[(x + y) % 4]}.basemaps.cartocdn.com/light_all/${z}/${x}/${y}@2x.png`;
+// CARTO pide API key desde dominios reales (28-oct: tiles "API KEY REQUIRED"); Esri World Street Map responde sin clave.
+const TILE_URL = (z: number, x: number, y: number) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${z}/${y}/${x}`;
 const tileX = (lon: number, z: number) => Math.floor(((lon + 180) / 360) * 2 ** z);
 const tileY = (lat: number, z: number) => { const r = (lat * Math.PI) / 180; return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z); };
 const tileLon = (x: number, z: number) => (x / 2 ** z) * 360 - 180;
@@ -211,7 +212,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
           >
             {base.map((t) => <image key={t.k} href={t.href} x={t.x} y={t.y} width={t.w} height={t.h} preserveAspectRatio="none" />)}
             {AR_PROVINCES.map((p) => (
-              <path key={p.name} d={p.path} fill={tinte(porProv.get(p.name) ?? null, metrica.obj)} fillOpacity={base.length ? 0.25 : 1} stroke="#cbd5e1" strokeWidth={0.6 * escala} />
+              <path key={p.name} d={p.path} fill={tinte(porProv.get(p.name) ?? null, metrica.obj)} fillOpacity={base.length ? 0.15 : 1} stroke="#cbd5e1" strokeWidth={0.6 * escala} />
             ))}
             {ubicados.map((p) => {
               const v = pct(p.vals[m]!);
@@ -231,7 +232,7 @@ export function MapaZonas({ titulo, puntos, metricas, nota, inicial = 0 }: {
           <p className="mt-1 text-[11px] text-muted-foreground">
             Rueda del mouse o +/− para hacer zoom (al acercarte aparecen calles y ciudades), arrastrá para moverte. Punto = tienda ({nTiendas} con dirección); burbuja grande = tiendas sin dirección agrupadas por zona. Color = vs objetivo.
             {sinUbicar > 0 ? ` ${sinUbicar} tiendas sin zona cargada no aparecen en el mapa.` : ""} Tocá un punto para ver su ficha.{nota ? ` ${nota}` : ""}
-            {base.length ? <span className="ml-1">Mapa base © OpenStreetMap · © CARTO.</span> : null}
+            {base.length ? <span className="ml-1">Mapa base © Esri, HERE, Garmin, OpenStreetMap.</span> : null}
           </p>
         </div>
         <div className="space-y-2 text-sm">

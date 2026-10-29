@@ -619,7 +619,7 @@ reporte_existencia/cb_homologos).
   cards FS = sistema de Redes (filas «Mes» vs su meta y «Período» vs promedio de metas, chip en pp). **`MetaKpiCard` muestra real + meta en cada
   fila (todos los tableros)** y `KpiObjCard` (CB, CB Ventas) usa MetaKpiCard. Regenerar precálculos sin migrar: `trade-migrar.yml` con
   `solo_derivados=1` (el workflow completo re-migra desde el proyecto CB y pisaría cargas nuevas).
-  **Zoom del Heat Map (28-oct, pedido del user: «al hacer zoom no lee nada»):** desde zoom ~7 se dibuja de fondo el mapa base CARTO light (OSM, calles/ciudades, tiles `@2x` como `<image>` en el mismo SVG ubicados por esquinas lat/lon, tope 80 tiles) y las provincias quedan al 25%; etiquetas sin encimarse (greedy por cantidad de tiendas, halo blanco). Atribución en el pie.
+  **Zoom del Heat Map (28-oct, pedido del user: «al hacer zoom no lee nada»):** desde zoom ~7 se dibuja de fondo el mapa base Esri World Street Map (sin clave; CARTO pedía API key en el dominio real y tile.openstreetmap.org bloquea, ambos verificados 28-oct) como `<image>` en el mismo SVG ubicados por esquinas lat/lon, tope 80 tiles) y las provincias quedan al 25%; etiquetas sin encimarse (greedy por cantidad de tiendas, halo blanco). Atribución en el pie.
   **Filtros de tiempo rápidos (28-oct, #987, pedido del user):** `refrescarDerivados` guarda además una vista por MES (`fs_precomputed` id
   1000+mes) y por SEMANA (id 2000+semana), sin options/evolución (salen de la default id=1, `fsVistaConBase`): 54 vistas, ~4 s, máx 181 KB;
   un mes o una semana = 2 lecturas (~0,7 s c/u medidas) en vez de bajar ~200k filas (~11 s). Varios meses/semanas sin otros filtros = baja
