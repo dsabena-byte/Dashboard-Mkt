@@ -178,9 +178,9 @@ export async function mapaTrade(base: { cb: CbView; cbFilter: CbFilter } | { fs:
       { grupo: "CB Trade", corto: "Estr", label: "CB Trade Estratégicos", obj: OBJ_CB },
       { grupo: "Floor Share", corto: "Floor Share", label: "FS general", obj: r1(obj?.general ?? 0) },
       { grupo: "Floor Share", corto: "Lavado", label: "FS Lavado", obj: obj?.lavado ?? 0 },
-      { grupo: "Floor Share", corto: "Refrigeración", label: "FS Refrigeración", obj: obj?.refri ?? 0 },
+      { grupo: "Floor Share", corto: "Refri", label: "FS Refrigeración", obj: obj?.refri ?? 0 },
       { grupo: "Floor Share", corto: "Cocción", label: "FS Cocción", obj: obj?.coccion ?? 0 },
-      { grupo: "Exhibición especial", corto: "Exhibición especial", label: "Exhibición especial", obj: 100, binaria: true },
+      { grupo: "Exhibición especial", corto: "Wow", label: "Exhibición especial", obj: 100, binaria: true },
     ],
     nota: [
       !fs ? "Floor Share no disponible." : !cb ? "Cuadro Básico no disponible." : obj ? `Meta FS de ${MESES_FS[obj.mesIdx]} ${obj.anio}.` : null,
