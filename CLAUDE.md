@@ -624,6 +624,9 @@ reporte_existencia/cb_homologos).
   Las 4 cards con la misma estructura (medida en una línea + «x / y en <período>»; las tiendas van en la medida de la general).
   **Regla general del user: todo gráfico que no sea una evolución mensual dice qué período muestra** (ej. «Ranking de marcas · YTD 2026»).
   Descarga de imagen = solo ícono ⬇ (sin texto).
+  **Cards de CB Trade sin filtro de mes/semana = MES EN CURSO (29-oct, pedido del user):** `CbView.mesActual` (mes de la última semana
+  relevada, en `computeCbView` → también en el precálculo `cb_default`); tablas y evolución siguen con todo el período. Pestañas
+  «Análisis Tiendas» / «Análisis SKUs» (antes «Sugerencias de…»). Validado: oct-26 CB 78,1% (período 72,6%).
   **Tabla del Heat Map (29-oct, pedido del user):** arranca ordenada por CB Sell In de mayor a menor; encabezados «Inf»/«Estr»/«Refri»/«Wow» (= exhibición especial; nombre
   completo al pasar el mouse) para achicar columnas: con los nombres largos la columna «Exhibición especial» quedaba fuera de pantalla.
   **Zoom del Heat Map (28-oct, pedido del user: «al hacer zoom no lee nada»):** desde zoom ~7 se dibuja de fondo el mapa base Esri World Street Map (sin clave; CARTO pedía API key en el dominio real y tile.openstreetmap.org bloquea, ambos verificados 28-oct) como `<image>` en el mismo SVG ubicados por esquinas lat/lon, tope 80 tiles) y las provincias quedan al 25%; etiquetas sin encimarse (greedy por cantidad de tiendas, halo blanco). Atribución en el pie.

@@ -19,6 +19,8 @@ export interface CbView {
   byTienda: ReturnType<typeof computeByTienda>;
   totalTiendasRelevadas: number;
   hasData: boolean;
+  /** Sin filtro de mes/semana: totales del mes en curso (el de la última semana relevada) para las cards. */
+  mesActual?: { mes: string; totals: ReturnType<typeof computeTotals> } | null;
 }
 
 const MES_ORDER = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -63,7 +65,14 @@ export function computeCbView(allRows: CbRow[], filter: CbFilter): CbView {
     byTienda: computeByTienda(rows).sort((a, b) => (a.cb_total ?? 0) - (b.cb_total ?? 0)),
     totalTiendasRelevadas: new Set(allRows.map((r) => r.tienda)).size,
     hasData: rows.length > 0,
+    mesActual: mesEnCurso(rows, filter),
   };
+}
+
+function mesEnCurso(rows: CbRow[], f: CbFilter): CbView["mesActual"] {
+  if (f.meses?.length || f.semanas?.length || !rows.length) return null;
+  const mes = isoWeekToMes(Math.max(...rows.map((r) => r.semana)));
+  return { mes, totals: computeTotals(rows.filter((r) => isoWeekToMes(r.semana) === mes)) };
 }
 
 export type CbZona = { zona: string; tiendas: number; cb: [number, number]; inf: [number, number]; est: [number, number] };
