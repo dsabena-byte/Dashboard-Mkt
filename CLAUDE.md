@@ -851,6 +851,9 @@ reporte_existencia/cb_homologos).
     meta GENERAL y el gráfico de Lavado mostraba General × 35%):** en Lavado/Refri/Cocción el MetaPanel edita la meta PROPIA de la
     categoría (`kpi_meta_valores.categoria`, prop `categoria` de MetaPanel) y el tablero la usa si tiene algún mes cargado; si no,
     General × mix (suma) o General (tasas). El Seguimiento por categoría NO lee esas filas (sigue con el mix del Mapa).
+- **ROAS de /web — meta YTD (30-oct-2026, el user: «está mal calculado»):** el YTD de la meta era el PROMEDIO de las metas
+  mensuales (ene–mar 22/22/30 → 10,6x). Ahora = Σ meta de ingresos ÷ Σ (meta de ingresos ÷ meta de ROAS), la misma fórmula del real
+  (Σ ingresos ÷ Σ inversión) → 3,5x a sep-26. Sin metas de ingresos cae al promedio. `app/web/page.tsx`.
 - **Mercado (GfK) — carga mensual:** el share de `mercado_share` se actualiza a mano desde
   exports "Brands Timeseries" de GfK (por REST, es dato no DDL). Set completo = **3 segmentos +
   Total × 3 KPIs**, por agregación (mensual + MAT). **Verificar la matriz completa ANTES de
