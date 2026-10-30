@@ -364,8 +364,15 @@ export default async function WebPage({ searchParams }: PageProps) {
   const roasRefMeta = webRefIdx >= 0 ? (webMetaRoas.valores[webRefIdx] ?? null) : null;
   const totalInvYtd = webSum(totalInvM.slice(0, webUpto + 1));
   const roasYtd = totalInvYtd > 0 ? ingYtd / totalInvYtd : null;
+  // Meta YTD del ROAS = misma fórmula que el real (Σ ingresos ÷ Σ inversión), no el promedio de las metas mensuales:
+  // inversión implícita del mes = meta de ingresos ÷ meta de ROAS. Sin metas de ingresos, cae al promedio.
+  let roasMetaIng = 0, roasMetaInv = 0;
+  for (let i = 0; i <= webUpto; i++) {
+    const r = webMetaRoas.valores[i], g = webMetaIng.valores[i];
+    if (r != null && r > 0 && g != null && g > 0) { roasMetaIng += g; roasMetaInv += g / r; }
+  }
   const roasMetasYtd = webMetaRoas.valores.slice(0, webUpto + 1).filter((v): v is number => v != null);
-  const roasMetaYtd = roasMetasYtd.length ? roasMetasYtd.reduce((a, b) => a + b, 0) / roasMetasYtd.length : null;
+  const roasMetaYtd = roasMetaInv > 0 ? roasMetaIng / roasMetaInv : roasMetasYtd.length ? roasMetasYtd.reduce((a, b) => a + b, 0) / roasMetasYtd.length : null;
 
   // ---- Cierre proyectado del mes (transacciones / ingresos vs meta): misma serie diaria de
   // ga4_purchases_daily que ya trae getEcommerceMensual (sin query extra). Puro (lib/web-forecast).
