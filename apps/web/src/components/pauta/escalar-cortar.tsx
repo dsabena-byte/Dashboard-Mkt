@@ -111,10 +111,10 @@ export function EscalarCortarSection({ porMedio, anio }: { porMedio: Record<stri
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".03em" }}>1 · Escalar, mantener o cortar · {medio} · {anio} <LearnButton k="escalar_grafico1" corner={false} /></div>
           <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "2px 0 8px" }}>Hacia la derecha, más plata invertida en la pieza; hacia arriba, más caro cada video completo. Arriba de la curva roja = cortar; debajo de la verde = escalar; entre las dos = mantener. Las curvas se acercan a la meta a medida que sube la inversión: con más plata gastada, menos dudas.</p>
           <ResponsiveContainer width="100%" height={320}>
-            <ScatterChart margin={{ top: 10, right: 12, bottom: 10, left: 0 }}>
+            <ScatterChart margin={{ top: 10, right: 12, bottom: 22, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="inv" type="number" scale="log" domain={["auto", "auto"]} ticks={ticksLog(pts.map((p) => p.inv))} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name="Inversión" />
-              <YAxis dataKey="y" type="number" domain={[0, yMax]} allowDataOverflow width={56} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name="Costo por video completo" />
+              <XAxis dataKey="inv" type="number" scale="log" domain={["auto", "auto"]} ticks={ticksLog(pts.map((p) => p.inv))} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name="Inversión" label={{ value: "Inversión de la pieza ($, escala log)", position: "insideBottom", offset: -14, fontSize: 11, fill: "#475569" }} />
+              <YAxis dataKey="y" type="number" domain={[0, yMax]} allowDataOverflow width={56} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name="Costo por video completo" label={{ value: "Costo por video completo ($)", angle: -90, position: "insideLeft", offset: -2, style: { textAnchor: "middle" }, fontSize: 11, fill: "#475569" }} />
               <Tooltip content={<Tip />} />
               <ReferenceLine y={ev.meta} stroke="#64748b" strokeDasharray="4 4" label={{ value: `meta ${money(ev.meta)}`, position: "insideTopLeft", fontSize: 10, fill: "#64748b" }} />
               <Scatter data={curvaCor} line={{ stroke: ZONA.cortar.color, strokeWidth: 1.5 }} shape={() => <g />} isAnimationActive={false} legendType="none" />
@@ -131,10 +131,10 @@ export function EscalarCortarSection({ porMedio, anio }: { porMedio: Record<stri
           <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "2px 0 8px" }}>Hacia la derecha, más caro llegar a la gente (costo por {milTxt}{ev.porAlcance ? ", alcance sumado por mes: aproximado" : "; este medio no da alcance por pieza"}; escala logarítmica); hacia arriba, más caro cada video completo. Burbuja = {ev.porAlcance ? "alcance" : "impresiones"}. Las líneas punteadas son la mediana del medio y la meta.</p>
           {conMil.length ? (
             <ResponsiveContainer width="100%" height={320}>
-              <ScatterChart margin={{ top: 10, right: 12, bottom: 10, left: 0 }}>
+              <ScatterChart margin={{ top: 10, right: 12, bottom: 22, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="costoMil" type="number" scale="log" domain={["auto", "auto"]} ticks={ticksLog(conMil.map((p) => p.costoMil!))} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name={`Costo por ${milTxt}`} />
-                <YAxis dataKey="y" type="number" domain={[0, yMax]} allowDataOverflow width={56} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} />
+                <XAxis dataKey="costoMil" type="number" scale="log" domain={["auto", "auto"]} ticks={ticksLog(conMil.map((p) => p.costoMil!))} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name={`Costo por ${milTxt}`} label={{ value: `Costo por ${milTxt} ($, escala log)`, position: "insideBottom", offset: -14, fontSize: 11, fill: "#475569" }} />
+                <YAxis dataKey="y" type="number" domain={[0, yMax]} allowDataOverflow width={56} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} label={{ value: "Costo por video completo ($)", angle: -90, position: "insideLeft", offset: -2, style: { textAnchor: "middle" }, fontSize: 11, fill: "#475569" }} />
                 <ZAxis dataKey={ev.porAlcance ? "alcance" : "impr"} range={[30, 600]} />
                 <Tooltip content={<Tip />} />
                 {ev.medianaMil != null && <ReferenceLine x={ev.medianaMil} stroke="#64748b" strokeDasharray="4 4" label={{ value: `mediana ${money(ev.medianaMil)}`, position: "insideTopRight", fontSize: 10, fill: "#64748b" }} />}
