@@ -1968,7 +1968,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       {/* ===== ESCALAR / PROBAR / CORTAR (piezas de video, año en curso) ===== */}
       {tab === "Eficiencia Medios" && piezasEsc && (
         <div>
-          <SectionTitle>Escalar, probar o cortar · piezas de video</SectionTitle>
+          <SectionTitle>Escalar, mantener o cortar · piezas de video</SectionTitle>
           <EscalarCortarSection porMedio={piezasEsc} anio={new Date().getFullYear()} />
         </div>
       )}

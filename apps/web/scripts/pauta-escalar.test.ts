@@ -34,6 +34,7 @@ const pv = piezasVideo({
   anio: 2026, fxRates: { "2026-08-01": 1500 },
   metaPaid: [
     { ad_id: "1", instagram_permalink_url: "ig/x", mes: "Agosto 2026", plataforma: "meta", ad_name: "X", spend: 100, impresiones: 1000, alcance: 500, video_p100: 10 },
+    { ad_id: "9", mes: "Agosto 2026", plataforma: "meta", ad_name: "CPC", spend: 1e6, impresiones: 1e5, alcance: 5e4, video_p100: 1 },
     { ad_id: "2", instagram_permalink_url: "ig/x", mes: "Septiembre 2026", plataforma: "meta", ad_name: "X", spend: 50, impresiones: 500, alcance: 300, video_p100: 5 },
     { ad_id: "3", mes: "Septiembre 2026", plataforma: "meta", ad_name: "Imagen", spend: 50, impresiones: 500, alcance: 300, video_p100: 0 },
     { ad_id: "4", mes: "Agosto 2025", plataforma: "meta", ad_name: "Viejo", spend: 50, impresiones: 500, alcance: 300, video_p100: 9 },
@@ -42,7 +43,7 @@ const pv = piezasVideo({
     { mes: "2026-08-01", canal: "Programmatic", creative: "P1", impresiones: 1000, q100: 20, revenue_usd: 2 },
     { mes: "2026-08-01", canal: "YouTube", creative: "Unknown", impresiones: 1000, q100: 20, revenue_usd: 2 },
   ],
-  tiktok: [{ ad_id: "t", mes: "2026-09", ad_name: "T", inv: 70, impr: 900, alcance: 400, p100: 7, link: null, activa: false }],
+  tiktok: [{ ad_id: "t", mes: "2026-09", ad_name: "T", inv: 70, impr: 900, alcance: 400, p100: 17, link: null, activa: false }],
 });
 assert.deepEqual(Object.keys(pv).sort(), ["Meta", "Programmatic", "TikTok"]);
 assert.equal(pv.Meta!.length, 1);
