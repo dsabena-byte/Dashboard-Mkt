@@ -51,8 +51,8 @@ export function FatigaSection({ f }: { f: FatigaResumen }) {
       {f.piezas.length === 0 ? (
         <p className="text-xs text-muted-foreground">Ninguna pieza al aire tiene 2+ meses con volumen: con la rotación actual no hay desgaste que medir.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-xs">
+        <div>
+          <table className="w-full text-xs">
             <thead className="border-b bg-muted/40">
               <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th className="px-3 py-2">Pieza</th><th className="px-3 py-2">Medio</th><th className="px-3 py-2">Meses</th>
@@ -65,7 +65,7 @@ export function FatigaSection({ f }: { f: FatigaResumen }) {
                 const e = ESTADO[p.estado];
                 return (
                   <tr key={p.key} className="border-b align-top last:border-0">
-                    <td className="max-w-[260px] px-3 py-2">
+                    <td className="max-w-[240px] px-3 py-2">
                       <div className="flex items-center gap-2">
                         {p.thumb && <img src={p.thumb} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />}
                         <div className="min-w-0">
@@ -76,7 +76,7 @@ export function FatigaSection({ f }: { f: FatigaResumen }) {
                       <div className="mt-1 text-[10.5px] leading-snug text-muted-foreground">{p.motivo}</div>
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">{p.fuente === "DV360" ? `DV360 ${p.canal}` : "Meta"}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{p.meses.map((m) => mesCorto(m.mes)).join(" · ")}{p.parcial ? " (en curso)" : ""}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{p.meses.map((m) => mesCorto(m.mes)).join(" · ")}{p.parcial ? " (en curso)" : ""}</td>
                     <td className="px-3 py-2 text-right font-semibold tabular-nums">{p.metrica} {nf(p.tasaUlt, p.metrica === "CTR" ? 2 : 1)}%</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{nf(p.tasaPrev, p.metrica === "CTR" ? 2 : 1)}%</td>
                     <td className="px-3 py-2 text-right tabular-nums">{p.caidaPct == null ? "—" : `${p.caidaPct > 0 ? "+" : ""}${nf(p.caidaPct)}%`}</td>

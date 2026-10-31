@@ -19,7 +19,14 @@ const CUAD: Record<Cuadrante, { label: string; desc: string; color: string }> = 
   caro: { label: "Candidata a cortar", desc: "cara para llegar y no rinde", color: "#dc2626" },
 };
 const nf = (v: number, d = 0) => v.toLocaleString("es-AR", { maximumFractionDigits: d, minimumFractionDigits: d });
-const money = (v: number) => (v >= 1e6 ? `$${nf(v / 1e6, 1)}M` : v >= 1e3 ? `$${nf(v / 1e3, 0)}K` : `$${nf(v, v < 10 ? 2 : 0)}`);
+const money = (v: number) => (v >= 999_500 ? `$${nf(v / 1e6, 1)}M` : v >= 1e3 ? `$${nf(v / 1e3, 0)}K` : `$${nf(v, v < 10 ? 2 : 0)}`);
+/** Marcas 1-2-5 × 10^k dentro del rango (ejes logarítmicos legibles). */
+const ticksLog = (vals: number[]) => {
+  const xs = vals.filter((v) => v > 0); if (!xs.length) return undefined;
+  const lo = Math.min(...xs), hi = Math.max(...xs), out: number[] = [];
+  for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) for (const m of [1, 2, 5]) { const t = m * 10 ** e; if (t >= lo * 0.8 && t <= hi * 1.25) out.push(t); }
+  return out.length >= 2 ? out : undefined;
+};
 const card: React.CSSProperties = { border: "1px solid var(--line, #e2e8f0)", borderRadius: 12, padding: "14px 16px", background: "#fff" };
 
 function Tip({ active, payload }: { active?: boolean; payload?: { payload?: PiezaEval & { curva?: string } }[] }) {
@@ -54,14 +61,26 @@ export function EscalarCortarSection({ porMedio, anio }: { porMedio: Record<stri
   const lista = [...ev.piezas].sort((a, b) => ordenZ[a.zona] - ordenZ[b.zona] || b.inv - a.inv);
   const visibles = todas ? lista : lista.slice(0, 15);
   const milTxt = ev.porAlcance ? "mil personas alcanzadas" : "mil impresiones";
-  const conMil = pts.filter((p) => p.costoMil != null);
+  const conMil = pts.filter((p) => p.costoMil != null && p.costoMil > 0);
+  const fuera = pts.filter((p) => p.costo! > yMax).length;
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: 0 }}>
-        Cada punto es una pieza de video con inversión en {anio}. Se mide cuánto cuesta cada <b>video visto completo</b> (inversión ÷ videos vistos al 100%) contra una meta.
-        La pieza pasa a <b style={{ color: ZONA.escalar.color }}>escalar</b> o <b style={{ color: ZONA.cortar.color }}>cortar</b> recién cuando hay 90% de seguridad de que cuesta más de 20% menos o más que la meta; si gastó poco o rinde cerca de la meta, queda en <b>mantener</b>.
-      </p>
+      <details style={{ ...card, borderLeft: "3px solid #1e40af", padding: "10px 14px" }}>
+        <summary style={{ cursor: "pointer", fontSize: 13.5, fontWeight: 600 }}>🎓 Cómo leer esta sección</summary>
+        <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "#334155", marginTop: 8 }}>
+          <p style={{ margin: "0 0 6px" }}><b>Qué se mide.</b> Cada punto es una pieza de video con inversión en {anio}. Su resultado es el <b>video visto completo</b> (al 100%) y su costo = inversión ÷ videos vistos completos. Cuanto más bajo, mejor.</p>
+          <p style={{ margin: "0 0 6px" }}><b>Contra qué se compara.</b> Contra la <b>meta</b> de su medio: por defecto, la mediana (la mitad de las piezas del medio cuesta menos y la mitad más). La podés cambiar arriba a la derecha. Cada medio tiene su meta porque un video completo no cuesta lo mismo en Meta que en TikTok o DV360.</p>
+          <p style={{ margin: "0 0 4px" }}><b>Cómo se decide.</b></p>
+          <ul style={{ margin: "0 0 6px", paddingLeft: 18 }}>
+            <li><b style={{ color: ZONA.escalar.color }}>Escalar</b>: cuesta <b>20% o más por debajo</b> de la meta y tiene suficientes videos para estar 90% seguros de que no es casualidad.</li>
+            <li><b style={{ color: ZONA.cortar.color }}>Cortar</b>: cuesta <b>20% o más por encima</b> de la meta, también con 90% de seguridad.</li>
+            <li><b>Mantener</b>: todo lo demás. O gastó poco y todavía no se puede saber, o rinde parecido a la meta.</li>
+          </ul>
+          <p style={{ margin: "0 0 6px" }}><b>Por qué importa cuánto gastó.</b> Con meta de $14: una pieza que gastó $200 y logró 10 videos completos ($20 cada uno) queda en <b>mantener</b>, porque con 10 videos el resultado puede ser suerte. Otra que gastó $200.000 y logró 10.000 ($20 cada uno) queda en <b>cortar</b>: con tanto volumen es seguro que cuesta de más. Y una que gastó $200.000 y logró 20.000 ($10 cada uno) queda en <b>escalar</b>.</p>
+          <p style={{ margin: 0 }}><b>Qué hacer.</b> La tabla de abajo dice qué hacer con cada pieza, combinando los dos gráficos. Mandásela a la agencia: subir 5–15% a lo que está en verde (15–20% si además llega barato a gente nueva) y sacar plata de lo que está en rojo. Mide eficiencia de marca (que vean el video entero), no ventas.</p>
+        </div>
+      </details>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
         {medios.map((m) => (
@@ -89,12 +108,12 @@ export function EscalarCortarSection({ porMedio, anio }: { porMedio: Record<stri
 
       <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))" }}>
         <div style={card}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".03em" }}>1 · Escalar, probar o cortar · {medio} · {anio}</div>
-          <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "2px 0 8px" }}>Inversión de la pieza (escala logarítmica) vs costo por video completo. Arriba de la curva roja: 90% seguro de que cuesta más de 20% sobre la meta. Debajo de la verde: 90% seguro de que cuesta más de 20% menos.</p>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".03em" }}>1 · Escalar, mantener o cortar · {medio} · {anio} <LearnButton k="escalar_grafico1" corner={false} /></div>
+          <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "2px 0 8px" }}>Hacia la derecha, más plata invertida en la pieza; hacia arriba, más caro cada video completo. Arriba de la curva roja = cortar; debajo de la verde = escalar; entre las dos = mantener. Las curvas se acercan a la meta a medida que sube la inversión: con más plata gastada, menos dudas.</p>
           <ResponsiveContainer width="100%" height={320}>
             <ScatterChart margin={{ top: 10, right: 12, bottom: 10, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="inv" type="number" scale="log" domain={["auto", "auto"]} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name="Inversión" />
+              <XAxis dataKey="inv" type="number" scale="log" domain={["auto", "auto"]} ticks={ticksLog(pts.map((p) => p.inv))} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name="Inversión" />
               <YAxis dataKey="y" type="number" domain={[0, yMax]} allowDataOverflow width={56} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name="Costo por video completo" />
               <Tooltip content={<Tip />} />
               <ReferenceLine y={ev.meta} stroke="#64748b" strokeDasharray="4 4" label={{ value: `meta ${money(ev.meta)}`, position: "insideTopLeft", fontSize: 10, fill: "#64748b" }} />
@@ -104,20 +123,21 @@ export function EscalarCortarSection({ porMedio, anio }: { porMedio: Record<stri
             </ScatterChart>
           </ResponsiveContainer>
           <Leyenda items={(Object.keys(ZONA) as Zona[]).map((z) => ({ color: ZONA[z].color, label: `${ZONA[z].label} ${tot(z).n}` }))} />
+          {fuera > 0 && <p style={{ fontSize: 11, color: "var(--muted)", margin: "4px 0 0" }}>{fuera} {fuera === 1 ? "pieza cuesta" : "piezas cuestan"} más de {money(yMax)} por video completo: se dibujan en el borde de arriba.</p>}
         </div>
 
         <div style={card}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".03em" }}>2 · Costo de llegar vs costo por video completo · {medio} · {anio}</div>
-          <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "2px 0 8px" }}>Costo por {milTxt}{ev.porAlcance ? " (alcance sumado por mes: aproximado)" : " (este medio no da alcance por pieza)"} vs costo por video completo. Burbuja = {ev.porAlcance ? "alcance" : "impresiones"}. Cortado en la mediana del medio y en la meta.</p>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".03em" }}>2 · Costo de llegar vs costo por video completo · {medio} · {anio} <LearnButton k="escalar_grafico2" corner={false} /></div>
+          <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "2px 0 8px" }}>Hacia la derecha, más caro llegar a la gente (costo por {milTxt}{ev.porAlcance ? ", alcance sumado por mes: aproximado" : "; este medio no da alcance por pieza"}; escala logarítmica); hacia arriba, más caro cada video completo. Burbuja = {ev.porAlcance ? "alcance" : "impresiones"}. Las líneas punteadas son la mediana del medio y la meta.</p>
           {conMil.length ? (
             <ResponsiveContainer width="100%" height={320}>
               <ScatterChart margin={{ top: 10, right: 12, bottom: 10, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="costoMil" type="number" domain={[0, "auto"]} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name={`Costo por ${milTxt}`} />
+                <XAxis dataKey="costoMil" type="number" scale="log" domain={["auto", "auto"]} ticks={ticksLog(conMil.map((p) => p.costoMil!))} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} name={`Costo por ${milTxt}`} />
                 <YAxis dataKey="y" type="number" domain={[0, yMax]} allowDataOverflow width={56} tickFormatter={(v) => money(Number(v))} tick={{ fontSize: 10 }} />
                 <ZAxis dataKey={ev.porAlcance ? "alcance" : "impr"} range={[30, 600]} />
                 <Tooltip content={<Tip />} />
-                {ev.medianaMil != null && <ReferenceLine x={ev.medianaMil} stroke="#64748b" strokeDasharray="4 4" label={{ value: `mediana ${money(ev.medianaMil)}`, position: "insideBottomRight", fontSize: 10, fill: "#64748b" }} />}
+                {ev.medianaMil != null && <ReferenceLine x={ev.medianaMil} stroke="#64748b" strokeDasharray="4 4" label={{ value: `mediana ${money(ev.medianaMil)}`, position: "insideTopRight", fontSize: 10, fill: "#64748b" }} />}
                 <ReferenceLine y={ev.meta} stroke="#64748b" strokeDasharray="4 4" />
                 {(Object.keys(CUAD) as Cuadrante[]).map((c) => <Scatter key={c} name={CUAD[c].label} data={conMil.filter((p) => p.cuadrante === c)} fill={CUAD[c].color} fillOpacity={0.55} stroke={CUAD[c].color} isAnimationActive={false} />)}
               </ScatterChart>

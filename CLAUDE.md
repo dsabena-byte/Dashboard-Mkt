@@ -434,10 +434,10 @@ reporte_existencia/cb_homologos).
   **Eficiencia Medios** (`components/pauta/escalar-cortar.tsx` + puro `lib/pauta-escalar.ts`, test `scripts/pauta-escalar.test.ts`, 🎓 `escalar_cortar`).
   Drean no tiene ventas por anuncio → resultado = **video visto al 100%**; costo = inversión ÷ videos completos, año en curso, por medio (Meta por
   permalink, TikTok del manifiesto, DV360 Programmatic/Demand Gen/Marketplace en USD × TC REAL; YouTube sin nombre de pieza y Demand Gen de Google Ads
-  sin videos vistos NO entran). Meta = mediana del medio (piezas con ≥30 completos), editable en pantalla (no se guarda). Videos ~ Poisson → tasa
+  sin videos vistos NO entran; piezas con <10 videos completos = imagen/clic, fuera). Meta = mediana del medio (piezas con ≥30 completos), editable en pantalla (no se guarda). Videos ~ Poisson → tasa
   Gamma(k+0,5, inv); escalar/cortar = 90% seguro de estar >20% mejor/peor que la meta (`MARGEN`; sin margen, con tanto volumen marcaba "cortar" a
   piezas 3% más caras). Gráfico 2 = costo por mil alcanzados (Meta/TikTok, alcance sumado por mes) o por mil impresiones (DV360) vs costo, cortado en
-  mediana y meta. Data real 31-oct: Meta 177 piezas, cortar 70 ($38,1M); TikTok 84, cortar 29 ($41,7M); Programmatic 42, cortar 2.
+  mediana y meta (ambos ejes de inversión/costo por mil en escala log; v2 31-oct: «Cómo leer» + 🎓 por gráfico `escalar_grafico1/2`). Data real 31-oct: Meta 177 piezas, cortar 70 ($38,1M); TikTok 84, cortar 29 ($41,7M); Programmatic 42, cortar 2.
 - **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, ~~Impacto Campaña~~ sacado de la UI 28-sep; OMD sin cargar = rango;
   sep-26 $148M, cierre $163–385M vs meta $474M), fatiga creativa MENSUAL (`lib/pauta-fatiga.ts`, Eficiencia Medios; 2 banners DV360),
   MMM-lite en el Simulador ("dato insuficiente" hasta 12 meses), `adBelongsToBrand`. Sin conversiones de Google Ads en las tablas.

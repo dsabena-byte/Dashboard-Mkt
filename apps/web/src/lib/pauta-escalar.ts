@@ -40,6 +40,7 @@ const Z90 = 1.2815515655446004; // cuantil 90% de la normal
 /** Margen alrededor de la meta: con miles de videos completos cualquier diferencia es "segura" (una pieza 3% más cara
  *  quedaba "cortar"); solo se marca lo que se aparta más de ±20% de la meta. */
 export const MARGEN = 0.2;
+export const MIN_COMPLETOS = 10;
 /** Cuantil de Gamma(a, 1) con Wilson-Hilferty. shortcut: impreciso con a < 1 (piezas con 0 videos completos), alcanza para decidir "prueba"; si se necesita exacto, invertir la gamma incompleta. */
 export function gammaQ(a: number, z: number): number {
   const c = 1 / (9 * a);
@@ -129,6 +130,7 @@ export function piezasVideo(inp: { anio: number; metaPaid: EscMetaRow[]; dv360: 
     add({ key: `tt_${r.ad_id}`, medio: "TikTok", nombre: r.ad_name || "(sin nombre)", link: r.link, activa: r.activa }, n0(r.inv), n0(r.p100), n0(r.impr), n0(r.alcance));
   }
   const out: Record<string, PiezaVideo[]> = {};
-  for (const p of acc.values()) if (p.completos > 0 && p.inv > 0) (out[p.medio] ??= []).push(p); // solo piezas de video con gasto
+  // Solo piezas de VIDEO con gasto: con menos de 10 videos completos es un aviso de imagen/clic (ej. Meta CPC con 1 "video").
+  for (const p of acc.values()) if (p.completos >= MIN_COMPLETOS && p.inv > 0) (out[p.medio] ??= []).push(p);
   return out;
 }
