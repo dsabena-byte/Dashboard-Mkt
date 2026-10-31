@@ -48,6 +48,8 @@ import { fatigaPiezas } from "@/lib/pauta-fatiga";
 import { InversionDiariaSection } from "@/components/pauta/inversion-diaria-section";
 import type { PautaDiariaData } from "@/lib/pauta-diaria";
 import { FatigaSection } from "@/components/pauta/fatiga-section";
+import { EscalarCortarSection } from "@/components/pauta/escalar-cortar";
+import { piezasVideo } from "@/lib/pauta-escalar";
 
 const fmtUSD = (n: number): string =>
   `US$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -918,6 +920,9 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
   }, [data, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, arsMode, fxFallback, currentMonth, catImp]);
 
   // Fatiga creativa por pieza (serie mensual Meta + DV360). Año completo, sin filtros.
+  const piezasEsc = useMemo(() => {
+    try { return piezasVideo({ anio: new Date().getFullYear(), metaPaid, dv360, tiktok: tiktokPiezas, fxRates }); } catch { return null; }
+  }, [metaPaid, dv360, tiktokPiezas, fxRates]);
   const fatiga = useMemo(() => {
     try { return fatigaPiezas({ metaPaid, dv360, dv360Reach, fxRates, mesEnCurso: new Date().toISOString().slice(0, 7) }); } catch { return null; }
   }, [metaPaid, dv360, dv360Reach, fxRates]);
@@ -1957,6 +1962,14 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ===== ESCALAR / PROBAR / CORTAR (piezas de video, año en curso) ===== */}
+      {tab === "Eficiencia Medios" && piezasEsc && (
+        <div>
+          <SectionTitle>Escalar, probar o cortar · piezas de video</SectionTitle>
+          <EscalarCortarSection porMedio={piezasEsc} anio={new Date().getFullYear()} />
         </div>
       )}
 

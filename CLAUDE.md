@@ -430,6 +430,14 @@ reporte_existencia/cb_homologos).
   `mkt_canal_acciones` por cliente·acción·mes·plataforma (lo que el reporte no trae, ej. inversión, conserva lo guardado). Acceso =
   sesión + `dashboard_access` a /mkt-canal. **Sesiones (20-oct, pedido del user, para la tasa de conversión):** columna `sesiones` (**migración 0127, corrida por el user 20-oct, verificado REST**); el tablero muestra Sesiones + tasa = conv ÷ sesiones SOLO de filas con ambos datos. Núcleo puro `lib/mkt-canal-core.ts` (test `scripts/mkt-canal.test.ts`). **Inversión Oncity jun–sep (20-oct):** cargada desde el flow `Flow_Drean_Junio-Dic_Oncity.xlsm` = PLANIFICADA, sin IVA ni fee 5% (totales = fila MEDIOS al peso); regla del user: dos acciones en un mes → cada medio mitad y mitad; Catálogo Digital = plataforma `Catálogo`. Pendiente: el user pidió la inversión EJECUTADA (reemplaza a la planificada). **No probado contra
   OpenAI** (primera prueba real = el primer reporte de Oncity que suba el user).
+- **Escalar / mantener / cortar piezas de video (31-oct-2026, pedido del user, método "Scale & Kill + CPMr vs CPA" de un posteo):** sección en
+  **Eficiencia Medios** (`components/pauta/escalar-cortar.tsx` + puro `lib/pauta-escalar.ts`, test `scripts/pauta-escalar.test.ts`, 🎓 `escalar_cortar`).
+  Drean no tiene ventas por anuncio → resultado = **video visto al 100%**; costo = inversión ÷ videos completos, año en curso, por medio (Meta por
+  permalink, TikTok del manifiesto, DV360 Programmatic/Demand Gen/Marketplace en USD × TC REAL; YouTube sin nombre de pieza y Demand Gen de Google Ads
+  sin videos vistos NO entran). Meta = mediana del medio (piezas con ≥30 completos), editable en pantalla (no se guarda). Videos ~ Poisson → tasa
+  Gamma(k+0,5, inv); escalar/cortar = 90% seguro de estar >20% mejor/peor que la meta (`MARGEN`; sin margen, con tanto volumen marcaba "cortar" a
+  piezas 3% más caras). Gráfico 2 = costo por mil alcanzados (Meta/TikTok, alcance sumado por mes) o por mil impresiones (DV360) vs costo, cortado en
+  mediana y meta. Data real 31-oct: Meta 177 piezas, cortar 70 ($38,1M); TikTok 84, cortar 29 ($41,7M); Programmatic 42, cortar 2.
 - **Plan de Medios (#740, sin migración):** ritmo de inversión (`lib/pauta-pacing.ts`, ~~Impacto Campaña~~ sacado de la UI 28-sep; OMD sin cargar = rango;
   sep-26 $148M, cierre $163–385M vs meta $474M), fatiga creativa MENSUAL (`lib/pauta-fatiga.ts`, Eficiencia Medios; 2 banners DV360),
   MMM-lite en el Simulador ("dato insuficiente" hasta 12 meses), `adBelongsToBrand`. Sin conversiones de Google Ads en las tablas.
