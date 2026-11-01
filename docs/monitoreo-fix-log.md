@@ -348,3 +348,7 @@ causa raíz · qué se hizo.
 - **Detección:** último run en success: ga4, bgt-sync, meta-*, ig-*, ugc-*, clasificar, `google-ads-sync` (27-oct 10:58; el fix v25 funcionó), `dv360-sync` (27-oct 11:20; los 2 rojos de 11:08/11:16 fueron pruebas manuales del desarrollo, ya en verde). Rojos: `seo-sync` (7-oct) y `trends-sync` (12-oct) por DataForSEO sin saldo → NO se re-dispararon (pagos). Los 4 rojos de «CB Ventas · migración» (26-oct, manuales) son de la migración, no un sync vigilado.
 - **#828 (BGT):** abierto (watchdog 27-oct 12:14); la fuente data.json de SharePoint no se actualiza desde el 6-oct, re-disparar no sirve.
 - **Pendiente humano:** cargar saldo DataForSEO y re-disparar `seo-sync`/`trends-sync`; decidir sobre BGT/SharePoint (el presupuesto ya se carga en `/funnel/carga`).
+
+## 2026-11-01 (UTC)
+- **trends-sync** (GitHub Action): último run (38272266000, 2026-10-12) falló con HTTP 500 `DataForSEO sin saldo (Payment Required)`. `seo-sync` mismo patrón (último run 37620554162, 2026-10-07). Acción: **pendiente manual** — el user debe cargar saldo en DataForSEO. NO re-disparado (workflows pagos, regla CLAUDE.md).
+- Resto de syncs en verde. Issue watchdog #828 es de 2026-10-08 (BGT, ya recuperado: `bgt-sync` success) — desactualizado, no se tocó.
