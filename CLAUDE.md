@@ -492,7 +492,7 @@ reporte_existencia/cb_homologos).
 - **Reglas del user:** todo gasto es en **pesos**; los USD NO se cargan ni se toman de la planilla: **USD = $ ÷ tipo de cambio de
   ese presupuesto y ese mes** (uno por versión × mes, lo pasa finanzas, nunca se estima). Versiones BGT / 4+8 / 8+4 / REAL por año
   ("BGT 2024 CRISIS" = histórico, no se ofrece). **REAL lo carga cualquiera con acceso a /funnel; presupuestos y tipos de cambio solo
-  `bgt_editores`** (hoy el user y Julieta, con sus cuentas `@mabe.com.ar`, verificado 26-oct). **Todo cambio es trazable** (`bgt_auditoria`: quién, cuándo,
+  `bgt_editores`** (hoy el user, Julieta y Valentina Alonso —responsable de Inversión en Marketing, sumada 2-nov-2026 con `edita_marketing`—, con sus cuentas `@mabe.com.ar`). **Todo cambio es trazable** (`bgt_auditoria`: quién, cuándo,
   antes → después). Fecha de contabilización = campo nuevo (se empieza a cargar ahora); la columna vieja "FECHA CONTABILIZ" traía
   números de documento (→ `nro_doc_contable`) y notas (→ al detalle).
 - **Piezas:** migración **`0125_presupuesto.sql`** (`bgt_versiones`, `bgt_tc`, `bgt_lineas`, `bgt_catalogo`, `bgt_auditoria`,
