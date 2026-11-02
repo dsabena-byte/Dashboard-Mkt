@@ -121,7 +121,7 @@ function Provision({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: ()
 }
 
 // Grilla por cliente × mes (como la planilla «Tablero de liquidación de AACC»): cada celda = AACC del mes (provisión real, o la
-// mensual si el mes no cerró); negro = liquidado (factura recepcionada en Inversión), ROJO = falta liquidar / presentar factura.
+// mensual si el mes no cerró); negro = liquidado (gasto con Nº de factura en Inversión), ROJO = falta liquidar / presentar factura.
 function Resumen({ d }: { d: Datos }) {
   const { clientes, celda } = useMemo(() => {
     const idx = (mes: string) => Number(mes.slice(5, 7)) - 1;
@@ -143,7 +143,7 @@ function Resumen({ d }: { d: Datos }) {
   const Celda = ({ liq, falta }: { liq: number; falta: number }) => (
     <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">
       {liq > 0 && <div>{$(liq)}</div>}
-      {falta > 0 && <div className="rounded bg-red-50 px-1 font-semibold text-red-700" title="Falta liquidar: el cliente no presentó la factura o no está recepcionada en Inversión">{$(falta)}</div>}
+      {falta > 0 && <div className="rounded bg-red-50 px-1 font-semibold text-red-700" title="Falta liquidar: el gasto todavía no tiene Nº de factura en Inversión">{$(falta)}</div>}
       {liq <= 0 && falta <= 0 && <span className="text-muted-foreground/50">—</span>}
     </td>
   );
@@ -157,8 +157,8 @@ function Resumen({ d }: { d: Datos }) {
       <h3 className="text-base font-semibold">Liquidación por cliente</h3>
       <p className="text-xs text-muted-foreground">
         Cada celda es el AACC del mes (provisión real, o la mensual si el mes no cerró). En negro, lo <b>liquidado</b>; en <b className="text-red-700">rojo</b>,
-        lo que <b>falta liquidar</b> (el cliente no presentó la factura o no está recepcionada). Lo liquidado sale de{" "}
-        <a className="underline" href="/funnel/carga">Inversión de Marketing → Cargar datos</a>: gastos de la cuenta 6202010084 (Acciones compartidas) con Nº de recepción.
+        lo que <b>falta liquidar</b> (el gasto todavía no tiene Nº de factura). Lo liquidado sale de{" "}
+        <a className="underline" href="/funnel/carga">Inversión de Marketing → Cargar datos</a>: gastos de la cuenta 6202010084 (Acciones compartidas) con Nº de factura.
       </p>
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[1200px] text-xs">
@@ -196,7 +196,7 @@ function Resumen({ d }: { d: Datos }) {
       </div>
       {sinCliente.length > 0 && (
         <p className="text-xs text-amber-700">
-          {sinCliente.length} gasto(s) de AACC recepcionados en Inversión no se pudieron asignar a un cliente (proveedor: {[...new Set(sinCliente.map((l) => l.proveedor ?? "sin proveedor"))].join(", ")}):
+          {sinCliente.length} gasto(s) de AACC con factura en Inversión no se pudieron asignar a un cliente (proveedor: {[...new Set(sinCliente.map((l) => l.proveedor ?? "sin proveedor"))].join(", ")}):
           cargá ese proveedor en el acuerdo del cliente.
         </p>
       )}

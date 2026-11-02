@@ -2,7 +2,7 @@
 // Flujo: acuerdo anual por cliente (monto fijo por mes o % de la facturación de ciertas categorías) →
 //   · Provisión MENSUAL = foto antes de que cierre el mes (facturación parcial), se manda a Finanzas.
 //   · Provisión REAL    = mes calendario cerrado (facturación definitiva); con ese monto se hacen Solped y OC.
-//   · Falta liquidar    = provisión real − facturas del cliente ya recepcionadas.
+//   · Falta liquidar    = provisión real − gastos del cliente con Nº de factura en Inversión.
 // La facturación es solo FC (sin back order). Test: npx tsx scripts/aacc.test.ts
 
 export const CATEGORIAS_AACC = ["Lavado", "Lavavajillas", "Refrigeración", "Cocción"] as const;
@@ -30,13 +30,13 @@ export interface Liquidacion { mes: string; cliente: string; monto: number; fact
 
 const normProv = (s: string | null | undefined) => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-/** Liquidado = gastos de la cuenta de AACC en Inversión (REAL) con Nº de recepción. Cliente: por Nº o nombre de proveedor del
+/** Liquidado = gastos de la cuenta de AACC en Inversión (REAL) con Nº de factura (regla del user 2-nov). Cliente: por Nº o nombre de proveedor del
  *  acuerdo, o nombre igual a la razón social / cliente de facturación / cliente. Sin match → «(sin cliente)». */
 export function liquidadoDeInversion(anio: number, lineas: LineaInversion[], acuerdos: Pick<Acuerdo, "cliente" | "razon_social" | "cliente_sap" | "proveedor">[]): Liquidacion[] {
   const claves = acuerdos.map((a) => ({ cliente: a.cliente, keys: [a.proveedor, a.razon_social, a.cliente_sap, a.cliente].map(normProv).filter(Boolean) }));
   const out: Liquidacion[] = [];
   for (const l of lineas) {
-    if (!String(l.nro_recepcion ?? "").trim() || !(l.mes >= 1 && l.mes <= 12)) continue;
+    if (!String(l.factura ?? "").trim() || !(l.mes >= 1 && l.mes <= 12)) continue;
     const k = [normProv(l.nro_proveedor), normProv(l.proveedor)].filter(Boolean);
     const c = claves.find((x) => x.keys.some((y) => k.includes(y)));
     out.push({ mes: `${anio}-${String(l.mes).padStart(2, "0")}`, cliente: c?.cliente ?? "(sin cliente)", monto: Number(l.ars) || 0, factura: l.factura, proveedor: l.proveedor ?? l.nro_proveedor });
