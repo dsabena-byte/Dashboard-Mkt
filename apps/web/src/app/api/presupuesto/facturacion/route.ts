@@ -11,7 +11,7 @@ export async function PUT(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
-    const sinPermiso = await exigirEdicion("marketing");
+    const sinPermiso = u.editor ? null : await exigirEdicion("marketing"); // editor del presupuesto = edita Inversión aunque no edite el resto de Marketing
     if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { cambios?: { mes?: string; facturacion?: number | null }[] };
     const cambios = (b.cambios ?? []).slice(0, 120);

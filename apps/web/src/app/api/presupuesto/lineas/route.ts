@@ -35,7 +35,7 @@ function limpiar(l: Partial<LineaIn>): Partial<LineaIn> {
 
 export async function POST(req: Request) {
   return conUsuario(async (u) => {
-    const sinPermiso = await exigirEdicion("marketing");
+    const sinPermiso = u.editor ? null : await exigirEdicion("marketing"); // editor del presupuesto = edita Inversión aunque no edite el resto de Marketing
     if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { lineas?: Partial<LineaIn>[]; force?: boolean };
     const entrada = (b.lineas ?? []).slice(0, MAX + 1);
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   return conUsuario(async (u) => {
-    const sinPermiso = await exigirEdicion("marketing");
+    const sinPermiso = u.editor ? null : await exigirEdicion("marketing"); // editor del presupuesto = edita Inversión aunque no edite el resto de Marketing
     if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { id?: string; patch?: Partial<LineaIn> };
     if (!b.id || !b.patch) return NextResponse.json({ error: "pedido inválido" }, { status: 400 });
@@ -99,7 +99,7 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   return conUsuario(async (u) => {
-    const sinPermiso = await exigirEdicion("marketing");
+    const sinPermiso = u.editor ? null : await exigirEdicion("marketing"); // editor del presupuesto = edita Inversión aunque no edite el resto de Marketing
     if (sinPermiso) return sinPermiso;
     const b = (await req.json().catch(() => ({}))) as { id?: string };
     if (!b.id) return NextResponse.json({ error: "pedido inválido" }, { status: 400 });

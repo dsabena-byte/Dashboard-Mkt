@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   return conUsuario(async (u) => {
     const deny = soloEditor(u);
     if (deny) return deny;
-    const sinPermiso = await exigirEdicion("marketing");
+    const sinPermiso = u.editor ? null : await exigirEdicion("marketing"); // editor del presupuesto = edita Inversión aunque no edite el resto de Marketing
     if (sinPermiso) return sinPermiso;
     const fd = await req.formData().catch(() => null);
     const file = fd?.get("archivo");
