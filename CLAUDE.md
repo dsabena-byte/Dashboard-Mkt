@@ -557,8 +557,11 @@ reporte_existencia/cb_homologos).
   `mkt_canal_aacc`, lo que usa la Solped/OC) → **Liquidado = Inversión de Marketing** (2-nov, pedido del user: «la AACC es un gasto más, no tiene que haber otro lugar
   para cargar»): gastos REAL de `bgt_lineas` cuenta **6202010084** (Acciones compartidas) CON Nº de recepción, asignados al cliente por
   `aacc_acuerdos.proveedor` (nº o nombre) o la razón social (`liquidadoDeInversion`); Falta liquidar = real (o mensual si no cerró) − liquidado.
-  `aacc_liquidado` se BORRÓ (0149). Ene–sep en Inversión = UNA fila por mes sin proveedor ni recepción (import de la planilla) → figuran
-  como «falta liquidar» hasta que se carguen por cliente con recepción. Facturación = **`vt_facturacion`** (0147+0148): **Venta Neta** de la tabla FC agrupada por cliente ×
+  `aacc_liquidado` se BORRÓ (0149). **2-nov (OK del user):** las 9 filas mensuales de ene–sep en Inversión (import de la planilla,
+  sin proveedor) se reemplazaron por 52 filas por cliente × mes (montos de `mkt_canal_aacc`, `created_by = claude (Tablero AACC)`, backup de
+  las viejas en `bgt_auditoria`); liquidado según el «Tablero de Liquidación de AACC 2026» del user = `nro_recepcion 'S/D (Tablero AACC)'`;
+  pendientes sin recepción: jul Oncity + Frávega, todo agosto, sep Naldo + Frávega + Rodo + Jumbo (falta jul 15,59 M · ago 54,65 M · sep 39,39 M,
+  = su tablero). Grilla «Liquidación por cliente» (cliente × mes, rojo = falta liquidar) y acuerdos en 2 tablas (% / fijo en $ M) sin scroll. Facturación = **`vt_facturacion`** (0147+0148): **Venta Neta** de la tabla FC agrupada por cliente ×
   «Fecha de Creación de Factura» × «Grupo de artículos» que manda el Office Script en el campo `facturacion` del POST de ingesta (vt_ventas
   solo guarda lo que matchea el CB) → mes CALENDARIO por fecha real de factura; categoría = Grupo de artículos (si falta, `tr_skus`). FC FOB
   NO entra (USD, exportación). Puro `lib/aacc-core.ts` (test `scripts/aacc.test.ts`: reproduce el mail de oct
