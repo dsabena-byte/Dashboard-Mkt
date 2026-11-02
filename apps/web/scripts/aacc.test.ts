@@ -66,17 +66,17 @@ const conPivot = calcularProvision(acuerdos, 9, {
 });
 t("Naldo con el pivot = 12.992.923 (mail)", conPivot.find((f) => f.cliente === "Naldo")!.aacc === 12992923, conPivot.find((f) => f.cliente === "Naldo"));
 t("Cetrogar con el pivot = 29.741.519 (mail)", conPivot.find((f) => f.cliente === "Cetrogar")!.aacc === 29741519, conPivot.find((f) => f.cliente === "Cetrogar"));
-// Liquidado = gastos de Inversión (cuenta de AACC) con Nº de recepción, asignados por proveedor.
+// Liquidado = gastos de Inversión (cuenta de AACC) con Nº de factura, asignados por proveedor.
 const liqInv = liquidadoDeInversion(2026, [
   { mes: 9, proveedor: "Cetrogar S.A.", nro_proveedor: "4009347", nro_recepcion: "5000123", factura: "A-1", ars: 15479773 },
   { mes: 9, proveedor: "NALDO LOMBARDI SA", nro_proveedor: null, nro_recepcion: "5000124", factura: "B-2", ars: 8657405 },
-  { mes: 9, proveedor: "FRAVEGA S A C I E I", nro_proveedor: null, nro_recepcion: null, factura: null, ars: 8170506 },
-  { mes: 9, proveedor: "OTRO PROVEEDOR", nro_proveedor: "999", nro_recepcion: "1", factura: null, ars: 10 },
+  { mes: 9, proveedor: "FRAVEGA S A C I E I", nro_proveedor: null, nro_recepcion: "5000125", factura: null, ars: 8170506 },
+  { mes: 9, proveedor: "OTRO PROVEEDOR", nro_proveedor: "999", nro_recepcion: null, factura: "C-3", ars: 10 },
   { mes: 1, proveedor: null, nro_proveedor: null, nro_recepcion: null, factura: null, ars: 56215017 },
 ], acuerdos);
 t("liquidado: por nº de proveedor", liqInv.some((l) => l.cliente === "Cetrogar" && l.mes === "2026-09" && l.monto === 15479773), liqInv);
 t("liquidado: por razón social normalizada", liqInv.some((l) => l.cliente === "Naldo" && l.monto === 8657405), liqInv);
-t("liquidado: sin recepción no cuenta", !liqInv.some((l) => l.monto === 8170506 || l.monto === 56215017), liqInv);
+t("liquidado: sin factura no cuenta", !liqInv.some((l) => l.monto === 8170506 || l.monto === 56215017), liqInv);
 t("liquidado: proveedor desconocido → (sin cliente)", liqInv.some((l) => l.cliente === "(sin cliente)" && l.monto === 10), liqInv);
 console.log(`aacc: ${ok} OK, ${fail} fallas`);
 if (fail) process.exit(1);
