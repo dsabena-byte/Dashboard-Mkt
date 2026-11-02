@@ -11,6 +11,7 @@ t("lavavajillas (división «más para el hogar»)", categoriaDeSku("MÁS PARA E
 t("congeladores", categoriaDeSku("REFRIGERACIÓN", "CONGELADORES") === "Refrigeración");
 t("estufas", categoriaDeSku("COCCIÓN", "ESTUFAS") === "Cocción");
 t("sin dato", categoriaDeSku(null, null) === null);
+t("Grupo de artículos del Excel", categoriaDeSku("Lavado", "Lavado") === "Lavado" && categoriaDeSku("Refrigeración", "Refrigeración") === "Refrigeración" && categoriaDeSku("Cocción", "Cocción") === "Cocción" && categoriaDeSku("Lavavajillas", "Lavavajillas") === "Lavavajillas");
 
 // Octubre 2026 del mail del user: Cetrogar 1,5% de todo; Naldo 2% de Lavado + Lavavajillas; resto fijo.
 const fijo = (cliente: string, oct: number): Acuerdo => ({ anio: 2026, cliente, razon_social: cliente.toUpperCase(), cliente_sap: null, tipo: "fijo", pct: null, categorias: [], montos: Array.from({ length: 12 }, (_, i) => (i === 9 ? oct : 0)), orden: 5 });
@@ -54,7 +55,7 @@ const cuerpo = eml.split("\r\n\r\n")[1]!.replace(/\r\n/g, "");
 t("eml decodifica", Buffer.from(cuerpo, "base64").toString("utf8").includes("Provisión de Octubre") || Buffer.from(cuerpo, "base64").toString("utf8").includes("provisión de Octubre"));
 t("parseEmails", JSON.stringify(parseEmails("A@mabe.com.ar; b@mabe.com.ar, nada, a@mabe.com.ar")) === JSON.stringify(["a@mabe.com.ar", "b@mabe.com.ar"]));
 
-const pf = procesarFacturacion([{ cliente: "A", sku: "X", fecha: "2026-10-05", importe: 1000.5 }, { cliente: "A", sku: "X", fecha: 20261006, importe: "$ 1.234.567,89" }, { cliente: "", sku: "X", fecha: "2026-10-05", importe: 1 }]);
-t("facturación: normaliza importe es-AR y fecha", pf.rows[1]?.importe === 1234567.89 && pf.rows[1]?.fecha === "2026-10-06" && pf.invalidos === 1, pf);
+const pf = procesarFacturacion([{ cliente: "A", categoria: "Lavado", fecha: 20261005, importe: 1000.5 }, { cliente: "A", sku: "X", fecha: 20261006, importe: "$ 1.234.567,89" }, { cliente: "", fecha: "2026-10-05", importe: 1 }]);
+t("facturación: normaliza importe es-AR y fecha", pf.rows[1]?.importe === 1234567.89 && pf.rows[1]?.fecha === "2026-10-06" && pf.invalidos === 1 && pf.rows[0]?.categoria === "Lavado" && pf.rows[0]?.fecha === "2026-10-05", pf);
 console.log(`aacc: ${ok} OK, ${fail} fallas`);
 if (fail) process.exit(1);

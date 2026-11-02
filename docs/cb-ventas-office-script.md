@@ -34,17 +34,41 @@ fechas (AAAAMMDD, período SAP AAAANNN, dd/mm/aaaa), usa la razón social del ca
 ventas** de una vez (si algo falla, quedan las anteriores).
 
 ## Facturación en $ para las provisiones de AACC (Mkt Canal, 2-nov-2026)
-El tablero calcula el AACC de los clientes con acuerdo por % (Naldo, Cetrogar) con lo **facturado** del mes calendario
-(sin back order). Para eso el script tiene que mandar, en el MISMO POST a `/api/cb-ventas/ingesta`, un campo extra
-`facturacion` con **todos** los renglones de la tabla FC (sin filtrar por el cuadro básico) y su importe en $:
+El tablero calcula el AACC de los clientes con acuerdo por % (Naldo, Cetrogar) con la **Venta Neta** facturada en el mes
+calendario (fecha real de la factura, sin back order). El script la manda **agrupada** (cliente × día de factura × Grupo de
+artículos: pocos cientos de filas, no las ~35 mil de FC) en el mismo POST a `/api/cb-ventas/ingesta`, campo `facturacion`.
+FC FOB **no** entra: está en USD y es exportación.
+
+1. Pegar esta función al final del script (antes o después de `main`, da igual):
 ```ts
-// después de leer la tabla FC (mismas filas que hoy arman `fc`, pero ANTES de filtrar con los pares del CB):
-const facturacion = filasFC.map((r) => ({
-  cliente: r["<columna cliente>"],
-  sku: r["<columna material/SKU>"],
-  fecha: r["<columna fecha de factura>"],   // la fecha real de la factura (la misma que hoy va en fechaFactura)
-  importe: r["<COLUMNA IMPORTE $>"],        // ← la que confirme el user (neto sin IVA)
-}));
-// y en el body: JSON.stringify({ generatedAt, fc, bo, facturacion })
+function leerFacturacion(workbook: ExcelScript.Workbook, tableName: string) {
+  const table = workbook.getTable(tableName);
+  const headers = table.getHeaderRowRange().getValues()[0].map((v) => String(v ?? "").trim().toLowerCase());
+  const col = (n: string) => { const i = headers.indexOf(n.toLowerCase()); if (i < 0) throw new Error(`Falta la columna "${n}" en ${tableName}`); return i; };
+  const cCli = col("Cliente"), cFecha = col("Fecha de Creación de Factura"), cCat = col("Grupo de artículos"), cNeta = col("Venta Neta");
+  const body = table.getRangeBetweenHeaderAndTotal();
+  const sheet = body.getWorksheet();
+  const acc = new Map<string, { cliente: string; fecha: string; categoria: string; importe: number }>();
+  for (let r = 0; r < body.getRowCount(); r += 5000) {
+    const n = Math.min(5000, body.getRowCount() - r);
+    for (const row of sheet.getRangeByIndexes(body.getRowIndex() + r, body.getColumnIndex(), n, body.getColumnCount()).getValues()) {
+      const cliente = String(row[cCli] ?? "").trim(), fecha = String(row[cFecha] ?? "").trim(), categoria = String(row[cCat] ?? "").trim();
+      const importe = Number(row[cNeta]);
+      if (!cliente || !fecha || !Number.isFinite(importe)) continue;
+      const k = `${cliente}|${fecha}|${categoria}`;
+      const a = acc.get(k) ?? { cliente, fecha, categoria, importe: 0 };
+      a.importe += importe;
+      acc.set(k, a);
+    }
+  }
+  return [...acc.values()];
+}
 ```
-La respuesta trae `facturacion: { filas, invalidos }`. Si el campo no viene, queda la facturación anterior.
+2. En `main`, antes de armar el `payload`:
+```ts
+  const facturacion = leerFacturacion(workbook, CONFIG.tableNameFC);
+  console.log(`Facturación agrupada: ${facturacion.length} filas`);
+```
+3. Sumar `facturacion` al payload: `const payload = { generatedAt: new Date().toISOString(), fc, bo, facturacion };`
+   (si el script ya manda `fc` con FOB u otros campos, solo agregar `facturacion` a lo que ya está).
+4. Ejecutar. La respuesta trae `facturacion: { filas, invalidos }`. Si el campo no viene, queda la facturación anterior.
