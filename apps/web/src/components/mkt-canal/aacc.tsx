@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS_AACC, MESES_AACC, type Acuerdo, type CategoriaAacc, type Email, type FilaProvision, type MesResumen } from "@/lib/aacc-core";
 import type { AaccDatos } from "@/lib/aacc-server";
 
@@ -204,57 +204,132 @@ function Resumen({ d }: { d: Datos }) {
   );
 }
 
+// $ M ↔ pesos. En la grilla se escribe en millones con coma o punto decimal («4,4» o «4.4» = $ 4.400.000).
+const fmtM = (v: number) => (v ? (v / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 3 }) : "");
+const parseM = (s: string) => {
+  const t = s.trim().replace(/\s|\$/g, "");
+  if (!t) return 0;
+  const n = Number(t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 1e6) : 0;
+};
+
 function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () => void }) {
   const [lista, setLista] = useState<Acuerdo[]>(d.acuerdos);
   const [msg, setMsg] = useState<string | null>(null);
   const [cambios, setCambios] = useState(false);
+  const [abierto, setAbierto] = useState<number | null>(null);
   useEffect(() => { setLista(d.acuerdos); setCambios(false); }, [d.acuerdos]);
   const ro = !d.editor;
   const set = (i: number, p: Partial<Acuerdo>) => { setLista(lista.map((a, j) => (j === i ? { ...a, ...p } : a))); setCambios(true); };
-  const guardar = async () => { setMsg(null); try { await api({ accion: "acuerdos", anio, acuerdos: lista }); setMsg("Acuerdos guardados."); onCambio(); } catch (e) { setMsg((e as Error).message); } };
-  const nuevo = () => { setLista([...lista, { anio, cliente: "", razon_social: "", cliente_sap: null, proveedor: null, tipo: "fijo", pct: null, categorias: [], montos: Array(12).fill(0), orden: lista.length }]); setCambios(true); };
+  const guardar = async () => { setMsg(null); try { await api({ accion: "acuerdos", anio, acuerdos: lista }); setMsg("Acuerdos guardados."); setAbierto(null); onCambio(); } catch (e) { setMsg((e as Error).message); } };
+  const nuevo = (tipo: Acuerdo["tipo"]) => {
+    setLista([...lista, { anio, cliente: "", razon_social: "", cliente_sap: null, proveedor: null, tipo, pct: tipo === "pct" ? 1 : null, categorias: [], montos: Array(12).fill(0), orden: lista.length }]);
+    setAbierto(lista.length); setCambios(true);
+  };
+  const quitar = (i: number) => { if (confirm(`¿Quitar ${lista[i]!.cliente || "este acuerdo"}?`)) { setLista(lista.filter((_, j) => j !== i)); setAbierto(null); setCambios(true); } };
+  const pct = lista.map((a, i) => ({ a, i })).filter((x) => x.a.tipo === "pct");
+  const fijos = lista.map((a, i) => ({ a, i })).filter((x) => x.a.tipo === "fijo");
+  const totMes = MES.map((_, m) => fijos.reduce((s, x) => s + (x.a.montos[m] ?? 0), 0));
+  const cell = "w-full rounded border border-transparent bg-transparent px-1 py-1 text-right tabular-nums text-xs hover:border-input focus:border-[#1e40af] focus:bg-background focus:outline-none disabled:hover:border-transparent";
+
+  // Datos del cliente que no van en la grilla (se abren con ✎). Funciones, no componentes: así los inputs no pierden el foco.
+  const detalle = (a: Acuerdo, i: number, cols: number) => (
+    <tr className="bg-muted/30">
+      <td colSpan={cols} className="px-3 py-2">
+        <div className="flex flex-wrap items-end gap-3 text-xs">
+          <label>Nombre en el tablero<br /><input disabled={ro} className={`${inp} w-36 text-xs`} value={a.cliente} onChange={(e) => set(i, { cliente: e.target.value })} /></label>
+          <label>Razón social (va en el mail)<br /><input disabled={ro} className={`${inp} w-56 text-xs`} value={a.razon_social} onChange={(e) => set(i, { razon_social: e.target.value })} /></label>
+          <label title="Con este Nº o nombre de proveedor se cargan sus facturas en Inversión de Marketing">Proveedor en Inversión (nº o nombre)<br /><input disabled={ro} className={`${inp} w-44 text-xs`} value={a.proveedor ?? ""} onChange={(e) => set(i, { proveedor: e.target.value || null })} /></label>
+          <label>Tipo de acuerdo<br /><select disabled={ro} className={`${inp} text-xs`} value={a.tipo} onChange={(e) => set(i, { tipo: e.target.value as Acuerdo["tipo"], pct: e.target.value === "pct" ? a.pct ?? 1 : null })}><option value="fijo">Monto fijo por mes</option><option value="pct">% de la facturación</option></select></label>
+          {!ro && <button className="ml-auto text-red-700 hover:underline" onClick={() => quitar(i)}>Quitar acuerdo</button>}
+        </div>
+      </td>
+    </tr>
+  );
+  const nombre = (a: Acuerdo, i: number) => (
+    <button type="button" onClick={() => setAbierto(abierto === i ? null : i)} className="flex w-full items-center gap-1 text-left font-medium hover:text-[#1e40af]" title="Ver / editar razón social y proveedor">
+      <span className="truncate">{a.cliente || <i className="text-muted-foreground">sin nombre</i>}</span><span className="text-[10px] text-muted-foreground">{abierto === i ? "▲" : "✎"}</span>
+    </button>
+  );
+
   return (
     <section className={card}>
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="mr-auto text-base font-semibold">Acuerdos {anio} por cliente (BGT)</h3>
-        {!ro && <button className={btn} onClick={nuevo}>+ Cliente</button>}
+        {!ro && cambios && <span className="text-xs text-amber-700">Hay cambios sin guardar</span>}
         {!ro && <button className={btnPri} disabled={!cambios} onClick={guardar}>Guardar acuerdos</button>}
       </div>
-      <p className="text-xs text-muted-foreground">Monto fijo: lo acordado por mes ($ M). % de facturación: se aplica a lo facturado (sin back order) del mes calendario en las categorías elegidas; sin categorías = todas. «Cliente en facturación» = el nombre tal cual figura en el Excel de FC.</p>
       {msg && <p className="text-sm text-[#1e40af]">{msg}</p>}
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[1400px] text-xs">
-          <thead className="bg-muted/50 text-muted-foreground"><tr>
-            <th className="px-2 py-1.5 text-left font-medium">Cliente</th><th className="px-2 py-1.5 text-left font-medium">Razón social (mail) · proveedor</th><th className="px-2 py-1.5 text-left font-medium">Acuerdo</th>
-            {MES.map((m) => <th key={m} className="px-1 py-1.5 text-right font-medium">{m} ($ M)</th>)}<th className="px-2 py-1.5 text-right font-medium">Año</th>{!ro && <th />}
-          </tr></thead>
-          <tbody>{lista.map((a, i) => (
-            <tr key={i} className="border-t align-top">
-              <td className="px-2 py-1"><input disabled={ro} className={`${inp} w-28 text-xs`} value={a.cliente} onChange={(e) => set(i, { cliente: e.target.value })} /></td>
-              <td className="px-2 py-1"><input disabled={ro} className={`${inp} w-44 text-xs`} value={a.razon_social} onChange={(e) => set(i, { razon_social: e.target.value })} />
-                <input disabled={ro} placeholder="Proveedor en Inversión (nº o nombre)" title="Con este Nº o nombre de proveedor se cargan sus facturas en Inversión de Marketing" className={`${inp} mt-1 w-44 text-xs`} value={a.proveedor ?? ""} onChange={(e) => set(i, { proveedor: e.target.value || null })} /></td>
-              <td className="px-2 py-1">
-                <select disabled={ro} className={`${inp} text-xs`} value={a.tipo} onChange={(e) => set(i, { tipo: e.target.value as Acuerdo["tipo"] })}><option value="fijo">Monto fijo</option><option value="pct">% de facturación</option></select>
-                {a.tipo === "pct" && (
-                  <div className="mt-1 space-y-1">
-                    <label className="block">% <input disabled={ro} type="number" step="0.1" className={`${inp} w-16 text-xs`} value={a.pct ?? ""} onChange={(e) => set(i, { pct: Number(e.target.value) || null })} /></label>
-                    <input disabled={ro} placeholder="Cliente en facturación" className={`${inp} w-44 text-xs`} value={a.cliente_sap ?? ""} onChange={(e) => set(i, { cliente_sap: e.target.value || null })} />
-                    <div className="flex flex-wrap gap-1">{CATEGORIAS_AACC.map((c) => (
-                      <label key={c} className="flex items-center gap-0.5"><input disabled={ro} type="checkbox" checked={a.categorias.includes(c)} onChange={(e) => set(i, { categorias: e.target.checked ? [...a.categorias, c] : a.categorias.filter((x) => x !== c) as CategoriaAacc[] })} />{c}</label>
-                    ))}</div>
-                  </div>
-                )}
-              </td>
-              {a.montos.map((v, m) => (
-                <td key={m} className="px-1 py-1">{a.tipo === "fijo"
-                  ? <input disabled={ro} type="number" min={0} step="any" className={`${inp} w-16 text-right text-xs`} value={v ? +(v / 1e6).toFixed(3) : ""} placeholder="0" onChange={(e) => set(i, { montos: a.montos.map((x, j) => (j === m ? Math.round(Math.max(0, Number(e.target.value) || 0) * 1e6) : x)) })} />
-                  : <span className="text-muted-foreground">{a.pct ? `${a.pct}%` : ""}</span>}</td>
+
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <h4 className="mr-auto text-sm font-semibold">% de la facturación</h4>
+          {!ro && <button className="text-xs text-[#1e40af] hover:underline" onClick={() => nuevo("pct")}>+ Agregar</button>}
+        </div>
+        <p className="text-xs text-muted-foreground">Se aplica a lo facturado (sin back order) en el mes calendario. Sin categorías marcadas = todas.</p>
+        <div className="rounded-lg border">
+          <table className="w-full table-fixed text-xs">
+            <thead className="bg-muted/50 text-muted-foreground"><tr>
+              <th className="w-40 px-3 py-1.5 text-left font-medium">Cliente</th><th className="w-20 px-2 py-1.5 text-right font-medium">%</th>
+              <th className="px-2 py-1.5 text-left font-medium">Categorías</th><th className="w-64 px-2 py-1.5 text-left font-medium">Cliente en la facturación (Excel FC)</th>
+            </tr></thead>
+            <tbody>{pct.map(({ a, i }) => (
+              <Fragment key={i}>
+                <tr className="border-t">
+                  <td className="px-3 py-1.5">{nombre(a, i)}</td>
+                  <td className="px-2 py-1"><input disabled={ro} inputMode="decimal" className={cell} defaultValue={a.pct == null ? "" : String(a.pct).replace(".", ",")} key={`p${i}${a.pct}`}
+                    onBlur={(e) => { const n = Number(e.target.value.replace(",", ".")); set(i, { pct: Number.isFinite(n) && n > 0 ? n : null }); }} /></td>
+                  <td className="px-2 py-1"><div className="flex flex-wrap gap-1">{CATEGORIAS_AACC.map((c) => {
+                    const on = a.categorias.includes(c);
+                    return <button key={c} type="button" disabled={ro} onClick={() => set(i, { categorias: on ? a.categorias.filter((x) => x !== c) : [...a.categorias, c] as CategoriaAacc[] })}
+                      className={`rounded-full border px-2 py-0.5 ${on ? "border-[#1e40af] bg-[#1e40af] text-white" : "text-muted-foreground hover:border-[#1e40af]"}`}>{c}</button>;
+                  })}{!a.categorias.length && <span className="self-center text-muted-foreground">= todas</span>}</div></td>
+                  <td className="px-2 py-1"><input disabled={ro} className={`${inp} w-full text-xs`} value={a.cliente_sap ?? ""} placeholder="ej. NALDO LOMBARDI S A" onChange={(e) => set(i, { cliente_sap: e.target.value || null })} /></td>
+                </tr>
+                {abierto === i && detalle(a, i, 4)}
+              </Fragment>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <h4 className="mr-auto text-sm font-semibold">Monto fijo por mes · en $ millones</h4>
+          {!ro && <button className="text-xs text-[#1e40af] hover:underline" onClick={() => nuevo("fijo")}>+ Agregar</button>}
+        </div>
+        <p className="text-xs text-muted-foreground">Escribí en millones (ej. 4,4 = $ 4.400.000). Tocá el nombre del cliente para ver su razón social y su proveedor en Inversión.</p>
+        <div className="rounded-lg border">
+          <table className="w-full table-fixed text-xs">
+            <thead className="bg-muted/50 text-muted-foreground"><tr>
+              <th className="w-40 px-3 py-1.5 text-left font-medium">Cliente</th>
+              {MES.map((m) => <th key={m} className="px-1 py-1.5 text-right font-medium">{m}</th>)}
+              <th className="w-20 px-2 py-1.5 text-right font-medium">Año</th>
+            </tr></thead>
+            <tbody>
+              {fijos.map(({ a, i }) => (
+                <Fragment key={i}>
+                  <tr className="border-t hover:bg-muted/20">
+                    <td className="px-3 py-1">{nombre(a, i)}</td>
+                    {a.montos.map((v, m) => (
+                      <td key={m} className="px-0.5 py-0.5">
+                        <input disabled={ro} inputMode="decimal" className={`${cell} ${v ? "" : "text-muted-foreground/40"}`} placeholder="–" defaultValue={fmtM(v)} key={`${i}-${m}-${v}`}
+                          onBlur={(e) => { const n = parseM(e.target.value); if (n !== v) set(i, { montos: a.montos.map((x, j) => (j === m ? n : x)) }); }} />
+                      </td>
+                    ))}
+                    <td className="px-2 py-1 text-right font-semibold tabular-nums">{fmtM(a.montos.reduce((s, x) => s + x, 0)) || "–"}</td>
+                  </tr>
+                  {abierto === i && detalle(a, i, 14)}
+                </Fragment>
               ))}
-              <td className="px-2 py-1 text-right tabular-nums">{a.tipo === "fijo" ? $(a.montos.reduce((s, x) => s + x, 0)) : "—"}</td>
-              {!ro && <td className="px-1 py-1"><button className="text-muted-foreground hover:text-red-600" title="Quitar" onClick={() => { if (confirm(`¿Quitar ${a.cliente || "este acuerdo"}?`)) { setLista(lista.filter((_, j) => j !== i)); setCambios(true); } }}>✕</button></td>}
-            </tr>
-          ))}</tbody>
-        </table>
+              <tr className="border-t-2 bg-muted/40 font-semibold">
+                <td className="px-3 py-1.5">Total fijos</td>
+                {totMes.map((v, m) => <td key={m} className="px-1 py-1.5 text-right tabular-nums">{fmtM(v) || "–"}</td>)}
+                <td className="px-2 py-1.5 text-right tabular-nums">{fmtM(totMes.reduce((s, x) => s + x, 0))}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
