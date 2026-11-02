@@ -29,8 +29,7 @@ export function AaccTab({ anio }: { anio: number }) {
   return (
     <div className="space-y-4">
       <Provision anio={anio} d={d} onCambio={cargar} />
-      <Resumen resumen={d.resumen} />
-      <Liquidaciones d={d} />
+      <Resumen d={d} />
       <Acuerdos anio={anio} d={d} onCambio={cargar} />
       <Destinatarios anio={anio} d={d} onCambio={cargar} />
     </div>
@@ -121,62 +120,80 @@ function Provision({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: ()
   );
 }
 
-function Resumen({ resumen }: { resumen: MesResumen[] }) {
-  const tot = (f: (r: MesResumen) => number | null) => resumen.reduce((s, r) => s + (f(r) ?? 0), 0);
-  const filas: [string, (r: MesResumen) => number | null][] = [
-    ["Total liquidado", (r) => r.liquidado], ["Provisión mensual", (r) => r.provMensual], ["Provisión real", (r) => r.provReal],
-    ["Diferencia real vs mensual", (r) => r.diferencia], ["Falta liquidar", (r) => r.faltaLiquidar],
-  ];
-  return (
-    <section className={card}>
-      <h3 className="text-base font-semibold">Seguimiento por mes</h3>
-      <p className="text-xs text-muted-foreground">Falta liquidar = provisión real (o la mensual si el mes no cerró) menos las facturas de los clientes ya recepcionadas.</p>
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[1100px] text-xs">
-          <thead className="bg-[#44546a] text-white"><tr><th className="px-2 py-1.5 text-left" />{MES.map((m) => <th key={m} className="px-2 py-1.5 text-right">{m}</th>)}<th className="px-2 py-1.5 text-right">Año</th></tr></thead>
-          <tbody>
-            {filas.map(([t, f]) => (
-              <tr key={t} className={`border-t ${t === "Falta liquidar" ? "font-semibold" : ""}`}>
-                <td className="whitespace-nowrap px-2 py-1.5 font-medium">{t}</td>
-                {resumen.map((r) => <td key={r.mes} className={`whitespace-nowrap px-2 py-1.5 text-right tabular-nums ${t === "Falta liquidar" && r.faltaLiquidar > 0 ? "text-red-700" : ""}`}>{f(r) == null ? "" : $(f(r))}</td>)}
-                <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{$(tot(f))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function Liquidaciones({ d }: { d: Datos }) {
-  // Pendientes por cliente·mes: provisión real (o mensual si el mes no cerró) − facturas recepcionadas en Inversión.
-  const pendientes = useMemo(() => {
-    const base = new Map<string, number>();
-    const meses = new Set(d.real.map((r) => r.mes));
-    for (const r of d.real) base.set(`${r.mes}|${r.cliente}`, (base.get(`${r.mes}|${r.cliente}`) ?? 0) + r.aacc);
-    for (const m of d.mensual) if (!meses.has(m.mes) && m.cliente !== "(total planilla)") base.set(`${m.mes}|${m.cliente}`, (base.get(`${m.mes}|${m.cliente}`) ?? 0) + m.aacc);
-    for (const l of d.liquidado) base.set(`${l.mes}|${l.cliente}`, (base.get(`${l.mes}|${l.cliente}`) ?? 0) - l.monto);
-    return [...base].filter(([, v]) => v > 1).map(([k, v]) => ({ mes: k.split("|")[0]!, cliente: k.split("|")[1]!, falta: v })).sort((a, b) => a.mes.localeCompare(b.mes));
+// Grilla por cliente × mes (como la planilla «Tablero de liquidación de AACC»): cada celda = AACC del mes (provisión real, o la
+// mensual si el mes no cerró); negro = liquidado (factura recepcionada en Inversión), ROJO = falta liquidar / presentar factura.
+function Resumen({ d }: { d: Datos }) {
+  const { clientes, celda } = useMemo(() => {
+    const idx = (mes: string) => Number(mes.slice(5, 7)) - 1;
+    const prov = new Map<string, number[]>(), liq = new Map<string, number[]>();
+    const add = (m: Map<string, number[]>, c: string, i: number, v: number) => { const a = m.get(c) ?? Array(12).fill(0); a[i] += v; m.set(c, a); };
+    const conReal = new Set(d.real.map((r) => idx(r.mes)));
+    for (const r of d.real) add(prov, r.cliente, idx(r.mes), r.aacc);
+    for (const m of d.mensual) if (!conReal.has(idx(m.mes)) && m.cliente !== "(total planilla)") add(prov, m.cliente, idx(m.mes), m.aacc);
+    for (const l of d.liquidado) add(liq, l.cliente, idx(l.mes), l.monto);
+    const orden = new Map(d.acuerdos.map((a, i) => [a.cliente, i]));
+    const clientes = [...new Set([...prov.keys(), ...liq.keys()])].sort((a, b) => (orden.get(a) ?? 99) - (orden.get(b) ?? 99) || a.localeCompare(b, "es"));
+    const celda = (c: string, i: number) => {
+      const p = prov.get(c)?.[i] ?? 0, l = liq.get(c)?.[i] ?? 0;
+      return { prov: p, liq: Math.min(l, p || l), falta: Math.max(0, p - l) };
+    };
+    return { clientes, celda };
   }, [d]);
+  const sumCli = (c: string) => Array.from({ length: 12 }, (_, i) => celda(c, i)).reduce((a, x) => ({ liq: a.liq + x.liq, falta: a.falta + x.falta }), { liq: 0, falta: 0 });
+  const Celda = ({ liq, falta }: { liq: number; falta: number }) => (
+    <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">
+      {liq > 0 && <div>{$(liq)}</div>}
+      {falta > 0 && <div className="rounded bg-red-50 px-1 font-semibold text-red-700" title="Falta liquidar: el cliente no presentó la factura o no está recepcionada en Inversión">{$(falta)}</div>}
+      {liq <= 0 && falta <= 0 && <span className="text-muted-foreground/50">—</span>}
+    </td>
+  );
+  const tot = (f: (r: MesResumen) => number | null) => d.resumen.reduce((s, r) => s + (f(r) ?? 0), 0);
+  const filasTot: [string, (r: MesResumen) => number | null][] = [
+    ["Provisión mensual", (r) => r.provMensual], ["Provisión real", (r) => r.provReal], ["Diferencia real vs mensual", (r) => r.diferencia],
+  ];
   const sinCliente = d.liquidado.filter((l) => l.cliente === "(sin cliente)");
   return (
     <section className={card}>
-      <h3 className="text-base font-semibold">Falta liquidar por cliente</h3>
+      <h3 className="text-base font-semibold">Liquidación por cliente</h3>
       <p className="text-xs text-muted-foreground">
-        Sale de <a className="underline" href="/funnel/carga">Inversión de Marketing → Cargar datos</a>: gastos REAL de la cuenta 6202010084 (Acciones
-        compartidas) con <b>Nº de recepción</b> cargado. El proveedor del gasto se cruza con el cliente por el «Proveedor en Inversión» del acuerdo
-        (o por la razón social).
+        Cada celda es el AACC del mes (provisión real, o la mensual si el mes no cerró). En negro, lo <b>liquidado</b>; en <b className="text-red-700">rojo</b>,
+        lo que <b>falta liquidar</b> (el cliente no presentó la factura o no está recepcionada). Lo liquidado sale de{" "}
+        <a className="underline" href="/funnel/carga">Inversión de Marketing → Cargar datos</a>: gastos de la cuenta 6202010084 (Acciones compartidas) con Nº de recepción.
       </p>
-      {pendientes.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {pendientes.map((p) => (
-            <span key={`${p.mes}${p.cliente}`} className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800">
-              {MES[Number(p.mes.slice(5)) - 1]} · {p.cliente} · {$(p.falta)}
-            </span>
-          ))}
-        </div>
-      ) : <p className="text-sm text-green-700">No hay nada pendiente de liquidar.</p>}
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full min-w-[1200px] text-xs">
+          <thead className="bg-[#44546a] text-white"><tr><th className="px-2 py-1.5 text-left">Cliente</th>{MES.map((m) => <th key={m} className="px-2 py-1.5 text-right">{m}</th>)}<th className="px-2 py-1.5 text-right">Año</th></tr></thead>
+          <tbody>
+            {clientes.map((c) => {
+              const s = sumCli(c);
+              return (
+                <tr key={c} className="border-t align-top">
+                  <td className="whitespace-nowrap px-2 py-1.5 font-medium">{c}</td>
+                  {MES.map((_, i) => <Celda key={i} {...celda(c, i)} />)}
+                  <Celda liq={s.liq} falta={s.falta} />
+                </tr>
+              );
+            })}
+            <tr className="border-t-2 border-[#44546a] bg-muted/40 font-semibold">
+              <td className="px-2 py-1.5">Total liquidado</td>
+              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.liquidado ? $(r.liquidado) : ""}</td>)}
+              <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{$(tot((r) => r.liquidado))}</td>
+            </tr>
+            {filasTot.map(([t, f]) => (
+              <tr key={t} className="border-t bg-muted/20">
+                <td className="whitespace-nowrap px-2 py-1.5 font-medium">{t}</td>
+                {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{f(r) == null ? "" : $(f(r))}</td>)}
+                <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{$(tot(f))}</td>
+              </tr>
+            ))}
+            <tr className="border-t bg-red-50/60 font-semibold text-red-700">
+              <td className="px-2 py-1.5">Falta liquidar</td>
+              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.faltaLiquidar > 0 ? $(r.faltaLiquidar) : ""}</td>)}
+              <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{$(tot((r) => r.faltaLiquidar))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       {sinCliente.length > 0 && (
         <p className="text-xs text-amber-700">
           {sinCliente.length} gasto(s) de AACC recepcionados en Inversión no se pudieron asignar a un cliente (proveedor: {[...new Set(sinCliente.map((l) => l.proveedor ?? "sin proveedor"))].join(", ")}):
