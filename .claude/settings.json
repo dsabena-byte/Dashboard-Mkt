@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__github",
+      "mcp__Supabase",
+      "mcp__Supabase_Drean",
+      "mcp__Supabase_Drean_CB",
+      "mcp__Supabase_Drean_admin",
+      "mcp__Vercel",
+      "mcp__Perplexity",
+      "mcp__claude-code-remote",
+      "Bash(git:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(python3:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}
