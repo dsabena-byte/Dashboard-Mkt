@@ -5,7 +5,7 @@ import { getAllowedPaths, puedeEditarActual } from "@/lib/usuarios-server";
 import { usuarioPresupuesto } from "@/lib/presupuesto-server";
 import { armarEmail, armarEml, CATEGORIAS_AACC, MESES_AACC, parseEmails, type Acuerdo } from "@/lib/aacc-core";
 import {
-  AaccError, agregarLiquidado, borrarLiquidado, calcularMes, getAaccDatos, guardarAcuerdos, guardarDestinatarios, guardarMensual, guardarReal,
+  AaccError, calcularMes, getAaccDatos, guardarAcuerdos, guardarDestinatarios, guardarMensual, guardarReal,
 } from "@/lib/aacc-server";
 
 // AACC de Mkt Canal.
@@ -14,7 +14,7 @@ import {
 //   POST {accion:"calcular", anio, mes} → provisión del mes con la facturación a hoy (no guarda)
 //   POST {accion:"generar", anio, mes}  → calcula, GUARDA la foto mensual y devuelve el mail
 //   POST {accion:"real", anio, mes}     → calcula con el mes cerrado y guarda la provisión real (mkt_canal_aacc)
-//   POST {accion:"acuerdos"|"liquidado"|"borrar_liquidado"|"destinatarios", …}
+//   POST {accion:"acuerdos"|"destinatarios", …}   (lo liquidado sale de Inversión de Marketing, no se carga acá)
 // Ver: sesión + acceso a /mkt-canal. Escribir: «Edita Marketing» o editor del presupuesto (bgt_editores).
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -68,6 +68,7 @@ function limpiarAcuerdo(a: Partial<Acuerdo>): Acuerdo | string {
     anio: 0, cliente, orden: 0, tipo, pct,
     razon_social: String(a.razon_social ?? "").trim().slice(0, 120) || cliente,
     cliente_sap: tipo === "pct" ? String(a.cliente_sap ?? "").trim().slice(0, 120) || null : null,
+    proveedor: String(a.proveedor ?? "").trim().slice(0, 120) || null,
     categorias: (a.categorias ?? []).filter((c): c is Acuerdo["categorias"][number] => (CATEGORIAS_AACC as readonly string[]).includes(c)),
     montos: tipo === "fijo" ? montos : Array(12).fill(0),
   };
@@ -105,20 +106,6 @@ export async function POST(req: Request) {
         for (const a of lista) { const r = limpiarAcuerdo(a); if (typeof r === "string") return NextResponse.json({ error: r }, { status: 400 }); limpios.push(r); }
         if (new Set(limpios.map((a) => a.cliente)).size !== limpios.length) return NextResponse.json({ error: "Hay dos acuerdos con el mismo cliente." }, { status: 400 });
         await guardarAcuerdos(anio, limpios, s.email);
-        return NextResponse.json({ ok: true });
-      }
-      case "liquidado": {
-        const l = b.liquidado as { mes?: string; cliente?: string; monto?: number; factura?: string; fecha?: string } | undefined;
-        const m = String(l?.mes ?? ""), monto = Number(l?.monto);
-        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m) || !String(l?.cliente ?? "").trim() || !(monto > 0)) return NextResponse.json({ error: "Completá mes, cliente y monto." }, { status: 400 });
-        const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(l?.fecha ?? "")) ? String(l!.fecha) : null;
-        await agregarLiquidado({ mes: m, cliente: String(l!.cliente).trim().slice(0, 80), monto: Math.round(monto), factura: String(l?.factura ?? "").trim().slice(0, 60) || null, fecha }, s.email);
-        return NextResponse.json({ ok: true });
-      }
-      case "borrar_liquidado": {
-        const id = Number(b.id);
-        if (!Number.isInteger(id) || id <= 0) return NextResponse.json({ error: "id inválido" }, { status: 400 });
-        await borrarLiquidado(id);
         return NextResponse.json({ ok: true });
       }
       case "destinatarios": {

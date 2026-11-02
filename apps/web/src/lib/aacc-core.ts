@@ -13,12 +13,35 @@ export interface Acuerdo {
   anio: number;
   cliente: string;              // nombre en el tablero (Naldo, Cetrogar, Oncity…)
   razon_social: string;         // como va en el mail a Finanzas
-  cliente_sap: string | null;   // nombre en la facturación (vt_ventas.cliente); solo hace falta para los de %
+  cliente_sap: string | null;   // nombre en la facturación (vt_facturacion.cliente); solo hace falta para los de %
+  proveedor: string | null;     // Nº o nombre de proveedor con el que se carga el gasto en Inversión (vacío = razón social)
   tipo: "fijo" | "pct";
   pct: number | null;           // 2 = 2%
   categorias: CategoriaAacc[];  // vacío = todas
   montos: number[];             // 12 meses, solo "fijo"
   orden: number;
+}
+
+/** Cuenta de Inversión de Marketing donde se cargan los AACC (concepto «ACCIONES COMPARTIDAS»). */
+export const CUENTA_AACC = "6202010084";
+
+export interface LineaInversion { mes: number; proveedor: string | null; nro_proveedor: string | null; nro_recepcion: string | null; factura: string | null; ars: number }
+export interface Liquidacion { mes: string; cliente: string; monto: number; factura: string | null; proveedor: string | null }
+
+const normProv = (s: string | null | undefined) => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** Liquidado = gastos de la cuenta de AACC en Inversión (REAL) con Nº de recepción. Cliente: por Nº o nombre de proveedor del
+ *  acuerdo, o nombre igual a la razón social / cliente de facturación / cliente. Sin match → «(sin cliente)». */
+export function liquidadoDeInversion(anio: number, lineas: LineaInversion[], acuerdos: Pick<Acuerdo, "cliente" | "razon_social" | "cliente_sap" | "proveedor">[]): Liquidacion[] {
+  const claves = acuerdos.map((a) => ({ cliente: a.cliente, keys: [a.proveedor, a.razon_social, a.cliente_sap, a.cliente].map(normProv).filter(Boolean) }));
+  const out: Liquidacion[] = [];
+  for (const l of lineas) {
+    if (!String(l.nro_recepcion ?? "").trim() || !(l.mes >= 1 && l.mes <= 12)) continue;
+    const k = [normProv(l.nro_proveedor), normProv(l.proveedor)].filter(Boolean);
+    const c = claves.find((x) => x.keys.some((y) => k.includes(y)));
+    out.push({ mes: `${anio}-${String(l.mes).padStart(2, "0")}`, cliente: c?.cliente ?? "(sin cliente)", monto: Number(l.ars) || 0, factura: l.factura, proveedor: l.proveedor ?? l.nro_proveedor });
+  }
+  return out;
 }
 
 /** Categoría de un SKU según el maestro (tr_skus: división + categoría). */

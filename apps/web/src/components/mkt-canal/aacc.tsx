@@ -30,7 +30,7 @@ export function AaccTab({ anio }: { anio: number }) {
     <div className="space-y-4">
       <Provision anio={anio} d={d} onCambio={cargar} />
       <Resumen resumen={d.resumen} />
-      <Liquidaciones anio={anio} d={d} onCambio={cargar} />
+      <Liquidaciones d={d} />
       <Acuerdos anio={anio} d={d} onCambio={cargar} />
       <Destinatarios anio={anio} d={d} onCambio={cargar} />
     </div>
@@ -149,10 +149,8 @@ function Resumen({ resumen }: { resumen: MesResumen[] }) {
   );
 }
 
-function Liquidaciones({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () => void }) {
-  const [f, setF] = useState({ mes: `${anio}-01`, cliente: "", monto: "", factura: "", fecha: "" });
-  const [msg, setMsg] = useState<string | null>(null);
-  // Pendientes por cliente·mes: provisión real (o mensual) − liquidado.
+function Liquidaciones({ d }: { d: Datos }) {
+  // Pendientes por cliente·mes: provisión real (o mensual si el mes no cerró) − facturas recepcionadas en Inversión.
   const pendientes = useMemo(() => {
     const base = new Map<string, number>();
     const meses = new Set(d.real.map((r) => r.mes));
@@ -161,48 +159,30 @@ function Liquidaciones({ anio, d, onCambio }: { anio: number; d: Datos; onCambio
     for (const l of d.liquidado) base.set(`${l.mes}|${l.cliente}`, (base.get(`${l.mes}|${l.cliente}`) ?? 0) - l.monto);
     return [...base].filter(([, v]) => v > 1).map(([k, v]) => ({ mes: k.split("|")[0]!, cliente: k.split("|")[1]!, falta: v })).sort((a, b) => a.mes.localeCompare(b.mes));
   }, [d]);
-  const clientes = [...new Set([...d.acuerdos.map((a) => a.cliente), ...d.real.map((r) => r.cliente)])].sort((a, b) => a.localeCompare(b, "es"));
-  const agregar = async () => {
-    setMsg(null);
-    try { await api({ accion: "liquidado", anio, liquidado: { ...f, monto: Number(f.monto.replace(/\./g, "").replace(",", ".")) } }); setF({ ...f, monto: "", factura: "" }); onCambio(); }
-    catch (e) { setMsg((e as Error).message); }
-  };
-  const borrar = async (id: number) => { if (confirm("¿Borrar esta liquidación?")) { await api({ accion: "borrar_liquidado", anio, id }).catch((e) => setMsg(e.message)); onCambio(); } };
+  const sinCliente = d.liquidado.filter((l) => l.cliente === "(sin cliente)");
   return (
     <section className={card}>
-      <h3 className="text-base font-semibold">Falta liquidar y facturas recibidas</h3>
-      <p className="text-xs text-muted-foreground">Cuando el cliente manda la factura y se recepciona, cargala acá: ese monto pasa a liquidado.</p>
+      <h3 className="text-base font-semibold">Falta liquidar por cliente</h3>
+      <p className="text-xs text-muted-foreground">
+        Sale de <a className="underline" href="/funnel/carga">Inversión de Marketing → Cargar datos</a>: gastos REAL de la cuenta 6202010084 (Acciones
+        compartidas) con <b>Nº de recepción</b> cargado. El proveedor del gasto se cruza con el cliente por el «Proveedor en Inversión» del acuerdo
+        (o por la razón social).
+      </p>
       {pendientes.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {pendientes.map((p) => (
-            <button key={`${p.mes}${p.cliente}`} disabled={!d.editor} onClick={() => setF({ ...f, mes: p.mes, cliente: p.cliente, monto: String(Math.round(p.falta)) })}
-              className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800 hover:bg-red-100" title="Completar el formulario con este pendiente">
+            <span key={`${p.mes}${p.cliente}`} className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800">
               {MES[Number(p.mes.slice(5)) - 1]} · {p.cliente} · {$(p.falta)}
-            </button>
+            </span>
           ))}
         </div>
       ) : <p className="text-sm text-green-700">No hay nada pendiente de liquidar.</p>}
-      {d.editor && (
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs">Mes del AACC<br /><select className={inp} value={f.mes} onChange={(e) => setF({ ...f, mes: e.target.value })}>{MES.map((m, i) => { const k = `${anio}-${String(i + 1).padStart(2, "0")}`; return <option key={k} value={k}>{m}</option>; })}</select></label>
-          <label className="text-xs">Cliente<br /><select className={inp} value={f.cliente} onChange={(e) => setF({ ...f, cliente: e.target.value })}><option value="">—</option>{clientes.map((c) => <option key={c}>{c}</option>)}</select></label>
-          <label className="text-xs">Monto $<br /><input className={`${inp} w-36`} value={f.monto} onChange={(e) => setF({ ...f, monto: e.target.value })} /></label>
-          <label className="text-xs">Nº factura<br /><input className={`${inp} w-32`} value={f.factura} onChange={(e) => setF({ ...f, factura: e.target.value })} /></label>
-          <label className="text-xs">Fecha recepción<br /><input type="date" className={inp} value={f.fecha} onChange={(e) => setF({ ...f, fecha: e.target.value })} /></label>
-          <button className={btnPri} onClick={agregar}>Agregar</button>
-        </div>
+      {sinCliente.length > 0 && (
+        <p className="text-xs text-amber-700">
+          {sinCliente.length} gasto(s) de AACC recepcionados en Inversión no se pudieron asignar a un cliente (proveedor: {[...new Set(sinCliente.map((l) => l.proveedor ?? "sin proveedor"))].join(", ")}):
+          cargá ese proveedor en el acuerdo del cliente.
+        </p>
       )}
-      {msg && <p className="text-sm text-red-700">{msg}</p>}
-      <details>
-        <summary className="cursor-pointer text-sm text-muted-foreground">Ver las {d.liquidado.length} liquidaciones cargadas</summary>
-        <table className="mt-2 w-full text-xs">
-          <thead className="text-muted-foreground"><tr>{["Mes", "Cliente", "Monto", "Factura", "Fecha", "Nota", ""].map((h) => <th key={h} className="px-2 py-1 text-left font-medium">{h}</th>)}</tr></thead>
-          <tbody>{d.liquidado.map((l) => (
-            <tr key={l.id} className="border-t"><td className="px-2 py-1">{MES[Number(l.mes.slice(5)) - 1]}</td><td className="px-2 py-1">{l.cliente}</td><td className="px-2 py-1 tabular-nums">{$(l.monto)}</td><td className="px-2 py-1">{l.factura}</td><td className="px-2 py-1">{l.fecha}</td><td className="px-2 py-1 text-muted-foreground">{l.nota}</td>
-              <td className="px-2 py-1">{d.editor && <button className="text-muted-foreground hover:text-red-600" onClick={() => borrar(l.id)}>✕</button>}</td></tr>
-          ))}</tbody>
-        </table>
-      </details>
     </section>
   );
 }
@@ -215,7 +195,7 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
   const ro = !d.editor;
   const set = (i: number, p: Partial<Acuerdo>) => { setLista(lista.map((a, j) => (j === i ? { ...a, ...p } : a))); setCambios(true); };
   const guardar = async () => { setMsg(null); try { await api({ accion: "acuerdos", anio, acuerdos: lista }); setMsg("Acuerdos guardados."); onCambio(); } catch (e) { setMsg((e as Error).message); } };
-  const nuevo = () => { setLista([...lista, { anio, cliente: "", razon_social: "", cliente_sap: null, tipo: "fijo", pct: null, categorias: [], montos: Array(12).fill(0), orden: lista.length }]); setCambios(true); };
+  const nuevo = () => { setLista([...lista, { anio, cliente: "", razon_social: "", cliente_sap: null, proveedor: null, tipo: "fijo", pct: null, categorias: [], montos: Array(12).fill(0), orden: lista.length }]); setCambios(true); };
   return (
     <section className={card}>
       <div className="flex flex-wrap items-center gap-2">
@@ -228,13 +208,14 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[1400px] text-xs">
           <thead className="bg-muted/50 text-muted-foreground"><tr>
-            <th className="px-2 py-1.5 text-left font-medium">Cliente</th><th className="px-2 py-1.5 text-left font-medium">Razón social (mail)</th><th className="px-2 py-1.5 text-left font-medium">Acuerdo</th>
+            <th className="px-2 py-1.5 text-left font-medium">Cliente</th><th className="px-2 py-1.5 text-left font-medium">Razón social (mail) · proveedor</th><th className="px-2 py-1.5 text-left font-medium">Acuerdo</th>
             {MES.map((m) => <th key={m} className="px-1 py-1.5 text-right font-medium">{m} ($ M)</th>)}<th className="px-2 py-1.5 text-right font-medium">Año</th>{!ro && <th />}
           </tr></thead>
           <tbody>{lista.map((a, i) => (
             <tr key={i} className="border-t align-top">
               <td className="px-2 py-1"><input disabled={ro} className={`${inp} w-28 text-xs`} value={a.cliente} onChange={(e) => set(i, { cliente: e.target.value })} /></td>
-              <td className="px-2 py-1"><input disabled={ro} className={`${inp} w-44 text-xs`} value={a.razon_social} onChange={(e) => set(i, { razon_social: e.target.value })} /></td>
+              <td className="px-2 py-1"><input disabled={ro} className={`${inp} w-44 text-xs`} value={a.razon_social} onChange={(e) => set(i, { razon_social: e.target.value })} />
+                <input disabled={ro} placeholder="Proveedor en Inversión (nº o nombre)" title="Con este Nº o nombre de proveedor se cargan sus facturas en Inversión de Marketing" className={`${inp} mt-1 w-44 text-xs`} value={a.proveedor ?? ""} onChange={(e) => set(i, { proveedor: e.target.value || null })} /></td>
               <td className="px-2 py-1">
                 <select disabled={ro} className={`${inp} text-xs`} value={a.tipo} onChange={(e) => set(i, { tipo: e.target.value as Acuerdo["tipo"] })}><option value="fijo">Monto fijo</option><option value="pct">% de facturación</option></select>
                 {a.tipo === "pct" && (

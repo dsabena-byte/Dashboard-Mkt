@@ -1,6 +1,6 @@
 // AACC de Mkt Canal: npx tsx scripts/aacc.test.ts
 import { procesarFacturacion } from "../src/lib/cb-ventas/core";
-import { armarEmail, armarEml, calcularProvision, categoriaDeSku, parseEmails, resumenMeses, type Acuerdo } from "../src/lib/aacc-core";
+import { armarEmail, armarEml, calcularProvision, categoriaDeSku, liquidadoDeInversion, parseEmails, resumenMeses, type Acuerdo } from "../src/lib/aacc-core";
 
 let ok = 0, fail = 0;
 const t = (n: string, c: boolean, x?: unknown) => { if (c) ok++; else { fail++; console.error("✗", n, x ?? ""); } };
@@ -14,10 +14,10 @@ t("sin dato", categoriaDeSku(null, null) === null);
 t("Grupo de artículos del Excel", categoriaDeSku("Lavado", "Lavado") === "Lavado" && categoriaDeSku("Refrigeración", "Refrigeración") === "Refrigeración" && categoriaDeSku("Cocción", "Cocción") === "Cocción" && categoriaDeSku("Lavavajillas", "Lavavajillas") === "Lavavajillas");
 
 // Octubre 2026 del mail del user: Cetrogar 1,5% de todo; Naldo 2% de Lavado + Lavavajillas; resto fijo.
-const fijo = (cliente: string, oct: number): Acuerdo => ({ anio: 2026, cliente, razon_social: cliente.toUpperCase(), cliente_sap: null, tipo: "fijo", pct: null, categorias: [], montos: Array.from({ length: 12 }, (_, i) => (i === 9 ? oct : 0)), orden: 5 });
+const fijo = (cliente: string, oct: number): Acuerdo => ({ anio: 2026, cliente, razon_social: cliente.toUpperCase(), cliente_sap: null, proveedor: null, tipo: "fijo", pct: null, categorias: [], montos: Array.from({ length: 12 }, (_, i) => (i === 9 ? oct : 0)), orden: 5 });
 const acuerdos: Acuerdo[] = [
-  { anio: 2026, cliente: "Cetrogar", razon_social: "CETROGAR SA", cliente_sap: "CETROGAR SA", tipo: "pct", pct: 1.5, categorias: [], montos: Array(12).fill(0), orden: 1 },
-  { anio: 2026, cliente: "Naldo", razon_social: "NALDO LOMBARDI S A", cliente_sap: "NALDO LOMBARDI S A", tipo: "pct", pct: 2, categorias: ["Lavado", "Lavavajillas"], montos: Array(12).fill(0), orden: 2 },
+  { anio: 2026, cliente: "Cetrogar", razon_social: "CETROGAR SA", cliente_sap: "CETROGAR SA", proveedor: "4009347", tipo: "pct", pct: 1.5, categorias: [], montos: Array(12).fill(0), orden: 1 },
+  { anio: 2026, cliente: "Naldo", razon_social: "NALDO LOMBARDI S A", cliente_sap: "NALDO LOMBARDI S A", proveedor: null, tipo: "pct", pct: 2, categorias: ["Lavado", "Lavavajillas"], montos: Array(12).fill(0), orden: 2 },
   fijo("Rodo", 600000), fijo("Oncity", 20839783), fijo("Frávega", 30000000), fijo("Cencosud (Jumbo)", 4485600), fijo("Sin acuerdo en oct", 0),
 ];
 const fact = {
@@ -66,5 +66,17 @@ const conPivot = calcularProvision(acuerdos, 9, {
 });
 t("Naldo con el pivot = 12.992.923 (mail)", conPivot.find((f) => f.cliente === "Naldo")!.aacc === 12992923, conPivot.find((f) => f.cliente === "Naldo"));
 t("Cetrogar con el pivot = 29.741.519 (mail)", conPivot.find((f) => f.cliente === "Cetrogar")!.aacc === 29741519, conPivot.find((f) => f.cliente === "Cetrogar"));
+// Liquidado = gastos de Inversión (cuenta de AACC) con Nº de recepción, asignados por proveedor.
+const liqInv = liquidadoDeInversion(2026, [
+  { mes: 9, proveedor: "Cetrogar S.A.", nro_proveedor: "4009347", nro_recepcion: "5000123", factura: "A-1", ars: 15479773 },
+  { mes: 9, proveedor: "NALDO LOMBARDI SA", nro_proveedor: null, nro_recepcion: "5000124", factura: "B-2", ars: 8657405 },
+  { mes: 9, proveedor: "FRAVEGA S A C I E I", nro_proveedor: null, nro_recepcion: null, factura: null, ars: 8170506 },
+  { mes: 9, proveedor: "OTRO PROVEEDOR", nro_proveedor: "999", nro_recepcion: "1", factura: null, ars: 10 },
+  { mes: 1, proveedor: null, nro_proveedor: null, nro_recepcion: null, factura: null, ars: 56215017 },
+], acuerdos);
+t("liquidado: por nº de proveedor", liqInv.some((l) => l.cliente === "Cetrogar" && l.mes === "2026-09" && l.monto === 15479773), liqInv);
+t("liquidado: por razón social normalizada", liqInv.some((l) => l.cliente === "Naldo" && l.monto === 8657405), liqInv);
+t("liquidado: sin recepción no cuenta", !liqInv.some((l) => l.monto === 8170506 || l.monto === 56215017), liqInv);
+t("liquidado: proveedor desconocido → (sin cliente)", liqInv.some((l) => l.cliente === "(sin cliente)" && l.monto === 10), liqInv);
 console.log(`aacc: ${ok} OK, ${fail} fallas`);
 if (fail) process.exit(1);
