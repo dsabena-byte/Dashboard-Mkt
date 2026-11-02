@@ -5,7 +5,8 @@ import type { AaccDatos } from "@/lib/aacc-server";
 
 // Pestaña «AACC» de Mkt Canal: acuerdos por cliente (BGT), provisión mensual → mail a Finanzas, provisión real y falta liquidar.
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const $ = (n: number | null | undefined) => (n == null ? "—" : `$ ${Math.round(n).toLocaleString("es-AR")}`);
+// Pantalla en $ miles (pedido del user: misma unidad en todas las tablas); el mail a Finanzas va al peso (armarEmail).
+const $ = (n: number | null | undefined) => (n == null ? "—" : `$ ${Math.round(n / 1000).toLocaleString("es-AR")} k`);
 const card = "space-y-3 rounded-xl border bg-card p-4";
 const btn = "rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50";
 const btnPri = "rounded-md bg-[#1e40af] px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50";
@@ -141,7 +142,7 @@ function Resumen({ d }: { d: Datos }) {
   }, [d]);
   const sumCli = (c: string) => Array.from({ length: 12 }, (_, i) => celda(c, i)).reduce((a, x) => ({ liq: a.liq + x.liq, falta: a.falta + x.falta }), { liq: 0, falta: 0 });
   const Celda = ({ liq, falta }: { liq: number; falta: number }) => (
-    <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">
+    <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">
       {liq > 0 && <div>{$(liq)}</div>}
       {falta > 0 && <div className="rounded bg-red-50 px-1 font-semibold text-red-700" title="Falta liquidar: el gasto todavía no tiene Nº de factura en Inversión">{$(falta)}</div>}
       {liq <= 0 && falta <= 0 && <span className="text-muted-foreground/50">—</span>}
@@ -160,15 +161,16 @@ function Resumen({ d }: { d: Datos }) {
         lo que <b>falta liquidar</b> (el gasto todavía no tiene Nº de factura). Lo liquidado sale de{" "}
         <a className="underline" href="/funnel/carga">Inversión de Marketing → Cargar datos</a>: gastos de la cuenta 6202010084 (Acciones compartidas) con Nº de factura.
       </p>
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[1200px] text-xs">
-          <thead className="bg-[#44546a] text-white"><tr><th className="px-2 py-1.5 text-left">Cliente</th>{MES.map((m) => <th key={m} className="px-2 py-1.5 text-right">{m}</th>)}<th className="px-2 py-1.5 text-right">Año</th></tr></thead>
+      <div className="rounded-lg border">
+        <table className="w-full table-fixed text-[11px]">
+          <colgroup><col className="w-[13%]" />{Array.from({ length: 13 }, (_, i) => <col key={i} />)}</colgroup>
+          <thead className="bg-[#44546a] text-white"><tr><th className="px-1.5 py-1.5 text-left">Cliente</th>{MES.map((m) => <th key={m} className="px-1 py-1.5 text-right">{m}</th>)}<th className="px-1 py-1.5 text-right">Año</th></tr></thead>
           <tbody>
             {clientes.map((c) => {
               const s = sumCli(c);
               return (
                 <tr key={c} className="border-t align-top">
-                  <td className="whitespace-nowrap px-2 py-1.5 font-medium">{c}</td>
+                  <td className="truncate px-1.5 py-1.5 font-medium" title={c}>{c}</td>
                   {MES.map((_, i) => <Celda key={i} {...celda(c, i)} />)}
                   <Celda liq={s.liq} falta={s.falta} />
                 </tr>
@@ -176,20 +178,20 @@ function Resumen({ d }: { d: Datos }) {
             })}
             <tr className="border-t-2 border-[#44546a] bg-muted/40 font-semibold">
               <td className="px-2 py-1.5">Total liquidado</td>
-              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.liquidado ? $(r.liquidado) : ""}</td>)}
-              <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{$(tot((r) => r.liquidado))}</td>
+              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{r.liquidado ? $(r.liquidado) : ""}</td>)}
+              <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{$(tot((r) => r.liquidado))}</td>
             </tr>
             {filasTot.map(([t, f]) => (
               <tr key={t} className="border-t bg-muted/20">
-                <td className="whitespace-nowrap px-2 py-1.5 font-medium">{t}</td>
-                {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{f(r) == null ? "" : $(f(r))}</td>)}
-                <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{$(tot(f))}</td>
+                <td className="px-1.5 py-1.5 font-medium">{t}</td>
+                {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{f(r) == null ? "" : $(f(r))}</td>)}
+                <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{$(tot(f))}</td>
               </tr>
             ))}
             <tr className="border-t bg-red-50/60 font-semibold text-red-700">
               <td className="px-2 py-1.5">Falta liquidar</td>
-              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.faltaLiquidar > 0 ? $(r.faltaLiquidar) : ""}</td>)}
-              <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{$(tot((r) => r.faltaLiquidar))}</td>
+              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{r.faltaLiquidar > 0 ? $(r.faltaLiquidar) : ""}</td>)}
+              <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{$(tot((r) => r.faltaLiquidar))}</td>
             </tr>
           </tbody>
         </table>
@@ -204,13 +206,12 @@ function Resumen({ d }: { d: Datos }) {
   );
 }
 
-// $ M ↔ pesos. En la grilla se escribe en millones con coma o punto decimal («4,4» o «4.4» = $ 4.400.000).
-const fmtM = (v: number) => (v ? (v / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 3 }) : "");
+// $ miles ↔ pesos, como el resto de las tablas: «4.411,5» = $ 4.411.500 (el punto es de miles, la coma decimal).
+const fmtM = (v: number) => (v ? (v / 1e3).toLocaleString("es-AR", { maximumFractionDigits: 1 }) : "");
 const parseM = (s: string) => {
-  const t = s.trim().replace(/\s|\$/g, "");
-  if (!t) return 0;
-  const n = Number(t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t);
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 1e6) : 0;
+  const t = s.trim().replace(/\s|\$|k/gi, "").replace(/\./g, "").replace(",", ".");
+  const n = Number(t);
+  return t && Number.isFinite(n) && n > 0 ? Math.round(n * 1e3) : 0;
 };
 
 function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () => void }) {
@@ -253,9 +254,10 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
   );
 
   return (
-    <section className={card}>
+    <details className={card}>
+      <summary className="cursor-pointer text-base font-semibold text-[#1e40af]">Acuerdos {anio} por cliente (BGT) · {lista.length} clientes{!ro && cambios ? " · hay cambios sin guardar" : ""}</summary>
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="mr-auto text-base font-semibold">Acuerdos {anio} por cliente (BGT)</h3>
+        <span className="mr-auto" />
         {!ro && cambios && <span className="text-xs text-amber-700">Hay cambios sin guardar</span>}
         {!ro && <button className={btnPri} disabled={!cambios} onClick={guardar}>Guardar acuerdos</button>}
       </div>
@@ -266,25 +268,25 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
           <h4 className="mr-auto text-sm font-semibold">% de la facturación</h4>
           {!ro && <button className="text-xs text-[#1e40af] hover:underline" onClick={() => nuevo("pct")}>+ Agregar</button>}
         </div>
-        <p className="text-xs text-muted-foreground">Se aplica a lo facturado (sin back order) en el mes calendario. Sin categorías marcadas = todas.</p>
+        <p className="text-xs text-muted-foreground">Se aplica a lo facturado (sin back order) en el mes calendario. «Todas» = toda la facturación del cliente.</p>
         <div className="rounded-lg border">
           <table className="w-full table-fixed text-xs">
             <thead className="bg-muted/50 text-muted-foreground"><tr>
-              <th className="w-40 px-3 py-1.5 text-left font-medium">Cliente</th><th className="w-20 px-2 py-1.5 text-right font-medium">%</th>
-              <th className="px-2 py-1.5 text-left font-medium">Categorías</th><th className="w-64 px-2 py-1.5 text-left font-medium">Cliente en la facturación (Excel FC)</th>
+              <th className="w-40 px-3 py-1.5 text-left font-medium">Cliente</th><th className="w-64 px-2 py-1.5 text-left font-medium">Cliente en la facturación (Excel FC)</th>
+              <th className="w-20 px-2 py-1.5 text-right font-medium">%</th><th className="px-2 py-1.5 text-left font-medium">Categorías</th>
             </tr></thead>
             <tbody>{pct.map(({ a, i }) => (
               <Fragment key={i}>
                 <tr className="border-t">
                   <td className="px-3 py-1.5">{nombre(a, i)}</td>
+                  <td className="px-2 py-1"><input disabled={ro} className={`${inp} w-full text-xs`} value={a.cliente_sap ?? ""} placeholder="ej. NALDO LOMBARDI S A" onChange={(e) => set(i, { cliente_sap: e.target.value || null })} /></td>
                   <td className="px-2 py-1"><input disabled={ro} inputMode="decimal" className={cell} defaultValue={a.pct == null ? "" : String(a.pct).replace(".", ",")} key={`p${i}${a.pct}`}
                     onBlur={(e) => { const n = Number(e.target.value.replace(",", ".")); set(i, { pct: Number.isFinite(n) && n > 0 ? n : null }); }} /></td>
-                  <td className="px-2 py-1"><div className="flex flex-wrap gap-1">{CATEGORIAS_AACC.map((c) => {
+                  <td className="px-2 py-1"><div className="flex flex-wrap gap-1">{(() => { const on = !a.categorias.length; return <button type="button" disabled={ro} onClick={() => set(i, { categorias: [] })} className={`rounded-full border px-2 py-0.5 ${on ? "border-[#1e40af] bg-[#1e40af] text-white" : "text-muted-foreground hover:border-[#1e40af]"}`}>Todas</button>; })()}{CATEGORIAS_AACC.map((c) => {
                     const on = a.categorias.includes(c);
                     return <button key={c} type="button" disabled={ro} onClick={() => set(i, { categorias: on ? a.categorias.filter((x) => x !== c) : [...a.categorias, c] as CategoriaAacc[] })}
                       className={`rounded-full border px-2 py-0.5 ${on ? "border-[#1e40af] bg-[#1e40af] text-white" : "text-muted-foreground hover:border-[#1e40af]"}`}>{c}</button>;
-                  })}{!a.categorias.length && <span className="self-center text-muted-foreground">= todas</span>}</div></td>
-                  <td className="px-2 py-1"><input disabled={ro} className={`${inp} w-full text-xs`} value={a.cliente_sap ?? ""} placeholder="ej. NALDO LOMBARDI S A" onChange={(e) => set(i, { cliente_sap: e.target.value || null })} /></td>
+                  })}</div></td>
                 </tr>
                 {abierto === i && detalle(a, i, 4)}
               </Fragment>
@@ -295,10 +297,10 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
 
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <h4 className="mr-auto text-sm font-semibold">Monto fijo por mes · en $ millones</h4>
+          <h4 className="mr-auto text-sm font-semibold">Monto fijo por mes · en $ miles</h4>
           {!ro && <button className="text-xs text-[#1e40af] hover:underline" onClick={() => nuevo("fijo")}>+ Agregar</button>}
         </div>
-        <p className="text-xs text-muted-foreground">Escribí en millones (ej. 4,4 = $ 4.400.000). Tocá el nombre del cliente para ver su razón social y su proveedor en Inversión.</p>
+        <p className="text-xs text-muted-foreground">Escribí en miles (ej. 4.411,5 = $ 4.411.500). Tocá el nombre del cliente para ver su razón social y su proveedor en Inversión.</p>
         <div className="rounded-lg border">
           <table className="w-full table-fixed text-xs">
             <thead className="bg-muted/50 text-muted-foreground"><tr>
@@ -331,7 +333,7 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
           </table>
         </div>
       </div>
-    </section>
+    </details>
   );
 }
 
