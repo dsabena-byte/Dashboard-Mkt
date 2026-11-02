@@ -352,3 +352,9 @@ causa raíz · qué se hizo.
 ## 2026-11-01 (UTC)
 - **trends-sync** (GitHub Action): último run (38272266000, 2026-10-12) falló con HTTP 500 `DataForSEO sin saldo (Payment Required)`. `seo-sync` mismo patrón (último run 37620554162, 2026-10-07). Acción: **pendiente manual** — el user debe cargar saldo en DataForSEO. NO re-disparado (workflows pagos, regla CLAUDE.md).
 - Resto de syncs en verde. Issue watchdog #828 es de 2026-10-08 (BGT, ya recuperado: `bgt-sync` success) — desactualizado, no se tocó.
+
+## 2026-11-02 (UTC)
+- **google-ads-sync** (run 41304470552, 1-nov 12:01) y **tiktok-sync** (run 41304618919, 1-nov 12:03): último run en `failure` → `rerun_failed_jobs` disparado. Causa sin diagnosticar (no se leyeron los logs); verificar que el re-run quede en verde.
+- **seo-sync** (run 41312734496, 1-nov): falló en "SERP matrix por chunks". NO re-disparado (pago, DataForSEO sin saldo según log previo). Pendiente manual: cargar saldo.
+- **#828 (BGT Inversión, 632h):** `bgt-sync` corre en success pero el sync de SharePoint se borró el 28-oct → `data.json` congelado; el presupuesto se carga en `/funnel/carga`. Pendiente humano: sacar/ajustar "BGT Inversión" de `monitoreo-config.ts` para cerrar el issue.
+- **watchdog:** reporta `meta-paid-sync` rojo, pero su último run (1-nov 16:53) está en success.
