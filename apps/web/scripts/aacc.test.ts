@@ -57,5 +57,14 @@ t("parseEmails", JSON.stringify(parseEmails("A@mabe.com.ar; b@mabe.com.ar, nada,
 
 const pf = procesarFacturacion([{ cliente: "A", categoria: "Lavado", fecha: 20261005, importe: 1000.5 }, { cliente: "A", sku: "X", fecha: 20261006, importe: "$ 1.234.567,89" }, { cliente: "", fecha: "2026-10-05", importe: 1 }]);
 t("facturación: normaliza importe es-AR y fecha", pf.rows[1]?.importe === 1234567.89 && pf.rows[1]?.fecha === "2026-10-06" && pf.invalidos === 1 && pf.rows[0]?.categoria === "Lavado" && pf.rows[0]?.fecha === "2026-10-05", pf);
+// Pivot de facturación que le pasaron al user (oct-26, Venta Neta): Naldo = Lavado + Lavasecarropas (no Refri ni Cocción).
+t("Lavasecarropas cuenta como Lavado", categoriaDeSku("LAVASECARROPAS", "LAVASECARROPAS") === "Lavado");
+const pivot = (filas: [string, number][]) => { const f: Record<string, number> = {}; for (const [g, v] of filas) { const c = categoriaDeSku(g, g) ?? "sin_categoria"; f[c] = (f[c] ?? 0) + v; } return f; };
+const conPivot = calcularProvision(acuerdos, 9, {
+  "NALDO LOMBARDI S A": pivot([["COCCION", 145749791.41], ["LAVADO", 536660966.91], ["LAVASECARROPAS", 112985175.75], ["REFRIGERACION", 565890236.21]]),
+  "CETROGAR SA": pivot([["COCCION", 274136832.94], ["LAVADO", 546939359.08], ["LAVASECARROPAS", 148431136.61], ["REFRIGERACION", 1013260591.38]]),
+});
+t("Naldo con el pivot = 12.992.923 (mail)", conPivot.find((f) => f.cliente === "Naldo")!.aacc === 12992923, conPivot.find((f) => f.cliente === "Naldo"));
+t("Cetrogar con el pivot = 29.741.519 (mail)", conPivot.find((f) => f.cliente === "Cetrogar")!.aacc === 29741519, conPivot.find((f) => f.cliente === "Cetrogar"));
 console.log(`aacc: ${ok} OK, ${fail} fallas`);
 if (fail) process.exit(1);
