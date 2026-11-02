@@ -207,7 +207,7 @@ function Resumen({ d }: { d: Datos }) {
 }
 
 // $ miles ↔ pesos, como el resto de las tablas: «4.411,5» = $ 4.411.500 (el punto es de miles, la coma decimal).
-const fmtM = (v: number) => (v ? (v / 1e3).toLocaleString("es-AR", { maximumFractionDigits: 1 }) : "");
+const fmtM = (v: number) => (v ? $(v) : ""); // igual que la grilla; el monto exacto queda guardado (solo se reescribe si cambiás el texto)
 const parseM = (s: string) => {
   const t = s.trim().replace(/\s|\$|k/gi, "").replace(/\./g, "").replace(",", ".");
   const n = Number(t);
@@ -306,7 +306,7 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
             <thead className="bg-muted/50 text-muted-foreground"><tr>
               <th className="w-40 px-3 py-1.5 text-left font-medium">Cliente</th>
               {MES.map((m) => <th key={m} className="px-1 py-1.5 text-right font-medium">{m}</th>)}
-              <th className="w-20 px-2 py-1.5 text-right font-medium">Año</th>
+              <th className="w-24 px-2 py-1.5 text-right font-medium">Año</th>
             </tr></thead>
             <tbody>
               {fijos.map(({ a, i }) => (
@@ -316,7 +316,7 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
                     {a.montos.map((v, m) => (
                       <td key={m} className="px-0.5 py-0.5">
                         <input disabled={ro} inputMode="decimal" className={`${cell} ${v ? "" : "text-muted-foreground/40"}`} placeholder="–" defaultValue={fmtM(v)} key={`${i}-${m}-${v}`}
-                          onBlur={(e) => { const n = parseM(e.target.value); if (n !== v) set(i, { montos: a.montos.map((x, j) => (j === m ? n : x)) }); }} />
+                          onBlur={(e) => { if (e.target.value === fmtM(v)) return; const n = parseM(e.target.value); if (n !== v) set(i, { montos: a.montos.map((x, j) => (j === m ? n : x)) }); }} />
                       </td>
                     ))}
                     <td className="px-2 py-1 text-right font-semibold tabular-nums">{fmtM(a.montos.reduce((s, x) => s + x, 0)) || "–"}</td>
