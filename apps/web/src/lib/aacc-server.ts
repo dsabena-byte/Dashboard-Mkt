@@ -1,9 +1,9 @@
 import "server-only";
 import { sbAdmin } from "@/lib/supabase-admin";
-import { calcularProvision, categoriaDeSku, resumenMeses, type Acuerdo, type FactCliente, type FilaProvision, type MesResumen } from "@/lib/aacc-core";
+import { calcularProvision, categoriaDeSku, CUENTA_AACC, liquidadoDeInversion, resumenMeses, type Acuerdo, type LineaInversion, type Liquidacion, type FactCliente, type FilaProvision, type MesResumen } from "@/lib/aacc-core";
 
 // AACC de Mkt Canal: lecturas/escrituras por REST con service key (las rutas validan sesión y permisos antes).
-// Tablas: aacc_acuerdos · aacc_provision_mensual · aacc_liquidado (0146) + mkt_canal_aacc (provisión real, 0131) + vt_facturacion (0147) / tr_skus.
+// Tablas: aacc_acuerdos · aacc_provision_mensual (0146) · liquidado = bgt_lineas (Inversión, cuenta de AACC con recepción) + mkt_canal_aacc (provisión real, 0131) + vt_facturacion (0147) / tr_skus.
 
 export class AaccError extends Error { constructor(msg: string, public status = 500) { super(msg); } }
 
@@ -31,8 +31,8 @@ async function write(path: string, method: string, body?: unknown, prefer = "ret
 const mesKey = (anio: number, mes: number) => `${anio}-${String(mes + 1).padStart(2, "0")}`;
 
 export async function listAcuerdos(anio: number): Promise<Acuerdo[]> {
-  const rows = await get<Acuerdo>(`aacc_acuerdos?select=anio,cliente,razon_social,cliente_sap,tipo,pct,categorias,montos,orden&anio=eq.${anio}&order=orden.asc,cliente.asc`);
-  return rows.map((r) => ({ ...r, pct: r.pct == null ? null : Number(r.pct), montos: Array.from({ length: 12 }, (_, i) => Number(r.montos?.[i] ?? 0)) }));
+  const rows = await get<Acuerdo>(`aacc_acuerdos?select=anio,cliente,razon_social,cliente_sap,proveedor,tipo,pct,categorias,montos,orden&anio=eq.${anio}&order=orden.asc,cliente.asc`);
+  return rows.map((r) => ({ ...r, proveedor: r.proveedor ?? null, pct: r.pct == null ? null : Number(r.pct), montos: Array.from({ length: 12 }, (_, i) => Number(r.montos?.[i] ?? 0)) }));
 }
 
 export async function guardarAcuerdos(anio: number, acuerdos: Acuerdo[], email: string) {
@@ -86,7 +86,7 @@ export interface AaccDatos {
   resumen: MesResumen[];
   mensual: { mes: string; cliente: string; razon_social: string; categorias: string | null; acuerdo: string | null; facturacion: number | null; aacc: number; generado_at: string; generado_por: string | null }[];
   real: { mes: string; cliente: string; razon_social: string; categoria: string | null; aacc: number }[];
-  liquidado: { id: number; mes: string; cliente: string; monto: number; factura: string | null; fecha: string | null; nota: string | null }[];
+  liquidado: Liquidacion[];
   destinatarios: { para: string[]; cc: string[] };
 }
 
@@ -95,11 +95,11 @@ export async function getAaccDatos(anio: number): Promise<AaccDatos> {
     listAcuerdos(anio),
     get<AaccDatos["mensual"][number]>(`aacc_provision_mensual?select=mes,cliente,razon_social,categorias,acuerdo,facturacion,aacc,generado_at,generado_por&mes=like.${anio}-*&order=mes.asc,cliente.asc`),
     get<AaccDatos["real"][number]>(`mkt_canal_aacc?select=mes,cliente,razon_social,categoria,aacc&mes=like.${anio}-*&order=mes.asc,cliente.asc`),
-    get<AaccDatos["liquidado"][number]>(`aacc_liquidado?select=id,mes,cliente,monto,factura,fecha,nota&mes=like.${anio}-*&order=mes.asc,id.asc`),
+    get<LineaInversion>(`bgt_lineas?select=mes,proveedor,nro_proveedor,nro_recepcion,factura,ars&version=eq.${encodeURIComponent(`REAL ${anio}`)}&cuenta=eq.${CUENTA_AACC}&order=id.asc`),
     getDestinatarios(),
   ]);
   const num = <T extends { aacc?: number; monto?: number }>(xs: T[]) => xs.map((x) => ({ ...x, ...(x.aacc != null && { aacc: Number(x.aacc) }), ...(x.monto != null && { monto: Number(x.monto) }) }));
-  const m = num(mensual), r = num(real), l = num(liquidado);
+  const m = num(mensual), r = num(real), l = liquidadoDeInversion(anio, liquidado, acuerdos);
   const idx = (mes: string) => Number(mes.slice(5, 7)) - 1;
   const sum = (xs: { mes: string }[], val: (x: never) => number) => { const a = Array(12).fill(0) as number[]; for (const x of xs) a[idx(x.mes)] = (a[idx(x.mes)] ?? 0) + val(x as never); return a; };
   const tieneReal = Array.from({ length: 12 }, (_, i) => r.some((x) => idx(x.mes) === i));
@@ -108,10 +108,10 @@ export async function getAaccDatos(anio: number): Promise<AaccDatos> {
   const resumen = resumenMeses({
     real: sum(r, (x: { aacc: number }) => x.aacc),
     mensual: sumMensual.map((v, i) => (tieneMensual[i] ? v : null)),
-    liquidado: sum(l, (x: { monto: number }) => x.monto),
+    liquidado: sum(l, (x: Liquidacion) => x.monto),
     tieneReal,
   });
-  return { anio, acuerdos, resumen, mensual: m as AaccDatos["mensual"], real: r as AaccDatos["real"], liquidado: l as AaccDatos["liquidado"], destinatarios: dest };
+  return { anio, acuerdos, resumen, mensual: m as AaccDatos["mensual"], real: r as AaccDatos["real"], liquidado: l, destinatarios: dest };
 }
 
 /** Foto de la provisión mensual: reemplaza la del mes (la del botón «Generar provisión»). */
@@ -131,10 +131,6 @@ export async function guardarReal(anio: number, mes: number, filas: FilaProvisio
     await write("mkt_canal_aacc", "POST", conMonto.map((f) => ({ cliente: f.cliente, razon_social: f.razon_social, categoria: f.categorias, mes: k, aacc: f.aacc })));
 }
 
-export async function agregarLiquidado(x: { mes: string; cliente: string; monto: number; factura: string | null; fecha: string | null }, email: string) {
-  await write("aacc_liquidado", "POST", { ...x, created_by: email });
-}
-export async function borrarLiquidado(id: number) { await write(`aacc_liquidado?id=eq.${id}`, "DELETE"); }
 
 // Destinatarios del mail: en tr_config (clave/valor genérico) para no versionar emails en el repo público.
 export async function getDestinatarios(): Promise<{ para: string[]; cc: string[] }> {
