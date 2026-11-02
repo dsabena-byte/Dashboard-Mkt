@@ -2,6 +2,7 @@ import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { SubirReporte } from "@/components/mkt-canal/subir-reporte";
 import { PlanCanal } from "@/components/mkt-canal/plan-canal";
+import { AaccTab } from "@/components/mkt-canal/aacc";
 import { anioPlan } from "@/components/pauta/plan-otros-dash";
 import { getPlanAnual } from "@/lib/plan-medios-anual-server";
 import { usuarioPresupuesto } from "@/lib/presupuesto-server";
@@ -21,6 +22,20 @@ async function clientesBase(): Promise<string[]> {
 export default async function MktCanalPage({ searchParams }: { searchParams?: { tab?: string } }) {
   const anio = anioPlan();
   const planTab = { key: "plan", label: `Plan anual ${anio}`, href: "/mkt-canal?tab=plan" };
+  const aaccTab = { key: "aacc", label: "AACC · provisiones", href: "/mkt-canal?tab=aacc" };
+  if (searchParams?.tab === "aacc") {
+    return (
+      <DashTabs dash="mkt-canal" className="space-y-4">
+        <header>
+          <h2 className="text-2xl font-semibold tracking-tight">Mkt Canal</h2>
+          <p className="text-sm text-muted-foreground">Acuerdos comerciales (AACC) con clientes: provisión del mes, provisión real y lo que falta liquidar.</p>
+        </header>
+        <HowToRead slug="mkt-canal" />
+        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/mkt-canal" }, aaccTab]} after={[planTab]} active="aacc" />
+        <AaccTab anio={new Date().getFullYear()} />
+      </DashTabs>
+    );
+  }
   if (searchParams?.tab === "plan") {
     const [plan, usuario, clientes] = await Promise.all([getPlanAnual(anio), usuarioPresupuesto().catch(() => null), clientesBase()]);
     const canal = plan.config.canal.clientes.length ? plan.config.canal : { ...plan.config.canal, clientes: clientes.map((nombre) => ({ nombre, valores: Array(12).fill(0) })) };
@@ -31,7 +46,7 @@ export default async function MktCanalPage({ searchParams }: { searchParams?: { 
           <p className="text-sm text-muted-foreground">Plan de publicidad por cliente y eventos del año que viene.</p>
         </header>
         <HowToRead slug="mkt-canal" />
-        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/mkt-canal" }]} after={[planTab]} active="plan" />
+        <DashTabBar items={[{ key: "tablero", label: "Tablero", href: "/mkt-canal" }, aaccTab]} after={[planTab]} active="plan" />
         <PlanCanal anio={anio} inicial={canal} editor={!!usuario?.editor} email={usuario?.email ?? null} />
       </DashTabs>
     );
@@ -43,7 +58,7 @@ export default async function MktCanalPage({ searchParams }: { searchParams?: { 
         <p className="text-sm text-muted-foreground">Acciones de marketing con el canal (retailers): inversión, ejecución y resultados.</p>
       </header>
       <HowToRead slug="mkt-canal" />
-      <DashTabBar after={[planTab]} />
+      <DashTabBar items={[{ key: "tablero", label: "Tablero" }, aaccTab]} after={[planTab]} />
       <SubirReporte />
       <div className="overflow-hidden rounded-xl border bg-card">
         <iframe src="/mkt-canal/index.html" className="block h-[600px] w-full border-0" scrolling="no" title="Mkt Canal Dashboard" />

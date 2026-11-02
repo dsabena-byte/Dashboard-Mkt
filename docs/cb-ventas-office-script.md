@@ -32,3 +32,19 @@ cambiar 4 cosas en el script. El formato de lo que manda (tablas FC, BO, FC_FOB,
 Igual que la app vieja: descarta lo que no está en el cuadro básico (cliente + modelo u homólogo), normaliza
 fechas (AAAAMMDD, período SAP AAAANNN, dd/mm/aaaa), usa la razón social del catálogo y **reemplaza todas las
 ventas** de una vez (si algo falla, quedan las anteriores).
+
+## Facturación en $ para las provisiones de AACC (Mkt Canal, 2-nov-2026)
+El tablero calcula el AACC de los clientes con acuerdo por % (Naldo, Cetrogar) con lo **facturado** del mes calendario
+(sin back order). Para eso el script tiene que mandar, en el MISMO POST a `/api/cb-ventas/ingesta`, un campo extra
+`facturacion` con **todos** los renglones de la tabla FC (sin filtrar por el cuadro básico) y su importe en $:
+```ts
+// después de leer la tabla FC (mismas filas que hoy arman `fc`, pero ANTES de filtrar con los pares del CB):
+const facturacion = filasFC.map((r) => ({
+  cliente: r["<columna cliente>"],
+  sku: r["<columna material/SKU>"],
+  fecha: r["<columna fecha de factura>"],   // la fecha real de la factura (la misma que hoy va en fechaFactura)
+  importe: r["<COLUMNA IMPORTE $>"],        // ← la que confirme el user (neto sin IVA)
+}));
+// y en el body: JSON.stringify({ generatedAt, fc, bo, facturacion })
+```
+La respuesta trae `facturacion: { filas, invalidos }`. Si el campo no viene, queda la facturación anterior.

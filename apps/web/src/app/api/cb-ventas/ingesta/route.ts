@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cors, noAutorizado, preflight, secretoOk } from "@/lib/cb-ventas/ingesta-auth";
 import { leerCuadroBasico, svc } from "@/lib/cb-ventas/server";
-import { procesarPayload } from "@/lib/cb-ventas/core";
+import { procesarFacturacion, procesarPayload } from "@/lib/cb-ventas/core";
 import type { VentasPayload } from "@/lib/cb-ventas/types";
 
 // POST → recibe el MISMO payload que /api/ventas de la app vieja ({ generatedAt?, fc: [...], bo: [...] }),
@@ -46,8 +46,17 @@ export async function POST(request: Request) {
       console.error("[cb-ventas/ingesta] rpc:", error.message);
       return json({ ok: false, error: "No se pudieron guardar las ventas (¿falta la migración 0139?)" }, 500);
     }
+    // Facturación en $ sin filtro de CB (provisiones de AACC). Opcional: si no viene, queda la anterior.
+    let facturacion: { filas: number; invalidos: number } | { error: string } | undefined;
+    if (Array.isArray(payload.facturacion)) {
+      const f = procesarFacturacion(payload.facturacion);
+      const { data, error: e2 } = await svc().rpc("vt_reemplazar_facturacion", { p_rows: f.rows });
+      facturacion = e2 ? { error: "No se pudo guardar la facturación (¿falta la migración 0147?)" } : { filas: Number(data ?? f.rows.length), invalidos: f.invalidos };
+      if (e2) console.error("[cb-ventas/ingesta] facturacion:", e2.message);
+    }
     return json({
       ok: true,
+      facturacion,
       generatedAt,
       rows: r.rows.length,
       fc: r.rows.filter((x) => x.tipo === "FC").length,

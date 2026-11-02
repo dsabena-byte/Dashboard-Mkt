@@ -548,6 +548,20 @@ reporte_existencia/cb_homologos).
   borró y se VOLVIÓ A CARGAR el mismo día a pedido del user (Σ $4,37 M en `mkt_canal_acciones`); el AACC sigue aparte. AON = "Cobranding mensual"; stories orgánicas de Naldo = plataforma
   `Stories IG` (impresiones redondeadas, el reporte las da en "k"). Mayo y junio corregidos a mano (el lector cruzó columnas del email).
   Contraste 22-oct: la fila EMSA jun–sep = inversión de Oncity cargada × 1,05 exacto (la planilla incluye el fee 5%).
+- **Mkt Canal · AACC provisiones (2-nov-2026, pedido del user; reemplaza su planilla «Tablero de AACC» + el mail a Finanzas):** pestaña
+  «AACC · provisiones» de `/mkt-canal` (`?tab=aacc`, `components/mkt-canal/aacc.tsx`): **Acuerdos por cliente** (`aacc_acuerdos`: monto fijo por mes o
+  % de la facturación de ciertas categorías; Cetrogar 1,5% de todo, Naldo 2% Lavado + Lavavajillas) → **Generar provisión** (foto en
+  `aacc_provision_mensual`, mail para Finanzas con el formato del user: provisión del mes, falta liquidar de meses anteriores, grilla por mes
+  y detalle por cliente; «Abrir en Outlook» baja un `.eml` con `X-Unsent: 1` = borrador que el user revisa y envía; destinatarios en
+  `tr_config` clave `aacc_destinatarios`, solo `@mabe.com.ar`) → **Guardar provisión real** de un mes cerrado (reemplaza ese mes en
+  `mkt_canal_aacc`, lo que usa la Solped/OC) → **Liquidado** (`aacc_liquidado`, facturas de clientes recepcionadas; Falta liquidar =
+  real (o mensual si no cerró) − liquidado). Facturación = **`vt_facturacion`** (0147): TODOS los renglones FC con $ que manda el Office
+  Script en el campo `facturacion` del POST de ingesta (vt_ventas solo guarda lo que matchea el CB) → mes CALENDARIO por fecha real de
+  factura; categoría por `tr_skus` (`categoriaDeSku`). Puro `lib/aacc-core.ts` (test `scripts/aacc.test.ts`: reproduce el mail de oct
+  al peso), server `lib/aacc-server.ts`, API `/api/mkt-canal/aacc`. Editan «Edita Marketing» o `bgt_editores`. Migraciones **0146 y 0147
+  APLICADAS** (2-nov) con seeds: acuerdos fijos = planilla ene–sep + oct del mail; provisión mensual ene–sep solo total, oct por cliente;
+  liquidado según el mail del 23-oct (ago falta Jumbo, sep falta Frávega + Rodo). **Pendiente del user:** nombre de la columna de importe
+  en la tabla FC del Excel → sumarla al Office Script (`docs/cb-ventas-office-script.md`); hasta entonces Naldo/Cetrogar salen «sin facturación en $».
 - **Mkt Canal · Plan anual (22-oct-2026, pedido del user):** pestaña "Plan anual <año+1>" al final del renglón de `/mkt-canal` (`?tab=plan`): publicidad por cliente (arranca con los clientes de `mkt_canal_acciones` + Frávega) y eventos (lista del user: Red Acero, Red Interior, Red Integrados, Red Futura Oct, Cetrogar, Casa FOA Rosario/Bs As, Para Ti, Deli&Wine, Premios Deco, Premios Puro Diseño, Otros eventos, Armados eventos grupo compra, Armados otros eventos; se agregan/quitan líneas), mes a mes en **$ M** (se guarda en pesos), totales y gráficos. **Dos bloques SEPARADOS, sin total combinado (user 22-oct):** "Publicidad por cliente" (cuenta contable propia) y "Eventos Canal + Consumidores", cada uno con sus gráficos. Se guarda en `PlanConfig.canal` (mismo jsonb `plan_medios_anual`, sin migración; PATCH `/api/plan-medios` {anio, canal}; solo editores; auditado). Puro `lib/plan-canal.ts` (test `scripts/plan-canal.test.ts`), UI `components/mkt-canal/plan-canal.tsx`.
 - **Trade en Drean (26-oct-2026, migración `0138_trade.sql` CORRIDA + histórico migrado y verificado 26-oct):** CB de Trade, Floor Share y Existencias U3
   pasan del proyecto Supabase CB + Drive/Apps Script a tablas `tr_*` del PRINCIPAL. Maestros `tr_cadenas` (clave normalizada + `alias`
