@@ -87,4 +87,6 @@ export type VentasPayload = {
   fc: VentasPayloadRow[];
   bo: VentasPayloadRow[];
   generatedAt?: string;
+  // Opcional: TODOS los renglones FC con su importe en $ (sin filtro de CB), para las provisiones de AACC de Mkt Canal.
+  facturacion?: { cliente: string; sku: string; fecha: string | number; importe: number | string }[];
 };
