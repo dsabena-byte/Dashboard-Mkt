@@ -266,15 +266,15 @@ export function aplicarAlcance(
 }
 
 /** Renglones de facturación en $ (AACC): normaliza y descarta los inválidos. */
-export function procesarFacturacion(rows: NonNullable<VentasPayload["facturacion"]>): { rows: { cliente: string; sku: string; fecha: string; importe: number }[]; invalidos: number } {
-  const out: { cliente: string; sku: string; fecha: string; importe: number }[] = [];
+export function procesarFacturacion(rows: NonNullable<VentasPayload["facturacion"]>): { rows: { cliente: string; sku: string; categoria: string | null; fecha: string; importe: number }[]; invalidos: number } {
+  const out: { cliente: string; sku: string; categoria: string | null; fecha: string; importe: number }[] = [];
   let invalidos = 0;
   for (const r of rows) {
     const importe = typeof r.importe === "number" ? r.importe : Number(String(r.importe).replace(/\$|\s/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."));
     let fecha: string | null = null;
     try { fecha = normalizeFecha(r.fecha); } catch { fecha = null; }
-    if (!r.cliente || !r.sku || !fecha || !Number.isFinite(importe)) { invalidos++; continue; }
-    out.push({ cliente: String(r.cliente).trim(), sku: String(r.sku).trim(), fecha, importe: Math.round(importe * 100) / 100 });
+    if (!r.cliente || !fecha || !Number.isFinite(importe)) { invalidos++; continue; }
+    out.push({ cliente: String(r.cliente).trim(), sku: String(r.sku ?? "").trim(), categoria: String(r.categoria ?? "").trim() || null, fecha, importe: Math.round(importe * 100) / 100 });
   }
   return { rows: out, invalidos };
 }

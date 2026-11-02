@@ -49,10 +49,10 @@ export async function facturacionMes(anio: number, mes: number, clientes: string
   const desde = `${mesKey(anio, mes)}-01`;
   const hasta = mes === 11 ? `${anio + 1}-01-01` : `${mesKey(anio, mes + 1)}-01`;
   const lista = clientes.map((c) => `"${c.replace(/"/g, "")}"`).join(",");
-  let ventas: { cliente: string; sku: string; importe: number }[];
+  let ventas: { cliente: string; sku: string; categoria: string | null; importe: number }[];
   try {
     // vt_facturacion = todos los renglones FC con $ (los manda el Office Script); fecha = fecha real de la factura.
-    ventas = await get(`vt_facturacion?select=cliente,sku,importe&fecha=gte.${desde}&fecha=lt.${hasta}&cliente=in.(${encodeURIComponent(lista)})&order=id.asc`);
+    ventas = await get(`vt_facturacion?select=cliente,sku,categoria,importe&fecha=gte.${desde}&fecha=lt.${hasta}&cliente=in.(${encodeURIComponent(lista)})&order=id.asc`);
     if (!ventas.length) {
       const r = await sbAdmin("vt_facturacion?select=id&limit=1", { method: "GET" });
       if (!r.ok || !((await r.json()) as unknown[]).length) return null; // todavía nunca llegó la facturación en $
@@ -65,7 +65,8 @@ export async function facturacionMes(anio: number, mes: number, clientes: string
   const cat = new Map(skus.map((s) => [s.sku.replace(/^0+/, ""), categoriaDeSku(s.division, s.categoria)]));
   const out: Record<string, FactCliente> = {};
   for (const v of ventas) {
-    const c = cat.get(v.sku.replace(/^0+/, "")) ?? "sin_categoria";
+    // Categoría: el «Grupo de artículos» del Excel; si no vino, el maestro de SKUs.
+    const c = (v.categoria ? categoriaDeSku(v.categoria, v.categoria) : cat.get(v.sku.replace(/^0+/, ""))) ?? "sin_categoria";
     const f = (out[v.cliente] ??= {});
     f[c] = (f[c] ?? 0) + Number(v.importe ?? 0);
   }
