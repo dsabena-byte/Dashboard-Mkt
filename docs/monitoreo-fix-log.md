@@ -352,3 +352,9 @@ causa raíz · qué se hizo.
 ## 2026-11-01 (UTC)
 - **trends-sync** (GitHub Action): último run (38272266000, 2026-10-12) falló con HTTP 500 `DataForSEO sin saldo (Payment Required)`. `seo-sync` mismo patrón (último run 37620554162, 2026-10-07). Acción: **pendiente manual** — el user debe cargar saldo en DataForSEO. NO re-disparado (workflows pagos, regla CLAUDE.md).
 - Resto de syncs en verde. Issue watchdog #828 es de 2026-10-08 (BGT, ya recuperado: `bgt-sync` success) — desactualizado, no se tocó.
+
+## 2026-11-03 (UTC) — meta-paid-sync: rate limit de Meta (transitorio); #828 sin cambios
+- **Proceso:** `meta-paid-sync` (GitHub Action). Run 41519470815 (attempt 2, 3-nov 01:04) = failure. Log (verificado): nov y oct sincronizaron OK (HTTP 200); sep dio HTTP 500 `Graph 400 code 80004` ("too many calls to this ad-account") en fase `fetch_ads` → límite de tasa de Meta, transitorio, no es bug de código.
+- **Acción:** re-trigger (`rerun_failed_jobs`, run 41519470815). Si vuelve a fallar con 80004 repetidamente (ya van 2 días con falla en el primer intento), conviene espaciar/reducir las llamadas por mes en la ruta: **pendiente de evaluar**.
+- **#828 (BGT):** abierto; `bgt-sync` en success (3-nov 04:31), la fuente data.json de SharePoint sigue sin actualizarse (ver 20-oct); no hay nada que re-disparar. Pendiente humano: dar de baja la vigilancia de `bgt-sync` / cerrar #828.
+- **Sin diagnosticar (fuera de la lista vigilada, último run en failure el 2-nov):** `dv360-sync` (20:43), `google-ads-sync` (13:50), `tiktok-sync` (13:52). Causa **sin verificar**; el watchdog no los reportó.
