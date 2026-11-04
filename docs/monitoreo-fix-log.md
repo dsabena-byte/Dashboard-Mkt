@@ -352,3 +352,8 @@ causa raíz · qué se hizo.
 ## 2026-11-01 (UTC)
 - **trends-sync** (GitHub Action): último run (38272266000, 2026-10-12) falló con HTTP 500 `DataForSEO sin saldo (Payment Required)`. `seo-sync` mismo patrón (último run 37620554162, 2026-10-07). Acción: **pendiente manual** — el user debe cargar saldo en DataForSEO. NO re-disparado (workflows pagos, regla CLAUDE.md).
 - Resto de syncs en verde. Issue watchdog #828 es de 2026-10-08 (BGT, ya recuperado: `bgt-sync` success) — desactualizado, no se tocó.
+
+## 2026-11-04 (UTC)
+- **seo-sync** (GitHub Action, pago): último run (41312734496, 2026-11-01 schedule) = failure; esta vez el log muestra `curl` exit 28 (timeout a los 300 s), NO "Payment Required" (los runs de oct sí eran saldo). Estado del saldo DataForSEO: **sin verificar**. NO re-disparado (regla CLAUDE.md: workflow pago; `seo-sync` reanuda si el mes ya tiene foto). **Pendiente humano:** confirmar saldo y re-disparar a mano.
+- **trends-sync:** último run 2026-10-12 = failure (DataForSEO sin saldo, ver 1-nov). Pendiente humano igual.
+- Resto de syncs vigilados en success. Issue #828 (watchdog, BGT, del 8-oct) sigue abierto y desactualizado; no se tocó.
