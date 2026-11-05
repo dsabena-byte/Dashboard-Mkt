@@ -509,7 +509,7 @@ export default async function WebPage({ searchParams }: PageProps) {
     : null);
 
   return (
-    <DashTabs dash="web" className="space-y-6">
+    <DashTabs dash="web" className="space-y-6" mejorasExtra={consent && calidad?.consent ? <ConsentCheckSection c={consent} criterio={calidad.consent.criterio} todas={calidad.consent.sesionesTodas} /> : undefined}>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Web · Drean</h2>
@@ -671,7 +671,6 @@ export default async function WebPage({ searchParams }: PageProps) {
       {/* Estructura estándar de los tableros: cards con meta → sus gráficos de evolución vs meta → contenido. */}
       {/* Cierre proyectado del mes en curso (transacciones / ingresos vs meta) + chequeo de medición */}
       {cierre && <CierreMesSection c={cierre} />}
-      {consent && calidad?.consent && <ConsentCheckSection c={consent} criterio={calidad.consent.criterio} todas={calidad.consent.sesionesTodas} />}
 
       {/* Cards secundarios (chicos, sin meta) */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

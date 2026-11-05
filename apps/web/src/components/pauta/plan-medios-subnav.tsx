@@ -8,7 +8,7 @@ import type { Route } from "next";
 export const PLAN_MEDIOS_TABS = [
   { href: "/performance?tab=impacto", label: "Impacto Campaña" },
   { href: "/performance?tab=eficiencia", label: "Eficiencia Medios" },
-  { href: "/performance?tab=diagnostico", label: "Diagnóstico e Inteligencia" },
+  { href: "/performance?tab=diagnostico", label: "Plan de Mejora" },
   { href: "/performance/competencia", label: "Pauta Competencia" },
   { href: "/performance/simulador", label: "Simulador de Presupuesto" },
   { href: "/performance/plan", label: "Plan anual" },
