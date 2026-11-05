@@ -13,6 +13,13 @@ const btnPri = "rounded-md bg-[#1e40af] px-3 py-1.5 text-sm font-semibold text-w
 const inp = "rounded border bg-background px-2 py-1 text-sm";
 type Datos = AaccDatos & { editor: boolean };
 
+type ResInv = { creados: string[]; actualizados: string[]; sinTocar: { cliente: string; motivo: string }[] } | undefined;
+const resumenInv = (r: ResInv) => !r ? "" : [
+  r.creados.length ? `Pasados a Inversión: ${r.creados.length}.` : "",
+  r.actualizados.length ? `Monto actualizado: ${r.actualizados.join(", ")}.` : "",
+  r.sinTocar.length ? `Sin tocar: ${r.sinTocar.map((x) => `${x.cliente} (${x.motivo})`).join(", ")}.` : "",
+].filter(Boolean).join(" ") || "Nada para pasar a Inversión.";
+
 async function api(body: unknown) {
   const r = await fetch("/api/mkt-canal/aacc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
@@ -45,6 +52,7 @@ function Provision({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: ()
   const [email, setEmail] = useState<Email | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [validados, setValidados] = useState<Set<string>>(new Set());
   const cerrado = anio < hoy.getFullYear() || (anio === hoy.getFullYear() && mes < hoy.getMonth());
   const key = `${anio}-${String(mes + 1).padStart(2, "0")}`;
   const yaGenerada = d.mensual.filter((m) => m.mes === key);
@@ -56,7 +64,7 @@ function Provision({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: ()
       const j = await api({ accion, anio, mes });
       setFilas(j.filas); setSinImporte(!!j.sinImporte);
       if (accion === "generar") { setEmail(j.email); onCambio(); }
-      if (accion === "real") { setMsg(`Provisión real de ${MESES_AACC[mes]} guardada.`); onCambio(); }
+      if (accion === "real") { setMsg(`Provisión real de ${MESES_AACC[mes]} guardada. ${resumenInv(j.inversion)}`); onCambio(); }
     } catch (e) {
       const data = (e as { data?: { filas?: FilaProvision[]; sinImporte?: boolean } }).data;
       if (data?.filas) { setFilas(data.filas); setSinImporte(!!data.sinImporte); }
@@ -71,6 +79,16 @@ function Provision({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: ()
     } catch { await navigator.clipboard.writeText(email.texto); setMsg("Copiado como texto (el navegador no permitió copiar el formato)."); }
   };
   const total = filas?.reduce((s, f) => s + f.aacc, 0) ?? 0;
+  const reales = d.real.filter((r) => r.mes === key);
+  const tipoDe = (c: string) => d.acuerdos.find((a) => a.cliente === c)?.tipo;
+  const factDe = (c: string) => filas?.find((f) => f.cliente === c)?.facturacion;
+  const pasar = async (cliente: string) => {
+    setBusy(true); setMsg(null);
+    try {
+      const j = await api({ accion: "inversion", anio, mes, clientes: [cliente] });
+      setMsg(`${cliente}: ${resumenInv(j.inversion)}`); setValidados((v) => { const n = new Set(v); n.delete(cliente); return n; }); onCambio();
+    } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  };
   return (
     <section className={card}>
       <div className="flex flex-wrap items-center gap-2">
@@ -102,6 +120,42 @@ function Provision({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: ()
                 </tr>
               ))}
               <tr className="border-t bg-muted/30 font-semibold"><td className="px-3 py-1.5" colSpan={4}>Total</td><td className="px-3 py-1.5 tabular-nums">{$(total)}</td><td /></tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      {reales.length > 0 && (
+        <div className="space-y-2 rounded-lg border p-3">
+          <p className="text-sm font-semibold">Pasar a Inversión de Marketing · {MESES_AACC[mes]} {anio}</p>
+          <p className="text-xs text-muted-foreground">
+            Cada AACC de la provisión real queda como un gasto en <a className="underline" href="/funnel/carga">Inversión de Marketing → Cargar datos</a> (cuenta
+            6202010084, detalle «AACC {MESES_AACC[mes]!.toUpperCase()} · cliente»), para cargarle ahí la Solped, la OC y la factura. Los de <b>monto fijo</b> pasan
+            solos al guardar la provisión real. Los de <b>% de facturación</b> pasan cuando revisás la facturación del mes (tocá «Ver cálculo») y la marcás como validada.
+          </p>
+          <table className="w-full text-sm">
+            <thead className="text-xs text-muted-foreground"><tr>{["Cliente", "Acuerdo", "Facturación del mes", "AACC", "En Inversión", ""].map((h) => <th key={h} className="px-2 py-1 text-left font-medium">{h}</th>)}</tr></thead>
+            <tbody>
+              {reales.map((r) => {
+                const pct = tipoDe(r.cliente) === "pct";
+                const listo = r.inversion === "en_curso";
+                return (
+                  <tr key={r.cliente} className="border-t">
+                    <td className="px-2 py-1.5">{r.cliente}</td>
+                    <td className="px-2 py-1.5 text-xs">{pct ? "% de facturación" : "Monto fijo"}</td>
+                    <td className="px-2 py-1.5 tabular-nums">{pct ? (factDe(r.cliente) == null ? <span className="text-xs text-muted-foreground">tocá «Ver cálculo»</span> : $(factDe(r.cliente))) : "—"}</td>
+                    <td className="px-2 py-1.5 font-semibold tabular-nums">{$(r.aacc)}</td>
+                    <td className="px-2 py-1.5 text-xs">{r.inversion === "en_curso" ? "✓ con Solped / OC / factura" : r.inversion === "cargado" ? "✓ cargado (falta Solped)" : <span className="font-semibold text-amber-700">Falta pasar</span>}</td>
+                    <td className="px-2 py-1.5 text-xs">
+                      {d.editor && !listo && (pct ? (
+                        <span className="flex items-center gap-2">
+                          <label className="flex items-center gap-1"><input type="checkbox" checked={validados.has(r.cliente)} onChange={(e) => setValidados((v) => { const n = new Set(v); if (e.target.checked) n.add(r.cliente); else n.delete(r.cliente); return n; })} />Facturación validada</label>
+                          <button className={btn} disabled={busy || !validados.has(r.cliente)} onClick={() => pasar(r.cliente)}>{r.inversion === "cargado" ? "Actualizar" : "Pasar"}</button>
+                        </span>
+                      ) : r.inversion === "no" && <button className={btn} disabled={busy} onClick={() => pasar(r.cliente)}>Pasar</button>)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

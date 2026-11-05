@@ -1,6 +1,7 @@
 import "server-only";
 import { sbAdmin } from "@/lib/supabase-admin";
-import { calcularProvision, categoriaDeSku, CUENTA_AACC, liquidadoDeInversion, resumenMeses, type Acuerdo, type LineaInversion, type Liquidacion, type FactCliente, type FilaProvision, type MesResumen } from "@/lib/aacc-core";
+import { asegurarVersiones, crearLineas, editarLinea } from "@/lib/presupuesto-server";
+import { calcularProvision, categoriaDeSku, CUENTA_AACC, estadoEnInversion, liquidadoDeInversion, planInversion, resumenMeses, type Acuerdo, type EstadoInversion, type LineaInversion, type Liquidacion, type FactCliente, type FilaProvision, type MesResumen } from "@/lib/aacc-core";
 
 // AACC de Mkt Canal: lecturas/escrituras por REST con service key (las rutas validan sesión y permisos antes).
 // Tablas: aacc_acuerdos · aacc_provision_mensual (0146) · liquidado = bgt_lineas (Inversión, cuenta de AACC con recepción) + mkt_canal_aacc (provisión real, 0131) + vt_facturacion (0147) / tr_skus.
@@ -85,7 +86,7 @@ export interface AaccDatos {
   acuerdos: Acuerdo[];
   resumen: MesResumen[];
   mensual: { mes: string; cliente: string; razon_social: string; categorias: string | null; acuerdo: string | null; facturacion: number | null; aacc: number; generado_at: string; generado_por: string | null }[];
-  real: { mes: string; cliente: string; razon_social: string; categoria: string | null; aacc: number }[];
+  real: { mes: string; cliente: string; razon_social: string; categoria: string | null; aacc: number; inversion?: EstadoInversion }[];
   liquidado: Liquidacion[];
   destinatarios: { para: string[]; cc: string[] };
 }
@@ -95,7 +96,7 @@ export async function getAaccDatos(anio: number): Promise<AaccDatos> {
     listAcuerdos(anio),
     get<AaccDatos["mensual"][number]>(`aacc_provision_mensual?select=mes,cliente,razon_social,categorias,acuerdo,facturacion,aacc,generado_at,generado_por&mes=like.${anio}-*&order=mes.asc,cliente.asc`),
     get<AaccDatos["real"][number]>(`mkt_canal_aacc?select=mes,cliente,razon_social,categoria,aacc&mes=like.${anio}-*&order=mes.asc,cliente.asc`),
-    get<LineaInversion>(`bgt_lineas?select=mes,proveedor,nro_proveedor,nro_recepcion,factura,ars&version=eq.${encodeURIComponent(`REAL ${anio}`)}&cuenta=eq.${CUENTA_AACC}&order=id.asc`),
+    get<LineaInversion>(`bgt_lineas?select=id,mes,proveedor,nro_proveedor,nro_recepcion,factura,ars,detalle,solped,oc&version=eq.${encodeURIComponent(`REAL ${anio}`)}&cuenta=eq.${CUENTA_AACC}&order=id.asc`),
     getDestinatarios(),
   ]);
   const num = <T extends { aacc?: number; monto?: number }>(xs: T[]) => xs.map((x) => ({ ...x, ...(x.aacc != null && { aacc: Number(x.aacc) }), ...(x.monto != null && { monto: Number(x.monto) }) }));
@@ -111,7 +112,8 @@ export async function getAaccDatos(anio: number): Promise<AaccDatos> {
     liquidado: sum(l, (x: Liquidacion) => x.monto),
     tieneReal,
   });
-  return { anio, acuerdos, resumen, mensual: m as AaccDatos["mensual"], real: r as AaccDatos["real"], liquidado: l, destinatarios: dest };
+  const realConEstado = (r as AaccDatos["real"]).map((x) => ({ ...x, inversion: estadoEnInversion(liquidado, idx(x.mes), x.cliente) }));
+  return { anio, acuerdos, resumen, mensual: m as AaccDatos["mensual"], real: realConEstado, liquidado: l, destinatarios: dest };
 }
 
 /** Foto de la provisión mensual: reemplaza la del mes (la del botón «Generar provisión»). */
@@ -140,4 +142,29 @@ export async function getDestinatarios(): Promise<{ para: string[]; cc: string[]
 }
 export async function guardarDestinatarios(d: { para: string[]; cc: string[] }) {
   await write("tr_config?on_conflict=clave", "POST", { clave: "aacc_destinatarios", valor: d }, "resolution=merge-duplicates,return=minimal");
+}
+
+/**
+ * Pasa la provisión REAL guardada de un mes a Inversión de Marketing (REAL <año>, cuenta de AACC): un gasto por cliente, para
+ * seguir ahí la Solped, la OC y la factura. Solo los `clientes` pedidos; los ya avanzados no se tocan (`planInversion`). `mes` 0–11.
+ */
+export async function pasarAInversion(anio: number, mes: number, clientes: string[], usuario: string) {
+  const k = mesKey(anio, mes), version = `REAL ${anio}`;
+  const [acuerdos, real, lineas] = await Promise.all([
+    listAcuerdos(anio),
+    get<{ cliente: string; razon_social: string; aacc: number }>(`mkt_canal_aacc?select=cliente,razon_social,aacc&mes=eq.${k}&order=cliente.asc`),
+    get<LineaInversion>(`bgt_lineas?select=id,mes,proveedor,nro_proveedor,nro_recepcion,factura,ars,detalle,solped,oc&version=eq.${encodeURIComponent(version)}&cuenta=eq.${CUENTA_AACC}&mes=eq.${mes + 1}&order=id.asc`),
+  ]);
+  const pedidos = new Set(clientes);
+  const plan = planInversion(mes, real.filter((r) => pedidos.has(r.cliente)).map((r) => ({ ...r, aacc: Number(r.aacc) })), acuerdos, lineas);
+  if (plan.crear.length) {
+    await asegurarVersiones([version], usuario);
+    await crearLineas(plan.crear.map((g) => ({
+      version, mes: g.mes, ceco: "W014402001", cuenta: CUENTA_AACC, nombre_cta: "PUBLICIDAD COMPARTIDA", concepto: "ACCIONES COMPARTIDAS",
+      nro_proveedor: g.nro_proveedor, proveedor: g.proveedor, detalle: g.detalle, solped: null, oc: null, nro_recepcion: null,
+      nro_doc_contable: null, fecha_contabilizacion: null, factura: null, provision: null, ars: g.ars,
+    })), usuario);
+  }
+  for (const a of plan.actualizar) await editarLinea(a.id, { ars: a.ars }, usuario, () => true);
+  return { creados: plan.crear.map((g) => g.detalle), actualizados: plan.actualizar.map((a) => a.cliente), sinTocar: plan.sinTocar };
 }

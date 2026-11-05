@@ -25,7 +25,7 @@ export interface Acuerdo {
 /** Cuenta de Inversión de Marketing donde se cargan los AACC (concepto «ACCIONES COMPARTIDAS»). */
 export const CUENTA_AACC = "6202010084";
 
-export interface LineaInversion { mes: number; proveedor: string | null; nro_proveedor: string | null; nro_recepcion: string | null; factura: string | null; ars: number }
+export interface LineaInversion { id?: string; mes: number; proveedor: string | null; nro_proveedor: string | null; nro_recepcion: string | null; factura: string | null; ars: number; detalle?: string | null; solped?: string | null; oc?: string | null }
 export interface Liquidacion { mes: string; cliente: string; monto: number; factura: string | null; proveedor: string | null }
 
 const normProv = (s: string | null | undefined) => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -42,6 +42,43 @@ export function liquidadoDeInversion(anio: number, lineas: LineaInversion[], acu
     out.push({ mes: `${anio}-${String(l.mes).padStart(2, "0")}`, cliente: c?.cliente ?? "(sin cliente)", monto: Number(l.ars) || 0, factura: l.factura, proveedor: l.proveedor ?? l.nro_proveedor });
   }
   return out;
+}
+
+// ---------- provisión real → gasto en Inversión de Marketing (pedido del user 5-nov-2026) ----------
+/** Detalle con el que el AACC de un cliente y mes queda en Inversión («AACC NOVIEMBRE · Naldo»); también identifica los ya cargados. */
+export const detalleAacc = (mes: number, cliente: string) => `AACC ${MESES_AACC[mes]!.toUpperCase()} · ${cliente}`;
+const esDelCliente = (detalle: string | null | undefined, mes: number, cliente: string) => {
+  const d = String(detalle ?? "").trim(), base = detalleAacc(mes, cliente);
+  return d === base || d.startsWith(`${base} ·`);
+};
+export type EstadoInversion = "no" | "cargado" | "en_curso"; // en_curso = ya tiene Solped, OC o factura
+
+/** Estado en Inversión del AACC de un cliente en un mes (`mes` 0–11), mirando los gastos de la cuenta de AACC de ese mes. */
+export function estadoEnInversion(lineas: LineaInversion[], mes: number, cliente: string): EstadoInversion {
+  const ls = lineas.filter((l) => l.mes === mes + 1 && esDelCliente(l.detalle, mes, cliente));
+  if (!ls.length) return "no";
+  return ls.some((l) => [l.solped, l.oc, l.factura].some((x) => String(x ?? "").trim())) ? "en_curso" : "cargado";
+}
+
+export interface GastoAacc { mes: number; nro_proveedor: string | null; proveedor: string; detalle: string; ars: number }
+/**
+ * Qué hacer en Inversión con la provisión real de un mes: crear el gasto del cliente si no está, actualizar el monto si está
+ * cargado sin Solped/OC/factura y no tocar lo que ya avanzó (o si hay más de un renglón sin avanzar). `mes` 0–11.
+ */
+export function planInversion(mes: number, real: { cliente: string; razon_social: string; aacc: number }[], acuerdos: Pick<Acuerdo, "cliente" | "proveedor">[], lineas: LineaInversion[]) {
+  const crear: GastoAacc[] = [], actualizar: { id: string; ars: number; cliente: string }[] = [], sinTocar: { cliente: string; motivo: string }[] = [];
+  for (const r of real) {
+    if (!(r.aacc > 0)) continue;
+    const ls = lineas.filter((l) => l.mes === mes + 1 && esDelCliente(l.detalle, mes, r.cliente));
+    const est = estadoEnInversion(lineas, mes, r.cliente);
+    if (est === "no") {
+      const prov = acuerdos.find((a) => a.cliente === r.cliente)?.proveedor ?? null;
+      crear.push({ mes: mes + 1, nro_proveedor: prov && /^\d+$/.test(prov) ? prov : null, proveedor: r.razon_social, detalle: detalleAacc(mes, r.cliente), ars: Math.round(r.aacc) });
+    } else if (est === "en_curso") sinTocar.push({ cliente: r.cliente, motivo: "ya tiene Solped, OC o factura" });
+    else if (ls.length > 1) sinTocar.push({ cliente: r.cliente, motivo: "tiene más de un renglón cargado" });
+    else if (Math.round(Number(ls[0]!.ars)) !== Math.round(r.aacc) && ls[0]!.id) actualizar.push({ id: ls[0]!.id, ars: Math.round(r.aacc), cliente: r.cliente });
+  }
+  return { crear, actualizar, sinTocar };
 }
 
 /** Categoría de un SKU según el maestro (tr_skus: división + categoría). */

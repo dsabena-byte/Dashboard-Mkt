@@ -5,7 +5,7 @@ import { getAllowedPaths, puedeEditarActual } from "@/lib/usuarios-server";
 import { usuarioPresupuesto } from "@/lib/presupuesto-server";
 import { armarEmail, armarEml, CATEGORIAS_AACC, MESES_AACC, parseEmails, type Acuerdo } from "@/lib/aacc-core";
 import {
-  AaccError, calcularMes, getAaccDatos, guardarAcuerdos, guardarDestinatarios, guardarMensual, guardarReal,
+  AaccError, calcularMes, getAaccDatos, guardarAcuerdos, guardarDestinatarios, guardarMensual, guardarReal, listAcuerdos, pasarAInversion,
 } from "@/lib/aacc-server";
 
 // AACC de Mkt Canal.
@@ -14,6 +14,8 @@ import {
 //   POST {accion:"calcular", anio, mes} → provisión del mes con la facturación a hoy (no guarda)
 //   POST {accion:"generar", anio, mes}  → calcula, GUARDA la foto mensual y devuelve el mail
 //   POST {accion:"real", anio, mes}     → calcula con el mes cerrado y guarda la provisión real (mkt_canal_aacc)
+//                                          y pasa a Inversión de Marketing los acuerdos de MONTO FIJO
+//   POST {accion:"inversion", anio, mes, clientes} → pasa a Inversión esos clientes (los de % después de validar la facturación en pantalla)
 //   POST {accion:"acuerdos"|"destinatarios", …}   (lo liquidado sale de Inversión de Marketing, no se carga acá)
 // Ver: sesión + acceso a /mkt-canal. Escribir: «Edita Marketing» o editor del presupuesto (bgt_editores).
 export const dynamic = "force-dynamic";
@@ -31,7 +33,7 @@ async function puedeEditar() {
   return !!u?.editor || (await puedeEditarActual("marketing"));
 }
 const errorResp = (e: unknown) =>
-  NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: e instanceof AaccError ? e.status : 500 });
+  NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status: e instanceof AaccError ? e.status : Number((e as { status?: number }).status) || 500 });
 const anioOk = (v: unknown) => { const n = Number(v); return Number.isInteger(n) && n >= 2024 && n <= 2100 ? n : null; };
 const mesOk = (v: unknown) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= 11 ? n : null; };
 
@@ -94,11 +96,21 @@ export async function POST(req: Request) {
           const ahora = new Date();
           if (anio > ahora.getFullYear() || (anio === ahora.getFullYear() && mes >= ahora.getMonth())) return NextResponse.json({ error: "La provisión real es de un mes ya cerrado." }, { status: 400 });
           await guardarReal(anio, mes, filas);
-          return NextResponse.json({ ok: true, filas });
+          const fijos = (await listAcuerdos(anio)).filter((a) => a.tipo === "fijo").map((a) => a.cliente);
+          const inversion = await pasarAInversion(anio, mes, fijos, s.email);
+          return NextResponse.json({ ok: true, filas, inversion });
         }
         await guardarMensual(anio, mes, filas, s.email);
         const datos = await getAaccDatos(anio);
         return NextResponse.json({ ok: true, filas, email: armarEmail({ anio, mes, filas, resumen: datos.resumen }), destinatarios: datos.destinatarios });
+      }
+      case "inversion": {
+        if (mes == null) return NextResponse.json({ error: "Mes inválido." }, { status: 400 });
+        const pedidos = Array.isArray(b.clientes) ? b.clientes.filter((c): c is string => typeof c === "string").slice(0, 100) : [];
+        const conAcuerdo = new Set((await listAcuerdos(anio)).map((a) => a.cliente));
+        const clientes = pedidos.filter((c) => conAcuerdo.has(c));
+        if (!clientes.length) return NextResponse.json({ error: "Ese cliente no tiene acuerdo cargado." }, { status: 400 });
+        return NextResponse.json({ ok: true, inversion: await pasarAInversion(anio, mes, clientes, s.email) });
       }
       case "acuerdos": {
         const lista = Array.isArray(b.acuerdos) ? (b.acuerdos as Partial<Acuerdo>[]).slice(0, 100) : [];
