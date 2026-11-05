@@ -1,6 +1,6 @@
 // AACC de Mkt Canal: npx tsx scripts/aacc.test.ts
 import { procesarFacturacion } from "../src/lib/cb-ventas/core";
-import { armarEmail, armarEml, calcularProvision, categoriaDeSku, liquidadoDeInversion, parseEmails, resumenMeses, type Acuerdo } from "../src/lib/aacc-core";
+import { armarEmail, armarEml, calcularProvision, categoriaDeSku, detalleAacc, estadoEnInversion, liquidadoDeInversion, planInversion, parseEmails, resumenMeses, type Acuerdo } from "../src/lib/aacc-core";
 
 let ok = 0, fail = 0;
 const t = (n: string, c: boolean, x?: unknown) => { if (c) ok++; else { fail++; console.error("✗", n, x ?? ""); } };
@@ -78,5 +78,21 @@ t("liquidado: por nº de proveedor", liqInv.some((l) => l.cliente === "Cetrogar"
 t("liquidado: por razón social normalizada", liqInv.some((l) => l.cliente === "Naldo" && l.monto === 8657405), liqInv);
 t("liquidado: sin factura no cuenta", !liqInv.some((l) => l.monto === 8170506 || l.monto === 56215017), liqInv);
 t("liquidado: proveedor desconocido → (sin cliente)", liqInv.some((l) => l.cliente === "(sin cliente)" && l.monto === 10), liqInv);
+// Provisión real → Inversión (nov = mes 10)
+t("detalle", detalleAacc(10, "Naldo") === "AACC NOVIEMBRE · Naldo");
+const ls = [
+  { id: "a", mes: 11, proveedor: null, nro_proveedor: null, nro_recepcion: null, factura: null, ars: 100, detalle: "AACC NOVIEMBRE · Rodo", solped: null, oc: null },
+  { id: "b", mes: 11, proveedor: null, nro_proveedor: null, nro_recepcion: null, factura: null, ars: 50, detalle: "AACC NOVIEMBRE · Frávega · Lavado", solped: "40", oc: null },
+  { id: "c", mes: 10, proveedor: null, nro_proveedor: null, nro_recepcion: null, factura: null, ars: 9, detalle: "AACC OCTUBRE · Naldo", solped: null, oc: null },
+];
+t("estado no", estadoEnInversion(ls, 10, "Naldo") === "no");
+t("estado cargado", estadoEnInversion(ls, 10, "Rodo") === "cargado");
+t("estado en curso (con sufijo de categoría)", estadoEnInversion(ls, 10, "Frávega") === "en_curso");
+t("Rodo ≠ Rodolfo", estadoEnInversion(ls, 10, "Rod") === "no");
+const pl = planInversion(10, [{ cliente: "Naldo", razon_social: "NALDO LOMBARDI S A", aacc: 1234.4 }, { cliente: "Rodo", razon_social: "BOSAN (RODO)", aacc: 600 }, { cliente: "Frávega", razon_social: "FRAVEGA", aacc: 1 }, { cliente: "Cetrogar", razon_social: "CETROGAR SA", aacc: 0 }], acuerdos, ls);
+t("crea Naldo con detalle y monto", pl.crear.length === 1 && pl.crear[0]!.detalle === "AACC NOVIEMBRE · Naldo" && pl.crear[0]!.ars === 1234 && pl.crear[0]!.mes === 11, pl);
+t("actualiza Rodo sin Solped", pl.actualizar.length === 1 && pl.actualizar[0]!.id === "a" && pl.actualizar[0]!.ars === 600, pl);
+t("no toca Frávega con Solped", pl.sinTocar.some((x) => x.cliente === "Frávega"), pl);
+t("nº de proveedor del acuerdo", planInversion(10, [{ cliente: "Cetrogar", razon_social: "CETROGAR SA", aacc: 5 }], acuerdos, []).crear[0]!.nro_proveedor === "4009347");
 console.log(`aacc: ${ok} OK, ${fail} fallas`);
 if (fail) process.exit(1);
