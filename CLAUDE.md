@@ -126,6 +126,7 @@ reporte_existencia/cb_homologos).
     Pauta Ecommerce y Mkt Canal (iframe en un recuadro) también tienen Tablero · Diagnóstico; Contenido = título →
     Cómo leer → RRSS · UGC · Biblioteca UGC · Adaptación (mismo estilo). Monitoreo = una sola vista, sin pestañas.
     NO volver a poner barras de tabs arriba del título ni un segundo nivel de pestañas.
+    **5-nov-2026 (pedido del user): la pestaña se llama «Plan de Mejora» en TODOS los tableros** (antes «Diagnóstico e Inteligencia»; ids/`?vista=diagnostico`/`?tab=diagnostico` no cambian). `DashTabs` acepta `mejorasExtra` (va DENTRO de «Mejoras», después de la lista): /web pasa ahí el chequeo «Medición y consentimiento» (`ConsentCheckSection`), que salió del tablero.
   - **Pestaña Diagnóstico = UN bloque «Plan de mejoras» (5-oct-2026, pedidos del user: "me pierdo" + "primero el análisis"):** dentro,
     partes NUMERADAS 1, 2, 3… (según las que haya): Diagnóstico IA (texto + generar/historial) → Evolución → Metas → Correlaciones →
     Qué funcionó y qué no → parte propia del tablero (`analisisExtra = {titulo, desc, contenido}`, Redes = `TopContentPanel bare`) →

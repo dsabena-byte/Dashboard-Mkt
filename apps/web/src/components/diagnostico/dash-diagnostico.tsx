@@ -166,7 +166,7 @@ function AnalisisIA({ data, num }: { data: Insights; num: () => string }) {
   );
 }
 
-export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", embedded = false, analisisExtra }: { /** Parte propia del tablero dentro del análisis del «Plan de mejoras» (ej. Redes: mejores/peores posts). */ analisisExtra?: AnalisisExtra; dash: string; titulo?: string; /** Dentro del tab "Diagnóstico e inteligencia" (DashTabs): abierto y sin colapsar. */ embedded?: boolean }) {
+export function DashDiagnostico({ dash, titulo = "Plan de Mejora", embedded = false, analisisExtra, mejorasExtra }: { /** Mejora propia del tablero, dentro de «Mejoras» después de la lista. */ mejorasExtra?: React.ReactNode; /** Parte propia del tablero dentro del análisis del «Plan de mejoras» (ej. Redes: mejores/peores posts). */ analisisExtra?: AnalisisExtra; dash: string; titulo?: string; /** Dentro del tab "Diagnóstico e inteligencia" (DashTabs): abierto y sin colapsar. */ embedded?: boolean }) {
   const [open, setOpen] = useState(embedded);
   const [signals, setSignals] = useState<Signal[] | null>(null);
   const [sigErr, setSigErr] = useState<string | null>(null);
@@ -389,6 +389,7 @@ export function DashDiagnostico({ dash, titulo = "Diagnóstico e inteligencia", 
                 {signals == null && <div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><Loader2 className="h-3.5 w-3.5 animate-spin" />Sumando las alertas automáticas…</div>}
               </>
             )}
+            {mejorasExtra && <div className="mt-3">{mejorasExtra}</div>}
             {sigErr && (
               <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 <span>{sigErr}</span>

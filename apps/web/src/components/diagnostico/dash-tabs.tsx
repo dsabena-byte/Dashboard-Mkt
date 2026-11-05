@@ -17,12 +17,14 @@ import { DashDiagnostico, type AnalisisExtra } from "./dash-diagnostico";
 type Vista = "tablero" | "diagnostico";
 const Ctx = createContext<{ vista: Vista; setVista: (v: Vista) => void } | null>(null);
 
-export function DashTabs({ dash, className, children, diagExtra, startDiag = false }: {
+export function DashTabs({ dash, className, children, diagExtra, mejorasExtra, startDiag = false }: {
   dash: string;
   className?: string;
   children: ReactNode;
   /** Contenido extra de la pestaña Diagnóstico (ej. los ex "Insights" del tablero). */
   diagExtra?: AnalisisExtra;
+  /** Mejora propia del tablero que va dentro de «Mejoras» (ej. Web: chequeo de medición y consentimiento). */
+  mejorasExtra?: ReactNode;
   /** Abrir directo en Diagnóstico (ej. links viejos ?tab=insights). */
   startDiag?: boolean;
 }) {
@@ -45,7 +47,7 @@ export function DashTabs({ dash, className, children, diagExtra, startDiag = fal
         {diagMounted && (
           <div data-dash-keep data-dash-diag className="space-y-4">
             {/* diagExtra va DENTRO del «Plan de mejoras» como una parte numerada más del análisis, no como bloque aparte. */}
-            <DashDiagnostico dash={dash} embedded analisisExtra={diagExtra} />
+            <DashDiagnostico dash={dash} embedded analisisExtra={diagExtra} mejorasExtra={mejorasExtra} />
           </div>
         )}
       </div>
@@ -86,7 +88,7 @@ export function DashTabBar({ items = [{ key: "tablero", label: "Tablero" }], act
       {items.map(render)}
       {ctx && (
         <button type="button" onClick={() => ctx.setVista("diagnostico")} className={cls(diag)}>
-          Diagnóstico e Inteligencia{diagBadge != null && <Badge v={diagBadge} on={diag} />}
+          Plan de Mejora{diagBadge != null && <Badge v={diagBadge} on={diag} />}
         </button>
       )}
       {after.map(render)}

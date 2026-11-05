@@ -60,14 +60,14 @@ function fmtNum(n: number): string {
 }
 const fmtARS = formatCurrency;
 
-const TABS = ["Impacto Campaña", "Eficiencia Medios", "Diagnóstico e Inteligencia"] as const;
+const TABS = ["Impacto Campaña", "Eficiencia Medios", "Plan de Mejora"] as const;
 // Pestañas que son rutas propias de Plan de Medios (mismo renglón de tabs).
 const TAB_LINKS = [
   { label: "Pauta Competencia", href: "/performance/competencia" },
   { label: "Simulador de Presupuesto", href: "/performance/simulador" },
   { label: "Plan anual", href: "/performance/plan" },
 ] as const;
-const TAB_PARAM: Record<string, Tab> = { impacto: "Impacto Campaña", eficiencia: "Eficiencia Medios", diagnostico: "Diagnóstico e Inteligencia" };
+const TAB_PARAM: Record<string, Tab> = { impacto: "Impacto Campaña", eficiencia: "Eficiencia Medios", diagnostico: "Plan de Mejora" };
 type Tab = (typeof TABS)[number];
 
 // Vista por categoría del Impacto Campaña (label "Cocinas" = categoría "Cocción").
@@ -1982,7 +1982,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       )}
 
       {/* ===== DIAGNÓSTICO E INTELIGENCIA (reemplazó a "Insights Pauta") ===== */}
-      {tab === "Diagnóstico e Inteligencia" && <DashDiagnostico dash="performance" embedded />}
+      {tab === "Plan de Mejora" && <DashDiagnostico dash="performance" embedded />}
     </div>
   );
 }
