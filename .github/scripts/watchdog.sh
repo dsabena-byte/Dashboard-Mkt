@@ -74,7 +74,7 @@ HEALTH=$(curl -s --max-time 120 -H "Authorization: Bearer ${CRON_SECRET:-}" "$HE
 if ! jq -e '.processes' >/dev/null 2>&1 <<<"$HEALTH"; then
   AGENTE="${AGENTE}- 🔴 El chequeo de frescura (/api/cron/health) no respondió: \`$(head -c 200 <<<"$HEALTH")\`.\n"
 else
-  while IFS=$'\t' read -r proceso conexion wf ageH cadH estado; do
+  while IFS='|' read -r proceso conexion wf ageH cadH estado; do
     [ -z "$proceso" ] && continue
     det="sin actualizar hace ${ageH} h (esperado cada ${cadH} h, $estado)"
     if [ -z "$wf" ] || [ "$wf" = "null" ]; then
@@ -87,7 +87,7 @@ else
     else
       PROBLEMAS="${PROBLEMAS}- 🟠 **$proceso**: $det (último run \`$last\`, ver arriba).\n"
     fi
-  done < <(jq -r '(.desvios // [])[] | [.proceso, .conexion, (.workflow // ""), (.ageH|tostring), (.cadenciaH|tostring), .estado] | @tsv' <<<"$HEALTH")
+  done < <(jq -r '(.desvios // [])[] | [.proceso, .conexion, (.workflow // ""), (.ageH|tostring), (.cadenciaH|tostring), .estado] | map(gsub("\\|"; "/")) | join("|")' <<<"$HEALTH")
 fi
 
 # --- 3) Issue (se cierra solo al recuperarse) ---

@@ -331,6 +331,21 @@ export async function GET(request: Request) {
     }
     out.filas_por_cuenta = perAccount;
     out.total_filas = all.length;
+    // Diagnóstico automático (para el watchdog/agente): si TODAS las cuentas dan 401, ¿qué permisos tiene el token y a qué
+    // cuentas llega? 401 con auth OK suele ser acceso a la cuenta (vínculo con la MCC) y no la clave; esto lo dice con datos.
+    if (all.length === 0 && customers.every((c) => String(out[`error_${c.label}`] ?? "").includes(" 401"))) {
+      try {
+        const tok = await getToken(false);
+        const ti = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${tok}`);
+        out.diag_scopes = ti.ok ? ((await ti.json()) as { scope?: string }).scope ?? null : `tokeninfo ${ti.status}`;
+        const h = gadsHeaders(tok);
+        delete h["login-customer-id"];
+        const la = await fetch(`${GADS_API}/customers:listAccessibleCustomers`, { headers: h });
+        const body = await la.text();
+        out.diag_accesibles = la.ok ? ((JSON.parse(body) as { resourceNames?: string[] }).resourceNames ?? []) : `listAccessibleCustomers ${la.status}: ${body.slice(0, 300)}`;
+        out.diag_login_customer = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ? "configurado" : "sin GOOGLE_ADS_LOGIN_CUSTOMER_ID";
+      } catch (e) { out.diag_error = e instanceof Error ? e.message : String(e); }
+    }
 
     if (dry) {
       // Muestra + agregados para validar contra la realidad sin escribir.
