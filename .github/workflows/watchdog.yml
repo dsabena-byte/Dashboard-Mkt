@@ -37,6 +37,18 @@ jobs:
             fi
           done
 
+          # --- 1b) Syncs PAGOS (DataForSEO / OpenAI / Apify): se avisan pero NO se reintentan solos
+          # (cada reintento vuelve a comprar lo mismo; oct-2026 vació el saldo de DataForSEO). Nov-2026: seo-sync
+          # falló por tiempo y nadie se enteró porque el dato mensual no llegaba al umbral «crítico».
+          PAGOS="seo-sync.yml llmo-sync.yml trends-sync.yml seo-audit.yml competencia-social.yml competencia-ig.yml ad-library.yml"
+          for wf in $PAGOS; do
+            concl=$(gh run list --workflow "$wf" --limit 1 --json conclusion --jq '.[0].conclusion // "none"' 2>/dev/null || echo "none")
+            echo "· (pago) $wf -> $concl"
+            if [ "$concl" = "failure" ] || [ "$concl" = "cancelled" ] || [ "$concl" = "timed_out" ]; then
+              PROBLEMS="${PROBLEMS}- ⚠️ Action paga **$wf**: último run \`$concl\` — NO se reintenta sola (gasta); revisar el log y relanzar a mano.\n"
+            fi
+          done
+
           # --- 2) Frescura de datos (incluye Apps Script: DV360, Planning, CB, Floor) ---
           HEALTH=$(curl -s --max-time 120 -H "Authorization: Bearer ${CRON_SECRET:-}" "$HEALTH_URL" || echo '{}')
           echo "health: $HEALTH"

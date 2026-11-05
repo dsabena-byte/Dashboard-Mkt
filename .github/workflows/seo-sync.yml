@@ -16,7 +16,7 @@ on:
       limit:
         description: "Keywords por chunk (default 50 con cola Standard; 40 si DATAFORSEO_MODE=live)"
         required: false
-        default: "50"
+        default: "20"
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://dashboard-mkt-seven.vercel.app/api/cron/seo-sync"
-          LIMIT="${LIMIT_INPUT:-50}"
+          LIMIT="${LIMIT_INPUT:-20}"
           OFFSET=0
           for i in $(seq 1 30); do
             URL="${BASE}?offset=${OFFSET}&limit=${LIMIT}"

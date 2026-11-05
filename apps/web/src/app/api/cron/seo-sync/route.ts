@@ -81,7 +81,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const offset = Math.max(Number(url.searchParams.get("offset") ?? 0), 0);
-  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 80), 1), 200);
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 20), 1), 200); // 20: con 50 la cola + /live pasaba los 300 s de Vercel (nov-2026)
 
   // Universo ordenado por volumen desc (lo más importante primero).
   const universo = [...KEYWORD_UNIVERSE].sort((a, b) => b.volume - a.volume);
@@ -115,11 +115,14 @@ export async function GET(request: Request) {
       const seen = new Set<string>();
       for (const it of items) {
         if (it.type !== "organic") continue;
-        const dom = (it.domain ?? "").toLowerCase();
+        // Desde nov-2026 DataForSEO devuelve muchos orgánicos con domain "google.com" y url "google.com/goto?url=…": el sitio real va en breadcrumb.
+        const redir = /\/goto\?url=/.test(String(it.url ?? ""));
+        const dom = (redir ? (String((it as { breadcrumb?: string }).breadcrumb ?? "").match(/^https?:\/\/([^\s/›]+)/i)?.[1] ?? "") : (it.domain ?? "")).toLowerCase();
+        const urlReal = redir ? (String((it as { breadcrumb?: string }).breadcrumb ?? "").split(/\s*›\s*/)[0] || null) : (it.url ?? null);
         for (const td of TRACKED_DOMAINS) {
           if (dom.includes(td.dominio) && !seen.has(td.display)) {
             seen.add(td.display);
-            rows.push({ dominio: td.dominio, marca: td.display, keyword: kw.keyword, categoria: kw.categoria, posicion: it.rank_group ?? null, search_volume: kw.volume, url: it.url ?? null, fecha, fetched_at: now });
+            rows.push({ dominio: td.dominio, marca: td.display, keyword: kw.keyword, categoria: kw.categoria, posicion: it.rank_group ?? null, search_volume: kw.volume, url: urlReal, fecha, fetched_at: now });
           }
         }
       }
