@@ -23,9 +23,10 @@ async function handler(request: Request) {
       estado: r.estado,
       ageH: r.ageH == null ? null : Math.round(r.ageH),
       lastUpdate: r.date,
+      workflow: r.proc.workflow ?? null,
     }));
-    // Solo consideramos "desvío" lo crítico (atrasado es tolerancia, sindato es no medible).
-    const desvios = processes.filter((p) => p.estado === "critico");
+    // Atrasado también es desvío: el watchdog lo corrige antes de que el tablero quede viejo (sindato = no medible).
+    const desvios = processes.filter((p) => p.estado === "critico" || p.estado === "atrasado");
     return NextResponse.json({
       ok: desvios.length === 0,
       generatedAt: new Date().toISOString(),

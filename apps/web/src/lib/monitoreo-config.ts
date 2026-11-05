@@ -54,7 +54,8 @@ export const PROCS: Proc[] = [
 export function estadoDe(date: string | null, cadenciaH: number, nowMs: number): { estado: Estado; ageH: number | null } {
   if (!date) return { estado: "sindato", ageH: null };
   const ageH = (nowMs - new Date(date).getTime()) / 3_600_000;
-  if (ageH <= cadenciaH * 1.5) return { estado: "ok", ageH };
+  // Margen chico (≤48 h): con ×1,5 un proceso mensual podía estar 15 días atrasado sin que nadie se enterara (nov-2026).
+  if (ageH <= cadenciaH + Math.min(Math.max(6, cadenciaH * 0.5), 48)) return { estado: "ok", ageH };
   if (ageH <= cadenciaH * 3) return { estado: "atrasado", ageH };
   return { estado: "critico", ageH };
 }

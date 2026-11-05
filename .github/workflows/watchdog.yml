@@ -20,57 +20,6 @@ jobs:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       HEALTH_URL: https://dashboard-mkt-seven.vercel.app/api/cron/health
     steps:
-      - name: Vigilar Actions + frescura de datos
-        run: |
-          set -uo pipefail
-
-          # --- 1) Estado de los GitHub Actions de sync (auto-reintento si fallan) ---
-          WFS="ga4-sync.yml bgt-sync.yml meta-paid-sync.yml organic-insights.yml clasificar-contenido.yml meta-fb-sync.yml ig-sync-6h.yml ig-sentiment-sync.yml ugc-comments-graph.yml ugc-comments-sync.yml ugc-comments-analysis.yml"
-          PROBLEMS=""
-          for wf in $WFS; do
-            concl=$(gh run list --workflow "$wf" --limit 1 --json conclusion --jq '.[0].conclusion // "none"' 2>/dev/null || echo "none")
-            id=$(gh run list --workflow "$wf" --limit 1 --json databaseId --jq '.[0].databaseId // ""' 2>/dev/null || echo "")
-            echo "· $wf -> $concl"
-            if [ "$concl" = "failure" ] || [ "$concl" = "cancelled" ] || [ "$concl" = "timed_out" ]; then
-              PROBLEMS="${PROBLEMS}- ❌ Action **$wf**: último run \`$concl\` — reintentado automáticamente.\n"
-              [ -n "$id" ] && gh run rerun "$id" --failed 2>/dev/null || true
-            fi
-          done
-
-          # --- 1b) Syncs PAGOS (DataForSEO / OpenAI / Apify): se avisan pero NO se reintentan solos
-          # (cada reintento vuelve a comprar lo mismo; oct-2026 vació el saldo de DataForSEO). Nov-2026: seo-sync
-          # falló por tiempo y nadie se enteró porque el dato mensual no llegaba al umbral «crítico».
-          PAGOS="seo-sync.yml llmo-sync.yml trends-sync.yml seo-audit.yml competencia-social.yml competencia-ig.yml ad-library.yml"
-          for wf in $PAGOS; do
-            concl=$(gh run list --workflow "$wf" --limit 1 --json conclusion --jq '.[0].conclusion // "none"' 2>/dev/null || echo "none")
-            echo "· (pago) $wf -> $concl"
-            if [ "$concl" = "failure" ] || [ "$concl" = "cancelled" ] || [ "$concl" = "timed_out" ]; then
-              PROBLEMS="${PROBLEMS}- ⚠️ Action paga **$wf**: último run \`$concl\` — NO se reintenta sola (gasta); revisar el log y relanzar a mano.\n"
-            fi
-          done
-
-          # --- 2) Frescura de datos (incluye Apps Script: DV360, Planning, CB, Floor) ---
-          HEALTH=$(curl -s --max-time 120 -H "Authorization: Bearer ${CRON_SECRET:-}" "$HEALTH_URL" || echo '{}')
-          echo "health: $HEALTH"
-          DESV=$(echo "$HEALTH" | jq -r '(.desvios // []) | .[] | "- 🔴 Datos **\(.proceso)** (\(.conexion)): sin actualizar hace \(.ageH)h (esperado cada \(.cadenciaH)h)."' 2>/dev/null || true)
-          [ -n "$DESV" ] && PROBLEMS="${PROBLEMS}${DESV}\n"
-
-          # --- 3) Alerta como GitHub Issue (se cierra sola al recuperarse) ---
-          TITLE="🔴 Watchdog: procesos de datos con desvío"
-          EXIST=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""' 2>/dev/null || echo "")
-          NOW=$(date -u '+%Y-%m-%d %H:%M UTC')
-          if [ -n "$PROBLEMS" ]; then
-            BODY=$(printf "Detectado por el watchdog el %s.\n\n%b\n_Los Actions se reintentan solos; los de Apps Script (DV360/Planning/CB/Floor) requieren activar el trigger del lado de Google._" "$NOW" "$PROBLEMS")
-            if [ -n "$EXIST" ]; then
-              gh issue comment "$EXIST" --body "$BODY"
-            else
-              gh issue create --title "$TITLE" --body "$BODY" 2>/dev/null || true
-            fi
-            echo "::warning::Watchdog encontró desvíos"
-          else
-            if [ -n "$EXIST" ]; then
-              gh issue comment "$EXIST" --body "✅ Todo recuperado ($NOW). Cerrando alerta."
-              gh issue close "$EXIST"
-            fi
-            echo "Todo OK — sin desvíos"
-          fi
+      - uses: actions/checkout@v4
+      - name: Detectar, diagnosticar y corregir
+        run: bash .github/scripts/watchdog.sh
