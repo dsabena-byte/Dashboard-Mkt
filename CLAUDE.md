@@ -666,6 +666,7 @@ reporte_existencia/cb_homologos).
   solo esas semanas (~1,4 s). Verificado idéntico al cálculo completo. Otros filtros (categoría/cliente/promotor/tienda) = camino completo + caché.
   Carga con varios archivos: "Confirmar todos" (27-oct: Vanesa subió CB + FS sem 43 y solo se confirmó el CB). La semana 37 de CB NO existía
   ni en el proyecto CB viejo (hueco de origen); se cargó el 27-oct.
+- **`bgt-sync` BORRADO (7-nov-2026, pedido del user: «no quiero que se actualice más el BGT Inversión»):** se borró `bgt-sync.yml` y el proceso «BGT Inversión» de `monitoreo-config.ts` (el watchdog lo marcaba crítico: `bgt_marketing` congelada desde el data.json viejo). La inversión se carga solo desde /funnel/carga. **Mkt de Influencia (UGC)** en el monitoreo ya no filtra `categoria = UGC`: desde sep-2026 no hay ads de Meta clasificados UGC (verificado 7-nov) y el watchdog lo daba por caído aunque `meta-paid-sync` corría bien.
 - **Sync de SharePoint BORRADO (28-oct, pedido del user):** el workflow «Sync presupuestos desde SharePoint» de Dashboard-BGT (fallaba: link vencido) se eliminó (Dashboard-BGT#10). `data.json` queda congelado; el presupuesto se carga desde /funnel.
 - **Sin 2023 (16-oct, user: "info muy vieja"):** `ANIO_MINIMO = 2024` (presupuesto-core) filtra años anteriores en `getBgtData` (tablero,
   chat, señales) y en `/api/presupuesto` (versiones, TC, facturación de la carga). Los datos NO se borran de la base.
