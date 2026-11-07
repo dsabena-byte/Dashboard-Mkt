@@ -41,7 +41,7 @@ jobs:
             echo "::error::Endpoint returned HTTP $HTTP_CODE"
             exit 1
           fi
-          if grep -q '"error"' response.json; then
+          if jq -e 'type=="object" and has("error")' response.json >/dev/null 2>&1; then
             echo "::error::Cron devolvió error"
             exit 1
           fi
