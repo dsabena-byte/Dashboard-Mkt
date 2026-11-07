@@ -352,3 +352,9 @@ causa raíz · qué se hizo.
 ## 2026-11-01 (UTC)
 - **trends-sync** (GitHub Action): último run (38272266000, 2026-10-12) falló con HTTP 500 `DataForSEO sin saldo (Payment Required)`. `seo-sync` mismo patrón (último run 37620554162, 2026-10-07). Acción: **pendiente manual** — el user debe cargar saldo en DataForSEO. NO re-disparado (workflows pagos, regla CLAUDE.md).
 - Resto de syncs en verde. Issue watchdog #828 es de 2026-10-08 (BGT, ya recuperado: `bgt-sync` success) — desactualizado, no se tocó.
+
+## 2026-11-07 (UTC) — tiktok-sync falso rojo; google-ads-sync credencial; BGT/UGC
+- **tiktok-sync** (run 42370246203): HTTP 200, `upsert: 969 filas OK`; el job falla porque el workflow hace `grep -q '"error"'` y matchea el `error` ANIDADO de `piezas.manifiesto` ("0 piezas: no se pisa el manifiesto", esperado desde que OMD discontinuó TikTok en oct). Verificado en el log. **Acción:** el check pasa a mirar solo `error` de primer nivel (jq). PR de esta rama.
+- **google-ads-sync** (run 42223760958): `searchStream 401` (credencial). Reintentar no sirve. **Pendiente humano:** renovar `GOOGLE_REFRESH_TOKEN` (scopes en CLAUDE.md, sección Search Console) en Vercel + GitHub secrets.
+- **BGT Inversión (#828):** `bgt-sync` OK pero la fuente data.json está congelada (sync de SharePoint borrado 28-oct, el presupuesto se carga en /funnel). **Pendiente humano:** dar de baja la vigilancia de `bgt-sync` en `monitoreo-config.ts` y cerrar #828.
+- **Mkt de Influencia (UGC)** sin actualizar 158 h con `meta-paid-sync` en success: causa **sin verificar** (sin acceso a Supabase). **SEO índice histórico** 1602 h: último run `cancelled`; pago, no se relanzó.
