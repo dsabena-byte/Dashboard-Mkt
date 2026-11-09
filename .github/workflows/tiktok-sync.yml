@@ -41,7 +41,8 @@ jobs:
             echo "::error::Endpoint returned HTTP $HTTP_CODE"
             exit 1
           fi
-          if grep -q '"error"' response.json; then
+          # solo el error de nivel raíz: manifiesto.error ("0 piezas") es informativo
+          if python3 -c 'import json,sys; sys.exit(0 if "error" in json.load(open("response.json")) else 1)'; then
             echo "::error::Cron devolvió error"
             exit 1
           fi
