@@ -352,3 +352,8 @@ causa raíz · qué se hizo.
 ## 2026-11-01 (UTC)
 - **trends-sync** (GitHub Action): último run (38272266000, 2026-10-12) falló con HTTP 500 `DataForSEO sin saldo (Payment Required)`. `seo-sync` mismo patrón (último run 37620554162, 2026-10-07). Acción: **pendiente manual** — el user debe cargar saldo en DataForSEO. NO re-disparado (workflows pagos, regla CLAUDE.md).
 - Resto de syncs en verde. Issue watchdog #828 es de 2026-10-08 (BGT, ya recuperado: `bgt-sync` success) — desactualizado, no se tocó.
+
+## 2026-11-09 (UTC)
+- **tiktok-sync** (falso rojo, desde 31-oct): el cron responde HTTP 200 y upsertea 968 filas, pero el paso «grep "error"» del workflow matchea `piezas.manifiesto.error = "0 piezas: no se pisa el manifiesto"` (informativo: sin piezas en la ventana; OMD discontinuó TikTok en oct). Evidencia: log run 42479224439. Acción: el workflow ahora falla solo con `error` de nivel raíz (PR `claude/fix-monitoreo-tiktok-error`).
+- **google-ads-sync**: `401 UNAUTHENTICATED` en las 4 cuentas, `tokeninfo 400`, `listAccessibleCustomers 401` (run 42479057889) → refresh token de Google inválido/revocado. **Pendiente humano:** regenerar `GOOGLE_REFRESH_TOKEN` (OAuth Playground, 4 scopes, ver CLAUDE.md) en Vercel + GitHub secrets y redeploy. No se relanza (falla igual).
+- **SEO · Interés por provincia**: carga manual, atrasado (2215 h vs 2160 h) → pendiente humano.
