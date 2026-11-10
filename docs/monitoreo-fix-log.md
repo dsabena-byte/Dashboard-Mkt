@@ -357,3 +357,9 @@ causa raíz · qué se hizo.
 - **tiktok-sync** (falso rojo, desde 31-oct): el cron responde HTTP 200 y upsertea 968 filas, pero el paso «grep "error"» del workflow matchea `piezas.manifiesto.error = "0 piezas: no se pisa el manifiesto"` (informativo: sin piezas en la ventana; OMD discontinuó TikTok en oct). Evidencia: log run 42479224439. Acción: el workflow ahora falla solo con `error` de nivel raíz (PR `claude/fix-monitoreo-tiktok-error`).
 - **google-ads-sync**: `401 UNAUTHENTICATED` en las 4 cuentas, `tokeninfo 400`, `listAccessibleCustomers 401` (run 42479057889) → refresh token de Google inválido/revocado. **Pendiente humano:** regenerar `GOOGLE_REFRESH_TOKEN` (OAuth Playground, 4 scopes, ver CLAUDE.md) en Vercel + GitHub secrets y redeploy. No se relanza (falla igual).
 - **SEO · Interés por provincia**: carga manual, atrasado (2215 h vs 2160 h) → pendiente humano.
+
+## 2026-11-10 (UTC)
+- **tiktok-sync:** verificado en success (run 42614403883 manual 9-nov y 42634143979 programado 9-nov 14:23) tras #1025. Cerrado.
+- **google-ads-sync:** sigue 401 (run 42633692689, 9-nov). **Pendiente humano:** regenerar `GOOGLE_REFRESH_TOKEN` (4 scopes) en Vercel + GitHub secrets y redeploy. No se relanza.
+- **SEO · Interés por provincia:** carga manual atrasada (2240 h vs 2160 h) → pendiente humano.
+- **SEO · Índice de posición / seo-sync:** último run 5-nov `cancelled` (manual, 42068361432), anterior 1-nov failure; causa de la cancelación **sin verificar** (no leída). Workflow pago: no se relanzó (sin evidencia de saldo; lo gestiona el watchdog, que reanuda).
