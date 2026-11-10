@@ -12,6 +12,7 @@ function env(key: string): string {
 async function getAccessToken(): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
+    cache: "no-store",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: env("GOOGLE_CLIENT_ID"),

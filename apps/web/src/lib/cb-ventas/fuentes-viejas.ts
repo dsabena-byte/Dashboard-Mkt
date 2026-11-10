@@ -47,6 +47,7 @@ async function driveToken(): Promise<string> {
   const sig = createSign("RSA-SHA256").update(unsigned).sign(sa.private_key).toString("base64url");
   const res = await fetch(sa.token_uri ?? "https://oauth2.googleapis.com/token", {
     method: "POST",
+    cache: "no-store",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${unsigned}.${sig}` }),
   });
