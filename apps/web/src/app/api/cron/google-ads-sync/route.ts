@@ -35,6 +35,7 @@ function env(key: string): string {
 async function getAccessToken(): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
+    cache: "no-store",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: env("GOOGLE_CLIENT_ID"),
@@ -45,11 +46,12 @@ async function getAccessToken(): Promise<string> {
   });
   if (!res.ok) throw new Error(`Google OAuth refresh failed ${res.status}: ${await res.text()}`);
   const j = (await res.json()) as { access_token: string; scope?: string; expires_in?: number };
-  ultimoToken = { scope: j.scope ?? null, expira_s: j.expires_in ?? null, largo: j.access_token?.length ?? 0 };
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(j.access_token ?? ""));
+  ultimoToken = { scope: j.scope ?? null, expira_s: j.expires_in ?? null, largo: j.access_token?.length ?? 0, huella: Buffer.from(h).toString("hex").slice(0, 8), fecha: res.headers.get("date") };
   return j.access_token;
 }
 // Diagnóstico del 401 intermitente (nov-2026: el mismo token anda unos días sí y otros no): qué devolvió el refresh.
-let ultimoToken: { scope: string | null; expira_s: number | null; largo: number } | null = null;
+let ultimoToken: { scope: string | null; expira_s: number | null; largo: number; huella: string; fecha: string | null } | null = null;
 
 function gadsHeaders(token: string): Record<string, string> {
   const h: Record<string, string> = {
@@ -360,6 +362,9 @@ export async function GET(request: Request) {
         const fresco = await getToken(true);
         const la2 = await fetch(`${GADS_API}/customers:listAccessibleCustomers`, { headers: { Authorization: `Bearer ${fresco}`, "developer-token": env("GOOGLE_ADS_DEVELOPER_TOKEN") } });
         out.diag_ads_token_fresco = `${la2.status}: ${(await la2.text()).slice(0, 200)}`;
+        out.diag_token_fresco = ultimoToken;
+        const ga2 = await fetch("https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=1", { headers: { Authorization: `Bearer ${fresco}` }, cache: "no-store" });
+        out.diag_ga4_token_fresco = ga2.ok ? "200 OK" : `${ga2.status}`;
       } catch (e) { out.diag_error = e instanceof Error ? e.message : String(e); }
     }
 
