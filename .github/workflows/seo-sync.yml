@@ -24,7 +24,7 @@ permissions:
 jobs:
   trigger:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180  # 489 keywords × ~3,8 min por bloque de 20 ≈ 95 min (5-nov se cortó a los 60 con 300/489)
     steps:
       - name: SERP matrix por chunks
         run: |
