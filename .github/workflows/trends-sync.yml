@@ -6,7 +6,7 @@ name: Trends sync (demanda · Share of Search)
 on:
   schedule:
     - cron: "20 6 5 * *"  # día 5 de cada mes, 06:20 UTC
-    - cron: "40 6 5 2,5,8,11 *"  # interés por provincia (mapa), trimestral: ~32 pedidos ≈ US$0,35
+    - cron: "40 6 5 * *"  # interés por provincia (mapa), mensual: ~32 pedidos ≈ US$0,35
   workflow_dispatch:
     inputs:
       only:
@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euo pipefail
           ONLY="${ONLY_INPUT:-}"
-          if [ "${SCHEDULE:-}" = "40 6 5 2,5,8,11 *" ]; then ONLY="region"; fi
+          if [ "${SCHEDULE:-}" = "40 6 5 * *" ]; then ONLY="region"; fi
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/trends-sync"
           if [ -n "$ONLY" ]; then URL="${URL}?only=${ONLY}"; fi
           echo "GET $URL"
