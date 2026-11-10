@@ -44,8 +44,12 @@ async function getAccessToken(): Promise<string> {
     }),
   });
   if (!res.ok) throw new Error(`Google OAuth refresh failed ${res.status}: ${await res.text()}`);
-  return ((await res.json()) as { access_token: string }).access_token;
+  const j = (await res.json()) as { access_token: string; scope?: string; expires_in?: number };
+  ultimoToken = { scope: j.scope ?? null, expira_s: j.expires_in ?? null, largo: j.access_token?.length ?? 0 };
+  return j.access_token;
 }
+// Diagnóstico del 401 intermitente (nov-2026: el mismo token anda unos días sí y otros no): qué devolvió el refresh.
+let ultimoToken: { scope: string | null; expira_s: number | null; largo: number } | null = null;
 
 function gadsHeaders(token: string): Record<string, string> {
   const h: Record<string, string> = {
@@ -337,6 +341,7 @@ export async function GET(request: Request) {
       try {
         const tok = await getToken(false);
         const ti = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${tok}`);
+        out.diag_token = ultimoToken;
         out.diag_scopes = ti.ok ? ((await ti.json()) as { scope?: string }).scope ?? null : `tokeninfo ${ti.status}`;
         const h = gadsHeaders(tok);
         delete h["login-customer-id"];
