@@ -158,6 +158,53 @@ async function syncTrends(defs: KeywordDef[]): Promise<number> {
   return rows.length;
 }
 
+// ===== 3) Interés por provincia (mapa) — trimestral (seo-region.yml, ?only=region) =====
+// Una búsqueda por pedido: cada marca queda en su propia escala 0–100 por provincia (igual que la carga del 8-ago-2026).
+// Costo: 1 pedido live por búsqueda (~US$0,011 c/u, ~32 pedidos ≈ US$0,35 por corrida).
+interface TrendsMapItem { type: string; data?: Array<{ geo_name?: string; values?: Array<number | null> }> }
+const provinciaNorm = (geo: string) => {
+  const s = geo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  if (/ciudad|capital federal|caba/i.test(s)) return "Capital Federal";
+  return s.replace(/^provincia de /i, "").replace(/ province$/i, "");
+};
+
+async function syncRegion(defs: KeywordDef[]): Promise<{ filas: number; fallidas: string[] }> {
+  const rows: Record<string, unknown>[] = [];
+  const fallidas: string[] = [];
+  const fetchedAt = new Date().toISOString();
+  // 6 pedidos a la vez: 32 en serie (hasta ~30 s c/u en live) no entran en los 300 s de la función.
+  const cola = [...defs];
+  await Promise.all(Array.from({ length: 6 }, async () => {
+   for (let d = cola.shift(); d; d = cola.shift()) {
+    try {
+      const resp = await dfsPost<{ tasks: Array<{ result: Array<{ items: TrendsMapItem[] }> }> }>(
+        "/keywords_data/google_trends/explore/live",
+        [{ keywords: [d.keyword], location_code: LOCATION_CODE_AR, language_code: LANGUAGE_CODE_ES, time_range: "past_12_months", item_types: ["google_trends_map"] }],
+      );
+      const map = (resp.tasks?.[0]?.result?.[0]?.items ?? []).find((it) => it.type === "google_trends_map");
+      const marca = d.marca ?? "Genérico";
+      for (const g of map?.data ?? []) {
+        const v = g.values?.[0];
+        if (!g.geo_name || v == null) continue;
+        rows.push({ marca, categoria: d.categoria, provincia: provinciaNorm(g.geo_name), interes: v, fetched_at: fetchedAt });
+      }
+    } catch (e) {
+      if (e instanceof Error && /sin saldo/.test(e.message)) throw e;
+      fallidas.push(d.keyword);
+    }
+   }
+  }));
+  if (!rows.length) throw new Error(`Google Trends no devolvió provincias (fallidas: ${fallidas.join(", ") || "ninguna"})`);
+  await sbUpsert("search_region", "marca,categoria,provincia", rows);
+  // Con todas las búsquedas OK, se borran las provincias viejas que ya no vinieron; si alguna falló, queda lo anterior de esa.
+  if (!fallidas.length) {
+    const url = env("NEXT_PUBLIC_SUPABASE_URL"), key = env("SUPABASE_SERVICE_ROLE_KEY");
+    const del = await fetch(`${url}/rest/v1/search_region?fetched_at=lt.${encodeURIComponent(fetchedAt)}`, { method: "DELETE", headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!del.ok) throw new Error(`Supabase search_region (borrar): ${del.status}`);
+  }
+  return { filas: rows.length, fallidas };
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -166,7 +213,7 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const only = url.searchParams.get("only"); // "volume" | "trends" | null (ambos)
+  const only = url.searchParams.get("only"); // "volume" | "trends" | "region" (solo provincias) | null (volumen + trends)
   const defs = buildKeywordUniverse();
   const out: Record<string, unknown> = {
     keywords: defs.length,
@@ -174,8 +221,14 @@ export async function GET(request: Request) {
     categorias: CATEGORIAS.map((c) => CATEGORIA_TERMINO[c]),
   };
   try {
-    if (only !== "trends") out.search_volume_filas = await syncSearchVolume(defs);
-    if (only !== "volume") out.trends_filas = await syncTrends(defs);
+    if (only === "region") {
+      const r = await syncRegion(defs);
+      out.region_filas = r.filas;
+      out.region_fallidas = r.fallidas;
+    } else {
+      if (only !== "trends") out.search_volume_filas = await syncSearchVolume(defs);
+      if (only !== "volume") out.trends_filas = await syncTrends(defs);
+    }
     out.ok = true;
     return NextResponse.json(out);
   } catch (e) {
