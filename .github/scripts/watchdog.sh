@@ -11,7 +11,8 @@ PAGOS=" seo-sync.yml trends-sync.yml llmo-sync.yml ad-library.yml competencia-so
 REANUDABLES=" seo-sync.yml "
 SKIP=" watchdog.yml publicar-contenido.yml "
 
-PROBLEMAS=""   # lo que se arregló solo (informativo)
+PROBLEMAS=""   # lo que el watchdog relanzó/reintentó en esta vuelta (se verifica en la próxima)
+RELANZADOS=" " # workflows relanzados o reintentados en esta vuelta
 AGENTE=""      # lo que necesita al agente (código) o al user (saldo/credencial)
 
 causa_de() {   # clasifica el log del paso que falló
@@ -52,17 +53,25 @@ for f in .github/workflows/*.yml; do
   causa=$(causa_de "$log")
   extracto=$(grep -iE 'error|fail|exit code|timed out|unauthor|payment|sin saldo|"ok": ?false' <<<"$log" | tail -3 | sed 's/^/    /')
   case "$causa" in
-    saldo|credencial)
-      AGENTE="${AGENTE}- 🔴 **$wf** falló por **$causa** ([run]($url)). Reintentar no sirve: hay que cargar saldo / renovar la credencial.\n\`\`\`\n${extracto}\n\`\`\`\n" ;;
+    saldo)
+      AGENTE="${AGENTE}- 🔴 **$wf** falló por **falta de saldo** ([run]($url)). Reintentar no sirve: hay que cargar saldo en el proveedor.\n\`\`\`\n${extracto}\n\`\`\`\n" ;;
+    credencial)
+      if grep -qiE '"auth" ?: ?"OK"|auth: ?OK' <<<"$log"; then
+        AGENTE="${AGENTE}- 🔴 **$wf** falló con **401/403 pero el token se renueva bien** (auth OK) ([run]($url)). NO regenerar el token: la API rechaza el acceso a la cuenta (permisos, developer token o API deshabilitada). Revisar el error de la API en el run.\n\`\`\`\n${extracto}\n\`\`\`\n"
+      else
+        AGENTE="${AGENTE}- 🔴 **$wf** falló por **credencial inválida o vencida** ([run]($url)). Reintentar no sirve: hay que renovarla.\n\`\`\`\n${extracto}\n\`\`\`\n"
+      fi ;;
     *)
       if [[ "$PAGOS" == *" $wf "* && "$REANUDABLES" != *" $wf "* ]]; then
         AGENTE="${AGENTE}- 🔴 **$wf** (pago) falló por **$causa** ([run]($url)). No se relanza solo porque recompra todo: el agente debe corregir la causa y relanzar.\n\`\`\`\n${extracto}\n\`\`\`\n"
       elif [[ "$REANUDABLES" == *" $wf "* ]]; then
-        acc=$(relanzar "$wf"); PROBLEMAS="${PROBLEMAS}- 🔁 **$wf** falló por **$causa** → $acc (reanuda: no recompra lo ya guardado).\n"
+        if acc=$(relanzar "$wf"); then RELANZADOS="${RELANZADOS}$wf "; PROBLEMAS="${PROBLEMAS}- 🔁 **$wf** falló por **$causa** → $acc (reanuda: no recompra lo ya guardado).\n"
+        else AGENTE="${AGENTE}- 🛠 **$wf** falló por **$causa** ([run]($url)) y $acc: necesita corrección.\n"; fi
         [ "$causa" = timeout ] || [ "$causa" = desconocido ] && AGENTE="${AGENTE}- 🛠 **$wf**: causa **$causa** ([run]($url)); si vuelve a fallar hay que corregir el código.\n\`\`\`\n${extracto}\n\`\`\`\n"
       elif [ "${attempt:-1}" -lt 3 ]; then
-        gh run rerun "$id" --failed >/dev/null 2>&1 && acc="reintentado (intento $((attempt + 1)))" || acc="no se pudo reintentar"
-        PROBLEMAS="${PROBLEMAS}- 🔁 **$wf** falló por **$causa** → $acc.\n"
+        if gh run rerun "$id" --failed >/dev/null 2>&1; then
+          RELANZADOS="${RELANZADOS}$wf "; PROBLEMAS="${PROBLEMAS}- 🔁 **$wf** falló por **$causa** → reintentado (intento $((attempt + 1))).\n"
+        else AGENTE="${AGENTE}- 🛠 **$wf** falló por **$causa** ([run]($url)) y no se pudo reintentar: necesita corrección.\n"; fi
       else
         AGENTE="${AGENTE}- 🛠 **$wf** falló 3 veces seguidas por **$causa** ([run]($url)): necesita corregir la causa.\n\`\`\`\n${extracto}\n\`\`\`\n"
       fi ;;
@@ -82,10 +91,13 @@ else
     fi
     last=$(gh run list --workflow "$wf" --status completed --limit 1 --json conclusion --jq '.[0].conclusion // "none"' 2>/dev/null || echo none)
     if [ "$last" = success ]; then
-      acc=$(relanzar "$wf") || true
+      acc=$(relanzar "$wf") && RELANZADOS="${RELANZADOS}$wf "
       AGENTE="${AGENTE}- 🛠 **$proceso**: $det, pero el último run de \`$wf\` terminó OK → corre sin traer datos ($acc). Revisar qué devuelve la fuente.\n"
+    elif [[ "$RELANZADOS" == *" $wf "* ]]; then
+      PROBLEMAS="${PROBLEMAS}- 🟠 **$proceso**: $det → \`$wf\` se relanzó en esta vuelta; se verifica en la próxima.\n"
     else
-      PROBLEMAS="${PROBLEMAS}- 🟠 **$proceso**: $det (último run \`$last\`, ver arriba).\n"
+      # nada lo corrigió (último run cancelado, pago que no se relanza solo, o falla ya reportada arriba)
+      AGENTE="${AGENTE}- 🟠 **$proceso**: $det. Último run de \`$wf\`: \`$last\`; no se relanzó en esta vuelta → sigue sin datos.\n"
     fi
   done < <(jq -r '(.desvios // [])[] | [.proceso, .conexion, (.workflow // ""), (.ageH|tostring), (.cadenciaH|tostring), .estado] | map(gsub("\\|"; "/")) | join("|")' <<<"$HEALTH")
 fi
@@ -97,7 +109,7 @@ NOW=$(date -u '+%Y-%m-%d %H:%M UTC')
 if [ -n "$PROBLEMAS$AGENTE" ]; then
   BODY=$(printf "Watchdog %s.\n\n" "$NOW")
   [ -n "$AGENTE" ] && BODY+=$(printf "### Necesita corrección (agente de monitoreo)\n%b\n" "$AGENTE")
-  [ -n "$PROBLEMAS" ] && BODY+=$(printf "\n### Corregido automáticamente\n%b" "$PROBLEMAS")
+  [ -n "$PROBLEMAS" ] && BODY+=$(printf "\n### Relanzado en esta vuelta (se verifica en la próxima)\n%b" "$PROBLEMAS")
   gh label create watchdog-agente --color B60205 --description "El agente de monitoreo debe corregirlo" >/dev/null 2>&1 || true
   if [ -n "$EXIST" ]; then gh issue comment "$EXIST" --body "$BODY"
   else gh issue create --title "$TITLE" --body "$BODY" --label watchdog-agente >/dev/null 2>&1 || gh issue create --title "$TITLE" --body "$BODY" || true; fi
