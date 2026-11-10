@@ -349,6 +349,17 @@ export async function GET(request: Request) {
         const body = await la.text();
         out.diag_accesibles = la.ok ? ((JSON.parse(body) as { resourceNames?: string[] }).resourceNames ?? []) : `listAccessibleCustomers ${la.status}: ${body.slice(0, 300)}`;
         out.diag_login_customer = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID ? "configurado" : "sin GOOGLE_ADS_LOGIN_CUSTOMER_ID";
+        // ¿El MISMO token sirve para otra API de Google (GA4)? Separa "token inválido" de "Ads rechaza este token".
+        out.diag_token_prefijo = tok.slice(0, 5);
+        const ti3 = await fetch("https://www.googleapis.com/oauth2/v3/tokeninfo", {
+          method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ access_token: tok }),
+        });
+        out.diag_tokeninfo_v3 = `${ti3.status}: ${(await ti3.text()).slice(0, 300)}`;
+        const ga = await fetch("https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=1", { headers: { Authorization: `Bearer ${tok}` } });
+        out.diag_ga4_mismo_token = ga.ok ? "200 OK" : `${ga.status}: ${(await ga.text()).slice(0, 200)}`;
+        const fresco = await getToken(true);
+        const la2 = await fetch(`${GADS_API}/customers:listAccessibleCustomers`, { headers: { Authorization: `Bearer ${fresco}`, "developer-token": env("GOOGLE_ADS_DEVELOPER_TOKEN") } });
+        out.diag_ads_token_fresco = `${la2.status}: ${(await la2.text()).slice(0, 200)}`;
       } catch (e) { out.diag_error = e instanceof Error ? e.message : String(e); }
     }
 
