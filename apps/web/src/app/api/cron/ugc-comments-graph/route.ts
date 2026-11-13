@@ -124,6 +124,7 @@ export async function GET(req: Request) {
       }
 
       // 4) Guardar (si trajo algo, reemplaza lo de ese permalink).
+      let saveFailed = false;
       try {
         if (comments.length > 0) {
           await sb(`ugc_comments?permalink=eq.${encodeURIComponent(permalink)}`, { method: "DELETE" });
@@ -134,12 +135,16 @@ export async function GET(req: Request) {
         }
       } catch (e) {
         lastError = e instanceof Error ? e.message : String(e);
+        saveFailed = true;
       }
 
-      processed.push({ permalink, via, comments: comments.length, comments_count: commentsCount, media_id: igMediaId, owner, media_type: mediaType, ...(lastError && comments.length === 0 ? { error: lastError } : {}) });
+      processed.push({ permalink, via, comments: comments.length, comments_count: commentsCount, media_id: igMediaId, owner, media_type: mediaType, ...(lastError && (comments.length === 0 || saveFailed) ? { error: lastError } : {}) });
     }
 
-    return NextResponse.json({ ok: true, piezas: byLink.size, procesados: entries.length, processed });
+    // Si TODAS las piezas fallaron (ej. rate limit de Meta, 12-nov-2026) el workflow tiene que dar rojo
+    // para que el watchdog lo reintente; antes devolvía 200 y quedaba «verde sin datos».
+    const todasFallaron = processed.length > 0 && processed.every((p) => p.error);
+    return NextResponse.json({ ok: !todasFallaron, piezas: byLink.size, procesados: entries.length, processed }, { status: todasFallaron ? 502 : 200 });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
