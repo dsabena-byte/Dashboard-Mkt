@@ -363,3 +363,9 @@ causa raíz · qué se hizo.
 - **google-ads-sync:** sigue 401 (run 42633692689, 9-nov). **Pendiente humano:** regenerar `GOOGLE_REFRESH_TOKEN` (4 scopes) en Vercel + GitHub secrets y redeploy. No se relanza.
 - **SEO · Interés por provincia:** carga manual atrasada (2240 h vs 2160 h) → pendiente humano.
 - **SEO · Índice de posición / seo-sync:** último run 5-nov `cancelled` (manual, 42068361432), anterior 1-nov failure; causa de la cancelación **sin verificar** (no leída). Workflow pago: no se relanzó (sin evidencia de saldo; lo gestiona el watchdog, que reanuda).
+
+## 2026-11-13 (UTC) — UGC comentarios «verde sin datos» = rate limit de Meta
+- **Proceso:** `ugc-comments-graph` (UGC comentarios), watchdog 13-nov 06:47: sin actualizar hace 37 h con el último run en success.
+- **Causa (verificada en el log del run 43282106335, 12-nov 18:39):** las 20 piezas devolvieron `There have been too many calls to this ad-account` (rate limit de Meta; ese día `meta-paid-sync` también falló como temporal) y la ruta respondía igual `ok:true` HTTP 200 → nada guardado, workflow verde.
+- **Recuperado:** el relanzamiento del watchdog (run 43381202029, 13-nov 06:47) trajo comentarios de 6 piezas vía `ig_media` sin error → `ugc_comments.fetched_at` actualizado (por log; la DB no es alcanzable desde acá).
+- **Fix:** la ruta devuelve 502 (`ok:false`) cuando TODAS las piezas fallan → el workflow da rojo y el watchdog lo reintenta como `temporal`; además ya no oculta un error al guardar en Supabase. PR `claude/fix-monitoreo-ugc-ratelimit`.
