@@ -43,17 +43,31 @@ export type VentanaCtx = {
   /** true si el usuario eligió meses: el filtro ya acotó las compras. */
   hayFiltroMes: boolean;
   mesEnCurso: number;
+  /** Meses elegidos en el filtro (con hayFiltroMes): la ventana de la tipología termina en el último. */
+  meses?: number[];
 };
 
+/** Meses de facturación que cuentan para la tipología al filtrar: desde el primer mes elegido menos la ventana, hasta el último. */
+export function ventanaFiltro(tip: Tipologia, meses: number[]): [number, number] {
+  const n = tip === "SMALL RETAILERS" ? 3 : 2;
+  return [Math.min(...meses) - (n - 1), Math.max(...meses)];
+}
+
 export function enVentana(c: VentaRow, tip: Tipologia, ctx: VentanaCtx): boolean {
-  if (ctx.hayFiltroMes) return true;    // el filtro de MES ya acotó las compras
-  if (c.tipo === "BO") return true;     // BO acumulado, como estaba
+  if (c.tipo === "BO") return true;     // BO acumulado (con filtro, filtrarCompras ya lo cortó en el último mes)
+  if (ctx.hayFiltroMes) {
+    // 13-nov-2026 (user): el mes elegido se mide con su ventana (Small Retailers 3 meses, resto 2), igual que el gráfico.
+    if (!ctx.meses?.length) return true;
+    const [desde, hasta] = ventanaFiltro(tip, ctx.meses);
+    return c.mes >= desde && c.mes <= hasta;
+  }
   return ventanaFC(tip, ctx.mesEnCurso).has(c.mes); // FC: solo meses cerrados
 }
 
 /**
  * FC y BO se filtran por mes con semánticas distintas:
- *   - FC: por mes EXACTO. Una factura de marzo solo cuenta en marzo.
+ *   - FC: desde 2 meses antes del primer mes elegido hasta el último (la ventana más ancha; enVentana recorta
+ *     por tipología: Small Retailers 3 meses, resto 2).
  *   - BO: ACUMULADO hasta el último mes seleccionado. Una BO de enero sigue
  *     pendiente en marzo si no se facturó antes.
  */
@@ -68,7 +82,8 @@ export function filtrarCompras(
   return rows.filter((c) => {
     if (mesesSel.size > 0) {
       if (c.tipo === "FC") {
-        if (!mesesSel.has(c.mes)) return false;
+        // la ventana más ancha (Small Retailers: 2 meses antes del primero elegido); cada tipología recorta en enVentana
+        if (c.mes < Math.min(...mesesSel) - 2 || c.mes > maxMesSel!) return false;
       } else if (maxMesSel !== null && c.mes > maxMesSel) {
         return false;
       }

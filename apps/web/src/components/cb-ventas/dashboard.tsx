@@ -186,7 +186,7 @@ export default function CbVentasDashboard({ cuadroBasico: cuadroBasicoTodo, clas
   );
 
   // FC y BO se filtran por mes con semánticas distintas (ver filtrarCompras en
-  // lib/sellin-metrics.ts): FC por mes exacto, BO acumulado hasta el último mes.
+  // lib/cb-ventas/metrics.ts): FC con la ventana de la tipología, BO acumulado hasta el último mes.
   const comprasFiltradas = useMemo(
     () =>
       filtrarCompras(ventas.rows, {
@@ -224,6 +224,7 @@ export default function CbVentasDashboard({ cuadroBasico: cuadroBasicoTodo, clas
   // Si hay filtro de MES activo, manda el filtro (comprasFiltradas ya lo acotó).
   const ventanaCtx: VentanaCtx = {
     hayFiltroMes: filters.mes.length > 0,
+    meses: filters.mes.map(Number),
     mesEnCurso: mesEnCursoDe(ventas.generatedAt),
   };
 
