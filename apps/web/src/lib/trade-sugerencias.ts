@@ -5,23 +5,22 @@ import { cache } from "react";
 // vw_cb_baseline_medidas / vw_cb_suggestions / vw_cb_suggestions_detail del proyecto CB, con el mismo criterio:
 // tiendas del último U3 que NO se miden en el CB → se les aplica el catálogo de su cliente (cadena → cliente en
 // tr_cadenas; sin cliente = SMALL RETAILERS) y se mide presencia (existencia > 0, por modelo u homólogo).
-// El CATÁLOGO + homólogos se sigue leyendo de cb_homologos del proyecto CB (lo migra el frente de CB Ventas);
-// cuando exista el catálogo nuevo, cambiar `leerHomologos`.
+// El CATÁLOGO + homólogos sale de vt_cb_catalogo (CB Ventas, lo vigente hoy). Antes era cb_homologos del proyecto CB viejo:
+// verificado 13-nov-2026 que dan las MISMAS 895 combinaciones cliente·categoría·tipo·modelo·sku (solo cambia el nombre
+// «GRANDES CUENTAS RESTO (46 CLIENTES)» → «GRANDES CUENTAS RESTO»), así que los números no cambian.
 
-import { getCbSupabase } from "./supabase-cb";
 import { trAll, trEstado } from "./trade-db";
 import { calcularSugerencias, type CbMin, type Ex, type Hom } from "./trade-sugerencias-core";
+import { hoyAR, vigenteEnFecha } from "./cb-ventas/vigencia";
+
+type CatRow = { cliente: string | null; tipologia: string; tipo: string; categoria: string; modelo: string; homologos: string[] | null; vigente_desde?: string | null; vigente_hasta?: string | null };
 
 async function leerHomologos(): Promise<Hom[]> {
-  const sb = getCbSupabase();
-  const out: Hom[] = [];
-  for (let from = 0; from < 20_000; from += 1000) {
-    const { data, error } = await sb.from("cb_homologos").select("cliente,categoria,cuadro_basico,modelo,sku").order("id").range(from, from + 999);
-    if (error) throw new Error(`cb_homologos: ${error.message}`);
-    out.push(...((data ?? []) as Hom[]));
-    if ((data ?? []).length < 1000) break;
-  }
-  return out;
+  const rows = await trAll<CatRow>("vt_cb_catalogo?select=cliente,tipologia,tipo,categoria,modelo,homologos,vigente_desde,vigente_hasta");
+  const hoy = hoyAR();
+  return rows
+    .filter((r) => vigenteEnFecha({ desde: r.vigente_desde, hasta: r.vigente_hasta }, hoy))
+    .flatMap((r) => [r.modelo, ...(r.homologos ?? [])].map((sku) => ({ cliente: r.cliente ?? r.tipologia, categoria: r.categoria, cuadro_basico: r.tipo, modelo: r.modelo, sku }) as Hom));
 }
 
 /** null = no hay datos en tr_* (seguir con las vistas del proyecto CB). */
@@ -35,7 +34,7 @@ export const getSugerenciasTr = cache(async () => {
     trAll<{ clave: string; alias: string[]; cliente: string | null }>("tr_cadenas?select=clave,alias,cliente"),
     trAll<{ cliente: string; tipologia: string | null }>("vt_clientes?select=cliente,tipologia", "cliente").catch(() => []),
   ]);
-  // El catálogo (cb_homologos) tiene clientes propios (Top 10 / Hiper) y UN renglón por tipología para Grandes Cuentas
+  // El catálogo tiene clientes propios (Top 10 / Hiper) y UN renglón por tipología para Grandes Cuentas
   // Resto y Small Retailers → un cliente sin catálogo propio usa el de su tipología (vt_clientes).
   const claves = new Set(hom.map((h) => (h.cliente ?? "").toUpperCase().trim()));
   const gcr = [...claves].find((k) => k.startsWith("GRANDES CUENTAS RESTO")) ?? "GRANDES CUENTAS RESTO";
