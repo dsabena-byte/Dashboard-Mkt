@@ -56,6 +56,8 @@ eq(calcularPorcentajes(cb, filtrarCompras(ventas, { meses: [6] }), { hayFiltroMe
 const evo = evolucionMensualCB(cb, ventas, { generatedAt: "2026-10-15T12:00:00Z" });
 eq(evo.map((x) => x.cumplidosCB), [0, 0, 0, 0, 0, 1, 2, 3, 2, 0], "evolución: ventana de la tipología terminando en M (Small Retailers 3 meses, resto 2)");
 eq(evo[8]!.cumplidosCB, p.cumplidosCB, "el último mes cerrado del gráfico = el card");
+const sep = calcularPorcentajes(cb, filtrarCompras(ventas, { meses: [9] }), { hayFiltroMes: true, mesEnCurso: 10, meses: [9] });
+eq(sep.cumplidosCB, evo[8]!.cumplidosCB, "filtro de mes = el punto de ese mes en el gráfico (ventana de la tipología)");
 
 // ---------- 3. Ingesta ----------
 const ing = procesarPayload({
@@ -97,7 +99,8 @@ async function contraVieja(dir: string) {
       const viejo = old.filtrarCompras(oldV.rows, opts);
       const c = { hayFiltroMes: meses.length > 0, mesEnCurso: new Date(oldV.generatedAt).getMonth() + 1 };
       const items = oldCb.filter((i) => !vendedor || vendedorPorCliente.get(i.cliente) === vendedor);
-      eq(calcularPorcentajes(items, nuevo, c), old.calcularPorcentajes(items, viejo, c), `igual a la app vieja (vendedor ${vendedor}, meses ${meses})`);
+      // Con filtro de mes ya NO es igual a la app vieja (allá contaba solo el mes exacto; 13-nov-2026 = ventana de la tipología).
+      if (!meses.length) eq(calcularPorcentajes(items, nuevo, c), old.calcularPorcentajes(items, viejo, c), `igual a la app vieja (vendedor ${vendedor}, sin filtro de mes)`);
       casos++;
     }
     // La evolución YA NO se compara con la app vieja: allá usaba 2 meses para todas las tipologías y no coincidía con sus
