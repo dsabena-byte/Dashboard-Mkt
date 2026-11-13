@@ -166,8 +166,8 @@ export const MESES_LABEL = [
  * de /ventas. FC y BO se cuentan con semánticas distintas, las MISMAS que usan
  * los KPIs, para que el punto del mes M coincida con el card al filtrar ese
  * período:
- *   - FC: ventana móvil de 2 meses (mes M y el anterior M-1). Para Enero solo
- *     Enero. Refleja la facturación reciente.
+ *   - FC: la ventana de la TIPOLOGÍA terminando en M (igual que las cards): Small
+ *     Retailers M-2..M, el resto M-1..M. Así el punto del último mes cerrado = el card.
  *   - BO: ACUMULADO hasta M (todo BO con mes ≤ M, sin límite inferior). Un back
  *     order pendiente de un mes previo sigue representando demanda cubierta al
  *     cierre.
@@ -191,7 +191,7 @@ export function evolucionMensualCB(
   for (let mes = 1; mes <= mesActual; mes++) {
     // Cada mes usa el cuadro básico que valía EN ese mes (vigencia 0140): editar hoy no cambia los meses pasados.
     const items = todos.filter((i) => vigenteEnMes(i, anio, mes));
-    const mesDesde = Math.max(1, mes - 1);
+    const mesDesde = Math.max(1, mes - 2); // la ventana más ancha (Small Retailers); cada ítem recorta la suya abajo
     const comprasVentana = ventasRows.filter((c) => {
       const mesEfectivo = Math.min(c.mes, mesActual);
       if (c.tipo === "FC") {
@@ -209,8 +209,10 @@ export function evolucionMensualCB(
       return true;
     });
     const cumplido = (item: CuadroBasicoItem) => {
+      const desdeItem = mes - (item.tipologia === "SMALL RETAILERS" ? 2 : 1);
       let total = 0;
       for (const c of comprasVentana) {
+        if (c.tipo === "FC" && Math.min(c.mes, mesActual) < desdeItem) continue;
         if (matchesCB(c, item)) total += c.unidades;
       }
       return total > 0;
