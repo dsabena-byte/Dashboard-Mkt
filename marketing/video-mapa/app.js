@@ -18,7 +18,7 @@ function mk(html) { const d = document.createElement('div'); d.innerHTML = html.
 function inUp(node, p, dist = 22) { node.style.opacity = p; node.style.transform = `translateY(${(1 - p) * dist}px)`; }
 const $ = (n, s) => n.querySelector(s), $$ = (n, s) => [...n.querySelectorAll(s)];
 const CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
-const PAL = [['#3730a3', '#f5f6fd'], ['#0f5e57', '#f2f8f7'], ['#6b2c6e', '#faf5fa']];
+const PAL = [['#1d4ed8', '#f3f7ff'], ['#0e7490', '#f0f9fb'], ['#15803d', '#f2faf4']];
 
 /* ---------------- motor de escenas + cursor ---------------- */
 const stage = document.getElementById('stage');
@@ -81,7 +81,7 @@ function frameIn(node, lt) {
 scene('s0', 0, 3.6, `<div class="center">
   <div class="logo" style="margin-bottom:40px"><div class="bip">BIP</div><div class="tag">Business<br>Impact<br>Platform</div></div>
   <div style="font-size:76px;font-weight:600;letter-spacing:-.03em">Tu Mapa Estratégico</div>
-  <div style="font-size:34px;color:var(--muted);margin-top:18px">Objetivos, KPIs y metas. <b style="color:#3730a3;font-weight:600">Todo conectado.</b></div></div>`,
+  <div style="font-size:34px;color:var(--muted);margin-top:18px">Objetivos, KPIs y metas. <b style="color:#1d4ed8;font-weight:600">Todo conectado.</b></div></div>`,
   (node) => { const k = [...$(node, '.center').children]; return (lt) => k.forEach((c, i) => inUp(c, eo(S(lt, 0.1 + i * 0.25, 0.8 + i * 0.25)), 26)); });
 
 /* ================= 1 · Objetivos (3.6 – 10.6) ================= */
@@ -118,10 +118,10 @@ function lineChart(w, h) {
   const pp = PROY.map((v, i) => `${i ? 'L' : 'M'}${X(i + HIST.length - 1 + (i ? 0 : 0)).toFixed(1)},${Y(i ? v : HIST[HIST.length - 1]).toFixed(1)}`).join(' ');
   const grid = [0.25, 0.5, 0.75, 1].map((f) => `<line x1="50" x2="${w - 20}" y1="${Y(max * f / 1.1)}" y2="${Y(max * f / 1.1)}" stroke="#eef2f7"/>`).join('');
   const lab = ['Nov 24', 'Nov 25', 'Dic 27'].map((t, i) => `<text x="${X([0, 12, n - 1][i])}" y="${h - 6}" font-size="14" fill="#94a3b8" text-anchor="middle">${t}</text>`).join('');
-  return `<svg width="${w}" height="${h}">${grid}<path class="ph" d="${ph}" fill="none" stroke="#3730a3" stroke-width="3"/><path class="pp" d="${pp}" fill="none" stroke="#3730a3" stroke-width="3" stroke-dasharray="8 7" opacity=".55"/>${lab}
+  return `<svg width="${w}" height="${h}">${grid}<path class="ph" d="${ph}" fill="none" stroke="#1d4ed8" stroke-width="3"/><path class="pp" d="${pp}" fill="none" stroke="#1d4ed8" stroke-width="3" stroke-dasharray="8 7" opacity=".55"/>${lab}
     <text x="${X(HIST.length) + 6}" y="26" font-size="15" fill="#64748b">Proyección →</text><line x1="${X(HIST.length - 1)}" x2="${X(HIST.length - 1)}" y1="20" y2="${h - 30}" stroke="#cbd5e1" stroke-dasharray="4 4"/></svg>`;
 }
-const spark = (s) => { const mx = Math.max(...s), mn = Math.min(...s); return `<svg width="120" height="34"><path d="${s.map((v, i) => `${i ? 'L' : 'M'}${(i / (s.length - 1)) * 116 + 2},${32 - ((v - mn) / (mx - mn || 1)) * 28}`).join(' ')}" fill="none" stroke="#3730a3" stroke-width="2"/></svg>`; };
+const spark = (s) => { const mx = Math.max(...s), mn = Math.min(...s); return `<svg width="120" height="34"><path d="${s.map((v, i) => `${i ? 'L' : 'M'}${(i / (s.length - 1)) * 116 + 2},${32 - ((v - mn) / (mx - mn || 1)) * 28}`).join(' ')}" fill="none" stroke="#1d4ed8" stroke-width="2"/></svg>`; };
 const KPIS2 = [['Tráfico web', '+18%', '0,72', 'Más visitas → más ventas', [3, 4, 3, 5, 6, 5, 7, 8]], ['Tasa de conversión', '+6%', '0,55', 'Más visitas que compran', [5, 5, 6, 5, 6, 6, 7, 7]], ['Valor medio de compra', '+31%', '0,48', 'Cada compra vale más', [2, 3, 3, 4, 4, 5, 6, 7]], ['Clicks', '+22%', '0,41', 'Más clicks a la web', [4, 3, 5, 6, 5, 7, 6, 8]]];
 scene('s2', 10.6, 16.8, frame(1, `<div style="display:grid;grid-template-columns:1fr 1.15fr;gap:24px">
     <div class="box"><div style="font-size:22px;font-weight:600">Facturación ($)</div><div class="mut" style="font-size:16px;margin:4px 0 8px">Últimos 24 meses y proyección</div>${lineChart(720, 330)}</div>
@@ -141,7 +141,7 @@ scene('s2', 10.6, 16.8, frame(1, `<div style="display:grid;grid-template-columns
 
 /* ================= 3 · Ponderación de KPIs (16.8 – 22.4) ================= */
 const AP = [['Tráfico web', 35], ['Tasa de conversión', 30], ['Valor medio de compra', 20], ['Clicks', 15]];
-const SHADES = ['#3730a3', '#4f46e5', '#6366f1', '#818cf8'];
+const SHADES = ['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa'];
 scene('s3', 16.8, 22.4, frame(2, `<div class="box" style="max-width:1300px"><div style="font-size:24px;font-weight:600">Facturación ($) <span class="mut" style="font-size:17px;font-weight:400">· ponderación del objetivo 50%</span></div>
     <div style="display:grid;gap:14px;margin-top:16px">${AP.map((k) => `<div class="row ar"><b style="width:280px;font-size:20px;font-weight:600">${k[0]}</b><div class="inp" style="width:100px"><span class="v"></span>&nbsp;%</div><div class="bar" style="flex:1;height:12px"><i class="bi" style="width:0"></i></div></div>`).join('')}</div>
     <div class="row" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px"><b style="width:280px;font-size:20px;font-weight:600">Total</b><div class="inp tt" style="width:100px;border-color:transparent"></div><span class="st" style="font-size:19px"></span></div></div>`,
@@ -173,7 +173,7 @@ scene('s4', 22.4, 30.6, frame(3, `<div style="font-size:26px;font-weight:600">¿
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">${card4('u', 'Unidades', '23.600', '', 'BIP sugiere +2%.')}${card4('f', 'Facturación', '$ 4.240 M', '$', 'Inflación 2027 +22% · BIP sugiere +22%.')}${card4('i', 'Inversión en medios', '$ 19,3 M', '$', 'Inflación 2027 +22%.')}
     <div class="box" style="border-style:dashed;display:grid;gap:6px;align-content:start"><b style="font-size:20px;font-weight:600">Inversión ÷ Facturación</b><div class="big rt" style="font-size:40px"></div><span class="mut" style="font-size:15px">Año 2026: 0,46%</span></div></div>
     <div class="row" style="margin-top:16px;gap:6px">${MES.map((m, i) => `<div style="flex:1;text-align:center;border:1px solid var(--line);border-radius:8px;padding:5px 0;font-size:14px"><div class="mut">${m} 27</div>${nf(INF[i], 1)}%</div>`).join('')}</div>
-    <div class="row" style="margin-top:16px;align-items:flex-end;gap:10px;height:150px">${MES.map((m, i) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="display:flex;align-items:flex-end;gap:3px;height:120px"><i style="width:16px;height:${F26[i] / 8.2}px;background:#3730a3;border-radius:3px 3px 0 0"></i><i class="mb" data-v="${F26[i]}" style="width:16px;height:0;background:#cbd5e1;border-radius:3px 3px 0 0"></i></div><span class="mut" style="font-size:13px">${m}</span></div>`).join('')}</div>`,
+    <div class="row" style="margin-top:16px;align-items:flex-end;gap:10px;height:150px">${MES.map((m, i) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="display:flex;align-items:flex-end;gap:3px;height:120px"><i style="width:16px;height:${F26[i] / 8.2}px;background:#1d4ed8;border-radius:3px 3px 0 0"></i><i class="mb" data-v="${F26[i]}" style="width:16px;height:0;background:#cbd5e1;border-radius:3px 3px 0 0"></i></div><span class="mut" style="font-size:13px">${m}</span></div>`).join('')}</div>`,
   'Decí cuánto querés crecer: BIP arma las metas de cada mes'),
   (node) => {
     const cs = Object.fromEntries($$(node, '.c4').map((c) => [c.dataset.id, c])), rt = $(node, '.rt'), mbs = $$(node, '.mb'); let P = null;
@@ -276,7 +276,7 @@ scene('s7', 43, 48, `<div class="app"><div class="h1">Seguimiento de Objetivos</
 /* ================= 8 · Cierre (48 – 52) ================= */
 scene('s8', 48, DUR, `<div class="center">
   <div style="font-size:72px;font-weight:600;letter-spacing:-.03em">Objetivos, KPIs y metas.</div>
-  <div style="font-size:72px;font-weight:600;letter-spacing:-.03em;color:#3730a3">Todo conectado.</div>
+  <div style="font-size:72px;font-weight:600;letter-spacing:-.03em;color:#1d4ed8">Todo conectado.</div>
   <div style="font-size:30px;color:var(--muted);margin-top:22px">Si cada KPI llega a su meta, tu objetivo llega al suyo.</div>
   <div class="logo" style="margin-top:56px"><div class="bip">BIP</div><div class="tag">Business<br>Impact<br>Platform</div></div></div>`,
   (node) => { const k = [...$(node, '.center').children]; return (lt) => k.forEach((c, i) => inUp(c, eo(S(lt, 0.1 + i * 0.25, 0.8 + i * 0.25)), 26)); });
