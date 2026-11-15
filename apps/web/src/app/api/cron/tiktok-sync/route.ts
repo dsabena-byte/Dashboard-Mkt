@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { mirrorImageStrict, uploadBucketJson } from "@/lib/meta-image-mirror";
+import { esLanzamientoLavado } from "@/lib/pauta-categoria";
 import { TIKTOK_MANIFEST_KEY, chunks, piezaDe, type TikTokManifest, type TikTokPiezaMes, type TTAd } from "@/lib/tiktok-piezas";
 
 // Ingesta directa desde la TikTok Marketing API (reporting integrado, nivel AD)
@@ -218,10 +219,10 @@ async function getToken(): Promise<string> {
 // ---- Carga mensual en pauta_performance ------------------------------------------------------------------
 const MES_LABEL = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-// Categoría por nombre de campaña (mismas categorías que la carga OMD; Marcelino/Mickey/CasaFoa/sin categoría = Brand).
+// Categoría por nombre de campaña (mismas categorías que la carga OMD; Mickey = Lavado; Marcelino/CasaFoa/sin categoría = Brand).
 function categoriaTikTok(campaign: string): string {
   const c = campaign.toLowerCase();
-  if (c.includes("lavado")) return "Lavado";
+  if (c.includes("lavado") || esLanzamientoLavado(c)) return "Lavado"; // Teaser/Reveal Mickey = Lavado
   if (c.includes("refrigeraci") || c.includes("heladera")) return "Refrigeración";
   if (c.includes("cocci") || c.includes("cocina")) return "Cocción";
   if (c.includes("ugc")) return "UGC";
