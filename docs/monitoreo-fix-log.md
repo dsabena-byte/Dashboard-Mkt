@@ -369,3 +369,8 @@ causa raíz · qué se hizo.
 - **Causa (verificada en el log del run 43282106335, 12-nov 18:39):** las 20 piezas devolvieron `There have been too many calls to this ad-account` (rate limit de Meta; ese día `meta-paid-sync` también falló como temporal) y la ruta respondía igual `ok:true` HTTP 200 → nada guardado, workflow verde.
 - **Recuperado:** el relanzamiento del watchdog (run 43381202029, 13-nov 06:47) trajo comentarios de 6 piezas vía `ig_media` sin error → `ugc_comments.fetched_at` actualizado (por log; la DB no es alcanzable desde acá).
 - **Fix:** la ruta devuelve 502 (`ok:false`) cuando TODAS las piezas fallan → el workflow da rojo y el watchdog lo reintenta como `temporal`; además ya no oculta un error al guardar en Supabase. PR `claude/fix-monitoreo-ugc-ratelimit`.
+
+## 2026-11-15 (UTC) — GA4 «verde sin datos» = falsa alarma por cadencia
+- **Proceso:** `ga4` (Tráfico Web), Issue #1040 (watchdog 15-nov 06:35): sin actualizar hace 24 h con el último run en success.
+- **Causa (verificada):** el sync sí trae datos (run 43688072592, 15-nov 07:01: rango 2026-11-12 → 2026-11-14, 974 filas en `web_traffic`, 12.352 landing). GA4 llega hasta ayer y el upsert (merge-duplicates) no toca `created_at` de filas existentes → la columna que mide la frescura avanza 1 vez por día. Con `cadenciaH: 12` (ok ≤ 18 h) salta antes de la corrida de la mañana (los schedules se ejecutan ~6 h tarde: 06:55/07:01/07:06).
+- **Fix:** `monitoreo-config.ts` ga4 `cadenciaH` 12 → 24 (igual que `data-health.ts`). PR `claude/fix-monitoreo-ga4-cadencia`. No hace falta relanzar: el run 43688072592 ya trajo el día 14.
