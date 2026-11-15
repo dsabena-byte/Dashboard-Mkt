@@ -60,11 +60,11 @@ fuentes del sistema.
 | # | Escena | Rango | Contenido |
 |---|---|---|---|
 | 1 | Intro | 0,0 – 4,0 | “De tu estrategia a mejores resultados.” |
-| 2 | Objetivos + pesos | 4,0 – 15,7 | Se tipean **Top of Mind**, **Intención de Compra** y **Facturación**; se asignan pesos 40/30/30 |
-| 3 | KPIs → objetivos | 15,7 – 23,3 | Matriz de aportes; cada objetivo cierra en 100% |
-| 4 | Metas mensuales | 23,3 – 32,0 | Meta en `%` y en `personas` (el número crudo se formatea al confirmar); `$` para Facturación |
-| 5 | Modelo listo | 32,0 – 33,8 | 3 objetivos · 5 KPIs · 12 meses |
-| 6 | Seguimiento | 33,8 – 41,8 | Ene→Sep, real vs meta, GAPs y estado general |
+| 2 | Objetivos sugeridos | 4,0 – 15,7 | BIP sugiere **Facturación ($)**, **Facturación (unid.)**, **Inversión Mkt ÷ Facturación** y **Costo del lead**; se marcan y la ponderación sugerida (35/25/20/20) se completa sola |
+| 3 | KPIs sugeridos | 15,7 – 23,3 | Para Facturación ($): KPIs con **correlación**, **hipótesis** y aporte (35/30/20/15 = 100%) → «Usar esta sugerencia» |
+| 4 | Metas proyectadas | 23,3 – 32,0 | 24 meses de historia + proyección (inflación INDEC + REM) → «¿Cuánto querés crecer?» +32% → metas mes a mes |
+| 5 | Mapa activo | 32,0 – 33,8 | 4 objetivos · KPIs conectados · metas mes a mes |
+| 6 | Seguimiento | 33,8 – 41,8 | Facturación ($) y tráfico web real vs meta + los 4 objetivos |
 | 7 | Insights | 41,8 – 44,8 | Aprendizajes detectados |
 | 8 | Optimizar + recalibrar | 44,8 – 48,2 | Reasignación de inversión y cierre del ciclo anual |
 | 9 | Cierre | 48,2 – 50,0 | “Learn what matters. Drive results.” |

@@ -136,248 +136,189 @@ scene('s1', 0, 2.4, `
   });
 
 /* =========================================================================
-   ESCENA 2 · Objetivos estratégicos + pesos  (2.4 – 9.4)
-   Cursor real: abre el modal, escribe el nombre, guarda. x3. Luego pesos.
+   ESCENA 2 · Objetivos sugeridos por BIP  (2.4 – 9.4)
+   BIP analiza los últimos 24 meses y propone los objetivos; se marcan con un clic
+   y la ponderación sugerida se completa sola (suma 100%).
    ========================================================================= */
+ICON.ratio = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M5 12h14"/><circle cx="12" cy="6.2" r="1.9" fill="currentColor" stroke="none"/><circle cx="12" cy="17.8" r="1.9" fill="currentColor" stroke="none"/></svg>';
+ICON.lead = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20.2c1.2-3.6 4-5.3 7.4-5.3s6.2 1.7 7.4 5.3"/></svg>';
+/* serie mensual ilustrativa (estacionalidad + tendencia), determinística */
+const SEAS = [.86, .82, .95, .97, 1.02, 1.0, 1.04, 1.03, .98, 1.06, 1.12, 1.25];
+const serie = (n, g, k = 0) => Array.from({ length: n }, (_, i) => SEAS[(i + k) % 12] * Math.pow(1 + g, i / 12) * (1 + .03 * Math.sin(i * 1.7 + k)));
+function spark(vals, w = 150, h = 42, col = '#0a4da0') {
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * w},${h - 4 - ((v - mn) / (mx - mn || 1)) * (h - 8)}`).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:${w}px;height:${h}px;flex:0 0 auto"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
 const OBJ = [
-  { nm: 'Top of Mind', ic: ICON.star, cls: 't-pri', bar: '#0a4da0', peso: 40 },
-  { nm: 'Intención de Compra', ic: ICON.bag, cls: 't-grn', bar: '#0a7fce', peso: 30 },
-  { nm: 'Facturación', ic: ICON.bars, cls: 't-amb', bar: '#D97706', peso: 30 }
+  { nm: 'Facturación ($)', ic: ICON.bars, cls: 't-pri', bar: '#0a4da0', peso: 35, med: 'Se mide directo', s: serie(24, .32, 0) },
+  { nm: 'Facturación (unid.)', ic: ICON.bag, cls: 't-grn', bar: '#0a7fce', peso: 25, med: 'Se mide directo', s: serie(24, .04, 2) },
+  { nm: 'Inversión Mkt ÷ Facturación', ic: ICON.ratio, cls: 't-amb', bar: '#D97706', peso: 20, med: 'Se calcula', s: serie(24, -.05, 5) },
+  { nm: 'Costo del lead', ic: ICON.lead, cls: 't-pri', bar: '#12a6f4', peso: 20, med: 'Se calcula', s: serie(24, .18, 8) }
 ];
+const OY = i => 345 + 106 * i;                  // centro y de cada fila
 scene('s2', 2.4, 9.4, `
   <div class="lead">
     <div class="step">Paso 1</div>
-    <h2>Definí tus objetivos estratégicos</h2>
-    <p>Empezá por lo que querés lograr y cuánto pesa cada objetivo.</p>
+    <h2>Elegí tus objetivos estratégicos</h2>
+    <p>BIP analiza tus últimos 24 meses y te sugiere qué objetivos medir y cuánto pesa cada uno.</p>
   </div>
-  <div class="card" id="s2c" style="left:748px;top:212px;width:1040px;padding-bottom:34px">
-    <div class="card-h"><h3>Objetivos estratégicos</h3><div class="sub" id="s2sub">0 de 3</div></div>
-    <div id="s2list">
-      ${OBJ.map((o, i) => `
-      <div class="obj-row" data-i="${i}">
-        <div class="tile ${o.cls}">${o.ic}</div>
-        <div class="nm">${o.nm}</div>
-        <div class="peso"><div class="lb">Peso estratégico</div>
-          <div class="track"><i style="background:${o.bar}"></i></div>
-          <div class="pct">0%</div></div>
-      </div>`).join('')}
-    </div>
-    <div class="addbtn" id="s2add">${ICON.plus} Agregar objetivo</div>
-  </div>
-  <div class="modal" id="s2m" style="left:920px;top:392px;width:700px">
-    <h4>Nuevo objetivo</h4>
-    <div class="field"><div class="tile t-pri" id="s2mt">${ICON.star}</div>
-      <div class="input"><span id="s2txt"></span><span class="caret" id="s2car"></span></div></div>
-    <div class="mbtns"><div class="btn btn-g">Cancelar</div><div class="btn btn-p">Guardar</div></div>
+  <div class="card" id="s2c" style="left:748px;top:212px;width:1040px;padding-bottom:30px">
+    <div class="card-h"><h3>Objetivos sugeridos</h3><div class="sub" id="s2sub">0 de 4 elegidos</div></div>
+    ${OBJ.map((o, i) => `
+    <div class="obj-row" data-i="${i}" style="height:92px;padding:0 22px">
+      <div class="ck"></div>
+      <div class="tile ${o.cls}">${o.ic}</div>
+      <div style="flex:1;min-width:0"><div class="nm" style="font-size:24px">${o.nm}</div>
+        <div class="medp"><span class="sug">Sugerido por BIP</span>${o.med}</div></div>
+      ${spark(o.s)}
+      <div class="peso" style="width:250px"><div class="track"><i style="background:${o.bar}"></i></div><div class="pct">—</div></div>
+    </div>`).join('')}
+    <div class="foot-bar" id="s2f" style="margin-top:14px"><span style="color:#16A34A;display:flex">${ICON.check}</span> 4 objetivos · ponderación 100% · la ajustás cuando quieras</div>
   </div>`,
   (node) => {
-    const card = node.querySelector('#s2c'), modal = node.querySelector('#s2m');
+    const card = node.querySelector('#s2c'), sub = node.querySelector('#s2sub'), foot = node.querySelector('#s2f');
     const rows = [...node.querySelectorAll('.obj-row')];
-    const txt = node.querySelector('#s2txt'), car = node.querySelector('#s2car'), mt = node.querySelector('#s2mt');
-    const sub = node.querySelector('#s2sub'), add = node.querySelector('#s2add');
-    // sub-tiempos por objetivo
-    const B = i => .55 + i * 1.45;
-    const TD = [.55, .78, .55];                        // duración de tipeo
-    const beat = i => { const b = B(i); const te = b + .34 + TD[i]; return { open: b + .10, mIn: b + .12, t0: b + .34, t1: b + .34 + TD[i], save: te + .20, row: te + .30 }; };
-    const kfs = [{ t: 0, x: 1180, y: 880 }];
-    OBJ.forEach((o, i) => {
-      const b = beat(i);
-      kfs.push({ t: b.open - .30, x: 1180, y: 880 }, { t: b.open, x: 1180, y: 880, click: 1 },
-               { t: b.t1 + .06, x: 1420, y: 620 }, { t: b.save, x: 1466, y: 626, click: 1 });
-    });
-    // arrastre de pesos
-    kfs.push({ t: 4.62, x: 1466, y: 626 }, { t: 4.98, x: 1500, y: 396 },
-             { t: 5.52, x: 1622, y: 396 }, { t: 5.86, x: 1500, y: 508 },
-             { t: 6.16, x: 1592, y: 508 }, { t: 6.42, x: 1500, y: 620 }, { t: 6.72, x: 1592, y: 620 });
+    const CK = [1.05, 1.55, 2.05, 2.55];
+    const kfs = [{ t: 0, x: 1180, y: 900 }];
+    CK.forEach((t, i) => kfs.push({ t: t - .28, x: 819, y: OY(i) }, { t, x: 819, y: OY(i), click: 1 }));
+    kfs.push({ t: 3.4, x: 1500, y: 860 });
     return (lt, alpha) => {
       inUp(card, eo(S(lt, 0, .45)), 30);
-      let done = 0;
-      OBJ.forEach((o, i) => {
-        const b = beat(i);
-        const a = eo(S(lt, b.row, b.row + .30));
-        rows[i].style.opacity = a;
-        rows[i].style.transform = `translateY(${(1 - a) * 14}px) scale(${lerp(.985, 1, a)})`;
-        rows[i].style.height = a > 0 ? '' : '0px';
-        rows[i].style.margin = a > 0 ? '' : '0 34px';
-        rows[i].style.padding = a > 0 ? '' : '0 22px';
-        rows[i].style.border = a > 0 ? '' : 'none';
-        if (lt >= b.row) done++;
-        // pesos
-        const ps = [{ a: 5.02, b: 5.54 }, { a: 5.80, b: 6.18 }, { a: 6.30, b: 6.72 }][i];
-        const pp = eo(S(lt, ps.a, ps.b));
-        rows[i].querySelector('.track i').style.width = (o.peso * pp) + '%';
-        rows[i].querySelector('.pct').textContent = Math.round(o.peso * pp) + '%';
-        rows[i].querySelector('.peso').style.opacity = eo(S(lt, 4.68, 4.98));
+      let n = 0;
+      rows.forEach((r, i) => {
+        inUp(r, eo(S(lt, .2 + i * .12, .55 + i * .12)), 14);
+        const on = lt >= CK[i];
+        if (on) n++;
+        r.classList.toggle('on', on);
+        const pp = eo(S(lt, 3.0 + i * .22, 3.5 + i * .22));
+        r.querySelector('.track i').style.width = (OBJ[i].peso * pp * 2) + '%';
+        r.querySelector('.pct').textContent = pp > 0 ? Math.round(OBJ[i].peso * pp) + '%' : '—';
       });
-      sub.textContent = lt >= 6.72 ? '100% asignado' : `${done} de 3`;
-      add.style.opacity = lerp(1, .35, S(lt, 4.5, 4.8));
-      // modal
-      let mv = 0, cur = -1;
-      OBJ.forEach((o, i) => { const b = beat(i); if (lt >= b.mIn - .02 && lt < b.save + .20) { cur = i; mv = Math.min(eo(S(lt, b.mIn, b.mIn + .18)), 1 - eo(S(lt, b.save, b.save + .18))); } });
-      modal.style.opacity = mv;
-      modal.style.display = mv > .002 ? 'block' : 'none';
-      modal.style.transform = `translateY(${(1 - mv) * 16}px) scale(${lerp(.965, 1, mv)})`;
-      if (cur >= 0) {
-        const b = beat(cur);
-        mt.className = 'tile ' + OBJ[cur].cls; mt.innerHTML = OBJ[cur].ic;
-        txt.textContent = typed(OBJ[cur].nm, S(lt, b.t0, b.t1));
-        car.style.opacity = (lt > b.t1 + .05) ? (Math.floor(lt * 2.2 / SPEED) % 2 ? 0 : 1) : 1;
-      }
+      sub.textContent = lt >= 4.3 ? 'Ponderación 100%' : `${n} de 4 elegidos`;
+      inUp(foot, eo(S(lt, 4.4, 4.8)), 14);
       runCursor(kfs, lt, alpha);
     };
   });
 
 /* =========================================================================
-   ESCENA 3 · Conectá los KPIs con los objetivos  (9.4 – 14.0)
-   Matriz KPI × objetivo: se tipean los primeros aportes y el resto se completa.
-   Regla del modelo: la suma de aportes por objetivo cierra en 100%.
+   ESCENA 3 · KPIs sugeridos: correlación + hipótesis + aporte  (9.4 – 14.0)
    ========================================================================= */
-const KPIS = ['Alcance único', 'Frecuencia', 'Impresiones', 'VTR (≥50%)', 'Clicks'];
-const MX = [[30, 20, 10], [15, 10, 10], [25, 25, 20], [20, 25, 25], [10, 20, 35]];
-const CX = [1238, 1458, 1678];                 // centro x de cada columna
-const CY = r => 433 + 74 * r;                  // centro y de cada fila
+const KS = [
+  { nm: 'Tráfico web', r: .78, ap: 35, h: 'Más visitas a la tienda, más oportunidades de venta.', s: serie(24, .2, 1) },
+  { nm: 'Tasa de conversión', r: .64, ap: 30, h: 'Convertir mejor rinde más que sumar tráfico.', s: serie(24, .08, 4) },
+  { nm: 'Inversión en medios', r: .52, ap: 20, h: 'La pauta lleva gente nueva a la tienda.', s: serie(24, .28, 6) },
+  { nm: 'Alcance único', r: .41, ap: 15, h: 'Más personas que conocen la marca, más demanda.', s: serie(24, .12, 9) }
+];
+const KY = i => 212 + 92 + 118 * i + 52;
 scene('s3', 9.4, 14.0, `
   <div class="lead">
     <div class="step">Paso 2</div>
-    <h2>Conectá tus KPIs con tus objetivos</h2>
-    <p>Definí cuánto aporta cada KPI a cada objetivo.</p>
+    <h2>BIP conecta cada objetivo con sus KPIs</h2>
+    <p>Con la correlación de tus datos, la hipótesis de por qué y cuánto aporta cada uno.</p>
   </div>
-  <div class="card" id="s3c" style="left:748px;top:212px;width:1040px">
-    <div class="card-h"><h3>Aporte de cada KPI</h3><div class="sub">% sobre el objetivo</div></div>
-    <table class="mx">
-      <colgroup><col style="width:380px"><col style="width:220px"><col style="width:220px"><col style="width:220px"></colgroup>
-      <tr><th class="mx-lbl" style="font-size:18px;color:#94A3B8;letter-spacing:.1em;text-transform:uppercase">KPIs</th>
-        ${OBJ.map(o => `<th class="mx-hd"><div class="hchip"><div class="tile ${o.cls}" style="width:44px;height:44px;border-radius:13px">${o.ic}</div><span>${o.nm}</span></div></th>`).join('')}
-      </tr>
-      ${KPIS.map((k, r) => `<tr><td class="mx-lbl">${k}</td>
-        ${MX[r].map((v, c) => `<td class="cell"><div class="cbox" data-r="${r}" data-c="${c}"></div></td>`).join('')}</tr>`).join('')}
-      <tr><td class="mx-lbl" style="font-size:18px;color:#94A3B8;letter-spacing:.06em">Total</td>
-        ${OBJ.map((o, c) => `<td class="tot"><div class="tbox" data-t="${c}">0%</div></td>`).join('')}</tr>
-    </table>
-    <div class="foot-bar" id="s3f"><span style="color:#16A34A;display:flex">${ICON.check}</span> 5 KPIs conectados a 3 objetivos · cada objetivo suma 100%</div>
+  <div class="card" id="s3c" style="left:748px;top:212px;width:1040px;padding-bottom:30px">
+    <div class="card-h"><h3 style="display:flex;align-items:center;gap:14px"><span class="tile t-pri" style="width:42px;height:42px;border-radius:12px">${ICON.bars}</span>Facturación ($)</h3><div class="sub">KPIs sugeridos</div></div>
+    ${KS.map((k, i) => `
+    <div class="kr" data-k="${i}">
+      <div style="flex:1;min-width:0"><div class="kn">${k.nm}<span class="corr">Correlación <b data-r="${i}">0,00</b></span></div>
+        <div class="hy">Hipótesis: ${k.h}</div></div>
+      ${spark(k.s, 130, 40, '#12a6f4')}
+      <div class="peso" style="width:220px"><div class="lb">Aporte</div><div class="track"><i style="background:#0a4da0"></i></div><div class="pct">0%</div></div>
+    </div>`).join('')}
+    <div style="display:flex;align-items:center;gap:18px;margin:16px 34px 0">
+      <div class="tbox" id="s3t" style="width:auto;padding:0 20px">Aporte total 0%</div>
+      <div class="btn btn-p" id="s3b" style="margin-left:auto">Usar esta sugerencia</div>
+    </div>
   </div>`,
   (node) => {
-    const card = node.querySelector('#s3c'), foot = node.querySelector('#s3f');
-    const cells = {}; node.querySelectorAll('.cbox').forEach(b => cells[b.dataset.r + ',' + b.dataset.c] = b);
-    const tots = [...node.querySelectorAll('.tbox')];
-    // orden de autocompletado (col-major) después de las dos celdas tipeadas
-    const auto = [];
-    for (let c = 0; c < 3; c++) for (let r = 0; r < 5; r++) if (!(c === 0 && r < 2)) auto.push([r, c]);
-    const T = [{ r: 0, c: 0, click: .55, t0: .62, t1: .88 }, { r: 1, c: 0, click: 1.04, t0: 1.10, t1: 1.32 }];
-    const kfs = [{ t: 0, x: 980, y: 900 },
-      { t: .48, x: CX[0], y: CY(0) }, { t: .55, x: CX[0], y: CY(0), click: 1 },
-      { t: .98, x: CX[0], y: CY(1) }, { t: 1.04, x: CX[0], y: CY(1), click: 1 },
-      { t: 1.62, x: CX[0], y: CY(4) }, { t: 2.02, x: CX[1], y: CY(1) },
-      { t: 2.44, x: CX[2], y: CY(3) }, { t: 2.86, x: CX[1], y: 806 }];
+    const card = node.querySelector('#s3c'), tot = node.querySelector('#s3t'), btn = node.querySelector('#s3b');
+    const rows = [...node.querySelectorAll('.kr')];
+    const kfs = [{ t: 0, x: 980, y: 900 }, { t: 2.9, x: 1500, y: 860 }, { t: 3.55, x: 1660, y: 812 }, { t: 3.7, x: 1660, y: 812, click: 1 }];
     return (lt, alpha) => {
       inUp(card, eo(S(lt, 0, .42)), 30);
-      const shown = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
-      T.forEach(t => {
-        const b = cells[t.r + ',' + t.c];
-        const p = S(lt, t.t0, t.t1);
-        b.textContent = lt >= t.click ? typed(String(MX[t.r][t.c]), p) + (p < 1 && lt > t.click ? '|' : '') : '';
-        b.className = 'cbox' + (lt >= t.click - .04 && lt < t.t1 + .34 ? ' act' : '');
-        if (p >= 1) shown[t.r][t.c] = 1;
+      let sum = 0;
+      rows.forEach((r, i) => {
+        inUp(r, eo(S(lt, .25 + i * .2, .65 + i * .2)), 14);
+        const pc = eo(S(lt, .45 + i * .2, 1.1 + i * .2));
+        r.querySelector('[data-r]').textContent = nf(KS[i].r * pc, 2);
+        const pa = eo(S(lt, 1.6 + i * .18, 2.1 + i * .18));
+        r.querySelector('.track i').style.width = (KS[i].ap * pa * 2.6) + '%';
+        r.querySelector('.pct').textContent = Math.round(KS[i].ap * pa) + '%';
+        sum += Math.round(KS[i].ap * pa);
       });
-      auto.forEach(([r, c], k) => {
-        const t0 = 1.48 + k * .095;
-        const p = eo(S(lt, t0, t0 + .16));
-        const b = cells[r + ',' + c];
-        b.textContent = p > .25 ? String(MX[r][c]) : '';
-        b.style.opacity = lerp(.55, 1, p);
-        b.style.transform = `scale(${lerp(.9, 1, p)})`;
-        if (p >= 1) shown[r][c] = 1;
-      });
-      tots.forEach((tb, c) => {
-        let sum = 0; for (let r = 0; r < 5; r++) if (shown[r][c]) sum += MX[r][c];
-        const ok = sum === 100;
-        tb.textContent = sum + '%';
-        tb.className = 'tbox' + (ok ? ' ok' : '');
-        tb.style.transform = `scale(${ok ? lerp(1.06, 1, eo(S(lt, 2.7 + c * .16, 2.98 + c * .16))) : 1})`;
-      });
-      inUp(foot, eo(S(lt, 3.05, 3.4)), 16);
+      tot.textContent = 'Aporte total ' + sum + '%';
+      tot.className = 'tbox' + (sum === 100 ? ' ok' : '');
+      tot.style.width = 'auto'; tot.style.padding = '0 20px';
+      const ok = lt >= 3.7;
+      btn.innerHTML = ok ? `<span style="display:inline-flex;vertical-align:-4px;width:24px;height:24px">${ICON.check}</span> KPIs conectados` : 'Usar esta sugerencia';
+      btn.style.background = ok ? '#16A34A' : '';
       runCursor(kfs, lt, alpha);
     };
   });
 
 /* =========================================================================
-   ESCENA 4 · Metas mensuales con unidades reales  (14.0 – 19.2)
+   ESCENA 4 · Metas proyectadas: historia 24 meses → proyección → meta  (14.0 – 19.2)
    ========================================================================= */
-const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
-const METAS_TOM = [28.0, 28.4, 28.8, 29.2, 29.6, 30.0];
-const METAS_ALC = [2100000, 2200000, 2400000, 2500000, 2600000, 2700000];
+const HIST = serie(24, .30, 0).map(v => v * 100);                  // últimos 24 meses
+const PROY = SEAS.map((s, i) => HIST[12 + i] * 1.24);              // proyección: mismo mes × inflación
+const META = PROY.map(v => v * 1.065);                              // meta: +6,5% real
+const MESES6 = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
 scene('s4', 14.0, 19.2, `
-  <div class="top-b" style="top:104px"><div class="step">Paso 3</div><h2>Definí las metas mensuales</h2></div>
-  <div class="card" id="s4a" style="left:200px;top:216px;width:720px;padding-bottom:6px">
-    <div class="card-h"><div><h3>Top of Mind</h3><div class="sub" style="margin-top:6px">Meta del objetivo</div></div><div class="unit">%</div></div>
-    ${MESES.map((m, i) => `<div class="mrow"><div class="mo">${m}</div><div class="mval" data-a="${i}"></div></div>`).join('')}
-    <div class="mhint" id="s4h1">Unidad: porcentaje de menciones espontáneas</div>
+  <div class="top-b" style="top:104px"><div class="step">Paso 3</div><h2>Metas proyectadas, mes a mes</h2></div>
+  <div class="card" id="s4a" style="left:132px;top:216px;width:1000px;height:700px">
+    <div class="card-h"><div><h3>Facturación ($)</h3><div class="sub" style="margin-top:6px">Últimos 24 meses y próximos 12</div></div></div>
+    <svg id="s4svg" viewBox="0 0 930 470" style="width:930px;height:470px;margin:0 35px"></svg>
+    <div class="legend" style="margin-top:8px"><span><i style="background:#0a4da0"></i>Real</span><span><i style="background:#12a6f4;height:4px;border-radius:2px"></i>Proyección</span><span><i style="background:#CBD5E1"></i>Meta</span></div>
   </div>
-  <div class="card" id="s4b" style="left:1000px;top:216px;width:720px;padding-bottom:6px">
-    <div class="card-h"><div><h3>Alcance único</h3><div class="sub" style="margin-top:6px">Meta del KPI</div></div><div class="unit">personas</div></div>
-    ${MESES.map((m, i) => `<div class="mrow"><div class="mo">${m}</div><div class="mval" data-b="${i}"></div></div>`).join('')}
-    <div class="mhint" id="s4h2">Unidad: personas alcanzadas en el mes</div>
-  </div>
-  <div class="card" id="s4c" style="left:660px;top:880px;width:600px;padding:26px 30px;display:flex;align-items:center;gap:18px">
-    <div class="tile t-amb">${ICON.bars}</div>
-    <div style="flex:1"><div style="font-size:19px;color:#64748B;font-weight:600">Facturación · meta anual</div>
-    <div style="font-size:31px;font-weight:700;letter-spacing:-.01em">US$ 15,5M</div></div>
-    <div class="unit">USD</div>
+  <div class="card" id="s4b" style="left:1188px;top:216px;width:600px;height:700px">
+    <div class="card-h"><h3>¿Cuánto querés crecer?</h3></div>
+    <div style="margin:0 34px"><div class="input" id="s4in" style="height:70px"><span id="s4txt"></span><span class="caret" id="s4car"></span></div>
+      <div class="mhint" style="margin:16px 0 0;display:block;line-height:1.5" id="s4h">Inflación proyectada <b>24%</b> (INDEC + REM del BCRA) · crecimiento real <b style="color:#15803D">+6,5%</b></div></div>
+    <div id="s4g" style="margin-top:14px">
+      ${MESES6.map((m, i) => `<div class="mrow" style="height:58px"><div class="mo">${m}</div><div class="mval" data-m="${i}" style="height:44px"></div></div>`).join('')}
+    </div>
+    <div class="mhint" id="s4k" style="margin:16px 34px 0">Las metas de los KPIs se calculan solas, según su aporte.</div>
   </div>`,
   (node) => {
-    const A = node.querySelector('#s4a'), B = node.querySelector('#s4b'), C = node.querySelector('#s4c');
-    const va = [...node.querySelectorAll('[data-a]')], vb = [...node.querySelectorAll('[data-b]')];
-    const YA = i => 337 + 66 * i;
-    const kfs = [{ t: 0, x: 700, y: 940 },
-      { t: .55, x: 800, y: YA(2) }, { t: .62, x: 800, y: YA(2), click: 1 },
-      { t: 1.32, x: 812, y: YA(4) },
-      { t: 2.16, x: 1600, y: YA(2) }, { t: 2.25, x: 1600, y: YA(2), click: 1 },
-      { t: 3.30, x: 1612, y: YA(4) }, { t: 3.95, x: 1470, y: 1010 }];
+    const A = node.querySelector('#s4a'), B = node.querySelector('#s4b'), svg = node.querySelector('#s4svg');
+    const txt = node.querySelector('#s4txt'), car = node.querySelector('#s4car');
+    const vals = [...node.querySelectorAll('[data-m]')];
+    const W = 930, H = 430, n = 36, bw = W / n, mx = Math.max(...META) * 1.08;
+    const Y = v => H - (v / mx) * (H - 20);
+    [0, .5, 1].forEach(f => svg.insertAdjacentHTML('beforeend', `<line x1="0" y1="${Y(mx * f * .9)}" x2="${W}" y2="${Y(mx * f * .9)}" stroke="#EEF1F7" stroke-width="2"/>`));
+    svg.insertAdjacentHTML('beforeend', `<line x1="${24 * bw}" y1="10" x2="${24 * bw}" y2="${H}" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="6 6"/>
+      <text x="${12 * bw}" y="${H + 30}" font-size="17" fill="#94A3B8" text-anchor="middle" font-weight="600">Últimos 24 meses</text>
+      <text x="${30 * bw}" y="${H + 30}" font-size="17" fill="#94A3B8" text-anchor="middle" font-weight="600">Próximos 12</text>`);
+    HIST.forEach((v, i) => svg.insertAdjacentHTML('beforeend', `<rect data-h="${i}" x="${i * bw + 3}" width="${bw - 6}" rx="3" fill="#0a4da0"/>`));
+    META.forEach((v, i) => svg.insertAdjacentHTML('beforeend', `<rect data-t="${i}" x="${(24 + i) * bw + 3}" width="${bw - 6}" rx="3" fill="#CBD5E1"/>`));
+    svg.insertAdjacentHTML('beforeend', `<path id="s4p" fill="none" stroke="#12a6f4" stroke-width="4" stroke-dasharray="10 8" stroke-linecap="round"/>`);
+    const hb = [...svg.querySelectorAll('[data-h]')], tb = [...svg.querySelectorAll('[data-t]')], pp = svg.querySelector('#s4p');
+    const kfs = [{ t: 0, x: 1100, y: 960 }, { t: 1.7, x: 1420, y: 360 }, { t: 1.8, x: 1420, y: 360, click: 1 }, { t: 3.4, x: 1560, y: 900 }];
     return (lt, alpha) => {
-      inUp(A, eo(S(lt, 0, .40)), 26); inUp(B, eo(S(lt, .12, .52)), 26);
-      // panel A — se tipea Mar, el resto se completa
-      va.forEach((v, i) => {
-        if (i === 2) {
-          const p = S(lt, .68, 1.10), act = lt >= .58 && lt < 1.46;
-          v.className = 'mval' + (act ? ' act' : '');
-          v.textContent = lt >= .62 ? typed('28,8', p) + (p < 1 ? '|' : '') : '';
-        } else {
-          const k = i > 2 ? i - 1 : i, t0 = 1.24 + k * .11, p = eo(S(lt, t0, t0 + .18));
-          v.className = 'mval'; v.style.opacity = p;
-          v.textContent = p > .2 ? nf(METAS_TOM[i], 1) : '';
-        }
-      });
-      // panel B — se tipea el número crudo y al confirmar se formatea
-      vb.forEach((v, i) => {
-        if (i === 2) {
-          const p = S(lt, 2.30, 2.94), act = lt >= 2.20 && lt < 3.20;
-          v.className = 'mval' + (act ? ' act' : '');
-          if (lt < 2.25) v.textContent = '';
-          else if (lt < 3.02) v.textContent = typed('2400000', p) + (p < 1 ? '|' : '');
-          else v.textContent = nf(2400000);
-        } else {
-          const k = i > 2 ? i - 1 : i, t0 = 3.14 + k * .11, p = eo(S(lt, t0, t0 + .18));
-          v.className = 'mval'; v.style.opacity = p;
-          v.textContent = p > .2 ? nf(METAS_ALC[i]) : '';
-        }
-      });
-      node.querySelector('#s4h1').style.opacity = eo(S(lt, 1.9, 2.2)) * .95;
-      node.querySelector('#s4h2').style.opacity = eo(S(lt, 3.7, 4.0)) * .95;
-      const cp = eo(S(lt, 4.05, 4.42));
-      C.style.opacity = cp; C.style.transform = `translateY(${(1 - cp) * 22}px)`;
+      inUp(A, eo(S(lt, 0, .4)), 26); inUp(B, eo(S(lt, .12, .52)), 26);
+      hb.forEach((r, i) => { const p = eo(S(lt, .2 + i * .035, .5 + i * .035)), h = (H - Y(HIST[i])) * p; r.setAttribute('y', H - h); r.setAttribute('height', h); });
+      const pl = S(lt, 1.15, 1.75), k = Math.max(1, Math.round(pl * 12));
+      pp.setAttribute('d', pl > 0 ? PROY.slice(0, k).map((v, i) => (i ? 'L' : 'M') + ((24 + i + .5) * bw) + ' ' + Y(v)).join('') : '');
+      txt.textContent = lt >= 1.85 ? typed('+32%', S(lt, 1.9, 2.3)) : '';
+      car.style.opacity = lt > 1.8 && lt < 2.9 ? (Math.floor(lt * 2.2 / SPEED) % 2 ? 0 : 1) : 0;
+      node.querySelector('#s4h').style.opacity = eo(S(lt, 2.4, 2.75));
+      tb.forEach((r, i) => { const p = eo(S(lt, 2.6 + i * .06, 2.95 + i * .06)), h = (H - Y(META[i])) * p; r.setAttribute('y', H - h); r.setAttribute('height', h); });
+      vals.forEach((v, i) => { const p = eo(S(lt, 2.8 + i * .1, 3.05 + i * .1)); v.style.opacity = p; v.textContent = p > .2 ? '$ ' + nf(META[i] * 3.1, 0) + ' M' : ''; });
+      node.querySelector('#s4k').style.opacity = eo(S(lt, 3.6, 3.9));
       runCursor(kfs, lt, alpha);
     };
   });
 
 /* =========================================================================
-   ESCENA 5 · Modelo listo  (19.2 – 20.3)
+   ESCENA 5 · Mapa activo  (19.2 – 20.3)
    ========================================================================= */
 scene('s5', 19.2, 20.3, `
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
     <div class="ok-circle" id="s5r"><span id="s5k" style="color:#0a4da0;display:flex">
       <svg viewBox="0 0 24 24" width="74" height="74" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path id="s5p" d="M20 6L9 17l-5-5"/></svg></span></div>
-    <h2 id="s5t" style="margin-top:44px;font-size:64px;font-weight:700;letter-spacing:-.024em">Tu modelo está listo</h2>
-    <p id="s5s" style="margin-top:20px;font-size:28px;color:#64748B;font-weight:500">3 objetivos · 5 KPIs · 12 meses de metas</p>
+    <h2 id="s5t" style="margin-top:44px;font-size:64px;font-weight:700;letter-spacing:-.024em">Tu Mapa Estratégico está activo</h2>
+    <p id="s5s" style="margin-top:20px;font-size:28px;color:#64748B;font-weight:500">4 objetivos · sus KPIs conectados · metas mes a mes</p>
   </div>`,
   (node) => {
     const ring = node.querySelector('#s5r'), path = node.querySelector('#s5p');
@@ -390,29 +331,29 @@ scene('s5', 19.2, 20.3, `
       inUp(node.querySelector('#s5s'), eo(S(lt, .46, .82)), 18);
     };
   });
-
 /* =========================================================================
    ESCENA 6 · Seguimiento mensual: real vs meta y GAPs  (20.3 – 25.1)
    Convención de color del proyecto: real = azul, meta = gris pizarra,
    verde/amarillo/rojo SOLO como semáforo.
    ========================================================================= */
 const M9 = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'];
-const TOM_META = [28.0, 28.4, 28.8, 29.2, 29.6, 30.0, 30.4, 30.9, 31.4];
-const TOM_REAL = [27.4, 27.7, 28.1, 28.0, 28.6, 28.9, 29.1, 29.4, 29.6];
+const TOM_META = [380, 388, 402, 410, 421, 432, 445, 458, 470];
+const TOM_REAL = [372, 376, 391, 396, 409, 418, 428, 436, 442];
 const ALC_META = [2.10, 2.20, 2.40, 2.50, 2.60, 2.70, 2.80, 2.85, 2.90];
 const ALC_REAL = [1.92, 2.08, 2.22, 2.35, 2.41, 2.52, 2.55, 2.48, 2.60];
 const RES = [
-  { nm: 'Top of Mind', ic: ICON.star, cls: 't-pri', a: '29,6', b: '31,4', g: '-5,8%' },
-  { nm: 'Intención de Compra', ic: ICON.bag, cls: 't-grn', a: '15,2', b: '18,0', g: '-15,6%' },
-  { nm: 'Facturación', ic: ICON.bars, cls: 't-amb', a: 'US$ 14,4M', b: 'US$ 15,5M', g: '-7,1%' }
+  { nm: 'Facturación ($)', ic: ICON.bars, cls: 't-pri', a: '$ 3.512M', b: '$ 3.670M', g: '-4,3%' },
+  { nm: 'Facturación (unid.)', ic: ICON.bag, cls: 't-grn', a: '48.200', b: '50.100', g: '-3,8%' },
+  { nm: 'Inversión ÷ Fact.', ic: ICON.ratio, cls: 't-amb', a: '4,1%', b: '4,0%', g: '+0,1 pp' },
+  { nm: 'Costo del lead', ic: ICON.lead, cls: 't-pri', a: '$ 18.400', b: '$ 17.200', g: '+7,0%' }
 ];
 scene('s6', 20.3, 25.1, `
   <div class="top-b"><h2>Seguimiento mensual</h2><div class="mpill" id="s6m">Ene 2026</div></div>
   <div class="card" id="s6a" style="left:132px;top:196px;width:800px;height:474px">
-    <div class="card-h" style="padding-bottom:6px"><h3 style="display:flex;align-items:center;gap:14px"><span class="tile t-pri" style="width:40px;height:40px;border-radius:12px">${ICON.star}</span>Top of Mind</h3></div>
-    <div class="kpi-head"><div class="kh"><div class="kl">Meta</div><div class="kv" id="s6am">28,0</div></div>
-      <div class="kh"><div class="kl">Actual</div><div class="kv" id="s6ar" style="color:#0a4da0">27,4</div></div>
-      <div class="gap" id="s6ag">-5,8%</div></div>
+    <div class="card-h" style="padding-bottom:6px"><h3 style="display:flex;align-items:center;gap:14px"><span class="tile t-pri" style="width:40px;height:40px;border-radius:12px">${ICON.bars}</span>Facturación ($) <span style="font-size:20px;color:#94A3B8;font-weight:500">($ millones)</span></h3></div>
+    <div class="kpi-head"><div class="kh"><div class="kl">Meta</div><div class="kv" id="s6am">380</div></div>
+      <div class="kh"><div class="kl">Actual</div><div class="kv" id="s6ar" style="color:#0a4da0">372</div></div>
+      <div class="gap" id="s6ag">-6,0%</div></div>
     <svg id="s6svg" viewBox="0 0 730 250" style="width:730px;height:250px;margin:6px 35px 0">
       <g id="s6grid"></g>
       <path id="s6meta" fill="none" stroke="#94A3B8" stroke-width="3" stroke-dasharray="8 7" stroke-linecap="round"/>
@@ -423,7 +364,7 @@ scene('s6', 20.3, 25.1, `
     <div class="legend" style="margin-top:4px"><span><i style="background:#0a4da0"></i>Real</span><span><i style="background:#94A3B8"></i>Meta</span></div>
   </div>
   <div class="card" id="s6b" style="left:988px;top:196px;width:800px;height:474px">
-    <div class="card-h" style="padding-bottom:6px"><h3 style="display:flex;align-items:center;gap:14px"><span style="width:14px;height:14px;border-radius:5px;background:#0a4da0;display:inline-block"></span>Alcance único <span style="font-size:20px;color:#94A3B8;font-weight:500">(personas)</span></h3></div>
+    <div class="card-h" style="padding-bottom:6px"><h3 style="display:flex;align-items:center;gap:14px"><span style="width:14px;height:14px;border-radius:5px;background:#0a4da0;display:inline-block"></span>Tráfico web <span style="font-size:20px;color:#94A3B8;font-weight:500">(visitas)</span></h3></div>
     <div class="kpi-head"><div class="kh"><div class="kl">Meta</div><div class="kv" id="s6bm">2,1M</div></div>
       <div class="kh"><div class="kl">Actual</div><div class="kv" id="s6br" style="color:#0a4da0">1,9M</div></div>
       <div class="gap" id="s6bg">-10%</div></div>
@@ -432,7 +373,7 @@ scene('s6', 20.3, 25.1, `
     </svg>
     <div class="legend" style="margin-top:4px"><span><i style="background:#0a4da0"></i>Real</span><span><i style="background:#CBD5E1"></i>Meta</span></div>
   </div>
-  ${RES.map((r, i) => `<div class="sum-card" data-s="${i}" style="left:${180 + i * 530}px;top:700px;width:500px">
+  ${RES.map((r, i) => `<div class="sum-card" data-s="${i}" style="left:${132 + i * 418}px;top:700px;width:398px">
       <div class="nm"><span class="tile ${r.cls}" style="width:36px;height:36px;border-radius:11px">${r.ic}</span>${r.nm}<span class="gpill">${r.g}</span></div>
       <div class="vals"><span class="a">${r.a}</span><span class="b">/ ${r.b}</span></div></div>`).join('')}
   <div class="card" id="s6e" style="left:180px;top:892px;width:1560px;padding:26px 32px">
@@ -445,11 +386,11 @@ scene('s6', 20.3, 25.1, `
   </div>`,
   (node) => {
     const XS = i => 40 + i * 83.75;
-    const YL = v => 230 - (v - 26) / 6.5 * 196;
+    const YL = v => 230 - (v - 360) / 125 * 196;
     const YB = v => 230 - (v / 3.2) * 196;
     // grillas
     const g1 = node.querySelector('#s6grid'), g2 = node.querySelector('#s6grid2');
-    [26, 28, 30, 32].forEach(v => g1.insertAdjacentHTML('beforeend', `<line x1="34" y1="${YL(v)}" x2="710" y2="${YL(v)}" stroke="#EEF1F7" stroke-width="2"/><text x="6" y="${YL(v) + 6}" font-size="15" fill="#94A3B8" font-weight="600">${v}</text>`));
+    [360, 400, 440, 480].forEach(v => g1.insertAdjacentHTML('beforeend', `<line x1="34" y1="${YL(v)}" x2="710" y2="${YL(v)}" stroke="#EEF1F7" stroke-width="2"/><text x="6" y="${YL(v) + 6}" font-size="15" fill="#94A3B8" font-weight="600">${v}</text>`));
     [0, 1, 2, 3].forEach(v => g2.insertAdjacentHTML('beforeend', `<line x1="34" y1="${YB(v)}" x2="710" y2="${YB(v)}" stroke="#EEF1F7" stroke-width="2"/><text x="6" y="${YB(v) + 6}" font-size="15" fill="#94A3B8" font-weight="600">${v}M</text>`));
     const lab = node.querySelector('#s6lab'), lab2 = node.querySelector('#s6lab2');
     M9.forEach((m, i) => {
@@ -484,8 +425,8 @@ scene('s6', 20.3, 25.1, `
       dot.setAttribute('cx', lerp(XS(fi), XS(fi + 1), ff));
       dot.setAttribute('cy', lerp(YL(TOM_REAL[fi]), YL(TOM_REAL[fi + 1]), ff));
       dot.setAttribute('opacity', eo(S(lt, .35, .6)));
-      node.querySelector('#s6am').textContent = nf(lerp(TOM_META[fi], TOM_META[fi + 1], ff), 1);
-      node.querySelector('#s6ar').textContent = nf(lerp(TOM_REAL[fi], TOM_REAL[fi + 1], ff), 1);
+      node.querySelector('#s6am').textContent = nf(lerp(TOM_META[fi], TOM_META[fi + 1], ff));
+      node.querySelector('#s6ar').textContent = nf(lerp(TOM_REAL[fi], TOM_REAL[fi + 1], ff));
       node.querySelector('#s6bm').textContent = nf(lerp(ALC_META[fi], ALC_META[fi + 1], ff), 1) + 'M';
       node.querySelector('#s6br').textContent = nf(lerp(ALC_REAL[fi], ALC_REAL[fi + 1], ff), 1) + 'M';
       bm.forEach((r, i) => {
@@ -512,13 +453,13 @@ scene('s6', 20.3, 25.1, `
    ESCENA 7 · Insights  (25.1 – 26.9)
    ========================================================================= */
 const INS = [
-  { i: '↑', bg: '#DCFCE7', c: '#16A34A', t: 'El <b>VTR</b> es el KPI de mayor correlación con Top of Mind.' },
-  { i: '!', bg: '#FEF3C7', c: '#D97706', t: 'Top of Mind viene <b>5,8% debajo</b> de su meta anual.' },
-  { i: '◆', bg: '#eaf1fb', c: '#0a4da0', t: 'Social Media es el mayor driver de <b>Intención de Compra</b>.' }
+  { i: '↑', bg: '#DCFCE7', c: '#16A34A', t: 'El <b>tráfico web</b> es el KPI que más explica tu facturación.' },
+  { i: '!', bg: '#FEF3C7', c: '#D97706', t: 'El <b>costo del lead</b> viene <b>7% arriba</b> de su meta.' },
+  { i: '◆', bg: '#eaf1fb', c: '#0a4da0', t: '<b>Inversión ÷ Facturación</b> en 4,1%: casi en meta, con margen para invertir.' }
 ];
 scene('s7', 25.1, 26.9, `
   <div class="lead" style="top:330px">
-    <div class="step">Paso 5</div>
+    <div class="step">Paso 4</div>
     <h2>Aprendé y descubrí insights</h2>
     <p>La plataforma identifica patrones y oportunidades en tus datos.</p>
   </div>
@@ -547,7 +488,7 @@ const MEDIOS = [
   { nm: 'Display', from: 25, to: 10, d: '-15' }
 ];
 scene('s8', 26.9, 28.9, `
-  <div class="top-b"><div class="step">Paso 6</div><h2>Optimizá y recalibrá el modelo</h2></div>
+  <div class="top-b"><div class="step">Paso 5</div><h2>Optimizá y recalibrá el modelo</h2></div>
   <div class="card" id="s8a" style="left:132px;top:216px;width:800px;padding-bottom:30px">
     <div class="card-h"><h3>Reasignación de inversión</h3><div class="sub">próximo ciclo</div></div>
     ${MEDIOS.map((m, i) => `<div class="opt-row"><div class="nm">${m.nm}</div>
