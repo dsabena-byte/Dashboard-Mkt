@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { mirrorMetaImage } from "@/lib/meta-image-mirror";
+import { esLanzamientoLavado } from "@/lib/pauta-categoria";
 
 // El mirroring (descarga de Meta + subida al bucket) + los insights de muchos
 // ads pueden pasar de 60s en meses con más pauta (junio daba 504
@@ -302,6 +303,8 @@ function parseAdName(adName: string | null | undefined, objective?: string | nul
   // "META_Drean_UGC_IG_Video..._CPM_2026"): detecta UGC y el tipo de compra en
   // cualquier parte del nombre, no solo en el patrón de guiones.
   if (!categoria && /(^|[^a-z])ugc([^a-z]|$)/i.test(adName)) categoria = "UGC";
+  // Lanzamiento Mickey (Teaser / Reveal) = Lavado, aunque la campaña no diga la categoría.
+  if (esLanzamientoLavado(adName) || esLanzamientoLavado(campaignName)) categoria = "Lavado";
   // Brand: piezas institucionales sin categoría de producto — videos "MASTER" de
   // marca (ej. "Drean_Video_MASTER ... DREAN VIDEO AD TOKIO 15s"), campañas de
   // talento/vocero (ej. "Marcelino", el vocero de "El tipo que vende Drean") o que

@@ -1,3 +1,4 @@
+import { esLanzamientoLavado } from "./pauta-categoria";
 // DV360 → dv360_creatives / dv360_reach: lógica PURA (client-safe, sin imports).
 // Port literal de las funciones del Apps Script "Sync Drive Tablero CB" (syncDv360 / syncDv360Reach + helpers
 // dv360Num_/dv360EstadoRank_/dv360Canal_/dv360Categoria_/dv360Rol_/dv360DataRow_, ver docs/dv360-sync.md):
@@ -67,7 +68,7 @@ export function dv360Canal(name: unknown): string {
 }
 export function dv360Categoria(name: unknown): string {
   const l = String(name || "").toLowerCase();
-  if (l.includes("lavado")) return "Lavado";
+  if (l.includes("lavado") || esLanzamientoLavado(l)) return "Lavado"; // Teaser/Reveal Mickey = Lavado
   if (l.includes("refriger") || l.includes("heladera")) return "Refrigeración";
   if (l.includes("coccion") || l.includes("cocción") || l.includes("cocina")) return "Cocción";
   if (l.includes("promoc") || l.includes("drean week")) return "Promoción";
