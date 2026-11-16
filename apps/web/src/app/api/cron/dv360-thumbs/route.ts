@@ -68,6 +68,29 @@ async function reportNames(): Promise<string[]> {
   return [...names];
 }
 
+async function investigar(token: string, scopes: string[], adv: string) {
+  const get = async (u: string) => {
+    const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    return { status: r.status, body: (await r.json().catch(() => null)) as Record<string, unknown> | null };
+  };
+  const cm = await get("https://dfareporting.googleapis.com/dfareporting/v5/userprofiles");
+  const ads: unknown[] = [];
+  let pt = "", status = 0, error: unknown = null;
+  for (let i = 0; i < 10; i++) {
+    const r = await get(`${API}/advertisers/${adv}/adGroupAds?pageSize=100${pt ? `&pageToken=${pt}` : ""}`);
+    status = r.status;
+    if (r.status !== 200) { error = r.body; break; }
+    for (const a of ((r.body?.adGroupAds as Record<string, unknown>[]) ?? [])) {
+      const tipo = Object.keys(a).find((k) => /Ad$/.test(k) && typeof a[k] === "object") ?? "?";
+      const v = JSON.stringify(a[tipo] ?? {}).match(/"id":"([\w-]{11})"/)?.[1] ?? null;
+      ads.push({ nombre: a.displayName, tipo, video: v, estado: a.entityStatus, src: (a.displayVideoSourceAd as { creativeId?: string } | undefined)?.creativeId ?? null });
+    }
+    pt = (r.body?.nextPageToken as string) ?? "";
+    if (!pt) break;
+  }
+  return { scopes, cm360: { status: cm.status, body: JSON.stringify(cm.body).slice(0, 300) }, adGroupAds: { status, error: error ? JSON.stringify(error).slice(0, 300) : null, total: ads.length, items: ads } };
+}
+
 async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
   let i = 0;
@@ -92,7 +115,7 @@ export async function GET(request: Request) {
   const adv = url.searchParams.get("adv") || DV360_ADVERTISER_ID;
   const t0 = Date.now();
   try {
-    const { token, tieneScope } = await dv360AccessToken("/display-video");
+    const { token, tieneScope, scopes } = await dv360AccessToken("/display-video");
     if (!tieneScope) {
       return NextResponse.json({ ok: false, estado: "no_scope", error: "Ni DV360_REFRESH_TOKEN ni GOOGLE_REFRESH_TOKEN tienen el scope display-video" }, { status: 500 });
     }
@@ -172,6 +195,8 @@ export async function GET(request: Request) {
         sinMatch: unmatched,
       },
       muestra: items.slice(0, 5).map((i) => ({ nombre: i.name, url: i.url, tipo: i.type })),
+      // Diagnóstico (dry, solo lectura): permisos, acceso a CM360 y anuncios de YouTube de DV360.
+      ...(dry ? { investigacion: await investigar(token, scopes, adv) } : {}),
       ms: Date.now() - t0,
     });
   } catch (e) {
