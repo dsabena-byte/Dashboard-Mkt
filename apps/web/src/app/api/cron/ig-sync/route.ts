@@ -75,7 +75,10 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
 
   const url = new URL(request.url);
-  const daysParam = Math.min(Number(url.searchParams.get("days")) || 30, 365);
+  // Backfill: hasta ~2 años (Meta da insights de media de hasta 2 años). `until` (ISO) saltea lo más nuevo
+  // para no reescribir con alcance madurado los posts ya guardados.
+  const daysParam = Math.min(Number(url.searchParams.get("days")) || 30, 730);
+  const untilIso = url.searchParams.get("until") || null;
 
   try {
     // 1. Get Page Access Token
@@ -147,7 +150,8 @@ export async function GET(request: Request) {
     let nextUrl: string | null =
       `${GRAPH_API}/${igId}/media?fields=id,timestamp,caption,permalink,media_type,media_product_type,media_url,thumbnail_url,like_count,comments_count&limit=50&access_token=${pt}`;
 
-    while (nextUrl && mediaData.length < 500) {
+    let pages = 0;
+    while (nextUrl && mediaData.length < 500 && pages++ < 40) {
       const raw = await graphGetRaw(nextUrl);
       if (raw.status !== 200) {
         results.media_error = raw.body;
@@ -162,6 +166,7 @@ export async function GET(request: Request) {
           reachedOldPost = true;
           break;
         }
+        if (untilIso && m.timestamp && m.timestamp >= untilIso) continue;
         mediaData.push(m);
       }
       if (reachedOldPost) break;
