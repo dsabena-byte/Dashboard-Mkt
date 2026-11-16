@@ -172,6 +172,8 @@ export async function GET(request: Request) {
         sinMatch: unmatched,
       },
       muestra: items.slice(0, 5).map((i) => ({ nombre: i.name, url: i.url, tipo: i.type })),
+      // Diagnóstico: qué trae la API en los creatives sin imagen (videos alojados), para poder mostrarlos.
+      ...(dry ? { muestraSinImagen: creatives.filter((c) => !thumbCandidates(c)).slice(0, 4).map((c) => ({ nombre: c.displayName, tipo: c.creativeType, hosting: c.hostingSource, assets: c.assets, extra: Object.keys(c) })) } : {}),
       ms: Date.now() - t0,
     });
   } catch (e) {
