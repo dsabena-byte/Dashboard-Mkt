@@ -19,7 +19,7 @@ import { MultiDropdown } from "@/components/multi-dropdown";
 import { MetaPaidGrid } from "@/components/pauta/meta-paid-grid";
 import { PiezaGrid, type PiezaCard } from "@/components/pauta/pieza-grid";
 import { tiktokCards, type TikTokPiezaMes } from "@/lib/tiktok-piezas";
-import type { Dv360Thumb } from "@/lib/dv360-thumbs-shared";
+import { portadaMeta, type Dv360Thumb } from "@/lib/dv360-thumbs-shared";
 import type { MetaPaidCreativeRow } from "@/lib/meta-paid-queries";
 import {
   type Dv360CreativeRow,
@@ -481,6 +481,8 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
   // Piezas DV360 como tarjetas (mismo formato que Meta). La miniatura sale de la API de
   // DV360 (manifiesto del cron dv360-thumbs, matcheo por nombre); sin match → placeholder
   // con el tamaño. Alcance/frecuencia/engagement no vienen por pieza.
+  // Videos alojados en DV360 sin imagen en la API → portada del anuncio de Meta del mismo producto.
+  const metaPortadas = useMemo(() => metaPaid.filter((r) => r.plataforma === "meta"), [metaPaid]);
   const dv360PieceCards = useMemo<PiezaCard[]>(
     () =>
       dv360Pieces.map((p) => ({
@@ -488,7 +490,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
         titulo: p.creative,
         categoria: p.categoria,
         badges: [p.canal, p.rol].filter(Boolean),
-        img: dv360Thumbs[p.creative]?.url ?? null,
+        img: dv360Thumbs[p.creative]?.url ?? portadaMeta(p.creative, metaPortadas),
         imgFit: "contain",
         inv: p.revenueUsd,
         impr: p.impresiones,
@@ -498,7 +500,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
         vtr: p.vtr > 0 ? p.vtr : null,
         activa: p.activa,
       })),
-    [dv360Pieces, dv360Thumbs],
+    [dv360Pieces, dv360Thumbs, metaPortadas],
   );
   // Reach de DV360 filtrado por mes (dv360_reach es a nivel line_item/canal, no
   // trae categoría/rol → solo se puede filtrar por mes). Alimenta el resumen por
@@ -1851,7 +1853,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
                 data={metaPaid
                   .filter((r) => r.plataforma === "programmatic")
                   // Programmatic no trae imagen: la miniatura sale de la API de DV360 (cruce por nombre).
-                  .map((r) => (r.image_url || !r.ad_name ? r : { ...r, image_url: dv360Thumbs[r.ad_name]?.url ?? null }))}
+                  .map((r) => (r.image_url || !r.ad_name ? r : { ...r, image_url: dv360Thumbs[r.ad_name]?.url ?? portadaMeta(r.ad_name, metaPortadas) }))}
                 selMeses={selMeses}
                 selCats={selCats}
                 selRoles={selRoles}

@@ -8,6 +8,8 @@ import {
   resolveThumbs,
   sizeOf,
   thumbCandidates,
+  productoDe,
+  portadaMeta,
   type Dv360ThumbEntry,
 } from "../src/lib/dv360-thumbs-shared";
 
@@ -73,6 +75,23 @@ ok(yt?.type === "youtube" && yt.urls[0] === "https://i.ytimg.com/vi/abc123/hqdef
 ok(thumbCandidates({ creativeId: "3", assets: [{ asset: { content: "https://gcdn.2mdn.net/videoplayback/x.mp4" } }] }) === null, "video alojado (mp4) → sin miniatura");
 const bk = thumbCandidates({ creativeId: "4", assets: [{ asset: { content: "https://s0.2mdn.net/a/index.html" }, role: "ASSET_ROLE_MAIN" }, { asset: { content: "/simgad/55" }, role: "ASSET_ROLE_BACKUP" }] });
 ok(bk?.urls[0] === "https://tpc.googlesyndication.com/simgad/55", "HTML5 → imagen de backup");
+
+// Videos alojados → portada de Meta del mismo producto
+ok(productoDe("LPDR1165LG - 10 SEG (1920x1080)").join() === "lpdr1165lg", "código de modelo");
+ok(productoDe("HELADERA 469 - 15 SEG (1080x1080)").join() === "469", "heladera 469");
+ok(productoDe("Online_Drean_Individual_Redu_15seg_TOKYO").join() === "tokio", "tokyo = tokio");
+ok(productoDe("LAVASECARROPAS - 10 SEG (1080x1080)").length === 0 && productoDe("COCINA 01 - 10 SEG (1080x1080)").length === 0, "sin señal clara → sin portada");
+const meta = [
+  { ad_name: "Drean - Lavado - Meta - CPM - LPDR1165LG 15s", image_url: "a15", spend: 900 },
+  { ad_name: "Drean - Lavado - Meta - CPM - LPDR1165LG 6s", image_url: "a6", spend: 10 },
+  { ad_name: "Drean - Refrigeracion - Meta - CPM - 469  10s", image_url: "h10", spend: 1 },
+  { ad_name: "Drean - Refrigeracion - Meta - CPM - 469 15s", image_url: "h15", spend: 5 },
+  { ad_name: "Drean_Video_MASTER 1.1 DREAN VIDEO AD TOKIO 15s_Abril_26", image_url: "tk", spend: 1 },
+];
+ok(portadaMeta("LPDR1165LG - 10 SEG (1920x1080)", meta) === "a15", "sin misma duración → más inversión");
+ok(portadaMeta("HELADERA 469 - 10 SEG (1080x1080)", meta) === "h10", "misma duración primero");
+ok(portadaMeta("Online_Drean_Individual_Redu_15seg_TOKYO", meta) === "tk", "Tokio");
+ok(portadaMeta("HELADERA 480 - 10 SEG (1080x1080)", meta) === null, "480 no matchea 469");
 
 console.log(`dv360-thumbs: ${pass} OK, ${fail} fallas`);
 if (fail) process.exit(1);
