@@ -75,3 +75,8 @@ para **no** pisar meses previos ni las proyecciones a futuro (ej. MAT nov-26).
 ## Estado
 - **Ago-2026:** cargado Jul 2025→Jul 2026 para Lavado, Refrigeración y Cocción, en
   los 4 segmentos (Low/Mid/High/Total) y ambas agregaciones (mensual + MAT).
+- **16-nov-2026:** cargado Oct 2025→Oct 2026 (mensual + MAT) en las 3 categorías y los 4 segmentos, salvo MAT Low de
+  Cocción (sin archivos; Drean no vende ≤54 cm). Lavado/Refri coinciden al decimal con lo anterior; Cocción Mid/High
+  difieren hasta 0,14 pp en jun–jul (revisión de GfK, misma definición) → quedaron los valores nuevos. Carga por REST
+  (scripts del scratchpad, backup del scope antes de borrar). **El MAT nov-26 sigue siendo la proyección cargada a mano en
+  junio** (Lavado SOM 28,1% vs real oct-26 25,9%); el user la va a reemplazar por un dato más realista.
