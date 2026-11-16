@@ -162,38 +162,3 @@ function rolePrio(role?: string): number {
   if (role === "ASSET_ROLE_BACKUP") return 1;
   return 2;
 }
-
-// ── Videos alojados en DV360: la API solo da la ruta del .mp4 (no descargable) → portada del anuncio de Meta del MISMO
-// producto (código de modelo, "heladera 469/480", Berlín/Tokio). Mismo producto, puede ser otro corte; sin par claro → null.
-/** Palabras que identifican el producto en el nombre del creative (o [] si no hay una señal inequívoca). */
-export function productoDe(name: string | null | undefined): string[] {
-  const t = normalizeCreativeName(name).replace(/\btokyo\b/g, "tokio").split(" ");
-  const modelos = t.filter((w) => w.length >= 6 && /[a-z]/.test(w) && /\d/.test(w) && !/^\d+x\d+$/.test(w) && !/^\d+seg$/.test(w));
-  if (modelos.length) return modelos;
-  const ciudad = t.filter((w) => w === "berlin" || w === "tokio");
-  if (ciudad.length) return ciudad;
-  const i = t.indexOf("heladera");
-  return i >= 0 && /^\d{3}$/.test(t[i + 1] ?? "") ? [t[i + 1]!] : [];
-}
-
-/** Segundos del video según el nombre ("10 SEG", "15seg", "15s") o null. */
-function segundosDe(name: string): number | null {
-  const m = normalizeCreativeName(name).match(/\b(\d{1,2}) ?(?:seg|s)\b/);
-  return m ? parseInt(m[1]!, 10) : null;
-}
-
-/** Portada de Meta para un video de DV360: anuncio con las palabras del producto; prefiere la misma duración y más inversión. */
-export function portadaMeta(name: string, meta: { ad_name: string | null; image_url: string | null; spend?: number | null }[]): string | null {
-  const claves = productoDe(name);
-  if (!claves.length) return null;
-  const seg = segundosDe(name);
-  let mejor: { url: string; pts: number } | null = null;
-  for (const r of meta) {
-    if (!r.image_url || !r.ad_name) continue;
-    const n = ` ${normalizeCreativeName(r.ad_name).replace(/\btokyo\b/g, "tokio")} `;
-    if (!claves.every((k) => n.includes(` ${k} `))) continue;
-    const pts = (seg != null && segundosDe(r.ad_name) === seg ? 1e15 : 0) + (r.spend ?? 0);
-    if (!mejor || pts > mejor.pts) mejor = { url: r.image_url, pts };
-  }
-  return mejor?.url ?? null;
-}
