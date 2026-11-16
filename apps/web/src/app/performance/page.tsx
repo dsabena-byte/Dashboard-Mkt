@@ -125,7 +125,7 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     // Metas propias de cada categoría (vista Lavado/Refri/Cocción); sin cargar → el cliente usa total × mix.
     Promise.all(META_CATS.map((cat) => Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear, cat), META_FALLBACK))))),
     safe(getPautaDiaria(), null),
-    safe(getDv360ThumbMap(rawDv360.map((r) => r.creative)), {} as Awaited<ReturnType<typeof getDv360ThumbMap>>),
+    safe(getDv360ThumbMap([...rawDv360.map((r) => r.creative), ...rawMetaPaid.filter((r) => r.plataforma === "programmatic").map((r) => r.ad_name ?? "")]), {} as Awaited<ReturnType<typeof getDv360ThumbMap>>),
     safe(getTikTokPiezas(), null),
   ]);
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;

@@ -1848,7 +1848,10 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
                 Display + video CTV. Trae alcance y frecuencia. Ordenadas por inversión del mes.
               </p>
               <MetaPaidGrid
-                data={metaPaid.filter((r) => r.plataforma === "programmatic")}
+                data={metaPaid
+                  .filter((r) => r.plataforma === "programmatic")
+                  // Programmatic no trae imagen: la miniatura sale de la API de DV360 (cruce por nombre).
+                  .map((r) => (r.image_url || !r.ad_name ? r : { ...r, image_url: dv360Thumbs[r.ad_name]?.url ?? null }))}
                 selMeses={selMeses}
                 selCats={selCats}
                 selRoles={selRoles}
