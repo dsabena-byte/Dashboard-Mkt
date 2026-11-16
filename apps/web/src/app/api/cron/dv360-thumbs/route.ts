@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { mirrorImageStrict, uploadBucketJson } from "@/lib/meta-image-mirror";
+import { bucketPublicUrl, mirrorImageStrict, uploadBucketJson } from "@/lib/meta-image-mirror";
 import {
   DV360_ADVERTISER_ID,
   DV360_MANIFEST_KEY,
   DV360_THUMBS_PREFIX,
   resolveThumbs,
   thumbCandidates,
+  videoFrameKeys,
   type Dv360ApiCreative,
   type Dv360ThumbEntry,
   type Dv360ThumbManifest,
@@ -66,6 +67,32 @@ async function reportNames(): Promise<string[]> {
     if (rows.length < 1000) break;
   }
   return [...names];
+}
+
+async function probeVideo(token: string, adv: string, c: Dv360ApiCreative) {
+  const main = (c.assets ?? []).find((a) => a.role === "ASSET_ROLE_MAIN")?.asset;
+  const id = main?.mediaId ?? "";
+  const n = BigInt(main?.content?.split("/")[1] ?? "0");
+  const hex = (n & ((1n << 64n) - 1n)).toString(16).padStart(16, "0");
+  const urls = [
+    `https://displayvideo.googleapis.com/download/sdfdownloadtasks/media/${id}?alt=media`,
+    `https://displayvideo.googleapis.com/download/advertisers/${adv}/assets/${id}?alt=media`,
+    `https://displayvideo.googleapis.com/download/media/${id}?alt=media`,
+    `${API}/advertisers/${adv}/assets/${id}`,
+    `${API}/advertisers/${adv}/creatives/${c.creativeId}:preview`,
+    `https://gcdn.2mdn.net/videoplayback/id/${hex}/itag/18/source/doubleclick_dmm/file/file.mp4`,
+  ];
+  const out: { url: string; status: number; tipo: string; cuerpo: string }[] = [];
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { headers: { Authorization: `Bearer ${token}`, Range: "bytes=0-300" }, cache: "no-store", redirect: "manual" });
+      const tipo = r.headers.get("content-type") ?? "";
+      out.push({ url: u.replace(id, "<mediaId>"), status: r.status, tipo, cuerpo: tipo.includes("video") ? "(video)" : (await r.text()).slice(0, 160) + (r.headers.get("location") ? ` → ${r.headers.get("location")!.slice(0, 80)}` : "") });
+    } catch (e) {
+      out.push({ url: u, status: 0, tipo: "", cuerpo: String(e).slice(0, 120) });
+    }
+  }
+  return out;
 }
 
 async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Promise<R[]> {
@@ -135,6 +162,20 @@ export async function GET(request: Request) {
     });
     const items = results.filter((x): x is Dv360ThumbEntry => !!x);
 
+    // Videos alojados: el fotograma lo sube el usuario (dv360-video/<clave>.jpg); acá solo se verifica que exista.
+    const videos = creatives.filter((c) => !thumbCandidates(c) && c.creativeId && videoFrameKeys(c).length);
+    const videosSinPortada: string[] = [];
+    await pool(videos, CONCURRENCY, async (c) => {
+      for (const key of videoFrameKeys(c)) {
+        const r = await mirrorImageStrict(bucketPublicUrl(key), key, { dry: true });
+        if (r.ok) {
+          items.push({ creativeId: c.creativeId!, name: c.displayName ?? "", url: bucketPublicUrl(key), w: null, h: null, type: "video" });
+          return;
+        }
+      }
+      videosSinPortada.push(c.displayName ?? c.creativeId!);
+    });
+
     // Cobertura contra los nombres que usa el dash (solo informativo).
     const nombres = await reportNames().catch(() => [] as string[]);
     const { map, unmatched } = resolveThumbs(nombres, items);
@@ -172,8 +213,10 @@ export async function GET(request: Request) {
         sinMatch: unmatched,
       },
       muestra: items.slice(0, 5).map((i) => ({ nombre: i.name, url: i.url, tipo: i.type })),
-      // Diagnóstico: qué trae la API en los creatives sin imagen (videos alojados), para poder mostrarlos.
-      ...(dry ? { muestraSinImagen: creatives.filter((c) => !thumbCandidates(c)).slice(0, 2) } : {}),
+      videosConPortada: videos.length - videosSinPortada.length,
+      // Diagnóstico (dry): ¿se puede bajar el video alojado con la autorización de la API?
+      ...(dry && videos[0] ? { probeVideo: await probeVideo(token, adv, videos[0]) } : {}),
+      videosSinPortada: videosSinPortada.sort(),
       ms: Date.now() - t0,
     });
   } catch (e) {

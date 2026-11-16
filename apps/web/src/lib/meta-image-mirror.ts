@@ -140,3 +140,16 @@ export async function uploadBucketJson(key: string, data: unknown): Promise<{ ok
 export function bucketPublicUrl(key: string): string {
   return publicUrl(env("NEXT_PUBLIC_SUPABASE_URL"), key);
 }
+
+/** Sube una imagen ya validada al bucket (fotogramas de video de DV360). */
+export async function uploadBucketImage(key: string, body: ArrayBuffer, contentType: string): Promise<{ ok: boolean; url: string; error?: string }> {
+  const supabaseUrl = env("NEXT_PUBLIC_SUPABASE_URL").replace(/\/+$/, "");
+  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const url = publicUrl(supabaseUrl, key);
+  const r = await fetch(`${supabaseUrl}/storage/v1/object/${BUCKET}/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": contentType, "x-upsert": "true", "cache-control": "max-age=60" },
+    body,
+  });
+  return r.ok ? { ok: true, url } : { ok: false, url, error: `storage ${r.status}: ${(await r.text()).slice(0, 200)}` };
+}
