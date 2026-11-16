@@ -8,7 +8,7 @@ export const DV360_ADVERTISER_ID = "8003891470"; // "Drean Argentina" (partner 7
 export const DV360_THUMBS_PREFIX = "dv360";
 export const DV360_MANIFEST_KEY = `${DV360_THUMBS_PREFIX}/index.json`;
 
-export type Dv360ThumbType = "image" | "youtube" | "video";
+export type Dv360ThumbType = "image" | "youtube";
 
 export interface Dv360ThumbEntry {
   creativeId: string;
@@ -161,24 +161,4 @@ function rolePrio(role?: string): number {
   if (role === "ASSET_ROLE_MAIN") return 0;
   if (role === "ASSET_ROLE_BACKUP") return 1;
   return 2;
-}
-
-// ── Videos alojados en DV360: la API solo da la ruta del .mp4 y Google exige firma para bajarlo (403, verificado
-// 16-nov-2026). El usuario sube el .mp4 en /performance, el navegador saca un fotograma y guarda SOLO la imagen en
-// `dv360-video/<clave>.jpg`. La clave sale del nombre del archivo normalizado → DV360 guarda
-// "LFDR1114ISG0_-_10_SEG__1080x1080_.mp4" para el original "LFDR1114ISG0 - 10 SEG (1080x1080).mp4": ambos dan la misma.
-export const DV360_VIDEO_PREFIX = "dv360-video";
-
-/** Clave del fotograma de un video ("" si el nombre no sirve). */
-export function videoFrameKey(fileOrName: string | null | undefined): string {
-  const base = (fileOrName ?? "").split("/").pop()!.replace(/\.(mp4|mov|webm|m4v)$/i, "");
-  const k = normalizeCreativeName(base).replace(/ /g, "-");
-  return k ? `${DV360_VIDEO_PREFIX}/${k}.jpg` : "";
-}
-
-/** Claves posibles de un creative de video alojado: archivo del asset principal y nombre visible. */
-export function videoFrameKeys(c: Dv360ApiCreative): string[] {
-  if (c.creativeType !== "CREATIVE_TYPE_VIDEO" || c.youtubeVideoId) return [];
-  const main = (c.assets ?? []).find((a) => a.role === "ASSET_ROLE_MAIN")?.asset?.content;
-  return [...new Set([videoFrameKey(main), videoFrameKey(c.displayName)].filter(Boolean))];
 }
