@@ -14,7 +14,8 @@ import type { SeguimientoObjetivos, ObjetivoRollup, ObjAporte, CatDesglose } fro
 import { ProyeccionObjetivo } from "./proyeccion";
 import { ContribucionObjetivo, ContribucionGlobalView } from "./contribucion";
 
-const UMBRAL = { umbralVerde: 100, umbralAmarillo: 90 };
+// Verde desde 95% (margen de 5%, pedido del user 18-nov-2026); 94,5 para que lo que se muestra como "95%" ya sea verde.
+const UMBRAL = { umbralVerde: 94.5, umbralAmarillo: 90 };
 const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(0)}%`);
 const f1 = (v: number | null) => (v == null ? "—" : v.toFixed(1));
 const semOf = (v: number | null): Semaforo => semaforoDe(v, UMBRAL);

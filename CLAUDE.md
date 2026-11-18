@@ -272,6 +272,7 @@ reporte_existencia/cb_homologos).
   Referencia canónica = `IgOrganicSection` + `FbOrganicSection`. Replicar SIEMPRE ese sistema
   (cards, gráficos, colores, método) en cada dashboard nuevo. **Validar este checklist antes de
   decir que las metas están "listas".**
+- **Seguimiento Objetivos sin pestaña Plan de Mejora y objetivos en verde desde 95% (18-nov-2026, pedido del user):** `/overview` no usa `<DashTabs>`; el semáforo del hero (`UMBRAL` en `objetivos-hero.tsx`) = verde ≥94,5 (lo que se ve como «95%»), ámbar ≥90.
 - **Seguimiento Objetivos (`/overview`) — Mapa Estratégico → cumplimiento por categoría:**
   el índice se llama **"Seguimiento Objetivos"** y tiene 2 tabs: **"Estado de KPIs"** y **"OKR
   Mkt"** (los objetivos viejos). El tab "Estado de KPIs" trae un **selector interno General /
