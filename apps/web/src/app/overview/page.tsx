@@ -1,6 +1,5 @@
 import { getSeguimientoCompleto } from "@/lib/objetivos-por-categoria";
 import { SeguimientoView } from "@/components/objetivos/seguimiento-view";
-import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { DataHealth } from "@/components/data-health";
 
@@ -20,7 +19,8 @@ export default async function OverviewPage() {
   const curYear = new Date().getUTCFullYear();
   const seg = await safe(getSeguimientoCompleto(curYear), { disponible: false, refMes: "", vistas: [] });
   return (
-    <DashTabs dash="overview" className="space-y-5">
+    // Sin pestaña Plan de Mejora (pedido del user, 18-nov-2026): sin <DashTabs> ni renglón de pestañas.
+    <div className="space-y-5">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Seguimiento Objetivos</h2>
         <p className="text-sm text-muted-foreground">
@@ -29,8 +29,7 @@ export default async function OverviewPage() {
       </header>
       <DataHealth dash="overview" className="-mt-2" />
       <HowToRead slug="overview" />
-      <DashTabBar />
       <SeguimientoView data={seg} />
-    </DashTabs>
+    </div>
   );
 }
