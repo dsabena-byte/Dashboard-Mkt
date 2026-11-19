@@ -60,6 +60,17 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
   const [ocupado, setOcupado] = useState(false);
   const sucio = JSON.stringify(cfg) !== base;
   const r = useMemo(() => calcPlan(cfg, refMeses, infl), [cfg, refMeses, infl]);
+  // Real del año anterior al plan (meses cerrados del Tablero), para comparar contra la meta del plan.
+  const realBase = useMemo(() => {
+    const base = String(anio - 1);
+    const t = MES.map((_, i) => refMeses.find((m) => m?.iso.startsWith(`${base}-${String(i + 1).padStart(2, "0")}`))?.tot ?? null);
+    const v = (f: (x: NonNullable<(typeof t)[number]>) => number | null) => t.map((x) => (x ? f(x) : null));
+    const pos = (n: number) => (n > 0 ? n : null);
+    return {
+      "Inversión": v((x) => pos(x.inv)), "Impresiones": v((x) => pos(x.impr)), "Alcance único": v((x) => pos(x.alc)), "Clicks": v((x) => pos(x.clic)),
+      "Frecuencia": v((x) => (x.alc > 0 ? x.impr / x.alc : null)), "VTR (≥50%)": v((x) => (x.vbase > 0 ? (x.v50 / x.vbase) * 100 : null)),
+    } as Record<string, (number | null)[]>;
+  }, [refMeses, anio]);
   const ro = !editor;
 
   const setMedio = (i: number, patch: Partial<PlanMedio>) => setCfg((c) => ({ ...c, medios: c.medios.map((m, k) => (k === i ? { ...m, ...patch } : m)) }));
@@ -307,7 +318,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
             <div key={k} className="rounded-lg border p-2">
               <div className="text-xs font-semibold">{k}</div>
               <MetaEvolChart mode={k === "Frecuencia" || k === "VTR (≥50%)" ? "line" : "bar"} unidad={k === "Inversión" ? "$" : k === "Frecuencia" ? "x" : k === "VTR (≥50%)" ? "%" : ""}
-                realName="Plan" metaName="Meta actual" data={MES.map((mes, i) => ({ mes, real: r.metas[k][i] ?? null, meta: metasActuales[k]?.[i] ?? null }))} />
+                realName={`Meta ${anio}`} metaName={`Real ${anio - 1}`} data={MES.map((mes, i) => ({ mes, real: metasActuales[k]?.[i] ?? r.metas[k][i] ?? null, meta: realBase[k]?.[i] ?? null }))} />
             </div>
           ))}
         </div>
