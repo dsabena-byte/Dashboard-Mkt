@@ -154,9 +154,9 @@ export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, pued
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {kpis.filter((k) => !(plan === "Redes Sociales" && (k.kpi === "Interacciones" || k.kpi === "Engagement rate") && hist.igMix)).map((k) => (
                     <div key={k.kpi} className="rounded-lg border p-2">
-                      <div className="text-xs font-semibold">{k.kpi} · plan vs meta cargada hoy</div>
-                      <MetaEvolChart mode={k.tipo === "sum" ? "bar" : "line"} unidad={k.unidad === "%" ? "%" : k.unidad === "$" ? "$" : ""} realName="Plan" metaName="Meta actual"
-                        data={MES.map((mes, i) => ({ mes, real: k.valores[i] ?? null, meta: metasActuales[`${plan}|${k.kpi}`]?.[i] ?? null }))} />
+                      <div className="text-xs font-semibold">{k.kpi} · real {hist.anioBase} vs meta {anio}</div>
+                      <MetaEvolChart mode={k.tipo === "sum" ? "bar" : "line"} unidad={k.unidad === "%" ? "%" : k.unidad === "$" ? "$" : ""} realName={`Meta ${anio}`} metaName={`Real ${hist.anioBase}`}
+                        data={MES.map((mes, i) => ({ mes, real: metasActuales[`${plan}|${k.kpi}`]?.[i] ?? k.valores[i] ?? null, meta: hist.series[`${plan}|${k.kpi}`]?.[i] ?? null }))} />
                     </div>
                   ))}
                   {kpis.filter((k) => k.porCat).map((k) => {
