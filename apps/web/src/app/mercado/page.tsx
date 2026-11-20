@@ -369,21 +369,26 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
                 return (
                   <div key={m.key} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_15rem]">
                     {/* Columna de gráficos: composición + serie, con la leyenda abarcando ambos. minmax(0,…) + min-w-0: sin scroll horizontal (20-nov-2026). */}
-                    <div className="min-w-0">
-                      <div className="grid gap-4 lg:grid-cols-[8rem_minmax(0,1fr)]">
-                        <div className="min-w-0">
+                    <div className="flex min-w-0 flex-col">
+                      {/* Los gráficos estiran al alto del panel de variaciones (pedido del user 20-nov-2026), mínimo 240 px. */}
+                      <div className="grid flex-1 gap-4 lg:grid-cols-[8rem_minmax(0,1fr)]">
+                        <div className="flex min-w-0 flex-col">
                           <div className="mb-1 text-[10px] font-medium text-muted-foreground">
                             {isShare ? `Composición (${esMAT ? "MAT" : "mes"})` : "Inicio vs actual"}
                           </div>
+                          <div className="relative min-h-[240px] flex-1"><div className="absolute inset-0">
                           {isShare ? (
                             <MercadoStackedBars data={stackedData(grp, m.key, allRanked)} brands={allRanked} colors={colorOf} suffix={m.suffix} />
                           ) : (
                             <MercadoBrandChart data={pivotEndpoints(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
                           )}
+                          </div></div>
                         </div>
-                        <div className="min-w-0">
+                        <div className="flex min-w-0 flex-col">
                           <div className="mb-1 text-xs font-medium text-muted-foreground">{m.label}</div>
-                          <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
+                          <div className="relative min-h-[240px] flex-1"><div className="absolute inset-0">
+                            <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
+                          </div></div>
                           {esMAT && (
                             <div className="text-[10px] italic text-muted-foreground">
                               Cada mes = MAT (acum. móvil 12 meses al mes indicado)

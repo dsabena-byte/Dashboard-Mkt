@@ -37,7 +37,7 @@ export function MercadoBrandChart({
   const others = brands.filter((b) => b !== highlight);
   const long = data.length > 24; // serie histórica larga: eje más espaciado y sin puntos
   return (
-    <ResponsiveContainer width="100%" height={240}>
+    <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis
