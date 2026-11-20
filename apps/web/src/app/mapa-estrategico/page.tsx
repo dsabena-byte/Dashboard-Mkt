@@ -1,14 +1,15 @@
 import { MapaEditor } from "@/components/mapa-estrategico/mapa-editor";
-import { getMapaConfig } from "@/lib/mapa-server";
+import { getMapaConfig, getMetasAnio } from "@/lib/mapa-server";
 import { HowToRead } from "@/components/knowledge/how-to-read";
-import { ValidacionPesos } from "@/components/mapa-estrategico/validacion-pesos";
+import { MapaVisual } from "@/components/mapa-estrategico/mapa-visual";
 
 export const metadata = { title: "Mapa Estratégico" };
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export default async function MapaEstrategicoPage() {
-  const initial = await getMapaConfig(); // config desde la DB (SSR) → sin spinner de carga
+  const anio = new Date().getFullYear();
+  const [initial, metas] = await Promise.all([getMapaConfig(), getMetasAnio(anio)]); // config desde la DB (SSR) → sin spinner de carga
   return (
     <div className="space-y-5">
       <header>
@@ -25,9 +26,9 @@ export default async function MapaEstrategicoPage() {
       </header>
       <HowToRead slug="mapa-estrategico" />
 
+      {/* Pedido del user (nov-2026, para el directorio): arriba el mapa visual, abajo el proceso 1-5; sin la validación de pesos. */}
+      {initial && <MapaVisual config={initial} metas={metas} anio={anio} />}
       <MapaEditor initial={initial} />
-      {/* Evidencia de los pesos contra el share de mercado (a demanda, no suma costo al render). */}
-      {initial && <ValidacionPesos />}
     </div>
   );
 }

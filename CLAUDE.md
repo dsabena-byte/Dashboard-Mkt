@@ -321,6 +321,7 @@ reporte_existencia/cb_homologos).
     perdió toda la config por guardar solo en localStorage → NUNCA volver a eso). Lee SSR con
     `getMapaConfig()` (`mapa-server.ts`), se pasa como `initial` al editor (sin fetch cliente que
     tarda por cold start). Guardado vía `/api/mapa-estrategico`.
+    **20-nov-2026 (pedido del user, para mostrarlo al directorio):** arriba de la página, el **mapa visual** (`components/mapa-estrategico/mapa-visual.tsx`, mismo diseño que el de BIP: objetivos con ponderación + meta del año por categoría → KPIs que lo mueven con ponderación + meta del año; Instagram lee metas de «Redes Sociales», Floor Share = Σ cat × peso) y abajo el editor 1–5. Se SACÓ «¿Tus pesos se sostienen en tus datos?» (componente borrado; la API `/api/mapa-estrategico/validacion` queda).
   - **Rollup** (`objetivos-rollup.ts` → `getSeguimientoObjetivos`): `cumpl(KPI)=min(real/meta,100)`;
     `cumpl(objetivo)=Σ pesoInbound×cumpl(KPI)` (renormalizado sobre KPIs con dato → `cobertura`);
     **Salud de Marca** = Σ pesoEstratégico×cumpl(objetivo). Meta de negocio del objetivo =
