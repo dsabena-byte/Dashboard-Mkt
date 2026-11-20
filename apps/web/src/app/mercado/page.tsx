@@ -293,8 +293,9 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
         </div>
       )}
 
-      {/* Selector de agregación: MAT (acum. 12m) vs Mensual (valor del mes) */}
+      {/* Filtros en un solo renglón (pedido del user 20-nov-2026): agregación | categoría */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Selector de agregación: MAT (acum. 12m) vs Mensual (valor del mes) */}
         {aggsDisponibles.map((a) => (
           <Link
             key={a}
@@ -309,26 +310,27 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
             {a === "MAT" ? "MAT (12m)" : "Mensual"}
           </Link>
         ))}
-      </div>
 
       {categorias.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <>
+          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
           {categorias.map((c) => (
             <Link
               key={c}
               href={`/mercado?cat=${encodeURIComponent(c)}&agg=${agg}`}
               scroll={false}
-              className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
                 c === selected
-                  ? "border-primary bg-primary text-primary-foreground"
+                  ? "border-foreground bg-foreground text-background"
                   : "border-border bg-card text-muted-foreground hover:bg-muted"
               }`}
             >
               {c}
             </Link>
           ))}
-        </div>
+        </>
       )}
+      </div>
 
       {[...groups.entries()]
         .sort(([a], [b]) => {
