@@ -84,7 +84,7 @@ export function CargaPresupuesto() {
       <div className="flex flex-wrap gap-2">
         {secciones.map((s) => (
           <button key={s.key} type="button" onClick={() => setSeccion(s.key)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${seccion === s.key ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/70"}`}>
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${seccion === s.key ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}>
             {s.label}
           </button>
         ))}
