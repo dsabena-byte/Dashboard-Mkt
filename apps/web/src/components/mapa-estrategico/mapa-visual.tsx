@@ -68,10 +68,10 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
           return (
             <div key={o.id} className="grid min-w-0 content-start">
               <div className="mx-auto h-[18px] w-0.5 bg-slate-300" />
-              <div className="rounded-[14px] border p-4 shadow-sm" style={{ borderColor: `${col}33`, borderTopWidth: 3, borderTopColor: col, background: `${col}0d` }}>
-                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                  <span className="whitespace-nowrap text-[10.5px] uppercase tracking-[0.1em]" style={{ color: col }}>Objetivo estratégico</span>
-                  <span className="whitespace-nowrap rounded-full border bg-white px-2.5 py-0.5 text-xs font-semibold" style={{ color: col, borderColor: `${col}40` }}>
+              <div className="min-w-0 rounded-[14px] border p-4 shadow-sm" style={{ borderColor: `${col}33`, borderTopWidth: 3, borderTopColor: col, background: `${col}0d` }}>
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <span className="min-w-0 truncate text-[10px] uppercase tracking-[0.03em]" style={{ color: col }}>Objetivo estratégico</span>
+                  <span className="shrink-0 whitespace-nowrap rounded-full border bg-white px-1.5 py-0.5 text-[11px] font-semibold" style={{ color: col, borderColor: `${col}40` }}>
                     Peso {Math.round((100 * (Number(o.peso) || 0)) / totalPeso)}%
                   </span>
                 </div>
