@@ -194,12 +194,12 @@ function DreanSaludConsolidada({ series, kantar }: { series: Record<"lav" | "ref
       {/* Sin scroll horizontal (pedido del user 20-nov-2026): ancho fijo y celdas angostas. */}
       <div className="overflow-hidden p-4">
         <table data-noexcel className="w-full table-fixed text-[11px]">
-          <colgroup><col className="w-[9.5rem]" />{waves.flatMap((w) => [<col key={`${w}a`} />, <col key={`${w}b`} />, <col key={`${w}c`} />, <col key={`${w}d`} />])}</colgroup>
+          <colgroup><col className="w-[9.5rem]" />{waves.flatMap((w, k) => [...(k ? [<col key={`${w}s`} className="w-3" />] : []), <col key={`${w}a`} />, <col key={`${w}b`} />, <col key={`${w}c`} />, <col key={`${w}d`} />])}</colgroup>
           <thead className="bg-slate-100">
             <tr className="border-b">
               <th className="bg-slate-100 px-2 py-1.5 text-left text-[10px] font-semibold uppercase text-slate-700" rowSpan={2}>Dimensión</th>
-              {waves.map((w) => (
-                <th key={w} className="border-l border-slate-200 px-0.5 py-1.5 text-center text-[12px] font-bold text-slate-900" colSpan={4}>{w}</th>
+              {waves.map((w, k) => (
+                <Fragment key={w}>{k > 0 && <th rowSpan={2} className="border-0 bg-card" />}<th className="border-l border-slate-200 px-0.5 py-1.5 text-center text-[12px] font-bold text-slate-900" colSpan={4}>{w}</th></Fragment>
               ))}
             </tr>
             <tr className="border-b text-[10px] font-semibold uppercase text-slate-700">
@@ -217,8 +217,9 @@ function DreanSaludConsolidada({ series, kantar }: { series: Record<"lav" | "ref
             {dims.map((d) => (
               <tr key={d.key} className="border-t">
                 <td className="truncate bg-card px-2 py-1.5 text-foreground">{d.label}</td>
-                {rows.map((row) => (
+                {rows.map((row, k) => (
                   <Fragment key={row.w}>
+                    {k > 0 && <td className="border-0 bg-card" />}
                     <td className={`border-l px-0.5 py-1.5 text-center tabular-nums ${cls(row.lav[d.key].s)}`}>{p1(row.lav[d.key].v)}</td>
                     <td className={`px-0.5 py-1.5 text-center tabular-nums ${cls(row.ref[d.key].s)}`}>{p1(row.ref[d.key].v)}</td>
                     <td className={`px-0.5 py-1.5 text-center tabular-nums ${cls(row.coc[d.key].s)}`}>{p1(row.coc[d.key].v)}</td>
@@ -229,8 +230,9 @@ function DreanSaludConsolidada({ series, kantar }: { series: Record<"lav" | "ref
             ))}
             <tr className="border-t-2 bg-muted/40 font-bold">
               <td className="truncate bg-muted px-2 py-1.5 text-foreground">Salud de Marca</td>
-              {rows.map((row) => (
+              {rows.map((row, k) => (
                 <Fragment key={row.w}>
+                  {k > 0 && <td className="border-0 bg-card" />}
                   <td className={`border-l px-0.5 py-1.5 text-center tabular-nums ${cls(row.lav.sm.s)}`}>{p1(row.lav.sm.v)}</td>
                   <td className={`px-0.5 py-1.5 text-center tabular-nums ${cls(row.ref.sm.s)}`}>{p1(row.ref.sm.v)}</td>
                   <td className={`px-0.5 py-1.5 text-center tabular-nums ${cls(row.coc.sm.s)}`}>{p1(row.coc.sm.v)}</td>
@@ -240,8 +242,9 @@ function DreanSaludConsolidada({ series, kantar }: { series: Record<"lav" | "ref
             </tr>
             <tr className="border-t text-[10px] text-muted-foreground">
               <td className="truncate bg-card px-2 py-1.5">Peso categoría</td>
-              {rows.map((row) => (
+              {rows.map((row, k) => (
                 <Fragment key={row.w}>
+                  {k > 0 && <td className="border-0 bg-card" />}
                   <td className="border-l px-0.5 py-1.5 text-center tabular-nums">{(row.wt.lav * 100).toFixed(0)}%</td>
                   <td className="px-0.5 py-1.5 text-center tabular-nums">{(row.wt.ref * 100).toFixed(0)}%</td>
                   <td className="px-0.5 py-1.5 text-center tabular-nums">{(row.wt.coc * 100).toFixed(0)}%</td>
