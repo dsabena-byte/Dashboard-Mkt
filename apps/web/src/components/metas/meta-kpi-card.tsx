@@ -60,7 +60,8 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
-          {medida && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{medida}</div>}
+          {/* Siempre una línea (aunque no haya medida): así las filas de cards vecinas quedan alineadas. */}
+          <div className="mt-0.5 h-[14px] truncate text-[10px] leading-[14px] text-muted-foreground/70" title={medida}>{medida}</div>
         </div>
         {learnKey && <LearnButton k={learnKey} title={learnKey} />}
       </div>
