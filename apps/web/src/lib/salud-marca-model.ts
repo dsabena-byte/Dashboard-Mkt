@@ -153,8 +153,8 @@ export const SM_WAVES = ["nov-23", "jun-24", "nov-24", "jun-25", "nov-25", "nov-
 // Peso (mix) de cada categoría por ola, para ponderar la Salud de Marca global de Drean.
 export const SM_WEIGHTS: Record<string, { lav: number; ref: number; coc: number }> = {
   "nov-23": { lav: 0.60, ref: 0.30, coc: 0.10 },
-  "jun-24": { lav: 0.61, ref: 0.33, coc: 0.06 },
-  "nov-24": { lav: 0.61, ref: 0.33, coc: 0.06 },
+  "jun-24": { lav: 0.61, ref: 0.35, coc: 0.04 },
+  "nov-24": { lav: 0.61, ref: 0.35, coc: 0.04 },
   "jun-25": { lav: 0.62, ref: 0.35, coc: 0.03 },
   "nov-25": { lav: 0.62, ref: 0.35, coc: 0.03 },
   "nov-26": { lav: 0.62, ref: 0.35, coc: 0.03 }, // 20-nov-2026: ponderación 2026 confirmada = 62/35/3
