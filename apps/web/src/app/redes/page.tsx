@@ -38,9 +38,6 @@ import {
   getSocialPosts,
 } from "@/lib/social-posts-queries";
 import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
-import { ShareEngagementSection } from "@/components/social/share-engagement";
-import { getMercadoSeries } from "@/lib/mercado-kpis-server";
-import { lastIdx } from "@/lib/mercado-kpis";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { PlanOtrosDash, anioPlan } from "@/components/pauta/plan-otros-dash";
 import { DataHealth } from "@/components/data-health";
@@ -112,7 +109,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
   // cambiar el contrato de tipos del resto del page.
   const metaFallback: MetaKpiData = { valores: Array.from({ length: 12 }, () => null), direccion: "up", umbralVerde: 100, umbralAmarillo: 90, unidad: null };
   // Share of engagement (año completo, todas las marcas/redes): mismo cálculo que el KPI del Mapa.
-  const mercadoP = safe(getMercadoSeries(currentYear), null, "getMercadoSeries");
   const [rawPosts, allMarcas, followers, fbOrganic, igOrganic, topContent, metaAlc, metaEng, fbMetaAlc, fbMetaEng] = await Promise.all([
     getSocialPosts({ marca, red, from: range.from, to: range.to }),
     getAllMarcas(),
@@ -140,10 +136,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
     // Sentimiento de comentarios por post (social_posts, join por shortcode).
     safe(attachIgSentiment(igOrganic.topPosts, range), igOrganic.topPosts, "attachIgSentiment"),
   ]);
-  const mercado = await mercadoP;
-  const sosSerie = mercado?.series["Share of Search"]?.realM ?? [];
-  const sosRef = lastIdx(sosSerie);
-  const sosLast = sosRef >= 0 ? { mes: `${currentYear}-${String(sosRef + 1).padStart(2, "0")}`, share: sosSerie[sosRef]! } : null;
 
   // Recalcula engagement por post usando social_followers (si hay snapshots).
   // Si no hay, mantiene el engagement del scrape original.
@@ -324,7 +316,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
       </div>
 
       {/* Share of engagement del set competitivo (KPI "Mercado y competencia" del Mapa) */}
-      <ShareEngagementSection soe={mercado?.soe ?? null} shareSearch={sosLast} />
 
       {!hasData && (
         <div className="rounded-lg border bg-amber-50 p-4 text-sm text-amber-900">

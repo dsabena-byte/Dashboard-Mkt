@@ -62,14 +62,15 @@ function HorizontalBars({
 
 export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSummary; metaAlc?: MetaKpiData; metaEng?: MetaKpiData }) {
   const hasAnyData = data.totals.diasConData > 0 || data.topPosts.length > 0;
-  const [showAllPosts, setShowAllPosts] = useState(false);
+  // De a 12 posts (pedido del user, 20-nov-2026: «no los 200 de una»).
+  const [cantPosts, setCantPosts] = useState(12);
+  const showAllPosts = cantPosts > 12;
   // "Mostrar menos" también arriba (pedido del user: había que bajar hasta el final para colapsar); al colapsar
   // se vuelve al encabezado de la lista para no quedar perdido más abajo.
   const postsTopRef = useRef<HTMLDivElement>(null);
   const togglePosts = () => {
-    const colapsar = showAllPosts;
-    setShowAllPosts(!showAllPosts);
-    if (colapsar) postsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setCantPosts(12);
+    postsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const posts = data.topPosts;
@@ -131,7 +132,7 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
       : [...filteredPosts].sort(
           (a, b) => (b.reach + b.engagement + b.reactions + b.video_views + b.clicks) - (a.reach + a.engagement + a.reactions + a.video_views + a.clicks),
         );
-  const visiblePosts = showAllPosts ? sortedPosts : sortedPosts.slice(0, 12);
+  const visiblePosts = sortedPosts.slice(0, cantPosts);
 
   return (
     <section className="space-y-4 rounded-lg border bg-card p-6">
@@ -294,7 +295,7 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
                     return (
                       <button
                         key={t}
-                        onClick={() => { setFilterType(t); setShowAllPosts(false); }}
+                        onClick={() => { setFilterType(t); setCantPosts(12); }}
                         className={`rounded-full px-2 py-0.5 transition-colors ${
                           filterType === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
                         }`}
@@ -315,11 +316,11 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
                       {s === "engagement" ? "Por engagement" : "Por fecha"}
                     </button>
                   ))}
-                  {sortedPosts.length > 12 && (
+                  {showAllPosts && (
                     <>
                       <span className="mx-1 h-3 w-px bg-border" aria-hidden />
                       <button onClick={togglePosts} className="rounded-full border px-2 py-0.5 font-medium text-muted-foreground hover:bg-muted">
-                        {showAllPosts ? "Mostrar menos" : `Ver todos (${sortedPosts.length})`}
+                        Mostrar menos
                       </button>
                     </>
                   )}
@@ -376,13 +377,13 @@ export function FbOrganicSection({ data, metaAlc, metaEng }: { data: FbOrganicSu
               </div>
               )}
               {sortedPosts.length > 12 && (
-                <div className="mt-3 text-center">
-                  <button
-                    onClick={togglePosts}
-                    className="rounded border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
-                  >
-                    {showAllPosts ? "Mostrar menos" : `Ver todos (${sortedPosts.length} posts)`}
-                  </button>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  {cantPosts < sortedPosts.length && (
+                    <button onClick={() => setCantPosts((c) => c + 12)} className="rounded border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary">
+                      Ver {Math.min(12, sortedPosts.length - cantPosts)} más · {Math.min(cantPosts, sortedPosts.length)} de {sortedPosts.length}
+                    </button>
+                  )}
+                  {showAllPosts && <button onClick={togglePosts} className="rounded border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary">Mostrar menos</button>}
                 </div>
               )}
             </div>

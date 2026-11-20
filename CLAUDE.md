@@ -371,8 +371,8 @@ reporte_existencia/cb_homologos).
     (con `realCatM` salvo SoE) vía `lib/mercado-kpis-server.ts` (REST service key + React `cache()`, ~1s). Solo
     suman al rollup si el usuario los conecta en el Mapa (hoy NO están conectados ni tienen metas).
   - **UI:** `/seo-search` arriba = `MercadoMetasSection` (MetaKpiCard con gráfico real vs meta DENTRO — prop
-    `children` nueva — + MetaPanel plan "Mercado y competencia"); `/redes` = `ShareEngagementSection` antes del
-    competitivo. `getMetaKpi(..., defaults)` y `MetaPanel` `KpiSpec.direccion` = dirección por defecto sin config.
+    `children` nueva — + MetaPanel plan "Mercado y competencia"); `/redes` ya NO muestra el bloque Share of engagement (sacado 20-nov-2026,
+    pedido del user; el KPI sigue en el Mapa/Seguimiento). `getMetaKpi(..., defaults)` y `MetaPanel` `KpiSpec.direccion` = dirección por defecto sin config.
     Valores reales (24-sep-2026): SoS ago 23,8% (Lav 41,8/Refri 9,7/Cocc 12,9); SoE ~1% (Gafa se lleva ~89%);
     IA ago 12,4%; índice ago 15,8 → sep 12,3.
   - **Search Console** (`lib/search-console.ts`): OAuth de env (`GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN`, el de
