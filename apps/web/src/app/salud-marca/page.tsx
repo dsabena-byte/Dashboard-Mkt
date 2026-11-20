@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { getDreanSerie, type DreanMesSeg } from "@/lib/salud-marca-queries";
+import { getSerieMatEstimada, type DreanMesSeg } from "@/lib/salud-marca-queries";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
 import { LastUpdated } from "@/components/last-updated";
 import {
@@ -96,7 +96,7 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
         <KantarSourceNote k={kantar} />
         <EvolucionView
           marca={marca}
-          serieU12={await safe(getDreanSerie(smCfg.categoria, "MAT", marca.toUpperCase()), new Map<string, DreanMesSeg>())}
+          serieU12={await safe(getSerieMatEstimada(smCfg.categoria, marca.toUpperCase()), new Map<string, DreanMesSeg>())}
           waves={smCfg.waves}
           brands={smCfg.brands}
           kantarData={kantar.tables[smCfg.catKey] ?? smCfg.kantar}
@@ -109,9 +109,9 @@ export default async function SaludMarcaPage({ searchParams }: { searchParams?: 
 
   // ===== Tab "Marca": Salud de Marca consolidada de Drean (3 categorías + ponderación) =====
   const dreanSeries = {
-    lav: await safe(getDreanSerie("Lavado", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
-    ref: await safe(getDreanSerie("Refrigeración", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
-    coc: await safe(getDreanSerie("Cocción", "MAT", "DREAN"), new Map<string, DreanMesSeg>()),
+    lav: await safe(getSerieMatEstimada("Lavado"), new Map<string, DreanMesSeg>()),
+    ref: await safe(getSerieMatEstimada("Refrigeración"), new Map<string, DreanMesSeg>()),
+    coc: await safe(getSerieMatEstimada("Cocción"), new Map<string, DreanMesSeg>()),
   };
 
   return (
@@ -494,7 +494,7 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
             <strong>SOM ≈ 3,74 + 1,538·driver</strong> (R²=0,36, ±4,7) · <strong>Poder ≈ 8,53 + 0,245·driver</strong> (R²=0,24, ±0,6).
           </p>
           <p>
-            <strong>Amortiguación fuerte 0,3</strong> (= 30%·modelo + 70%·último real): el driver nov-26 (≈17,7) extrapola{" "}
+            <strong>Amortiguación fuerte 0,3</strong> (= 30%·modelo + 70%·último real): el driver nov-26 (≈17,8) extrapola{" "}
             <strong>2,5× por encima del máximo observado</strong> (7,1) y la relación se calibra sobre una sola inflexión (nov-25) → alta
             confianza en la <em>dirección</em>, baja en la <em>magnitud</em>. <strong>Intención y la hélice (Significancia/Diferenciación/
             Saliencia) no se estiman</strong>: todavía no acoplan (la marca construye notoriedad antes que preferencia) → se mantienen en su
@@ -533,8 +533,8 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
           </p>
           <p>
             Ecuaciones: <strong>TOM ≈ −3,35 + 3,91·driver</strong> (R²=0,68, ±2,1) · <strong>SOM ≈ 7,02 + 5,60·driver</strong> (R²=0,88, ±2,1) ·{" "}
-            <strong>Poder ≈ 7,25 + 1,68·driver</strong> (R²=0,73, ±0,8). <strong>Amortiguación 0,5</strong>: el driver nov-26 (3,57) extrapola
-            1,62× sobre el rango calibrado (extrapolación moderada). <strong>Intención y la hélice no se estiman</strong>{" "}
+            <strong>Poder ≈ 7,25 + 1,68·driver</strong> (R²=0,73, ±0,8). <strong>Amortiguación 0,5</strong>: el driver nov-26 (≈2,63) extrapola
+            1,2× sobre el rango calibrado (extrapolación leve). <strong>Intención y la hélice no se estiman</strong>{" "}
             (no acoplan; Intención R²≈0) → se mantienen en su último valor real.
           </p>
         </>
@@ -814,14 +814,11 @@ function EvolucionView({ marca, serieU12, waves, brands, kantarData, catLabel, t
         serieU12,
         `${catLabel} — Mercado · GFK (U12 · año móvil)`,
         `${marca}. MAT (acumulado móvil 12 meses) cerrando en el mes de cada ola; olas sin serie MAT quedan en “—”. Tocá el título para contraer/expandir.`,
-        esLavado && esDrean ? (
+        esDrean ? (
           <>
-            <strong>nov-26 (proyección).</strong> Valores <strong>mensuales finales</strong> asumidos para nov-26 — VS High 20% ·
-            VS Mid 45% · US Total 35% (los que usa el modelo). El U12 que se muestra es el <strong>año móvil que cierra en
-            nov-26</strong> = promedio de los 12 meses dic-25 → nov-26, construido con los meses reales más una
-            <strong> rampa lineal</strong> desde el último dato real hasta esos valores finales. Por eso el U12 queda por debajo del
-            mensual final: VS High <strong>15,4</strong> · VS Mid <strong>41,5</strong> · US Total <strong>28,1</strong> (el año
-            móvil arrastra los meses flojos de 2026 y no rebota tan rápido).
+            <strong>nov-26 (estimado).</strong> GfK todavía no publicó noviembre: el año móvil a nov-26 se estima con la tendencia
+            real = U12 de oct-26 + (nov-26 mensual estimado − nov-25 mensual) ÷ 12, con el nov-26 mensual = promedio de ago–oct 2026.
+            Cuando llegue el dato real de GfK, reemplaza solo a la estimación.
           </>
         ) : undefined,
       )}

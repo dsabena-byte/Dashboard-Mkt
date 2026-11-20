@@ -1,4 +1,5 @@
 import "server-only";
+import { estimarMat } from "./mat-estimado";
 import { getServerSupabase } from "./supabase-server";
 import { getFloorShareRows, getAvailableWeeks, type FloorShareRow } from "./floor-share-queries";
 
@@ -168,4 +169,10 @@ export async function getDreanSerie(categoria: string, agregacion: "mensual" | "
     out.set(r.mes, e);
   }
   return out;
+}
+
+/** Serie MAT con la ola futura (por defecto nov-26) estimada por tendencia cuando GfK todavía no la trae (lib/mat-estimado). */
+export async function getSerieMatEstimada(categoria: string, marca = "DREAN", objetivo = "2026-11-01"): Promise<Map<string, DreanMesSeg>> {
+  const [mat, mensual] = await Promise.all([getDreanSerie(categoria, "MAT", marca), getDreanSerie(categoria, "mensual", marca)]);
+  return estimarMat(mat, mensual, objetivo);
 }
