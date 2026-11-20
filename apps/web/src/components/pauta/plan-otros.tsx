@@ -77,7 +77,7 @@ export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, pued
         </div>
       )}
       {area === "redes" && <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[820px] text-xs">
+        <table className="w-full text-xs">
           <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Campañas de Redes · tocá un mes para cambiar la intensidad</th>{MES.map((m) => <th key={m} className="px-1 py-1.5 text-center font-medium">{m}</th>)}</tr></thead>
           <tbody>
             {TIPOS_CAMPANA.map((t) => (
@@ -170,7 +170,7 @@ export function PlanOtros({ area, anio, otros, onChange, hist, invPlan, ro, pued
                   })}
                 </div>
                 <div className="overflow-x-auto rounded-lg border">
-                  <table className="w-full min-w-[980px] text-xs">
+                  <table className="w-full text-xs">
                     <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">KPI · proyección vs meta cargada hoy</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th} title="Volúmenes: suma · tasas: promedio · seguidores: diciembre">Año</th></tr></thead>
                     <tbody>
                       {kpis.map((k) => {

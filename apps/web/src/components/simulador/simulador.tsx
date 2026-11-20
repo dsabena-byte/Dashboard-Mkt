@@ -154,7 +154,7 @@ export function Simulador({ model, demanda, mmm }: { model: SimModel; demanda: D
           <span className="text-[11px] text-muted-foreground">Hoy = promedio de {model.meses === 1 ? "1 mes cerrado" : `${model.meses} meses cerrados`} ({model.mesesLabel.map(ymLbl).join(", ")}). Mín./máx. = topes para la optimización.</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] border-collapse text-xs">
+          <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="text-left text-[10.5px] uppercase tracking-wide text-muted-foreground">
                 {["Medio", "Inversión", "", "vs hoy", "Mín. / Máx.", "Impr./contactos", "Alcance", "Clicks", "Curva"].map((h, i) => (
