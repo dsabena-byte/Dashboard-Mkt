@@ -48,7 +48,7 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
   const metaSalud = wSalud > 0 ? pares.reduce((a, x) => a + x.w * (x.v as number), 0) / wSalud : null;
   return (
     <section className="rounded-xl border bg-card p-5">
-      <div className="mx-auto w-fit rounded-xl bg-slate-800 px-7 py-3 text-center text-white">
+      <div className="mx-auto w-fit rounded-xl bg-blue-900 px-7 py-3 text-center text-white">
         <div className="text-[11px] uppercase tracking-[0.08em] opacity-75">Mapa estratégico</div>
         <div className="text-[22px] font-semibold tracking-tight">Plan de Marketing {anio}</div>
         <div className="mt-1.5 border-t border-white/20 pt-1.5 text-[13px]">
