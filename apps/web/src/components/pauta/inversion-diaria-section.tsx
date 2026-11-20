@@ -1,9 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { evaluarPautaDiaria, serieGrafico, addDias, fARS, fFecha, CFG_DIARIA, type EstadoGasto, type EstadoMedio, type PautaDiariaData } from "@/lib/pauta-diaria";
+import { evaluarPautaDiaria, serieGrafico, addDias, fARS, fFecha, CFG_DIARIA, type EstadoGasto, type PautaDiariaData } from "@/lib/pauta-diaria";
 import { LearnButton } from "@/components/knowledge/learn-button";
-import { GuiameButton } from "@/components/copiloto/guiame-button";
 
 // Inversión DIARIA por medio (medios con API) — tab Eficiencia Medios de /performance.
 // Gasto real por día de Meta / Google Search / Demand Gen (azules), con los días PICO marcados en rojo
@@ -46,14 +45,6 @@ export function InversionDiariaSection({ d }: { d: PautaDiariaData }) {
   const conc = res.concentracion.filter((c) => c.estado !== "ok").sort((a, b) => b.mes.localeCompare(a.mes));
   const notas = [...new Set(d.series.map((s) => s.nota).filter(Boolean))] as string[];
 
-  const guia = (m: EstadoMedio) => ({
-    titulo: `${m.medio}: gasto fuera de lo normal (${ESTADO[m.estado].label.toLowerCase()})`,
-    dash: "performance",
-    tipo: "alerta",
-    dato: m.motivos.join(" "),
-    queHacer: ["Revisar con la agencia el presupuesto diario y las fechas de las campañas de ese medio", "Si no estaba planeado, bajar el tope diario o pausar hasta corregir"],
-  });
-
   return (
     <section className="mb-6 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -82,7 +73,6 @@ export function InversionDiariaSection({ d }: { d: PautaDiariaData }) {
               <Pastilla e={m.estado} />
               <span className="font-semibold">{m.medio}:</span>
               <span className="min-w-0 flex-1">{m.motivos.join(" ")}</span>
-              <GuiameButton item={guia(m)} />
             </div>
           ))}
         </div>
@@ -160,7 +150,6 @@ export function InversionDiariaSection({ d }: { d: PautaDiariaData }) {
                 <td className="px-3 py-2"><Pastilla e={m.estado} /></td>
                 <td className="px-3 py-2 text-[11.5px]">
                   {m.motivos.length ? m.motivos.join(" ") : m.estado === "sin_dato" ? "Sin gasto registrado." : "Gasta a su ritmo normal."}
-                  {(m.estado === "urgente" || m.estado === "revisar") && <div className="mt-1"><GuiameButton item={guia(m)} /></div>}
                 </td>
               </tr>
             ))}
