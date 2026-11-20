@@ -3,6 +3,14 @@ import { useState } from "react";
 import { FATIGA_CAIDA, FRECUENCIA_MES_ALTA, FATIGA_MIN_IMPR, mesCorto, type FatigaResumen, type FatigaPieza } from "@/lib/pauta-fatiga";
 import { LearnButton } from "@/components/knowledge/learn-button";
 
+// «abr 26 – nov 26» → «abr–nov 26» si es el mismo año.
+const rangoMeses = (ms: string[]) => {
+  if (!ms.length) return "—";
+  const a = ms[0]!, b = ms[ms.length - 1]!;
+  if (a === b) return mesCorto(a);
+  return a.slice(0, 4) === b.slice(0, 4) ? `${mesCorto(a).split(" ")[0]}–${mesCorto(b)}` : `${mesCorto(a)} – ${mesCorto(b)}`;
+};
+
 // Fatiga creativa por pieza — tab Eficiencia Medios de /performance. Serie MENSUAL por pieza (Meta por
 // permalink, DV360 por creativo) de la tasa (VTR ≥50% en video, CTR en el resto) y la frecuencia.
 // Tasa en azul, frecuencia en gris pizarra; semáforo SOLO en la pastilla de estado.
@@ -53,8 +61,8 @@ export function FatigaSection({ f }: { f: FatigaResumen }) {
       ) : (
         <div>
           <table className="w-full text-xs">
-            <thead className="border-b bg-muted/40">
-              <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b bg-slate-100">
+              <tr className="whitespace-nowrap text-left text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                 <th className="px-3 py-2">Pieza</th><th className="px-3 py-2">Medio</th><th className="px-3 py-2">Meses</th>
                 <th className="px-3 py-2 text-right">Tasa último</th><th className="px-3 py-2 text-right">Previos</th><th className="px-3 py-2 text-right">Cambio</th>
                 <th className="px-3 py-2 text-right">Frecuencia</th><th className="px-3 py-2">Evolución</th><th className="px-3 py-2">Estado</th>
@@ -76,7 +84,11 @@ export function FatigaSection({ f }: { f: FatigaResumen }) {
                       <div className="mt-1 text-[10.5px] leading-snug text-muted-foreground">{p.motivo}</div>
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">{p.fuente === "DV360" ? `DV360 ${p.canal}` : "Meta"}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{p.meses.map((m) => mesCorto(m.mes)).join(" · ")}{p.parcial ? " (en curso)" : ""}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-muted-foreground" title={p.meses.map((m) => mesCorto(m.mes)).join(" · ") + (p.parcial ? " (el último en curso)" : "")}>
+                      {/* Rango en una línea (pedido del user, 20-nov-2026): «abr–nov 26» + cantidad de meses. */}
+                      {rangoMeses(p.meses.map((m) => m.mes))}
+                      <div className="text-[10px]">{p.meses.length} {p.meses.length === 1 ? "mes" : "meses"}{p.parcial ? " · último en curso" : ""}</div>
+                    </td>
                     <td className="px-3 py-2 text-right font-semibold tabular-nums">{p.metrica} {nf(p.tasaUlt, p.metrica === "CTR" ? 2 : 1)}%</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{nf(p.tasaPrev, p.metrica === "CTR" ? 2 : 1)}%</td>
                     <td className="px-3 py-2 text-right tabular-nums">{p.caidaPct == null ? "—" : `${p.caidaPct > 0 ? "+" : ""}${nf(p.caidaPct)}%`}</td>

@@ -115,40 +115,41 @@ export function InversionDiariaSection({ d }: { d: PautaDiariaData }) {
       )}
       {notas.map((n) => <p key={n} className="mt-1 text-[11px] text-muted-foreground">ⓘ {n}</p>)}
 
-      <div className="mt-3 overflow-x-auto">
+      {/* Tabla compacta (pedido del user, 20-nov-2026): encabezado con fondo, una línea por dato, detalle en el tooltip. */}
+      <div className="mt-3 overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[860px] text-xs">
-          <thead className="border-b bg-muted/40">
-            <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+          <thead className="bg-slate-100">
+            <tr className="whitespace-nowrap text-left text-[10px] font-semibold uppercase tracking-wide text-slate-700">
               <th className="px-3 py-2">Medio</th>
               <th className="px-3 py-2 text-right">Último día</th>
               <th className="px-3 py-2 text-right">Día anterior</th>
-              <th className="px-3 py-2 text-right">Promedio diario 14 d</th>
-              <th className="px-3 py-2 text-right">Gastado en el mes</th>
-              <th className="px-3 py-2 text-right">% de un mes normal</th>
+              <th className="px-3 py-2 text-right">Prom. 14 días</th>
+              <th className="px-3 py-2 text-right">En el mes</th>
+              <th className="px-3 py-2 text-right" title="Gastado en el mes ÷ un mes normal">% mes normal</th>
               <th className="px-3 py-2">Estado</th>
-              <th className="px-3 py-2">Qué pasa</th>
+              <th className="w-[38%] px-3 py-2">Qué pasa</th>
             </tr>
           </thead>
           <tbody>
             {res.medios.map((m) => (
-              <tr key={m.medio} className="border-b align-top last:border-0">
-                <td className="px-3 py-2 font-medium">
-                  {m.medio}
-                  <div className="text-[10px] font-normal text-muted-foreground">{m.fuente === "diaria" ? "dato diario" : "solo dato mensual"}</div>
+              <tr key={m.medio} className="border-t align-middle">
+                <td className="whitespace-nowrap px-3 py-1.5">
+                  <span className="font-medium">{m.medio}</span>
+                  <span className="ml-1.5 text-[10px] text-muted-foreground">{m.fuente === "diaria" ? "diario" : "mensual"}</span>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{m.fuente === "diaria" ? <>{money(m.gastoUltimo)}<div className="text-[10px] text-muted-foreground">{m.ultimoDia ? fFecha(m.ultimoDia) : ""}</div></> : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{m.fuente === "diaria" ? money(m.gastoPrevio) : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{m.fuente === "diaria" ? money(m.prom14) : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {money(m.acumMes)}
-                  <div className="text-[10px] text-muted-foreground">{m.diaDelMes > 0 ? `al día ${m.diaDelMes} de ${m.diasMes}` : ""}</div>
+                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{m.fuente === "diaria" ? <>{money(m.gastoUltimo)}{m.ultimoDia && <span className="ml-1 text-[10px] text-muted-foreground">{fFecha(m.ultimoDia)}</span>}</> : "—"}</td>
+                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{m.fuente === "diaria" ? money(m.gastoPrevio) : "—"}</td>
+                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{m.fuente === "diaria" ? money(m.prom14) : "—"}</td>
+                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums" title={m.diaDelMes > 0 ? `Al día ${m.diaDelMes} de ${m.diasMes}` : undefined}>
+                  {money(m.acumMes)}{m.diaDelMes > 0 && <span className="ml-1 text-[10px] text-muted-foreground">día {m.diaDelMes}/{m.diasMes}</span>}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {pct(m.pctRef)}
-                  <div className="text-[10px] text-muted-foreground">{m.referenciaMes != null ? `mes normal ${fARS(m.referenciaMes)} · esperable hoy ${m.esperado != null && m.referenciaMes ? `${Math.round((m.esperado / m.referenciaMes) * 100)}%` : "—"}` : "sin meses previos"}</div>
+                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums"
+                  title={m.referenciaMes != null ? `Mes normal ${fARS(m.referenciaMes)} · esperable hoy ${m.esperado != null && m.referenciaMes ? `${Math.round((m.esperado / m.referenciaMes) * 100)}%` : "—"}` : "Sin meses previos"}>
+                  <span className="font-semibold">{pct(m.pctRef)}</span>
+                  {m.esperado != null && m.referenciaMes ? <span className="ml-1 text-[10px] text-muted-foreground">esp. {Math.round((m.esperado / m.referenciaMes) * 100)}%</span> : null}
                 </td>
-                <td className="px-3 py-2"><Pastilla e={m.estado} /></td>
-                <td className="px-3 py-2 text-[11.5px]">
+                <td className="whitespace-nowrap px-3 py-1.5"><Pastilla e={m.estado} /></td>
+                <td className="px-3 py-1.5 text-[11.5px] leading-snug">
                   {m.motivos.length ? m.motivos.join(" ") : m.estado === "sin_dato" ? "Sin gasto registrado." : "Gasta a su ritmo normal."}
                 </td>
               </tr>

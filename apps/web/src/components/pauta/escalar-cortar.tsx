@@ -47,18 +47,23 @@ export function EscalarCortarSection({ porMedio, anio }: { porMedio: Record<stri
   const [medio, setMedio] = useState(medios[0] ?? "");
   const [metas, setMetas] = useState<Record<string, number>>({});
   const [todas, setTodas] = useState(false);
+  // Por defecto solo piezas activas (pedido del user, 20-nov-2026): una pausada ya no se escala ni se corta.
+  // DV360 no informa el estado (activa = null) → sus piezas se muestran siempre.
+  const [soloActivas, setSoloActivas] = useState(true);
   const ev = useMemo(() => (medio && porMedio[medio] ? evaluarMedio(medio, porMedio[medio]!, metas[medio]) : null), [medio, porMedio, metas]);
   if (!medios.length) return <p style={{ fontSize: 13, color: "var(--muted)" }}>Todavía no hay piezas de video con inversión en {anio}.</p>;
   if (!ev) return null;
 
   const yMax = ev.meta * 4;
   const clip = (v: number) => Math.min(v, yMax);
-  const pts = ev.piezas.filter((p) => p.costo != null).map((p) => ({ ...p, y: clip(p.costo!) }));
+  const piezas = soloActivas ? ev.piezas.filter((p) => p.activa !== false) : ev.piezas;
+  const pausadas = ev.piezas.length - ev.piezas.filter((p) => p.activa !== false).length;
+  const pts = piezas.filter((p) => p.costo != null).map((p) => ({ ...p, y: clip(p.costo!) }));
   const curvaEsc = ev.curva.filter((c) => Number.isFinite(c.escalar)).map((c) => ({ inv: c.inv, y: clip(c.escalar), curva: "e" }));
   const curvaCor = ev.curva.filter((c) => Number.isFinite(c.cortar)).map((c) => ({ inv: c.inv, y: clip(c.cortar), curva: "c" }));
-  const tot = (z: Zona) => { const ps = ev.piezas.filter((p) => p.zona === z); return { n: ps.length, inv: ps.reduce((s, p) => s + p.inv, 0) }; };
+  const tot = (z: Zona) => { const ps = piezas.filter((p) => p.zona === z); return { n: ps.length, inv: ps.reduce((s, p) => s + p.inv, 0) }; };
   const ordenZ: Record<Zona, number> = { cortar: 0, escalar: 1, probar: 2 };
-  const lista = [...ev.piezas].sort((a, b) => ordenZ[a.zona] - ordenZ[b.zona] || b.inv - a.inv);
+  const lista = [...piezas].sort((a, b) => ordenZ[a.zona] - ordenZ[b.zona] || b.inv - a.inv);
   const visibles = todas ? lista : lista.slice(0, 15);
   const milTxt = ev.porAlcance ? "mil personas alcanzadas" : "mil impresiones";
   const conMil = pts.filter((p) => p.costoMil != null && p.costoMil > 0);
@@ -88,6 +93,12 @@ export function EscalarCortarSection({ porMedio, anio }: { porMedio: Record<stri
             {m} <span style={{ opacity: 0.7 }}>({porMedio[m]!.length})</span>
           </button>
         ))}
+        {pausadas > 0 && (
+          <label style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <input type="checkbox" checked={soloActivas} onChange={(e) => setSoloActivas(e.target.checked)} />
+            Solo activas <span style={{ color: "var(--muted)" }}>({pausadas} pausada{pausadas === 1 ? "" : "s"} {soloActivas ? "ocultas" : "incluidas"})</span>
+          </label>
+        )}
         <label style={{ marginLeft: "auto", fontSize: 12.5, display: "flex", alignItems: "center", gap: 6 }}>
           Meta de costo por video completo ($)
           <input type="number" min={0} step="any" value={Number(ev.meta.toFixed(2))} onChange={(e) => { const v = Number(e.target.value); setMetas((s) => ({ ...s, [medio]: v > 0 ? v : 0 })); }}
