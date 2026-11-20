@@ -10,7 +10,7 @@ export const PLAN_MEDIOS_TABS = [
   { href: "/performance?tab=eficiencia", label: "Eficiencia Medios" },
   { href: "/performance?tab=diagnostico", label: "Plan de Mejora" },
   { href: "/performance/competencia", label: "Pauta Competencia" },
-  { href: "/performance/plan", label: "Plan anual" },
+  { href: "/performance/plan", label: `Plan anual ${new Date().getFullYear() + 1}` },
 ] as const;
 
 export function PlanMediosSubnav({ current }: { current: "/performance/simulador" | "/performance/competencia" | "/performance/plan" }) {

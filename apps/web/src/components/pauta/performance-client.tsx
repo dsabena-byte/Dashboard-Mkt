@@ -64,7 +64,7 @@ const TABS = ["Impacto Campaña", "Eficiencia Medios", "Plan de Mejora"] as cons
 // Pestañas que son rutas propias de Plan de Medios (mismo renglón de tabs).
 const TAB_LINKS = [
   { label: "Pauta Competencia", href: "/performance/competencia" },
-  { label: "Plan anual", href: "/performance/plan" },
+  { label: `Plan anual ${new Date().getFullYear() + 1}`, href: "/performance/plan" },
 ] as const;
 const TAB_PARAM: Record<string, Tab> = { impacto: "Impacto Campaña", eficiencia: "Eficiencia Medios", diagnostico: "Plan de Mejora" };
 type Tab = (typeof TABS)[number];
