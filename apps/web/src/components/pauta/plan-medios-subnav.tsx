@@ -3,14 +3,13 @@ import type { Route } from "next";
 
 // Pestañas de Plan de Medios (mismo renglón y estilo que los tabs del Tablero, ámbar = activa):
 // Impacto Campaña · Eficiencia Medios · Diagnóstico e Inteligencia (vistas de /performance, ?tab=) ·
-// Pauta Competencia · Simulador de Presupuesto · Plan anual (rutas propias). El sidebar y `isPathAllowed` matchean
+// Pauta Competencia · Plan anual (rutas propias; el Simulador salió del renglón el 20-nov-2026, sigue por URL). El sidebar y `isPathAllowed` matchean
 // por prefijo → quien ve /performance ve las sub-rutas.
 export const PLAN_MEDIOS_TABS = [
   { href: "/performance?tab=impacto", label: "Impacto Campaña" },
   { href: "/performance?tab=eficiencia", label: "Eficiencia Medios" },
   { href: "/performance?tab=diagnostico", label: "Plan de Mejora" },
   { href: "/performance/competencia", label: "Pauta Competencia" },
-  { href: "/performance/simulador", label: "Simulador de Presupuesto" },
   { href: "/performance/plan", label: "Plan anual" },
 ] as const;
 
