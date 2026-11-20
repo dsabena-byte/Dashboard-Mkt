@@ -81,43 +81,29 @@ export function MonthlyInvestmentChart({
     pct_marker?: number;
   }>;
 }) {
+  // Mismo estilo que «real vs meta» (20-nov-2026, pedido del user: «más delicado»): rampa azul, tipografía chica, solo el total arriba.
+  const ON_OFF = [
+    { key: "digital", name: "Digital", fill: "#1e40af" },
+    { key: "tvCable", name: "TV Cable", fill: "#3b82f6" },
+    { key: "dooh", name: "DOOH", fill: "#93c5fd" },
+    { key: "ooh", name: "OOH", fill: "#bae6fd" },
+  ] as const;
   return (
-    <ResponsiveContainer width="100%" height={320}>
-      <ComposedChart data={data} margin={{ top: 24, right: 16, left: 8, bottom: 4 }}>
-        <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="mes" fontSize={11} stroke="hsl(var(--muted-foreground))" />
-        <YAxis tickFormatter={fmtARS} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-        <Tooltip
-          formatter={(v: number, n: string) => [fmtARS(v), n]}
-          contentStyle={tooltipStyle}
-        />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="digital" stackId="inv" name="Digital" fill="#2b4dff">
-          {data.map((d, i) => <Cell key={i} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
-        </Bar>
-        <Bar dataKey="tvCable" stackId="inv" name="TV Cable" fill="#e63946">
-          {data.map((d, i) => <Cell key={i} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
-        </Bar>
-        <Bar dataKey="dooh" stackId="inv" name="DOOH" fill="#ec4899">
-          {data.map((d, i) => <Cell key={i} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
-        </Bar>
-        <Bar dataKey="ooh" stackId="inv" name="OOH" fill="#f59e0b" radius={[4, 4, 0, 0]}>
-          {data.map((d, i) => <Cell key={i} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
-        </Bar>
-        {/* Bar invisible para hostear la etiqueta del % anual sobre cada stack */}
-        <Bar dataKey="pct_marker" stackId="inv" fill="transparent" isAnimationActive={false} legendType="none">
-          <LabelList
-            dataKey="mes_pct"
-            position="top"
-            fontSize={13}
-            fontWeight={700}
-            fill="#1e293b"
-            formatter={(v: number | null | undefined) => (v != null ? `${v.toFixed(1)}%` : "")}
-          />
-        </Bar>
-        {/* Solo un punto por mes (sin línea) con el monto total etiquetado, siempre visible */}
-        <Line type="monotone" dataKey="total" name="Total mensual" stroke="transparent" legendType="none" isAnimationActive={false} connectNulls={false} dot={{ r: 4, fill: "#0f172a", strokeWidth: 0 }}>
-          <LabelList dataKey="total" position="top" offset={22} fontSize={11} fontWeight={700} fill="#0f172a" formatter={(v: number | null | undefined) => (v != null ? fmtARS(v) : "")} />
+    <ResponsiveContainer width="100%" height={240}>
+      <ComposedChart data={data} margin={{ top: 22, right: 12, left: 8, bottom: 8 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+        <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
+        <YAxis width={56} tickFormatter={fmtARS} stroke="#1e40af" fontSize={11} tickLine={false} />
+        <Tooltip formatter={(v: number, n: string) => [fmtARS(v), n]} contentStyle={tooltipStyle} cursor={{ fill: "rgba(100,116,139,.06)" }} />
+        <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value: string) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
+        {ON_OFF.map((m, i) => (
+          <Bar key={m.key} dataKey={m.key} stackId="inv" name={m.name} fill={m.fill} radius={i === ON_OFF.length - 1 ? [3, 3, 0, 0] : undefined}>
+            {data.map((d, j) => <Cell key={j} fillOpacity={d.isPlanned ? 0.35 : 1} />)}
+          </Bar>
+        ))}
+        {/* Total del mes arriba del stack (punto invisible que solo lleva la etiqueta). */}
+        <Line type="monotone" dataKey="total" name="Total mensual" stroke="transparent" legendType="none" isAnimationActive={false} connectNulls={false} dot={false} activeDot={false}>
+          <LabelList dataKey="total" position="top" offset={6} fontSize={9} fill="#1e293b" formatter={(v: number | null | undefined) => (v != null ? fmtARS(v) : "")} />
         </Line>
       </ComposedChart>
     </ResponsiveContainer>

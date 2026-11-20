@@ -70,7 +70,7 @@ export function WebMonthlyChart({
           <Bar yAxisId="left" dataKey="usuarios_prev" fill="#e2e8f0" name={`Usuarios ${labels.prev}`} />
         )}
         {hasUsersMeta && (
-          <Bar yAxisId="left" dataKey="usuarios_meta" fill="#cbd5e1" stroke="#64748b" strokeWidth={1.25} name="Meta usuarios" radius={[3, 3, 0, 0]} />
+          <Bar yAxisId="left" dataKey="usuarios_meta" fill="#bae6fd" name="Meta usuarios" radius={[3, 3, 0, 0]} />
         )}
         <Bar yAxisId="left" dataKey="usuarios_curr" fill="#1e40af" name={`Usuarios ${labels.curr}`} radius={[3, 3, 0, 0]}>
           <LabelList dataKey="usuarios_curr" position="top" fontSize={9} fill="#1e293b" formatter={(v: number) => (v ? formatTick(v) : "")} />

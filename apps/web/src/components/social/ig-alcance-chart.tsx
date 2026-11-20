@@ -25,7 +25,7 @@ export function IgAlcanceChart({ data }: { data: IgAlcanceDatum[] }) {
         <YAxis yAxisId="ghost" orientation="right" width={56} tick={false} axisLine={false} />
         <Tooltip content={<ChartTooltip format={(v) => fmtKfull(v)} />} cursor={{ fill: "rgba(100,116,139,.06)" }} />
         <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value: string) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
-        {hasMeta && <Bar yAxisId="alc" dataKey="metaAlcance" name="Meta alcance" fill="#cbd5e1" stroke="#64748b" strokeWidth={1.25} radius={[3, 3, 0, 0]} />}
+        {hasMeta && <Bar yAxisId="alc" dataKey="metaAlcance" name="Meta alcance" fill="#bae6fd" radius={[3, 3, 0, 0]} />}
         <Bar yAxisId="alc" dataKey="alcance" name="Alcance (real)" fill="#1e40af" radius={[3, 3, 0, 0]}>
           <LabelList dataKey="alcance" position="top" fontSize={9} fill="#1e293b" formatter={(v: number) => (v ? fmtK(v) : "")} />
         </Bar>
