@@ -125,7 +125,7 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
               <th className="px-3 py-2.5 text-left font-semibold" rowSpan={2}>Mes</th>
               <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Desvío del mes</th>
               <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Acumulado YTD</th>
-              <th className="border-l px-3 py-2.5 text-right font-semibold" rowSpan={2} title="Cierre del año proyectado (mediana y rango p10–p90 de 2.000 simulaciones) y probabilidad de llegar a la meta anual"><span className="inline-flex items-center gap-1.5">Cierre proyectado <LearnButton k="prob_meta" /></span></th>
+              <th className="border-l px-3 py-2.5 text-right font-semibold" rowSpan={2} title="Cierre del año proyectado (mediana y rango p10–p90 de 2.000 simulaciones)"><span className="inline-flex items-center gap-1.5">Cierre proyectado <LearnButton k="prob_meta" /></span></th>
               <th className="border-l px-3 py-2.5 text-center font-semibold" rowSpan={2}>Evolución (real vs meta)</th>
             </tr>
             <tr className="text-[9px] uppercase tracking-wide text-muted-foreground/70">
@@ -188,7 +188,7 @@ export function KpiScorecard({ kpis, pronosticos }: { kpis: KpiSeguimiento[]; pr
       </div>
       {pronosticos && (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          <b className="text-foreground">Cierre proyectado:</b> pronóstico del resto del año con la historia de cada KPI (estacionalidad del año anterior si hay 13+ meses; si no, suavizado exponencial) y 2.000 simulaciones con sus errores históricos → rango p10–p90 y probabilidad de llegar a la meta anual (≥70% probable · 30–70% en riesgo · &lt;30% improbable). Con menos de 6 meses de dato o una serie muy variable se muestra &ldquo;dato insuficiente&rdquo;.
+          <b className="text-foreground">Cierre proyectado:</b> pronóstico del resto del año con la historia de cada KPI (estacionalidad del año anterior si hay 13+ meses; si no, suavizado exponencial) y 2.000 simulaciones con sus errores históricos → rango p10–p90. Con menos de 6 meses de dato o una serie muy variable se muestra &ldquo;dato insuficiente&rdquo;.
         </p>
       )}
     </div>

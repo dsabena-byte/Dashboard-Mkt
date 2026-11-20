@@ -1,22 +1,13 @@
 // Piezas chicas del pace-to-goal (portado de BIP, sep-2026). Sin "use client" ni hooks: sirven en
-// server y client components. Paleta sobria: el valor proyectado va en tinta; el semáforo SOLO marca
-// el ESTADO de la probabilidad (≥70% probable · 30-70% en riesgo · <30% improbable).
-import { SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
+// server y client components. El valor proyectado va en tinta. Sin probabilidad de llegar a la meta
+// (pedido del user, 20-nov-2026).
 import type { PronosticoMeta } from "@/lib/stats/meta";
 import type { ProyeccionAgregada, PorQue } from "@/lib/objetivos-pronostico";
 import type { KpiUnit } from "@/lib/objetivos-kpis";
 import { LearnButton } from "@/components/knowledge/learn-button";
 
-const SEM_BG: Record<Semaforo, string> = {
-  verde: "rgba(22,163,74,.12)",
-  amarillo: "rgba(217,119,6,.14)",
-  rojo: "rgba(220,38,38,.12)",
-  "sin-meta": "rgba(100,116,139,.12)",
-};
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-const semProb = (p: number): Semaforo => (p >= 0.7 ? "verde" : p >= 0.3 ? "amarillo" : "rojo");
-const lectura = (p: number) => (p >= 0.7 ? "probable" : p >= 0.3 ? "en riesgo" : "improbable");
 
 export function fmtKpi(v: number | null | undefined, u: KpiUnit | string): string {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -27,15 +18,6 @@ export function fmtKpi(v: number | null | undefined, u: KpiUnit | string): strin
   const a = Math.abs(v);
   const s = a >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : a >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : String(Math.round(v));
   return u === "$" ? `$${s}` : s;
-}
-
-export function ProbChip({ p, title }: { p: number; title?: string }) {
-  const sem = semProb(p);
-  return (
-    <span title={title} className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-px text-[11px] font-semibold tabular-nums" style={{ color: SEMAFORO_COLOR[sem], background: SEM_BG[sem] }}>
-      {Math.round(p * 100)}% · {lectura(p)}
-    </span>
-  );
 }
 
 const tituloMetodo = (pr: PronosticoMeta) =>
@@ -49,7 +31,7 @@ export function ProyeccionKpi({ pr, unit }: { pr?: PronosticoMeta; unit: KpiUnit
     <div title={tituloMetodo(pr)} className="flex flex-col items-end gap-0.5">
       <span className="font-semibold tabular-nums text-foreground">{pr.suficiente || pr.cerrado ? "" : "≈ "}{fmtKpi(c.p50, unit)}</span>
       {c.p10 != null && c.p90 != null && !pr.cerrado && <span className="text-[10.5px] tabular-nums text-muted-foreground">{fmtKpi(c.p10, unit)}–{fmtKpi(c.p90, unit)}</span>}
-      {pr.probabilidad != null ? <ProbChip p={pr.probabilidad} title="Probabilidad de llegar a la meta anual" /> : <span className="whitespace-nowrap text-[10.5px] text-muted-foreground/70">dato insuficiente</span>}
+      {!pr.suficiente && !pr.cerrado && <span className="whitespace-nowrap text-[10.5px] text-muted-foreground/70">dato insuficiente</span>}
     </div>
   );
 }
@@ -62,8 +44,8 @@ export function ProyeccionObjetivo({ pr }: { pr?: ProyeccionAgregada }) {
     <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
       {pr.suficiente ? (
         <>
+          {/* Sin la probabilidad de llegar al 100% (pedido del user, 20-nov-2026). */}
           <span>Cierre proyectado <b className="tabular-nums text-foreground">{pc(pr.p50)}</b> <span className="text-muted-foreground/70">({pc(pr.p10)}–{pc(pr.p90)})</span></span>
-          {pr.probabilidad != null && <span className="inline-flex items-center gap-1">· llegar al 100% <ProbChip p={pr.probabilidad} /></span>}
         </>
       ) : (
         <span title={pr.motivo ?? undefined} className="text-muted-foreground/70">Cierre proyectado: dato insuficiente</span>
