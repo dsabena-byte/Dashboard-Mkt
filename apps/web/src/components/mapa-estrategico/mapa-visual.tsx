@@ -52,7 +52,7 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
         <div className="text-[11px] uppercase tracking-[0.08em] opacity-75">Mapa estratégico</div>
         <div className="text-[22px] font-semibold tracking-tight">Plan de Marketing {anio}</div>
         <div className="mt-1.5 border-t border-white/20 pt-1.5 text-[13px]">
-          <span className="opacity-75">Meta Salud de Marca Drean · dic {anio}</span>{" "}
+          <span className="opacity-75">Meta {anio} · Salud de Marca Drean</span>{" "}
           <b className="text-lg font-semibold">{fmt(metaSalud, "%")}</b>
         </div>
       </div>
