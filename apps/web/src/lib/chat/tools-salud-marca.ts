@@ -1,5 +1,5 @@
 import "server-only";
-import { getDreanSerie } from "@/lib/salud-marca-queries";
+import { getSerieMatEstimada } from "@/lib/salud-marca-queries";
 import { computeDreanConsolidado, KANTAR_LAVADO, KANTAR_REFRI, KANTAR_COCCION, SM_WAVES, type KVals } from "@/lib/salud-marca-model";
 import { rd } from "./util";
 import type { ChatTool } from "./types";
@@ -26,9 +26,9 @@ export const saludMarcaTools: ChatTool[] = [
     },
     run: async (args) => {
       const [lav, ref, coc] = await Promise.all([
-        getDreanSerie("Lavado", "MAT", "DREAN"),
-        getDreanSerie("Refrigeración", "MAT", "DREAN"),
-        getDreanSerie("Cocción", "MAT", "DREAN"),
+        getSerieMatEstimada("Lavado"),
+        getSerieMatEstimada("Refrigeración"),
+        getSerieMatEstimada("Cocción"),
       ]);
       const rows = computeDreanConsolidado({ lav, ref, coc });
       const cat = (c: (typeof rows)[number]["lav"]) => ({ tom: r1(c.tom.v), som: r1(c.som.v), intencion: r1(c.int.v), poder: r1(c.poder.v), sm: r1(c.sm.v), estado: c.sm.s });
