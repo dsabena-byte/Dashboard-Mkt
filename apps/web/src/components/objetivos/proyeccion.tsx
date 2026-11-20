@@ -2,9 +2,8 @@
 // server y client components. El valor proyectado va en tinta. Sin probabilidad de llegar a la meta
 // (pedido del user, 20-nov-2026).
 import type { PronosticoMeta } from "@/lib/stats/meta";
-import type { ProyeccionAgregada, PorQue } from "@/lib/objetivos-pronostico";
+import type { PorQue } from "@/lib/objetivos-pronostico";
 import type { KpiUnit } from "@/lib/objetivos-kpis";
-import { LearnButton } from "@/components/knowledge/learn-button";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -32,25 +31,6 @@ export function ProyeccionKpi({ pr, unit }: { pr?: PronosticoMeta; unit: KpiUnit
       <span className="font-semibold tabular-nums text-foreground">{pr.suficiente || pr.cerrado ? "" : "≈ "}{fmtKpi(c.p50, unit)}</span>
       {c.p10 != null && c.p90 != null && !pr.cerrado && <span className="text-[10.5px] tabular-nums text-muted-foreground">{fmtKpi(c.p10, unit)}–{fmtKpi(c.p90, unit)}</span>}
       {!pr.suficiente && !pr.cerrado && <span className="whitespace-nowrap text-[10.5px] text-muted-foreground/70">dato insuficiente</span>}
-    </div>
-  );
-}
-
-/** Línea para las cards de objetivo y la Salud de Marca. */
-export function ProyeccionObjetivo({ pr }: { pr?: ProyeccionAgregada }) {
-  if (!pr) return null;
-  const pc = (v: number | null) => (v == null ? "—" : `${Math.round(v)}%`);
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-      {pr.suficiente ? (
-        <>
-          {/* Sin la probabilidad de llegar al 100% (pedido del user, 20-nov-2026). */}
-          <span>Cierre proyectado <b className="tabular-nums text-foreground">{pc(pr.p50)}</b> <span className="text-muted-foreground/70">({pc(pr.p10)}–{pc(pr.p90)})</span></span>
-        </>
-      ) : (
-        <span title={pr.motivo ?? undefined} className="text-muted-foreground/70">Cierre proyectado: dato insuficiente</span>
-      )}
-      <LearnButton k="prob_meta" />
     </div>
   );
 }
