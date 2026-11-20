@@ -38,9 +38,14 @@ export async function GET(req: Request) {
   if (!secret || auth !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    // Solo la ÚLTIMA foto (fecha de la corrida): antes leía toda la tabla y mezclaba
+    // las fotos de todos los meses (el índice de sep y nov salía mal, 20-nov-2026).
+    const ult = await sb<Array<{ fecha: string }>>("seo_rankings?select=fecha&order=fecha.desc&limit=1");
+    const fecha = ult[0]?.fecha;
+    if (!fecha) return NextResponse.json({ ok: true, filas: 0, nota: "seo_rankings vacía" });
     const rows: Row[] = [];
     for (let off = 0; off < 50000; off += 1000) {
-      const chunk = await sb<Row[]>(`seo_rankings?select=marca,keyword,categoria,posicion,search_volume&limit=1000&offset=${off}`);
+      const chunk = await sb<Row[]>(`seo_rankings?select=marca,keyword,categoria,posicion,search_volume&fecha=eq.${fecha}&order=categoria,keyword,marca,dominio&limit=1000&offset=${off}`);
       rows.push(...chunk);
       if (chunk.length < 1000) break;
     }
@@ -76,7 +81,7 @@ export async function GET(req: Request) {
         body: JSON.stringify(out),
       });
     }
-    return NextResponse.json({ ok: true, mes, filas: out.length });
+    return NextResponse.json({ ok: true, mes, fecha, filas: out.length });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
