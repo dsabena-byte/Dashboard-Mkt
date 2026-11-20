@@ -201,7 +201,7 @@ function MoversPanel({ windows, deltaUnit, metricLabel }: { windows: WindowMover
 // Leyenda de marcas con su color. Se repite debajo de cada gráfico.
 function BrandLegend({ brands, colorOf }: { brands: string[]; colorOf: Record<string, string> }) {
   return (
-    <div className="mt-1 flex flex-nowrap items-center gap-x-2.5 text-[10px] leading-tight">
+    <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] leading-tight">
       {brands.map((b) => (
         <span
           key={b}
@@ -367,11 +367,11 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
               {METRICS.map((m) => {
                 const isShare = m.key !== "index_price";
                 return (
-                  <div key={m.key} className="grid gap-4 lg:grid-cols-[1fr_15rem]">
-                    {/* Columna de gráficos: composición + serie, con la leyenda abarcando ambos */}
-                    <div>
-                      <div className="grid gap-4 lg:grid-cols-[8rem_1fr]">
-                        <div>
+                  <div key={m.key} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_15rem]">
+                    {/* Columna de gráficos: composición + serie, con la leyenda abarcando ambos. minmax(0,…) + min-w-0: sin scroll horizontal (20-nov-2026). */}
+                    <div className="min-w-0">
+                      <div className="grid gap-4 lg:grid-cols-[8rem_minmax(0,1fr)]">
+                        <div className="min-w-0">
                           <div className="mb-1 text-[10px] font-medium text-muted-foreground">
                             {isShare ? `Composición (${esMAT ? "MAT" : "mes"})` : "Inicio vs actual"}
                           </div>
@@ -381,7 +381,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
                             <MercadoBrandChart data={pivotEndpoints(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
                           )}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="mb-1 text-xs font-medium text-muted-foreground">{m.label}</div>
                           <MercadoBrandChart data={pivot(grp, brands, m.key)} brands={brands} colors={colorOf} suffix={m.suffix} />
                           {esMAT && (
@@ -391,7 +391,7 @@ export default async function MercadoPage({ searchParams }: { searchParams?: { c
                           )}
                         </div>
                       </div>
-                      {/* Leyenda en una sola línea, usando el ancho de los dos gráficos */}
+                      {/* Leyenda bajo los dos gráficos (hace salto de línea si no entra) */}
                       <BrandLegend brands={allRanked} colorOf={colorOf} />
                     </div>
                     <MoversPanel windows={computeMovers(grp, m.key)} deltaUnit={m.deltaUnit} metricLabel={m.short} />
