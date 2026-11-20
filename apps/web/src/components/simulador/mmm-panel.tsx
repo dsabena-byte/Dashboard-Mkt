@@ -141,7 +141,7 @@ export function MmmPanel({ datos, alloc, onAlloc }: { datos: MmmDatos; alloc: Re
           <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
             <div className="px-4 pb-1 pt-3"><h3 className="inline text-sm font-semibold">Qué aporta cada medio</h3><span className="ml-2 text-[11px] text-muted-foreground">Mediana y rango p10–p90 de {ok.draws.length} réplicas bootstrap.</span></div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] text-xs">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="text-left text-[10.5px] uppercase tracking-wide text-muted-foreground">
                     {["Medio", "Aporte al resultado", `${kpi?.label} por cada $1.000`, "Próximos $1.000 (marginal)", "Zona de la curva", "Arrastre", "Evidencia"].map((h, i) => <th key={i} className={`px-3 py-2 font-semibold ${i >= 1 && i <= 3 ? "text-right" : ""}`}>{h}</th>)}

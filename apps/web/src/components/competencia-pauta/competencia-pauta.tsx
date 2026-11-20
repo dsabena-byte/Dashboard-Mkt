@@ -70,7 +70,7 @@ export function CompetenciaPauta({ brands, summaries, updatedAt, intensity = [],
               ))}
             </div>
             <div className="mt-3 overflow-x-auto">
-              <table className="w-full min-w-[420px] text-[11px]">
+              <table className="w-full text-[11px]">
                 <thead><tr className="text-muted-foreground">{["Marca", "Mensajes", "Versiones/msj", "Días al aire", "Sostenidos", "Nuevos 30d"].map((h, i) => <th key={h} className={`py-1 font-semibold ${i ? "text-right" : "text-left"}`}>{h}</th>)}</tr></thead>
                 <tbody>{intensity.filter((b) => b.activos).map((b) => (
                   <tr key={b.marca} className="border-t"><td className="py-1">{b.marca}</td><td className="text-right tabular-nums">{b.creatividades}</td><td className="text-right tabular-nums">{b.versionesPorCreatividad}</td><td className="text-right tabular-nums">{b.diasPromedio}</td><td className="text-right tabular-nums">{b.sostenidos}</td><td className="text-right tabular-nums">{b.lanzamientos30}</td></tr>
@@ -108,7 +108,7 @@ export function CompetenciaPauta({ brands, summaries, updatedAt, intensity = [],
           <span className="text-[11px] text-muted-foreground">Actualizado {fd(updatedAt)} · clic en una marca para ver sus anuncios</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-xs">
+          <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="text-[10.5px] uppercase tracking-wide text-muted-foreground">
                 {["Marca", "Activos", "Nuevos 7 días", "Nuevos 30 días", "Formatos", "Dónde", "Activo desde"].map((h, i) => (

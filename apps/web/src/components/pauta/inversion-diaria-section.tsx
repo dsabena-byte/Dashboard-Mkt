@@ -117,7 +117,7 @@ export function InversionDiariaSection({ d }: { d: PautaDiariaData }) {
 
       {/* Tabla compacta (pedido del user, 20-nov-2026): encabezado con fondo, una línea por dato, detalle en el tooltip. */}
       <div className="mt-3 overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[860px] text-xs">
+        <table className="w-full text-xs">
           <thead className="bg-slate-100">
             <tr className="whitespace-nowrap text-left text-[10px] font-semibold uppercase tracking-wide text-slate-700">
               <th className="px-3 py-2">Medio</th>
@@ -171,7 +171,7 @@ export function InversionDiariaSection({ d }: { d: PautaDiariaData }) {
             Meses en que campañas activas {CFG_DIARIA.rapidoDias} días o menos se llevaron una parte grande del gasto del mes (días activos = días con impresiones, que informa Meta).
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-xs">
+            <table className="w-full text-xs">
               <thead className="border-b bg-muted/40">
                 <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                   <th className="px-3 py-2">Mes</th><th className="px-3 py-2 text-right">Gasto del mes</th><th className="px-3 py-2 text-right">En campañas cortas</th>

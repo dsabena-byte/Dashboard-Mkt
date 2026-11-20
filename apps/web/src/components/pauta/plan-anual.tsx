@@ -32,7 +32,7 @@ function Tabla({ titulo, filas, total, pie, grafico }: { titulo: string; filas: 
       <h4 className="text-sm font-semibold">{titulo}</h4>
       {grafico}
       <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[900px] text-xs">
+        <table className="w-full text-xs">
           <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">$ M</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th}>Total</th><th className={th}>%</th></tr></thead>
           <tbody>
             {filas.map(([n, a]) => { const s = a.reduce((x, y) => x + y, 0); return (
@@ -126,7 +126,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
           ["Offline (OOH, TV, radio, DOOH)", MES.map((_, i) => cfg.medios.filter((m) => m.offline).reduce((t, m) => t + (r.inversion.montos[m.medio]?.[i] ?? 0), 0))],
         ]} />
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[900px] text-xs" data-noexcel>
+          <table className="w-full text-xs" data-noexcel>
             <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium" />{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th}>Total</th></tr></thead>
             <tbody><tr className="border-t">
               <td className="px-2 py-1">BGT</td>
@@ -245,7 +245,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
         <h3 className="text-base font-semibold">3. Mix por categoría (% del mes, para los medios en &ldquo;mix&rdquo;)</h3>
         <ApiladoMensual pct series={PLAN_CATS.map((c) => [c, cfg.mix[c] ?? []])} />
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[900px] text-xs" data-noexcel>
+          <table className="w-full text-xs" data-noexcel>
             <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Categoría</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th} title="Promedio simple de los 12 meses">Prom.</th><th className={th} title="% del plan total en la categoría (con OOH, TV y radio)">% plan</th></tr></thead>
             <tbody>
               {PLAN_CATS.map((c) => (
@@ -270,7 +270,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
         <div className="space-y-1">
           <h4 className="text-sm font-semibold">Medio × categoría (anual, $ M)</h4>
           <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[700px] text-xs">
+            <table className="w-full text-xs">
               <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Medio</th>{PLAN_CATS.map((c) => <th key={c} className={th}>{c}</th>)}<th className={th}>Total</th></tr></thead>
               <tbody>
                 {cfg.medios.map((m) => { const mc = r.inversion.medioCat[m.medio] ?? {}; return (
@@ -292,7 +292,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
             <CpmMedios items={cfg.medios.flatMap((m) => { const a = r.impactos.porMedio[m.medio]; if (!a) return []; const inv = (r.inversion.montos[m.medio] ?? []).reduce((x, y) => x + y, 0), impr = a.reduce((x, y) => x + y.impr, 0); return impr > 0 ? [{ medio: m.medio, inv, impr, cpm: (inv / impr) * 1000 }] : []; })} /></div>
         </div>
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[900px] text-xs">
+          <table className="w-full text-xs">
             <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">Medio (anual)</th><th className={th}>Inversión $ M</th><th className={th}>Impresiones</th><th className={th}>Alcance</th><th className={th}>Clicks</th><th className={th}>Views ≥50%</th><th className={th}>VTR ≥50%</th><th className={th}>CPM plan</th><th className="px-2 py-1.5 text-left font-medium">Confianza</th></tr></thead>
             <tbody>
               {cfg.medios.map((m) => {
@@ -329,7 +329,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
           ))}
         </div>
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[900px] text-xs">
+          <table className="w-full text-xs">
             <thead className="bg-muted/50 text-muted-foreground"><tr><th className="px-2 py-1.5 text-left font-medium">KPI · plan vs meta cargada hoy</th>{MES.map((m) => <th key={m} className={th}>{m}</th>)}<th className={th} title="Volúmenes: suma del año · Frecuencia y VTR: promedio de los meses con dato">Año</th></tr></thead>
             <tbody>
               {PLAN_META_KPIS.map((k) => {
