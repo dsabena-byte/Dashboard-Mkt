@@ -77,7 +77,7 @@ function Chip({ actual, meta, direccion, umbralVerde, umbralAmarillo }: {
   const color = SEMAFORO_COLOR[sem];
   const desvio = actual != null && meta != null && meta !== 0 ? ((actual - meta) / meta) * 100 : null;
   return (
-    <span className="inline-flex min-w-[62px] items-center justify-end gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums"
+    <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums"
       style={{ color, background: SEM_BG[sem] }}>
       {desvio == null ? "s/d" : <>{desvio >= 0 ? "▲" : "▼"} {Math.abs(desvio).toFixed(0)}%</>}
     </span>
@@ -104,9 +104,10 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
           <span className="ml-2.5 mr-1 inline-block h-[7px] w-[7px] rounded-full align-middle" style={{ background: SEMAFORO_COLOR.rojo }} />{counts.rojo ?? 0}
         </span>
       </div>
-      <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-        {/* Anchos FIJOS (table-fixed + colgroup): todas las tablas de planes alinean sus columnas al mismo lugar (5-oct-2026). */}
-        <table className="w-full min-w-[1100px] table-fixed border-collapse text-[13px]">
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        {/* Anchos FIJOS (table-fixed + colgroup): todas las tablas de planes alinean sus columnas al mismo lugar (5-oct-2026).
+            Sin ancho mínimo ni barra de scroll horizontal (pedido del user, 20-nov-2026): las columnas se achican con la pantalla. */}
+        <table className="w-full table-fixed border-collapse text-[13px]">
           <colgroup>
             <col style={{ width: "25%" }} />
             <col style={{ width: "5%" }} />
@@ -121,20 +122,20 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
           </colgroup>
           <thead>
             <tr className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2.5 text-left font-semibold" rowSpan={2}>KPI</th>
-              <th className="px-3 py-2.5 text-left font-semibold" rowSpan={2}>Mes</th>
-              <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Desvío del mes</th>
-              <th className="border-l px-3 py-1.5 text-center font-semibold" colSpan={3}>Acumulado YTD</th>
-              <th className="border-l px-3 py-2.5 text-right font-semibold" rowSpan={2} title="Cierre del año proyectado (mediana y rango p10–p90 de 2.000 simulaciones)"><span className="inline-flex items-center gap-1.5">Cierre proyectado <LearnButton k="prob_meta" /></span></th>
-              <th className="border-l px-3 py-2.5 text-center font-semibold" rowSpan={2}>Evolución (real vs meta)</th>
+              <th className="px-2 py-2.5 text-left font-semibold" rowSpan={2}>KPI</th>
+              <th className="px-2 py-2.5 text-left font-semibold" rowSpan={2}>Mes</th>
+              <th className="border-l px-2 py-1.5 text-center font-semibold" colSpan={3}>Desvío del mes</th>
+              <th className="border-l px-2 py-1.5 text-center font-semibold" colSpan={3}>Acumulado YTD</th>
+              <th className="border-l px-2 py-2.5 text-right font-semibold" rowSpan={2} title="Cierre del año proyectado (mediana y rango p10–p90 de 2.000 simulaciones)"><span className="inline-flex items-center gap-1.5">Cierre proyectado <LearnButton k="prob_meta" /></span></th>
+              <th className="border-l px-2 py-2.5 text-center font-semibold" rowSpan={2}>Evolución (real vs meta)</th>
             </tr>
             <tr className="text-[9px] uppercase tracking-wide text-muted-foreground/70">
-              <th className="border-l px-3 py-1.5 text-right font-normal">Real</th>
-              <th className="px-3 py-1.5 text-right font-normal">Meta</th>
-              <th className="px-3 py-1.5 text-right font-normal">Desv.</th>
-              <th className="border-l px-3 py-1.5 text-right font-normal">Real</th>
-              <th className="px-3 py-1.5 text-right font-normal">Meta</th>
-              <th className="px-3 py-1.5 text-right font-normal">Desv.</th>
+              <th className="border-l px-2 py-1.5 text-right font-normal">Real</th>
+              <th className="px-2 py-1.5 text-right font-normal">Meta</th>
+              <th className="px-2 py-1.5 text-right font-normal">Desv.</th>
+              <th className="border-l px-2 py-1.5 text-right font-normal">Real</th>
+              <th className="px-2 py-1.5 text-right font-normal">Meta</th>
+              <th className="px-2 py-1.5 text-right font-normal">Desv.</th>
             </tr>
           </thead>
           <tbody>
@@ -147,20 +148,20 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
               const metaYtd = k.tipo === "sum" ? sum(k.metaM.slice(0, upto + 1)) : avg(k.metaM.slice(0, upto + 1));
               return (
                 <tr key={k.kpi} className="border-t">
-                  <td className="px-3 py-2.5 text-left">
+                  <td className="px-2 py-2.5 text-left">
                     <span className="font-semibold">{k.kpi}</span>
                     <span className="block text-[11px] font-normal text-muted-foreground/80">{k.medida}</span>
                     <PorQueLinea pq={pronosticos?.[k.kpi]?.porQue} />
                   </td>
-                  <td className="px-3 py-2.5 text-left tabular-nums text-muted-foreground">{ri >= 0 ? MES[ri] : "—"}</td>
-                  <td className="border-l px-3 py-2.5 text-right font-semibold tabular-nums">{fmt(realMes, k.unit)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{fmt(metaMes, k.unit)}</td>
-                  <td className="px-3 py-2.5 text-right"><Chip actual={realMes} meta={metaMes} direccion={k.direccion} umbralVerde={k.umbralVerde} umbralAmarillo={k.umbralAmarillo} /></td>
-                  <td className="border-l px-3 py-2.5 text-right font-semibold tabular-nums">{fmt(realYtd, k.unit)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{fmt(metaYtd, k.unit)}</td>
-                  <td className="px-3 py-2.5 text-right"><Chip actual={realYtd} meta={metaYtd} direccion={k.direccion} umbralVerde={k.umbralVerde} umbralAmarillo={k.umbralAmarillo} /></td>
-                  <td className="border-l px-3 py-2 text-right text-xs">{pronosticos ? <ProyeccionKpi pr={pronosticos[k.kpi]?.pronostico} unit={k.unit} /> : <span className="text-muted-foreground/60">—</span>}</td>
-                  <td className="border-l px-3 py-2"><div className="flex w-full justify-center"><Spark realM={k.realM} metaM={k.metaM} /></div></td>
+                  <td className="px-2 py-2.5 text-left tabular-nums text-muted-foreground">{ri >= 0 ? MES[ri] : "—"}</td>
+                  <td className="border-l px-2 py-2.5 text-right font-semibold tabular-nums">{fmt(realMes, k.unit)}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums text-muted-foreground">{fmt(metaMes, k.unit)}</td>
+                  <td className="px-2 py-2.5 text-right"><Chip actual={realMes} meta={metaMes} direccion={k.direccion} umbralVerde={k.umbralVerde} umbralAmarillo={k.umbralAmarillo} /></td>
+                  <td className="border-l px-2 py-2.5 text-right font-semibold tabular-nums">{fmt(realYtd, k.unit)}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums text-muted-foreground">{fmt(metaYtd, k.unit)}</td>
+                  <td className="px-2 py-2.5 text-right"><Chip actual={realYtd} meta={metaYtd} direccion={k.direccion} umbralVerde={k.umbralVerde} umbralAmarillo={k.umbralAmarillo} /></td>
+                  <td className="border-l px-2 py-2 text-right text-xs">{pronosticos ? <ProyeccionKpi pr={pronosticos[k.kpi]?.pronostico} unit={k.unit} /> : <span className="text-muted-foreground/60">—</span>}</td>
+                  <td className="border-l px-2 py-2"><div className="flex w-full justify-center"><Spark realM={k.realM} metaM={k.metaM} /></div></td>
                 </tr>
               );
             })}
