@@ -29,12 +29,13 @@ const tooltipStyle = {
   fontSize: 12,
 };
 
-export function InvestmentDonut({ data }: { data: Array<{ name: string; value: number; color: string }> }) {
+/** `apilado` = leyenda abajo y dona más chica (card angosta, ej. Mix ON/OFF). */
+export function InvestmentDonut({ data, apilado = false }: { data: Array<{ name: string; value: number; color: string }>; apilado?: boolean }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   const sorted = [...data].sort((a, b) => b.value - a.value);
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="h-[220px] w-full sm:w-[50%]">
+    <div className={`flex flex-col items-center gap-4 ${apilado ? "" : "sm:flex-row"}`}>
+      <div className={apilado ? "h-[170px] w-full" : "h-[220px] w-full sm:w-[42%]"}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie data={sorted} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="55%" outerRadius="95%" paddingAngle={2}>
@@ -49,7 +50,7 @@ export function InvestmentDonut({ data }: { data: Array<{ name: string; value: n
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="w-full space-y-1.5 sm:w-[50%]">
+      <div className={`w-full space-y-1.5 ${apilado ? "" : "sm:w-[58%]"}`}>
         {sorted.map((d) => (
           <div key={d.name} className="flex items-center justify-between gap-2 text-xs">
             <span className="flex min-w-0 items-center gap-1.5">
