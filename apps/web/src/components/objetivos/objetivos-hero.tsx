@@ -11,7 +11,6 @@ import Link from "next/link";
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
 import { generalPonderado } from "@/lib/categorias";
 import type { SeguimientoObjetivos, ObjetivoRollup, ObjAporte, CatDesglose } from "@/lib/objetivos-rollup";
-import { ProyeccionObjetivo } from "./proyeccion";
 import { ContribucionObjetivo, ContribucionGlobalView } from "./contribucion";
 
 // Verde desde 95% (margen de 5%, pedido del user 18-nov-2026); 94,5 para que lo que se muestra como "95%" ya sea verde.
@@ -126,7 +125,6 @@ function ObjetivoCard({ o, refMes }: { o: ObjetivoRollup; refMes: string }) {
       {o.cobertura < 99.5 && (
         <div className="mt-1 text-[10px] text-amber-600">Cobertura {o.cobertura.toFixed(0)}% (KPIs con dato)</div>
       )}
-      {o.proyeccion && <div className="mt-1.5"><ProyeccionObjetivo pr={o.proyeccion} /></div>}
       <PorCategoria items={o.porCategoria} general={{ resultado: res, meta: o.metaNegMes }} />
       {/* Desplegable cerrado, mismo estilo que «Qué explica el resultado» (pedido del user, 20-nov-2026). */}
       {aportes.length > 0 && (
@@ -184,7 +182,6 @@ export function ObjetivosHero({ data }: { data: SeguimientoObjetivos }) {
           </div>
         </div>
         <div className="mt-3"><Barra v={sm.cumplYtd} /></div>
-        {sm.proyeccion && <div className="mt-2"><ProyeccionObjetivo pr={sm.proyeccion} /></div>}
         <div className="max-w-md"><PorCategoria items={sm.porCategoria} general={{ resultado: resultadoAcum(sm.metaNegMes, sm.cumplYtd), meta: sm.metaNegMes }} /></div>
         <ContribucionGlobalView c={sm.contribucion} />
       </div>
