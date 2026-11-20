@@ -867,7 +867,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
     return HISTORICO_MESES_FIJOS.map(({ full, short }, i) => {
       // Meses cerrados + el mes EN CURSO (ejecutado hasta hoy, parcial). Las cards usan el último cerrado.
       const cerrado = i + 1 <= currentMonth;
-      const nulo = { mes: short, inv: null as number | null, alc: null as number | null, impr: null as number | null, clic: null as number | null, v50: 0, vbase: 0 };
+      const nulo = { mes: short, inv: null as number | null, alc: null as number | null, impr: null as number | null, clic: null as number | null, v50: 0, vbase: 0, manual: { inv: 0, impr: 0, alc: 0, clic: 0 } };
       if (!cerrado) return nulo;
       const mesLabel = `${full} 2026`;
       const iso = `2026-${String(i + 1).padStart(2, "0")}-01`;
@@ -884,6 +884,8 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       }
       let inv = 0, impr = 0, alc = 0, clic = 0;
       for (const e of omd.values()) { inv += e.inv; impr += e.impr; alc += e.alc; clic += e.clic; }
+      // Parte cargada a mano (planilla OMD = mes completo): la proyección del mes en curso no la escala.
+      const manual = { inv, impr, alc, clic };
       const present = new Set([...omd].filter(([, e]) => e.impr > 0).map(([m]) => m));
       // Ejecución real por medio (gap-fill).
       const auto = new Map<string, { impr: number; alc: number; clic: number; inv: number }>();
@@ -914,7 +916,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       for (const r of dv360) { if (r.mes === iso && catOk(r.categoria) && (r.starts ?? 0) > 0) { vbase += r.impresiones; v50 += r.q50 ?? 0; } }
       // Mes cerrado sin ejecución alguna → null (gap en el gráfico, ej. Ene-Mar).
       if (impr === 0 && inv === 0) return nulo;
-      return { mes: short, inv, alc, impr, clic, v50, vbase };
+      return { mes: short, inv, alc, impr, clic, v50, vbase, manual };
     });
   }, [data, metaPaid, dv360, dv360Reach, googleAdsOmd, fxRates, arsMode, fxFallback, currentMonth, catImp]);
 
@@ -933,18 +935,29 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
   }, [impactoMensual, currentMonth]);
   const refMesImp = refIdxImp >= 0 ? (impactoMensual[refIdxImp]?.mes ?? "") : "";
 
+  // Mes en curso (hora AR): el dato llega hasta AYER → días con dato = día de hoy − 1.
+  const cursoMes = useMemo(() => {
+    const hoy = new Date(Date.now() - 3 * 3600 * 1000); // UTC-3
+    const idx = currentMonth <= 12 ? currentMonth - 1 : -1;
+    const diasMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() + 1, 0)).getUTCDate();
+    const dias = hoy.getUTCDate() - 1;
+    const short = idx >= 0 ? HISTORICO_MESES_FIJOS[idx]?.short ?? "" : "";
+    return { idx, dias, diasMes, label: `${short} ${String(hoy.getUTCFullYear()).slice(2)} · ${dias} de ${diasMes} días` };
+  }, [currentMonth]);
+
   // Descriptores de los 6 KPIs de Impacto Campaña (real + meta + tipo de agregación YTD).
   type ImpactoMes = (typeof impactoMensual)[number];
   const IMPACTO_KPIS: Array<{
     key: string; title: string; medida: string; unidad: "%" | "x" | "$" | ""; mode: "bar" | "line"; color: string;
     tipo: "sum" | "rate"; scale?: number; serie?: (m: ImpactoMes) => number | null; num?: (m: ImpactoMes) => number; den?: (m: ImpactoMes) => number;
+    /** Parte del mes cargada a mano (OMD = mes completo), para no escalarla en la proyección. */ manual?: (m: ImpactoMes) => number;
   }> = [
-    { key: "Inversión", title: "Inversión", medida: "Inversión total ejecutada (ARS)", unidad: "$", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.inv },
-    { key: "Alcance único", title: "Alcance único", medida: "Personas alcanzadas (dato de reportes)", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.alc },
+    { key: "Inversión", title: "Inversión", medida: "Inversión total ejecutada (ARS)", unidad: "$", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.inv, manual: (m) => m.manual.inv },
+    { key: "Alcance único", title: "Alcance único", medida: "Personas alcanzadas (dato de reportes)", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.alc, manual: (m) => m.manual.alc },
     { key: "Frecuencia", title: "Frecuencia", medida: "Impresiones ÷ alcance (dato de reportes)", unidad: "x", mode: "line", color: "#0f172a", tipo: "rate", num: (m) => m.impr ?? 0, den: (m) => m.alc ?? 0 },
-    { key: "Impresiones", title: "Impresiones", medida: "Impresiones totales del período", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.impr },
+    { key: "Impresiones", title: "Impresiones", medida: "Impresiones totales del período", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.impr, manual: (m) => m.manual.impr },
     { key: "VTR (≥50%)", title: "VTR ≥50%", medida: "Vistas al 50% ÷ impresiones de video", unidad: "%", mode: "line", color: "#0f172a", tipo: "rate", scale: 100, num: (m) => m.v50, den: (m) => m.vbase },
-    { key: "Clicks", title: "Clicks", medida: "Clicks totales del período", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.clic },
+    { key: "Clicks", title: "Clicks", medida: "Clicks totales del período", unidad: "", mode: "bar", color: "#1e40af", tipo: "sum", serie: (m) => m.clic, manual: (m) => m.manual.clic },
   ];
 
   // Arma card + chart de un KPI: headline (mes ref), filas Mes + Acum. YTD, serie real vs meta.
@@ -984,10 +997,18 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
         metaYtd = metasDef.length ? metasDef.reduce((a, b) => a + b, 0) / metasDef.length : null;
       }
       const chartData = impactoMensual.map((m, i) => ({ mes: m.mes, real: realSerie[i] ?? null, meta: vals[i] ?? null }));
-      return { ...k, md, headlineActual, metaRef, realYtd, metaYtd, chartData };
+      // Mes en curso (como BIP): acumulado hasta ayer + proyección lineal (volúmenes) o el valor actual (tasas).
+      const cursoValor = cursoMes.idx >= 0 ? realSerie[cursoMes.idx] ?? null : null;
+      // Lo de API se escala por los días que faltan; lo cargado a mano (OMD, mes completo) queda igual.
+      const proyectar = (v: number, man: number) => man + ((v - man) / cursoMes.dias) * cursoMes.diasMes;
+      const curso = cursoValor == null ? null : {
+        valor: cursoValor, label: cursoMes.label, tipo: k.tipo,
+        proyeccion: k.tipo === "rate" ? cursoValor : cursoMes.dias >= 3 ? proyectar(cursoValor, k.manual?.(impactoMensual[cursoMes.idx]!) ?? 0) : null,
+      };
+      return { ...k, md, headlineActual, metaRef, realYtd, metaYtd, chartData, curso };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [impactoMensual, refIdxImp, metas, metasCat, catImp]);
+  }, [impactoMensual, refIdxImp, metas, metasCat, catImp, cursoMes]);
 
   // Evolución ON/OFF para el toggle de la card de Inversión: el año COMPLETO
   // (Ene–Dic) en el eje, aunque no haya info. Solo se dibujan barras en los meses
@@ -1301,6 +1322,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
                 direccion={c.md.direccion}
                 umbralVerde={c.md.umbralVerde}
                 umbralAmarillo={c.md.umbralAmarillo}
+                curso={c.curso}
                 rows={[
                   { label: `Mes ${refMesImp}`, actual: c.headlineActual, meta: c.metaRef },
                   { label: "Acum. YTD", actual: c.realYtd, meta: c.metaYtd },

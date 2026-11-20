@@ -28,6 +28,8 @@ interface Props {
   decimales?: number;
   /** Desvío del chip: % relativo a la meta (default) o puntos porcentuales (shares de Trade). */
   delta?: "rel" | "pp";
+  /** Mes en curso (como BIP, 20-nov-2026): valor acumulado hasta ayer + proyección lineal de cierre. Si viene con valor, reemplaza al headline. */
+  curso?: { valor: number | null; label: string; proyeccion: number | null; tipo: "sum" | "rate" } | null;
 }
 
 function fmt(v: number | null, unidad: "%" | "s" | "$" | "x" | "pts" | "", dec = 2): string {
@@ -48,10 +50,13 @@ const SEM_BG: Record<string, string> = {
   "sin-meta": "rgba(100,116,139,.10)",
 };
 
-export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unidad = "", direccion = "up", umbralVerde = 100, umbralAmarillo = 90, rows, children, learnKey, contexto, decimales = 2, delta = "rel" }: Props) {
+export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unidad = "", direccion = "up", umbralVerde = 100, umbralAmarillo = 90, rows, children, learnKey, contexto, decimales = 2, delta = "rel", curso }: Props) {
   const f = (v: number | null) => fmt(v, unidad, decimales);
+  const enCurso = curso && curso.valor != null ? curso : null;
   return (
     <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
+      {/* Cabecera con fondo gris claro (pedido del user, 20-nov-2026): título + valor principal. */}
+      <div className="-mx-4 -mt-4 rounded-t-xl border-b bg-slate-100 px-4 pb-3 pt-4">
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
@@ -61,12 +66,20 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
       </div>
 
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-3xl font-bold tracking-tight tabular-nums">{f(headlineActual)}</span>
-        <span className="text-[11px] font-medium text-muted-foreground">{headlineLabel}</span>
+        <span className="text-3xl font-bold tracking-tight tabular-nums">{f(enCurso ? enCurso.valor : headlineActual)}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{enCurso ? enCurso.label : headlineLabel}</span>
       </div>
+      {enCurso && (
+        <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+          {enCurso.proyeccion == null ? "Todavía es temprano para proyectar el cierre." : (
+            <>{enCurso.tipo === "rate" ? "Si sigue así, cierra en " : "Proyección de cierre: "}<b className="font-semibold text-foreground">{f(enCurso.proyeccion)}</b></>
+          )}
+        </div>
+      )}
       {contexto && <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{contexto}</div>}
+      </div>
 
-      <div className="mt-3 space-y-2.5 border-t pt-2.5">
+      <div className="mt-3 space-y-2.5">
         {rows.map((r) => {
           const cumpl = cumplimientoPct(r.actual, r.meta, direccion);
           const sem = semaforoDe(cumpl, { umbralVerde, umbralAmarillo });
