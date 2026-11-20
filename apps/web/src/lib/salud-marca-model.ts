@@ -157,7 +157,7 @@ export const SM_WEIGHTS: Record<string, { lav: number; ref: number; coc: number 
   "nov-24": { lav: 0.61, ref: 0.33, coc: 0.06 },
   "jun-25": { lav: 0.62, ref: 0.35, coc: 0.03 },
   "nov-25": { lav: 0.62, ref: 0.35, coc: 0.03 },
-  "nov-26": { lav: 0.62, ref: 0.35, coc: 0.03 },
+  "nov-26": { lav: 0.60, ref: 0.30, coc: 0.10 }, // 20-nov-2026: pesos 2026 = 60/30/10 (pedido del user)
 };
 
 const wPrev12 = (mes: string) => { const [y, m] = mes.split("-"); return `${Number(y) - 1}-${m}-01`; };

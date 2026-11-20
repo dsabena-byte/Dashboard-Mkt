@@ -276,6 +276,7 @@ reporte_existencia/cb_homologos).
   (cards, gráficos, colores, método) en cada dashboard nuevo. **Validar este checklist antes de
   decir que las metas están "listas".**
 - **Inversión de Marketing (`/funnel`) sin pestaña Plan de Mejora (20-nov-2026, pedido del user):** queda Tablero · Cargar datos (`DashTabBar` sin `DashTabs`); tablas de los cuatrimestres sin «⬇ Excel» (`data-noexcel`), montos de la tabla de cuentas en una línea.
+- **Salud de Marca sin pestaña Plan de Mejora y pesos 2026 = 60/30/10 (20-nov-2026, pedido del user):** `/salud-marca` sin `<DashTabs>`; `SM_PESOS["nov-26"]` (Lav/Refri/Cocc) en `lib/salud-marca-model.ts` pasó de 62/35/3 a 60/30/10 (lo usa también el Obj.4 de /overview vía `computeDreanConsolidado`). `CATEGORIA_PESOS` del Seguimiento NO se tocó.
 - **Mercado (GfK) sin pestaña Plan de Mejora (20-nov-2026, pedido del user):** `/mercado` ya no usa `<DashTabs>`; gráficos sin scroll horizontal y con el alto del panel «Mayores variaciones».
 - **Seguimiento Objetivos sin pestaña Plan de Mejora y objetivos en verde desde 95% (18-nov-2026, pedido del user):** `/overview` no usa `<DashTabs>`; el semáforo del hero (`UMBRAL` en `objetivos-hero.tsx`) = verde ≥94,5 (lo que se ve como «95%»), ámbar ≥90.
 - **Seguimiento Objetivos (`/overview`) — Mapa Estratégico → cumplimiento por categoría:**
