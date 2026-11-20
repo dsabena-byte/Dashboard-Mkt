@@ -6,6 +6,7 @@ import { CAT_GENERAL } from "@/lib/metas";
 import { generalPonderado } from "@/lib/categorias";
 
 const CATS = ["Lavado", "Refrigeración", "Cocción"] as const;
+const CAT_CORTO: Record<string, string> = { Refrigeración: "Refri" };
 type Metas = Map<string, (number | null)[]>;
 // Plan del Mapa → plan donde se guardan sus metas (mismo cruce que objetivos-kpis.ts).
 const PLAN_META: Record<string, string> = { Instagram: "Redes Sociales" };
@@ -19,11 +20,11 @@ function metasKpi(metas: Metas, plan: string, kpi: string): (number | null)[] | 
     generalPonderado(Object.fromEntries(CATS.map((c) => [c, metas.get(`${p}|${kpi}|${c}`)?.[i]]))));
 }
 
+// Volumen = total del año; tasa = meta de diciembre (último mes con meta).
 function anual(v: (number | null)[] | undefined, tasa: boolean): number | null {
   const xs = (v ?? []).filter((x): x is number => x != null);
   if (!xs.length) return null;
-  const s = xs.reduce((a, b) => a + b, 0);
-  return tasa ? s / xs.length : s;
+  return tasa ? (xs[xs.length - 1] as number) : xs.reduce((a, b) => a + b, 0);
 }
 
 function fmt(v: number | null, u: string): string {
@@ -39,11 +40,21 @@ function fmt(v: number | null, u: string): string {
 export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas: Metas; anio: number }) {
   const totalPeso = config.objetivos.reduce((a, o) => a + (Number(o.peso) || 0), 0) || 1;
   const kpis = config.planes.flatMap((p) => p.kpis.map((k) => ({ ...k, plan: p.nombre })));
+  // Meta de cada objetivo a diciembre por categoría; general = Σ cat × peso; Salud de Marca = Σ objetivo × peso (= Seguimiento).
+  const metaDic = (obj: string, c: string) => metas.get(`Objetivos Estratégicos|${obj}|${c}`)?.[11] ?? null;
+  const metaObjGen = (obj: string) => generalPonderado(Object.fromEntries(CATS.map((c) => [c, metaDic(obj, c)])));
+  const pares = config.objetivos.map((o) => ({ w: Number(o.peso) || 0, v: metaObjGen(o.nombre) })).filter((x) => x.v != null && x.w > 0);
+  const wSalud = pares.reduce((a, x) => a + x.w, 0);
+  const metaSalud = wSalud > 0 ? pares.reduce((a, x) => a + x.w * (x.v as number), 0) / wSalud : null;
   return (
     <section className="rounded-xl border bg-card p-5">
       <div className="mx-auto w-fit rounded-xl bg-slate-800 px-7 py-3 text-center text-white">
         <div className="text-[11px] uppercase tracking-[0.08em] opacity-75">Mapa estratégico</div>
         <div className="text-[22px] font-semibold tracking-tight">Plan de Marketing {anio}</div>
+        <div className="mt-1.5 border-t border-white/20 pt-1.5 text-[13px]">
+          <span className="opacity-75">Meta Salud de Marca Drean · dic {anio}</span>{" "}
+          <b className="text-lg font-semibold">{fmt(metaSalud, "%")}</b>
+        </div>
       </div>
       <div className="mx-auto h-[18px] w-0.5 bg-slate-300" />
       <div className="mx-[12.5%] hidden h-0.5 bg-slate-300 xl:block" />
@@ -59,19 +70,19 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
               <div className="mx-auto h-[18px] w-0.5 bg-slate-300" />
               <div className="rounded-[14px] border p-4 shadow-sm" style={{ borderColor: `${col}33`, borderTopWidth: 3, borderTopColor: col, background: `${col}0d` }}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10.5px] uppercase tracking-[0.1em]" style={{ color: col }}>Objetivo estratégico</span>
-                  <span className="rounded-full border bg-white px-2.5 py-0.5 text-xs font-semibold" style={{ color: col, borderColor: `${col}40` }}>
-                    Ponderación {Math.round((100 * (Number(o.peso) || 0)) / totalPeso)}%
+                  <span className="whitespace-nowrap text-[10.5px] uppercase tracking-[0.1em]" style={{ color: col }}>Objetivo estratégico</span>
+                  <span className="whitespace-nowrap rounded-full border bg-white px-2.5 py-0.5 text-xs font-semibold" style={{ color: col, borderColor: `${col}40` }}>
+                    Peso {Math.round((100 * (Number(o.peso) || 0)) / totalPeso)}%
                   </span>
                 </div>
                 <div className="mb-2 mt-1.5 text-[17px] font-semibold text-slate-900">{o.nombre}</div>
-                <div className="text-[11.5px] text-slate-500">Meta {anio} · promedio del año</div>
+                <div className="text-[11.5px] text-slate-500">Meta a diciembre {anio}</div>
                 <div className="mt-1 grid grid-cols-3 gap-1">
                   {CATS.map((c) => (
                     <div key={c}>
-                      <div className="text-[10.5px] text-slate-500">{c}</div>
+                      <div className="text-[11px] font-semibold text-slate-700">{CAT_CORTO[c] ?? c}</div>
                       <div className="text-xl font-semibold tracking-tight" style={{ color: col }}>
-                        {fmt(anual(metas.get(`Objetivos Estratégicos|${o.nombre}|${c}`), true), "%")}
+                        {fmt(metaDic(o.nombre, c), "%")}
                       </div>
                     </div>
                   ))}
@@ -87,15 +98,15 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
                   return (
                     <div key={`${k.plan}|${k.nombre}`} className="grid gap-1 rounded-lg border bg-white px-3 py-2" style={{ borderLeft: `3px solid ${col}` }}>
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-[13px] font-semibold">{k.nombre}</span>
-                        <span className="whitespace-nowrap text-xs" style={{ color: col }}>Ponderación <b className="font-semibold">{k.w}%</b></span>
+                        <span className="truncate text-[13px] font-semibold" title={k.nombre}>{k.nombre}</span>
+                        <span className="whitespace-nowrap text-xs" style={{ color: col }}>Peso <b className="font-semibold">{k.w}%</b></span>
                       </div>
                       <div className="h-1 rounded-sm" style={{ background: `${col}1a` }}>
                         <div className="h-full rounded-sm opacity-75" style={{ width: `${Math.min(100, k.w)}%`, background: col }} />
                       </div>
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-[11px] text-muted-foreground">{k.plan} · meta {anio}, {tasa ? "promedio" : "total del año"}</span>
-                        <span className="text-[15px] font-semibold tracking-tight">{fmt(meta, m?.unidad ?? "")}</span>
+                        <span className="truncate text-[11px] text-muted-foreground" title={`${k.plan} · meta ${tasa ? "a diciembre" : "total del año"} ${anio}`}>{k.plan} · {tasa ? "dic" : "total"} {anio}</span>
+                        <span className="whitespace-nowrap text-[15px] font-semibold tracking-tight">{fmt(meta, m?.unidad ?? "")}</span>
                       </div>
                     </div>
                   );
