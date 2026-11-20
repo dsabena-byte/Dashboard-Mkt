@@ -62,8 +62,8 @@ export function ProyeccionObjetivo({ pr }: { pr?: ProyeccionAgregada }) {
     <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
       {pr.suficiente ? (
         <>
+          {/* Sin la probabilidad de llegar al 100% (pedido del user, 20-nov-2026). */}
           <span>Cierre proyectado <b className="tabular-nums text-foreground">{pc(pr.p50)}</b> <span className="text-muted-foreground/70">({pc(pr.p10)}–{pc(pr.p90)})</span></span>
-          {pr.probabilidad != null && <span className="inline-flex items-center gap-1">· llegar al 100% <ProbChip p={pr.probabilidad} /></span>}
         </>
       ) : (
         <span title={pr.motivo ?? undefined} className="text-muted-foreground/70">Cierre proyectado: dato insuficiente</span>
