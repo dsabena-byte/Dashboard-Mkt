@@ -8,7 +8,7 @@
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
 import type { KpiSeguimiento, KpiUnit } from "@/lib/objetivos-kpis";
 import type { KpiPronostico } from "@/lib/objetivos-rollup";
-import { ProyeccionKpi, PorQueLinea } from "./proyeccion";
+import { ProyeccionKpi } from "./proyeccion";
 import { LearnButton } from "@/components/knowledge/learn-button";
 
 const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -44,6 +44,13 @@ function lastIdx(realM: (number | null)[]): number {
 }
 
 // Mini gráfico de líneas real vs meta (simplificado, sin ejes).
+// La medida se muestra solo si explica algo que el nombre no dice («Impresiones totales» bajo «Impresiones» sobra).
+const medidaUtil = (kpi: string, medida?: string | null) => {
+  if (!medida) return false;
+  const pal = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).filter(Boolean)[0] ?? "";
+  return pal(kpi) !== pal(medida);
+};
+
 function Spark({ realM, metaM }: { realM: (number | null)[]; metaM: (number | null)[] }) {
   const W = 150, H = 44, pad = 5;
   const all = [...realM, ...metaM].filter((v): v is number => v != null);
@@ -121,7 +128,7 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
             <col style={{ width: "14%" }} />
           </colgroup>
           <thead>
-            <tr className="bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <tr className="bg-slate-100 text-[10px] uppercase tracking-wide text-slate-700">
               <th className="px-2 py-2.5 text-left font-semibold" rowSpan={2}>KPI</th>
               <th className="px-2 py-2.5 text-left font-semibold" rowSpan={2}>Mes</th>
               <th className="border-l px-2 py-1.5 text-center font-semibold" colSpan={3}>Desvío del mes</th>
@@ -129,7 +136,7 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
               <th className="border-l px-2 py-2.5 text-right font-semibold" rowSpan={2} title="Cierre del año proyectado (mediana y rango p10–p90 de 2.000 simulaciones)"><span className="inline-flex items-center gap-1.5">Cierre proyectado <LearnButton k="prob_meta" /></span></th>
               <th className="border-l px-2 py-2.5 text-center font-semibold" rowSpan={2}>Evolución (real vs meta)</th>
             </tr>
-            <tr className="text-[9px] uppercase tracking-wide text-muted-foreground/70">
+            <tr className="border-b border-slate-200 bg-slate-50 text-[9px] uppercase tracking-wide text-slate-500">
               <th className="border-l px-2 py-1.5 text-right font-normal">Real</th>
               <th className="px-2 py-1.5 text-right font-normal">Meta</th>
               <th className="px-2 py-1.5 text-right font-normal">Desv.</th>
@@ -149,9 +156,9 @@ function Group({ plan, kpis, pronosticos }: { plan: string; kpis: KpiSeguimiento
               return (
                 <tr key={k.kpi} className="border-t">
                   <td className="px-2 py-2.5 text-left">
-                    <span className="font-semibold">{k.kpi}</span>
-                    <span className="block text-[11px] font-normal text-muted-foreground/80">{k.medida}</span>
-                    <PorQueLinea pq={pronosticos?.[k.kpi]?.porQue} />
+                    {/* Una línea por dato (pedido del user, 20-nov-2026): nombre + qué es, solo si agrega algo al nombre. */}
+                    <span className="block truncate font-semibold" title={k.kpi}>{k.kpi}</span>
+                    {medidaUtil(k.kpi, k.medida) && <span className="block truncate text-[11px] font-normal text-muted-foreground/80" title={k.medida}>{k.medida}</span>}
                   </td>
                   <td className="px-2 py-2.5 text-left tabular-nums text-muted-foreground">{ri >= 0 ? MES[ri] : "—"}</td>
                   <td className="border-l px-2 py-2.5 text-right font-semibold tabular-nums">{fmt(realMes, k.unit)}</td>
