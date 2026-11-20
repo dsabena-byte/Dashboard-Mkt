@@ -24,7 +24,7 @@ export function MercadoStackedBars({
     return <div className="flex h-44 items-center justify-center text-xs text-muted-foreground">Sin datos.</div>;
   }
   return (
-    <ResponsiveContainer width="100%" height={240}>
+    <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 8, right: 4, left: 0, bottom: 4 }}>
         <XAxis dataKey="period" stroke="hsl(var(--muted-foreground))" fontSize={9} interval={0} />
         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `${v}${suffix}`} width={38} />
