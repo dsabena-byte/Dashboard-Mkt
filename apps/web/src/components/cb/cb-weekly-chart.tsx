@@ -18,12 +18,12 @@ interface Point {
   estrat_pct: number | null;
 }
 
-export function CbWeeklyChart({ data }: { data: Point[] }) {
+export function CbWeeklyChart({ data, label }: { data: Point[]; label?: (semana: number) => string }) {
   if (data.length === 0) {
     return <div className="py-12 text-center text-xs text-muted-foreground">Sin datos para graficar.</div>;
   }
   const chartData = data.map((d) => ({
-    label: `Sem ${d.semana}`,
+    label: label ? label(d.semana) : `Sem ${d.semana}`,
     "% CB": d.cb_pct,
     "% Infaltables": d.infalt_pct,
     "% Estratégico": d.estrat_pct,

@@ -3,7 +3,7 @@ import { getCbRowsFast, enriquecerCb } from "@/lib/cb-mirror";
 import { KpiObjCard } from "@/components/trade/kpi-obj-card";
 import { LastUpdated } from "@/components/last-updated";
 import { maxUpdatedAt } from "@/lib/freshness-queries";
-import { CbWeeklyChart } from "@/components/cb/cb-weekly-chart";
+import { CbEvolucion } from "@/components/cb/cb-evolucion";
 import { CbCategoryChart } from "@/components/cb/cb-category-chart";
 import { CbSuggestionsTab } from "@/components/cb/cb-suggestions-tab";
 import { CbSugerenciasSku } from "@/components/cb/cb-sugerencias-sku";
@@ -241,8 +241,7 @@ export default async function CuadrosBasicosPage({ searchParams }: PageProps) {
 
           {weekly.length > 1 && (
             <section className="rounded-xl border bg-card p-4">
-              <h3 className="mb-3 text-sm font-bold">📈 Evolución semanal</h3>
-              <CbWeeklyChart data={weekly} />
+              <CbEvolucion semanal={weekly} mensual={v.monthly ?? []} />
             </section>
           )}
 

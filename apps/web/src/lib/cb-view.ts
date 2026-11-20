@@ -2,6 +2,7 @@
 // La vista DEFAULT (sin filtros) se precalcula en cada carga (tr_precalc 'cb_default') → el tablero la lee al
 // instante; con filtros se computa sobre vw_tr_cb_agg.
 import { PERSONA_PLACEHOLDERS } from "./fs-enrich";
+import { mesKeySemana } from "./fs-mes";
 import {
   computeTotals, computeWeeklyEvolution, computeByDivision, computeByDim, computeByTienda, isoWeekToMes,
   type CbFilter, type CbRow,
@@ -11,6 +12,8 @@ export interface CbView {
   options: { meses: string[]; semanas: number[]; divisiones: string[]; supervisores: string[]; promotores: string[]; clientes: string[]; tiendas: string[] };
   totals: ReturnType<typeof computeTotals>;
   weekly: ReturnType<typeof computeWeeklyEvolution>;
+  /** Igual que weekly pero por MES calendario (semana = YYYYMM, mes del lunes). Toggle Semanal/Mensual. */
+  monthly?: ReturnType<typeof computeWeeklyEvolution>;
   byDiv: ReturnType<typeof computeByDivision>;
   byCliente: ReturnType<typeof computeByDim>;
   byPromotor: ReturnType<typeof computeByDim>;
@@ -57,6 +60,7 @@ export function computeCbView(allRows: CbRow[], filter: CbFilter): CbView {
     options,
     totals: computeTotals(rows),
     weekly: computeWeeklyEvolution(rows),
+    monthly: computeWeeklyEvolution(rows.map((r) => ({ ...r, semana: Number(mesKeySemana(null, r.semana).replace("-", "")) }))),
     byDiv: computeByDivision(rows),
     byCliente: computeByDim(rows, "cliente").filter((r) => !PERSONA_PLACEHOLDERS.has(r.key)),
     byPromotor: computeByDim(rows, "promotor").filter((r) => !PERSONA_PLACEHOLDERS.has(r.key)),
