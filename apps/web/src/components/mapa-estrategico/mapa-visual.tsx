@@ -66,10 +66,10 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
             .filter((k) => k.w > 0)
             .sort((a, b) => b.w - a.w);
           return (
-            <div key={o.id} className="grid content-start">
+            <div key={o.id} className="grid min-w-0 content-start">
               <div className="mx-auto h-[18px] w-0.5 bg-slate-300" />
               <div className="rounded-[14px] border p-4 shadow-sm" style={{ borderColor: `${col}33`, borderTopWidth: 3, borderTopColor: col, background: `${col}0d` }}>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                   <span className="whitespace-nowrap text-[10.5px] uppercase tracking-[0.1em]" style={{ color: col }}>Objetivo estratégico</span>
                   <span className="whitespace-nowrap rounded-full border bg-white px-2.5 py-0.5 text-xs font-semibold" style={{ color: col, borderColor: `${col}40` }}>
                     Peso {Math.round((100 * (Number(o.peso) || 0)) / totalPeso)}%
@@ -77,11 +77,11 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
                 </div>
                 <div className="mb-2 mt-1.5 text-[17px] font-semibold text-slate-900">{o.nombre}</div>
                 <div className="text-[11.5px] text-slate-500">Meta a diciembre {anio}</div>
-                <div className="mt-1 grid grid-cols-3 gap-1">
+                <div className="mt-1 grid grid-cols-3 gap-1 [&>div]:min-w-0">
                   {CATS.map((c) => (
                     <div key={c}>
                       <div className="text-[11px] font-semibold text-slate-700">{CAT_CORTO[c] ?? c}</div>
-                      <div className="text-xl font-semibold tracking-tight" style={{ color: col }}>
+                      <div className="text-lg font-semibold tracking-tight 2xl:text-xl" style={{ color: col }}>
                         {fmt(metaDic(o.nombre, c), "%")}
                       </div>
                     </div>
@@ -90,21 +90,21 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
               </div>
               <div className="mx-auto h-3.5 w-px opacity-35" style={{ background: col }} />
               <div className="mb-1.5 text-center text-[11px] uppercase tracking-[0.06em] text-muted-foreground">KPIs que lo mueven</div>
-              <div className="grid gap-1.5">
+              <div className="grid min-w-0 gap-1.5">
                 {lista.map((k) => {
                   const m = metricaPorNombre(k.nombre);
                   const tasa = m?.tipo === "rate";
                   const meta = anual(metasKpi(metas, k.plan, k.nombre), tasa);
                   return (
-                    <div key={`${k.plan}|${k.nombre}`} className="grid gap-1 rounded-lg border bg-white px-3 py-2" style={{ borderLeft: `3px solid ${col}` }}>
-                      <div className="flex items-baseline justify-between gap-2">
+                    <div key={`${k.plan}|${k.nombre}`} className="grid min-w-0 gap-1 rounded-lg border bg-white px-3 py-2" style={{ borderLeft: `3px solid ${col}` }}>
+                      <div className="flex min-w-0 items-baseline justify-between gap-2">
                         <span className="truncate text-[13px] font-semibold" title={k.nombre}>{k.nombre}</span>
                         <span className="whitespace-nowrap text-xs" style={{ color: col }}>Peso <b className="font-semibold">{k.w}%</b></span>
                       </div>
                       <div className="h-1 rounded-sm" style={{ background: `${col}1a` }}>
                         <div className="h-full rounded-sm opacity-75" style={{ width: `${Math.min(100, k.w)}%`, background: col }} />
                       </div>
-                      <div className="flex items-baseline justify-between gap-2">
+                      <div className="flex min-w-0 items-baseline justify-between gap-2">
                         <span className="truncate text-[11px] text-muted-foreground" title={`${k.plan} · meta ${tasa ? "a diciembre" : "total del año"} ${anio}`}>{k.plan} · {tasa ? "dic" : "total"} {anio}</span>
                         <span className="whitespace-nowrap text-[15px] font-semibold tracking-tight">{fmt(meta, m?.unidad ?? "")}</span>
                       </div>
