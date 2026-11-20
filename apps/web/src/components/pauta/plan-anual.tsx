@@ -16,7 +16,7 @@ const M = (v: number) => (v / 1e6).toLocaleString("es-AR", { maximumFractionDigi
 const pct = (v: number, t: number) => (t > 0 ? `${((v / t) * 100).toFixed(1)}%` : "—");
 const cant = (v: number | null | undefined) =>
   v == null || !Number.isFinite(v) || v === 0 ? "—" : Math.abs(v) >= 1e6 ? `${(v / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 1 })} M` : Math.round(v).toLocaleString("es-AR");
-const inputCls = "w-full min-w-[56px] rounded border bg-background px-1 py-0.5 text-right tabular-nums text-xs disabled:opacity-60";
+const inputCls = "w-full min-w-0 rounded border bg-background px-1 py-0.5 text-right tabular-nums text-xs disabled:opacity-60";
 const th = "px-2 py-1.5 text-right font-medium";
 const td = "px-2 py-1 text-right tabular-nums";
 const REPARTO_TXT: Record<Reparto, string> = { curva: "Curva (digital)", olas: "Olas", fijo: "Costo fijo" };
@@ -150,7 +150,13 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
         <h3 className="text-base font-semibold">2. Medios: reparto, rol y categoría</h3>
         <RankingMedios items={cfg.medios.map((m) => [m.medio, (r.inversion.montos[m.medio] ?? []).reduce((a, b) => a + b, 0)])} />
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[980px] text-xs" data-noexcel>
+          {/* Sin ancho mínimo (pedido del user, 20-nov-2026: sin barra de scroll): anchos fijos por columna. */}
+          <table className="w-full table-fixed text-xs" data-noexcel>
+            <colgroup>
+              <col style={{ width: "13%" }} /><col style={{ width: "11%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} />
+              {PLAN_ROLES.map((x) => <col key={x} style={{ width: "6.5%" }} />)}
+              <col style={{ width: "22%" }} /><col style={{ width: "7%" }} /><col style={{ width: "5.5%" }} /><col style={{ width: "3%" }} />
+            </colgroup>
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="px-2 py-1.5 text-left font-medium">Medio</th><th className="px-2 py-1.5 text-left font-medium">Reparto</th>
@@ -172,7 +178,7 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
                         <div className="text-[10px] font-normal text-muted-foreground">categoría: {catTxt}</div>
                       </td>
                       <td className="px-2 py-1">
-                        <select className="rounded border bg-background px-1 py-0.5 text-xs" disabled={ro} value={m.reparto} onChange={(e) => setMedio(i, { reparto: e.target.value as Reparto })}>
+                        <select className="w-full rounded border bg-background px-1 py-0.5 text-xs" disabled={ro} value={m.reparto} onChange={(e) => setMedio(i, { reparto: e.target.value as Reparto })}>
                           {(Object.keys(REPARTO_TXT) as Reparto[]).map((k) => <option key={k} value={k}>{REPARTO_TXT[k]}</option>)}
                         </select>
                       </td>
@@ -180,10 +186,10 @@ export function PlanAnual({ anio, inicial, guardado, sinTabla, refMeses, infl, i
                       <td className="px-1 py-1">{m.reparto === "fijo" ? <Num v={m.costoEnero / 1e6} disabled={ro} on={(n) => setMedio(i, { costoEnero: n * 1e6 })} /> : <span className="block text-right text-muted-foreground">—</span>}</td>
                       {m.rol.map((v, k) => <td key={k} className="px-1 py-1"><Num v={v} disabled={ro} on={(n) => setMedio(i, { rol: setArr(m.rol, k, n) })} /></td>)}
                       <td className="px-2 py-1">
-                        <select className="rounded border bg-background px-1 py-0.5 text-xs" disabled={ro || m.offline} value={m.ref} onChange={(e) => setMedio(i, { ref: e.target.value === "recientes" ? "recientes" : "anio" })}>
-                          <option value="anio">Promedio de los meses cerrados</option><option value="recientes">Últimos 2 meses cerrados</option>
+                        <select className="w-full rounded border bg-background px-1 py-0.5 text-xs" disabled={ro || m.offline} value={m.ref} onChange={(e) => setMedio(i, { ref: e.target.value === "recientes" ? "recientes" : "anio" })}>
+                          <option value="anio">Promedio meses cerrados</option><option value="recientes">Últimos 2 meses</option>
                         </select>
-                        <div className="text-[10px] text-muted-foreground">{ref ? `${ref.fuente} · CPM $${ref.impr ? Math.round((ref.inv / ref.impr) * 1000).toLocaleString("es-AR") : "—"}${ref.fijo ? " · contactos fijos" : ""} · confianza ${ref.confianza}` : "sin medición"}</div>
+                        <div className="truncate text-[10px] text-muted-foreground" title={ref ? `${ref.fuente} · confianza ${ref.confianza}` : undefined}>{ref ? `${ref.fuente} · CPM $${ref.impr ? Math.round((ref.inv / ref.impr) * 1000).toLocaleString("es-AR") : "—"}${ref.fijo ? " · contactos fijos" : ""} · confianza ${ref.confianza}` : "sin medición"}</div>
                       </td>
                       <td className={`${td} font-medium`}>{M(s)}</td><td className={td}>{pct(s, tAnual)}</td>
                       <td className="px-1">{editor && <button type="button" title="Quitar medio" className="text-muted-foreground hover:text-red-600" onClick={() => { if (confirm(`¿Quitar ${m.medio} del plan?`)) setCfg((c) => ({ ...c, medios: c.medios.filter((_, k) => k !== i) })); }}>✕</button>}</td>
