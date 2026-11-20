@@ -193,22 +193,22 @@ function DreanSaludConsolidada({ series, kantar }: { series: Record<"lav" | "ref
       </div>
       {/* Sin scroll horizontal (pedido del user 20-nov-2026): ancho fijo y celdas angostas. */}
       <div className="overflow-hidden p-4">
-        <table className="w-full table-fixed text-[11px]">
+        <table data-noexcel className="w-full table-fixed text-[11px]">
           <colgroup><col className="w-[9.5rem]" />{waves.flatMap((w) => [<col key={`${w}a`} />, <col key={`${w}b`} />, <col key={`${w}c`} />, <col key={`${w}d`} />])}</colgroup>
-          <thead>
+          <thead className="bg-slate-100">
             <tr className="border-b">
-              <th className="bg-card px-2 py-1.5 text-left text-[10px] font-semibold uppercase text-muted-foreground" rowSpan={2}>Dimensión</th>
+              <th className="bg-slate-100 px-2 py-1.5 text-left text-[10px] font-semibold uppercase text-slate-700" rowSpan={2}>Dimensión</th>
               {waves.map((w) => (
-                <th key={w} className="border-l px-0.5 py-1 text-center text-[11px] font-bold" colSpan={4}>{w}</th>
+                <th key={w} className="border-l border-slate-200 px-0.5 py-1.5 text-center text-[12px] font-bold text-slate-900" colSpan={4}>{w}</th>
               ))}
             </tr>
-            <tr className="border-b text-[9px] font-semibold uppercase text-muted-foreground">
+            <tr className="border-b text-[10px] font-semibold uppercase text-slate-700">
               {waves.map((w) => (
                 <Fragment key={w}>
                   <th className="border-l px-0.5 py-1 text-center">Lav</th>
                   <th className="px-0.5 py-1 text-center">Refri</th>
                   <th className="px-0.5 py-1 text-center">Cocc</th>
-                  <th className="bg-sky-50 px-0.5 py-1 text-center text-sky-700">SM</th>
+                  <th className="bg-sky-100 px-0.5 py-1 text-center text-sky-800">SM</th>
                 </Fragment>
               ))}
             </tr>
