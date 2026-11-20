@@ -6,7 +6,7 @@ import { PostSentimentBlock } from "@/components/social/post-sentiment";
 import type { PostSentiment } from "@/lib/post-sentiment";
 
 // Cuántos posteos se muestran por tanda (botón "Ver más" para seguir).
-const PAGE_SIZE = 18;
+const PAGE_SIZE = 12; // de a 12, igual que los posts propios (pedido del user, 20-nov-2026)
 
 // Panel de posteos de competencia agrupado POR MARCA. Reemplaza el viejo
 // "mejores/peores vs promedio". Con la data que tenemos de social_posts
@@ -202,14 +202,21 @@ export function CompetenciaPostsPanel({ posts }: { posts: CompetenciaPost[] }) {
             );
           })}
         </div>
-        {visible < filtered.length && (
-          <div className="flex justify-center pt-1">
-            <button
-              onClick={() => setVisible((v) => v + PAGE_SIZE)}
-              className="rounded-full border px-4 py-1.5 text-xs font-medium hover:bg-secondary"
-            >
-              Ver más ({filtered.length - visible} restantes)
-            </button>
+        {filtered.length > PAGE_SIZE && (
+          <div className="flex justify-center gap-2 pt-1">
+            {visible < filtered.length && (
+              <button
+                onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                className="rounded-full border px-4 py-1.5 text-xs font-medium hover:bg-secondary"
+              >
+                Ver {Math.min(PAGE_SIZE, filtered.length - visible)} más · {visible} de {filtered.length}
+              </button>
+            )}
+            {visible > PAGE_SIZE && (
+              <button onClick={() => setVisible(PAGE_SIZE)} className="rounded-full border px-4 py-1.5 text-xs font-medium hover:bg-secondary">
+                Mostrar menos
+              </button>
+            )}
           </div>
         )}
         </>
