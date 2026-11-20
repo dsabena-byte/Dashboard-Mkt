@@ -1,6 +1,7 @@
 // Puro y client-safe. Estima el MAT (año móvil) de un mes futuro de GfK a partir de la tendencia real.
 // MAT(m) = MAT(m−1) + (mensual(m) − mensual(m−12)) / 12, con mensual(m) = promedio de los últimos 3 meses
-// mensuales reales (nivel reciente). Solo completa campos vacíos: si GfK ya trae el dato, manda el real.
+// mensuales reales (nivel reciente). Sin mensuales (GfK no trae fila si la marca casi no vende en el segmento): sigue la
+// tendencia del MAT = MAT(m−1) + (MAT(m−1) − MAT(m−2)), mínimo 0. Solo completa campos vacíos: si GfK trae el dato, manda el real.
 // shortcut: el índice de precio MAT se estima igual (aproximación: GfK lo pondera por ventas), suficiente para una proyección.
 
 type Seg = "High" | "Mid" | "Low";
@@ -51,9 +52,19 @@ export function estimarMat(mat: Map<string, MesSeg>, mensual: Map<string, MesSeg
       const ult = [-1, -2, -3].map((k) => mensual.get(mover(mes, k))).map((r) => (r ? get(r) : null)).filter((v): v is number => v != null);
       const sale = mensual.get(mover(mes, -12));
       const sv = sale ? get(sale) : null;
-      if (ult.length < 2 || sv == null) continue; // sin tendencia suficiente: no se inventa
-      const entra = ult.reduce((a, b) => a + b, 0) / ult.length;
-      set(fila, Math.round((base + (entra - sv) / 12) * 100) / 100);
+      let v: number;
+      if (ult.length >= 2 && sv != null) {
+        const entra = ult.reduce((a, b) => a + b, 0) / ult.length;
+        v = base + (entra - sv) / 12;
+      } else {
+        // Sin meses mensuales (GfK no trae fila cuando la marca casi no vende en el segmento, ej. Philco Mid en Lavado):
+        // se sigue la tendencia del propio MAT del último mes, sin bajar de 0.
+        const prev2 = out.get(mover(mes, -2));
+        const b2 = prev2 ? get(prev2) : null;
+        if (b2 == null) continue; // sin tendencia suficiente: no se inventa
+        v = Math.max(0, base + (base - b2));
+      }
+      set(fila, Math.round(v * 100) / 100);
       cambio = true;
     }
     if (cambio) out.set(mes, fila);
