@@ -1377,10 +1377,11 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
           </section>
 
           <SectionTitle>Distribución de inversión</SectionTitle>
-          <div className="grid gap-4 lg:grid-cols-3">
+          {/* Mix angosto con leyenda abajo; los otros dos más anchos para que se lean sus leyendas (20-nov-2026). */}
+          <div className="grid gap-4 lg:grid-cols-[1fr_1.7fr_1.7fr]">
             <div className="rounded-xl border bg-card p-4">
               <h3 className="mb-2 text-sm font-bold">Mix ON / OFF</h3>
-              <InvestmentDonut data={mixData} />
+              <InvestmentDonut data={mixData} apilado />
             </div>
             <div className="rounded-xl border bg-card p-4">
               <h3 className="mb-2 text-sm font-bold">Inversión ejecutada por medio</h3>
