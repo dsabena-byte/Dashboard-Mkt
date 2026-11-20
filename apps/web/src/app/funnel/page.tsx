@@ -2,7 +2,7 @@ import { getBgtData, hasVersion } from "@/lib/bgt-queries";
 import { getFacturacionMensual, sumFacturacion } from "@/lib/facturacion-queries";
 import { computeCuatris, MAX_DESVIO, MAX_INV_FACT, MESES_CAP } from "@/lib/bgt-dashboard";
 import { InversionComparador } from "@/components/inversion/inversion-comparador";
-import { DashTabs, DashTabBar } from "@/components/diagnostico/dash-tabs";
+import { DashTabBar } from "@/components/diagnostico/dash-tabs";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { DataHealth } from "@/components/data-health";
 
@@ -79,14 +79,14 @@ const fmtCorto = (n: number) => (Math.abs(n) >= 1e6 ? `${(n / 1e6).toFixed(1)}M`
 function MesAMes({ c }: { c: ReturnType<typeof computeCuatris>[number] }) {
   const rojo = (malo: boolean, abierto: boolean) => (abierto ? "" : malo ? "font-semibold text-red-600" : "text-emerald-700");
   return (
-    <table className="mt-3 w-full table-fixed border-t pt-2 text-[11px] tabular-nums">
+    <table data-noexcel className="mt-3 w-full table-fixed border-t pt-2 text-[11px] tabular-nums">
       <thead className="text-[10px] uppercase tracking-wide text-muted-foreground">
         <tr>
           <th className="w-[14%] py-1.5 text-left font-medium">Mes</th>
-          <th className="py-1.5 text-right font-medium">Inversión</th>
+          <th className="py-1.5 text-right font-medium" title="Inversión">Inv.</th>
           <th className="py-1.5 text-right font-medium">{c.bgtLabel}</th>
           <th className="py-1.5 text-right font-medium">Desvío</th>
-          <th className="py-1.5 text-right font-medium">Factur.</th>
+          <th className="py-1.5 text-right font-medium" title="Facturación">Fact.</th>
           <th className="py-1.5 text-right font-medium">Inv/Fact</th>
         </tr>
       </thead>
@@ -101,7 +101,7 @@ function MesAMes({ c }: { c: ReturnType<typeof computeCuatris>[number] }) {
             <td className={`py-1 text-right ${m.invFact == null ? "" : rojo(m.invFact > MAX_INV_FACT, m.abierto)}`}>{m.invFact == null ? "—" : `${m.invFact.toFixed(2)}%`}</td>
           </tr>
         ))}
-        <tr className="border-t-2 font-semibold">
+        <tr className="border-t-2 font-semibold [&>td]:align-top">
           <td className="py-1">Total{c.coverage ? <span className="block text-[9px] font-normal text-muted-foreground">a {c.coverage}</span> : null}</td>
           <td className="py-1 text-right">{c.realVal ? fmtCorto(c.realVal) : "—"}</td>
           <td className="py-1 text-right">{c.bgtVal ? fmtCorto(c.bgtVal) : "—"}</td>
@@ -201,7 +201,7 @@ export default async function InversionMarketingPage() {
   const linkTexto = diasRestantes <= 0 ? `Link SharePoint VENCIDO (${venceLabel}) — renovar` : `Renovar link SharePoint antes del ${venceLabel} (faltan ${diasRestantes} días)`;
 
   return (
-    <DashTabs dash="funnel" className="space-y-5">
+    <div className="space-y-5">
       <header>
         <h2 className="text-2xl font-semibold tracking-tight">Inversión de Marketing</h2>
         <p className="text-sm text-muted-foreground">
@@ -252,6 +252,6 @@ export default async function InversionMarketingPage() {
 
       {/* ===== Comparador libre A vs B ===== */}
       <InversionComparador rows={bgt.rows} facturacion={factRows} year={YEAR} />
-    </DashTabs>
+    </div>
   );
 }

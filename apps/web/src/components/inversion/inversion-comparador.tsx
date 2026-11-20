@@ -283,12 +283,12 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
             <thead>
               <tr className="border-y bg-muted/40 text-[11px] font-bold uppercase tracking-wider">
                 <th className="px-3 py-2.5 text-left text-foreground">N° / Clasificación / Concepto</th>
-                <th className="px-3 py-2.5 text-right" style={{ color: COLOR_A }}>{pptoA}</th>
-                <th className="px-3 py-2.5 text-right" style={{ color: COLOR_B }}>{pptoB}</th>
-                <th className="px-3 py-2.5 text-right text-muted-foreground">Diferencia</th>
-                <th className="px-3 py-2.5 text-right text-muted-foreground">% Var</th>
-                <th className="px-3 py-2.5 text-right text-muted-foreground">% Inv</th>
-                {factPeriodo != null && <th className="px-3 py-2.5 text-right text-muted-foreground">Inv / Fact</th>}
+                <th className="px-3 py-2.5 text-right whitespace-nowrap" style={{ color: COLOR_A }}>{pptoA}</th>
+                <th className="px-3 py-2.5 text-right whitespace-nowrap" style={{ color: COLOR_B }}>{pptoB}</th>
+                <th className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">Diferencia</th>
+                <th className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">% Var</th>
+                <th className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">% Inv</th>
+                {factPeriodo != null && <th className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">Inv / Fact</th>}
               </tr>
             </thead>
             <tbody>
@@ -317,12 +317,12 @@ export function InversionComparador({ rows, facturacion, year }: { rows: BgtRow[
             <tfoot>
               <tr className="border-t-2 bg-foreground text-background">
                 <td className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide">Total</td>
-                <td className="px-3 py-2.5 text-right font-bold tabular-nums">{fmt(totA)}</td>
-                <td className="px-3 py-2.5 text-right font-bold tabular-nums">{fmt(totB)}</td>
-                <td className="px-3 py-2.5 text-right font-bold tabular-nums" style={{ color: diff >= 0 ? "#34d399" : "#f87171" }}>{fmt(diff)}</td>
-                <td className="px-3 py-2.5 text-right font-bold tabular-nums" style={{ color: varPct >= 0 ? "#34d399" : "#f87171" }}>{totB === 0 ? "—" : `${varPct >= 0 ? "+" : ""}${varPct.toFixed(1)}%`}</td>
-                <td className="px-3 py-2.5 text-right font-bold tabular-nums">100%</td>
-                {factPeriodo != null && <td className="px-3 py-2.5 text-right font-bold tabular-nums">{factPeriodo ? `${((totA / factPeriodo) * 100).toFixed(2)}%` : "—"}</td>}
+                <td className="px-3 py-2.5 text-right whitespace-nowrap font-bold tabular-nums">{fmt(totA)}</td>
+                <td className="px-3 py-2.5 text-right whitespace-nowrap font-bold tabular-nums">{fmt(totB)}</td>
+                <td className="px-3 py-2.5 text-right whitespace-nowrap font-bold tabular-nums" style={{ color: diff >= 0 ? "#34d399" : "#f87171" }}>{fmt(diff)}</td>
+                <td className="px-3 py-2.5 text-right whitespace-nowrap font-bold tabular-nums" style={{ color: varPct >= 0 ? "#34d399" : "#f87171" }}>{totB === 0 ? "—" : `${varPct >= 0 ? "+" : ""}${varPct.toFixed(1)}%`}</td>
+                <td className="px-3 py-2.5 text-right whitespace-nowrap font-bold tabular-nums">100%</td>
+                {factPeriodo != null && <td className="px-3 py-2.5 text-right whitespace-nowrap font-bold tabular-nums">{factPeriodo ? `${((totA / factPeriodo) * 100).toFixed(2)}%` : "—"}</td>}
               </tr>
             </tfoot>
           </table>
@@ -386,12 +386,12 @@ function FragmentRows({
     const d = vA - vB, p = vB !== 0 ? ((vA - vB) / Math.abs(vB)) * 100 : 0;
     return (
       <>
-        <td className="px-3 py-1.5 text-right tabular-nums">{fmt(vA)}</td>
-        <td className="px-3 py-1.5 text-right tabular-nums">{fmt(vB)}</td>
-        <td className="px-3 py-1.5 text-right tabular-nums" style={{ color: d >= 0 ? POS : NEG }}>{fmt(d)}</td>
-        <td className="px-3 py-1.5 text-right tabular-nums" style={{ color: p >= 0 ? POS : NEG }}>{vB === 0 ? "—" : `${p >= 0 ? "+" : ""}${p.toFixed(1)}%`}</td>
-        <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{totA > 0 ? ((vA / totA) * 100).toFixed(1) : "0"}%</td>
-        {factPeriodo != null && <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{factPeriodo ? ((vA / factPeriodo) * 100).toFixed(2) + "%" : "—"}</td>}
+        <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">{fmt(vA)}</td>
+        <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">{fmt(vB)}</td>
+        <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums" style={{ color: d >= 0 ? POS : NEG }}>{fmt(d)}</td>
+        <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums" style={{ color: p >= 0 ? POS : NEG }}>{vB === 0 ? "—" : `${p >= 0 ? "+" : ""}${p.toFixed(1)}%`}</td>
+        <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums text-muted-foreground">{totA > 0 ? ((vA / totA) * 100).toFixed(1) : "0"}%</td>
+        {factPeriodo != null && <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums text-muted-foreground">{factPeriodo ? ((vA / factPeriodo) * 100).toFixed(2) + "%" : "—"}</td>}
       </>
     );
   };
