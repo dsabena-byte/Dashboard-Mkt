@@ -1,7 +1,7 @@
 "use client";
 
 // Box de Inversión del tab Impacto Campaña con dos vistas alternables:
-//  - "meta": Inversión real vs meta mensual (barras real azul + meta gris pizarra).
+//  - "meta": Inversión real vs meta mensual (barras real azul + meta celeste).
 //  - "onoff": Evolución de inversión ejecutada por tipo de medio (ON/OFF), SOLO
 //    meses ya cerrados (hasta el último mes ejecutado).
 // El botón vive arriba a la derecha del box.

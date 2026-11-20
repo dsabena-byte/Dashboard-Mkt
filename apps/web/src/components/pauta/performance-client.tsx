@@ -1333,10 +1333,11 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
 
           <SectionTitle>Evolución mensual · real vs meta</SectionTitle>
           <p className="mb-3 text-[10px] text-muted-foreground">
-            Año completo 2026 (no responde a los filtros). Real en azul/tinta, meta en gris pizarra.
+            Año completo 2026 (no responde a los filtros). Real en azul, meta en celeste.
             El mes en curso muestra lo ejecutado hasta hoy (parcial); las cards comparan el último mes cerrado. Cargá las metas en el configurador de abajo.
           </p>
-          <section className="grid gap-4 lg:grid-cols-2">
+          {/* Un gráfico por renglón (pedido del user, 20-nov-2026: más anchos, menos apretados). */}
+          <section className="grid gap-4">
             {impactoCards.map((c) =>
               c.key === "Inversión" ? (
                 // La Inversión alterna real-vs-meta ↔ Evolución ON/OFF (ejecutada) con un botón.

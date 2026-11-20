@@ -48,7 +48,7 @@ export function WebConvAvgChart({ data }: { data: WebConvAvgDatum[] }) {
         />
         <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value: string) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>} />
         {/* Avg session: barra meta (gris) + real (azul, con etiqueta) */}
-        {hasAvgMeta && <Bar yAxisId="right" dataKey="avgMeta" name="Meta avg session" fill="#cbd5e1" stroke="#64748b" strokeWidth={1.25} radius={[3, 3, 0, 0]} />}
+        {hasAvgMeta && <Bar yAxisId="right" dataKey="avgMeta" name="Meta avg session" fill="#bae6fd" radius={[3, 3, 0, 0]} />}
         <Bar yAxisId="right" dataKey="avgReal" name="Avg session (real)" fill="#1e40af" radius={[3, 3, 0, 0]}>
           <LabelList dataKey="avgReal" position="top" fontSize={9} fill="#1e293b" formatter={(v: number) => (v ? `${Math.round(v)}s` : "")} />
         </Bar>

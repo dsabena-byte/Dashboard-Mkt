@@ -71,7 +71,7 @@ export function MetaEvolChart({
 
         {mode === "bar" ? (
           <>
-            {hasMeta && <Bar dataKey="meta" name={metaName} fill="#cbd5e1" stroke="#64748b" strokeWidth={1.25} radius={[3, 3, 0, 0]} />}
+            {hasMeta && <Bar dataKey="meta" name={metaName} fill="#bae6fd" radius={[3, 3, 0, 0]} />}
             <Bar dataKey="real" name={realName} fill={color} radius={[3, 3, 0, 0]}>
               <LabelList dataKey="real" position="top" fontSize={9} fill="#1e293b" formatter={(v: number) => (v ? label(v) : "")} />
             </Bar>

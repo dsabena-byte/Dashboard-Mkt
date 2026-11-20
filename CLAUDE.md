@@ -269,6 +269,9 @@ reporte_existencia/cb_homologos).
   6. **ORDEN FIJO EN TODOS LOS DASH (pedido del user 4-oct-2026):** 1º cards con meta → 2º sus gráficos de evolución real vs
      meta (+ MetaPanel) → 3º el resto del contenido (cards secundarias sin meta, cierre proyectado, tablas, etc.). Aplicado en
      /web (cierre + secundarias bajaron), IG/FB (sub-cards debajo de los gráficos) y /floor-share (evolución arriba de rankings).
+  7. **Barra de META = celeste claro `#bae6fd`, sin borde (20-nov-2026, pedido del user: «el celeste de BIP»)**; reemplaza el gris pizarra
+     en las barras de meta (`MetaEvolChart`, IG alcance, web usuarios/avg sesión). Las líneas de meta siguen grises punteadas. Plan de Medios ·
+     Impacto: un gráfico de evolución por renglón (más ancho) y el ON/OFF con rampa azul (Digital→OOH), tipografía chica y solo el total arriba.
   Referencia canónica = `IgOrganicSection` + `FbOrganicSection`. Replicar SIEMPRE ese sistema
   (cards, gráficos, colores, método) en cada dashboard nuevo. **Validar este checklist antes de
   decir que las metas están "listas".**
