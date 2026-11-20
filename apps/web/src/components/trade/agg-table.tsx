@@ -22,14 +22,14 @@ function Celdas({ vals, cols, total = false }: { vals: (number | null)[]; cols: 
       {cols.map((c, i) => {
         const v = vals[i];
         if (v == null) return [
-          <td key={`${i}p`} className={`border ${borde} ${total ? "" : "bg-slate-100"} px-2 py-1.5 text-center text-slate-400`}>—</td>,
-          <td key={`${i}d`} className={`border ${borde} px-2 py-1.5`} />,
+          <td key={`${i}p`} className={`border ${borde} ${total ? "" : "bg-slate-100"} px-1 py-1.5 text-center text-slate-400`}>—</td>,
+          <td key={`${i}d`} className={`border ${borde} px-1 py-1.5`} />,
         ];
         const d = Math.round(v - c.obj);
         return [
-          <td key={`${i}p`} className={`border ${borde} px-2 py-1.5 text-center font-bold tabular-nums ${total ? "" : celda(v, c.obj)}`}>{v.toFixed(0)}%</td>,
-          <td key={`${i}d`} className={`whitespace-nowrap border ${borde} px-2 py-1.5 text-center tabular-nums ${total ? "text-white/85" : ""}`}>
-            {d > 0 ? "+" : ""}{d} pp <span className={d >= 0 ? "font-bold text-green-600" : "font-bold text-red-600"}>{d >= 0 ? "↑" : "↓"}</span>
+          <td key={`${i}p`} className={`border ${borde} px-1 py-1.5 text-center font-bold tabular-nums ${total ? "" : celda(v, c.obj)}`}>{v.toFixed(0)}%</td>,
+          <td key={`${i}d`} className={`whitespace-nowrap border ${borde} px-1 py-1.5 text-center text-[10px] tabular-nums ${total ? "text-white/85" : ""}`}>
+            {d > 0 ? "+" : ""}{d} pp<span className={d >= 0 ? "font-bold text-green-600" : "font-bold text-red-600"}>{d >= 0 ? "↑" : "↓"}</span>
           </td>,
         ];
       })}
@@ -54,27 +54,29 @@ export function AggTable({ titulo, columna, totalLabel, subtitulo, cols, filas, 
         <h3 className="text-sm font-bold">{titulo}</h3>
         <span className="text-[11px] text-muted-foreground">{subtitulo}</span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-xs">
+      {/* Sin scroll horizontal (pedido del user 20-nov-2026): ancho fijo, nombre recortado con «…». */}
+      <div className="overflow-hidden">
+        <table className="w-full table-fixed border-collapse text-[11px]">
+          <colgroup><col className="w-[26%]" />{cols.flatMap((c) => [<col key={`${c.label}p`} />, <col key={`${c.label}d`} />])}</colgroup>
           <thead>
             <tr>
-              <th className="border border-slate-200 bg-slate-50 px-2 py-1.5 text-center text-[11px] font-bold text-slate-800">{columna}</th>
+              <th className="truncate border border-slate-200 bg-slate-50 px-1 py-1.5 text-center text-[11px] font-bold text-slate-800">{columna}</th>
               {cols.map((c) => (
-                <th key={c.label} colSpan={2} className="border border-[#1e3a8a] bg-[#1e3a8a] px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-white">{c.label}</th>
+                <th key={c.label} colSpan={2} className="truncate border border-[#1e3a8a] bg-[#1e3a8a] px-1 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-white" title={c.label}>{c.label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {visibles.map((f) => (
               <tr key={f.key}>
-                <td className="min-w-[140px] border border-slate-200 px-2 py-1.5 text-slate-800">{f.nombre}</td>
+                <td className="truncate border border-slate-200 px-2 py-1.5 text-slate-800" title={f.nombre}>{f.nombre}</td>
                 <Celdas vals={f.vals} cols={cols} />
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="bg-[#1e3a8a] font-extrabold text-white">
-              <td className="whitespace-nowrap border border-[#1e3a8a] px-2 py-1.5">{totalLabel}</td>
+              <td className="truncate border border-[#1e3a8a] px-2 py-1.5" title={totalLabel}>{totalLabel}</td>
               <Celdas vals={total} cols={cols} total />
             </tr>
           </tfoot>
