@@ -6,7 +6,7 @@
 // Presentacional (client-safe): lo usan el tab "Estado" (server) y el selector por
 // categoría (client). Sin dependencias server-only.
 
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
 import { cumplimientoPct, semaforoDe, SEMAFORO_COLOR, type Semaforo } from "@/lib/metas";
 import { generalPonderado } from "@/lib/categorias";
@@ -89,29 +89,26 @@ function AporteRow({ a }: { a: ObjAporte }) {
   );
 }
 
-const TOP_APORTES = 3;
 function ObjetivoCard({ o, refMes }: { o: ObjetivoRollup; refMes: string }) {
   const semMes = semOf(o.cumplMes);
   const colorMes = SEMAFORO_COLOR[semMes];
   const res = resultadoAcum(o.metaNegMes, o.cumplYtd);
   const colorRes = SEMAFORO_COLOR[semOf(o.cumplYtd)];
   const aportes = o.aportes.filter((a) => a.peso > 0);
-  const [verTodos, setVerTodos] = useState(false);
-  const primeros = aportes.slice(0, TOP_APORTES);
-  const resto = aportes.slice(TOP_APORTES);
   return (
     <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <span className="h-2.5 w-2.5 rounded" style={{ background: o.color }} />{o.nombre}
+        {/* Nombre en UNA línea (truncado) para que todas las cards queden alineadas. */}
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2 text-sm font-semibold" title={o.nombre}>
+            <span className="h-2.5 w-2.5 shrink-0 rounded" style={{ background: o.color }} /><span className="truncate">{o.nombre}</span>
           </div>
-          <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">peso estratégico {o.pesoEstrategico}%</div>
+          <div className="mt-0.5 whitespace-nowrap text-[10px] uppercase tracking-wide text-muted-foreground">peso estratégico {o.pesoEstrategico}%</div>
         </div>
         {/* Cumplimiento del mes → badge secundario */}
-        <div className="flex flex-col items-end">
+        <div className="flex shrink-0 flex-col items-end">
           <span className="rounded-full px-2 py-0.5 text-[12px] font-bold tabular-nums" style={{ color: colorMes, background: `${colorMes}1a` }}>{pct(o.cumplMes)}</span>
-          <span className="mt-0.5 text-[8px] uppercase tracking-wide text-muted-foreground/60">cumpl. mes</span>
+          <span className="mt-0.5 whitespace-nowrap text-[8px] uppercase tracking-wide text-muted-foreground/60">cumpl. mes</span>
         </div>
       </div>
       {/* PROTAGONISTA: Resultado acumulado vs Meta de negocio */}
@@ -131,18 +128,15 @@ function ObjetivoCard({ o, refMes }: { o: ObjetivoRollup; refMes: string }) {
       )}
       {o.proyeccion && <div className="mt-1.5"><ProyeccionObjetivo pr={o.proyeccion} /></div>}
       <PorCategoria items={o.porCategoria} general={{ resultado: res, meta: o.metaNegMes }} />
-      <div className="mt-2.5 border-t pt-2">
-        <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70">Aporte de KPIs · peso × cumpl</div>
-        <div className="space-y-1">
-          {primeros.map((a) => <AporteRow key={a.kpi} a={a} />)}
-          {verTodos && resto.map((a) => <AporteRow key={a.kpi} a={a} />)}
-          {resto.length > 0 && (
-            <button type="button" onClick={() => setVerTodos((v) => !v)} className="text-[10px] font-medium text-primary hover:underline">
-              {verTodos ? "Ver menos" : `+ Ver ${resto.length} más`}
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Desplegable cerrado, mismo estilo que «Qué explica el resultado» (pedido del user, 20-nov-2026). */}
+      {aportes.length > 0 && (
+        <details className="mt-2.5 border-t pt-2">
+          <summary className="cursor-pointer select-none text-[9px] font-semibold uppercase tracking-wide text-primary [&::-webkit-details-marker]:hidden">Aporte de KPIs · peso × cumpl</summary>
+          <div className="mt-1.5 space-y-1">
+            {aportes.map((a) => <AporteRow key={a.kpi} a={a} />)}
+          </div>
+        </details>
+      )}
       <ContribucionObjetivo c={o.contribucion} v={o.variacion} refMes={refMes} />
     </div>
   );
