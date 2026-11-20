@@ -2,11 +2,7 @@
 // server y client components. El valor proyectado va en tinta. Sin probabilidad de llegar a la meta
 // (pedido del user, 20-nov-2026).
 import type { PronosticoMeta } from "@/lib/stats/meta";
-import type { PorQue } from "@/lib/objetivos-pronostico";
 import type { KpiUnit } from "@/lib/objetivos-kpis";
-
-const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
 
 export function fmtKpi(v: number | null | undefined, u: KpiUnit | string): string {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -35,13 +31,3 @@ export function ProyeccionKpi({ pr, unit }: { pr?: PronosticoMeta; unit: KpiUnit
   );
 }
 
-/** "Por qué se movió" (volumen × tasa) bajo el nombre del KPI en el scorecard. */
-export function PorQueLinea({ pq }: { pq?: PorQue | null }) {
-  if (!pq) return null;
-  const s = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(0)}`;
-  return (
-    <span className="block text-[10.5px] text-muted-foreground" title="Descomposición exacta de la variación (Shapley de 2 factores): los puntos suman la variación total.">
-      {MES[pq.mesDespues]} vs {MES[pq.mesAntes]}: {s(pq.variacionPct)}% = {s(pq.ptsVolumen)} pts {pq.volumen} {s(pq.ptsTasa)} pts {pq.tasa}
-    </span>
-  );
-}
