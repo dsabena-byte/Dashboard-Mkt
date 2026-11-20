@@ -64,7 +64,6 @@ const TABS = ["Impacto Campaña", "Eficiencia Medios", "Plan de Mejora"] as cons
 // Pestañas que son rutas propias de Plan de Medios (mismo renglón de tabs).
 const TAB_LINKS = [
   { label: "Pauta Competencia", href: "/performance/competencia" },
-  { label: "Simulador de Presupuesto", href: "/performance/simulador" },
   { label: "Plan anual", href: "/performance/plan" },
 ] as const;
 const TAB_PARAM: Record<string, Tab> = { impacto: "Impacto Campaña", eficiencia: "Eficiencia Medios", diagnostico: "Plan de Mejora" };
@@ -1259,7 +1258,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
             {l.label}
           </Link>
         ))}
-        {monedaSlot && <div className="ml-auto self-center py-1">{monedaSlot}</div>}
+        {monedaSlot && <div className="ml-auto shrink-0 self-center py-1">{monedaSlot}</div>}
       </div>
 
       {/* ===== IMPACTO CAMPAÑA ===== */}
