@@ -361,6 +361,24 @@ export default async function WebPage({ searchParams }: PageProps) {
     return ecom.ingresos[i] != null && inv > 0 ? ecom.ingresos[i]! / inv : null;
   });
   const roasRef = ecomAt(roasM);
+  // Mes en curso arriba de cada card (como Plan de Medios, pedido del user 20-nov-2026): GA4 llega hasta AYER.
+  const cIdx = currYear === currentYear ? currentMonth - 1 : -1;
+  const hoyAR = new Date(Date.now() - 3 * 3600 * 1000);
+  const cDias = hoyAR.getUTCDate() - 1;
+  const cDiasMes = new Date(Date.UTC(hoyAR.getUTCFullYear(), hoyAR.getUTCMonth() + 1, 0)).getUTCDate();
+  const cLabel = cIdx >= 0 ? `${MES_SHORT[cIdx]} ${String(currYear).slice(2)} · ${cDias} de ${cDiasMes} días` : "";
+  const curso = (valor: number | null | undefined, tipo: "sum" | "rate") =>
+    cIdx < 0 || valor == null || cDias < 1 ? null
+      : { valor, label: cLabel, tipo, proyeccion: tipo === "rate" ? valor : cDias >= 3 ? (valor / cDias) * cDiasMes : null };
+  const convCur = cIdx >= 0 ? convMes(cIdx) : undefined;
+  const cursoWeb = {
+    users: curso(cIdx >= 0 ? monthlyData[cIdx]!.usuarios_curr : null, "sum"),
+    avg: curso(cIdx >= 0 ? convAvgData[cIdx]!.avgReal : null, "rate"),
+    conv: curso(convCur && convCur.sesiones > 0 ? (convCur.conversiones / convCur.sesiones) * 100 : null, "rate"),
+    trans: curso(cIdx >= 0 ? ecom.transacciones[cIdx] : null, "sum"),
+    ing: curso(cIdx >= 0 ? ecom.ingresos[cIdx] : null, "sum"),
+    roas: curso(cIdx >= 0 ? roasM[cIdx] : null, "rate"),
+  };
   const roasRefMeta = webRefIdx >= 0 ? (webMetaRoas.valores[webRefIdx] ?? null) : null;
   const totalInvYtd = webSum(totalInvM.slice(0, webUpto + 1));
   const roasYtd = totalInvYtd > 0 ? ingYtd / totalInvYtd : null;
@@ -538,6 +556,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <MetaKpiCard
           learnKey="trafico"
           title="Tráfico web (usuarios)"
+          curso={cursoWeb.users}
           medida="Usuarios del mes"
           headlineActual={usersRef}
           headlineLabel={webRefMes}
@@ -552,6 +571,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <MetaKpiCard
           learnKey="frecuencia_sesion"
           title="Avg Session (segundos)"
+          curso={cursoWeb.avg}
           medida="Duración media de sesión (período)"
           headlineActual={avgSessionActual}
           headlineLabel="Período"
@@ -567,6 +587,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <MetaKpiCard
           learnKey="conversion"
           title="Conversion rate"
+          curso={cursoWeb.conv}
           medida="Conversiones ÷ sesiones"
           headlineActual={convRef}
           headlineLabel={webRefMes}
@@ -586,6 +607,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <MetaKpiCard
           learnKey="transacciones"
           title="Transacciones"
+          curso={cursoWeb.trans}
           medida="Compras del mes (GA4)"
           headlineActual={transRef}
           headlineLabel={webRefMes}
@@ -600,6 +622,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <MetaKpiCard
           learnKey="ingresos"
           title="Total Ingresos"
+          curso={cursoWeb.ing}
           medida="Ingresos ecommerce del mes (GA4)"
           headlineActual={ingRef}
           headlineLabel={webRefMes}
@@ -615,6 +638,7 @@ export default async function WebPage({ searchParams }: PageProps) {
         <MetaKpiCard
           learnKey="roas"
           title="ROAS"
+          curso={cursoWeb.roas}
           medida="Ingresos ÷ inversión total de medios (Pauta Mkt + Ecommerce)"
           headlineActual={roasRef}
           headlineLabel={webRefMes}

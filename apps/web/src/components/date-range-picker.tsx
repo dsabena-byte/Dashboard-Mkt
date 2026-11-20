@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 interface DateRangePickerProps {
@@ -46,17 +46,27 @@ export function DateRangePicker({ initialFrom, initialTo }: DateRangePickerProps
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
+  // Se cierra al hacer clic afuera o con Escape (antes quedaba abierto, pedido del user 20-nov-2026).
+  const boxRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [open]);
 
   const apply = (newFrom: string, newTo: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("from", newFrom);
     params.set("to", newTo);
+    setOpen(false); // cerrar ya, sin esperar a que termine de cargar la página
     startTransition(() => {
       const url = `${pathname}?${params.toString()}`;
       (router.replace as unknown as (href: string, opts?: { scroll?: boolean }) => void)(url, {
         scroll: false,
       });
-      setOpen(false);
     });
   };
 
@@ -68,7 +78,7 @@ export function DateRangePicker({ initialFrom, initialTo }: DateRangePickerProps
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={boxRef}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
