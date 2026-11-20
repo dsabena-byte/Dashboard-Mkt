@@ -43,14 +43,12 @@ import { PlanOtrosDash, anioPlan } from "@/components/pauta/plan-otros-dash";
 import { DataHealth } from "@/components/data-health";
 import { IgStoriesResumen } from "@/components/social/ig-stories-resumen";
 import { RedesContenidoPanel } from "@/components/social/redes-contenido-panel";
-import { CompetenciaDiferenciales } from "@/components/social/competencia-diferenciales";
 import { getIgStoriesResumen, getOwnContentPosts } from "@/lib/redes-extra-queries";
 import { getPostSnapshots } from "@/lib/post-snapshots";
 import { attachIgSentiment } from "@/lib/post-sentiment-server";
 import { toPostSentiment } from "@/lib/post-sentiment";
 import { formatBenchmarks, bestTimes } from "@/lib/redes-contenido";
-import { comparableEr, erComparablePorMarca, trendMaduro, probablePauta, pautaPorMarca, ER_METODO_TXT, ER_METODO_EDAD_TXT } from "@/lib/redes-competencia";
-import { temasPorMarca, temaGaps } from "@/lib/redes-temas";
+import { comparableEr, erComparablePorMarca, trendMaduro, ER_METODO_TXT, ER_METODO_EDAD_TXT } from "@/lib/redes-competencia";
 import { LearnButton } from "@/components/knowledge/learn-button";
 
 export const dynamic = "force-dynamic";
@@ -222,19 +220,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const refNow = new Date();
   const formatos = formatBenchmarks(ownContent, refNow);
   const horarios = bestTimes(ownContent, refNow);
-
-  // Pauta probable + temas de la competencia (sobre los posts filtrados del competitivo).
-  const prob = probablePauta(posts);
-  const pautaMarcas = pautaPorMarca(posts, prob);
-  const pautaPosts = posts
-    .filter((p) => prob.has(p.url) && p.marca !== OWN_BRAND)
-    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
-    .slice(0, 6)
-    .map((p) => ({ url: p.url, marca: p.marca, fecha: p.fecha, views: p.views, likes: p.likes, comentarios: p.comentarios, prob: prob.get(p.url)!, copy: p.copy }));
-  const temasActivos = posts.some((p) => p.tema);
-  const temaPosts = posts.map((p) => ({ marca: p.marca, tema: p.tema ?? null, engagement: p.engagement }));
-  const temasMarca = temasActivos ? temasPorMarca(temaPosts, 4) : [];
-  const temasGap = temasActivos ? temaGaps(temaPosts, OWN_BRAND) : [];
 
   // Construcción orgánica (alcance/views/interacción por pilar y categoría).
   const organicBuildup = computeOrganicBuildup([...igOrganic.topPosts, ...fbOrganic.topPosts]);
@@ -533,17 +518,6 @@ export default async function RedesPage({ searchParams }: PageProps) {
           <SocialContentTypeChart data={contentSlices} />
         </div>
       </section>
-
-      {/* Pauta probable + temas por marca de la competencia */}
-      <CompetenciaDiferenciales
-        pauta={pautaMarcas}
-        pautaPosts={pautaPosts}
-        temas={temasMarca}
-        gaps={temasGap}
-        labels={BRAND_LABELS}
-        ownKey={OWN_BRAND}
-        temasActivos={temasActivos}
-      />
 
       {/* Sentiment + Resumen cualitativo */}
       {showSentiment && (
