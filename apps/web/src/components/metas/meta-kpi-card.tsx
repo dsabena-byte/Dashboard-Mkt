@@ -54,11 +54,11 @@ export function MetaKpiCard({ title, medida, headlineActual, headlineLabel, unid
   const f = (v: number | null) => fmt(v, unidad, decimales);
   const enCurso = curso && curso.valor != null ? curso : null;
   return (
-    <div className="flex flex-col rounded-xl border bg-card p-4 shadow-sm">
+    <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card p-4 shadow-sm">
       {/* Cabecera con fondo gris claro (pedido del user, 20-nov-2026): título + valor principal. */}
       <div className="-mx-4 -mt-4 rounded-t-xl border-b bg-slate-100 px-4 pb-3 pt-4">
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
           {/* Siempre una línea (aunque no haya medida): así las filas de cards vecinas quedan alineadas. */}
           <div className="mt-0.5 h-[14px] truncate text-[10px] leading-[14px] text-muted-foreground/70" title={medida}>{medida}</div>
