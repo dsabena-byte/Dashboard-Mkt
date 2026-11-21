@@ -1,5 +1,6 @@
 "use client";
-// Edad × medio (Eficiencia Medios): qué medio rinde mejor en cada rango de edad, filtrable por video / imagen.
+// Edad × medio y formato (Eficiencia Medios): qué medio / formato (IG Feed, IG Reels, IG Stories, IG Explore, TikTok,
+// YouTube…) rinde mejor en cada rango de edad, filtrable por video / imagen.
 // Datos: pauta_edad (crons de Meta, TikTok, DV360 y Google Ads con ?edad=1). DV360 ya viene en $ (TC REAL).
 import { useMemo, useState } from "react";
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid, Legend } from "recharts";
@@ -11,7 +12,7 @@ const RESULTADOS: { id: Metrica; label: string; corto: string }[] = [
   { id: "interacciones", label: "Interacciones", corto: "interacción" },
   { id: "impresiones", label: "Impresiones", corto: "mil impresiones" },
 ];
-const COLORES = ["#1e40af", "#60a5fa", "#0891b2", "#7c3aed", "#be185d", "#ca8a04", "#94a3b8"];
+const COLORES = ["#1e40af", "#60a5fa", "#0891b2", "#7c3aed", "#be185d", "#ca8a04", "#0f766e", "#c2410c", "#4f46e5", "#db2777", "#65a30d", "#94a3b8"];
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const mesLabel = (m: string) => `${MESES[Number(m.slice(5, 7)) - 1]} ${m.slice(2, 4)}`;
 const fmtN = (n: number) => Math.round(n).toLocaleString("es-AR");
@@ -23,7 +24,8 @@ export function EdadMedioSection({ filas, meses }: { filas: FilaEdad[]; meses: s
   const [tipo, setTipo] = useState<"todas" | "video" | "imagen" | "texto">("todas");
   const [res, setRes] = useState<Metrica>("clicks");
   const [mes, setMes] = useState<string>("");
-  const r = useMemo(() => resumir(filas, { tipo, meses: mes ? [mes] : [] }), [filas, tipo, mes]);
+  const [por, setPor] = useState<"formato" | "medio">("formato");
+  const r = useMemo(() => resumir(filas, { tipo, por, meses: mes ? [mes] : [] }), [filas, tipo, por, mes]);
   const def = RESULTADOS.find((x) => x.id === res)!;
   // Costo por resultado (impresiones = costo por mil).
   const costo = (spend: number, n: number) => (n > 0 ? (res === "impresiones" ? (spend / n) * 1000 : spend / n) : null);
@@ -55,12 +57,17 @@ export function EdadMedioSection({ filas, meses }: { filas: FilaEdad[]; meses: s
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Qué medio consigue cada resultado más barato en cada rango de edad. Datos de las plataformas con API (Meta, TikTok, DV360 y Google Ads); montos en $ (DV360 pasado con el TC REAL del mes).
+        Qué medio y formato (en Meta: IG Feed, Reels, Stories, Explore, FB…; en el resto, el medio) consigue cada resultado más barato en cada rango de edad. Datos de las plataformas con API (Meta, TikTok, DV360 y Google Ads); montos en $ (DV360 pasado con el TC REAL del mes).
         55+ junta 55-64 y 65+ (TikTok no los separa). Google Search son anuncios de texto; en «Video» e «Imagen» no aparece.
+        {por === "formato" && r.pctEstimado > 0 && <> Meta no entrega edad y formato juntos: en anuncios que corrieron en varios formatos el cruce es estimado ({Math.round(r.pctEstimado * 100)}% de la inversión de la vista); los totales por edad y por formato son exactos.</>}
         {sinMedios.length > 0 && <> Sin datos de edad todavía: {sinMedios.join(", ")}.</>}
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
+        {(["formato", "medio"] as const).map((p) => (
+          <button key={p} className={btn(por === p)} onClick={() => setPor(p)}>{p === "formato" ? "Por formato" : "Por medio"}</button>
+        ))}
+        <span className="mx-1 h-5 w-px bg-border" />
         {(["todas", "video", "imagen", "texto"] as const).map((t) => (
           <button key={t} className={btn(tipo === t)} onClick={() => setTipo(t)}>{t === "todas" ? "Todas las piezas" : t === "video" ? "Video" : t === "imagen" ? "Imagen" : "Texto"}</button>
         ))}
@@ -83,7 +90,7 @@ export function EdadMedioSection({ filas, meses }: { filas: FilaEdad[]; meses: s
             {[
               masVolumen && { t: "Edad con más resultados", v: masVolumen.e, d: `${fmtN(masVolumen.v[res])} ${def.label.toLowerCase()} (${Math.round((masVolumen.v[res] / r.total[res]) * 100)}% del total)` },
               masBarata && { t: "Edad más eficiente", v: masBarata.e, d: `${fmt$(costo(masBarata.v.spend, masBarata.v[res])!)} por ${def.corto} vs ${fmt$(costoTotal!)} promedio` },
-              medioTop && { t: "Medio más eficiente", v: medioTop.f, d: `${fmt$(costo(medioTop.v.spend, medioTop.v[res])!)} por ${def.corto} vs ${fmt$(costoTotal!)} promedio` },
+              medioTop && { t: por === "formato" ? "Formato más eficiente" : "Medio más eficiente", v: medioTop.f, d: `${fmt$(costo(medioTop.v.spend, medioTop.v[res])!)} por ${def.corto} vs ${fmt$(costoTotal!)} promedio` },
             ].filter(Boolean).map((c) => c && (
               <div key={c.t} className="rounded-xl border bg-card p-4 shadow-sm">
                 <div className="text-xs text-muted-foreground">{c.t}</div>
@@ -94,7 +101,7 @@ export function EdadMedioSection({ filas, meses }: { filas: FilaEdad[]; meses: s
           </div>
 
           <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <div className="mb-2 text-sm font-semibold">{def.label} por edad y medio · {mes ? mesLabel(mes) : `año ${meses[0]?.slice(0, 4) ?? ""}`}</div>
+            <div className="mb-2 text-sm font-semibold">{def.label} por edad y {por} · {mes ? mesLabel(mes) : `año ${meses[0]?.slice(0, 4) ?? ""}`}</div>
             <div className="text-xs text-muted-foreground">Altura = cantidad de resultados · tamaño de la burbuja = inversión.</div>
             <div className="h-[340px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -129,8 +136,8 @@ export function EdadMedioSection({ filas, meses }: { filas: FilaEdad[]; meses: s
           </div>
 
           <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <div className="mb-2 text-sm font-semibold">Costo por {def.corto} · edad × medio · {mes ? mesLabel(mes) : "año"}</div>
-            <div className="mb-2 text-xs text-muted-foreground">En azul, el medio más barato de cada edad (con al menos 5% de la inversión de esa edad y 10 resultados). «—» = sin resultados.</div>
+            <div className="mb-2 text-sm font-semibold">Costo por {def.corto} · edad × {por} · {mes ? mesLabel(mes) : "año"}</div>
+            <div className="mb-2 text-xs text-muted-foreground">En azul, el {por} más barato de cada edad (con al menos 5% de la inversión de esa edad y 10 resultados). «—» = sin resultados.</div>
             <div className="overflow-hidden">
               <table className="w-full table-fixed text-[11px]">
                 <thead className="bg-slate-100">
