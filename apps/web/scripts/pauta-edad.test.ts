@@ -1,31 +1,32 @@
 import assert from "node:assert/strict";
-import { cruzarEdadFormato, resumir, mejorFormato, formatoDe, type FilaBreakdown } from "../src/lib/pauta-edad";
+import { normEdad, resumir, mejorMedio, type FilaEdad } from "../src/lib/pauta-edad";
 
-assert.equal(formatoDe("instagram|instagram_reels"), "IG Reels");
-assert.equal(formatoDe("facebook|algo_nuevo"), "FB Otros");
+assert.equal(normEdad("25-34"), "25-34");
+assert.equal(normEdad("AGE_25_34"), "25-34");          // TikTok
+assert.equal(normEdad("AGE_55_100"), "55+");           // TikTok
+assert.equal(normEdad("AGE_RANGE_65_UP"), "55+");      // Google Ads
+assert.equal(normEdad("AGE_RANGE_UNDETERMINED"), "Sin dato");
+assert.equal(normEdad("65+"), "55+");                  // Meta / DV360
+assert.equal(normEdad("Unknown"), "Sin dato");
 
-const filas: FilaBreakdown[] = [
-  // Anuncio A (video): 2 edades, 2 ubicaciones (60/40 de la inversión, 75/25 de los clics).
-  { mes: "2026-10", ad_id: "A", dim: "edad", valor: "25-34", spend: 600, link_clicks: 60, impresiones: 6000 },
-  { mes: "2026-10", ad_id: "A", dim: "edad", valor: "35-44", spend: 400, link_clicks: 20, impresiones: 4000 },
-  { mes: "2026-10", ad_id: "A", dim: "ubicacion", valor: "instagram|instagram_reels", spend: 600, link_clicks: 60, impresiones: 7000 },
-  { mes: "2026-10", ad_id: "A", dim: "ubicacion", valor: "instagram|feed", spend: 400, link_clicks: 20, impresiones: 3000 },
-  // Anuncio B (imagen): una sola ubicación → exacto.
-  { mes: "2026-10", ad_id: "B", dim: "edad", valor: "25-34", spend: 100, link_clicks: 50, impresiones: 2000 },
-  { mes: "2026-10", ad_id: "B", dim: "ubicacion", valor: "instagram|instagram_stories", spend: 100, link_clicks: 50, impresiones: 2000 },
+const f = (medio: string, edad: string, tipo: string, spend: number, clicks: number, mes = "2026-10"): FilaEdad =>
+  ({ medio, mes, pieza_id: `${medio}${edad}${tipo}`, edad, tipo, impresiones: 1000, clicks, video_completos: 0, interacciones: 0, spend });
+const filas = [
+  f("Meta", "25-34", "video", 1000, 100),
+  f("Meta", "25-34", "imagen", 500, 100),
+  f("TikTok", "25-34", "video", 300, 60),
+  f("Google Search", "35-44", "texto", 800, 40),
+  f("Meta", "13-17", "video", 50, 5),           // menores: se ignoran
+  f("Meta", "35-44", "imagen", 200, 50, "2026-09"),
 ];
-const celdas = cruzarEdadFormato(filas, (id) => id === "A");
-const r = resumir(celdas, { tipo: "todas" });
-// Totales exactos por edad y formato.
-assert.equal(r.porEdad.get("25-34")!.spend, 700);
-assert.equal(r.porFormato.get("IG Reels")!.link_clicks, 80 * 0.75);
-assert.equal(r.total.spend, 1100);
-// Cruce estimado: 25-34 en Reels = 600 × 0,6 de inversión y 60 × 0,75 de clics.
-assert.equal(r.celda("25-34", "IG Reels").spend, 360);
-assert.equal(r.celda("25-34", "IG Reels").link_clicks, 45);
-assert.ok(Math.abs(r.pctExacto - 100 / 1100) < 1e-9);
-// Filtro por tipo de pieza.
-assert.deepEqual(resumir(celdas, { tipo: "imagen" }).formatos, ["IG Stories"]);
-// Mejor formato 25-34: Stories ($2/clic) vs Reels ($8) vs Feed ($240/15 = $16).
-assert.equal(mejorFormato(r, "25-34", "link_clicks")!.formato, "IG Stories");
+const r = resumir(filas, { tipo: "todas" });
+assert.deepEqual(r.edades, ["25-34", "35-44"]);
+assert.deepEqual(r.medios, ["Meta", "TikTok", "Google Search"]);
+assert.equal(r.total.spend, 2800);
+assert.equal(r.celda("25-34", "Meta").clicks, 200);
+// Mejor medio 25-34: TikTok $5/clic vs Meta $7,5.
+assert.equal(mejorMedio(r, "25-34", "clicks")!.medio, "TikTok");
+// Filtros: video y mes.
+assert.equal(resumir(filas, { tipo: "video" }).celda("25-34", "Meta").spend, 1000);
+assert.deepEqual(resumir(filas, { tipo: "todas", meses: ["2026-09"] }).edades, ["35-44"]);
 console.log("pauta-edad OK");

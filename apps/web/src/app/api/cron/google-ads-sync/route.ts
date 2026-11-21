@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardarEdad, type FilaEdadIn } from "@/lib/pauta-edad-server";
 
 // Ingesta directa desde la Google Ads API (no GA4) a nivel anuncio para las
 // cuentas de OMD. Trae el embudo de video (cuartiles + VTR) e interacciones que
@@ -279,6 +280,50 @@ async function upsert(rows: GadsRow[]): Promise<string> {
   return `${total} filas OK`;
 }
 
+// ---- Edad por grupo de anuncios (?edad=1) → pauta_edad (sección «Edad × medio» de Eficiencia Medios) ------
+type AgeResult = {
+  segments?: { month?: string };
+  campaign?: { advertisingChannelType?: string };
+  adGroup?: { id?: string };
+  adGroupCriterion?: { ageRange?: { type?: string } };
+  metrics?: { impressions?: string; clicks?: string; costMicros?: string; interactions?: string; videoViews?: string; videoQuartileP100Rate?: number };
+};
+async function edadGoogle(getToken: GetToken, cust: { id: string; label: string }, start: string, end: string): Promise<Map<string, FilaEdadIn[]>> {
+  const query = `
+    SELECT segments.month, campaign.advertising_channel_type, ad_group.id, ad_group_criterion.age_range.type,
+      metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.interactions, metrics.video_views, metrics.video_quartile_p100_rate
+    FROM age_range_view
+    WHERE segments.date BETWEEN '${start}' AND '${end}'`;
+  let batches: Array<{ results?: AgeResult[] }> | null = null;
+  for (let attempt = 0; attempt < 3 && batches === null; attempt++) {
+    const res = await fetch(`${GADS_API}/customers/${cust.id}/googleAds:searchStream`, { method: "POST", headers: gadsHeaders(await getToken(attempt > 0)), body: JSON.stringify({ query }) });
+    if (res.ok) { batches = (await res.json()) as Array<{ results?: AgeResult[] }>; break; }
+    const body = (await res.text()).slice(0, 300);
+    if (res.status === 401 && attempt < 2) { await sleep(2000 * (attempt + 1)); continue; }
+    throw new Error(`edad ${cust.label} ${res.status}: ${body}`);
+  }
+  // clave = "medio|YYYY-MM"
+  const out = new Map<string, FilaEdadIn[]>();
+  for (const b of batches ?? []) for (const r of b.results ?? []) {
+    const canal = r.campaign?.advertisingChannelType;
+    const medio = canal === "SEARCH" ? "Google Search" : canal === "DEMAND_GEN" ? "Demand Gen" : null;
+    if (!medio || !r.adGroup?.id || !r.segments?.month) continue;
+    const impr = n(r.metrics?.impressions);
+    const views = n(r.metrics?.videoViews);
+    const k = `${medio}|${r.segments.month.slice(0, 7)}`;
+    if (!out.has(k)) out.set(k, []);
+    out.get(k)!.push({
+      pieza_id: `${cust.id}:${r.adGroup.id}`, edad: r.adGroupCriterion?.ageRange?.type ?? "",
+      tipo: medio === "Google Search" ? "texto" : views > 0 ? "video" : "imagen",
+      impresiones: impr, clicks: n(r.metrics?.clicks),
+      video_completos: views > 0 ? Math.round(impr * n(r.metrics?.videoQuartileP100Rate)) : 0,
+      interacciones: medio === "Demand Gen" ? n(r.metrics?.interactions) : 0,
+      spend: n(r.metrics?.costMicros) / 1e6,
+    });
+  }
+  return out;
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -319,6 +364,32 @@ export async function GET(request: Request) {
     out.auth = "OK";
 
     const customers = onlyCustomer ? OMD_CUSTOMERS.filter((c) => c.id === onlyCustomer) : OMD_CUSTOMERS;
+
+    if (url.searchParams.get("edad") === "1") {
+      // Meses COMPLETOS (cada mes se reemplaza entero): ?mes=YYYY-MM o el mes en curso + 2 anteriores.
+      const mesP = url.searchParams.get("mes");
+      let eStart = mesP && /^\d{4}-\d{2}$/.test(mesP) ? `${mesP}-01` : new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth() - 2, 1)).toISOString().slice(0, 10);
+      if (eStart < accessFloor) eStart = accessFloor;
+      let eEnd = end;
+      if (mesP && /^\d{4}-\d{2}$/.test(mesP)) {
+        const fin = new Date(Date.UTC(Number(mesP.slice(0, 4)), Number(mesP.slice(5, 7)), 0)).toISOString().slice(0, 10);
+        if (fin < eEnd) eEnd = fin;
+      }
+      out.range = `${eStart} → ${eEnd}`;
+      const porMedioMes = new Map<string, FilaEdadIn[]>();
+      for (const cust of customers) {
+        try {
+          for (const [k, v] of await edadGoogle(getToken, cust, eStart, eEnd)) porMedioMes.set(k, [...(porMedioMes.get(k) ?? []), ...v]);
+        } catch (e) { out[`error_edad_${cust.label}`] = e instanceof Error ? e.message : String(e); }
+      }
+      const res: Record<string, number> = {};
+      for (const [k, filas] of porMedioMes) {
+        const [medio, mes] = k.split("|") as [string, string];
+        res[k] = dry ? filas.length : await guardarEdad(medio, mes, filas);
+      }
+      const fallaron = customers.filter((c) => out[`error_edad_${c.label}`]).length;
+      return NextResponse.json({ ...out, ok: fallaron < customers.length, mode: "edad", filas: res }, { status: fallaron === customers.length ? 500 : 200 });
+    }
     const all: GadsRow[] = [];
     const perAccount: Record<string, number> = {};
     for (const cust of customers) {

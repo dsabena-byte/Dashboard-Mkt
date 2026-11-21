@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { DV360_ADVERTISER_ID } from "@/lib/dv360-thumbs-shared";
+import { guardarEdad } from "@/lib/pauta-edad-server";
 import { dv360AccessToken, OauthError } from "@/lib/dv360-oauth";
 import {
   DV360_PARTNER_ID,
   DV360_QUERY_CREATIVES,
   DV360_QUERY_REACH,
+  DV360_QUERY_EDAD,
+  aggEdad,
   aggCreatives,
   aggReach,
   decidirMes,
@@ -255,6 +258,21 @@ export async function GET(request: Request) {
         id: x.queryId, titulo: x.metadata?.title, tipo: x.params?.type, groupBys: x.params?.groupBys,
         metrics: x.params?.metrics, filtros: (x.params?.filters ?? []).map((f) => f.type),
       })) });
+    }
+    // ?edad=1 → solo la consulta de edad (por line item) → pauta_edad, meses del plan.
+    if (url.searchParams.get("edad") === "1") {
+      const qEd = await asegurarQuery(token, existentes, `dashboard-mkt dv360-sync edad v1 (${adv})`, DV360_QUERY_EDAD, adv);
+      const ed = await correrYBajar(token, qEd, desde, hasta, t0);
+      const filas = aggEdad(ed.csv);
+      const res: Record<string, number> = {};
+      for (const medio of ["YouTube", "Programmatic"]) {
+        for (const p of plan) {
+          const mes = p.mes.slice(0, 7);
+          const delMes = filas.filter((f) => f.medio === medio && f.mes === mes).map((f) => ({ ...f, moneda: "USD" as const }));
+          res[`${medio}|${mes}`] = dry ? delMes.length : await guardarEdad(medio, mes, delMes);
+        }
+      }
+      return NextResponse.json({ ok: true, mode: "edad", dry, filas: res, ms: Date.now() - t0 });
     }
     const [qCr, qRe] = await Promise.all([
       asegurarQuery(token, existentes, `dashboard-mkt dv360-sync creatives v2 (${adv})`, DV360_QUERY_CREATIVES, adv, "DV360 Video Drean"),

@@ -69,3 +69,17 @@ jobs:
           DAYS_INPUT: ${{ github.event.inputs.days }}
           DRY_INPUT: ${{ github.event.inputs.dry }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      # Edad por grupo de anuncios (mes en curso + 2 anteriores) → sección «Edad × medio» de Eficiencia Medios.
+      - name: Edad por grupo de anuncios
+        if: always()
+        run: |
+          set -euo pipefail
+          URL="https://dashboard-mkt-seven.vercel.app/api/cron/google-ads-sync?edad=1"
+          if [ -n "${DRY_INPUT:-}" ]; then URL="${URL}&dry=1"; fi
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 300 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
+          echo "HTTP $HTTP_CODE"; cat response.json; echo ""
+          if [ "$HTTP_CODE" != "200" ] || grep -q '"ok":false' response.json; then echo "::error::Edad falló"; exit 1; fi
+        env:
+          DRY_INPUT: ${{ github.event.inputs.dry }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

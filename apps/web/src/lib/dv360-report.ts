@@ -231,3 +231,33 @@ export function decidirMes(guardado: Totales | undefined, api: Totales | undefin
   if (bajas.length) return { accion: "escribir", motivo: `force: ${bajas.join("; ")}` };
   return { accion: "escribir" };
 }
+
+// Edad por line item y mes → pauta_edad (sección «Edad × medio» de Eficiencia Medios). Sin creative: la edad
+// por pieza no hace falta y así la consulta es más liviana.
+export const DV360_QUERY_EDAD = {
+  groupBys: ["FILTER_MONTH", "FILTER_LINE_ITEM", "FILTER_LINE_ITEM_NAME", "FILTER_AGE"],
+  metrics: ["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_REVENUE_USD", "METRIC_RICH_MEDIA_VIDEO_COMPLETIONS"],
+};
+export type EdadDv360 = { mes: string; medio: string; pieza_id: string; edad: string; tipo: string; impresiones: number; clicks: number; video_completos: number; interacciones: number; spend: number };
+/** CSV de DV360_QUERY_EDAD → filas por mes (YYYY-MM), medio YouTube/Programmatic, line item y edad (spend en USD). */
+export function aggEdad(csv: string): EdadDv360[] {
+  const g = parseCsv(csv), h = g[0] ?? [];
+  const ix = (n: string) => h.indexOf(n);
+  const iMo = ix("Month"), iLI = ix("Line Item"), iAge = ix("Age"), iImp = ix("Impressions"), iClk = ix("Clicks"),
+    iRev = ix("Revenue (USD)"), iC = ix("Complete Views (Video)");
+  if (iMo < 0 || iLI < 0 || iAge < 0) throw new Error(`Header inesperado (edad): ${h.join(" | ").slice(0, 300)}`);
+  const out: EdadDv360[] = [];
+  for (let r = 1; r < g.length; r++) {
+    const row = g[r]!; if (!dv360DataRow(row)) continue;
+    const mes = String(row[iMo] || "").replace(/[/-]/, "-").slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(mes)) continue;
+    const canal = dv360Canal(row[iLI]);
+    if (canal !== "YouTube" && canal !== "Programmatic") continue;
+    const completos = iC >= 0 ? dv360Num(row[iC]) : 0;
+    out.push({ mes, medio: canal, pieza_id: String(row[iLI] || ""), edad: String(row[iAge] || ""),
+      tipo: canal === "YouTube" || completos > 0 ? "video" : "imagen",
+      impresiones: dv360Num(row[iImp]), clicks: iClk >= 0 ? dv360Num(row[iClk]) : 0, video_completos: completos,
+      interacciones: 0, spend: iRev >= 0 ? dv360Num(row[iRev]) : 0 });
+  }
+  return out;
+}
