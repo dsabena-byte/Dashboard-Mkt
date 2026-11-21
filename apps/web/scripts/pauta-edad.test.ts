@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { normEdad, resumir, mejorMedio, type FilaEdad } from "../src/lib/pauta-edad";
+import { normEdad, resumir, mejorMedio, cruzarMeta, formatoMeta, type FilaEdad } from "../src/lib/pauta-edad";
 
 assert.equal(normEdad("25-34"), "25-34");
 assert.equal(normEdad("AGE_25_34"), "25-34");          // TikTok
@@ -10,7 +10,7 @@ assert.equal(normEdad("65+"), "55+");                  // Meta / DV360
 assert.equal(normEdad("Unknown"), "Sin dato");
 
 const f = (medio: string, edad: string, tipo: string, spend: number, clicks: number, mes = "2026-10"): FilaEdad =>
-  ({ medio, mes, pieza_id: `${medio}${edad}${tipo}`, edad, tipo, impresiones: 1000, clicks, video_completos: 0, interacciones: 0, spend });
+  ({ medio, mes, pieza_id: `${medio}${edad}${tipo}`, edad, formato: medio, estimado: false, tipo, impresiones: 1000, clicks, video_completos: 0, interacciones: 0, spend });
 const filas = [
   f("Meta", "25-34", "video", 1000, 100),
   f("Meta", "25-34", "imagen", 500, 100),
@@ -29,4 +29,23 @@ assert.equal(mejorMedio(r, "25-34", "clicks")!.medio, "TikTok");
 // Filtros: video y mes.
 assert.equal(resumir(filas, { tipo: "video" }).celda("25-34", "Meta").spend, 1000);
 assert.deepEqual(resumir(filas, { tipo: "todas", meses: ["2026-09"] }).edades, ["35-44"]);
+// Meta: cruce edad × formato dentro de un anuncio (Reels 60% / Feed 40% de la inversión; 75% / 25% de los clics).
+assert.equal(formatoMeta("instagram|instagram_reels"), "IG Reels");
+const z = { tipo: null, impresiones: 0, clicks: 0, video_completos: 0, interacciones: 0, spend: 0 };
+const cx = cruzarMeta(
+  [{ ...z, edad: "25-34", spend: 600, clicks: 60, impresiones: 6000 }, { ...z, edad: "35-44", spend: 400, clicks: 20, impresiones: 4000 }],
+  [{ ...z, ubicacion: "instagram|instagram_reels", spend: 600, clicks: 60, impresiones: 7000 }, { ...z, ubicacion: "instagram|feed", spend: 400, clicks: 20, impresiones: 3000 }],
+);
+const c = (e: string, fo: string) => cx.find((x) => x.edad === e && x.formato === fo)!;
+assert.equal(c("25-34", "IG Reels").spend, 360);
+assert.equal(c("25-34", "IG Reels").clicks, 45);
+assert.equal(cx.reduce((a, x) => a + x.spend, 0), 1000); // se conserva el total
+assert.ok(cx.every((x) => x.estimado));
+// Una sola ubicación = exacto.
+assert.ok(cruzarMeta([{ ...z, edad: "25-34", spend: 10 }], [{ ...z, ubicacion: "instagram|instagram_stories", spend: 10 }]).every((x) => !x.estimado && x.formato === "IG Stories"));
+// Vista por formato vs por medio.
+const fm: FilaEdad[] = cx.map((x) => ({ ...x, medio: "Meta", mes: "2026-10", pieza_id: "A", tipo: "video" }));
+assert.deepEqual(resumir(fm, { tipo: "todas" }).medios.sort(), ["IG Feed", "IG Reels"]);
+assert.deepEqual(resumir(fm, { tipo: "todas", por: "medio" }).medios, ["Meta"]);
+assert.equal(resumir(fm, { tipo: "todas" }).pctEstimado, 1);
 console.log("pauta-edad OK");

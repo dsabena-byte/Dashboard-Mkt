@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { mirrorMetaImage } from "@/lib/meta-image-mirror";
 import { esLanzamientoLavado } from "@/lib/pauta-categoria";
 import { guardarEdad } from "@/lib/pauta-edad-server";
+import { cruzarMeta } from "@/lib/pauta-edad";
 
 // El mirroring (descarga de Meta + subida al bucket) + los insights de muchos
 // ads pueden pasar de 60s en meses con más pauta (junio daba 504
@@ -169,35 +170,48 @@ async function upsertMetaDaily(rows: DailyCampaign[], since: string, until: stri
   }
 }
 
-// ===== Edad por anuncio (?edad=1) → pauta_edad (sección «Edad × medio» de Eficiencia Medios) =====
+// ===== Edad × formato por anuncio (?edad=1) → pauta_edad (sección «Edad × medio y formato» de Eficiencia Medios) =====
+// Meta no deja pedir edad y ubicación juntas (combinaciones de breakdowns permitidas): dos consultas a nivel anuncio
+// (breakdowns=age y breakdowns=publisher_platform,platform_position) y `cruzarMeta` estima el cruce dentro de cada anuncio.
 type BdIns = {
-  ad_id?: string; age?: string; impressions?: string; spend?: string;
+  ad_id?: string; age?: string; publisher_platform?: string; platform_position?: string; impressions?: string; spend?: string;
   actions?: Array<{ action_type?: string; value?: string }>;
   video_play_actions?: Array<{ value?: string }>;
   video_p100_watched_actions?: Array<{ value?: string }>;
 };
-async function syncEdad(actId: string, token: string, mesParam: string) {
-  const { since, until } = mesRange(mesParam);
+async function insightsBd(actId: string, token: string, since: string, until: string, breakdowns: string): Promise<BdIns[]> {
   const fields = "ad_id,impressions,spend,actions,video_play_actions,video_p100_watched_actions";
   const tr = encodeURIComponent(JSON.stringify({ since, until }));
-  let next: string | undefined = `${GRAPH_API}/${actId}/insights?level=ad&breakdowns=age&fields=${fields}&time_range=${tr}&limit=500&access_token=${token}`;
-  const ins: BdIns[] = [];
+  let next: string | undefined = `${GRAPH_API}/${actId}/insights?level=ad&breakdowns=${breakdowns}&fields=${fields}&time_range=${tr}&limit=500&access_token=${token}`;
+  const out: BdIns[] = [];
   for (let i = 0; next && i < 60; i++) {
     const page: { data?: BdIns[]; paging?: { next?: string } } = await graphGet(next);
-    ins.push(...(page.data ?? []));
+    out.push(...(page.data ?? []));
     next = page.paging?.next;
   }
-  // Video = el anuncio tuvo reproducciones en alguna edad.
-  const videos = new Set(ins.filter((r) => sumActions(r.video_play_actions) > 0).map((r) => r.ad_id));
-  const filas = ins.filter((r) => r.ad_id).map((r) => ({
-    pieza_id: r.ad_id!, edad: r.age ?? "unknown", tipo: videos.has(r.ad_id) ? "video" : "imagen",
+  return out;
+}
+async function syncEdad(actId: string, token: string, mesParam: string) {
+  const { since, until } = mesRange(mesParam);
+  const edad = await insightsBd(actId, token, since, until, "age");
+  const ubic = await insightsBd(actId, token, since, until, "publisher_platform,platform_position");
+  const val = (r: BdIns) => ({
+    tipo: null as string | null,
     impresiones: Number(r.impressions ?? 0) || 0,
     clicks: actionVal(r.actions, "link_click"),
     video_completos: sumActions(r.video_p100_watched_actions),
     interacciones: actionVal(r.actions, "post_engagement"),
     spend: Number(r.spend ?? 0) || 0,
-  }));
-  return { ok: true, mode: "edad", mes: mesParam, filas: await guardarEdad("Meta", mesParam, filas) };
+  });
+  // Video = el anuncio tuvo reproducciones.
+  const videos = new Set([...edad, ...ubic].filter((r) => sumActions(r.video_play_actions) > 0).map((r) => r.ad_id));
+  const ubicPorAd = new Map<string, Array<ReturnType<typeof val> & { ubicacion: string }>>();
+  for (const r of ubic) if (r.ad_id) ubicPorAd.set(r.ad_id, [...(ubicPorAd.get(r.ad_id) ?? []), { ...val(r), ubicacion: `${r.publisher_platform ?? "?"}|${r.platform_position ?? "?"}` }]);
+  const edadPorAd = new Map<string, Array<ReturnType<typeof val> & { edad: string }>>();
+  for (const r of edad) if (r.ad_id) edadPorAd.set(r.ad_id, [...(edadPorAd.get(r.ad_id) ?? []), { ...val(r), edad: r.age ?? "unknown" }]);
+  const filas = [...edadPorAd].flatMap(([adId, e]) =>
+    cruzarMeta(e, ubicPorAd.get(adId) ?? []).map((f) => ({ ...f, pieza_id: adId, tipo: videos.has(adId) ? "video" : "imagen" })));
+  return { ok: true, mode: "edad", mes: mesParam, anuncios: edadPorAd.size, filas: await guardarEdad("Meta", mesParam, filas) };
 }
 
 async function discoverActId(token: string): Promise<{ act_id: string; name: string }> {
