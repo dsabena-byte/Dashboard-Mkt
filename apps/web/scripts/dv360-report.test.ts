@@ -1,6 +1,6 @@
 // DV360 sync por API: paridad con el Apps Script (syncDv360 / syncDv360Reach) + ventana de meses + guarda anti-parcial.
 // Datos SINTÉTICOS (no reales). cd apps/web && npx tsx scripts/dv360-report.test.ts
-import { aggCreatives, aggReach, decidirMes, parseCsv, planMeses, totalesPorMes } from "../src/lib/dv360-report";
+import { aggCreatives, aggEdad, aggReach, decidirMes, parseCsv, planMeses, totalesPorMes } from "../src/lib/dv360-report";
 
 let pass = 0, fail = 0;
 const ok = (c: unknown, m: string) => { if (c) pass++; else { fail++; console.error(`✗ ${m}`); } };
@@ -138,6 +138,12 @@ ok(decidirMes(undefined, undefined, false).accion === "sin_datos", "nada → sin
 ok(decidirMes(undefined, T(10, 1), false).accion === "escribir", "mes nuevo → escribe");
 const tot = totalesPorMes(nuestro.rows);
 ok(tot.get("2026-09-01")?.impresiones === 6005 && tot.get("2026-09-01")?.filas === 2, "totalesPorMes");
+
+// ── Edad: YouTube y Programmatic separados, sin doble conteo; fecha diaria → mes ──
+const csvEd = "Date,Line Item,Age,Impressions,Clicks,Revenue (USD)\n2026/10/01,YouTube Lav,25-34,100,1,2\n2026/10/02,YouTube Lav,25-34,50,0,1\n2026/10/02,Display Lav,35-44,40,2,0.5\n";
+const ytEd = aggEdad(csvEd, "YouTube"), pgEd = aggEdad(csvEd, "Programmatic");
+ok(ytEd.length === 1 && ytEd[0]!.impresiones === 150 && ytEd[0]!.spend === 3 && ytEd[0]!.mes === "2026-10" && ytEd[0]!.tipo === "video", "edad YouTube suma el mes");
+ok(pgEd.length === 1 && pgEd[0]!.edad === "35-44" && pgEd[0]!.medio === "Programmatic", "edad Programmatic sin YouTube");
 
 console.log(`${pass} OK, ${fail} fallas`);
 if (fail) process.exit(1);
