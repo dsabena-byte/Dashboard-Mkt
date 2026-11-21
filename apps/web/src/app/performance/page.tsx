@@ -18,6 +18,7 @@ import { convertirFilas, convertir12, convertirPorMes, type ConvCollector } from
 import { MonedaSelector } from "@/components/moneda-selector";
 import { DataHealth } from "@/components/data-health";
 import { getPautaDiaria } from "@/lib/pauta-diaria-server";
+import { getPautaEdad } from "@/lib/pauta-edad-server";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -120,13 +121,14 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
   // + inversión diaria por medio con API (Eficiencia Medios; REST, tablas chicas, en $).
   // + miniaturas DV360 (manifiesto del cron dv360-thumbs; solo nombre → url, fail-safe {}).
   // + piezas de TikTok (manifiesto del cron tiktok-sync; fail-safe null).
-  const [metasArr, metasCatArr, pautaDiaria, dv360Thumbs, tiktokManifest] = await Promise.all([
+  const [metasArr, metasCatArr, pautaDiaria, dv360Thumbs, tiktokManifest, pautaEdad] = await Promise.all([
     Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear), META_FALLBACK))),
     // Metas propias de cada categoría (vista Lavado/Refri/Cocción); sin cargar → el cliente usa total × mix.
     Promise.all(META_CATS.map((cat) => Promise.all(PAUTA_KPIS.map((kpi) => safe(getMetaKpi("Pauta Mkt", kpi, currentYear, cat), META_FALLBACK))))),
     safe(getPautaDiaria(), null),
     safe(getDv360ThumbMap([...rawDv360.map((r) => r.creative), ...rawMetaPaid.filter((r) => r.plataforma === "programmatic").map((r) => r.ad_name ?? "")]), {} as Awaited<ReturnType<typeof getDv360ThumbMap>>),
     safe(getTikTokPiezas(), null),
+    safe(getPautaEdad(currentYear), null),
   ]);
   const metas = Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasArr[i] ?? META_FALLBACK])) as Record<(typeof PAUTA_KPIS)[number], MetaKpiData>;
   const metasCat = Object.fromEntries(META_CATS.map((cat, c) => [cat, Object.fromEntries(PAUTA_KPIS.map((kpi, i) => [kpi, metasCatArr[c]?.[i] ?? META_FALLBACK]))])) as Record<string, MetasPauta>;
@@ -148,6 +150,6 @@ export default async function PerformancePautaPage({ searchParams }: { searchPar
     </Suspense>
   );
   return (
-    <PerformanceClient headerExtra={headerExtra} monedaSlot={monedaSlot} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} metasCat={metasCat} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} dv360Thumbs={dv360Thumbs} tiktokPiezas={tiktokManifest?.items ?? []} />
+    <PerformanceClient headerExtra={headerExtra} monedaSlot={monedaSlot} initialTab={searchParams?.tab ?? (searchParams?.vista === "diagnostico" ? "diagnostico" : undefined)} data={data} metaPaid={metaPaid} dv360={dv360} dv360Reach={dv360Reach} fxRates={fxRates} planningMonthly={planningMonthly} googleAdsOmd={googleAdsOmd} googleAdsCreatives={googleAdsCreatives} freshness={{ dv360: fDv360, meta: fMeta, omd: fOmd, gads: fGads }} metas={metas} metasCat={metasCat} ecommerceInv={ecomInv} pautaDiaria={pautaDiaria} pautaEdad={pautaEdad} dv360Thumbs={dv360Thumbs} tiktokPiezas={tiktokManifest?.items ?? []} />
   );
 }

@@ -168,6 +168,64 @@ async function upsertMetaDaily(rows: DailyCampaign[], since: string, until: stri
   }
 }
 
+// ===== Edad y ubicación por anuncio (?edad=1) =====
+// Meta no deja pedir edad y ubicación juntas (combinaciones permitidas de breakdowns), así que van dos
+// consultas por mes a nivel anuncio: breakdowns=age y breakdowns=publisher_platform,platform_position.
+// Clean-replace del mes en meta_paid_breakdown solo si las DOS consultas salieron bien.
+type BdIns = {
+  ad_id?: string; campaign_name?: string; age?: string; publisher_platform?: string; platform_position?: string;
+  impressions?: string; reach?: string; clicks?: string; spend?: string;
+  actions?: Array<{ action_type?: string; value?: string }>;
+  video_p100_watched_actions?: Array<{ value?: string }>;
+  video_thruplay_watched_actions?: Array<{ value?: string }>;
+};
+async function fetchBreakdown(actId: string, token: string, since: string, until: string, breakdowns: string): Promise<BdIns[]> {
+  const fields = "ad_id,campaign_name,impressions,reach,clicks,spend,actions,video_p100_watched_actions,video_thruplay_watched_actions";
+  const tr = encodeURIComponent(JSON.stringify({ since, until }));
+  let next: string | undefined = `${GRAPH_API}/${actId}/insights?level=ad&breakdowns=${breakdowns}&fields=${fields}&time_range=${tr}&limit=500&access_token=${token}`;
+  const out: BdIns[] = [];
+  for (let i = 0; next && i < 60; i++) {
+    const page: { data?: BdIns[]; paging?: { next?: string } } = await graphGet(next);
+    out.push(...(page.data ?? []));
+    next = page.paging?.next;
+  }
+  return out;
+}
+async function syncEdad(actId: string, token: string, mesParam: string) {
+  const { since, until } = mesRange(mesParam);
+  const [edad, ubic] = await Promise.all([
+    fetchBreakdown(actId, token, since, until, "age"),
+    fetchBreakdown(actId, token, since, until, "publisher_platform,platform_position"),
+  ]);
+  const num = (v?: string) => Math.round(Number(v ?? 0)) || 0;
+  const now = new Date().toISOString();
+  const fila = (r: BdIns, dim: "edad" | "ubicacion", valor: string) => ({
+    mes: mesParam, ad_id: r.ad_id ?? "", dim, valor, campaign_name: r.campaign_name ?? null,
+    impresiones: num(r.impressions), alcance: num(r.reach), clicks: num(r.clicks),
+    link_clicks: Math.round(actionVal(r.actions, "link_click")),
+    landing_views: Math.round(actionVal(r.actions, "landing_page_view")),
+    interacciones: Math.round(actionVal(r.actions, "post_engagement")),
+    video_p100: Math.round(sumActions(r.video_p100_watched_actions)),
+    thruplay: Math.round(sumActions(r.video_thruplay_watched_actions)),
+    spend: Math.round(Number(r.spend ?? 0) * 100) / 100, updated_at: now,
+  });
+  const rows = [
+    ...edad.filter((r) => r.ad_id).map((r) => fila(r, "edad", r.age ?? "unknown")),
+    ...ubic.filter((r) => r.ad_id).map((r) => fila(r, "ubicacion", `${r.publisher_platform ?? "?"}|${r.platform_position ?? "?"}`)),
+  ];
+  const url = env("NEXT_PUBLIC_SUPABASE_URL");
+  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  const h = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+  if (!rows.length) return { ok: true, mode: "edad", mes: mesParam, filas: 0, nota: "Meta no devolvió filas: no se toca lo guardado" };
+  const del = await fetch(`${url}/rest/v1/meta_paid_breakdown?mes=eq.${mesParam}`, { method: "DELETE", headers: { ...h, Prefer: "return=minimal" } });
+  if (!del.ok) throw new Error(`breakdown delete ${del.status}: ${(await del.text()).slice(0, 200)}`);
+  for (let i = 0; i < rows.length; i += 1000) {
+    const res = await fetch(`${url}/rest/v1/meta_paid_breakdown`, { method: "POST", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify(rows.slice(i, i + 1000)) });
+    if (!res.ok) throw new Error(`breakdown insert ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  return { ok: true, mode: "edad", mes: mesParam, filas_edad: edad.length, filas_ubicacion: ubic.length };
+}
+
 async function discoverActId(token: string): Promise<{ act_id: string; name: string }> {
   const accounts = await listAllAdAccounts(token);
   // La cuenta de Drean vive dentro de "Mabe Argentina", así que por defecto
@@ -713,6 +771,11 @@ export async function GET(req: Request) {
       const found = await discoverActId(token);
       act_id = found.act_id;
       act_name = found.name;
+    }
+
+    if (url.searchParams.get("edad")) {
+      phase = "edad";
+      return NextResponse.json(await syncEdad(act_id, token, mesParam));
     }
 
     const fields = [
