@@ -236,9 +236,10 @@ export function decidirMes(guardado: Totales | undefined, api: Totales | undefin
 // por pieza no hace falta y así la consulta es más liviana.
 export const DV360_QUERY_EDAD = {
   groupBys: ["FILTER_MONTH", "FILTER_LINE_ITEM", "FILTER_LINE_ITEM_NAME", "FILTER_AGE"],
-  metrics: ["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_REVENUE_USD", "METRIC_RICH_MEDIA_VIDEO_COMPLETIONS"],
+  // Sin métricas de video: DV360 rechaza la combinación edad + video completions («combination … invalid», 21-nov).
+  metrics: ["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_REVENUE_USD"],
 };
-export type EdadDv360 = { mes: string; medio: string; pieza_id: string; edad: string; tipo: string; impresiones: number; clicks: number; video_completos: number; interacciones: number; spend: number };
+export type EdadDv360 = { mes: string; medio: string; pieza_id: string; edad: string; tipo: string | null; impresiones: number; clicks: number; video_completos: number; interacciones: number; spend: number };
 /** CSV de DV360_QUERY_EDAD → filas por mes (YYYY-MM), medio YouTube/Programmatic, line item y edad (spend en USD). */
 export function aggEdad(csv: string): EdadDv360[] {
   const g = parseCsv(csv), h = g[0] ?? [];
@@ -255,7 +256,8 @@ export function aggEdad(csv: string): EdadDv360[] {
     if (canal !== "YouTube" && canal !== "Programmatic") continue;
     const completos = iC >= 0 ? dv360Num(row[iC]) : 0;
     out.push({ mes, medio: canal, pieza_id: String(row[iLI] || ""), edad: String(row[iAge] || ""),
-      tipo: canal === "YouTube" || completos > 0 ? "video" : "imagen",
+      // Programmatic mezcla video y display en el mismo line item y la consulta de edad no trae videos completos: sin tipo.
+      tipo: canal === "YouTube" ? "video" : completos > 0 ? "video" : null,
       impresiones: dv360Num(row[iImp]), clicks: iClk >= 0 ? dv360Num(row[iClk]) : 0, video_completos: completos,
       interacciones: 0, spend: iRev >= 0 ? dv360Num(row[iRev]) : 0 });
   }
