@@ -102,11 +102,11 @@ jobs:
             fi
           done
 
-          # Edad y ubicación por anuncio (sección «Edad × medio y formato» de Eficiencia Medios).
+          # Edad por anuncio (sección «Edad × medio» de Eficiencia Medios).
           if [ "${DEBUG:-false}" != "true" ]; then
             for MES_TO_SYNC in $MESES_TO_SYNC; do
               echo ""
-              echo "===== Edad y ubicación ${MES_TO_SYNC} ====="
+              echo "===== Edad ${MES_TO_SYNC} ====="
               HTTP=$(curl -sS -o out.json -w '%{http_code}' --max-time 300 "${BASE}?mes=${MES_TO_SYNC}&edad=1${COMMON_QS}" "${AUTH[@]}")
               echo "HTTP $HTTP"; cat out.json || true; echo ""
               if [ "$HTTP" -ge 400 ] || grep -q '"ok":false' out.json; then FAIL_COUNT=$((FAIL_COUNT + 1)); fi

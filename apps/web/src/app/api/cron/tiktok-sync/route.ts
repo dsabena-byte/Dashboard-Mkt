@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardarEdad, type FilaEdadIn } from "@/lib/pauta-edad-server";
 import { mirrorImageStrict, uploadBucketJson } from "@/lib/meta-image-mirror";
 import { esLanzamientoLavado } from "@/lib/pauta-categoria";
 import { TIKTOK_MANIFEST_KEY, chunks, piezaDe, type TikTokManifest, type TikTokPiezaMes, type TTAd } from "@/lib/tiktok-piezas";
@@ -388,6 +389,39 @@ async function syncPiezas(advs: string[], token: string, meses: [number, number]
   return res;
 }
 
+// ---- Edad por anuncio (?edad=1) → pauta_edad (sección «Edad × medio» de Eficiencia Medios) ----------
+// Reporte AUDIENCE con dimensiones ad_id × age. Si la API no acepta las métricas de video/interacción en ese
+// reporte, se repite con las básicas (impresiones, clics, inversión).
+async function edadTikTok(advId: string, token: string, mes: string): Promise<FilaEdadIn[]> {
+  const [y, m] = mes.split("-").map(Number) as [number, number];
+  const ini = `${mes}-01`;
+  const finMes = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const ayer = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const fin = finMes < ayer ? finMes : ayer;
+  if (fin < ini) return [];
+  const pedir = async (metrics: string[]) => {
+    const out: TTItem[] = [];
+    for (let page = 1, total = 1; page <= total; page++) {
+      const r = await ttGet<TTItem>(token, "/report/integrated/get/", {
+        advertiser_id: advId, report_type: "AUDIENCE", data_level: "AUCTION_AD", dimensions: JSON.stringify(["ad_id", "age"]),
+        metrics: JSON.stringify(metrics), start_date: ini, end_date: fin, page: String(page), page_size: "1000",
+      });
+      total = r.totalPage;
+      out.push(...r.list);
+    }
+    return out;
+  };
+  let items: TTItem[];
+  try { items = await pedir(["spend", "impressions", "clicks", "video_views_p100", "likes", "comments", "shares"]); }
+  catch { items = await pedir(["spend", "impressions", "clicks"]); }
+  return items.filter((it) => it.dimensions?.ad_id).map((it) => {
+    const mt = it.metrics ?? {};
+    return { pieza_id: it.dimensions!.ad_id!, edad: it.dimensions!.age ?? "", tipo: "video",
+      impresiones: n(mt.impressions), clicks: n(mt.clicks), video_completos: n(mt.video_views_p100),
+      interacciones: n(mt.likes) + n(mt.comments) + n(mt.shares), spend: n(mt.spend) };
+  });
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -414,6 +448,19 @@ export async function GET(request: Request) {
     const token = await getToken();
     const advs = onlyAdv ? [onlyAdv] : advertiserIds();
     out.advertisers = advs;
+
+    if (url.searchParams.get("edad") === "1") {
+      const mesP = url.searchParams.get("mes");
+      const hoy = new Date();
+      const meses = mesP && /^\d{4}-\d{2}$/.test(mesP) ? [mesP]
+        : [0, 1, 2].map((k) => new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - k, 1)).toISOString().slice(0, 7));
+      const res: Record<string, number> = {};
+      for (const mes of meses) {
+        const filas = (await Promise.all(advs.map((a) => edadTikTok(a, token, mes)))).flat();
+        res[mes] = dry ? filas.length : await guardarEdad("TikTok", mes, filas);
+      }
+      return NextResponse.json({ ok: true, mode: "edad", dry, filas: res });
+    }
 
     const all: TikTokRow[] = [];
     const perAdv: Record<string, number> = {};
