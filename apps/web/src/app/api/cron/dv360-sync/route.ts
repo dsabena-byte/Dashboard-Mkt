@@ -6,7 +6,7 @@ import {
   DV360_PARTNER_ID,
   DV360_QUERY_CREATIVES,
   DV360_QUERY_REACH,
-  DV360_QUERY_EDAD,
+  DV360_EDAD_CANDIDATOS,
   aggEdad,
   aggCreatives,
   aggReach,
@@ -75,7 +75,7 @@ type Report = {
 /** Reusa la consulta por título (versionado: si cambian dimensiones/métricas, cambia el título y se crea otra). */
 // Si la cuenta ve el reporte programado de OMD ("DV360 Video Drean" / "DV360 Reach Drean"), se copian SUS parámetros
 // (tipo, dimensiones, métricas y filtros): mismos datos que llegaban por mail, sin adivinar nombres de la API.
-async function asegurarQuery(token: string, existentes: Query[], titulo: string, q: { groupBys: string[]; metrics: string[] }, adv: string, fuente?: string): Promise<string> {
+async function asegurarQuery(token: string, existentes: Query[], titulo: string, q: { groupBys: string[]; metrics: string[]; type?: string }, adv: string, fuente?: string): Promise<string> {
   const ya = existentes.find((x) => x.metadata?.title === titulo);
   if (ya?.queryId) return ya.queryId;
   const omd = fuente ? existentes.find((x) => (x.metadata?.title ?? "").toLowerCase().includes(fuente.toLowerCase()) && x.params?.metrics?.length) : undefined;
@@ -96,7 +96,7 @@ async function asegurarQuery(token: string, existentes: Query[], titulo: string,
     body: JSON.stringify({
       metadata: { title: titulo, dataRange: { range: "LAST_30_DAYS" }, format: "CSV" },
       params: {
-        type: "STANDARD",
+        type: q.type ?? "STANDARD",
         groupBys: q.groupBys,
         filters: [{ type: "FILTER_PARTNER", value: DV360_PARTNER_ID }, { type: "FILTER_ADVERTISER", value: adv }],
         metrics: q.metrics,
@@ -259,20 +259,32 @@ export async function GET(request: Request) {
         metrics: x.params?.metrics, filtros: (x.params?.filters ?? []).map((f) => f.type),
       })) });
     }
-    // ?edad=1 → solo la consulta de edad (por line item) → pauta_edad, meses del plan.
+    // ?edad=1 → edad por line item → pauta_edad. Prueba las combinaciones de DV360_EDAD_CANDIDATOS en orden (por grupo
+    // YouTube / Programmatic) y usa la primera que DV360 acepta; la respuesta dice cuál anduvo y por qué fallaron las otras.
     if (url.searchParams.get("edad") === "1") {
-      const qEd = await asegurarQuery(token, existentes, `dashboard-mkt dv360-sync edad v2 (${adv})`, DV360_QUERY_EDAD, adv);
-      const ed = await correrYBajar(token, qEd, desde, hasta, t0);
-      const filas = aggEdad(ed.csv);
+      const intentos: Record<string, string> = {};
       const res: Record<string, number> = {};
-      for (const medio of ["YouTube", "Programmatic"]) {
-        for (const p of plan) {
-          const mes = p.mes.slice(0, 7);
-          const delMes = filas.filter((f) => f.medio === medio && f.mes === mes).map((f) => ({ ...f, moneda: "USD" as const }));
-          res[`${medio}|${mes}`] = dry ? delMes.length : await guardarEdad(medio, mes, delMes);
+      for (const grupo of ["YouTube", "Programmatic"] as const) {
+        for (const c of DV360_EDAD_CANDIDATOS.filter((x) => x.grupo === grupo)) {
+          try {
+            const q = await asegurarQuery(token, existentes, `dashboard-mkt dv360-sync edad ${c.id} (${adv})`, c, adv);
+            const ed = await correrYBajar(token, q, desde, hasta, t0);
+            const filas = aggEdad(ed.csv, grupo);
+            intentos[c.id] = `ok: ${filas.length} filas`;
+            for (const p of plan) {
+              const mes = p.mes.slice(0, 7);
+              const delMes = filas.filter((f) => f.mes === mes).map((f) => ({ ...f, moneda: "USD" as const }));
+              res[`${grupo}|${mes}`] = dry ? delMes.length : await guardarEdad(grupo, mes, delMes);
+            }
+            break;
+          } catch (e) {
+            intentos[c.id] = (e instanceof Error ? e.message : String(e)).replace(/\s+/g, " ").slice(0, 300);
+            if (Date.now() - t0 > POLL_HASTA_MS) break;
+          }
         }
       }
-      return NextResponse.json({ ok: true, mode: "edad", dry, filas: res, ms: Date.now() - t0 });
+      const okGrupos = Object.keys(res).length;
+      return NextResponse.json({ ok: okGrupos > 0, mode: "edad", dry, filas: res, intentos, ms: Date.now() - t0 }, { status: okGrupos > 0 ? 200 : 500 });
     }
     const [qCr, qRe] = await Promise.all([
       asegurarQuery(token, existentes, `dashboard-mkt dv360-sync creatives v2 (${adv})`, DV360_QUERY_CREATIVES, adv, "DV360 Video Drean"),
