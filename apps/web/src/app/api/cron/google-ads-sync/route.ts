@@ -286,19 +286,21 @@ type AgeResult = {
   campaign?: { advertisingChannelType?: string };
   adGroup?: { id?: string };
   adGroupCriterion?: { ageRange?: { type?: string } };
-  metrics?: { impressions?: string; clicks?: string; costMicros?: string; interactions?: string; videoViews?: string; videoQuartileP100Rate?: number };
+  metrics?: { impressions?: string; clicks?: string; costMicros?: string; interactions?: string; videoQuartileP100Rate?: number };
 };
 async function edadGoogle(getToken: GetToken, cust: { id: string; label: string }, start: string, end: string): Promise<Map<string, FilaEdadIn[]>> {
   const query = `
     SELECT segments.month, campaign.advertising_channel_type, ad_group.id, ad_group_criterion.age_range.type,
-      metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.interactions, metrics.video_views, metrics.video_quartile_p100_rate
+      metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.interactions, metrics.video_quartile_p100_rate
     FROM age_range_view
     WHERE segments.date BETWEEN '${start}' AND '${end}'`;
   let batches: Array<{ results?: AgeResult[] }> | null = null;
   for (let attempt = 0; attempt < 3 && batches === null; attempt++) {
     const res = await fetch(`${GADS_API}/customers/${cust.id}/googleAds:searchStream`, { method: "POST", headers: gadsHeaders(await getToken(attempt > 0)), body: JSON.stringify({ query }) });
     if (res.ok) { batches = (await res.json()) as Array<{ results?: AgeResult[] }>; break; }
-    const body = (await res.text()).slice(0, 300);
+    const raw = await res.text();
+    // El detalle útil está en errors[].message (el encabezado del error es genérico).
+    const body = (raw.match(/"message":\s*"[^"]+"/g) ?? [raw.slice(0, 300)]).join(" | ").slice(0, 800);
     if (res.status === 401 && attempt < 2) { await sleep(2000 * (attempt + 1)); continue; }
     throw new Error(`edad ${cust.label} ${res.status}: ${body}`);
   }
@@ -309,14 +311,14 @@ async function edadGoogle(getToken: GetToken, cust: { id: string; label: string 
     const medio = canal === "SEARCH" ? "Google Search" : canal === "DEMAND_GEN" ? "Demand Gen" : null;
     if (!medio || !r.adGroup?.id || !r.segments?.month) continue;
     const impr = n(r.metrics?.impressions);
-    const views = n(r.metrics?.videoViews);
+    const p100 = n(r.metrics?.videoQuartileP100Rate);
     const k = `${medio}|${r.segments.month.slice(0, 7)}`;
     if (!out.has(k)) out.set(k, []);
     out.get(k)!.push({
       pieza_id: `${cust.id}:${r.adGroup.id}`, edad: r.adGroupCriterion?.ageRange?.type ?? "",
-      tipo: medio === "Google Search" ? "texto" : views > 0 ? "video" : "imagen",
+      tipo: medio === "Google Search" ? "texto" : p100 > 0 ? "video" : "imagen",
       impresiones: impr, clicks: n(r.metrics?.clicks),
-      video_completos: views > 0 ? Math.round(impr * n(r.metrics?.videoQuartileP100Rate)) : 0,
+      video_completos: Math.round(impr * p100),
       interacciones: medio === "Demand Gen" ? n(r.metrics?.interactions) : 0,
       spend: n(r.metrics?.costMicros) / 1e6,
     });

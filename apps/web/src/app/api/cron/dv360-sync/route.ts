@@ -261,7 +261,7 @@ export async function GET(request: Request) {
     }
     // ?edad=1 → solo la consulta de edad (por line item) → pauta_edad, meses del plan.
     if (url.searchParams.get("edad") === "1") {
-      const qEd = await asegurarQuery(token, existentes, `dashboard-mkt dv360-sync edad v1 (${adv})`, DV360_QUERY_EDAD, adv);
+      const qEd = await asegurarQuery(token, existentes, `dashboard-mkt dv360-sync edad v2 (${adv})`, DV360_QUERY_EDAD, adv);
       const ed = await correrYBajar(token, qEd, desde, hasta, t0);
       const filas = aggEdad(ed.csv);
       const res: Record<string, number> = {};
