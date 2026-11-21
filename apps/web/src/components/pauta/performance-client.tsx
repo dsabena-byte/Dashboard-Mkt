@@ -426,11 +426,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
   }, [tiktokPiezas, digitalOk, selMesesISO, selCats, selRoles, selPlats]);
 
   // ¿Hay piezas de esta plataforma bajo los filtros activos? Se usa para no
-  // renderizar secciones "Piezas pautadas" vacías. Datos legacy (TikTok,
-  // Programmatic, YouTube desde meta_paid_creatives · source=looker_export)
-  // solo existen para Abril/Mayo 2026: al filtrar esos meses la sección
-  // reaparece, así no se pierde la info vieja; en meses posteriores queda
-  // oculta (esos medios ya viven en DV360 y Google Ads, secciones aparte).
+  // renderizar secciones "Piezas pautadas" vacías.
   const metaHas = (plataforma: string): boolean => metaPaidF.some((r) => r.plataforma === plataforma);
 
   const byMedio = useMemo(() => computeByMedio(rows), [rows]);
