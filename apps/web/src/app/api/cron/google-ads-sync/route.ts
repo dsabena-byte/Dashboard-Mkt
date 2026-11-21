@@ -370,7 +370,10 @@ export async function GET(request: Request) {
     if (url.searchParams.get("edad") === "1") {
       // Meses COMPLETOS (cada mes se reemplaza entero): ?mes=YYYY-MM o el mes en curso + 2 anteriores.
       const mesP = url.searchParams.get("mes");
-      let eStart = mesP && /^\d{4}-\d{2}$/.test(mesP) ? `${mesP}-01` : new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth() - 2, 1)).toISOString().slice(0, 10);
+      const desdeP = url.searchParams.get("desde"); // backfill: YYYY-MM hasta hoy
+      let eStart = mesP && /^\d{4}-\d{2}$/.test(mesP) ? `${mesP}-01`
+        : desdeP && /^\d{4}-\d{2}$/.test(desdeP) ? `${desdeP}-01`
+        : new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth() - 2, 1)).toISOString().slice(0, 10);
       if (eStart < accessFloor) eStart = accessFloor;
       let eEnd = end;
       if (mesP && /^\d{4}-\d{2}$/.test(mesP)) {

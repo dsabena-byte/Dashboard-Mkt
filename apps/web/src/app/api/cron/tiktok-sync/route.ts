@@ -452,8 +452,13 @@ export async function GET(request: Request) {
     if (url.searchParams.get("edad") === "1") {
       const mesP = url.searchParams.get("mes");
       const hoy = new Date();
+      // ?mes=YYYY-MM (uno) · ?desde=YYYY-MM (de ahí a hoy, backfill) · nada = mes en curso + 2 anteriores.
+      const desdeP = url.searchParams.get("desde");
+      const atras = desdeP && /^\d{4}-\d{2}$/.test(desdeP)
+        ? (hoy.getUTCFullYear() - Number(desdeP.slice(0, 4))) * 12 + hoy.getUTCMonth() + 1 - Number(desdeP.slice(5, 7))
+        : 2;
       const meses = mesP && /^\d{4}-\d{2}$/.test(mesP) ? [mesP]
-        : [0, 1, 2].map((k) => new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - k, 1)).toISOString().slice(0, 7));
+        : Array.from({ length: Math.min(Math.max(atras, 0), 23) + 1 }, (_, k) => new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - k, 1)).toISOString().slice(0, 7));
       const res: Record<string, number> = {};
       for (const mes of meses) {
         const filas = (await Promise.all(advs.map((a) => edadTikTok(a, token, mes)))).flat();

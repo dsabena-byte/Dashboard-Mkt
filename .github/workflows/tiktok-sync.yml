@@ -9,6 +9,10 @@ on:
         description: "Días de backfill (1-365). Default 30."
         required: false
         default: "30"
+      edad_desde:
+        description: "Edad: backfill desde YYYY-MM (vacío = mes en curso + 2 anteriores)"
+        required: false
+        default: ""
       dry:
         description: "1 = dry-run (no escribe, sólo valida). Vacío = ingest."
         required: false
@@ -57,9 +61,11 @@ jobs:
           set -euo pipefail
           URL="https://dashboard-mkt-seven.vercel.app/api/cron/tiktok-sync?edad=1"
           if [ -n "${DRY_INPUT:-}" ]; then URL="${URL}&dry=1"; fi
+          if [ -n "${EDAD_DESDE:-}" ]; then URL="${URL}&desde=${EDAD_DESDE}"; fi
           HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" --max-time 300 -H "Authorization: Bearer ${CRON_SECRET:-}" "$URL")
           echo "HTTP $HTTP_CODE"; cat response.json; echo ""
           if [ "$HTTP_CODE" != "200" ] || grep -q '"ok":false' response.json; then echo "::error::Edad falló"; exit 1; fi
         env:
+          EDAD_DESDE: ${{ github.event.inputs.edad_desde }}
           DRY_INPUT: ${{ github.event.inputs.dry }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
