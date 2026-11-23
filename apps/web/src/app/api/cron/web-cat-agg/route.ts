@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 // vez acá, en background, para que el ingreso a Seguimiento Objetivos no la pague.
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function env(key: string): string {
   const v = process.env[key];
