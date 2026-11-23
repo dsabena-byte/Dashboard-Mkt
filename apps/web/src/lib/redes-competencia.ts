@@ -79,7 +79,8 @@ export function trendMaduro(posts: CompPost[], ref: string | null = erRefDate(po
   }
   return [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([mes, bm]) => {
     const values: Record<string, number | null> = {};
-    for (const [marca, e] of bm) values[marca] = median(e);
+    // Mes con < 3 posts maduros = sin punto (un solo viral armaba picos sin sentido, ej. Philco nov-26).
+    for (const [marca, e] of bm) values[marca] = e.length >= ER_MIN_POSTS ? median(e) : null;
     return { mes, values };
   });
 }

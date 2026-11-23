@@ -141,14 +141,16 @@ function findFollowersAt(
   return best?.followers ?? null;
 }
 
-// Recalcula engagement de cada post usando social_followers (si hay snapshot disponible).
-// Fallback: engagement original del scrape (que puede ser null si no había followers).
+// Recalcula SIEMPRE el engagement de cada post con los likes/comentarios actuales (el `engagement` guardado
+// por el scraper se calculó con los contadores del día del scrape y no se actualiza: subestimaba 20–700%).
+// Seguidores: foto de social_followers <= fecha del post; si no hay (posts previos a la primera foto), los
+// del scrape; si tampoco, la primera foto de la marca. likes = -1 (likes ocultos) cuenta como 0.
 export function enrichEngagement(posts: SocialPost[], snapshots: FollowerSnapshot[]): SocialPost[] {
-  if (snapshots.length === 0) return posts;
   return posts.map((p) => {
-    const f = findFollowersAt(snapshots, p.marca, p.red_social, p.fecha);
-    if (!f || f <= 0) return p;
-    const eng = (((p.likes ?? 0) + (p.comentarios ?? 0)) / f) * 100;
+    const primera = snapshots.find((s) => s.marca === p.marca && s.red_social === p.red_social)?.followers ?? null;
+    const f = findFollowersAt(snapshots, p.marca, p.red_social, p.fecha) ?? (p.followers && p.followers > 0 ? p.followers : null) ?? primera;
+    if (!f || f <= 0) return { ...p, engagement: null };
+    const eng = ((Math.max(0, p.likes ?? 0) + Math.max(0, p.comentarios ?? 0)) / f) * 100;
     return { ...p, engagement: Number(eng.toFixed(3)), followers: f };
   });
 }
