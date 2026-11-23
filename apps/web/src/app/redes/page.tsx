@@ -222,7 +222,11 @@ export default async function RedesPage({ searchParams }: PageProps) {
   const horarios = bestTimes(ownContent, refNow);
 
   // Construcción orgánica (alcance/views/interacción por pilar y categoría).
-  const organicBuildup = computeOrganicBuildup([...igOrganic.topPosts, ...fbOrganic.topPosts]);
+  const organicBuildup = {
+    ig: computeOrganicBuildup(igOrganic.topPosts),
+    fb: computeOrganicBuildup(fbOrganic.topPosts),
+    ambas: computeOrganicBuildup([...igOrganic.topPosts, ...fbOrganic.topPosts]),
+  };
 
   return (
     <DashTabs
@@ -269,7 +273,7 @@ export default async function RedesPage({ searchParams }: PageProps) {
         ]}
       />
 
-      <OrganicBuildupPanel byPilar={organicBuildup.byPilar} byCategoria={organicBuildup.byCategoria} />
+      <OrganicBuildupPanel ig={organicBuildup.ig} fb={organicBuildup.fb} ambas={organicBuildup.ambas} />
 
       {/* Formatos y mejor día/franja del contenido propio (posts maduros) */}
       <RedesContenidoPanel formatos={formatos} horarios={horarios} />

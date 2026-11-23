@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { BuildupRow } from "@/lib/social-posts-queries";
 
 function fmtK(n: number): string {
@@ -67,18 +70,44 @@ function BuildupTable({ title, rows, emptyHint }: { title: string; rows: Buildup
   );
 }
 
-export function OrganicBuildupPanel({ byPilar, byCategoria }: { byPilar: BuildupRow[]; byCategoria: BuildupRow[] }) {
+type Buildup = { byPilar: BuildupRow[]; byCategoria: BuildupRow[] };
+type Red = "ig" | "fb" | "ambas";
+const REDES: { id: Red; label: string }[] = [
+  { id: "ig", label: "Instagram" },
+  { id: "fb", label: "Facebook" },
+  { id: "ambas", label: "IG + FB" },
+];
+
+// Por defecto Instagram: es la red con la que se mide la meta de Redes (mismo total que el card de Alcance).
+export function OrganicBuildupPanel({ ig, fb, ambas }: { ig: Buildup; fb: Buildup; ambas: Buildup }) {
+  const [red, setRed] = useState<Red>("ig");
+  const data = red === "ig" ? ig : red === "fb" ? fb : ambas;
+  const nombre = REDES.find((r) => r.id === red)?.label ?? "";
   return (
     <section className="space-y-2">
-      <div>
-        <h3 className="text-base font-semibold tracking-tight">Construcción del orgánico — alcance, views e interacción</h3>
-        <p className="text-xs text-muted-foreground">
-          Cómo se construye cada métrica desde los posteos orgánicos (IG + FB), por pilar de contenido y por categoría, en el período seleccionado.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h3 className="text-base font-semibold tracking-tight">Construcción del orgánico — alcance, views e interacción</h3>
+          <p className="text-xs text-muted-foreground">
+            Cómo se construye cada métrica desde los posteos orgánicos de {nombre} (incluye historias de Instagram), por pilar de contenido y por categoría, en el período seleccionado.
+          </p>
+        </div>
+        <div className="inline-flex rounded-lg border bg-card p-0.5 text-xs">
+          {REDES.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setRed(r.id)}
+              className={`rounded-md px-3 py-1 ${red === r.id ? "bg-slate-900 text-white" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <BuildupTable title="Por pilar de contenido" rows={byPilar} emptyHint="Sin posteos con pilar clasificado." />
-        <BuildupTable title="Por categoría" rows={byCategoria} emptyHint="Sin posteos con categoría clasificada." />
+        <BuildupTable title="Por pilar de contenido" rows={data.byPilar} emptyHint="Sin posteos con pilar clasificado." />
+        <BuildupTable title="Por categoría" rows={data.byCategoria} emptyHint="Sin posteos con categoría clasificada." />
       </div>
     </section>
   );

@@ -4,6 +4,21 @@ import type { PostSentiment } from "./post-sentiment";
 
 const IG_ACCOUNT_ID = "17841404990509161";
 
+/** Pagina de a 1000 filas (tope de PostgREST) hasta traer todo. */
+async function allPages<T>(
+  page: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<{ data: T[] | null; error: { message: string } | null }> {
+  const out: T[] = [];
+  for (let desde = 0; desde < 50000; desde += 1000) {
+    const r = await page(desde, desde + 999);
+    if (r.error) return { data: null, error: r.error };
+    const rows = r.data ?? [];
+    out.push(...rows);
+    if (rows.length < 1000) break;
+  }
+  return { data: out, error: null };
+}
+
 export interface IgPostRow {
   post_id: string;
   fecha_post: string;
@@ -92,15 +107,19 @@ export async function getIgOrganicSummary(range: { from: string; to: string }): 
   // const reachPromise = fetchIgReachByFollowType(range);
 
   const [postsRes, demoRes] = await Promise.all([
-    supabase
+    // Todos los posteos del período (antes .limit(200): con más de 200 posteos el año quedaba incompleto).
+    allPages<IgPostRow>((desde, hasta) =>
+      supabase
       .from("meta_posts")
       .select("post_id, fecha_post, permalink, message, media_type, thumbnail_url, reach, reach_followers, reach_non_followers, engagement, reactions, video_views, clicks, categoria, pilar_contenido")
-      .eq("platform", "instagram")
-      .gte("fecha_post", `${fromIso}T00:00:00Z`)
-      .lte("fecha_post", `${toIso}T23:59:59Z`)
-      .order("engagement", { ascending: false })
-      .limit(200)
-      .returns<IgPostRow[]>(),
+        .eq("platform", "instagram")
+        .gte("fecha_post", `${fromIso}T00:00:00Z`)
+        .lte("fecha_post", `${toIso}T23:59:59Z`)
+        .order("engagement", { ascending: false })
+        .order("post_id", { ascending: true })
+        .range(desde, hasta)
+        .returns<IgPostRow[]>(),
+    ),
     supabase
       .from("meta_fb_audience_demographics")
       .select("fecha, dimension, category, value")
