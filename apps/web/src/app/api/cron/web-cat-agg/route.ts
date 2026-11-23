@@ -77,7 +77,7 @@ async function syncMonthlyKpis(url: string, key: string, now: string): Promise<s
 }
 
 // (5) Top productos por MES → web_top_products_monthly (0151). El RPC tarda ~6 s por semana: se paga acá,
-// para el mes en curso y los 2 anteriores (los 3 meses en paralelo) (el tablero abre en el último mes cerrado). Top 200 por mes.
+// para el mes en curso y los 2 anteriores (de a uno, sin paralelo: el RPC se cortaba por timeout) (el tablero abre en el último mes cerrado). Top 200 por mes.
 interface ProdRow { landing_page: string; sku: string | null; producto_slug: string | null; categoria: string | null; sesiones: number | null; usuarios: number | null; conversiones: number | null; pageviews: number | null }
 async function syncTopProducts(url: string, key: string, now: string): Promise<string> {
   const hoy = new Date();
@@ -90,7 +90,9 @@ async function syncTopProducts(url: string, key: string, now: string): Promise<s
       const h = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 6));
       semanas.push({ from: d.toISOString().slice(0, 10), to: (h > fin ? fin : h).toISOString().slice(0, 10) });
     }
-    const partes = await Promise.all(semanas.map(async (w) => {
+    // De a una semana: en paralelo las consultas se cortaban por statement timeout (23-nov-2026).
+    const partes: ProdRow[][] = [];
+    for (const w of semanas) partes.push(await (async () => {
       const r = await fetch(`${url}/rest/v1/rpc/top_products_in_range`, {
         method: "POST", cache: "no-store",
         headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -98,7 +100,7 @@ async function syncTopProducts(url: string, key: string, now: string): Promise<s
       });
       if (!r.ok) throw new Error(`rpc ${r.status}: ${(await r.text()).slice(0, 200)}`);
       return (await r.json()) as ProdRow[];
-    }));
+    })());
     const map = new Map<string, ProdRow & { sesiones: number; usuarios: number; conversiones: number; pageviews: number }>();
     for (const row of partes.flat()) {
       const acc = map.get(row.landing_page);
@@ -116,7 +118,9 @@ async function syncTopProducts(url: string, key: string, now: string): Promise<s
     }).catch(() => null);
     return `${mes.slice(0, 7)}: ${filas.length}`;
   };
-  return (await Promise.all([2, 1, 0].map(uno))).join(" · ");
+  const res: string[] = [];
+  for (const k of [2, 1, 0]) res.push(await uno(k).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`));
+  return res.join(" · ");
 }
 
 export async function GET(request: Request) {
@@ -172,10 +176,9 @@ export async function GET(request: Request) {
     const channelRes = await syncMonthlyByChannel(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`);
 
     // (4) y (5): no fatales; sin la migración 0151 los lectores caen a la vista / RPC.
-    const [kpisRes, productosRes] = await Promise.all([
-      syncMonthlyKpis(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`),
-      syncTopProducts(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`),
-    ]);
+    // En serie: en paralelo con el resto se cortaban por statement timeout.
+    const kpisRes = await syncMonthlyKpis(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`);
+    const productosRes = await syncTopProducts(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`);
 
     return NextResponse.json({ ok: true, dias_leidos: rows.length, daily_upsert: dailyOk, monthly_upsert: monthly.length, monthlyRes, channelRes, kpisRes, productosRes });
   } catch (e) {
