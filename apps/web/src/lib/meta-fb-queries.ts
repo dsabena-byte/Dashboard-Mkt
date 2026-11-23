@@ -2,6 +2,21 @@ import "server-only";
 import { getServerSupabase } from "./supabase-server";
 import { fbPaidDecision, readViewsSplit, viewsSplitTotals, type ViewsSplit } from "./fb-paid";
 
+/** Pagina de a 1000 filas (tope de PostgREST) hasta traer todo. */
+async function allPages<T>(
+  page: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<{ data: T[] | null; error: { message: string } | null }> {
+  const out: T[] = [];
+  for (let desde = 0; desde < 50000; desde += 1000) {
+    const r = await page(desde, desde + 999);
+    if (r.error) return { data: null, error: r.error };
+    const rows = r.data ?? [];
+    out.push(...rows);
+    if (rows.length < 1000) break;
+  }
+  return { data: out, error: null };
+}
+
 export interface FbDailyRow {
   fecha: string;
   impressions: number;
@@ -177,17 +192,21 @@ export async function getFbOrganicSummary(range?: { from: string; to: string }):
       .gte("fecha", fromIso)
       .lte("fecha", toIso)
       .returns<FbDailyRow[]>(),
-    supabase
+    // Todos los posteos del período (antes .limit(200): con más de 200 posteos el año quedaba incompleto).
+    allPages<FbPostRow>((desde, hasta) =>
+      supabase
       .from("meta_posts")
       .select(
-        "post_id, fecha_post, permalink, message, media_type, thumbnail_url, impressions, reach, engagement, reactions, video_views, clicks, categoria, pilar_contenido, views_split:raw->views_split",
-      )
-      .eq("platform", "facebook")
-      .gte("fecha_post", `${fromIso}T00:00:00Z`)
-      .lte("fecha_post", `${toIso}T23:59:59Z`)
-      .order("engagement", { ascending: false })
-      .limit(200)
-      .returns<FbPostRow[]>(),
+          "post_id, fecha_post, permalink, message, media_type, thumbnail_url, impressions, reach, engagement, reactions, video_views, clicks, categoria, pilar_contenido, views_split:raw->views_split",
+        )
+        .eq("platform", "facebook")
+        .gte("fecha_post", `${fromIso}T00:00:00Z`)
+        .lte("fecha_post", `${toIso}T23:59:59Z`)
+        .order("engagement", { ascending: false })
+        .order("post_id", { ascending: true })
+        .range(desde, hasta)
+        .returns<FbPostRow[]>(),
+    ),
     supabase
       .from("meta_fb_audience_demographics")
       .select("fecha, audience_type, dimension, category, value")
