@@ -1019,6 +1019,7 @@ reporte_existencia/cb_homologos).
   demographics/ecom cayeron solos. Techo actual = `getWebMonthlyKpis` ~2.8s (se puede precalcular si
   hace falta). NO volver a traer 24 meses de datos diarios ni pegarle a las vistas `web_landing_daily`
   para agregados históricos.
+- **/web lento otra vez (23-nov-2026, #1102–#1104):** EXPLAIN ANALYZE en prod: `vw_drean_web_monthly` 6,2 s (seq scan de web_traffic + sort a disco) y `top_products_in_range` 5,8 s por semana (×5 en paralelo). Precalculados por `web-cat-agg` (ahora maxDuration 300, en SERIE: en paralelo daba statement timeout) en `web_monthly_kpis` y `web_top_products_monthly` (0151/0152, aplicadas con el conector admin); lectores en `lib/web-queries.ts` caen a vista/RPC si falta. Top productos solo mes en curso + 2 anteriores (rango de meses completos); `web_top_products_monthly` ya existía (creada a mano 16-nov, 500/mes) y se le sumó `conversiones`.
 - **DataForSEO sin saldo (oct-2026):** `seo-sync` falló 6 veces (1→7-oct; timeouts y re-disparos de la rutina "System health check")
   y cada re-disparo volvía a comprar las mismas keywords desde offset 0 → saldo en 0 (verificado en el log del run 37620554162:
   "Payment Required"). Fix: `seo-sync` REANUDA (si el mes ya tiene foto, completa esa fecha y saltea keywords con filas; `?force=1`
