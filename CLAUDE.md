@@ -968,6 +968,7 @@ reporte_existencia/cb_homologos).
   (`attachIgSentiment`, solo en `app/redes/page.tsx`; sin Stories). Competencia ya trae las columnas. UI compartida
   `components/social/post-sentiment.tsx` (barra + resumen 2 líneas, click expande). FB propio: sin análisis en
   `social_posts` → no se muestra. Match YTD 27-sep: 97/106 posts IG propios (9 no están en `social_posts`), 82 con dato.
+- **ER de la competencia (23-nov-2026, #1101):** el `engagement` que guarda el scraper usa los contadores del día del scrape y NO se actualiza (subestimaba 20–700%) y los posts con followers=0 quedaban afuera → `enrichEngagement` lo recalcula SIEMPRE (likes+coment. actuales ÷ seguidores: foto ≤ fecha → los del scrape → primera foto; likes −1 = 0). Tendencia mensual con ≥3 posts por marca y mes (Philco nov-26 = 5 posts, 2 virales). `social_followers` IG diario recién desde fin de sep-26 (may = cifras redondas). ER por seguidor (~0,03–0,06%) NO es comparable con el ER propio de Drean (interacciones ÷ alcance, ~2–3%). Sentimiento NO comparable entre marcas: Drean = todos los comentarios por la API, competencia = muestra de Apify.
 - **Comentarios guardados + sentimiento propio por la API (29-oct-2026, pedido del user):** may–jul 2026 tenían posts de Drean
   con resumen pero sin % (n8n pisaba el % con vacío; el texto de los comentarios nunca se guardó). Tabla **`social_post_comments`**
   (migración 0145, APLICADA; clave = id de Meta o `apify:<shortcode>:<hash>`) que llenan: el scraper `part=ig` (Apify, todas las
