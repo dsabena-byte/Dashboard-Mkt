@@ -63,6 +63,62 @@ async function syncMonthlyByChannel(url: string, key: string, now: string): Prom
   return `${rows.length} filas OK`;
 }
 
+// (4) KPIs mensuales → web_monthly_kpis (0151). vw_drean_web_monthly tarda ~6 s (agrega web_traffic entera).
+interface MesKpiRow { mes: string; sesiones: number | null; pageviews: number | null; bounce_rate: number | null; avg_session_duration: number | null }
+async function syncMonthlyKpis(url: string, key: string, now: string): Promise<string> {
+  const res = await fetch(`${url}/rest/v1/vw_drean_web_monthly?select=mes,sesiones,pageviews,bounce_rate,avg_session_duration&order=mes`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store",
+  });
+  if (!res.ok) return `vista ${res.status}: ${(await res.text()).slice(0, 200)}`;
+  const rows = ((await res.json()) as MesKpiRow[])
+    .filter((r) => r.mes)
+    .map((r) => ({ mes: r.mes, sesiones: r.sesiones ?? 0, pageviews: r.pageviews ?? 0, bounce_rate: r.bounce_rate, avg_session_duration: r.avg_session_duration, updated_at: now }));
+  return supabaseUpsert(url, key, "web_monthly_kpis", rows, "mes");
+}
+
+// (5) Top productos por MES → web_top_products_monthly (0151). El RPC tarda ~6 s por semana: se paga acá,
+// para el mes en curso y los 2 anteriores (los 3 meses en paralelo) (el tablero abre en el último mes cerrado). Top 200 por mes.
+interface ProdRow { landing_page: string; sku: string | null; producto_slug: string | null; categoria: string | null; sesiones: number | null; usuarios: number | null; conversiones: number | null; pageviews: number | null }
+async function syncTopProducts(url: string, key: string, now: string): Promise<string> {
+  const hoy = new Date();
+  const uno = async (k: number): Promise<string> => {
+    const ini = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - k, 1));
+    const fin = new Date(Date.UTC(ini.getUTCFullYear(), ini.getUTCMonth() + 1, 0));
+    const mes = ini.toISOString().slice(0, 10);
+    const semanas: { from: string; to: string }[] = [];
+    for (let d = new Date(ini); d <= fin; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 7))) {
+      const h = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 6));
+      semanas.push({ from: d.toISOString().slice(0, 10), to: (h > fin ? fin : h).toISOString().slice(0, 10) });
+    }
+    const partes = await Promise.all(semanas.map(async (w) => {
+      const r = await fetch(`${url}/rest/v1/rpc/top_products_in_range`, {
+        method: "POST", cache: "no-store",
+        headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_from: w.from, p_to: w.to, p_limit: 200 }),
+      });
+      if (!r.ok) throw new Error(`rpc ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      return (await r.json()) as ProdRow[];
+    }));
+    const map = new Map<string, ProdRow & { sesiones: number; usuarios: number; conversiones: number; pageviews: number }>();
+    for (const row of partes.flat()) {
+      const acc = map.get(row.landing_page);
+      if (acc) { acc.sesiones += row.sesiones ?? 0; acc.usuarios += row.usuarios ?? 0; acc.conversiones += row.conversiones ?? 0; acc.pageviews += row.pageviews ?? 0; }
+      else map.set(row.landing_page, { ...row, sesiones: row.sesiones ?? 0, usuarios: row.usuarios ?? 0, conversiones: row.conversiones ?? 0, pageviews: row.pageviews ?? 0 });
+    }
+    const filas = [...map.values()].sort((a, b) => b.sesiones - a.sesiones).slice(0, 200).map((r) => ({
+      mes, landing_page: r.landing_page, sku: r.sku, producto_slug: r.producto_slug, categoria: r.categoria,
+      sesiones: r.sesiones, usuarios: r.usuarios, conversiones: r.conversiones, pageviews: r.pageviews, updated_at: now,
+    }));
+    const up = await supabaseUpsert(url, key, "web_top_products_monthly", filas, "mes,landing_page");
+    if (up.includes("error")) return `${mes.slice(0, 7)}: ${up}`;
+    await fetch(`${url}/rest/v1/web_top_products_monthly?mes=eq.${mes}&updated_at=lt.${encodeURIComponent(now)}`, {
+      method: "DELETE", headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" },
+    }).catch(() => null);
+    return `${mes.slice(0, 7)}: ${filas.length}`;
+  };
+  return (await Promise.all([2, 1, 0].map(uno))).join(" · ");
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -115,7 +171,13 @@ export async function GET(request: Request) {
     // dejó de existir). No fatal: sin la migración, los lectores caen a la vista.
     const channelRes = await syncMonthlyByChannel(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`);
 
-    return NextResponse.json({ ok: true, dias_leidos: rows.length, daily_upsert: dailyOk, monthly_upsert: monthly.length, monthlyRes, channelRes });
+    // (4) y (5): no fatales; sin la migración 0151 los lectores caen a la vista / RPC.
+    const [kpisRes, productosRes] = await Promise.all([
+      syncMonthlyKpis(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`),
+      syncTopProducts(url, key, now).catch((e) => `error: ${e instanceof Error ? e.message : String(e)}`),
+    ]);
+
+    return NextResponse.json({ ok: true, dias_leidos: rows.length, daily_upsert: dailyOk, monthly_upsert: monthly.length, monthlyRes, channelRes, kpisRes, productosRes });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }

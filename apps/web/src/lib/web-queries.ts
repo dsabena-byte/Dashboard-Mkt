@@ -153,11 +153,20 @@ export async function getLatestWebDate(): Promise<string | null> {
 // vez de traer 24 meses de datos DIARIOS (que partía el rango en ~104 queries
 // semanales en paralelo contra la vista pesada → ahogaba Postgres en Vercel).
 // Devuelve filas con shape DailyKpiRow (fecha = mes) para el consumo existente.
+type MonKpi = { mes: string; sesiones: number | null; avg_session_duration: number | null };
+// Tabla precalculada (0151, cron web-cat-agg); la vista tarda ~6 s. Sin filas → la vista.
+async function getWebMonthlyKpisRows(from: string, to: string): Promise<{ data: MonKpi[] | null }> {
+  const supabase = getServerSupabase();
+  const pre = await supabase.from("web_monthly_kpis").select("mes, sesiones, avg_session_duration").gte("mes", from).lte("mes", to).order("mes").returns<MonKpi[]>();
+  if (!pre.error && (pre.data?.length ?? 0) > 0) return { data: pre.data };
+  const vista = await supabase.from("vw_drean_web_monthly").select("mes, sesiones, avg_session_duration").gte("mes", from).lte("mes", to).returns<MonKpi[]>();
+  return { data: vista.data ?? null };
+}
+
 export async function getWebMonthlyKpis(range: WebRange): Promise<DailyKpiRow[]> {
   const from = `${range.from.slice(0, 7)}-01`;
-  const supabase = getServerSupabase();
   const [monRes, chanRes] = await Promise.all([
-    supabase.from("vw_drean_web_monthly").select("mes, sesiones, avg_session_duration").gte("mes", from).lte("mes", range.to).returns<Array<{ mes: string; sesiones: number | null; avg_session_duration: number | null }>>(),
+    getWebMonthlyKpisRows(from, range.to),
     getWebMonthlyByChannelRows(from, range.to), // tabla precalculada (0121); la vista tardaba ~5 s
   ]);
   const conv = new Map<string, number>();
@@ -327,6 +336,41 @@ interface ProdRpcRow {
   conversion_rate: number | null;
 }
 
+function mesesCompletos(range: WebRange): string[] | null {
+  if (!range.from.endsWith("-01")) return null;
+  const [y, m, d] = range.to.split("-").map(Number);
+  const ultimo = new Date(Date.UTC(y!, m!, 0)).getUTCDate();
+  if (d !== ultimo) return null;
+  const out: string[] = [];
+  for (let cur = new Date(`${range.from}T00:00:00Z`); cur.toISOString().slice(0, 10) <= range.to; cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1))) {
+    out.push(cur.toISOString().slice(0, 10));
+  }
+  return out.length ? out : null;
+}
+
+async function topProductsPrecalc(range: WebRange, limit: number): Promise<TopProductRow[] | null> {
+  const meses = mesesCompletos(range);
+  if (!meses) return null;
+  const supabase = getServerSupabase();
+  const { data, error } = await supabase
+    .from("web_top_products_monthly")
+    .select("mes, landing_page, sku, producto_slug, categoria, sesiones, usuarios, conversiones, pageviews")
+    .in("mes", meses)
+    .returns<Array<ProdRpcRow & { mes: string }>>();
+  if (error || !data?.length) return null;
+  if (new Set(data.map((r) => r.mes)).size < meses.length) return null;
+  const map = new Map<string, ProdRpcRow>();
+  for (const r of data) {
+    const acc = map.get(r.landing_page);
+    if (acc) { acc.sesiones += r.sesiones ?? 0; acc.usuarios += r.usuarios ?? 0; acc.conversiones += r.conversiones ?? 0; acc.pageviews += r.pageviews ?? 0; }
+    else map.set(r.landing_page, { landing_page: r.landing_page, sku: r.sku, producto_slug: r.producto_slug, categoria: r.categoria, sesiones: r.sesiones ?? 0, usuarios: r.usuarios ?? 0, conversiones: r.conversiones ?? 0, pageviews: r.pageviews ?? 0, conversion_rate: null });
+  }
+  return [...map.values()]
+    .sort((a, b) => b.sesiones - a.sesiones)
+    .slice(0, limit)
+    .map((r) => ({ ...r, ultima_fecha: range.to }));
+}
+
 export async function getWebTopProducts(range: WebRange, limit = 10): Promise<TopProductRow[]> {
   const supabase = getServerSupabase();
   const client = supabase as unknown as {
@@ -335,6 +379,9 @@ export async function getWebTopProducts(range: WebRange, limit = 10): Promise<To
       args: Record<string, unknown>,
     ) => Promise<{ data: unknown; error: { message: string } | null }>;
   };
+  // Rango = meses completos y todos precalculados (0151, cron web-cat-agg) → tabla, sin RPC (~6 s por semana).
+  const pre = await topProductsPrecalc(range, limit);
+  if (pre) return pre;
   // Chunk semanal: el RPC procesa ~11k filas PDP/mes con regex y timeoutea a full month.
   // Pedimos un top amplio por semana (para no perder un producto que es top en el
   // acumulado) y mergeamos por landing_page.
