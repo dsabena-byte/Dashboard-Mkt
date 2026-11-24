@@ -11,13 +11,14 @@ type Metas = Map<string, (number | null)[]>;
 // Plan del Mapa → plan donde se guardan sus metas (mismo cruce que objetivos-kpis.ts).
 const PLAN_META: Record<string, string> = { Instagram: "Redes Sociales" };
 
-// Metas mensuales de un KPI; Floor Share solo tiene metas por categoría → general = Σ cat × peso (como el Seguimiento).
-function metasKpi(metas: Metas, plan: string, kpi: string): (number | null)[] | undefined {
+// Metas mensuales de un KPI; Floor Share solo tiene metas por categoría → general = Σ cat × unidades exhibidas de la
+// categoría (presencia en el piso, como el Seguimiento; nunca facturación).
+function metasKpi(metas: Metas, plan: string, kpi: string, pesosFs?: Record<string, number>): (number | null)[] | undefined {
   const p = PLAN_META[plan] ?? plan;
   const gen = metas.get(`${p}|${kpi}|${CAT_GENERAL}`);
   if (gen?.some((v) => v != null) || plan !== "Floor Share") return gen;
   return Array.from({ length: 12 }, (_, i) =>
-    generalPonderado(Object.fromEntries(CATS.map((c) => [c, metas.get(`${p}|${kpi}|${c}`)?.[i]]))));
+    generalPonderado(Object.fromEntries(CATS.map((c) => [c, metas.get(`${p}|${kpi}|${c}`)?.[i]])), pesosFs));
 }
 
 // Volumen = total del año; tasa = meta de diciembre (último mes con meta).
@@ -37,7 +38,7 @@ function fmt(v: number | null, u: string): string {
   return Math.abs(v) >= 1e6 ? `${n(v / 1e6, 1)} M` : n(v);
 }
 
-export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas: Metas; anio: number }) {
+export function MapaVisual({ config, metas, anio, pesosFs }: { config: MapaConfig; metas: Metas; anio: number; pesosFs?: Record<string, number> }) {
   const totalPeso = config.objetivos.reduce((a, o) => a + (Number(o.peso) || 0), 0) || 1;
   const kpis = config.planes.flatMap((p) => p.kpis.map((k) => ({ ...k, plan: p.nombre })));
   // Meta de cada objetivo a diciembre por categoría; general = Σ cat × peso; Salud de Marca = Σ objetivo × peso (= Seguimiento).
@@ -94,7 +95,7 @@ export function MapaVisual({ config, metas, anio }: { config: MapaConfig; metas:
                 {lista.map((k) => {
                   const m = metricaPorNombre(k.nombre);
                   const tasa = m?.tipo === "rate";
-                  const meta = anual(metasKpi(metas, k.plan, k.nombre), tasa);
+                  const meta = anual(metasKpi(metas, k.plan, k.nombre, pesosFs), tasa);
                   return (
                     <div key={`${k.plan}|${k.nombre}`} className="grid min-w-0 gap-1 rounded-lg border bg-white px-3 py-2" style={{ borderLeft: `3px solid ${col}` }}>
                       <div className="flex min-w-0 items-baseline justify-between gap-2">

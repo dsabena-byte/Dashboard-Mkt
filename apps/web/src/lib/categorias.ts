@@ -15,6 +15,12 @@ export function catPesoNorm(pesos: Record<string, number> = CATEGORIA_PESOS): Re
 }
 
 // Agrega valores por categoría a un General ponderado (Σ cat × peso).
+/** Floor Share: el general pondera cada categoría por las UNIDADES exhibidas (presencia en el piso), nunca por facturación. */
+export function pesosPiso(o: { lavado: { total_units: number }; refri: { total_units: number }; coccion: { total_units: number } }): Record<string, number> {
+  const w = { Lavado: o.lavado.total_units, Refrigeración: o.refri.total_units, Cocción: o.coccion.total_units };
+  return w.Lavado + w.Refrigeración + w.Cocción > 0 ? w : { Lavado: 1, Refrigeración: 1, Cocción: 1 };
+}
+
 export function generalPonderado(porCat: Record<string, number | null | undefined>, pesos: Record<string, number> = CATEGORIA_PESOS): number | null {
   const norm = catPesoNorm(pesos);
   let sum = 0, any = false;

@@ -13,7 +13,7 @@ import { hoyAR, vigenteEnFecha } from "@/lib/cb-ventas/vigencia";
 import { crearEnriquecedorFs } from "@/lib/fs-enrich";
 import type { ExhibicionTienda } from "@/components/trade/exhibicion-fotos";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS } from "@/lib/fs-objetivos";
-import { CATEGORIA_PESOS } from "@/lib/categorias";
+import { pesosPiso } from "@/lib/categorias";
 import type { CbFilter } from "@/lib/cb-queries";
 import type { FloorShareFilter } from "@/lib/floor-share-queries";
 import type { MapaMetrica, MapaPunto } from "@/components/trade/mapa-zonas";
@@ -71,7 +71,7 @@ export async function objetivosFs(v: FsView, f: FloorShareFilter): Promise<FsObj
   const mesesFiltro = (f.meses ?? []).map((m) => MESES_FS.indexOf(m)).filter((i) => i >= 0);
   const { anio, mesIdx } = mesRefFs(Math.max(0, ...sems), mesesFiltro.length ? Math.max(...mesesFiltro) : undefined);
   const o = (await getFsObjetivosAnio(anio))[mesIdx]!;
-  const p = CATEGORIA_PESOS as Record<string, number>;
+  const p = pesosPiso(v.overall);
   const items: Array<[number, number]> = [[o.lavado, p.Lavado ?? 0], [o.refrigeracion, p["Refrigeración"] ?? 0], [o.coccion, p["Cocción"] ?? 0]];
   const wsum = items.reduce((s, [, w]) => s + w, 0) || 1;
   return { general: items.reduce((s, [x, w]) => s + x * w, 0) / wsum, lavado: o.lavado, refri: o.refrigeracion, coccion: o.coccion, anio, mesIdx };
