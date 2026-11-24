@@ -374,3 +374,9 @@ causa raíz · qué se hizo.
 - **Proceso:** `ga4` (Tráfico Web), Issue #1040 (watchdog 15-nov 06:35): sin actualizar hace 24 h con el último run en success.
 - **Causa (verificada):** el sync sí trae datos (run 43688072592, 15-nov 07:01: rango 2026-11-12 → 2026-11-14, 974 filas en `web_traffic`, 12.352 landing). GA4 llega hasta ayer y el upsert (merge-duplicates) no toca `created_at` de filas existentes → la columna que mide la frescura avanza 1 vez por día. Con `cadenciaH: 12` (ok ≤ 18 h) salta antes de la corrida de la mañana (los schedules se ejecutan ~6 h tarde: 06:55/07:01/07:06).
 - **Fix:** `monitoreo-config.ts` ga4 `cadenciaH` 12 → 24 (igual que `data-health.ts`). PR `claude/fix-monitoreo-ga4-cadencia`. No hace falta relanzar: el run 43688072592 ya trajo el día 14.
+
+## 2026-11-24 (UTC) — meta-paid-sync: límite de pedidos de Meta clasificado como credencial
+- **Proceso:** `meta-paid-sync.yml`, Issue #1105 (watchdog 23-nov 23:55 y 24-nov 09:56): «credencial inválida o vencida».
+- **Causa (verificada en el log del run 45277111214):** falló solo la fase `edad` de 2026-09 con `Graph 403 "Application request limit reached", code 4` = límite de pedidos de la app de Meta (temporal). El token está bien. El watchdog lo leía como credencial por `403|OAuthException` y no reintentaba.
+- **Fix:** `watchdog.sh` `causa_de` detecta «request limit reached / too many calls / rate limit / 429» antes que credencial → `temporal` (se reintenta solo). PR #1106 (mergeado).
+- **Acción:** rerun del run 45277111214 → `success` (24-nov ~12:12 UTC).
