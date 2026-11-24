@@ -11,7 +11,7 @@ function cfg() {
 }
 
 /** formato vacío = el medio; estimado = cruce edad × ubicación estimado (solo Meta). */
-export type FilaEdadIn = Omit<FilaEdad, "medio" | "mes" | "spend" | "formato" | "estimado"> & { spend: number; formato?: string; estimado?: boolean; moneda?: "ARS" | "USD" };
+export type FilaEdadIn = Omit<FilaEdad, "medio" | "mes" | "spend" | "formato" | "estimado" | "video_p50"> & { video_p50?: number } & { spend: number; formato?: string; estimado?: boolean; moneda?: "ARS" | "USD" };
 
 /** Reemplaza las filas de un medio y mes. Sin filas no toca nada (un pedido vacío no borra lo bueno). */
 export async function guardarEdad(medio: string, mes: string, filas: FilaEdadIn[]): Promise<number> {
@@ -24,13 +24,13 @@ export async function guardarEdad(medio: string, mes: string, filas: FilaEdadIn[
     const k = `${f.pieza_id}|${edad}|${f.formato || medio}`;
     const a = agg.get(k);
     if (!a) { agg.set(k, { ...f, edad }); continue; }
-    a.impresiones += f.impresiones; a.clicks += f.clicks; a.video_completos += f.video_completos;
+    a.impresiones += f.impresiones; a.clicks += f.clicks; a.video_completos += f.video_completos; a.video_p50 = (a.video_p50 ?? 0) + (f.video_p50 ?? 0);
     a.interacciones += f.interacciones; a.spend += f.spend;
   }
   const now = new Date().toISOString();
   const rows = [...agg.values()].map((f) => ({
     medio, mes, pieza_id: f.pieza_id, edad: f.edad, formato: f.formato || medio, estimado: !!f.estimado, tipo: f.tipo,
-    impresiones: Math.round(f.impresiones), clicks: Math.round(f.clicks), video_completos: Math.round(f.video_completos),
+    impresiones: Math.round(f.impresiones), clicks: Math.round(f.clicks), video_completos: Math.round(f.video_completos), video_p50: Math.round(f.video_p50 ?? 0),
     interacciones: Math.round(f.interacciones), spend: Math.round(f.spend * 100) / 100, moneda: f.moneda ?? "ARS", updated_at: now,
   }));
   const del = await fetch(`${url}/rest/v1/pauta_edad?medio=eq.${encodeURIComponent(medio)}&mes=eq.${mes}`, { method: "DELETE", headers: { ...h, Prefer: "return=minimal" } });
@@ -47,10 +47,10 @@ export async function getPautaEdad(anio: number): Promise<{ filas: FilaEdad[]; m
   const { url, h } = cfg();
   const filas: (FilaEdad & { moneda: string })[] = [];
   for (let off = 0; off < 200_000; off += 1000) {
-    const res = await fetch(`${url}/rest/v1/pauta_edad?select=medio,mes,pieza_id,edad,formato,estimado,tipo,impresiones,clicks,video_completos,interacciones,spend,moneda&mes=like.${anio}-*&order=medio,mes,pieza_id,edad,formato&limit=1000&offset=${off}`, { headers: h, cache: "no-store", signal: AbortSignal.timeout(20_000) });
+    const res = await fetch(`${url}/rest/v1/pauta_edad?select=medio,mes,pieza_id,edad,formato,estimado,tipo,impresiones,clicks,video_completos,video_p50,interacciones,spend,moneda&mes=like.${anio}-*&order=medio,mes,pieza_id,edad,formato&limit=1000&offset=${off}`, { headers: h, cache: "no-store", signal: AbortSignal.timeout(20_000) });
     if (!res.ok) throw new Error(`pauta_edad ${res.status}`);
     const rows = (await res.json()) as (FilaEdad & { moneda: string })[];
-    filas.push(...rows.map((r) => ({ ...r, spend: Number(r.spend) })));
+    filas.push(...rows.map((r) => ({ ...r, spend: Number(r.spend), video_p50: Number(r.video_p50 ?? 0) })));
     if (rows.length < 1000) break;
   }
   if (filas.some((f) => f.moneda === "USD")) {

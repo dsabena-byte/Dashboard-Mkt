@@ -32,14 +32,16 @@ export interface FilaEdad {
   impresiones: number;
   clicks: number;
   video_completos: number;
+  /** Reproducciones de video que llegaron al 50% o más (sin dato en filas viejas: 0). */
+  video_p50: number;
   interacciones: number;
   spend: number; // ya en $
 }
 
-export const METRICAS = ["impresiones", "clicks", "video_completos", "interacciones", "spend"] as const;
+export const METRICAS = ["impresiones", "clicks", "video_completos", "video_p50", "interacciones", "spend"] as const;
 export type Metrica = (typeof METRICAS)[number];
 export type Valores = Record<Metrica, number>;
-const vacio = (): Valores => ({ impresiones: 0, clicks: 0, video_completos: 0, interacciones: 0, spend: 0 });
+const vacio = (): Valores => ({ impresiones: 0, clicks: 0, video_completos: 0, video_p50: 0, interacciones: 0, spend: 0 });
 
 export interface FiltroEdad { meses?: string[]; tipo: "todas" | "video" | "imagen" | "texto"; por?: "formato" | "medio" }
 export interface ResumenEdad {
@@ -98,6 +100,23 @@ export function mejorMedio(r: ResumenEdad, edad: string, res: Metrica): { medio:
     if (!best || costo < best.costo) best = { medio: me, costo };
   }
   return best;
+}
+
+export interface PuestoFormato { formato: string; costo: number; resultados: number; spend: number }
+/**
+ * Formatos de una edad ordenados del más barato al más caro por resultado. Entran los que tienen ≥5% de la inversión de
+ * esa edad y ≥10 resultados (con menos, el costo es ruido).
+ */
+export function rankingFormatos(r: ResumenEdad, edad: string, res: Metrica, n = 3): PuestoFormato[] {
+  const tot = r.porEdad.get(edad);
+  if (!tot) return [];
+  const out: PuestoFormato[] = [];
+  for (const fo of r.medios) {
+    const v = r.celda(edad, fo);
+    if (v[res] < 10 || v.spend < tot.spend * 0.05) continue;
+    out.push({ formato: fo, costo: v.spend / v[res], resultados: v[res], spend: v.spend });
+  }
+  return out.sort((a, b) => a.costo - b.costo).slice(0, n);
 }
 
 const POS: Record<string, string> = {

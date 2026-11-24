@@ -2008,7 +2008,7 @@ export function PerformanceClient({ data: rawData, metaPaid = [], dv360 = [], dv
       {/* ===== EDAD × MEDIO (pauta_edad) ===== */}
       {tab === "Eficiencia Medios" && pautaEdad && (
         <div>
-          <SectionTitle>Edad × medio y formato · qué rinde mejor en cada edad</SectionTitle>
+          <SectionTitle>Mejores formatos por edad · video e imagen</SectionTitle>
           <EdadMedioSection filas={pautaEdad.filas} meses={pautaEdad.meses} />
         </div>
       )}

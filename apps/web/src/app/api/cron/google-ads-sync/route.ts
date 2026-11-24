@@ -286,12 +286,12 @@ type AgeResult = {
   campaign?: { advertisingChannelType?: string };
   adGroup?: { id?: string };
   adGroupCriterion?: { ageRange?: { type?: string } };
-  metrics?: { impressions?: string; clicks?: string; costMicros?: string; interactions?: string; videoQuartileP100Rate?: number };
+  metrics?: { impressions?: string; clicks?: string; costMicros?: string; interactions?: string; videoQuartileP50Rate?: number; videoQuartileP100Rate?: number };
 };
 async function edadGoogle(getToken: GetToken, cust: { id: string; label: string }, start: string, end: string): Promise<Map<string, FilaEdadIn[]>> {
   const query = `
     SELECT segments.month, campaign.advertising_channel_type, ad_group.id, ad_group_criterion.age_range.type,
-      metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.interactions, metrics.video_quartile_p100_rate
+      metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.interactions, metrics.video_quartile_p50_rate, metrics.video_quartile_p100_rate
     FROM age_range_view
     WHERE segments.date BETWEEN '${start}' AND '${end}'`;
   let batches: Array<{ results?: AgeResult[] }> | null = null;
@@ -319,6 +319,7 @@ async function edadGoogle(getToken: GetToken, cust: { id: string; label: string 
       tipo: medio === "Google Search" ? "texto" : p100 > 0 ? "video" : "imagen",
       impresiones: impr, clicks: n(r.metrics?.clicks),
       video_completos: Math.round(impr * p100),
+      video_p50: Math.round(impr * n(r.metrics?.videoQuartileP50Rate)),
       interacciones: medio === "Demand Gen" ? n(r.metrics?.interactions) : 0,
       spend: n(r.metrics?.costMicros) / 1e6,
     });

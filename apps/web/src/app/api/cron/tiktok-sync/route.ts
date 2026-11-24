@@ -412,12 +412,12 @@ async function edadTikTok(advId: string, token: string, mes: string): Promise<Fi
     return out;
   };
   let items: TTItem[];
-  try { items = await pedir(["spend", "impressions", "clicks", "video_views_p100", "likes", "comments", "shares"]); }
+  try { items = await pedir(["spend", "impressions", "clicks", "video_views_p50", "video_views_p100", "likes", "comments", "shares"]); }
   catch { items = await pedir(["spend", "impressions", "clicks"]); }
   return items.filter((it) => it.dimensions?.ad_id).map((it) => {
     const mt = it.metrics ?? {};
     return { pieza_id: it.dimensions!.ad_id!, edad: it.dimensions!.age ?? "", tipo: "video",
-      impresiones: n(mt.impressions), clicks: n(mt.clicks), video_completos: n(mt.video_views_p100),
+      impresiones: n(mt.impressions), clicks: n(mt.clicks), video_completos: n(mt.video_views_p100), video_p50: n(mt.video_views_p50),
       interacciones: n(mt.likes) + n(mt.comments) + n(mt.shares), spend: n(mt.spend) };
   });
 }
