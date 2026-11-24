@@ -18,6 +18,8 @@ AGENTE=""      # lo que necesita al agente (código) o al user (saldo/credencial
 causa_de() {   # clasifica el log del paso que falló
   local log="$1"
   if grep -qiE 'payment required|sin saldo|insufficient_quota|hard limit|usage limit|40200' <<<"$log"; then echo saldo
+  # Meta devuelve el límite de pedidos como 403 OAuthException (code 4/17/32/613): es temporal, no credencial.
+  elif grep -qiE 'request limit reached|too many calls|rate limit|\b429\b' <<<"$log"; then echo temporal
   elif grep -qiE 'invalid_grant|unauthorized|\b401\b|\b403\b|token (expired|inv)|OAuthException|credenciales' <<<"$log"; then echo credencial
   elif grep -qiE 'exit code 28|operation timed out|timed out|FUNCTION_INVOCATION_TIMEOUT|\b504\b' <<<"$log"; then echo timeout
   elif grep -qiE '\b50[023]\b|ECONNRESET|fetch failed|socket hang up|rate limit|\b429\b' <<<"$log"; then echo temporal
