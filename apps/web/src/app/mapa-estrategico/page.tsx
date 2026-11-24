@@ -2,6 +2,7 @@ import { MapaEditor } from "@/components/mapa-estrategico/mapa-editor";
 import { getMapaConfig, getMetasAnio } from "@/lib/mapa-server";
 import { HowToRead } from "@/components/knowledge/how-to-read";
 import { MapaVisual } from "@/components/mapa-estrategico/mapa-visual";
+import { getTradeMonthly } from "@/lib/trade-monthly";
 
 export const metadata = { title: "Mapa Estratégico" };
 export const dynamic = "force-dynamic";
@@ -9,7 +10,10 @@ export const fetchCache = "force-no-store";
 
 export default async function MapaEstrategicoPage() {
   const anio = new Date().getFullYear();
-  const [initial, metas] = await Promise.all([getMapaConfig(), getMetasAnio(anio)]); // config desde la DB (SSR) → sin spinner de carga
+  const [initial, metas, trade] = await Promise.all([getMapaConfig(), getMetasAnio(anio), getTradeMonthly(anio)]); // config desde la DB (SSR) → sin spinner de carga
+  // Floor Share general = categorías pesadas por unidades exhibidas (último mes relevado).
+  const iFs = [...Array(12).keys()].reverse().find((i) => (trade.fsUnid.Lavado?.[i] ?? 0) > 0);
+  const pesosFs = iFs == null ? undefined : { Lavado: trade.fsUnid.Lavado?.[iFs] ?? 0, "Refrigeración": trade.fsUnid["Refrigeración"]?.[iFs] ?? 0, "Cocción": trade.fsUnid["Cocción"]?.[iFs] ?? 0 };
   return (
     <div className="space-y-5">
       <header>
@@ -27,7 +31,7 @@ export default async function MapaEstrategicoPage() {
       <HowToRead slug="mapa-estrategico" />
 
       {/* Pedido del user (nov-2026, para el directorio): arriba el mapa visual, abajo el proceso 1-5; sin la validación de pesos. */}
-      {initial && <MapaVisual config={initial} metas={metas} anio={anio} />}
+      {initial && <MapaVisual config={initial} metas={metas} anio={anio} pesosFs={pesosFs} />}
       <MapaEditor initial={initial} />
     </div>
   );

@@ -202,7 +202,7 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
   // El cron trade-agg la llena en background → el render nunca pagina la tabla CB.
   const tradeP = skipTrade ? Promise.resolve(emptyTradeMonthly()) : getTradeMonthly(anio);
   const cbP = tradeP.then((t) => t.cb);
-  const fsP = tradeP.then((t) => ({ general: t.fsGeneral, cat: t.fsCat }));
+  const fsP = tradeP.then((t) => ({ general: t.fsGeneral, cat: t.fsCat, unid: t.fsUnid }));
   // Mercado y competencia (SoS / SoE / IA / índice SEO): REST barato, memo por request.
   const mercadoP = safe(getMercadoSeries(anio), null as MercadoResult | null);
   const mercadoMetasP = getMercadoMetas(anio);
@@ -280,11 +280,19 @@ async function computeSeguimientoKpis(anio: number, skipTrade = false): Promise<
   // aplica el filtro de mes cerrado (depende de hoy, por eso queda fuera de la cache).
   const cbRealM = cbMonthly.map((v, i) => (closed(i) ? v : null));
   const fsRealM = fsMonthly.general.map((v, i) => (closed(i) ? v : null));
-  // Meta General de Floor Share = Σ (meta por categoría × peso). Se construye una
-  // MetaKpiData sintética (dirección/umbrales de la config por categoría).
-  const fsMetaM = Array.from({ length: 12 }, (_, i) =>
-    generalPonderado({ Lavado: mFsLav.valores[i], Refrigeración: mFsRef.valores[i], Cocción: mFsCoc.valores[i] }),
-  );
+  // Meta General de Floor Share = Σ (meta por categoría × unidades exhibidas de esa categoría): mide presencia
+  // en el piso, así que pesa lo que ocupa cada categoría (NO la facturación). Mes sin relevamiento → pesos del
+  // último mes con dato. Se construye una MetaKpiData sintética (dirección/umbrales de la config por categoría).
+  const unid = fsMonthly.unid ?? {};
+  let ultPeso: Record<string, number> | undefined;
+  const pesoMes = Array.from({ length: 12 }, (_, i) => {
+    const p = { Lavado: unid.Lavado?.[i] ?? 0, "Refrigeración": unid["Refrigeración"]?.[i] ?? 0, "Cocción": unid["Cocción"]?.[i] ?? 0 };
+    return p.Lavado + p["Refrigeración"] + p["Cocción"] > 0 ? p : null;
+  });
+  const fsMetaM = Array.from({ length: 12 }, (_, i) => {
+    ultPeso = pesoMes[i] ?? ultPeso ?? pesoMes.filter(Boolean).at(-1) ?? undefined;
+    return generalPonderado({ Lavado: mFsLav.valores[i], Refrigeración: mFsRef.valores[i], Cocción: mFsCoc.valores[i] }, ultPeso);
+  });
   const mFs: MetaKpiData = { valores: fsMetaM, direccion: mFsLav.direccion, umbralVerde: mFsLav.umbralVerde, umbralAmarillo: mFsLav.umbralAmarillo, unidad: "%" };
 
   // ===== Shares por categoría por plan (para el real por categoría) =====

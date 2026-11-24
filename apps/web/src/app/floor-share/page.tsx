@@ -20,7 +20,7 @@ import { MetaPanel } from "@/components/metas/meta-panel";
 import { getFsObjetivosAnio, mesRefFs, MESES_FS as MESES, FS_KPI, FS_PLAN } from "@/lib/fs-objetivos";
 import { puedeEditarActual } from "@/lib/usuarios-server";
 import { MetaKpiCard } from "@/components/metas/meta-kpi-card";
-import { CATEGORIA_PESOS, CATEGORIAS_CORE } from "@/lib/categorias";
+import { CATEGORIAS_CORE, pesosPiso } from "@/lib/categorias";
 import { DashTabBar } from "@/components/diagnostico/dash-tabs";
 
 type Obj = { lavado: number; refri: number; coccion: number };
@@ -150,7 +150,7 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
   // Cards (sistema de Redes): fila "Mes" = mes de referencia vs SU meta · fila "Período" = la vista entera vs el
   // promedio de las metas de sus meses (el mes de dic del año anterior usa la meta de ese año).
   const objDeMes = (k: string) => { const [y, m] = k.split("-").map(Number); const o2 = (y === anio ? objAnio : objAnt)[m! - 1] ?? o; return { lavado: o2.lavado, refri: o2.refrigeracion, coccion: o2.coccion }; };
-  const general = (ob: Obj) => { const p = CATEGORIA_PESOS as Record<string, number>; const it: Array<[number, number]> = [[ob.lavado, p.Lavado ?? 0], [ob.refri, p["Refrigeración"] ?? 0], [ob.coccion, p["Cocción"] ?? 0]]; return it.reduce((s, [x, w]) => s + x * w, 0) / (it.reduce((s, [, w]) => s + w, 0) || 1); };
+  const general = (ob: Obj) => { const p = pesosPiso(v.overall); const it: Array<[number, number]> = [[ob.lavado, p.Lavado ?? 0], [ob.refri, p["Refrigeración"] ?? 0], [ob.coccion, p["Cocción"] ?? 0]]; return it.reduce((s, [x, w]) => s + x * w, 0) / (it.reduce((s, [, w]) => s + w, 0) || 1); };
   const refKey = `${anio}-${String(mesIdx + 1).padStart(2, "0")}`;
   const mesRef = (v.porMes ?? []).find((m) => m.mes === refKey)?.overall ?? null;
   const mesesVista = (v.porMes ?? []).map((m) => m.mes);
@@ -179,9 +179,9 @@ async function renderFloorShare(searchParams: PageProps["searchParams"]) {
       {editor && (
         <MetaPanel
           plan={FS_PLAN}
-          catPesos={CATEGORIA_PESOS}
+          catPesos={pesosPiso(v.overall)}
           titulo="Metas de Floor Share (objetivos por mes y categoría)"
-          subtitulo="Acá se editan los objetivos: Ene–Dic para Lavado, Refrigeración y Cocción. Cada mes se compara contra su meta (cambiar un mes no toca los otros). El general se calcula solo (Σ categoría × peso). Mes sin meta = 32 / 25 / 23%."
+          subtitulo="Acá se editan los objetivos: Ene–Dic para Lavado, Refrigeración y Cocción. Cada mes se compara contra su meta (cambiar un mes no toca los otros). El general se calcula solo (Σ categoría × unidades exhibidas de cada categoría). Mes sin meta = 32 / 25 / 23%."
           kpis={[{ nombre: FS_KPI, unidad: "%", categorias: [...CATEGORIAS_CORE] }]}
         />
       )}

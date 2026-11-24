@@ -47,6 +47,7 @@ export async function refrescarDerivados(): Promise<Record<string, string>> {
   await trUpsert("trade_monthly", Array.from({ length: 12 }, (_, i) => ({
     anio, mes: i + 1, cb_pct: t.cb[i], fs_general: t.fsGeneral[i],
     fs_lavado: t.fsCat.Lavado?.[i] ?? null, fs_refri: t.fsCat["Refrigeración"]?.[i] ?? null, fs_coccion: t.fsCat["Cocción"]?.[i] ?? null,
+    fs_u_lavado: t.fsUnid.Lavado?.[i] ?? null, fs_u_refri: t.fsUnid["Refrigeración"]?.[i] ?? null, fs_u_coccion: t.fsUnid["Cocción"]?.[i] ?? null,
     updated_at: now,
   })), "anio,mes");
   out.trade_monthly = `${anio} OK`;

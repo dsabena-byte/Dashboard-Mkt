@@ -36,6 +36,9 @@ export async function GET(request: Request) {
       fs_lavado: t.fsCat.Lavado?.[i] ?? null,
       fs_refri: t.fsCat["Refrigeración"]?.[i] ?? null,
       fs_coccion: t.fsCat["Cocción"]?.[i] ?? null,
+      fs_u_lavado: t.fsUnid.Lavado?.[i] ?? null,
+      fs_u_refri: t.fsUnid["Refrigeración"]?.[i] ?? null,
+      fs_u_coccion: t.fsUnid["Cocción"]?.[i] ?? null,
       updated_at: now,
     }));
 

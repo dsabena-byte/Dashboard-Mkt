@@ -8,13 +8,14 @@ import "server-only";
 import { getCbRows, computeTotals, isoWeekToMes, type CbRow } from "./cb-queries";
 import { getFloorShareRows, computeOverall, type FloorShareRow } from "./floor-share-queries";
 import { trEstado, getTrCbRows, getTrFsRows } from "./trade-db";
-import { generalPonderado } from "./categorias";
+import { generalPonderado, pesosPiso } from "./categorias";
 
 const MES_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 export interface TradeMonthly {
   cb: (number | null)[]; // 12 — % Cumplimiento CB (total)
-  fsGeneral: (number | null)[]; // 12 — Floor Share Drean ponderado
+  fsGeneral: (number | null)[]; // 12 — Floor Share Drean: unidades Drean ÷ unidades exhibidas (3 categorías)
+  fsUnid: Record<string, (number | null)[]>; // unidades exhibidas por categoría (pesos del general y de su meta)
   fsCat: Record<string, (number | null)[]>; // Lavado / Refrigeración / Cocción
 }
 
@@ -22,6 +23,7 @@ export function emptyTradeMonthly(): TradeMonthly {
   return {
     cb: Array(12).fill(null),
     fsGeneral: Array(12).fill(null),
+    fsUnid: { Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null) },
     fsCat: { Lavado: Array(12).fill(null), Refrigeración: Array(12).fill(null), Cocción: Array(12).fill(null) },
   };
 }
@@ -35,7 +37,8 @@ export function tradeMonthlyDeFilas(cbRows: CbRow[], fsRows: FloorShareRow[], an
     const fsM = fsRows.filter((r) => r.semana != null && isoWeekToMes(r.semana, anio) === short);
     if (fsM.length) {
       const o = computeOverall(fsM);
-      out.fsGeneral[i] = generalPonderado({ Lavado: o.lavado.share, Refrigeración: o.refri.share, Cocción: o.coccion.share });
+      out.fsGeneral[i] = generalPonderado({ Lavado: o.lavado.share, Refrigeración: o.refri.share, Cocción: o.coccion.share }, pesosPiso(o));
+      out.fsUnid.Lavado![i] = o.lavado.total_units; out.fsUnid["Refrigeración"]![i] = o.refri.total_units; out.fsUnid["Cocción"]![i] = o.coccion.total_units;
       out.fsCat.Lavado![i] = o.lavado.share; out.fsCat["Refrigeración"]![i] = o.refri.share; out.fsCat["Cocción"]![i] = o.coccion.share;
     }
   });
@@ -64,11 +67,11 @@ export async function getTradeMonthly(anio: number): Promise<TradeMonthly> {
   if (!url || !key) return out;
   try {
     const res = await fetch(
-      `${url}/rest/v1/trade_monthly?anio=eq.${anio}&select=mes,cb_pct,fs_general,fs_lavado,fs_refri,fs_coccion`,
+      `${url}/rest/v1/trade_monthly?anio=eq.${anio}&select=mes,cb_pct,fs_general,fs_lavado,fs_refri,fs_coccion,fs_u_lavado,fs_u_refri,fs_u_coccion`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" },
     );
     if (!res.ok) return out;
-    const rows = (await res.json()) as Array<{ mes: number; cb_pct: number | null; fs_general: number | null; fs_lavado: number | null; fs_refri: number | null; fs_coccion: number | null }>;
+    const rows = (await res.json()) as Array<{ mes: number; cb_pct: number | null; fs_general: number | null; fs_lavado: number | null; fs_refri: number | null; fs_coccion: number | null; fs_u_lavado?: number | null; fs_u_refri?: number | null; fs_u_coccion?: number | null }>;
     for (const r of rows) {
       const i = r.mes - 1;
       if (i < 0 || i > 11) continue;
@@ -77,6 +80,7 @@ export async function getTradeMonthly(anio: number): Promise<TradeMonthly> {
       out.fsCat.Lavado![i] = r.fs_lavado;
       out.fsCat["Refrigeración"]![i] = r.fs_refri;
       out.fsCat["Cocción"]![i] = r.fs_coccion;
+      out.fsUnid.Lavado![i] = r.fs_u_lavado ?? null; out.fsUnid["Refrigeración"]![i] = r.fs_u_refri ?? null; out.fsUnid["Cocción"]![i] = r.fs_u_coccion ?? null;
     }
   } catch {
     /* devuelve nulls */
