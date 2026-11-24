@@ -239,6 +239,7 @@ export function decidirMes(guardado: Totales | undefined, api: Totales | undefin
 export type CandidatoEdad = { id: string; grupo: "YouTube" | "Programmatic"; type: string; groupBys: string[]; metrics: string[] };
 const M_BASE = ["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_REVENUE_USD"];
 export const DV360_EDAD_CANDIDATOS: CandidatoEdad[] = [
+  { id: "yt0", grupo: "YouTube", type: "YOUTUBE", groupBys: ["FILTER_MONTH", "FILTER_LINE_ITEM_NAME", "FILTER_TRUEVIEW_AGE"], metrics: [...M_BASE, "METRIC_RICH_MEDIA_VIDEO_MIDPOINTS", "METRIC_RICH_MEDIA_VIDEO_COMPLETIONS"] },
   { id: "yt1", grupo: "YouTube", type: "YOUTUBE", groupBys: ["FILTER_MONTH", "FILTER_LINE_ITEM_NAME", "FILTER_TRUEVIEW_AGE"], metrics: [...M_BASE, "METRIC_RICH_MEDIA_VIDEO_COMPLETIONS"] },
   { id: "yt2", grupo: "YouTube", type: "YOUTUBE", groupBys: ["FILTER_MONTH", "FILTER_LINE_ITEM_NAME", "FILTER_TRUEVIEW_AGE"], metrics: M_BASE },
   { id: "yt3", grupo: "YouTube", type: "YOUTUBE", groupBys: ["FILTER_DATE", "FILTER_LINE_ITEM_NAME", "FILTER_TRUEVIEW_AGE"], metrics: ["METRIC_IMPRESSIONS", "METRIC_REVENUE_USD"] },
@@ -247,13 +248,13 @@ export const DV360_EDAD_CANDIDATOS: CandidatoEdad[] = [
   { id: "pg3", grupo: "Programmatic", type: "STANDARD", groupBys: ["FILTER_MONTH", "FILTER_LINE_ITEM_NAME", "FILTER_TARGETED_AGE"], metrics: M_BASE },
   { id: "pg4", grupo: "Programmatic", type: "AUDIENCE_COMPOSITION", groupBys: ["FILTER_MONTH", "FILTER_LINE_ITEM_NAME", "FILTER_AGE"], metrics: ["METRIC_IMPRESSIONS"] },
 ];
-export type EdadDv360 = { mes: string; medio: string; pieza_id: string; edad: string; tipo: string | null; impresiones: number; clicks: number; video_completos: number; interacciones: number; spend: number };
+export type EdadDv360 = { mes: string; medio: string; pieza_id: string; edad: string; tipo: string | null; impresiones: number; clicks: number; video_completos: number; video_p50: number; interacciones: number; spend: number };
 /** CSV de una consulta de edad → filas por mes (YYYY-MM), line item y edad (spend en USD). Encabezados buscados por nombre. */
 export function aggEdad(csv: string, grupo: "YouTube" | "Programmatic"): EdadDv360[] {
   const g = parseCsv(csv), h = (g[0] ?? []).map((x) => x.trim());
   const find = (re: RegExp) => h.findIndex((x) => re.test(x));
   const iMo = find(/^(month|date)$/i), iLI = find(/^line item$/i), iAge = find(/\bage\b/i),
-    iImp = find(/^impressions$/i), iClk = find(/^clicks$/i), iRev = find(/^revenue \(usd\)$/i), iC = find(/^complete views/i);
+    iImp = find(/^impressions$/i), iClk = find(/^clicks$/i), iRev = find(/^revenue \(usd\)$/i), iC = find(/^complete views/i), iMid = find(/^midpoint views/i);
   if (iMo < 0 || iLI < 0 || iAge < 0 || iImp < 0) throw new Error(`Header inesperado (edad): ${h.join(" | ").slice(0, 300)}`);
   const agg = new Map<string, EdadDv360>();
   for (let r = 1; r < g.length; r++) {
@@ -266,11 +267,12 @@ export function aggEdad(csv: string, grupo: "YouTube" | "Programmatic"): EdadDv3
     if ((grupo === "YouTube") !== (canal === "YouTube")) continue;
     const k = `${mes}|${li}|${row[iAge]}`;
     let a = agg.get(k);
-    if (!a) agg.set(k, (a = { mes, medio: grupo, pieza_id: li, edad: String(row[iAge] || ""), tipo: grupo === "YouTube" ? "video" : null, impresiones: 0, clicks: 0, video_completos: 0, interacciones: 0, spend: 0 }));
+    if (!a) agg.set(k, (a = { mes, medio: grupo, pieza_id: li, edad: String(row[iAge] || ""), tipo: grupo === "YouTube" ? "video" : null, impresiones: 0, clicks: 0, video_completos: 0, video_p50: 0, interacciones: 0, spend: 0 }));
     a.impresiones += dv360Num(row[iImp]);
     if (iClk >= 0) a.clicks += dv360Num(row[iClk]);
     if (iRev >= 0) a.spend += dv360Num(row[iRev]);
     if (iC >= 0) a.video_completos += dv360Num(row[iC]);
+    if (iMid >= 0) a.video_p50 += dv360Num(row[iMid]);
   }
   return [...agg.values()];
 }

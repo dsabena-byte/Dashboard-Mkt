@@ -177,10 +177,11 @@ type BdIns = {
   ad_id?: string; age?: string; publisher_platform?: string; platform_position?: string; impressions?: string; spend?: string;
   actions?: Array<{ action_type?: string; value?: string }>;
   video_play_actions?: Array<{ value?: string }>;
+  video_p50_watched_actions?: Array<{ value?: string }>;
   video_p100_watched_actions?: Array<{ value?: string }>;
 };
 async function insightsBd(actId: string, token: string, since: string, until: string, breakdowns: string): Promise<BdIns[]> {
-  const fields = "ad_id,impressions,spend,actions,video_play_actions,video_p100_watched_actions";
+  const fields = "ad_id,impressions,spend,actions,video_play_actions,video_p50_watched_actions,video_p100_watched_actions";
   const tr = encodeURIComponent(JSON.stringify({ since, until }));
   let next: string | undefined = `${GRAPH_API}/${actId}/insights?level=ad&breakdowns=${breakdowns}&fields=${fields}&time_range=${tr}&limit=500&access_token=${token}`;
   const out: BdIns[] = [];
@@ -200,6 +201,7 @@ async function syncEdad(actId: string, token: string, mesParam: string) {
     impresiones: Number(r.impressions ?? 0) || 0,
     clicks: actionVal(r.actions, "link_click"),
     video_completos: sumActions(r.video_p100_watched_actions),
+    video_p50: sumActions(r.video_p50_watched_actions),
     interacciones: actionVal(r.actions, "post_engagement"),
     spend: Number(r.spend ?? 0) || 0,
   });
