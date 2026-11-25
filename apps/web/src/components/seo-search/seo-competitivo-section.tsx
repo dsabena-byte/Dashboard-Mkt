@@ -131,8 +131,7 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
 
       {/* Aclaración de meses sin medición válida (25-nov-2026). */}
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-        <b>Octubre 2026 sin dato:</b> la medición de ese mes se cortó a mitad de camino (solo 196 de 486 keywords), y Google no guarda posiciones pasadas, así que no se puede reconstruir. Para no mezclar datos incompletos, el histórico salta de septiembre a noviembre.
-      </div>
+        <b>Octubre 2026 sin dato:</b> desde fines de septiembre Google cambió cómo entrega los resultados a las herramientas de medición y la medición de octubre quedó incompleta (196 de 486 keywords) y no confiable. Google no guarda posiciones pasadas, así que no se puede reconstruir: el histórico salta de septiembre a noviembre, que ya se mide con el método corregido.</div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
