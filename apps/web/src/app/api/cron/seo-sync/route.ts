@@ -35,7 +35,9 @@ interface SerpTask {
 }
 type SerpItems = NonNullable<NonNullable<SerpTask["result"]>[number]["items"]>;
 const DEPTH = 100;
-const serpTask = (keyword: string) => ({ keyword, location_code: LOCATION_CODE_AR, language_code: LANGUAGE_CODE_ES, depth: DEPTH });
+// resolve_poisoned_results (nov-2026): desde ~sep-2026 Google devuelve SERPs "envenenadas" (ranking alterado) a los scrapers;
+// con el flag DataForSEO detecta y recupera los orgánicos (marcados `from_web` en `checks`). Cuesta 1 página extra por tarea.
+const serpTask = (keyword: string) => ({ keyword, location_code: LOCATION_CODE_AR, language_code: LANGUAGE_CODE_ES, depth: DEPTH, resolve_poisoned_results: true });
 const usarColaStandard = () => (process.env.DATAFORSEO_MODE ?? "standard").toLowerCase() !== "live";
 
 async function serp(keyword: string): Promise<SerpTask | undefined> {
