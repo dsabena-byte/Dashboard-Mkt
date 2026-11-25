@@ -129,6 +129,11 @@ export function SeoCompetitivoSection({ rows, historia = [] }: { rows: SerpRow[]
         </div>
       </div>
 
+      {/* Aclaración de meses sin medición válida (25-nov-2026). */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <b>Octubre 2026 sin dato:</b> la medición de ese mes se cortó a mitad de camino (solo 196 de 486 keywords) por falta de saldo en el proveedor de datos, y Google no guarda posiciones pasadas, así que no se puede reconstruir. Para no mezclar datos incompletos, el histórico salta de septiembre a noviembre.
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-xl border bg-primary/5 p-4">
