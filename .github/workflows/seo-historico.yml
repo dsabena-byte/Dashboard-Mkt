@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: "probe | fill"
+        description: "probe | fill | serp"
         required: true
         default: "probe"
       mes:
@@ -19,6 +19,10 @@ on:
         description: "Fecha con la que se guarda (fill)"
         required: false
         default: "2026-10-07"
+      kw:
+        description: "serp: keywords separadas por |"
+        required: false
+        default: "lavarropas automatico|heladera|cocina"
 
 permissions:
   contents: read
@@ -32,6 +36,10 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://dashboard-mkt-seven.vercel.app/api/cron/seo-historico"
+          if [ "$MODO" = "serp" ]; then
+            curl -s -f --max-time 300 -G -H "Authorization: Bearer ${CRON_SECRET}" --data-urlencode "modo=serp" --data-urlencode "kw=${KW}" "${BASE}" | python3 -m json.tool
+            exit 0
+          fi
           if [ "$MODO" = "probe" ]; then
             curl -s -f --max-time 300 -H "Authorization: Bearer ${CRON_SECRET}" "${BASE}?modo=probe&n=5" | python3 -m json.tool
             exit 0
@@ -49,4 +57,5 @@ jobs:
           MODO: ${{ github.event.inputs.modo }}
           MES: ${{ github.event.inputs.mes }}
           FECHA: ${{ github.event.inputs.fecha }}
+          KW: ${{ github.event.inputs.kw }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
