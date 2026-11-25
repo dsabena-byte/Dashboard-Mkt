@@ -69,6 +69,26 @@ export async function GET(request: Request) {
   const universo = [...KEYWORD_UNIVERSE].sort((a, b) => b.volume - a.volume);
   const out: Record<string, unknown> = { modo };
   try {
+    if (modo === "serp") {
+      // Diagnóstico (sin escribir): SERP live actual de hasta 3 keywords, items orgánicos tal cual llegan.
+      const kws = (url.searchParams.get("kw") ?? "lavarropas automatico").split("|").slice(0, 3);
+      const res = [];
+      for (const kw of kws) {
+        const r = await fetch("https://api.dataforseo.com/v3/serp/google/organic/live/advanced", {
+          method: "POST",
+          headers: { Authorization: `Basic ${env("DATAFORSEO_AUTH")}`, "Content-Type": "application/json" },
+          body: JSON.stringify([{ keyword: kw, location_code: LOCATION_CODE_AR, language_code: LANGUAGE_CODE_ES, depth: 100 }]),
+          signal: AbortSignal.timeout(60000),
+        });
+        const j = (await r.json()) as { tasks?: Array<{ cost?: number; status_message?: string; result?: Array<{ check_url?: string; item_types?: string[]; items_count?: number; items?: Array<Record<string, unknown>> }> }> };
+        const t = j.tasks?.[0]; const rr = t?.result?.[0];
+        res.push({
+          kw, cost: t?.cost, status: t?.status_message, check_url: rr?.check_url, item_types: rr?.item_types, items_count: rr?.items_count,
+          items: (rr?.items ?? []).slice(0, 40).map((i) => ({ type: i.type, rg: i.rank_group, ra: i.rank_absolute, dom: i.domain, url: String(i.url ?? "").slice(0, 120), bc: String(i.breadcrumb ?? "").slice(0, 80) })),
+        });
+      }
+      return NextResponse.json({ ok: true, res });
+    }
     if (modo === "probe") {
       const n = Math.min(Math.max(Number(url.searchParams.get("n") ?? 5), 1), 10);
       const kws = universo.slice(0, n);
