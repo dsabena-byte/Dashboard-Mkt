@@ -1,0 +1,52 @@
+name: SEO histórico (completar un mes con DataForSEO Labs)
+
+# Completa un mes faltante de seo_rankings con la foto mensual histórica de DataForSEO Labs
+# (historical_serps, US$0,00012 por foto). Manual. PAGO: correr solo con OK del user.
+#   modo=probe → no escribe (5 keywords, compara con nuestras fotos)
+#   modo=fill  → escribe en `fecha` las keywords sin filas en `mes`
+on:
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "probe | fill"
+        required: true
+        default: "probe"
+      mes:
+        description: "Mes a completar (fill)"
+        required: false
+        default: "2026-10"
+      fecha:
+        description: "Fecha con la que se guarda (fill)"
+        required: false
+        default: "2026-10-07"
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Ejecutar
+        run: |
+          set -euo pipefail
+          BASE="https://dashboard-mkt-seven.vercel.app/api/cron/seo-historico"
+          if [ "$MODO" = "probe" ]; then
+            curl -s -f --max-time 300 -H "Authorization: Bearer ${CRON_SECRET}" "${BASE}?modo=probe&n=5" | python3 -m json.tool
+            exit 0
+          fi
+          OFFSET=0
+          for i in $(seq 1 20); do
+            HTTP=$(curl -s -o resp.json -w '%{http_code}' --max-time 300 -H "Authorization: Bearer ${CRON_SECRET}" "${BASE}?modo=fill&mes=${MES}&fecha=${FECHA}&offset=${OFFSET}&limit=40")
+            cat resp.json; echo ""
+            [ "$HTTP" = "200" ] || { echo "::error::HTTP $HTTP"; exit 1; }
+            read RESTO QUEDAN < <(python3 -c "import json; d=json.load(open('resp.json')); print(d['resto'], d['quedan'])")
+            OFFSET=$((OFFSET + QUEDAN))
+            [ "$RESTO" -le 0 ] && { echo "Completo."; break; }
+          done
+        env:
+          MODO: ${{ github.event.inputs.modo }}
+          MES: ${{ github.event.inputs.mes }}
+          FECHA: ${{ github.event.inputs.fecha }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
