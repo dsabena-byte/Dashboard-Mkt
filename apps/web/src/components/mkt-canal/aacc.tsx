@@ -303,11 +303,14 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
       </td>
     </tr>
   );
+  // El nombre es solo texto: la ficha del cliente (razón social, proveedor) se abre con el ✎, no al tocar la fila.
   const nombre = (a: Acuerdo, i: number) => (
-    <button type="button" onClick={() => setAbierto(abierto === i ? null : i)} className="flex w-full items-center gap-1 text-left font-medium hover:text-[#1e40af]" title="Ver / editar razón social y proveedor">
-      <span className="truncate">{a.cliente || <i className="text-muted-foreground">sin nombre</i>}</span><span className="text-[10px] text-muted-foreground">{abierto === i ? "▲" : "✎"}</span>
-    </button>
+    <div className="flex items-center gap-1">
+      <span className="truncate font-medium">{a.cliente || <i className="text-muted-foreground">sin nombre</i>}</span>
+      <button type="button" onClick={() => setAbierto(abierto === i ? null : i)} className="shrink-0 px-0.5 text-[10px] text-muted-foreground hover:text-[#1e40af]" title="Datos del cliente: razón social y proveedor">{abierto === i ? "▲" : "✎"}</button>
+    </div>
   );
+
 
   return (
     <details className={card}>
@@ -356,7 +359,7 @@ function Acuerdos({ anio, d, onCambio }: { anio: number; d: Datos; onCambio: () 
           <h4 className="mr-auto text-sm font-semibold">Monto fijo por mes · en $ miles</h4>
           {!ro && <button className="text-xs text-[#1e40af] hover:underline" onClick={() => nuevo("fijo")}>+ Agregar</button>}
         </div>
-        <p className="text-xs text-muted-foreground">Escribí en miles (ej. 4.411,5 = $ 4.411.500). Tocá el nombre del cliente para ver su razón social y su proveedor en Inversión.</p>
+        <p className="text-xs text-muted-foreground">Escribí en miles (ej. 4.411,5 = $ 4.411.500). Tocá el mes y escribí el monto. El ✎ junto al cliente abre su razón social y su proveedor en Inversión.</p>
         <div className="rounded-lg border">
           <table className="w-full table-fixed text-xs">
             <thead className="bg-muted/50 text-muted-foreground"><tr>
