@@ -194,11 +194,13 @@ function Resumen({ d }: { d: Datos }) {
     };
     return { clientes, celda };
   }, [d]);
+  // Grilla en $ miles sin «$ … k» en cada celda: con 13 columnas el sufijo no dejaba leer.
+  const k = (n: number | null | undefined) => (n == null ? "—" : Math.round(n / 1000).toLocaleString("es-AR"));
   const sumCli = (c: string) => Array.from({ length: 12 }, (_, i) => celda(c, i)).reduce((a, x) => ({ liq: a.liq + x.liq, falta: a.falta + x.falta }), { liq: 0, falta: 0 });
   const Celda = ({ liq, falta }: { liq: number; falta: number }) => (
     <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">
-      {liq > 0 && <div>{$(liq)}</div>}
-      {falta > 0 && <div className="rounded bg-red-50 px-1 font-semibold text-red-700" title="Falta liquidar: el gasto todavía no tiene Nº de factura en Inversión">{$(falta)}</div>}
+      {liq > 0 && <div>{k(liq)}</div>}
+      {falta > 0 && <div className="rounded bg-red-50 px-1 font-semibold text-red-700" title="Falta liquidar: el gasto todavía no tiene Nº de factura en Inversión">{k(falta)}</div>}
       {liq <= 0 && falta <= 0 && <span className="text-muted-foreground/50">—</span>}
     </td>
   );
@@ -216,9 +218,9 @@ function Resumen({ d }: { d: Datos }) {
         <a className="underline" href="/funnel/carga">Inversión de Marketing → Cargar datos</a>: gastos de la cuenta 6202010084 (Acciones compartidas) con Nº de factura.
       </p>
       <div className="rounded-lg border">
-        <table className="w-full table-fixed text-[11px]">
-          <colgroup><col className="w-[13%]" />{Array.from({ length: 13 }, (_, i) => <col key={i} />)}</colgroup>
-          <thead className="bg-[#44546a] text-white"><tr><th className="px-1.5 py-1.5 text-left">Cliente</th>{MES.map((m) => <th key={m} className="px-1 py-1.5 text-right">{m}</th>)}<th className="px-1 py-1.5 text-right">Año</th></tr></thead>
+        <table className="w-full table-fixed text-xs">
+          <colgroup><col className="w-[12%]" />{Array.from({ length: 12 }, (_, i) => <col key={i} />)}<col className="w-[9%]" /></colgroup>
+          <thead className="bg-[#44546a] text-white"><tr><th className="px-1.5 py-1.5 text-left">Cliente <span className="font-normal opacity-80">($ miles)</span></th>{MES.map((m) => <th key={m} className="px-1 py-1.5 text-right">{m}</th>)}<th className="px-1 py-1.5 text-right">Año</th></tr></thead>
           <tbody>
             {clientes.map((c) => {
               const s = sumCli(c);
@@ -231,21 +233,21 @@ function Resumen({ d }: { d: Datos }) {
               );
             })}
             <tr className="border-t-2 border-[#44546a] bg-muted/40 font-semibold">
-              <td className="px-2 py-1.5">Total liquidado</td>
-              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{r.liquidado ? $(r.liquidado) : ""}</td>)}
-              <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{$(tot((r) => r.liquidado))}</td>
+              <td className="px-1.5 py-1.5">Total liquidado</td>
+              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{r.liquidado ? k(r.liquidado) : ""}</td>)}
+              <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{k(tot((r) => r.liquidado))}</td>
             </tr>
             {filasTot.map(([t, f]) => (
               <tr key={t} className="border-t bg-muted/20">
                 <td className="px-1.5 py-1.5 font-medium">{t}</td>
-                {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{f(r) == null ? "" : $(f(r))}</td>)}
-                <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{$(tot(f))}</td>
+                {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{f(r) == null ? "" : k(f(r))}</td>)}
+                <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{k(tot(f))}</td>
               </tr>
             ))}
             <tr className="border-t bg-red-50/60 font-semibold text-red-700">
-              <td className="px-2 py-1.5">Falta liquidar</td>
-              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{r.faltaLiquidar > 0 ? $(r.faltaLiquidar) : ""}</td>)}
-              <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{$(tot((r) => r.faltaLiquidar))}</td>
+              <td className="px-1.5 py-1.5">Falta liquidar</td>
+              {d.resumen.map((r) => <td key={r.mes} className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{r.faltaLiquidar > 0 ? k(r.faltaLiquidar) : ""}</td>)}
+              <td className="whitespace-nowrap px-1 py-1.5 text-right tabular-nums">{k(tot((r) => r.faltaLiquidar))}</td>
             </tr>
           </tbody>
         </table>
